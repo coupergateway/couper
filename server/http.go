@@ -23,7 +23,7 @@ type HTTPServer struct {
 	srv    *http.Server
 }
 
-func New(ctx context.Context) *HTTPServer {
+func New(ctx context.Context, conf *config.Gateway) *HTTPServer {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
@@ -31,7 +31,7 @@ func New(ctx context.Context) *HTTPServer {
 		logrus.FieldKeyMsg:  "message",
 	}}
 
-	httpSrv := &HTTPServer{ctx: ctx, log: logger.WithField("type", "couper"), mux: http.NewServeMux()}
+	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger.WithField("type", "couper"), mux: http.NewServeMux()}
 
 	srv := &http.Server{
 		Addr: ":" + config.DefaultHTTP.ListenPort,
@@ -52,14 +52,14 @@ func New(ctx context.Context) *HTTPServer {
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, frontend := range s.config.Frontends {
-		if endpoint, ok := frontend.(interface{ Path() string }); ok {
-			s.mux.Handle(endpoint.Path(), frontend)
-		}
+		s.log.WithField("path", frontend.Endpoint.Path).Debug("registered")
+		s.mux.Handle(frontend.Endpoint.Path, frontend.Endpoint.Backend)
 	}
 }
 
 func (s *HTTPServer) Listen() int {
 	s.log.WithField("addr", s.srv.Addr).Info("couper gateway is serving")
+	s.registerHandler()
 	go s.listenForCtx()
 	err := s.srv.ListenAndServe()
 	if err != nil {
