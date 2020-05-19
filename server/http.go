@@ -16,10 +16,11 @@ import (
 const RequestIDKey = "requestID"
 
 type HTTPServer struct {
-	ctx      context.Context
-	Frontend []interface{}
-	log      *logrus.Entry
-	srv      *http.Server
+	config *config.Gateway
+	ctx    context.Context
+	log    *logrus.Entry
+	mux    *http.ServeMux
+	srv    *http.Server
 }
 
 func New(ctx context.Context) *HTTPServer {
@@ -30,7 +31,7 @@ func New(ctx context.Context) *HTTPServer {
 		logrus.FieldKeyMsg:  "message",
 	}}
 
-	httpSrv := &HTTPServer{ctx: ctx, log: logger.WithField("type", "couper")}
+	httpSrv := &HTTPServer{ctx: ctx, log: logger.WithField("type", "couper"), mux: http.NewServeMux()}
 
 	srv := &http.Server{
 		Addr: ":" + config.DefaultHTTP.ListenPort,
@@ -45,6 +46,16 @@ func New(ctx context.Context) *HTTPServer {
 	httpSrv.srv = srv
 
 	return httpSrv
+}
+
+// registerHandler reads the given config frontends and register endpoints
+// to our http multiplexer.
+func (s *HTTPServer) registerHandler() {
+	for _, frontend := range s.config.Frontends {
+		if endpoint, ok := frontend.(interface{ Path() string }); ok {
+			s.mux.Handle(endpoint.Path(), frontend)
+		}
+	}
 }
 
 func (s *HTTPServer) Listen() int {
@@ -70,7 +81,20 @@ func (s *HTTPServer) listenForCtx() {
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
+	req.Header.Set("X-Request-Id", uid)
+	handler, pattern := s.mux.Handler(req)
 	rw.Header().Add("server", "couper.io")
 	rw.Header().Add("X-Request-Id", uid)
-	s.log.WithField("uid", uid).WithField("agent", req.Header.Get("User-Agent")).WithField("url", req.URL.String()).Info()
+	handler.ServeHTTP(rw, req)
+	var handlerName string
+	if name, ok := handler.(interface{ String() string }); ok {
+		handlerName = name.String()
+	}
+	s.log.WithFields(logrus.Fields{
+		"agent":   req.Header.Get("User-Agent"),
+		"pattern": pattern,
+		"handler": handlerName, // expected String() implementation
+		"uid":     uid,
+		"url":     req.URL.String(),
+	}).Info()
 }
