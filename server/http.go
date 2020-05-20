@@ -100,8 +100,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
 	req.Header.Set("X-Request-Id", uid)
 	handler, pattern := s.mux.Handler(req)
-	rw.Header().Add("server", "couper.io")
-	rw.Header().Add("X-Request-Id", uid)
+	rw.Header().Set("server", "couper.io") // TODO: wrap 'rw' for server override and status readout
+	rw.Header().Set("X-Request-Id", uid)
 	handler.ServeHTTP(rw, req)
 	var handlerName string
 	if name, ok := handler.(interface{ String() string }); ok {
