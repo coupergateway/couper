@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/rs/xid"
@@ -30,6 +32,7 @@ func New(ctx context.Context, conf *config.Gateway) *HTTPServer {
 		logrus.FieldKeyTime: "timestamp",
 		logrus.FieldKeyMsg:  "message",
 	}}
+	logger.Level = logrus.DebugLevel
 
 	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger.WithField("type", "couper"), mux: http.NewServeMux()}
 
@@ -52,11 +55,25 @@ func New(ctx context.Context, conf *config.Gateway) *HTTPServer {
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, frontend := range s.config.Frontends {
-		s.log.WithField("path", frontend.Endpoint.Path).Debug("registered")
-		s.mux.Handle(frontend.Endpoint.Path, frontend.Endpoint.Backend)
+		for _, endpoint := range frontend.Endpoint {
+			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
+			path := joinPath(frontend.BasePath, endpoint.Path)
+			s.log.WithField("frontend", frontend.Name).WithField("path", path).WithField("endpoint", endpoint.Backend.Type).Debug("registered")
+			s.mux.Handle(path, endpoint)
+		}
 	}
 }
 
+// joinPath ensures the muxer behaviour for redirecting '/path' to '/path/' if not explicitly specified.
+func joinPath(elements ...string) string {
+	suffix := "/"
+	if !strings.HasSuffix(elements[len(elements)-1], "/") {
+		suffix = ""
+	}
+	return path.Join(elements...) + suffix
+}
+
+// Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() int {
 	s.log.WithField("addr", s.srv.Addr).Info("couper gateway is serving")
 	s.registerHandler()
@@ -93,7 +110,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	s.log.WithFields(logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
 		"pattern": pattern,
-		"handler": handlerName, // expected String() implementation
+		"handler": handlerName,
 		"uid":     uid,
 		"url":     req.URL.String(),
 	}).Info()

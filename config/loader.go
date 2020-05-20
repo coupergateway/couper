@@ -21,10 +21,20 @@ func Load(name string) *Gateway {
 		log.Fatalf("Failed to load configuration: %s", err)
 	}
 
-	for i, frontend := range config.Frontends { // TODO: additional conf etc
-		backend := reflect.New(typeMap[frontend.Endpoint.Type]).Interface()
-		if handler, ok := backend.(http.Handler); ok {
-			config.Frontends[i].Endpoint.Backend = handler
+	for f, frontend := range config.Frontends {
+		for e, endpoint := range frontend.Endpoint {
+			val := reflect.New(typeMap[endpoint.Backend.Type])
+			switch endpoint.Backend.Type { // TODO: parse and apply options via hcl respectively
+			case Proxy:
+				backend := val.Interface().(*backend.Proxy)
+				backend.OriginAddress = endpoint.Backend.OriginAddress
+				backend.OriginHost = endpoint.Backend.OriginHost
+				backend.Init()
+			}
+			if handler, ok := val.Interface().(http.Handler); ok {
+				config.Frontends[f].Endpoint[e].Backend.instance = handler
+				config.Frontends[f].Endpoint[e].Frontend = frontend // assign parent
+			}
 		}
 	}
 

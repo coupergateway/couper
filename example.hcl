@@ -1,9 +1,13 @@
 frontend "couperConnect" {
-    endpoint "/proxy/" "Proxy" {
-        // OriginHost = "couper.io"
-        // OriginAddress = "couper.io:443"
-        // Headers = {
-        //     "X-Myproxy-Header" = "${req.x-request-id}"
-        // }
+    base_path = "/api/v1/"
+    endpoint "/proxy/" {
+        backend "Proxy" {
+            origin_address = "couper.io:443"
+            origin_host = "couper.io"
+            // Headers = {
+            //     "X-Myproxy-Header" = "${req.x-request-id}"
+            // }
+        }
+        
     }
 }
