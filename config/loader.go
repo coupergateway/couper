@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 
 	"go.avenga.cloud/couper/gateway/backend"
@@ -24,12 +25,12 @@ func Load(name string) *Gateway {
 	for f, frontend := range config.Frontends {
 		for e, endpoint := range frontend.Endpoint {
 			val := reflect.New(typeMap[endpoint.Backend.Type])
-			switch endpoint.Backend.Type { // TODO: parse and apply options via hcl respectively
-			case Proxy:
-				backend := val.Interface().(*backend.Proxy)
-				backend.OriginAddress = endpoint.Backend.OriginAddress
-				backend.OriginHost = endpoint.Backend.OriginHost
-				backend.Init()
+			diags := gohcl.DecodeBody(endpoint.Backend.Options, nil, val.Interface())
+			if diags.HasErrors() {
+				log.Fatal(diags.Error())
+			}
+			if handler, ok := val.Interface().(interface{ Init() }); ok {
+				handler.Init() // TODO: NewWithHCLBodyFuncWrap
 			}
 			if handler, ok := val.Interface().(http.Handler); ok {
 				config.Frontends[f].Endpoint[e].Backend.instance = handler

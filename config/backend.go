@@ -1,6 +1,10 @@
 package config
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/hashicorp/hcl/v2"
+)
 
 const (
 	Proxy     = "Proxy"
@@ -9,13 +13,10 @@ const (
 )
 
 type Backend struct {
-	Type string `hcl:"type,label"`
-	// For easyness ... TODO: adapt hcl parsing to apply settings to instances
-	OriginAddress string `hcl:"origin_address,optional"` // optional defaults to attr
-	OriginHost    string `hcl:"origin_host,optional"`
-	OriginScheme  string `hcl:"origin_scheme,optional"`
-
-	instance http.Handler
+	Type        string   `hcl:",label"`
+	Description string   `hcl:"description,optional"`
+	Options     hcl.Body `hcl:",remain"`
+	instance    http.Handler
 }
 
 func (b *Backend) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

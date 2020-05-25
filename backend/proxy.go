@@ -13,8 +13,9 @@ var (
 )
 
 type Proxy struct {
-	OriginAddress string
-	OriginHost    string
+	OriginAddress string `hcl:"origin_address"`
+	OriginHost    string `hcl:"origin_host"`
+	OriginScheme  string `hcl:"origin_scheme,optional"` // optional defaults to attr
 	rp            *httputil.ReverseProxy
 	log           *logrus.Entry
 }
