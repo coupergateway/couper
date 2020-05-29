@@ -30,6 +30,7 @@ github.com/rs/xid
 ## explicit
 github.com/sirupsen/logrus
 # github.com/zclconf/go-cty v1.2.0
+## explicit
 github.com/zclconf/go-cty/cty
 github.com/zclconf/go-cty/cty/convert
 github.com/zclconf/go-cty/cty/function
