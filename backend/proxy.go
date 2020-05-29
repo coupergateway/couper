@@ -13,11 +13,20 @@ var (
 )
 
 type Proxy struct {
-	OriginAddress string `hcl:"origin_address"`
-	OriginHost    string `hcl:"origin_host"`
-	OriginScheme  string `hcl:"origin_scheme,optional"` // optional defaults to attr
-	rp            *httputil.ReverseProxy
-	log           *logrus.Entry
+	OriginAddress  string      `hcl:"origin_address"`
+	OriginHost     string      `hcl:"origin_host"`
+	OriginScheme   string      `hcl:"origin_scheme,optional"` // optional defaults to attr
+	RequestHeaders http.Header `hcl:"request_headers"`
+	rp             *httputil.ReverseProxy
+	log            *logrus.Entry
+}
+
+func NewProxy() func(*logrus.Entry) http.Handler {
+	return func(log *logrus.Entry) http.Handler {
+		proxy := &Proxy{log: log}
+		proxy.rp = &httputil.ReverseProxy{Director: proxy.director}
+		return proxy
+	}
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -32,10 +41,11 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Scheme = "https" // TODO: improve conf options, scheme or url
 	}
 	req.Host = p.OriginHost
-}
 
-func (p *Proxy) Init() { // TODO: some kind of factory -> config.Load
-	p.rp = &httputil.ReverseProxy{Director: p.director}
+	for header, value := range p.RequestHeaders {
+		req.Header.Set(header, value[0])
+	}
+	p.log.WithField("uid", req.Context().Value("requestID")).WithField("custom-header", p.RequestHeaders).Debug()
 }
 
 func (p *Proxy) String() string {

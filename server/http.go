@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"time"
@@ -25,16 +24,8 @@ type HTTPServer struct {
 	srv    *http.Server
 }
 
-func New(ctx context.Context, conf *config.Gateway) *HTTPServer {
-	logger := logrus.New()
-	logger.Out = os.Stdout
-	logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
-		logrus.FieldKeyTime: "timestamp",
-		logrus.FieldKeyMsg:  "message",
-	}}
-	logger.Level = logrus.DebugLevel
-
-	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger.WithField("type", "couper"), mux: http.NewServeMux()}
+func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
+	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: http.NewServeMux()}
 
 	srv := &http.Server{
 		Addr: ":" + config.DefaultHTTP.ListenPort,
