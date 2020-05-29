@@ -98,7 +98,9 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if fmt.Sprintf("%p", handler) == fmt.Sprintf("%p", http.NotFound) {
 		handler = s.config.Frontends[0]
 	}
-	handler.ServeHTTP(rw, req)
+
+	sr := &StatusReader{rw: rw}
+	handler.ServeHTTP(sr, req)
 
 	var handlerName string
 	if name, ok := handler.(interface{ String() string }); ok {
@@ -108,6 +110,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		"agent":   req.Header.Get("User-Agent"),
 		"pattern": pattern,
 		"handler": handlerName,
+		"status":  sr.status,
 		"uid":     uid,
 		"url":     req.URL.String(),
 	}).Info()
