@@ -43,16 +43,19 @@ func (p *Proxy) director(req *http.Request) {
 	}
 	req.Host = p.OriginHost
 
+	log := p.log.WithField("uid", req.Context().Value("requestID"))
 	contextOptions, err := NewContextOptions(p.ContextOptions, req)
-	// TODO: Handle
 	if err != nil {
-		panic(err)
+		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+		return
 	}
 
 	for header, value := range contextOptions.RequestHeaders {
 		req.Header.Set(header, value[0])
 	}
-	p.log.WithField("uid", req.Context().Value("requestID")).WithField("custom-header", contextOptions.RequestHeaders).Debug()
+	if len(contextOptions.RequestHeaders) > 0 {
+		log.WithField("custom-header", contextOptions.RequestHeaders).Debug()
+	}
 }
 
 func (p *Proxy) String() string {
