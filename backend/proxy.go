@@ -5,6 +5,7 @@ import (
 	"net/http/httputil"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,10 +14,10 @@ var (
 )
 
 type Proxy struct {
-	OriginAddress  string      `hcl:"origin_address"`
-	OriginHost     string      `hcl:"origin_host"`
-	OriginScheme   string      `hcl:"origin_scheme,optional"` // optional defaults to attr
-	RequestHeaders http.Header `hcl:"request_headers"`
+	OriginAddress  string   `hcl:"origin_address"`
+	OriginHost     string   `hcl:"origin_host"`
+	OriginScheme   string   `hcl:"origin_scheme,optional"` // optional defaults to attr
+	ContextOptions hcl.Body `hcl:",remain"`
 	rp             *httputil.ReverseProxy
 	log            *logrus.Entry
 }
@@ -42,10 +43,16 @@ func (p *Proxy) director(req *http.Request) {
 	}
 	req.Host = p.OriginHost
 
-	for header, value := range p.RequestHeaders {
+	contextOptions, err := NewContextOptions(p.ContextOptions, req)
+	// TODO: Handle
+	if err != nil {
+		panic(err)
+	}
+
+	for header, value := range contextOptions.RequestHeaders {
 		req.Header.Set(header, value[0])
 	}
-	p.log.WithField("uid", req.Context().Value("requestID")).WithField("custom-header", p.RequestHeaders).Debug()
+	p.log.WithField("uid", req.Context().Value("requestID")).WithField("custom-header", contextOptions.RequestHeaders).Debug()
 }
 
 func (p *Proxy) String() string {
