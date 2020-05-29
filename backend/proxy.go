@@ -3,6 +3,7 @@ package backend
 import (
 	"net/http"
 	"net/http/httputil"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -17,6 +18,7 @@ type Proxy struct {
 	OriginAddress  string   `hcl:"origin_address"`
 	OriginHost     string   `hcl:"origin_host"`
 	OriginScheme   string   `hcl:"origin_scheme,optional"` // optional defaults to attr
+	Path           string   `hcl:"path,optional"`
 	ContextOptions hcl.Body `hcl:",remain"`
 	rp             *httputil.ReverseProxy
 	log            *logrus.Entry
@@ -42,6 +44,9 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Scheme = "https" // TODO: improve conf options, scheme or url
 	}
 	req.Host = p.OriginHost
+	if p.Path != "" {
+		req.URL.Path = path.Join("/", p.Path)
+	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
 	contextOptions, err := NewContextOptions(p.ContextOptions, req)

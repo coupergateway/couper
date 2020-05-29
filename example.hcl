@@ -14,11 +14,13 @@ frontend "couperConnect" {
 
     endpoint "/httpbin/" {
         backend "Proxy" {
+            path = "/headers/" #Optional and only if set, remove basePath+endpoint path
             description = "optional field"
             origin_address = "httpbin.org:443"
             origin_host = "httpbin.org"
             request_headers = {
                 X-Env-User = ["${env.USER}"]
+                X-Req-Header = ["${req.headers.X-Set-Me}"]
             }
         }
     }   
