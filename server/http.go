@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"path"
@@ -93,7 +94,12 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	handler, pattern := s.mux.Handler(req)
 	rw.Header().Set("server", "couper.io") // TODO: wrap 'rw' for server override and status readout
 	rw.Header().Set("X-Request-Id", uid)
+
+	if fmt.Sprintf("%p", handler) == fmt.Sprintf("%p", http.NotFound) {
+		handler = s.config.Frontends[0]
+	}
 	handler.ServeHTTP(rw, req)
+
 	var handlerName string
 	if name, ok := handler.(interface{ String() string }); ok {
 		handlerName = name.String()

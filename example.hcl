@@ -1,5 +1,10 @@
 frontend "couperConnect" {
     base_path = "/api/v1/"
+
+    files {
+        document_root = "./public"
+    }
+
     endpoint "/proxy/" {
         backend "Proxy" {
             description = "optional field"

@@ -13,7 +13,6 @@ import (
 )
 
 var typeMap = map[string]func(*logrus.Entry) http.Handler{
-	// "Proxy": reflect.TypeOf(backend.Proxy{}),
 	"proxy": backend.NewProxy(),
 }
 
@@ -25,6 +24,7 @@ func Load(name string, log *logrus.Entry) *Gateway {
 	}
 
 	for f, frontend := range config.Frontends {
+		// endpoints
 		for e, endpoint := range frontend.Endpoint {
 			handler := typeMap[strings.ToLower(endpoint.Backend.Type)](log)
 			diags := gohcl.DecodeBody(endpoint.Backend.Options, nil, handler)
@@ -34,6 +34,12 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			config.Frontends[f].Endpoint[e].Backend.instance = handler
 			config.Frontends[f].Endpoint[e].Frontend = frontend // assign parent
 		}
+		// serve files
+		if frontend.Files.DocumentRoot != "" {
+			fileHandler := backend.NewFile(frontend.Files.DocumentRoot, log)
+			config.Frontends[f].instance = fileHandler
+		}
+
 	}
 
 	return &config
