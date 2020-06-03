@@ -10,9 +10,17 @@ frontend "couperConnect" {
             description = "optional field"
             origin_address = "couper.io:${442 + 1}"
             origin_host = "couper.io"
-            request_headers = {
-                X-My-Custom-Foo-UA = ["ua:${req.headers.User-Agent}", "muh"]
-                X-Env-User = ["${env.USER}"]
+            request {
+                headers = {
+                    X-My-Custom-Foo-UA = ["ua:${req.headers.User-Agent}", "muh"]
+                    X-Env-User = ["${env.USER}"]
+                }
+            }
+
+            response {
+                headers = {
+                    Server = ["mySuperService"]
+                }
             }
         }
     }
@@ -23,9 +31,15 @@ frontend "couperConnect" {
             description = "optional field"
             origin_address = "httpbin.org:443"
             origin_host = "httpbin.org"
-            request_headers = {
-                X-Env-User = ["${env.USER}"]
-                X-Req-Header = ["${req.headers.X-Set-Me}"]
+            request {
+                headers = {
+                    X-Env-User = ["${env.USER}"]
+                    X-Req-Header = ["${req.headers.X-Set-Me}"]
+                }
+            }
+
+            response {
+                # TODO: optional block's ?
             }
         }
     }   

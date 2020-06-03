@@ -10,25 +10,52 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type ContextOptions struct {
-	RequestHeaders http.Header `hcl:"request_headers"`
+type Options struct {
+	Request  ContextOptions `hcl:"request,block"`
+	Response ContextOptions `hcl:"response,block"`
 }
 
-func NewContextOptions(hclBody hcl.Body, req *http.Request) (*ContextOptions, error) {
-	options := &ContextOptions{}
-	decodeCtx := &hcl.EvalContext{ // TODO: maybe add parent context earlier with basics like req, env
-		Variables: map[string]cty.Value{
-			"env": newCtyEnvMap(),
-			"req": cty.MapVal(map[string]cty.Value{
-				"headers": newCtyHeadersMap(req.Header),
-			}),
-		},
-	}
+type ContextOptions struct {
+	Headers http.Header `hcl:"headers,optional"`
+}
+
+func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*Options, error) {
+	decodeCtx := newEvalContext()
+	decodeCtx.Variables["req"] = cty.MapVal(map[string]cty.Value{
+		"headers": newCtyHeadersMap(req.Header),
+	})
+
+	options := &Options{}
 	diags := gohcl.DecodeBody(hclBody, decodeCtx, options)
 	if diags.HasErrors() {
 		return nil, diags
 	}
 	return options, nil
+}
+
+func NewResponseCtxOptions(hclBody hcl.Body, res *http.Response) (*Options, error) {
+	decodeCtx := newEvalContext()
+	decodeCtx.Variables["req"] = cty.MapVal(map[string]cty.Value{
+		"headers": newCtyHeadersMap(res.Request.Header),
+	})
+	decodeCtx.Variables["res"] = cty.MapVal(map[string]cty.Value{
+		"headers": newCtyHeadersMap(res.Header),
+	})
+
+	options := &Options{}
+	diags := gohcl.DecodeBody(hclBody, decodeCtx, options)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	return options, nil
+}
+
+func newEvalContext() *hcl.EvalContext {
+	return &hcl.EvalContext{
+		Variables: map[string]cty.Value{
+			"env": newCtyEnvMap(),
+		},
+	}
 }
 
 func newCtyEnvMap() cty.Value {

@@ -13,11 +13,11 @@ import (
 func TestWriteGateway(t *testing.T) {
 	conf := config.Gateway{
 		Frontends: []*config.Frontend{
-			&config.Frontend{
+			{
 				BasePath: "/hans/v1",
 				Name:     "wurst",
 				Endpoint: []*config.Endpoint{
-					&config.Endpoint{
+					{
 						Backend: &config.Backend{Type: "proxy"},
 						Path:    "/proxy/"},
 				},

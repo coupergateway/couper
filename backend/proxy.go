@@ -27,7 +27,10 @@ type Proxy struct {
 func NewProxy() func(*logrus.Entry) http.Handler {
 	return func(log *logrus.Entry) http.Handler {
 		proxy := &Proxy{log: log}
-		proxy.rp = &httputil.ReverseProxy{Director: proxy.director}
+		proxy.rp = &httputil.ReverseProxy{
+			Director:       proxy.director, // request modification
+			ModifyResponse: proxy.modifyResponse,
+		}
 		return proxy
 	}
 }
@@ -49,18 +52,35 @@ func (p *Proxy) director(req *http.Request) {
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
-	contextOptions, err := NewContextOptions(p.ContextOptions, req)
+	contextOptions, err := NewRequestCtxOptions(p.ContextOptions, req)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return
 	}
 
-	for header, value := range contextOptions.RequestHeaders {
+	for header, value := range contextOptions.Request.Headers {
 		req.Header.Set(header, value[0])
 	}
-	if len(contextOptions.RequestHeaders) > 0 {
-		log.WithField("custom-header", contextOptions.RequestHeaders).Debug()
+	if len(contextOptions.Request.Headers) > 0 {
+		log.WithField("custom-req-header", contextOptions.Request.Headers).Debug()
 	}
+}
+
+func (p *Proxy) modifyResponse(res *http.Response) error {
+	log := p.log.WithField("uid", res.Request.Context().Value("requestID"))
+	contextOptions, err := NewResponseCtxOptions(p.ContextOptions, res)
+	if err != nil {
+		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+		return err
+	}
+
+	for header, value := range contextOptions.Response.Headers {
+		res.Header.Set(header, value[0])
+	}
+	if len(contextOptions.Request.Headers) > 0 {
+		log.WithField("custom-res-header", contextOptions.Response.Headers).Debug()
+	}
+	return nil
 }
 
 func (p *Proxy) String() string {
