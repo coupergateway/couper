@@ -46,12 +46,12 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 // registerHandler reads the given config frontends and register endpoints
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
-	for _, frontend := range s.config.Frontends {
-		for _, endpoint := range frontend.Endpoint {
+	for _, application := range s.config.Applications {
+		for _, path := range application.Path {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
-			path := joinPath(frontend.BasePath, endpoint.Path)
-			s.log.WithField("frontend", frontend.Name).WithField("path", path).WithField("endpoint", endpoint.Backend.Type).Debug("registered")
-			s.mux.Handle(path, endpoint)
+			pattern := joinPath(application.BasePath, path.Pattern)
+			s.log.WithField("application", application.Name).WithField("pattern", pattern).WithField("kind", path.Kind).Debug("registered")
+			s.mux.Handle(pattern, path)
 		}
 	}
 }
@@ -96,7 +96,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("X-Request-Id", uid)
 
 	if fmt.Sprintf("%p", handler) == fmt.Sprintf("%p", http.NotFound) {
-		handler = s.config.Frontends[0]
+		handler = s.config.Applications[0]
 	}
 
 	sr := &StatusReader{rw: rw}

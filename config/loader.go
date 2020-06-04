@@ -6,6 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 
@@ -23,24 +24,53 @@ func Load(name string, log *logrus.Entry) *Gateway {
 		log.Fatalf("Failed to load configuration: %s", err)
 	}
 
-	for f, frontend := range config.Frontends {
-		// endpoints
-		for e, endpoint := range frontend.Endpoint {
-			handler := typeMap[strings.ToLower(endpoint.Backend.Type)](log)
-			diags := gohcl.DecodeBody(endpoint.Backend.Options, nil, handler)
-			if diags.HasErrors() {
-				log.Fatal(diags.Error())
+	backends := make(map[string]http.Handler)
+
+	for a, application := range config.Applications {
+		// create backends
+		for _, backend := range application.Backend {
+			if isKeyword(backend.Name) {
+				log.Fatalf("backend name not allowed, reserved keyword: '%s'", backend.Name)
 			}
-			config.Frontends[f].Endpoint[e].Backend.instance = handler
-			config.Frontends[f].Endpoint[e].Frontend = frontend // assign parent
+			if _, ok := backends[backend.Name]; ok {
+				log.Fatalf("backend name must be unique: '%s'", backend.Name)
+			}
+			backends[backend.Name] = newBackend(backend.Kind, backend.Options, log)
 		}
+
+		// map backends to path
+		for p, path := range application.Path {
+			var handler http.Handler
+			if h, ok := backends[path.Kind]; ok {
+				handler = h
+			} else {
+				handler = newBackend(path.Kind, path.Options, log) // inline backend
+			}
+			config.Applications[a].Path[p].Backend = handler
+			config.Applications[a].Path[p].Application = application // assign parent
+		}
+
 		// serve files
-		if frontend.Files.DocumentRoot != "" {
-			fileHandler := backend.NewFile(frontend.Files.DocumentRoot, log)
-			config.Frontends[f].instance = fileHandler
+		if application.Files.DocumentRoot != "" {
+			fileHandler := backend.NewFile(application.Files.DocumentRoot, log)
+			config.Applications[a].instance = fileHandler
 		}
 
 	}
 
 	return &config
+}
+
+func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
+	b := typeMap[strings.ToLower(kind)](log)
+	diags := gohcl.DecodeBody(options, nil, b)
+	if diags.HasErrors() {
+		log.Fatal(diags.Error())
+	}
+	return b
+}
+
+func isKeyword(other string) bool {
+	_, yes := typeMap[other]
+	return yes
 }

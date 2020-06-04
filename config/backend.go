@@ -7,13 +7,13 @@ import (
 )
 
 const (
-	Proxy     = "Proxy"
 	ServeDir  = "ServeDir"
 	ServeFile = "ServeFile"
 )
 
 type Backend struct {
-	Type        string   `hcl:",label"`
+	Kind        string   `hcl:"kind,label"`
+	Name        string   `hcl:"name,label"`
 	Description string   `hcl:"description,optional"`
 	Options     hcl.Body `hcl:",remain"`
 	instance    http.Handler

@@ -1,6 +1,6 @@
 package config
 
 type Gateway struct {
-	Frontends []*Frontend `hcl:"frontend,block"`
+	Applications []*Application `hcl:"application,block"`
 	// Defaults
 }
