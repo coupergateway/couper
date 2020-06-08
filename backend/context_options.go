@@ -15,7 +15,7 @@ type Options struct {
 	Response ContextOptions `hcl:"response,block"`
 }
 
-type ContextOptions struct {
+type ContextOptions *struct {
 	Headers http.Header `hcl:"headers,optional"`
 }
 

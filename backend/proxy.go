@@ -58,6 +58,9 @@ func (p *Proxy) director(req *http.Request) {
 		return
 	}
 
+	if contextOptions.Request == nil {
+		return
+	}
 	for header, value := range contextOptions.Request.Headers {
 		req.Header.Set(header, value[0])
 	}
@@ -72,6 +75,10 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return err
+	}
+
+	if contextOptions.Response == nil {
+		return nil
 	}
 
 	for header, value := range contextOptions.Response.Headers {
