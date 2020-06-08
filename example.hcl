@@ -32,14 +32,14 @@ application "couperConnect" {
         origin_host = "couper.io"
         request {
             headers = {
-                X-My-Custom-Foo-UA = ["ua:${req.headers.User-Agent}", "muh"]
+                X-My-Custom-Foo-UA = ["ua:${req.headers.User-Agent}", to_upper("muh")]
                 X-Env-User = ["${env.USER}"]
             }
         }
 
         response {
             headers = {
-                Server = ["mySuperService"]
+                Server = [to_lower("mySuperService")]
             }
         }
     }

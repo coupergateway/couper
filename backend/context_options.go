@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
+	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
 type Options struct {
@@ -55,6 +57,10 @@ func newEvalContext() *hcl.EvalContext {
 		Variables: map[string]cty.Value{
 			"env": newCtyEnvMap(),
 		},
+		Functions: map[string]function.Function{
+			"to_upper": stdlib.UpperFunc,
+			"to_lower": to_lower(), // Custom function
+		},
 	}
 }
 
@@ -75,4 +81,21 @@ func newCtyHeadersMap(headers http.Header) cty.Value {
 		ctyMap[k] = cty.StringVal(v[0]) // TODO: ListVal??
 	}
 	return cty.MapVal(ctyMap)
+}
+
+// Example function
+func to_lower() function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "s",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			s := cty.Value(args[0]).AsString()
+			return cty.StringVal(strings.ToLower(s)), nil
+		},
+	})
 }
