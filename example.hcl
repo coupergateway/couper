@@ -11,9 +11,6 @@ application "couperConnect" {
     path "/filex/" "proxy" { #kind with reserved keyword 'proxy'
         origin_address = "filex.github.io:80"
         origin_host = "ferndrang.de"
-
-        request {}
-        response {}
     }
 
     path "/httpbin/" "httpbin" {} #original 'httpbin' settings
@@ -54,10 +51,6 @@ application "couperConnect" {
                 X-Env-User = ["${env.USER}"]
                 X-Req-Header = ["${req.headers.X-Set-Me}"]
             }
-        }
-
-        response {
-            # TODO: optional block's ?
         }
     }
 }
