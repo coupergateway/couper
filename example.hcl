@@ -11,6 +11,7 @@ application "couperConnect" {
     path "/filex/" "proxy" { #kind with reserved keyword 'proxy'
         origin_address = "filex.github.io:80"
         origin_host = "ferndrang.de"
+        path = "/"
     }
 
     path "/httpbin/" "httpbin" {} #original 'httpbin' settings
@@ -29,8 +30,8 @@ application "couperConnect" {
         origin_host = "couper.io"
         request {
             headers = {
-                X-My-Custom-Foo-UA = ["ua:${req.headers.User-Agent}", to_upper("muh")]
-                X-Env-User = ["${env.USER}"]
+                X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
+                X-Env-User = [env.USER]
             }
         }
 
@@ -42,14 +43,14 @@ application "couperConnect" {
     }
 
     backend "proxy" "httpbin" {
-        path = "/headers/" #Optional and only if set, remove basePath+endpoint path
+        path = "/headers" #Optional and only if set, remove basePath+endpoint path
         description = "optional field"
         origin_address = "httpbin.org:443"
         origin_host = "httpbin.org"
         request {
             headers = {
-                X-Env-User = ["${env.USER}"]
-                X-Req-Header = ["${req.headers.X-Set-Me}"]
+                X-Env-User = [env.USER]
+                X-Req-Header = [req.headers.X-Set-Me]
             }
         }
     }
