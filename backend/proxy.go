@@ -77,7 +77,7 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 	for header, value := range contextOptions.Response.Headers {
 		res.Header.Set(header, value[0])
 	}
-	if len(contextOptions.Request.Headers) > 0 {
+	if len(contextOptions.Response.Headers) > 0 {
 		log.WithField("custom-res-header", contextOptions.Response.Headers).Debug()
 	}
 	return nil
