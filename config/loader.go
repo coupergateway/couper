@@ -26,7 +26,7 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 	backends := make(map[string]http.Handler)
 
-	for a, application := range config.Applications {
+	for a, application := range config.Server {
 		// create backends
 		for _, backend := range application.Backend {
 			if isKeyword(backend.Name) {
@@ -46,14 +46,14 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			} else {
 				handler = newBackend(path.Kind, path.Options, log) // inline backend
 			}
-			config.Applications[a].Path[p].Backend = handler
-			config.Applications[a].Path[p].Application = application // assign parent
+			config.Server[a].Path[p].Backend = handler
+			config.Server[a].Path[p].Server = application // assign parent
 		}
 
 		// serve files
 		if application.Files.DocumentRoot != "" {
 			fileHandler := backend.NewFile(application.Files.DocumentRoot, log)
-			config.Applications[a].instance = fileHandler
+			config.Server[a].instance = fileHandler
 		}
 
 	}

@@ -9,11 +9,11 @@ import (
 var _ http.Handler = &Path{}
 
 type Path struct {
-	Application *Application // parent
-	Backend     http.Handler // `hcl:"backend,block"`
-	Pattern     string       `hcl:"path,label"`
-	Kind        string       `hcl:"kind,label"`
-	Options     hcl.Body     `hcl:",remain"`
+	Server  *Server      // parent
+	Backend http.Handler // `hcl:"backend,block"`
+	Pattern string       `hcl:"path,label"`
+	Kind    string       `hcl:"kind,label"`
+	Options hcl.Body     `hcl:",remain"`
 }
 
 func (e *Path) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -22,5 +22,5 @@ func (e *Path) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (e *Path) String() string {
-	return e.Application.Name + ": " + e.Kind
+	return e.Server.Name + ": " + e.Pattern
 }

@@ -12,7 +12,7 @@ import (
 
 func TestWriteGateway(t *testing.T) {
 	conf := config.Gateway{
-		Applications: []*config.Application{
+		Server: []*config.Server{
 			{
 				BasePath: "/hans/v1",
 				Name:     "wurst",

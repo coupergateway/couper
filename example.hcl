@@ -1,4 +1,4 @@
-application "couperConnect" {
+server "couperConnect" {
     base_path = "/api/v1/"
 
     files {

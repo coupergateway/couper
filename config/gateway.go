@@ -1,6 +1,6 @@
 package config
 
 type Gateway struct {
-	Applications []*Application `hcl:"application,block"`
+	Server []*Server `hcl:"server,block"`
 	// Defaults
 }
