@@ -18,8 +18,8 @@ func TestWriteGateway(t *testing.T) {
 				Name:     "wurst",
 				Path: []*config.Path{
 					{
-						Backend: &config.Backend{Kind: "proxy"},
-						Pattern: "/proxy/"},
+						Pattern: "/proxy/",
+					},
 				},
 			},
 		},

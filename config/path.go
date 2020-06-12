@@ -1,26 +1,16 @@
 package config
 
 import (
-	"net/http"
-
 	"github.com/hashicorp/hcl/v2"
 )
 
-var _ http.Handler = &Path{}
-
 type Path struct {
-	Server  *Server      // parent
-	Backend http.Handler // `hcl:"backend,block"`
-	Pattern string       `hcl:"path,label"`
-	Kind    string       `hcl:"kind,label"`
-	Options hcl.Body     `hcl:",remain"`
+	Server  *Server  `hcl:"-"` // parent
+	Pattern string   `hcl:"path,label"`
+	Backend string   `hcl:"backend,optional"`
+	Options hcl.Body `hcl:",remain" json:"-"`
 }
 
-func (e *Path) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	// TODO: override options
-	e.Backend.ServeHTTP(rw, req)
-}
-
-func (e *Path) String() string {
-	return e.Server.Name + ": " + e.Pattern
+func (p *Path) String() string {
+	return p.Server.Name + ": " + p.Pattern
 }

@@ -5,23 +5,23 @@ server "couperConnect" {
         document_root = "./public"
     }
 
-    # pattern, kind or #ref
-    path "/proxy/" "my_proxy" {} #ref
-
-    path "/filex/" "proxy" { #kind with reserved keyword 'proxy'
-        origin_address = "filex.github.io:80"
-        origin_host = "ferndrang.de"
-        path = "/"
+    # pattern
+    path "/proxy/" {
+        # reference backend definition
+        backend = "my_proxy"
     }
 
-    path "/httpbin/" "httpbin" {} #original 'httpbin' settings
-
-    path "/httpbin2/" "httpbin" { #override 'httpbin' settings <-- not working
-        request {
-            headers = {
-                X-Env-User = ["couper"]
-            }
+    path "/filex/" {
+        # inline backend definition
+        backend "proxy" "upstream" { #kind with reserved keyword 'proxy'
+            origin_address = "filex.github.io:80"
+            origin_host = "ferndrang.de"
+            path = "/"
         }
+    }
+
+    path "/httpbin/" {
+        backend = "httpbin"
     }
 
     backend "proxy" "my_proxy" {

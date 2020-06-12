@@ -1,8 +1,6 @@
 package config
 
 import (
-	"net/http"
-
 	"github.com/hashicorp/hcl/v2"
 )
 
@@ -16,9 +14,4 @@ type Backend struct {
 	Name        string   `hcl:"name,label"`
 	Description string   `hcl:"description,optional"`
 	Options     hcl.Body `hcl:",remain"`
-	instance    http.Handler
-}
-
-func (b *Backend) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	b.instance.ServeHTTP(rw, req)
 }

@@ -26,9 +26,9 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 	backends := make(map[string]http.Handler)
 
-	for a, application := range config.Server {
+	for a, server := range config.Server {
 		// create backends
-		for _, backend := range application.Backend {
+		for _, backend := range server.Backend {
 			if isKeyword(backend.Name) {
 				log.Fatalf("backend name not allowed, reserved keyword: '%s'", backend.Name)
 			}
@@ -38,21 +38,37 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			backends[backend.Name] = newBackend(backend.Kind, backend.Options, log)
 		}
 
+		server.PathHandler = make(PathHandler)
+
 		// map backends to path
-		for p, path := range application.Path {
-			var handler http.Handler
-			if h, ok := backends[path.Kind]; ok {
-				handler = h
-			} else {
-				handler = newBackend(path.Kind, path.Options, log) // inline backend
+		serverSchema, _ := gohcl.ImpliedBodySchema(server)
+		for p, path := range server.Path {
+			config.Server[a].Path[p].Server = server // assign parent
+
+			if path.Backend != "" {
+				if backend, ok := backends[path.Backend]; !ok {
+					log.Fatalf("backend %q not found", backend)
+				}
+				server.PathHandler[path] = backends[path.Backend]
+				continue
 			}
-			config.Server[a].Path[p].Backend = handler
-			config.Server[a].Path[p].Server = application // assign parent
+			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
+			content, leftOver, _ := path.Options.PartialContent(serverSchema)
+			path.Options = leftOver
+
+			if len(content.Blocks) == 0 {
+				log.Fatal("expected backend attribute reference or block")
+			}
+			// TODO: check len && type :)
+			kind := content.Blocks[0].Labels[0]
+			println(kind)
+
+			server.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
 		}
 
 		// serve files
-		if application.Files.DocumentRoot != "" {
-			fileHandler := backend.NewFile(application.Files.DocumentRoot, log)
+		if server.Files.DocumentRoot != "" {
+			fileHandler := backend.NewFile(server.Files.DocumentRoot, log)
 			config.Server[a].instance = fileHandler
 		}
 
