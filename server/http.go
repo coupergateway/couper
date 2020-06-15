@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 
 	"go.avenga.cloud/couper/gateway/config"
 )
