@@ -24,6 +24,14 @@ server "couperConnect" {
         backend = "httpbin"
     }
 
+    path "/status/{status:[0-9]{3}}" {
+        backend "proxy" "" {
+            origin_address = "httpbin.org:443"
+            origin_host = "httpbin.org"
+            path = "/status/418"
+        }
+    }
+
     backend "proxy" "my_proxy" {
         description = "you could reference me with path blocks"
         origin_address = "couper.io:${442 + 1}"

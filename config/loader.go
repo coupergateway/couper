@@ -61,7 +61,6 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			}
 			// TODO: check len && type :)
 			kind := content.Blocks[0].Labels[0]
-			println(kind)
 
 			server.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
 		}
