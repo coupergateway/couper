@@ -78,7 +78,11 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
 	b := typeMap[strings.ToLower(kind)](log)
-	diags := gohcl.DecodeBody(options, nil, b)
+
+	// FIXME request!
+	decodeCtx := backend.NewEvalContext(nil, nil)
+
+	diags := gohcl.DecodeBody(options, decodeCtx, b)
 	if diags.HasErrors() {
 		log.Fatal(diags.Error())
 	}

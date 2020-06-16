@@ -28,6 +28,7 @@ server "couperConnect" {
         backend "proxy" "" {
             origin_address = "httpbin.org:443"
             origin_host = "httpbin.org"
+            #FIXME path = "/status/${req.params.status}"
             path = "/anything"
             request {
                 headers = {
@@ -56,7 +57,7 @@ server "couperConnect" {
     }
 
     backend "proxy" "httpbin" {
-        path = "/headers" #Optional and only if set, remove basePath+endpoint path
+        path = "/anything/${to_upper(env.USER)}" #Optional and only if set, remove basePath+endpoint path
         description = "optional field"
         origin_address = "httpbin.org:443"
         origin_host = "httpbin.org"
