@@ -10,6 +10,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	"github.com/gorilla/mux"
 )
 
 type Options struct {
@@ -25,6 +26,7 @@ func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*Options, error)
 	decodeCtx := newEvalContext()
 	decodeCtx.Variables["req"] = cty.MapVal(map[string]cty.Value{
 		"headers": newCtyHeadersMap(req.Header),
+		"params":  newCtyParametersMap(mux.Vars(req)),
 	})
 
 	options := &Options{}
@@ -39,6 +41,7 @@ func NewResponseCtxOptions(hclBody hcl.Body, res *http.Response) (*Options, erro
 	decodeCtx := newEvalContext()
 	decodeCtx.Variables["req"] = cty.MapVal(map[string]cty.Value{
 		"headers": newCtyHeadersMap(res.Request.Header),
+		"params":  newCtyParametersMap(mux.Vars(res.Request)),
 	})
 	decodeCtx.Variables["res"] = cty.MapVal(map[string]cty.Value{
 		"headers": newCtyHeadersMap(res.Header),
@@ -79,6 +82,14 @@ func newCtyHeadersMap(headers http.Header) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range headers {
 		ctyMap[k] = cty.StringVal(v[0]) // TODO: ListVal??
+	}
+	return cty.MapVal(ctyMap)
+}
+
+func newCtyParametersMap(parameters map[string]string) cty.Value {
+	ctyMap := make(map[string]cty.Value)
+	for k, v := range parameters {
+		ctyMap[k] = cty.StringVal(v)
 	}
 	return cty.MapVal(ctyMap)
 }

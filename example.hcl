@@ -28,7 +28,12 @@ server "couperConnect" {
         backend "proxy" "" {
             origin_address = "httpbin.org:443"
             origin_host = "httpbin.org"
-            path = "/status/418"
+            path = "/anything"
+            request {
+                headers = {
+                    X-Status = [req.params.status]
+                }
+            }
         }
     }
 
