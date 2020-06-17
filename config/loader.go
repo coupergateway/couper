@@ -53,7 +53,10 @@ func Load(name string, log *logrus.Entry) *Gateway {
 				continue
 			}
 			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
-			content, leftOver, _ := path.Options.PartialContent(serverSchema)
+			content, leftOver, diags := path.Options.PartialContent(serverSchema)
+			if diags.HasErrors() {
+				log.Fatal(diags.Error())
+			}
 			path.Options = leftOver
 
 			if len(content.Blocks) == 0 {
@@ -61,7 +64,6 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			}
 			// TODO: check len && type :)
 			kind := content.Blocks[0].Labels[0]
-			println(kind)
 
 			server.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
 		}
