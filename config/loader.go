@@ -59,7 +59,6 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			if len(content.Blocks) == 0 {
 				log.Fatal("expected backend attribute reference or block")
 			}
-			// TODO: check len && type :)
 			kind := content.Blocks[0].Labels[0]
 			println(kind)
 
@@ -78,6 +77,9 @@ func Load(name string, log *logrus.Entry) *Gateway {
 }
 
 func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
+	if !isKeyword(kind) {
+		log.Fatalf("Invalid backend: %s", kind)
+	}
 	b := typeMap[strings.ToLower(kind)](log)
 	diags := gohcl.DecodeBody(options, nil, b)
 	if diags.HasErrors() {
