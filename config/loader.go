@@ -42,12 +42,17 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 		// map backends to path
 		serverSchema, _ := gohcl.ImpliedBodySchema(server)
+		paths := make(map[string]bool)
 		for p, path := range server.Path {
 			config.Server[a].Path[p].Server = server // assign parent
+			if paths[path.Pattern] {
+				log.Fatal("Duplicate path: ", path.Pattern)
+			}
 
+			paths[path.Pattern] = true
 			if path.Backend != "" {
-				if backend, ok := backends[path.Backend]; !ok {
-					log.Fatalf("backend %q not found", backend)
+				if _, ok := backends[path.Backend]; !ok {
+					log.Fatalf("backend %q not found", path.Backend)
 				}
 				server.PathHandler[path] = backends[path.Backend]
 				continue
@@ -59,7 +64,6 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			if len(content.Blocks) == 0 {
 				log.Fatal("expected backend attribute reference or block")
 			}
-			// TODO: check len && type :)
 			kind := content.Blocks[0].Labels[0]
 			println(kind)
 
@@ -78,6 +82,9 @@ func Load(name string, log *logrus.Entry) *Gateway {
 }
 
 func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
+	if !isKeyword(kind) {
+		log.Fatalf("Invalid backend: %s", kind)
+	}
 	b := typeMap[strings.ToLower(kind)](log)
 	diags := gohcl.DecodeBody(options, nil, b)
 	if diags.HasErrors() {
