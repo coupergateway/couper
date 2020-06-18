@@ -28,8 +28,7 @@ server "couperConnect" {
         backend "proxy" "" {
             origin_address = "httpbin.org:443"
             origin_host = "httpbin.org"
-            #FIXME path = "/status/${req.params.status}"
-            path = "/anything"
+            path = "/status/${req.params.status}"
             request {
                 headers = {
                     X-Status = [req.params.status]
