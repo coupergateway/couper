@@ -55,7 +55,11 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
 			content, leftOver, diags := path.Options.PartialContent(serverSchema)
 			if diags.HasErrors() {
-				log.Fatal(diags.Error())
+				for _, diag := range diags {
+					if diag.Summary != "Missing name for backend" {
+						log.Fatal(diags.Error())
+					}
+				}
 			}
 			path.Options = leftOver
 

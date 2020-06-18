@@ -216,7 +216,7 @@ func (b *Body) PartialContent(schema *hcl.BodySchema) (*hcl.BodyContent, hcl.Bod
 				Subject: &block.OpenBraceRange,
 				Context: hcl.RangeBetween(block.TypeRange, block.OpenBraceRange).Ptr(),
 			})
-			continue
+// 			continue
 		}
 
 		blocks = append(blocks, block.AsHCLBlock())
