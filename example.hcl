@@ -13,7 +13,7 @@ server "couperConnect" {
 
     path "/filex/" {
         # inline backend definition
-        backend "proxy" "upstream" { #kind with reserved keyword 'proxy'
+        backend "proxy" { #kind with reserved keyword 'proxy'
             origin_address = "filex.github.io:80"
             origin_host = "ferndrang.de"
             path = "/"
