@@ -46,8 +46,8 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			config.Server[a].Path[p].Server = server // assign parent
 
 			if path.Backend != "" {
-				if backend, ok := backends[path.Backend]; !ok {
-					log.Fatalf("backend %q not found", backend)
+				if _, ok := backends[path.Backend]; !ok {
+					log.Fatalf("backend %q not found", path.Backend)
 				}
 				server.PathHandler[path] = backends[path.Backend]
 				continue
