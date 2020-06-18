@@ -42,9 +42,14 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 		// map backends to path
 		serverSchema, _ := gohcl.ImpliedBodySchema(server)
+		paths := make(map[string]bool)
 		for p, path := range server.Path {
 			config.Server[a].Path[p].Server = server // assign parent
+			if paths[path.Pattern] {
+				log.Fatal("Duplicate path: ", path.Pattern)
+			}
 
+			paths[path.Pattern] = true
 			if path.Backend != "" {
 				if _, ok := backends[path.Backend]; !ok {
 					log.Fatalf("backend %q not found", path.Backend)
