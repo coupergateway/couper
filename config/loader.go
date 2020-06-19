@@ -42,24 +42,35 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 		// map backends to path
 		serverSchema, _ := gohcl.ImpliedBodySchema(server)
+		paths := make(map[string]bool)
 		for p, path := range server.Path {
 			config.Server[a].Path[p].Server = server // assign parent
+			if paths[path.Pattern] {
+				log.Fatal("Duplicate path: ", path.Pattern)
+			}
 
+			paths[path.Pattern] = true
 			if path.Backend != "" {
-				if backend, ok := backends[path.Backend]; !ok {
-					log.Fatalf("backend %q not found", backend)
+				if _, ok := backends[path.Backend]; !ok {
+					log.Fatalf("backend %q not found", path.Backend)
 				}
 				server.PathHandler[path] = backends[path.Backend]
 				continue
 			}
 			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
-			content, leftOver, _ := path.Options.PartialContent(serverSchema)
+			content, leftOver, diags := path.Options.PartialContent(serverSchema)
+			if diags.HasErrors() {
+				for _, diag := range diags {
+					if diag.Summary != "Missing name for backend" {
+						log.Fatal(diags.Error())
+					}
+				}
+			}
 			path.Options = leftOver
 
 			if len(content.Blocks) == 0 {
 				log.Fatal("expected backend attribute reference or block")
 			}
-			// TODO: check len && type :)
 			kind := content.Blocks[0].Labels[0]
 
 			server.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
@@ -76,6 +87,9 @@ func Load(name string, log *logrus.Entry) *Gateway {
 }
 
 func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
+	if !isKeyword(kind) {
+		log.Fatalf("Invalid backend: %s", kind)
+	}
 	b := typeMap[strings.ToLower(kind)](log, options)
 
 	return b
