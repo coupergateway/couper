@@ -48,11 +48,13 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
+		router := s.mux
+		subRouter := router.PathPrefix(server.BasePath).Subrouter()
 		for _, path := range server.Path {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
 			pattern := joinPath(server.BasePath, path.Pattern)
 			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
-			s.mux.Handle(pattern, server.PathHandler[path])
+			subRouter.Handle(path.Pattern, server.PathHandler[path])
 		}
 	}
 }
