@@ -20,7 +20,15 @@ server "couperConnect" {
         }
     }
 
-    path "/httpbin/" {
+    path "/httpbin/**" {
+        backend "proxy" "" {
+            origin_address = "httpbin.org:443"
+            origin_host = "httpbin.org"
+            path = "/**"
+        }
+    }
+
+    path "/httpbin" {
         backend = "httpbin"
     }
 

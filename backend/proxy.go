@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -56,7 +57,13 @@ func (p *Proxy) director(req *http.Request) {
 	}
 	req.Host = p.OriginHost
 	if p.Path != "" {
-		req.URL.Path = path.Join("/", p.Path)
+		_path := p.Path
+		if strings.Index(_path, "/**") != -1 {
+			if wildcardMatch, ok := mux.Vars(req)["-wildcard"]; ok {
+				_path = strings.ReplaceAll(_path, "/**", "/" + wildcardMatch)
+			}
+		}
+		req.URL.Path = path.Join("/", _path)
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))

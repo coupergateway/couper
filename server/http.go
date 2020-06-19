@@ -54,7 +54,13 @@ func (s *HTTPServer) registerHandler() {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
 			pattern := joinPath(server.BasePath, path.Pattern)
 			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
-			subRouter.Handle(path.Pattern, server.PathHandler[path])
+
+			p := path.Pattern
+			if p[len(p)-3:] == "/**" {
+				subRouter.Handle(p[:len(p)-3] + "/{-wildcard:.*}", server.PathHandler[path])
+			} else {
+				subRouter.Handle(path.Pattern, server.PathHandler[path])
+			}
 		}
 	}
 }
