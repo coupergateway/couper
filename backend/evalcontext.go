@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 	"os"
+	"regexp"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -36,7 +37,6 @@ func NewEvalContext(request *http.Request, response *http.Response) *hcl.EvalCon
 	}
 }
 
-
 func newCtyEnvMap() cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for _, v := range os.Environ() {
@@ -51,7 +51,9 @@ func newCtyEnvMap() cty.Value {
 func newCtyHeadersMap(headers http.Header) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range headers {
-		ctyMap[k] = cty.StringVal(v[0]) // TODO: ListVal??
+		if isValidKey(k) {
+			ctyMap[k] = cty.StringVal(v[0]) // TODO: ListVal??
+		}
 	}
 	return cty.MapVal(ctyMap)
 }
@@ -59,13 +61,20 @@ func newCtyHeadersMap(headers http.Header) cty.Value {
 func newCtyParametersMap(parameters map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range parameters {
-		ctyMap[k] = cty.StringVal(v)
+		if isValidKey(k) {
+			ctyMap[k] = cty.StringVal(v)
+		}
 	}
 
 	if len(ctyMap) == 0 {
 		return cty.MapValEmpty(cty.String)
 	}
 	return cty.MapVal(ctyMap)
+}
+
+func isValidKey(key string) bool {
+	valid, _ := regexp.MatchString("[a-zA-Z_][a-zA-Z0-9_-]*", key)
+	return valid
 }
 
 // Functions
