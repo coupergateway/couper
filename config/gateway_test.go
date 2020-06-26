@@ -17,7 +17,7 @@ func TestWriteGateway(t *testing.T) {
 				Name:     "wurst",
 				Api: config.Api{
 					BasePath: "/hans/v1",
-					Path: []*config.Path{
+					Endpoint: []*config.Endpoint{
 						{
 							Pattern: "/proxy/",
 						},

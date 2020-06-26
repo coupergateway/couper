@@ -50,16 +50,16 @@ func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
 		router := s.mux
 		subRouter := router.PathPrefix(server.Api.BasePath).Subrouter()
-		for _, path := range server.Api.Path {
+		for _, endpoint := range server.Api.Endpoint {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
-			pattern := joinPath(server.Api.BasePath, path.Pattern)
+			pattern := joinPath(server.Api.BasePath, endpoint.Pattern)
 			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
 
-			p := path.Pattern
+			p := endpoint.Pattern
 			if p[len(p)-3:] == "/**" {
-				subRouter.Handle(p[:len(p)-3] + "/{-wildcard:.*}", server.Api.PathHandler[path])
+				subRouter.Handle(p[:len(p)-3] + "/{-wildcard:.*}", server.Api.PathHandler[endpoint])
 			} else {
-				subRouter.Handle(path.Pattern, server.Api.PathHandler[path])
+				subRouter.Handle(endpoint.Pattern, server.Api.PathHandler[endpoint])
 			}
 		}
 		router.NotFoundHandler = server.FileHandler

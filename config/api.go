@@ -3,10 +3,10 @@ package config
 import "net/http"
 
 type Api struct {
-	BasePath    string     `hcl:"base_path,optional"`
-	Backend     []*Backend `hcl:"backend,block"`
-	Path        []*Path    `hcl:"path,block"`
+	BasePath    string      `hcl:"base_path,optional"`
+	Backend     []*Backend  `hcl:"backend,block"`
+	Endpoint    []*Endpoint `hcl:"endpoint,block"`
 	PathHandler PathHandler
 }
 
-type PathHandler map[*Path]http.Handler
+type PathHandler map[*Endpoint]http.Handler

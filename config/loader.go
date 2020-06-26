@@ -40,25 +40,25 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 		server.Api.PathHandler = make(PathHandler)
 
-		// map backends to path
+		// map backends to endpoint
 		apiSchema, _ := gohcl.ImpliedBodySchema(server.Api)
-		paths := make(map[string]bool)
-		for p, path := range server.Api.Path {
-			config.Server[a].Api.Path[p].Server = server // assign parent
-			if paths[path.Pattern] {
-				log.Fatal("Duplicate path: ", path.Pattern)
+		endpoints := make(map[string]bool)
+		for e, endpoint := range server.Api.Endpoint {
+			config.Server[a].Api.Endpoint[e].Server = server // assign parent
+			if endpoints[endpoint.Pattern] {
+				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
 
-			paths[path.Pattern] = true
-			if path.Backend != "" {
-				if _, ok := backends[path.Backend]; !ok {
-					log.Fatalf("backend %q not found", path.Backend)
+			endpoints[endpoint.Pattern] = true
+			if endpoint.Backend != "" {
+				if _, ok := backends[endpoint.Backend]; !ok {
+					log.Fatalf("backend %q not found", endpoint.Backend)
 				}
-				server.Api.PathHandler[path] = backends[path.Backend]
+				server.Api.PathHandler[endpoint] = backends[endpoint.Backend]
 				continue
 			}
 			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
-			content, leftOver, diags := path.Options.PartialContent(apiSchema)
+			content, leftOver, diags := endpoint.Options.PartialContent(apiSchema)
 			if diags.HasErrors() {
 				for _, diag := range diags {
 					if diag.Summary != "Missing name for backend" {
@@ -66,14 +66,14 @@ func Load(name string, log *logrus.Entry) *Gateway {
 					}
 				}
 			}
-			path.Options = leftOver
+			endpoint.Options = leftOver
 
 			if len(content.Blocks) == 0 {
 				log.Fatal("expected backend attribute reference or block")
 			}
 			kind := content.Blocks[0].Labels[0]
 
-			server.Api.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
+			server.Api.PathHandler[endpoint] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
 		}
 
 		// serve files

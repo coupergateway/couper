@@ -7,12 +7,12 @@ server "couperConnect" {
         base_path = "/api/v1/"
 
         # pattern
-        path "/proxy/" {
+        endpoint "/proxy/" {
             # reference backend definition
             backend = "my_proxy"
         }
 
-        path "/filex/" {
+        endpoint "/filex/" {
             # inline backend definition
             backend "proxy" { #kind with reserved keyword 'proxy'
                 origin_address = "filex.github.io:80"
@@ -21,7 +21,7 @@ server "couperConnect" {
             }
         }
 
-        path "/httpbin/**" {
+        endpoint "/httpbin/**" {
             backend "proxy" "" {
                 origin_address = "httpbin.org:443"
                 origin_host = "httpbin.org"
@@ -29,11 +29,11 @@ server "couperConnect" {
             }
         }
 
-        path "/httpbin" {
+        endpoint "/httpbin" {
             backend = "httpbin"
         }
 
-        path "/status/{status:[0-9]{3}}" {
+        endpoint "/status/{status:[0-9]{3}}" {
             backend "proxy" "" {
                 origin_address = "httpbin.org:443"
                 origin_host = "httpbin.org"
@@ -47,7 +47,7 @@ server "couperConnect" {
         }
 
         backend "proxy" "my_proxy" {
-            description = "you could reference me with path blocks"
+            description = "you could reference me with endpoint blocks"
             origin_address = "couper.io:${442 + 1}"
             origin_host = "couper.io"
             request {

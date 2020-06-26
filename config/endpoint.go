@@ -4,13 +4,13 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-type Path struct {
+type Endpoint struct {
 	Server  *Server  `hcl:"-"` // parent
 	Pattern string   `hcl:"path,label"`
 	Backend string   `hcl:"backend,optional"`
 	Options hcl.Body `hcl:",remain" json:"-"`
 }
 
-func (p *Path) String() string {
-	return p.Server.Name + ": " + p.Pattern
+func (e *Endpoint) String() string {
+	return e.Server.Name + ": " + e.Pattern
 }
