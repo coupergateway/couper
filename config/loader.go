@@ -28,7 +28,7 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 	for a, server := range config.Server {
 		// create backends
-		for _, backend := range server.Backend {
+		for _, backend := range server.Api.Backend {
 			if isKeyword(backend.Name) {
 				log.Fatalf("backend name not allowed, reserved keyword: '%s'", backend.Name)
 			}
@@ -38,13 +38,13 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			backends[backend.Name] = newBackend(backend.Kind, backend.Options, log)
 		}
 
-		server.PathHandler = make(PathHandler)
+		server.Api.PathHandler = make(PathHandler)
 
 		// map backends to path
-		serverSchema, _ := gohcl.ImpliedBodySchema(server)
+		apiSchema, _ := gohcl.ImpliedBodySchema(server.Api)
 		paths := make(map[string]bool)
-		for p, path := range server.Path {
-			config.Server[a].Path[p].Server = server // assign parent
+		for p, path := range server.Api.Path {
+			config.Server[a].Api.Path[p].Server = server // assign parent
 			if paths[path.Pattern] {
 				log.Fatal("Duplicate path: ", path.Pattern)
 			}
@@ -54,11 +54,11 @@ func Load(name string, log *logrus.Entry) *Gateway {
 				if _, ok := backends[path.Backend]; !ok {
 					log.Fatalf("backend %q not found", path.Backend)
 				}
-				server.PathHandler[path] = backends[path.Backend]
+				server.Api.PathHandler[path] = backends[path.Backend]
 				continue
 			}
 			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
-			content, leftOver, diags := path.Options.PartialContent(serverSchema)
+			content, leftOver, diags := path.Options.PartialContent(apiSchema)
 			if diags.HasErrors() {
 				for _, diag := range diags {
 					if diag.Summary != "Missing name for backend" {
@@ -73,7 +73,7 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			}
 			kind := content.Blocks[0].Labels[0]
 
-			server.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
+			server.Api.PathHandler[path] = newBackend(kind, content.Blocks[0].Body, log) // inline backend
 		}
 
 		// serve files
