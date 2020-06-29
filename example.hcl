@@ -3,6 +3,14 @@ server "couperConnect" {
         document_root = "./public"
     }
 
+    spa {
+        bootstrap_file = "./public/bs.html"
+        paths = [
+            "/app/foo",
+            "/app/bar",
+        ]
+    }
+
     api {
         base_path = "/api/v1/"
 
