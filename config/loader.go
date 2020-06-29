@@ -78,7 +78,7 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 		// serve files
 		if server.Files.DocumentRoot != "" {
-			fileHandler := backend.NewFile(server.Files.DocumentRoot, log)
+			fileHandler := backend.NewFile(server.Files.DocumentRoot, log, server.Spa.BootstrapFile, server.Spa.Paths)
 			config.Server[a].FileHandler = fileHandler
 		}
 	}
