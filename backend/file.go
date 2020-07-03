@@ -43,7 +43,12 @@ func (sh *SpaHandler) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func wrapHandler(h http.Handler, bf string, spa_paths []string) http.HandlerFunc {
+func wrapHandler(h http.Handler, bf string, spa_paths []string) (http.HandlerFunc, error) {
+	dir, _ := os.Getwd()
+	bs_content, err := ioutil.ReadFile(path.Join(dir, bf))
+	if err != nil {
+		return nil, err
+	}
 	return func(rw http.ResponseWriter, req *http.Request) {
 		sh := &SpaHandler{rw: rw}
 		h.ServeHTTP(sh, req)
@@ -51,23 +56,25 @@ func wrapHandler(h http.Handler, bf string, spa_paths []string) http.HandlerFunc
 			for _, a := range spa_paths {
 				// TODO implement wildcard match
 				if req.URL.Path == a {
-					dir, _ := os.Getwd()
-					bs_content, _ := ioutil.ReadFile(path.Join(dir, bf))
 					rw.Write(bs_content)
 					return
 				}
 			}
 			rw.Write(sh.body)
 		}
-	}
+	}, nil
 }
 
-func NewFile(root string, log *logrus.Entry, bf string, spa_paths []string) *File {
+func NewFile(root string, log *logrus.Entry, bf string, spa_paths []string) (*File, error) {
 	dir, _ := os.Getwd()
+	wrapper, err := wrapHandler(http.FileServer(http.Dir(path.Join(dir, root))), bf, spa_paths)
+	if err != nil {
+		return nil, err
+	}
 	return &File{
 		log:     log,
-		handler: wrapHandler(http.FileServer(http.Dir(path.Join(dir, root))), bf, spa_paths),
-	}
+		handler: wrapper,
+	}, nil
 }
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

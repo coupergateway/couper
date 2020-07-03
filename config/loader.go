@@ -78,7 +78,10 @@ func Load(name string, log *logrus.Entry) *Gateway {
 
 		// serve files
 		if server.Files.DocumentRoot != "" {
-			fileHandler := backend.NewFile(server.Files.DocumentRoot, log, server.Spa.BootstrapFile, server.Spa.Paths)
+			fileHandler, err := backend.NewFile(server.Files.DocumentRoot, log, server.Spa.BootstrapFile, server.Spa.Paths)
+			if err != nil {
+				log.Fatalf("Failed to load configuration: %s", err)
+			}
 			config.Server[a].FileHandler = fileHandler
 		}
 	}
