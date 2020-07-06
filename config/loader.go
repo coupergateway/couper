@@ -79,7 +79,7 @@ func Load(name string, log *logrus.Entry) *Gateway {
 		// serve files
 		if server.Files.DocumentRoot != "" {
 			fileHandler := backend.NewFile(server.Files.DocumentRoot, log)
-			config.Server[a].instance = fileHandler
+			config.Server[a].FileHandler = fileHandler
 		}
 	}
 

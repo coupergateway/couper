@@ -62,6 +62,7 @@ func (s *HTTPServer) registerHandler() {
 				subRouter.Handle(path.Pattern, server.PathHandler[path])
 			}
 		}
+		router.NotFoundHandler = server.FileHandler
 	}
 }
 

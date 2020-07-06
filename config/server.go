@@ -10,21 +10,7 @@ type Server struct {
 	Files       Files      `hcl:"files,block"`
 	Path        []*Path    `hcl:"path,block"`
 	PathHandler PathHandler
-
-	instance http.Handler
+	FileHandler http.Handler
 }
 
 type PathHandler map[*Path]http.Handler
-
-func (f *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if f.instance != nil {
-		f.instance.ServeHTTP(rw, req)
-	}
-}
-
-func (f *Server) String() string {
-	if f.instance != nil {
-		return "File"
-	}
-	return ""
-}
