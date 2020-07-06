@@ -20,8 +20,29 @@ server "couperConnect" {
         }
     }
 
-    path "/httpbin/" {
+    path "/httpbin/**" {
+        backend "proxy" "" {
+            origin_address = "httpbin.org:443"
+            origin_host = "httpbin.org"
+            path = "/**"
+        }
+    }
+
+    path "/httpbin" {
         backend = "httpbin"
+    }
+
+    path "/status/{status:[0-9]{3}}" {
+        backend "proxy" "" {
+            origin_address = "httpbin.org:443"
+            origin_host = "httpbin.org"
+            path = "/status/${req.params.status}"
+            request {
+                headers = {
+                    X-Status = [req.params.status]
+                }
+            }
+        }
     }
 
     backend "proxy" "my_proxy" {
@@ -43,7 +64,7 @@ server "couperConnect" {
     }
 
     backend "proxy" "httpbin" {
-        path = "/headers" #Optional and only if set, remove basePath+endpoint path
+        path = "/anything/${to_upper(env.USER)}" #Optional and only if set, remove basePath+endpoint path
         description = "optional field"
         origin_address = "httpbin.org:443"
         origin_host = "httpbin.org"

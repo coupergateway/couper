@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 
 	"go.avenga.cloud/couper/gateway/config"
 )
@@ -21,12 +22,12 @@ type HTTPServer struct {
 	config *config.Gateway
 	ctx    context.Context
 	log    *logrus.Entry
-	mux    *http.ServeMux
+	mux    *mux.Router
 	srv    *http.Server
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: http.NewServeMux()}
+	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: mux.NewRouter()}
 
 	srv := &http.Server{
 		Addr: ":" + config.DefaultHTTP.ListenPort,
@@ -47,11 +48,19 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
+		router := s.mux
+		subRouter := router.PathPrefix(server.BasePath).Subrouter()
 		for _, path := range server.Path {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
 			pattern := joinPath(server.BasePath, path.Pattern)
 			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
-			s.mux.Handle(pattern, server.PathHandler[path])
+
+			p := path.Pattern
+			if p[len(p)-3:] == "/**" {
+				subRouter.Handle(p[:len(p)-3] + "/{-wildcard:.*}", server.PathHandler[path])
+			} else {
+				subRouter.Handle(path.Pattern, server.PathHandler[path])
+			}
 		}
 	}
 }
@@ -91,25 +100,25 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
 	req.Header.Set("X-Request-Id", uid)
-	handler, pattern := s.mux.Handler(req)
+	handler := s.mux
 	rw.Header().Set("server", "couper.io") // TODO: wrap 'rw' for server override and status readout
 	rw.Header().Set("X-Request-Id", uid)
 
 	if fmt.Sprintf("%p", handler) == fmt.Sprintf("%p", http.NotFound) {
-		handler = s.config.Server[0]
+		//FIXME ??? handler = s.config.Server[0]
 	}
 
 	sr := &StatusReader{rw: rw}
 	handler.ServeHTTP(sr, req)
 
-	var handlerName string
-	if name, ok := handler.(interface{ String() string }); ok {
-		handlerName = name.String()
-	}
+// 	var handlerName string
+// 	if name, ok := handler.(interface{ String() string }); ok {
+// 		handlerName = name.String()
+// 	}
 	s.log.WithFields(logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
-		"pattern": pattern,
-		"handler": handlerName,
+// 		"pattern": pattern,
+// 		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,
 		"url":     req.URL.String(),

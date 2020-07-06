@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -22,11 +24,12 @@ type Proxy struct {
 	ContextOptions hcl.Body `hcl:",remain"`
 	rp             *httputil.ReverseProxy
 	log            *logrus.Entry
+	options        hcl.Body
 }
 
-func NewProxy() func(*logrus.Entry) http.Handler {
-	return func(log *logrus.Entry) http.Handler {
-		proxy := &Proxy{log: log}
+func NewProxy() func(*logrus.Entry, hcl.Body) http.Handler {
+	return func(log *logrus.Entry, options hcl.Body) http.Handler {
+		proxy := &Proxy{log: log, options: options}
 		proxy.rp = &httputil.ReverseProxy{
 			Director:       proxy.director, // request modification
 			ModifyResponse: proxy.modifyResponse,
@@ -36,6 +39,12 @@ func NewProxy() func(*logrus.Entry) http.Handler {
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	decodeCtx := NewEvalContext(req, nil)
+	diags := gohcl.DecodeBody(p.options, decodeCtx, p)
+	if diags.HasErrors() {
+		p.log.Fatal(diags.Error())
+	}
+
 	p.rp.ServeHTTP(rw, req)
 }
 
@@ -48,7 +57,13 @@ func (p *Proxy) director(req *http.Request) {
 	}
 	req.Host = p.OriginHost
 	if p.Path != "" {
-		req.URL.Path = path.Join("/", p.Path)
+		_path := p.Path
+		if strings.Index(_path, "/**") != -1 {
+			if wildcardMatch, ok := mux.Vars(req)["-wildcard"]; ok {
+				_path = strings.ReplaceAll(_path, "/**", "/" + wildcardMatch)
+			}
+		}
+		req.URL.Path = path.Join("/", _path)
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))

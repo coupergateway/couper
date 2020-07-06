@@ -13,7 +13,7 @@ import (
 	"go.avenga.cloud/couper/gateway/backend"
 )
 
-var typeMap = map[string]func(*logrus.Entry) http.Handler{
+var typeMap = map[string]func(*logrus.Entry, hcl.Body) http.Handler{
 	"proxy": backend.NewProxy(),
 }
 
@@ -81,7 +81,6 @@ func Load(name string, log *logrus.Entry) *Gateway {
 			fileHandler := backend.NewFile(server.Files.DocumentRoot, log)
 			config.Server[a].instance = fileHandler
 		}
-
 	}
 
 	return &config
@@ -91,11 +90,8 @@ func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
 	if !isKeyword(kind) {
 		log.Fatalf("Invalid backend: %s", kind)
 	}
-	b := typeMap[strings.ToLower(kind)](log)
-	diags := gohcl.DecodeBody(options, nil, b)
-	if diags.HasErrors() {
-		log.Fatal(diags.Error())
-	}
+	b := typeMap[strings.ToLower(kind)](log, options)
+
 	return b
 }
 
