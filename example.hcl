@@ -84,11 +84,9 @@ server "couperConnect" {
                     X-Env-User = [env.USER]
                     X-Req-Header = [req.headers.X-Set-Me]
                     Authorization = ["Bearer ${req.cookies.AccessToken}"]
-                    Cookie: [""]
+                    Cookie: []
                 }
             }
         }
-
     }
-
 }
