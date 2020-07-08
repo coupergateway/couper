@@ -75,7 +75,7 @@ server "couperConnect" {
         }
 
         backend "proxy" "httpbin" {
-            path = "/headers" #Optional and only if set, remove basePath+endpoint path
+            path = "/anything/${to_upper(env.USER)}" #Optional and only if set, remove basePath+endpoint path
             description = "optional field"
             origin_address = "httpbin.org:443"
             origin_host = "httpbin.org"
@@ -83,6 +83,8 @@ server "couperConnect" {
                 headers = {
                     X-Env-User = [env.USER]
                     X-Req-Header = [req.headers.X-Set-Me]
+                    Authorization = ["Bearer ${req.cookies.AccessToken}"]
+                    Cookie: [""]
                 }
             }
         }

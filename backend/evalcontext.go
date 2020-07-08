@@ -20,6 +20,7 @@ func NewEvalContext(request *http.Request, response *http.Response) *hcl.EvalCon
 	if request != nil {
 		variables["req"] = cty.MapVal(map[string]cty.Value{
 			"headers": newCtyHeadersMap(request.Header),
+			"cookies": newCtyCookiesMap(request),
 			//"params":  newCtyParametersMap(mux.Vars(request)),
 		})
 	}
@@ -53,6 +54,18 @@ func newCtyHeadersMap(headers http.Header) cty.Value {
 		if isValidKey(k) {
 			ctyMap[k] = cty.StringVal(v[0]) // TODO: ListVal??
 		}
+	}
+	return cty.MapVal(ctyMap)
+}
+
+func newCtyCookiesMap(req *http.Request) cty.Value {
+	ctyMap := make(map[string]cty.Value)
+	for _, cookie := range req.Cookies() {
+		ctyMap[cookie.Name] = cty.StringVal(cookie.Value) // TODO: ListVal??
+	}
+
+	if len(ctyMap) == 0 {
+		return cty.MapValEmpty(cty.String)
 	}
 	return cty.MapVal(ctyMap)
 }
