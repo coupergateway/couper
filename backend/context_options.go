@@ -7,19 +7,24 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-type Options struct {
+type RequestOptions struct {
 	Request  ContextOptions `hcl:"request,block"`
+	Rest     hcl.Body       `hcl:",remain"`
+}
+
+type ResponseOptions struct {
 	Response ContextOptions `hcl:"response,block"`
+	Rest     hcl.Body       `hcl:",remain"`
 }
 
 type ContextOptions *struct {
 	Headers http.Header `hcl:"headers,optional"`
 }
 
-func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*Options, error) {
+func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*RequestOptions, error) {
 	decodeCtx := NewEvalContext(req, nil)
 
-	options := &Options{}
+	options := &RequestOptions{}
 	diags := gohcl.DecodeBody(hclBody, decodeCtx, options)
 	if diags.HasErrors() {
 		return nil, diags
@@ -27,10 +32,10 @@ func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*Options, error)
 	return options, nil
 }
 
-func NewResponseCtxOptions(hclBody hcl.Body, res *http.Response) (*Options, error) {
+func NewResponseCtxOptions(hclBody hcl.Body, res *http.Response) (*ResponseOptions, error) {
 	decodeCtx := NewEvalContext(res.Request, res)
 
-	options := &Options{}
+	options := &ResponseOptions{}
 	diags := gohcl.DecodeBody(hclBody, decodeCtx, options)
 	if diags.HasErrors() {
 		return nil, diags
