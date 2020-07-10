@@ -7,7 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 
 	"go.avenga.cloud/couper/gateway/backend"
@@ -41,7 +40,6 @@ func Load(name string, log *logrus.Entry) *Gateway {
 		server.Api.PathHandler = make(PathHandler)
 
 		// map backends to endpoint
-		apiSchema, _ := gohcl.ImpliedBodySchema(server.Api)
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.Api.Endpoint {
 			config.Server[a].Api.Endpoint[e].Server = server // assign parent
@@ -57,19 +55,15 @@ func Load(name string, log *logrus.Entry) *Gateway {
 				server.Api.PathHandler[endpoint] = backends[endpoint.Backend]
 				continue
 			}
-			// TODO: instead of passing the Server Scheme for backend block description, ask for definition via interface later on
-			content, leftOver, diags := endpoint.Options.PartialContent(apiSchema)
+
+			content, leftOver, diags := endpoint.Options.PartialContent(server.Api.Schema(true))
 			if diags.HasErrors() {
-				for _, diag := range diags {
-					if diag.Summary != "Missing name for backend" {
 						log.Fatal(diags.Error())
-					}
-				}
 			}
 			endpoint.Options = leftOver
 
 			if len(content.Blocks) == 0 {
-				log.Fatal("expected backend attribute reference or block")
+				log.Fatalf("expected backend attribute reference or block for endpoint: %s", endpoint)
 			}
 			kind := content.Blocks[0].Labels[0]
 

@@ -30,7 +30,7 @@ server "couperConnect" {
         }
 
         endpoint "/httpbin/**" {
-            backend "proxy" "" {
+            backend "proxy" {
                 origin_address = "httpbin.org:443"
                 origin_host = "httpbin.org"
                 path = "/**"
@@ -42,7 +42,7 @@ server "couperConnect" {
         }
 
         endpoint "/status/{status:[0-9]{3}}" {
-            backend "proxy" "" {
+            backend "proxy" {
                 origin_address = "httpbin.org:443"
                 origin_host = "httpbin.org"
                 path = "/status/${req.params.status}"

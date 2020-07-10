@@ -1,6 +1,11 @@
 package config
 
-import "net/http"
+import (
+	"net/http"
+	
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
+)
 
 type Api struct {
 	BasePath    string      `hcl:"base_path,optional"`
@@ -10,3 +15,17 @@ type Api struct {
 }
 
 type PathHandler map[*Endpoint]http.Handler
+
+func (api *Api) Schema(inline bool) *hcl.BodySchema {
+	schema, _ := gohcl.ImpliedBodySchema(api)
+	if !inline {
+		return schema
+	}
+	// backend, remove 2nd label for inline usage
+	for i, block := range schema.Blocks {
+		if block.Type == "backend" && len(block.LabelNames) > 1 {
+			schema.Blocks[i].LabelNames = block.LabelNames[:1]
+		}
+	}
+	return schema
+}
