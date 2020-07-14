@@ -2,15 +2,15 @@ package backend
 
 import (
 	"net/http"
-	"strings"
 	"os"
 	"regexp"
+	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
-	"github.com/gorilla/mux"
 )
 
 func NewEvalContext(request *http.Request, response *http.Response) *hcl.EvalContext {
@@ -78,7 +78,6 @@ func isValidKey(key string) bool {
 }
 
 // Functions
-
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"to_upper": stdlib.UpperFunc,

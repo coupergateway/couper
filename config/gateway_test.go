@@ -14,7 +14,7 @@ func TestWriteGateway(t *testing.T) {
 	conf := config.Gateway{
 		Server: []*config.Server{
 			{
-				Name:     "wurst",
+				Name: "wurst",
 				Api: &config.Api{
 					BasePath: "/hans/v1",
 					Endpoint: []*config.Endpoint{

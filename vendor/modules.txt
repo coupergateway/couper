@@ -32,6 +32,7 @@ github.com/rs/xid
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
+github.com/sirupsen/logrus/hooks/test
 # github.com/zclconf/go-cty v1.2.0
 ## explicit
 github.com/zclconf/go-cty/cty

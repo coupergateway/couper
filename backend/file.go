@@ -30,7 +30,7 @@ func (sh *SpaHandler) Header() http.Header {
 
 func (sh *SpaHandler) WriteHeader(status int) {
 	sh.status = status
-	if (status != http.StatusNotFound) {
+	if status != http.StatusNotFound {
 		sh.rw.WriteHeader(status)
 	}
 }

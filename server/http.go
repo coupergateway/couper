@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
-	"github.com/gorilla/mux"
 
 	"go.avenga.cloud/couper/gateway/config"
 )
@@ -19,18 +19,23 @@ import (
 const RequestIDKey = "requestID"
 
 type HTTPServer struct {
-	config *config.Gateway
-	ctx    context.Context
-	log    *logrus.Entry
-	mux    *mux.Router
-	srv    *http.Server
+	config   *config.Gateway
+	ctx      context.Context
+	log      *logrus.Entry
+	listener net.Listener
+	mux      *mux.Router
+	srv      *http.Server
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
 	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: mux.NewRouter()}
 
+	addr := ":" + config.DefaultHTTP.ListenPort
+	if conf.Addr != "" {
+		addr = conf.Addr
+	}
 	srv := &http.Server{
-		Addr: ":" + config.DefaultHTTP.ListenPort,
+		Addr: addr,
 		BaseContext: func(l net.Listener) context.Context {
 			return context.WithValue(context.Background(), RequestIDKey, xid.New().String())
 		},
@@ -44,12 +49,18 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 	return httpSrv
 }
 
+func (s *HTTPServer) Addr() string {
+	if s.listener != nil {
+		return s.listener.Addr().String()
+	}
+	return ""
+}
+
 // registerHandler reads the given config frontends and register endpoints
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
-		router := s.mux
-		subRouter := router.PathPrefix(server.Api.BasePath).Subrouter()
+		subRouter := s.mux.PathPrefix(server.Api.BasePath).Subrouter()
 		for _, endpoint := range server.Api.Endpoint {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
 			pattern := joinPath(server.Api.BasePath, endpoint.Pattern)
@@ -57,12 +68,12 @@ func (s *HTTPServer) registerHandler() {
 
 			p := endpoint.Pattern
 			if p[len(p)-3:] == "/**" {
-				subRouter.Handle(p[:len(p)-3] + "/{-wildcard:.*}", server.Api.PathHandler[endpoint])
+				subRouter.Handle(p[:len(p)-3]+"/{-wildcard:.*}", server.Api.PathHandler[endpoint])
 			} else {
 				subRouter.Handle(endpoint.Pattern, server.Api.PathHandler[endpoint])
 			}
 		}
-		router.NotFoundHandler = server.FileHandler
+		s.mux.NotFoundHandler = server.FileHandler
 	}
 }
 
@@ -76,16 +87,27 @@ func joinPath(elements ...string) string {
 }
 
 // Listen initiates the configured http handler and start listing on given port.
-func (s *HTTPServer) Listen() int {
-	s.log.WithField("addr", s.srv.Addr).Info("couper gateway is serving")
-	s.registerHandler()
-	go s.listenForCtx()
-	err := s.srv.ListenAndServe()
+func (s *HTTPServer) Listen() {
+	if s.srv.Addr == "" {
+		s.srv.Addr = ":http"
+	}
+	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
 		s.log.Error(err)
-		return 1
+		return
 	}
-	return 0
+	s.listener = ln
+	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
+
+	s.registerHandler()
+
+	go s.listenForCtx()
+
+	go func() {
+		if err := s.srv.Serve(ln); err != nil {
+			s.log.Error(err)
+		}
+	}()
 }
 
 func (s *HTTPServer) listenForCtx() {
@@ -112,16 +134,16 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	sr := &StatusReader{rw: rw}
 	handler.ServeHTTP(sr, req)
 
-// 	var handlerName string
-// 	if name, ok := handler.(interface{ String() string }); ok {
-// 		handlerName = name.String()
-// 	}
+	// 	var handlerName string
+	// 	if name, ok := handler.(interface{ String() string }); ok {
+	// 		handlerName = name.String()
+	// 	}
 	s.log.WithFields(logrus.Fields{
-		"agent":   req.Header.Get("User-Agent"),
-// 		"pattern": pattern,
-// 		"handler": handlerName,
-		"status":  sr.status,
-		"uid":     uid,
-		"url":     req.URL.String(),
+		"agent": req.Header.Get("User-Agent"),
+		// 		"pattern": pattern,
+		// 		"handler": handlerName,
+		"status": sr.status,
+		"uid":    uid,
+		"url":    req.URL.String(),
 	}).Info()
 }

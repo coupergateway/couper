@@ -2,7 +2,7 @@ package config
 
 import (
 	"net/http"
-	
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
