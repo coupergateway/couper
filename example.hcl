@@ -88,3 +88,14 @@ server "couperConnect" {
         }
     }
 }
+definitions {
+  jwt "AccessToken" {
+    cookie = "AccessToken"
+    key_file = "pubkey.pem"
+    signature_algorithm = "RS256"
+    claims {
+      iss = "TokenFactory"
+      aud = "MyApp"
+    }
+  }
+}
