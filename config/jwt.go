@@ -14,5 +14,5 @@ type Jwt struct {
 	Key                string  `hcl:"key,optional"`
 	KeyFile            string  `hcl:"key_file,optional"`
 	SignatureAlgorithm string  `hcl:"signature_algorithm"`
-	Claims             Claims  `hcl:"claims,block`
+	Claims             Claims  `hcl:"claims,block"`
 }

@@ -88,6 +88,7 @@ server "couperConnect" {
         }
     }
 }
+
 definitions {
   jwt "AccessToken" {
     cookie = "AccessToken"
