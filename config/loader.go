@@ -34,6 +34,11 @@ func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
 }
 
 func Load(config *Gateway, log *logrus.Entry) *Gateway {
+	accessControls := make(map[string]Jwt)
+	for _, jwt := range config.Definitions.Jwt {
+		accessControls[jwt.Name] = jwt
+	}
+
 	backends := make(map[string]http.Handler)
 
 	for idx, server := range config.Server {
@@ -65,11 +70,20 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			}
 
 			endpoints[endpoint.Pattern] = true
+
+			var acs []Jwt
+			for _, acName := range endpoint.AccessControl {
+				if _, ok := accessControls[acName]; !ok {
+					log.Fatalf("access control %q not found", acName)
+				}
+				acs = append(acs, accessControls[acName])
+			}
+
 			if endpoint.Backend != "" {
 				if _, ok := backends[endpoint.Backend]; !ok {
 					log.Fatalf("backend %q is not defined", endpoint.Backend)
 				}
-				server.Api.PathHandler[endpoint] = backends[endpoint.Backend]
+				server.Api.PathHandler[endpoint] = NewHandlerWrapper(log, acs, backends[endpoint.Backend])
 				continue
 			}
 
@@ -84,7 +98,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			}
 			kind := content.Blocks[0].Labels[0]
 
-			server.Api.PathHandler[endpoint] = newBackend(kind, content.Blocks[0].Body, log) // inline be
+			server.Api.PathHandler[endpoint] = NewHandlerWrapper(log, acs, newBackend(kind, content.Blocks[0].Body, log)) // inline be
 		}
 	}
 

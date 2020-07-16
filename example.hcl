@@ -38,6 +38,7 @@ server "couperConnect" {
         }
 
         endpoint "/httpbin" {
+            access_control = ["AccessToken"]
             backend = "httpbin"
         }
 
@@ -91,7 +92,7 @@ server "couperConnect" {
 
 definitions {
   jwt "AccessToken" {
-    cookie = "AccessToken"
+    header = "Authorization"
     key_file = "pubkey.pem"
     signature_algorithm = "RS256"
     claims {
