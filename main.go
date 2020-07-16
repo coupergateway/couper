@@ -16,10 +16,12 @@ func main() {
 
 	logger := newLogger()
 
-	exampleConf := config.Load("example.hcl", logger)
+	exampleConf := config.LoadFile("example.hcl", logger)
 
-	srv := server.New(command.ContextWithSignal(context.Background()), logger, exampleConf)
-	os.Exit(srv.Listen())
+	ctx := command.ContextWithSignal(context.Background())
+	srv := server.New(ctx, logger, exampleConf)
+	srv.Listen()
+	<-ctx.Done() // TODO: shutdown deadline
 }
 
 func newLogger() *logrus.Entry {

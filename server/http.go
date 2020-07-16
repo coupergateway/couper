@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 	"path"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
-	"github.com/gorilla/mux"
 
 	"go.avenga.cloud/couper/gateway/config"
 )
@@ -19,18 +18,23 @@ import (
 const RequestIDKey = "requestID"
 
 type HTTPServer struct {
-	config *config.Gateway
-	ctx    context.Context
-	log    *logrus.Entry
-	mux    *mux.Router
-	srv    *http.Server
+	config   *config.Gateway
+	ctx      context.Context
+	log      *logrus.Entry
+	listener net.Listener
+	mux      *Mux
+	srv      *http.Server
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: mux.NewRouter()}
+	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf)}
 
+	addr := ":" + config.DefaultHTTP.ListenPort
+	if conf.Addr != "" {
+		addr = conf.Addr
+	}
 	srv := &http.Server{
-		Addr: ":" + config.DefaultHTTP.ListenPort,
+		Addr: addr,
 		BaseContext: func(l net.Listener) context.Context {
 			return context.WithValue(context.Background(), RequestIDKey, xid.New().String())
 		},
@@ -44,22 +48,26 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 	return httpSrv
 }
 
-// registerHandler reads the given config frontends and register endpoints
+func (s *HTTPServer) Addr() string {
+	if s.listener != nil {
+		return s.listener.Addr().String()
+	}
+	return ""
+}
+
+// registerHandler reads the given config server and register their api endpoints
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
-		router := s.mux
-		subRouter := router.PathPrefix(server.BasePath).Subrouter()
-		for _, path := range server.Path {
+		basePath := joinPath(server.BasePath, server.Api.BasePath)
+		for _, endpoint := range server.Api.Endpoint {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
-			pattern := joinPath(server.BasePath, path.Pattern)
+			pattern := joinPath(basePath, endpoint.Pattern)
 			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
 
-			p := path.Pattern
-			if p[len(p)-3:] == "/**" {
-				subRouter.Handle(p[:len(p)-3] + "/{-wildcard:.*}", server.PathHandler[path])
-			} else {
-				subRouter.Handle(path.Pattern, server.PathHandler[path])
+			// TODO: shadow clone slice per domain (len(server.Domains) > 1)
+			for _, domain := range server.Domains {
+				s.mux.Register(domain, pattern, server.Api.PathHandler[endpoint])
 			}
 		}
 	}
@@ -75,16 +83,27 @@ func joinPath(elements ...string) string {
 }
 
 // Listen initiates the configured http handler and start listing on given port.
-func (s *HTTPServer) Listen() int {
-	s.log.WithField("addr", s.srv.Addr).Info("couper gateway is serving")
-	s.registerHandler()
-	go s.listenForCtx()
-	err := s.srv.ListenAndServe()
+func (s *HTTPServer) Listen() {
+	if s.srv.Addr == "" {
+		s.srv.Addr = ":http"
+	}
+	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
 		s.log.Error(err)
-		return 1
+		return
 	}
-	return 0
+	s.listener = ln
+	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
+
+	s.registerHandler()
+
+	go s.listenForCtx()
+
+	go func() {
+		if err := s.srv.Serve(ln); err != nil {
+			s.log.Error(err)
+		}
+	}()
 }
 
 func (s *HTTPServer) listenForCtx() {
@@ -100,27 +119,37 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
 	req.Header.Set("X-Request-Id", uid)
-	handler := s.mux
-	rw.Header().Set("server", "couper.io") // TODO: wrap 'rw' for server override and status readout
+	rw.Header().Set("server", "couper.io")
 	rw.Header().Set("X-Request-Id", uid)
 
-	if fmt.Sprintf("%p", handler) == fmt.Sprintf("%p", http.NotFound) {
-		//FIXME ??? handler = s.config.Server[0]
+	handler, pattern := s.mux.Match(req)
+
+	var err error
+	var handlerName string
+	sr := &StatusReader{rw: rw}
+	if handler != nil {
+		if name, ok := handler.(interface{ String() string }); ok {
+			handlerName = name.String()
+		}
+		handler.ServeHTTP(sr, req)
+	} else {
+		handlerName = "none"
+		sr.WriteHeader(http.StatusInternalServerError)
+		err = errors.New("no configuration found: " + req.URL.String())
 	}
 
-	sr := &StatusReader{rw: rw}
-	handler.ServeHTTP(sr, req)
-
-// 	var handlerName string
-// 	if name, ok := handler.(interface{ String() string }); ok {
-// 		handlerName = name.String()
-// 	}
-	s.log.WithFields(logrus.Fields{
+	fields := logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
-// 		"pattern": pattern,
-// 		"handler": handlerName,
+		"pattern": pattern,
+		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,
 		"url":     req.URL.String(),
-	}).Info()
+	}
+
+	if sr.status == http.StatusInternalServerError {
+		s.log.WithFields(fields).Error(err)
+	} else {
+		s.log.WithFields(fields).Info()
+	}
 }

@@ -14,11 +14,13 @@ func TestWriteGateway(t *testing.T) {
 	conf := config.Gateway{
 		Server: []*config.Server{
 			{
-				BasePath: "/hans/v1",
-				Name:     "wurst",
-				Path: []*config.Path{
-					{
-						Pattern: "/proxy/",
+				Name: "wurst",
+				Api: &config.Api{
+					BasePath: "/hans/v1",
+					Endpoint: []*config.Endpoint{
+						{
+							Pattern: "/proxy/",
+						},
 					},
 				},
 			},
