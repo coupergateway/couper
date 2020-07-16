@@ -1,55 +1,31 @@
 package backend
 
 import (
-	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 )
 
 type Spa struct {
-	rw     http.ResponseWriter
-	status int
-	body   []byte
+	file string
 }
 
-func (s *Spa) Header() http.Header {
-	return s.rw.Header()
+func NewSpa(filePath string) *Spa {
+	return &Spa{file: filePath}
 }
 
-func (s *Spa) WriteHeader(status int) {
-	s.status = status
-	if status != http.StatusNotFound {
-		s.rw.WriteHeader(status)
-	}
-}
-
-func (s *Spa) Write(p []byte) (int, error) {
-	if s.status != http.StatusNotFound {
-		return s.rw.Write(p)
-	}
-	s.body = p
-	return len(p), nil
-}
-
-func wrapHandler(h http.Handler, bf string, spa_paths []string) (http.HandlerFunc, error) {
-	dir, _ := os.Getwd()
-	bs_content, err := ioutil.ReadFile(path.Join(dir, bf))
+func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	file, err := os.Open(s.file)
 	if err != nil {
-		return nil, err
+		http.NotFoundHandler().ServeHTTP(rw, req)
+		return
 	}
-	return func(rw http.ResponseWriter, req *http.Request) {
-		sh := &Spa{rw: rw}
-		h.ServeHTTP(sh, req)
-		if sh.status == http.StatusNotFound {
-			for _, a := range spa_paths {
-				// TODO implement wildcard match
-				if req.URL.Path == a {
-					rw.Write(bs_content)
-					return
-				}
-			}
-			rw.Write(sh.body)
-		}
-	}, nil
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		http.NotFoundHandler().ServeHTTP(rw, req)
+		return
+	}
+
+	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
 }

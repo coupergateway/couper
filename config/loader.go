@@ -24,6 +24,15 @@ func LoadFile(name string, log *logrus.Entry) *Gateway {
 	return Load(config, log)
 }
 
+func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
+	config := &Gateway{}
+	// filename must match .hcl ending for further []byte processing
+	if err := hclsimple.Decode("loadBytes.hcl", src, nil, config); err != nil {
+		log.Fatalf("Failed to load configuration bytes: %s", err)
+	}
+	return Load(config, log)
+}
+
 func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	backends := make(map[string]http.Handler)
 

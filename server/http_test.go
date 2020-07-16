@@ -8,56 +8,46 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
-	"time"
+	"text/template"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"go.avenga.cloud/couper/gateway/backend"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/server"
 )
 
 func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
+	expectedAPIHost := "test.couper.io"
 	originBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		println(req.Host)
+		if req.Host != expectedAPIHost {
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		rw.WriteHeader(http.StatusNoContent)
 	}))
-	backendRemain := hclwrite.NewEmptyFile()
-	gohcl.EncodeIntoBody(backend.Proxy{OriginAddress: originBackend.Listener.Addr().String(), OriginHost: "muh.de"}, backendRemain.Body())
+	defer originBackend.Close()
 
-	conf := &config.Gateway{Addr: ":", Server: []*config.Server{
-		{
-			BasePath: "/apps/shiny-product",
-			Domains:  []string{"example.com"},
-			Name:     "Test_Files",
+	tpl, err := template.ParseFiles("testdata/file_serving/conf_test.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	confBytes := &bytes.Buffer{}
+	err = tpl.Execute(confBytes, map[string]string{
+		"origin_address": originBackend.Listener.Addr().String(),
+		"origin_host":    expectedAPIHost,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-			Files: &config.Files{
-				DocumentRoot: "testdata/file_serving/htdocs", ErrorFile: "testdata/file_serving/error.html",
-			},
-			Api: &config.Api{
-				Backend: []*config.Backend{
-					{Options: hcl.MergeFiles([]*hcl.File{{Bytes: backendRemain.Bytes()}}), Kind: "proxy", Name: "example"},
-				},
-				BasePath: "/api",
-				Endpoint: []*config.Endpoint{
-					{Pattern: "/",
-						Options: hcl.EmptyBody(),
-						Backend: "example",
-					},
-				},
-			},
-			Spa: &config.Spa{
-				BasePath:      "/app",
-				BootstrapFile: "testdata/file_serving/htdocs/spa.html",
-				Paths:         []string{"/app/**"},
-			},
-		},
-	}}
+	log, _ := logrustest.NewNullLogger()
+	//log.Out = os.Stdout
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conf := config.LoadBytes(confBytes.Bytes(), log.WithContext(ctx))
 
 	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
 	if err != nil {
@@ -69,20 +59,13 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	log, _ := logrustest.NewNullLogger()
-	log.Out = os.Stdout
-
-	gw := server.New(ctx, log.WithContext(ctx), config.Load(conf, log.WithContext(ctx)))
+	gw := server.New(ctx, log.WithContext(ctx), conf)
 	gw.Listen()
 
 	connectClient := http.Client{Transport: &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return net.Dial("tcp4", gw.Addr())
 		},
-		ResponseHeaderTimeout: time.Second,
 	}}
 
 	for _, testCase := range []struct {
@@ -93,10 +76,10 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/", errorPageContent, http.StatusNotFound},
 		{"/apps/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
-		{"/apps/shiny-product/assets/", errorPageContent, http.StatusOK},
+		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
-		{"/apps/shiny-product/api/", errorPageContent, http.StatusOK},
+		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 	} {
 		res, err := connectClient.Get("http://example.com" + testCase.path)
 		if err != nil {

@@ -3,6 +3,7 @@ package server
 import (
 	"net"
 	"net/http"
+	"path"
 	"sort"
 	"strings"
 
@@ -20,37 +21,50 @@ type routes []*Route
 func NewMux(conf *config.Gateway) *Mux {
 	routes := make(map[string]routes)
 	fileHandler := make(map[string]http.Handler)
+	mux := &Mux{fileHandler: fileHandler, routes: routes}
+
 	for _, server := range conf.Server {
-		var files http.Handler
-		if server.Files != nil {
-			files = backend.NewFile(server.Files.DocumentRoot)
+		var files, spa http.Handler
+
+		if server.Spa != nil {
+			spa = backend.NewSpa(server.Spa.BootstrapFile)
 		}
+
+		if server.Files != nil {
+			files = backend.NewFile(server.Files.DocumentRoot, server.Files.ErrorFile)
+		}
+
 		for _, domain := range server.Domains {
 			routes[domain] = make([]*Route, 0)
 			if files != nil {
 				fileHandler[domain] = files
 			}
+			if spa != nil {
+				for _, spaPath := range server.Spa.Paths {
+					mux.Register(domain, path.Join(server.BasePath, server.Spa.BasePath, spaPath), spa)
+				}
+			}
 		}
 	}
-	return &Mux{routes: routes}
+	return mux
 }
 
 func (m *Mux) Match(req *http.Request) (http.Handler, string) {
 	reqHost := stripHostPort(req.Host)
 	routes, ok := m.routes[reqHost]
-	if !ok {
-		files, fok := m.fileHandler[reqHost]
-		if !fok {
-			return nil, ""
-		}
-		return files, req.URL.Path
-	}
-	for _, r := range routes { // routes are sorted by len desc
-		if route := r.Match(req); route != nil {
-			return route, r.Pattern()
+	if ok {
+		for _, r := range routes { // routes are sorted by len desc
+			if route := r.Match(req); route != nil {
+				return route, r.Pattern()
+			}
 		}
 	}
-	return nil, ""
+
+	files, fok := m.fileHandler[reqHost]
+	if !fok {
+		return nil, ""
+	}
+	return files, req.URL.Path
 }
 
 func (m *Mux) Register(domain, pattern string, handler http.Handler) {

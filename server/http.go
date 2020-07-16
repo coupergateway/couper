@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"path"
@@ -123,6 +124,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	handler, pattern := s.mux.Match(req)
 
+	var err error
 	var handlerName string
 	sr := &StatusReader{rw: rw}
 	if handler != nil {
@@ -133,6 +135,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		handlerName = "none"
 		sr.WriteHeader(http.StatusInternalServerError)
+		err = errors.New("no configuration found: " + req.URL.String())
 	}
 
 	fields := logrus.Fields{
@@ -145,7 +148,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if sr.status == http.StatusInternalServerError {
-		s.log.WithFields(fields).Error()
+		s.log.WithFields(fields).Error(err)
 	} else {
 		s.log.WithFields(fields).Info()
 	}
