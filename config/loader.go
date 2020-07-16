@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/backend"
 )
@@ -16,7 +16,7 @@ var typeMap = map[string]func(*logrus.Entry, hcl.Body) http.Handler{
 }
 
 func LoadFile(name string, log *logrus.Entry) *Gateway {
-	var config *Gateway
+	config := &Gateway{}
 	err := hclsimple.DecodeFile(name, nil, config)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err)
@@ -27,7 +27,7 @@ func LoadFile(name string, log *logrus.Entry) *Gateway {
 func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	backends := make(map[string]http.Handler)
 
-	for a, server := range config.Server {
+	for idx, server := range config.Server {
 		// create backends
 		for _, be := range server.Api.Backend {
 			if isKeyword(be.Name) {
@@ -44,7 +44,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.Api.Endpoint {
-			config.Server[a].Api.Endpoint[e].Server = server // assign parent
+			config.Server[idx].Api.Endpoint[e].Server = server // assign parent
 			if endpoints[endpoint.Pattern] {
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
@@ -52,7 +52,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			endpoints[endpoint.Pattern] = true
 			if endpoint.Backend != "" {
 				if _, ok := backends[endpoint.Backend]; !ok {
-					log.Fatalf("be %q not found", endpoint.Backend)
+					log.Fatalf("backend %q is not defined", endpoint.Backend)
 				}
 				server.Api.PathHandler[endpoint] = backends[endpoint.Backend]
 				continue
@@ -65,20 +65,11 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			endpoint.Options = leftOver
 
 			if content == nil || len(content.Blocks) == 0 {
-				log.Fatalf("expected be attribute reference or block for endpoint: %s", endpoint)
+				log.Fatalf("expected backend attribute reference or block for endpoint: %s", endpoint)
 			}
 			kind := content.Blocks[0].Labels[0]
 
 			server.Api.PathHandler[endpoint] = newBackend(kind, content.Blocks[0].Body, log) // inline be
-		}
-
-		// serve files
-		if server.Files.DocumentRoot != "" {
-			fileHandler, err := backend.NewFile(server.Files.DocumentRoot, log, server.Spa.BootstrapFile, server.Spa.Paths)
-			if err != nil {
-				log.Fatalf("Failed to load configuration: %s", err)
-			}
-			config.Server[a].FileHandler = fileHandler
 		}
 	}
 

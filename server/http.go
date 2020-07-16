@@ -2,14 +2,12 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
@@ -23,12 +21,12 @@ type HTTPServer struct {
 	ctx      context.Context
 	log      *logrus.Entry
 	listener net.Listener
-	mux      *mux.Router
+	mux      *Mux
 	srv      *http.Server
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: mux.NewRouter()}
+	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf)}
 
 	addr := ":" + config.DefaultHTTP.ListenPort
 	if conf.Addr != "" {
@@ -56,24 +54,21 @@ func (s *HTTPServer) Addr() string {
 	return ""
 }
 
-// registerHandler reads the given config frontends and register endpoints
+// registerHandler reads the given config server and register their api endpoints
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
-		subRouter := s.mux.PathPrefix(server.Api.BasePath).Subrouter()
+		basePath := joinPath(server.BasePath, server.Api.BasePath)
 		for _, endpoint := range server.Api.Endpoint {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
-			pattern := joinPath(server.Api.BasePath, endpoint.Pattern)
+			pattern := joinPath(basePath, endpoint.Pattern)
 			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
 
-			p := endpoint.Pattern
-			if p[len(p)-3:] == "/**" {
-				subRouter.Handle(p[:len(p)-3]+"/{-wildcard:.*}", server.Api.PathHandler[endpoint])
-			} else {
-				subRouter.Handle(endpoint.Pattern, server.Api.PathHandler[endpoint])
+			// TODO: shadow clone slice per domain (len(server.Domains) > 1)
+			for _, domain := range server.Domains {
+				s.mux.Register(domain, pattern, server.Api.PathHandler[endpoint])
 			}
 		}
-		s.mux.NotFoundHandler = server.FileHandler
 	}
 }
 
@@ -123,27 +118,35 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
 	req.Header.Set("X-Request-Id", uid)
-	handler := s.mux
-	rw.Header().Set("server", "couper.io") // TODO: wrap 'rw' for server override and status readout
+	rw.Header().Set("server", "couper.io")
 	rw.Header().Set("X-Request-Id", uid)
 
-	if fmt.Sprintf("%p", handler) == fmt.Sprintf("%p", http.NotFound) {
-		//FIXME ??? handler = s.config.Server[0]
+	handler, pattern := s.mux.Match(req)
+
+	var handlerName string
+	sr := &StatusReader{rw: rw}
+	if handler != nil {
+		if name, ok := handler.(interface{ String() string }); ok {
+			handlerName = name.String()
+		}
+		handler.ServeHTTP(sr, req)
+	} else {
+		handlerName = "none"
+		sr.WriteHeader(http.StatusInternalServerError)
 	}
 
-	sr := &StatusReader{rw: rw}
-	handler.ServeHTTP(sr, req)
+	fields := logrus.Fields{
+		"agent":   req.Header.Get("User-Agent"),
+		"pattern": pattern,
+		"handler": handlerName,
+		"status":  sr.status,
+		"uid":     uid,
+		"url":     req.URL.String(),
+	}
 
-	// 	var handlerName string
-	// 	if name, ok := handler.(interface{ String() string }); ok {
-	// 		handlerName = name.String()
-	// 	}
-	s.log.WithFields(logrus.Fields{
-		"agent": req.Header.Get("User-Agent"),
-		// 		"pattern": pattern,
-		// 		"handler": handlerName,
-		"status": sr.status,
-		"uid":    uid,
-		"url":    req.URL.String(),
-	}).Info()
+	if sr.status == http.StatusInternalServerError {
+		s.log.WithFields(fields).Error()
+	} else {
+		s.log.WithFields(fields).Info()
+	}
 }

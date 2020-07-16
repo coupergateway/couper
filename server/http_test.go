@@ -5,30 +5,54 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"go.avenga.cloud/couper/gateway/backend"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/server"
 )
 
 func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
+	originBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		println(req.Host)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	backendRemain := hclwrite.NewEmptyFile()
+	gohcl.EncodeIntoBody(backend.Proxy{OriginAddress: originBackend.Listener.Addr().String(), OriginHost: "muh.de"}, backendRemain.Body())
+
 	conf := &config.Gateway{Addr: ":", Server: []*config.Server{
 		{
 			BasePath: "/apps/shiny-product",
-			Domains: []string{"example.com"},
-			Name:    "Test_Files",
+			Domains:  []string{"example.com"},
+			Name:     "Test_Files",
+
 			Files: &config.Files{
 				DocumentRoot: "testdata/file_serving/htdocs", ErrorFile: "testdata/file_serving/error.html",
 			},
 			Api: &config.Api{
+				Backend: []*config.Backend{
+					{Options: hcl.MergeFiles([]*hcl.File{{Bytes: backendRemain.Bytes()}}), Kind: "proxy", Name: "example"},
+				},
 				BasePath: "/api",
+				Endpoint: []*config.Endpoint{
+					{Pattern: "/",
+						Options: hcl.EmptyBody(),
+						Backend: "example",
+					},
+				},
 			},
 			Spa: &config.Spa{
-				BasePath: "/app",
+				BasePath:      "/app",
 				BootstrapFile: "testdata/file_serving/htdocs/spa.html",
 				Paths:         []string{"/app/**"},
 			},
@@ -54,20 +78,27 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	gw := server.New(ctx, log.WithContext(ctx), config.Load(conf, log.WithContext(ctx)))
 	gw.Listen()
 
-	for _, testCase := range []struct{
-		path string
-		expectedBody []byte
+	connectClient := http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return net.Dial("tcp4", gw.Addr())
+		},
+		ResponseHeaderTimeout: time.Second,
+	}}
+
+	for _, testCase := range []struct {
+		path           string
+		expectedBody   []byte
 		expectedStatus int
 	}{
 		{"/", errorPageContent, http.StatusNotFound},
 		{"/apps/", errorPageContent, http.StatusNotFound},
-		{"/apps/shinyproduct/", errorPageContent, http.StatusNotFound},
-		{"/apps/shinyproduct/assets/", errorPageContent, http.StatusOK},
-		{"/apps/shinyproduct/app/", spaContent, http.StatusOK},
-		{"/apps/shinyproduct/app/sub", spaContent, http.StatusOK},
-		{"/apps/shinyproduct/api/", errorPageContent, http.StatusOK},
-	}{
-		res, err := http.DefaultClient.Get("http://" + gw.Addr() + testCase.path)
+		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
+		{"/apps/shiny-product/assets/", errorPageContent, http.StatusOK},
+		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
+		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
+		{"/apps/shiny-product/api/", errorPageContent, http.StatusOK},
+	} {
+		res, err := connectClient.Get("http://example.com" + testCase.path)
 		if err != nil {
 			t.Fatal(err)
 		}
