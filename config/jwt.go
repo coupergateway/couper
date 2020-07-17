@@ -82,7 +82,13 @@ func (j *Jwt) Init(log *logrus.Entry) {
 
 func (j *Jwt) Check(req *http.Request) bool {
 	tokenValue := ""
-	if j.Header != "" {
+	if j.Cookie != "" {
+		cookie, err := req.Cookie(j.Cookie)
+		if err != nil {
+			j.log.Error(err)
+		}
+		tokenValue = cookie.Value
+	} else if j.Header != "" {
 		tokenValue = req.Header.Get(j.Header)
 		if j.Header == "Authorization" {
 			if strings.HasPrefix(strings.ToLower(tokenValue), "bearer ") {
@@ -93,7 +99,7 @@ func (j *Jwt) Check(req *http.Request) bool {
 			}
 		}
 	}
-	// TODO j.Cookie, j.PostParam, j.QueryParam
+	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
 		j.log.Error("token is empty")
 		return false
