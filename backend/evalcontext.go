@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -21,7 +20,7 @@ func NewEvalContext(request *http.Request, response *http.Response) *hcl.EvalCon
 	if request != nil {
 		variables["req"] = cty.MapVal(map[string]cty.Value{
 			"headers": newCtyHeadersMap(request.Header),
-			"params":  newCtyParametersMap(mux.Vars(request)),
+			//"params":  newCtyParametersMap(mux.Vars(request)),
 		})
 	}
 
@@ -81,12 +80,12 @@ func isValidKey(key string) bool {
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"to_upper": stdlib.UpperFunc,
-		"to_lower": to_lower(), // Custom function
+		"to_lower": toLower(), // Custom function
 	}
 }
 
 // Example function
-func to_lower() function.Function {
+func toLower() function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -96,7 +95,7 @@ func to_lower() function.Function {
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			s := cty.Value(args[0]).AsString()
+			s := args[0].AsString()
 			return cty.StringVal(strings.ToLower(s)), nil
 		},
 	})

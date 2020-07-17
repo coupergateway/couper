@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"regexp"
@@ -12,15 +13,17 @@ var (
 	WildcardPathError = errors.New("wildcard path must end with /** and has no other occurrences")
 )
 
+const wildcardCtx = "route_wildcard"
+
 type Route struct {
 	handler http.Handler
 	matcher *regexp.Regexp
-	parent  *Route
 	pattern string
-	sub     *Route
+	wildcard bool
 }
 
 func NewRoute(pattern string, handler http.Handler) (*Route, error) {
+	const wildcardReplacement = "/(.+)"
 	if pattern == "" || pattern[0] != '/' {
 		return nil, PatternSlashError
 	}
@@ -34,18 +37,25 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	if !validWildcardPath(matchPattern) {
 		return nil, WildcardPathError
 	}
-	matchPattern = strings.ReplaceAll(matchPattern, "/**", "/.*")
+	matchPattern = strings.ReplaceAll(matchPattern, "/**", wildcardReplacement)
 	matcher := regexp.MustCompile(matchPattern)
 	return &Route{
 		handler: handler,
 		matcher: matcher,
 		pattern: pattern,
+		wildcard: strings.HasSuffix(matchPattern, wildcardReplacement),
 	}, nil
 
 }
 
 func (r *Route) Match(req *http.Request) http.Handler {
 	if r.matcher.MatchString(req.URL.Path) {
+		if r.wildcard {
+			match := r.matcher.FindStringSubmatch(req.URL.Path)
+			if len(match) > 1 {
+				*req = *req.WithContext(context.WithValue(req.Context(), wildcardCtx, match[1]))
+			}
+		}
 		return r.handler
 	}
 	return nil
@@ -53,16 +63,6 @@ func (r *Route) Match(req *http.Request) http.Handler {
 
 func (r *Route) Pattern() string {
 	return r.matcher.String()
-}
-
-func (r *Route) Sub(pattern string, handler http.Handler) (*Route, error) {
-	route, err := NewRoute(pattern, handler)
-	if err != nil {
-		return nil, err
-	}
-	route.parent = r
-	r.sub = route
-	return route, nil
 }
 
 func validWildcardPath(path string) bool {

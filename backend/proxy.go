@@ -6,7 +6,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
@@ -56,14 +55,8 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Scheme = "https" // TODO: improve conf options, scheme or url
 	}
 	req.Host = p.OriginHost
-	if p.Path != "" {
-		_path := p.Path
-		if strings.Index(_path, "/**") != -1 {
-			if wildcardMatch, ok := mux.Vars(req)["-wildcard"]; ok {
-				_path = strings.ReplaceAll(_path, "/**", "/"+wildcardMatch)
-			}
-		}
-		req.URL.Path = path.Join("/", _path)
+	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.Path != "" {
+		req.URL.Path = path.Join(strings.ReplaceAll(p.Path, "/**", "/"), pathMatch)
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
