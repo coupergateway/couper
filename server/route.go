@@ -23,7 +23,7 @@ type Route struct {
 }
 
 func NewRoute(pattern string, handler http.Handler) (*Route, error) {
-	const wildcardReplacement = "/(.+)"
+	const wildcardReplacement = "/(.*)"
 	if pattern == "" || pattern[0] != '/' {
 		return nil, PatternSlashError
 	}
