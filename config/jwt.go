@@ -3,6 +3,8 @@ package config
 import (
 	"strings"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
 	"net/http"
 
@@ -43,8 +45,28 @@ func (j *Jwt) Init(log *logrus.Entry) {
 		if err != nil {
 			log.Fatal(err)
 		}
+	} else if j.Key != "" {
+		if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
+			var err error
+			var pub interface{}
+			// try pem
+			block, _ := pem.Decode([]byte(j.Key))
+			if block != nil {
+				pub, err = x509.ParsePKIXPublicKey(block.Bytes)
+			} else {
+				// TODO
+				log.Fatal("non-pem key not implemented")
+			}
+			if err != nil {
+				log.Fatal(err)
+			}
+			j.key, _ = pub.(*rsa.PublicKey)
+		} else {
+			// TODO HMAC
+		}
+	} else {
+		log.Fatal("Either key_file or key must be specified")
 	}
-	// TODO j.Key
 	var options []jwt.ParserOption
 	options = append(options, jwt.WithValidMethods([]string{j.SignatureAlgorithm}))
 	if j.Claims.Issuer != "" {
