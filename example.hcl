@@ -1,6 +1,4 @@
 server "couperConnect" {
-    domains = ["127.0.0.1"]
-
     files {
         document_root = "./public"
     }

@@ -37,6 +37,8 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	backends := make(map[string]http.Handler)
 
 	for idx, server := range config.Server {
+		configureDomains(server)
+
 		// create backends
 		for _, be := range server.Api.Backend {
 			if isKeyword(be.Name) {
@@ -83,6 +85,16 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	}
 
 	return config
+}
+
+// configureDomains is a fallback configuration which ensures
+// the request multiplexer is working properly.
+func configureDomains(server *Server) {
+	if len(server.Domains) > 0 {
+		return
+	}
+	// TODO: ipv6
+	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0"}
 }
 
 func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
