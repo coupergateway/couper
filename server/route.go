@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-var PatternSlashError = errors.New("missing slash in first place")
+var (
+	PatternSlashError = errors.New("missing slash in first place")
+	WildcardPathError = errors.New("wildcard path must end with /** and has no other occurrences")
+)
 
 type Route struct {
 	handler http.Handler
@@ -28,6 +31,9 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 
 	// TODO: parse/create regexp "template" parsing
 	matchPattern := "^" + pattern
+	if !validWildcardPath(matchPattern) {
+		return nil, WildcardPathError
+	}
 	matchPattern = strings.ReplaceAll(matchPattern, "/**", "/.*")
 	matcher := regexp.MustCompile(matchPattern)
 	return &Route{
@@ -57,4 +63,12 @@ func (r *Route) Sub(pattern string, handler http.Handler) (*Route, error) {
 	route.parent = r
 	r.sub = route
 	return route, nil
+}
+
+func validWildcardPath(path string) bool {
+	if cnt := strings.Count(path, "/**"); cnt > 1 ||
+		(cnt == 1) && !strings.HasSuffix(path, "/**") {
+		return false
+	}
+	return true
 }
