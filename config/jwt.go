@@ -1,10 +1,11 @@
 package config
 
 import (
+	"errors"
 	"strings"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/pem"
+	"encoding/base64"
 	"io/ioutil"
 	"net/http"
 
@@ -29,7 +30,8 @@ type Jwt struct {
 	Claims             *Claims `hcl:"claims,block"`
 	log                *logrus.Entry
 	parser             *jwt.Parser
-	key                *rsa.PublicKey
+	pubkey             *rsa.PublicKey
+	hmacSecret         []byte
 }
 
 // TODO read values from Env
@@ -41,28 +43,27 @@ func (j *Jwt) Init(log *logrus.Entry) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		j.key, err = jwt.ParseRSAPublicKeyFromPEM([]byte(pem))
+		j.pubkey, err = jwt.ParseRSAPublicKeyFromPEM([]byte(pem))
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else if j.Key != "" {
 		if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
-			var err error
-			var pub interface{}
-			// try pem
-			block, _ := pem.Decode([]byte(j.Key))
-			if block != nil {
-				pub, err = x509.ParsePKIXPublicKey(block.Bytes)
-			} else {
-				// TODO
-				log.Fatal("non-pem key not implemented")
-			}
+			// x5c from JWK
+			derBytesCert, err := base64.StdEncoding.DecodeString(j.Key)
 			if err != nil {
 				log.Fatal(err)
 			}
-			j.key, _ = pub.(*rsa.PublicKey)
+			cert, err := x509.ParseCertificate(derBytesCert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			rsaPublickey, _ := cert.PublicKey.(*rsa.PublicKey)
+			j.pubkey = &rsa.PublicKey{N: rsaPublickey.N, E: rsaPublickey.E}
+		} else if strings.HasPrefix(j.SignatureAlgorithm, "HS") {
+			j.hmacSecret = []byte(j.Key)
 		} else {
-			// TODO HMAC
+			log.Fatal("only RSA and HMAC are supported")
 		}
 	} else {
 		log.Fatal("Either key_file or key must be specified")
@@ -105,7 +106,12 @@ func (j *Jwt) Check(req *http.Request) bool {
 		return false
 	}
 	token, err := j.parser.Parse(tokenValue, func(token *jwt.Token) (interface{}, error) {
-		return j.key, nil
+		if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
+			return j.pubkey, nil
+		} else if strings.HasPrefix(j.SignatureAlgorithm, "HS") {
+			return j.hmacSecret, nil
+		}
+		return nil, errors.New("only RSA and HMAC are supported")
 	})
 	if err != nil {
 		j.log.Error(err)
