@@ -40,8 +40,10 @@ func NewMux(conf *config.Gateway) *Mux {
 				fileHandler[domain] = files
 			}
 			if spa != nil {
-				for _, spaPath := range server.Spa.Paths {
-					mux.Register(domain, path.Join(server.BasePath, server.Spa.BasePath, spaPath), spa)
+				spaPath := path.Join(server.BasePath, server.Spa.BasePath)
+				mux.Register(domain, spaPath, spa)
+				for _, subPath := range server.Spa.Paths {
+					mux.Register(domain, path.Join(spaPath, subPath), spa)
 				}
 			}
 		}

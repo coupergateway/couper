@@ -57,6 +57,8 @@ func (p *Proxy) director(req *http.Request) {
 	req.Host = p.OriginHost
 	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.Path != "" {
 		req.URL.Path = path.Join(strings.ReplaceAll(p.Path, "/**", "/"), pathMatch)
+	} else if p.Path != "" {
+		req.URL.Path = p.Path
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
