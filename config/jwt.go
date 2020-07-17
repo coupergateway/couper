@@ -63,8 +63,12 @@ func (j *Jwt) Check(req *http.Request) bool {
 	if j.Header != "" {
 		tokenValue = req.Header.Get(j.Header)
 		if j.Header == "Authorization" {
-			// TODO handle Bearer case-insensitively
-			tokenValue = strings.TrimPrefix(tokenValue, "Bearer ")
+			if strings.HasPrefix(strings.ToLower(tokenValue), "bearer ") {
+				tokenValue = strings.Trim(tokenValue[7:len(tokenValue)], " ")
+			} else {
+				j.log.Error("Authorization header value must start with 'Bearer '")
+				return false
+			}
 		}
 	}
 	// TODO j.Cookie, j.PostParam, j.QueryParam
