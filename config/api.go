@@ -19,13 +19,13 @@ type PathHandler map[*Endpoint]http.Handler
 
 type HandlerWrapper struct {
 	log     *logrus.Entry
-	acs     []Jwt
+	acs     []*Jwt
 	handler http.Handler
 }
 
-func NewHandlerWrapper(log *logrus.Entry, acs []Jwt, handler http.Handler) http.Handler {
+func NewHandlerWrapper(log *logrus.Entry, acs []*Jwt, handler http.Handler) http.Handler {
 	handlerWrapper := &HandlerWrapper{log: log, acs: acs, handler: handler}
-	for j, _ := range acs {
+	for j := range acs {
 		acs[j].Init(log)
 	}
 	return handlerWrapper

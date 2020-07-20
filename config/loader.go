@@ -34,9 +34,11 @@ func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
 }
 
 func Load(config *Gateway, log *logrus.Entry) *Gateway {
-	accessControls := make(map[string]Jwt)
-	for _, jwt := range config.Definitions.Jwt {
-		accessControls[jwt.Name] = jwt
+	accessControls := make(map[string]*Jwt)
+	if config.Definitions != nil {
+		for _, jwt := range config.Definitions.Jwt {
+			accessControls[jwt.Name] = jwt
+		}
 	}
 
 	backends := make(map[string]http.Handler)
@@ -71,7 +73,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 
 			endpoints[endpoint.Pattern] = true
 
-			var acs []Jwt
+			var acs []*Jwt
 			for _, acName := range endpoint.AccessControl {
 				if _, ok := accessControls[acName]; !ok {
 					log.Fatalf("access control %q not found", acName)
