@@ -59,6 +59,10 @@ func (s *HTTPServer) Addr() string {
 // to our http multiplexer.
 func (s *HTTPServer) registerHandler() {
 	for _, server := range s.config.Server {
+		if server.Api == nil {
+			continue
+		}
+
 		basePath := joinPath(server.BasePath, server.Api.BasePath)
 		for _, endpoint := range server.Api.Endpoint {
 			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.

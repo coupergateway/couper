@@ -39,6 +39,10 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	for idx, server := range config.Server {
 		configureDomains(server)
 
+		if server.Api == nil {
+			continue
+		}
+
 		// create backends
 		for _, be := range server.Api.Backend {
 			if isKeyword(be.Name) {
