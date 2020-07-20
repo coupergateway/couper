@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -11,12 +12,19 @@ import (
 	"go.avenga.cloud/couper/gateway/server"
 )
 
+var (
+	configFile = flag.String("f", "example.hcl", "-f ./couper.conf")
+)
+
 func main() {
 	// TODO: command / args
+	if !flag.Parsed() {
+		flag.Parse()
+	}
 
 	logger := newLogger()
 
-	exampleConf := config.LoadFile("example.hcl", logger)
+	exampleConf := config.LoadFile(*configFile, logger)
 
 	ctx := command.ContextWithSignal(context.Background())
 	srv := server.New(ctx, logger, exampleConf)
