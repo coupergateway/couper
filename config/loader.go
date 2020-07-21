@@ -1,13 +1,17 @@
 package config
 
 import (
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus"
 
+	ac "go.avenga.cloud/couper/gateway/access_control"
 	"go.avenga.cloud/couper/gateway/backend"
 )
 
@@ -34,12 +38,7 @@ func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
 }
 
 func Load(config *Gateway, log *logrus.Entry) *Gateway {
-	accessControls := make(map[string]*Jwt)
-	if config.Definitions != nil {
-		for _, jwt := range config.Definitions.Jwt {
-			accessControls[jwt.Name] = jwt
-		}
-	}
+	accessControls := configureAccessControls(config)
 
 	backends := make(map[string]http.Handler)
 
@@ -51,7 +50,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 		}
 
 		// create backends
-		for _, be := range server.Api.Backend {
+		for _, be := range server.API.Backend {
 			if isKeyword(be.Name) {
 				log.Fatalf("be name not allowed, reserved keyword: '%s'", be.Name)
 			}
@@ -61,35 +60,35 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			backends[be.Name] = newBackend(be.Kind, be.Options, log)
 		}
 
-		server.Api.PathHandler = make(PathHandler)
+		server.API.PathHandler = make(PathHandler)
 
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
-		for e, endpoint := range server.Api.Endpoint {
-			config.Server[idx].Api.Endpoint[e].Server = server // assign parent
+		for e, endpoint := range server.API.Endpoint {
+			config.Server[idx].API.Endpoint[e].Server = server // assign parent
 			if endpoints[endpoint.Pattern] {
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
 
 			endpoints[endpoint.Pattern] = true
 
-			var acs []*Jwt
+			var acList ac.List
 			for _, acName := range endpoint.AccessControl {
 				if _, ok := accessControls[acName]; !ok {
 					log.Fatalf("access control %q not found", acName)
 				}
-				acs = append(acs, accessControls[acName])
+				acList = append(acList, accessControls[acName])
 			}
 
 			if endpoint.Backend != "" {
 				if _, ok := backends[endpoint.Backend]; !ok {
 					log.Fatalf("backend %q is not defined", endpoint.Backend)
 				}
-				server.Api.PathHandler[endpoint] = NewHandlerWrapper(log, acs, backends[endpoint.Backend])
+				server.API.PathHandler[endpoint] = NewHandlerWrapper(log, acList, backends[endpoint.Backend])
 				continue
 			}
 
-			content, leftOver, diags := endpoint.Options.PartialContent(server.Api.Schema(true))
+			content, leftOver, diags := endpoint.Options.PartialContent(server.API.Schema(true))
 			if diags.HasErrors() {
 				log.Fatal(diags.Error())
 			}
@@ -100,7 +99,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			}
 			kind := content.Blocks[0].Labels[0]
 
-			server.Api.PathHandler[endpoint] = NewHandlerWrapper(log, acs, newBackend(kind, content.Blocks[0].Body, log)) // inline be
+			server.API.PathHandler[endpoint] = NewHandlerWrapper(log, acList, newBackend(kind, content.Blocks[0].Body, log)) // inline be
 		}
 	}
 
@@ -129,4 +128,38 @@ func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
 func isKeyword(other string) bool {
 	_, yes := typeMap[other]
 	return yes
+}
+
+func configureAccessControls(conf *Gateway) ac.Map {
+	accessControls := make(ac.Map)
+	if conf.Definitions != nil {
+		for _, jwt := range conf.Definitions.JWT {
+			var jwtSource ac.Source
+			var jwtKey string
+			if jwt.Cookie != "" {
+				jwtSource = ac.Cookie
+				jwtKey = jwt.Cookie
+			} else if jwt.Header != "" {
+				jwtSource = ac.Header
+				jwtKey = jwt.Header
+			}
+			var key []byte
+			if jwt.KeyFile != "" {
+				wd, _ := os.Getwd()
+				content, err := ioutil.ReadFile(path.Join(wd, jwt.KeyFile))
+				if err != nil {
+					panic(err)
+				}
+				key = content
+			} else if jwt.Key != "" {
+				key = []byte(jwt.Key)
+			}
+			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwtSource, jwtKey, key)
+			if err != nil {
+				panic(err)
+			}
+			accessControls[jwt.Name] = j
+		}
+	}
+	return accessControls
 }

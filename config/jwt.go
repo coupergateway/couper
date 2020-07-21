@@ -1,24 +1,24 @@
 package config
 
 import (
-	"errors"
-	"strings"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/sirupsen/logrus"
 )
 
 type Claims struct {
-	Issuer   string  `hcl:"iss,optional"`
-	Audience string  `hcl:"aud,optional"`
+	Issuer   string `hcl:"iss,optional"`
+	Audience string `hcl:"aud,optional"`
 }
 
-type Jwt struct {
+type JWT struct {
 	Name               string  `hcl:"name,label"`
 	Cookie             string  `hcl:"cookie,optional"`
 	Header             string  `hcl:"header,optional"`
@@ -34,9 +34,16 @@ type Jwt struct {
 	hmacSecret         []byte
 }
 
+var (
+	ErrorBearerRequired = errors.New("authorization header value must start with 'Bearer '")
+	ErrorEmptyToken     = errors.New("empty token")
+	ErrorMissingKey     = errors.New("either key_file or key must be specified")
+	ErrorNotSupported   = errors.New("only RSA and HMAC are supported")
+)
+
 // TODO read values from Env
 
-func (j *Jwt) Init(log *logrus.Entry) {
+func (j *JWT) Init(log *logrus.Entry) {
 	j.log = log
 	if j.KeyFile != "" {
 		pem, err := ioutil.ReadFile(j.KeyFile)
@@ -63,10 +70,10 @@ func (j *Jwt) Init(log *logrus.Entry) {
 		} else if strings.HasPrefix(j.SignatureAlgorithm, "HS") {
 			j.hmacSecret = []byte(j.Key)
 		} else {
-			log.Fatal("only RSA and HMAC are supported")
+			panic(ErrorNotSupported)
 		}
 	} else {
-		log.Fatal("Either key_file or key must be specified")
+		panic(ErrorMissingKey)
 	}
 	var options []jwt.ParserOption
 	options = append(options, jwt.WithValidMethods([]string{j.SignatureAlgorithm}))
@@ -81,42 +88,46 @@ func (j *Jwt) Init(log *logrus.Entry) {
 	j.parser = jwt.NewParser(options...)
 }
 
-func (j *Jwt) Check(req *http.Request) bool {
-	tokenValue := ""
+func (j *JWT) Check(req *http.Request) error {
+	var tokenValue string
+	var err error
+
 	if j.Cookie != "" {
 		cookie, err := req.Cookie(j.Cookie)
 		if err != nil {
-			j.log.Error(err)
+			return err
 		}
 		tokenValue = cookie.Value
-	} else if j.Header != "" {
-		tokenValue = req.Header.Get(j.Header)
-		if j.Header == "Authorization" {
-			if strings.HasPrefix(strings.ToLower(tokenValue), "bearer ") {
-				tokenValue = strings.Trim(tokenValue[7:len(tokenValue)], " ")
-			} else {
-				j.log.Error("Authorization header value must start with 'Bearer '")
-				return false
-			}
+	} else if j.Header != "" && j.Header == "Autorization" {
+		if tokenValue, err = getBearer(req.Header.Get(j.Header)); err != nil {
+			return err
 		}
 	}
+
 	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
-		j.log.Error("token is empty")
-		return false
+		return ErrorEmptyToken
 	}
+
 	token, err := j.parser.Parse(tokenValue, func(token *jwt.Token) (interface{}, error) {
 		if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
 			return j.pubkey, nil
 		} else if strings.HasPrefix(j.SignatureAlgorithm, "HS") {
 			return j.hmacSecret, nil
 		}
-		return nil, errors.New("only RSA and HMAC are supported")
+		return nil, ErrorNotSupported
 	})
 	if err != nil {
-		j.log.Error(err)
-		return false
+		return err
 	}
 	j.log.WithField("token", token).Debug()
-	return true
+	return nil
+}
+
+func getBearer(val string) (string, error) {
+	const bearer = "bearer "
+	if strings.HasPrefix(strings.ToLower(val), bearer) {
+		return strings.Trim(val[len(bearer):], " "), nil
+	}
+	return "", ErrorBearerRequired
 }

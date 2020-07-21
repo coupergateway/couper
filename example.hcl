@@ -42,19 +42,6 @@ server "couperConnect" {
             backend = "httpbin"
         }
 
-        endpoint "/status/{status:[0-9]{3}}" {
-            backend "proxy" {
-                origin_address = "httpbin.org:443"
-                origin_host = "httpbin.org"
-//                path = "/status/${req.params.status}"
-                request {
-                    headers = {
-                        X-Status = [req.params.status]
-                    }
-                }
-            }
-        }
-
         backend "proxy" "my_proxy" {
             description = "you could reference me with endpoint blocks"
             origin_address = "couper.io:${442 + 1}"

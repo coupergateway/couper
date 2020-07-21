@@ -1,5 +1,5 @@
 package config
 
 type Definitions struct {
-	Jwt []*Jwt `hcl:"jwt,block"`
+	JWT []*JWT `hcl:"jwt,block"`
 }
