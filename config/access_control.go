@@ -2,8 +2,8 @@ package config
 
 // AccessControl holds all active and inactive access control references.
 type AccessControl struct {
-	AccessControl        []string `hcl:"access_control,optional"`
-	DisableAccessControl []string `hcl:"disable_access_control,optional"`
+	AccessControl        []string
+	DisableAccessControl []string
 }
 
 // List returns all active access controls.
