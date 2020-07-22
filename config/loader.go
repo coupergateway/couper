@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/backend"
+	"go.avenga.cloud/couper/gateway/utils"
 )
 
 var typeMap = map[string]func(*logrus.Entry, hcl.Body) http.Handler{
@@ -39,14 +40,17 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	for idx, server := range config.Server {
 		configureDomains(server)
 
-		if server.Files != nil && server.Files.BasePath == "" {
-			server.Files.BasePath = "/"
+		if server.BasePath == "" {
+			server.BasePath = "/"
 		}
-		if server.Spa != nil && server.Spa.BasePath == "" {
-			server.Spa.BasePath = "/"
+		if server.Files != nil {
+			server.Files.BasePath = utils.JoinPath(server.BasePath, server.Files.BasePath)
 		}
-		if server.Api != nil && server.Api.BasePath == "" {
-			server.Api.BasePath = "/"
+		if server.Spa != nil {
+			server.Spa.BasePath = utils.JoinPath(server.BasePath, server.Spa.BasePath)
+		}
+		if server.Api != nil {
+			server.Api.BasePath = utils.JoinPath(server.BasePath, server.Api.BasePath)
 		}
 
 		if server.Api == nil {
