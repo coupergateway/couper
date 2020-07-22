@@ -28,7 +28,7 @@ var (
 	ErrorBearerRequired = errors.New("authorization header value must start with 'Bearer '")
 	ErrorEmptyToken     = errors.New("empty token")
 	ErrorMissingKey     = errors.New("either key_file or key must be specified")
-	ErrorNotSupported   = errors.New("only RSA and HMAC are supported")
+	ErrorNotSupported   = errors.New("only RSA and HMAC key encodings are supported")
 	ErrorUnknownSource  = errors.New("unknown source definition")
 )
 
@@ -70,27 +70,23 @@ func NewJWT(algorithm string, src Source, srcKey string, key []byte) (*JWT, erro
 	}
 
 	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(key)
-	if err != nil && err != jwt.ErrNotRSAPublicKey {
-		return nil, err
-	} else if err == jwt.ErrNotRSAPublicKey {
+	if err != nil && (err != jwt.ErrKeyMustBePEMEncoded || err != jwt.ErrNotRSAPublicKey) {
 		cert, err := x509.ParseCertificate(key)
-		if err != nil && err != x509.ErrUnsupportedAlgorithm {
-			return nil, err
-		} else if err == x509.ErrUnsupportedAlgorithm {
+		if err != nil {
 			decKey, err := base64.StdEncoding.DecodeString(string(key))
 			if err != nil {
-				return nil, err
+				return nil, ErrorNotSupported
 			}
 			cert, err = x509.ParseCertificate(decKey)
 			if err != nil {
 				return nil, err
 			}
-			rsaPubKey, _ := cert.PublicKey.(*rsa.PublicKey)
-			pubKey = &rsa.PublicKey{N: rsaPubKey.N, E: rsaPubKey.E}
 		}
+		rsaPubKey, _ := cert.PublicKey.(*rsa.PublicKey)
+		pubKey = &rsa.PublicKey{N: rsaPubKey.N, E: rsaPubKey.E}
 	}
 	jwtObj.pubKey = pubKey
-	return jwtObj, nil
+	return jwtObj, err
 }
 
 // Validate reading the token from configured source and validates against the key.
