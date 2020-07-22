@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"path"
-	"strings"
 	"time"
 
 	"github.com/rs/xid"
@@ -55,37 +53,6 @@ func (s *HTTPServer) Addr() string {
 	return ""
 }
 
-// registerHandler reads the given config server and register their api endpoints
-// to our http multiplexer.
-func (s *HTTPServer) registerHandler() {
-	for _, server := range s.config.Server {
-		if server.Api == nil {
-			continue
-		}
-
-		basePath := joinPath(server.BasePath, server.Api.BasePath)
-		for _, endpoint := range server.Api.Endpoint {
-			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
-			pattern := joinPath(basePath, endpoint.Pattern)
-			s.log.WithField("server", server.Name).WithField("pattern", pattern).Debug("registered")
-
-			// TODO: shadow clone slice per domain (len(server.Domains) > 1)
-			for _, domain := range server.Domains {
-				s.mux.Register(domain, pattern, server.Api.PathHandler[endpoint])
-			}
-		}
-	}
-}
-
-// joinPath ensures the muxer behaviour for redirecting '/path' to '/path/' if not explicitly specified.
-func joinPath(elements ...string) string {
-	suffix := "/"
-	if !strings.HasSuffix(elements[len(elements)-1], "/") {
-		suffix = ""
-	}
-	return path.Join(elements...) + suffix
-}
-
 // Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() {
 	if s.srv.Addr == "" {
@@ -98,8 +65,6 @@ func (s *HTTPServer) Listen() {
 	}
 	s.listener = ln
 	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
-
-	s.registerHandler()
 
 	go s.listenForCtx()
 

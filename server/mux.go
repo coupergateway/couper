@@ -46,6 +46,21 @@ func NewMux(conf *config.Gateway) *Mux {
 				}
 			}
 		}
+
+		if server.Api == nil {
+			continue
+		}
+
+		basePath := joinPath(server.BasePath, server.Api.BasePath)
+		for _, endpoint := range server.Api.Endpoint {
+			// Ensure we do not override the redirect behaviour due to the clean call from path.Join below.
+			pattern := joinPath(basePath, endpoint.Pattern)
+
+			// TODO: shadow clone slice per domain (len(server.Domains) > 1)
+			for _, domain := range server.Domains {
+				mux.Register(domain, pattern, server.Api.PathHandler[endpoint])
+			}
+		}
 	}
 	return mux
 }
@@ -93,6 +108,15 @@ func (r routes) append(pattern string, handler http.Handler) routes {
 	copy(routes[idx+1:], routes[idx:]) // Move shorter entries down
 	routes[idx] = route
 	return routes
+}
+
+// joinPath ensures the muxer behaviour for redirecting '/path' to '/path/' if not explicitly specified.
+func joinPath(elements ...string) string {
+	suffix := "/"
+	if !strings.HasSuffix(elements[len(elements)-1], "/") {
+		suffix = ""
+	}
+	return path.Join(elements...) + suffix
 }
 
 // stripHostPort returns h without any trailing ":<port>".
