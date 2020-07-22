@@ -32,6 +32,8 @@ func NewMux(conf *config.Gateway) *Mux {
 		}
 
 		for _, domain := range server.Domains {
+			domain := stripHostPort(domain)
+
 			mux.routes[domain] = make([]*Route, 0)
 
 			if server.Files != nil {
@@ -75,22 +77,31 @@ func (m *Mux) Match(req *http.Request) (http.Handler, string) {
 }
 
 func (m *Mux) register(domain, pattern string, handler http.Handler) {
-	d := stripHostPort(domain)
-	m.routes[d] = m.routes[d].append(pattern, handler)
+	m.routes[domain] = m.routes[domain].append(pattern, handler)
 }
 
 func (r routes) append(pattern string, handler http.Handler) routes {
-	if r == nil {
-		return r
-	}
-	n := len(r)
-	idx := sort.Search(n, func(i int) bool {
-		return len(r[i].pattern) < len(pattern)
-	})
 	route, err := NewRoute(pattern, handler)
 	if err != nil {
 		panic(err)
 	}
+
+	for n, v := range r {
+		if v.pattern == pattern {
+			route, err = NewRoute(pattern, backend.NewSelector(v.handler, handler))
+			if err != nil {
+				panic(err)
+			}
+
+			r[n] = route
+			return r
+		}
+	}
+
+	n := len(r)
+	idx := sort.Search(n, func(i int) bool {
+		return len(r[i].pattern) < len(pattern)
+	})
 	if idx == n {
 		return append(r, route)
 	}

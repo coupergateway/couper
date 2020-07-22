@@ -11,7 +11,10 @@ import (
 	"strings"
 )
 
-var _ http.Handler = &File{}
+var (
+	_ http.Handler = &File{}
+	_ selectable   = &File{}
+)
 
 type File struct {
 	errFile string
@@ -77,6 +80,10 @@ func (f *File) serveErrFile(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Last-Modified", info.ModTime().UTC().Format(http.TimeFormat))
 		io.Copy(rw, file) // TODO: log
 	}
+}
+
+func (f *File) hasResponse(req *http.Request) bool {
+	return true
 }
 
 func openFile(name string) (*os.File, os.FileInfo, error) {

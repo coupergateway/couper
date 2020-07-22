@@ -13,6 +13,7 @@ import (
 
 var (
 	_ http.Handler = &Proxy{}
+	_ selectable   = &Proxy{}
 )
 
 type Proxy struct {
@@ -45,6 +46,10 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	p.rp.ServeHTTP(rw, req)
+}
+
+func (p *Proxy) hasResponse(req *http.Request) bool {
+	return true
 }
 
 // director request modification before roundtrip

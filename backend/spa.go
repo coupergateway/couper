@@ -5,6 +5,11 @@ import (
 	"os"
 )
 
+var (
+	_ http.Handler = &Spa{}
+	_ selectable   = &Spa{}
+)
+
 type Spa struct {
 	file string
 }
@@ -28,4 +33,8 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
+}
+
+func (s *Spa) hasResponse(req *http.Request) bool {
+	return true
 }
