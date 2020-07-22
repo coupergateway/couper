@@ -116,7 +116,13 @@ func joinPath(elements ...string) string {
 	if !strings.HasSuffix(elements[len(elements)-1], "/") {
 		suffix = ""
 	}
-	return path.Join(elements...) + suffix
+
+	path := path.Join(elements...)
+	if path == "/" {
+		return path
+	}
+
+	return path + suffix
 }
 
 // stripHostPort returns h without any trailing ":<port>".
