@@ -12,11 +12,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/backend"
+	"go.avenga.cloud/couper/gateway/handler"
 )
 
 var typeMap = map[string]func(*logrus.Entry, hcl.Body) http.Handler{
-	"proxy": backend.NewProxy(),
+	"proxy": handler.NewProxy(),
 }
 
 func LoadFile(name string, log *logrus.Entry) *Gateway {
