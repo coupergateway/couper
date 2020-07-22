@@ -42,7 +42,7 @@ func NewMux(conf *config.Gateway) *Mux {
 			if spa != nil {
 				spaPath := path.Join(server.BasePath, server.Spa.BasePath)
 				for _, subPath := range server.Spa.Paths {
-					mux.Register(domain, path.Join(spaPath, subPath), spa)
+					mux.register(domain, path.Join(spaPath, subPath), spa)
 				}
 			}
 		}
@@ -58,7 +58,7 @@ func NewMux(conf *config.Gateway) *Mux {
 
 			// TODO: shadow clone slice per domain (len(server.Domains) > 1)
 			for _, domain := range server.Domains {
-				mux.Register(domain, pattern, server.Api.PathHandler[endpoint])
+				mux.register(domain, pattern, server.Api.PathHandler[endpoint])
 			}
 		}
 	}
@@ -83,7 +83,7 @@ func (m *Mux) Match(req *http.Request) (http.Handler, string) {
 	return files, req.URL.Path
 }
 
-func (m *Mux) Register(domain, pattern string, handler http.Handler) {
+func (m *Mux) register(domain, pattern string, handler http.Handler) {
 	d := stripHostPort(domain)
 	m.routes[d] = m.routes[d].append(pattern, handler)
 }
