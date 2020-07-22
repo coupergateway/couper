@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -73,9 +74,12 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			endpoints[endpoint.Pattern] = true
 
 			var acList ac.List
-			for _, acName := range endpoint.AccessControl {
+			for _, acName := range server.AccessControl.
+				Merge(server.API.AccessControl).
+				Merge(endpoint.AccessControl).
+				List() {
 				if _, ok := accessControls[acName]; !ok {
-					log.Fatalf("access control %q not found", acName)
+					log.Fatalf("access control %q is not defined", acName)
 				}
 				acList = append(acList, accessControls[acName])
 			}
@@ -84,7 +88,11 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 				if _, ok := backends[endpoint.Backend]; !ok {
 					log.Fatalf("backend %q is not defined", endpoint.Backend)
 				}
-				server.API.PathHandler[endpoint] = NewHandlerWrapper(log, acList, backends[endpoint.Backend])
+				if len(acList) > 0 {
+					server.API.PathHandler[endpoint] = handler.NewAccessControl(backends[endpoint.Backend], acList...)
+					continue
+				}
+				server.API.PathHandler[endpoint] = backends[endpoint.Backend]
 				continue
 			}
 
@@ -98,8 +106,12 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 				log.Fatalf("expected backend attribute reference or block for endpoint: %s", endpoint)
 			}
 			kind := content.Blocks[0].Labels[0]
-
-			server.API.PathHandler[endpoint] = NewHandlerWrapper(log, acList, newBackend(kind, content.Blocks[0].Body, log)) // inline be
+			inlineBackend := newBackend(kind, content.Blocks[0].Body, log)
+			if len(acList) > 0 {
+				server.API.PathHandler[endpoint] = handler.NewAccessControl(inlineBackend, acList...)
+				continue
+			}
+			server.API.PathHandler[endpoint] = inlineBackend
 		}
 	}
 
@@ -156,7 +168,7 @@ func configureAccessControls(conf *Gateway) ac.Map {
 			}
 			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwtSource, jwtKey, key)
 			if err != nil {
-				panic(err)
+				panic(fmt.Sprintf("loading jwt %q definition failed: %s", jwt.Name, err))
 			}
 			accessControls[jwt.Name] = j
 		}
