@@ -41,24 +41,16 @@ func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
 func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	accessControls := configureAccessControls(config)
 
-	backends := make(map[string]http.Handler)
+	backends, err := configureBackends(config, log)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for idx, server := range config.Server {
 		configureDomains(server)
 
 		if server.API == nil {
 			continue
-		}
-
-		// create backends
-		for _, be := range server.API.Backend {
-			if isKeyword(be.Name) {
-				log.Fatalf("be name not allowed, reserved keyword: '%s'", be.Name)
-			}
-			if _, ok := backends[be.Name]; ok {
-				log.Fatalf("be name must be unique: '%s'", be.Name)
-			}
-			backends[be.Name] = newBackend(be.Kind, be.Options, log)
 		}
 
 		server.API.PathHandler = make(PathHandler)
@@ -97,17 +89,21 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 				continue
 			}
 
-			content, leftOver, diags := endpoint.Options.PartialContent(server.API.Schema(true))
+			backendErr := fmt.Errorf("expected backend attribute reference or block for endpoint: %s", endpoint)
+			if config.Definitions == nil {
+				log.Fatal(backendErr)
+			}
+			content, leftOver, diags := endpoint.Options.PartialContent(config.Definitions.Schema(true))
 			if diags.HasErrors() {
 				log.Fatal(diags.Error())
 			}
 			endpoint.Options = leftOver
 
 			if content == nil || len(content.Blocks) == 0 {
-				log.Fatalf("expected backend attribute reference or block for endpoint: %s", endpoint)
+				log.Fatal(backendErr)
 			}
-			kind := content.Blocks[0].Labels[0]
-			inlineBackend := newBackend(kind, content.Blocks[0].Body, log)
+
+			inlineBackend := newBackend(content.Blocks[0].Body, log)
 			if len(acList) > 0 {
 				server.API.PathHandler[endpoint] = handler.NewAccessControl(inlineBackend, acList...)
 				continue
@@ -129,7 +125,8 @@ func configureDomains(server *Server) {
 	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0"}
 }
 
-func newBackend(kind string, options hcl.Body, log *logrus.Entry) http.Handler {
+func newBackend(options hcl.Body, log *logrus.Entry) http.Handler {
+	kind := "proxy" // TODO: other types?
 	if !isKeyword(kind) {
 		log.Fatalf("Invalid backend: %s", kind)
 	}
@@ -179,4 +176,23 @@ func configureAccessControls(conf *Gateway) ac.Map {
 		}
 	}
 	return accessControls
+}
+
+func configureBackends(conf *Gateway, log *logrus.Entry) (map[string]http.Handler, error) {
+	backends := make(map[string]http.Handler)
+	if conf.Definitions == nil {
+		return backends, nil
+	}
+
+	for _, be := range conf.Definitions.Backend {
+		if isKeyword(be.Name) {
+			return nil, fmt.Errorf("backend name not allowed, reserved keyword: '%s'", be.Name)
+		}
+		if _, ok := backends[be.Name]; ok {
+			return nil, fmt.Errorf("backend name must be unique: '%s'", be.Name)
+		}
+		backends[be.Name] = newBackend(be.Options, log)
+	}
+
+	return backends, nil
 }
