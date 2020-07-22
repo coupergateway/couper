@@ -39,6 +39,16 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	for idx, server := range config.Server {
 		configureDomains(server)
 
+		if server.Files != nil && server.Files.BasePath == "" {
+			server.Files.BasePath = "/"
+		}
+		if server.Spa != nil && server.Spa.BasePath == "" {
+			server.Spa.BasePath = "/"
+		}
+		if server.Api != nil && server.Api.BasePath == "" {
+			server.Api.BasePath = "/"
+		}
+
 		if server.Api == nil {
 			continue
 		}
