@@ -1,4 +1,4 @@
-package backend
+package handler
 
 import (
 	"net/http"

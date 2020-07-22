@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.avenga.cloud/couper/gateway/backend"
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/handler"
 )
 
 type Mux struct {
@@ -27,11 +27,11 @@ func NewMux(conf *config.Gateway) *Mux {
 		var files, spa http.Handler
 
 		if server.Spa != nil {
-			spa = backend.NewSpa(server.Spa.BootstrapFile)
+			spa = handler.NewSpa(server.Spa.BootstrapFile)
 		}
 
 		if server.Files != nil {
-			files = backend.NewFile(server.Files.DocumentRoot, server.Files.ErrorFile)
+			files = handler.NewFile(server.Files.DocumentRoot, server.Files.ErrorFile)
 		}
 
 		for _, domain := range server.Domains {
