@@ -4,16 +4,21 @@ import (
 	"context"
 	"flag"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/command"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/server"
+	"go.avenga.cloud/couper/gateway/utils"
 )
 
+const defaultConfigFile = "example.hcl"
+
 var (
-	configFile = flag.String("f", "example.hcl", "-f ./couper.conf")
+	configFile = flag.String("f", defaultConfigFile, "-f ./couper.conf")
 )
 
 func main() {
@@ -25,6 +30,21 @@ func main() {
 	logger := newLogger()
 
 	exampleConf := config.LoadFile(*configFile, logger)
+
+	if *configFile != "" && strings.HasPrefix(*configFile, "/") {
+		exampleConf.WD = filepath.Dir(*configFile)
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+
+		if *configFile == defaultConfigFile {
+			exampleConf.WD = wd
+		} else {
+			exampleConf.WD = utils.JoinPath(wd, *configFile)
+		}
+	}
 
 	ctx := command.ContextWithSignal(context.Background())
 	srv := server.New(ctx, logger, exampleConf)

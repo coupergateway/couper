@@ -3,6 +3,7 @@ package backend
 import (
 	"net/http"
 	"os"
+	"path"
 )
 
 var (
@@ -14,8 +15,8 @@ type Spa struct {
 	file string
 }
 
-func NewSpa(filePath string) *Spa {
-	return &Spa{file: filePath}
+func NewSpa(wd, bsFile string) *Spa {
+	return &Spa{file: path.Join(wd, bsFile)}
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

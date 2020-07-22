@@ -21,11 +21,10 @@ type File struct {
 	rootDir http.Dir
 }
 
-func NewFile(root, errFile string) *File {
-	dir, _ := os.Getwd()
+func NewFile(wd, docRoot, errFile string) *File {
 	return &File{
-		errFile: path.Join(dir, errFile),
-		rootDir: http.Dir(path.Join(dir, root)),
+		errFile: path.Join(wd, errFile),
+		rootDir: http.Dir(path.Join(wd, docRoot)),
 	}
 }
 

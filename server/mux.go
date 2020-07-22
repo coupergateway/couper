@@ -23,12 +23,12 @@ func NewMux(conf *config.Gateway) *Mux {
 	for _, server := range conf.Server {
 		var files, spa http.Handler
 
-		if server.Spa != nil {
-			spa = backend.NewSpa(server.Spa.BootstrapFile)
+		if server.Files != nil {
+			files = backend.NewFile(conf.WD, server.Files.DocumentRoot, server.Files.ErrorFile)
 		}
 
-		if server.Files != nil {
-			files = backend.NewFile(server.Files.DocumentRoot, server.Files.ErrorFile)
+		if server.Spa != nil {
+			spa = backend.NewSpa(conf.WD, server.Spa.BootstrapFile)
 		}
 
 		for _, domain := range server.Domains {

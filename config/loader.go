@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -9,7 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/backend"
-	"go.avenga.cloud/couper/gateway/utils"
 )
 
 var typeMap = map[string]func(*logrus.Entry, hcl.Body) http.Handler{
@@ -43,14 +43,26 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 		if server.BasePath == "" {
 			server.BasePath = "/"
 		}
+		if !strings.HasSuffix(server.BasePath, "/") {
+			server.BasePath = server.BasePath + "/"
+		}
 		if server.Files != nil {
-			server.Files.BasePath = utils.JoinPath(server.BasePath, server.Files.BasePath)
+			server.Files.BasePath = path.Join(server.BasePath, server.Files.BasePath)
+			if !strings.HasSuffix(server.Files.BasePath, "/") {
+				server.Files.BasePath = server.Files.BasePath + "/"
+			}
 		}
 		if server.Spa != nil {
-			server.Spa.BasePath = utils.JoinPath(server.BasePath, server.Spa.BasePath)
+			server.Spa.BasePath = path.Join(server.BasePath, server.Spa.BasePath) + "/"
+			if !strings.HasSuffix(server.Spa.BasePath, "/") {
+				server.Spa.BasePath = server.Spa.BasePath + "/"
+			}
 		}
 		if server.Api != nil {
-			server.Api.BasePath = utils.JoinPath(server.BasePath, server.Api.BasePath)
+			server.Api.BasePath = path.Join(server.BasePath, server.Api.BasePath) + "/"
+			if !strings.HasSuffix(server.Api.BasePath, "/") {
+				server.Api.BasePath = server.Api.BasePath + "/"
+			}
 		}
 
 		if server.Api == nil {
