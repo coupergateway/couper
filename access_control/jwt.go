@@ -16,12 +16,12 @@ const (
 	_
 	AlgorithmRSA
 	AlgorithmHMAC
+)
 
+const (
 	Unknown Source = iota - 1
 	Cookie
 	Header
-
-	headerAuthorization = "Authorization"
 )
 
 var (
@@ -34,6 +34,7 @@ var (
 
 type (
 	Algorithm int
+	Claims    struct{ Audience, Issuer string }
 	Source    int
 )
 
@@ -47,7 +48,7 @@ type JWT struct {
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(algorithm string, src Source, srcKey string, key []byte) (*JWT, error) {
+func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []byte) (*JWT, error) {
 	if len(key) == 0 {
 		return nil, ErrorMissingKey
 	}
@@ -64,7 +65,7 @@ func NewJWT(algorithm string, src Source, srcKey string, key []byte) (*JWT, erro
 	jwtObj := &JWT{
 		algorithm:  algo,
 		hmacSecret: key,
-		parser:     newParser(algo, "", ""), // TODO: claims
+		parser:     newParser(algo, claims.Issuer, claims.Audience),
 		source:     src,
 		sourceKey:  srcKey,
 	}
@@ -98,7 +99,7 @@ func (j *JWT) Validate(req *http.Request) error {
 	case Cookie:
 		if cookie, err := req.Cookie(j.sourceKey); err != nil && err != http.ErrNoCookie {
 			return err
-		} else {
+		} else if cookie != nil {
 			tokenValue = cookie.Value
 		}
 	case Header:

@@ -46,7 +46,7 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 	for idx, server := range config.Server {
 		configureDomains(server)
 
-		if server.Api == nil {
+		if server.API == nil {
 			continue
 		}
 
@@ -74,9 +74,10 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			endpoints[endpoint.Pattern] = true
 
 			var acList ac.List
-			for _, acName := range server.AccessControl.
-				Merge(server.API.AccessControl).
-				Merge(endpoint.AccessControl).
+			ac := AccessControl{server.AccessControl, server.DisableAccessControl}
+			for _, acName := range ac.
+				Merge(AccessControl{server.API.AccessControl, server.API.DisableAccessControl}).
+				Merge(AccessControl{endpoint.AccessControl, endpoint.DisableAccessControl}).
 				List() {
 				if _, ok := accessControls[acName]; !ok {
 					log.Fatalf("access control %q is not defined", acName)
@@ -166,7 +167,11 @@ func configureAccessControls(conf *Gateway) ac.Map {
 			} else if jwt.Key != "" {
 				key = []byte(jwt.Key)
 			}
-			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwtSource, jwtKey, key)
+			claims := ac.Claims{
+				Audience: jwt.Claims.Audience,
+				Issuer:   jwt.Claims.Issuer,
+			}
+			j, err := ac.NewJWT(jwt.SignatureAlgorithm, claims, jwtSource, jwtKey, key)
 			if err != nil {
 				panic(fmt.Sprintf("loading jwt %q definition failed: %s", jwt.Name, err))
 			}
