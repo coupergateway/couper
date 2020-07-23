@@ -13,7 +13,11 @@ var (
 	WildcardPathError = errors.New("wildcard path must end with /** and has no other occurrences")
 )
 
-const wildcardCtx = "route_wildcard"
+const (
+	wildcardCtx         = "route_wildcard"
+	wildcardReplacement = "/(.*)"
+	wildcardSearch      = "/**"
+)
 
 type Route struct {
 	handler  http.Handler
@@ -24,7 +28,7 @@ type Route struct {
 }
 
 func NewRoute(pattern string, handler http.Handler) (*Route, error) {
-	const wildcardReplacement = "/(.*)"
+
 	if pattern == "" || pattern[0] != '/' {
 		return nil, PatternSlashError
 	}
@@ -38,13 +42,19 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	if !validWildcardPath(matchPattern) {
 		return nil, WildcardPathError
 	}
-	matchPattern = strings.ReplaceAll(matchPattern, "/**", wildcardReplacement)
+
+	sortLen := len(strings.ReplaceAll(pattern, wildcardSearch, "/"))
+	if !strings.HasSuffix(pattern, wildcardSearch) {
+		matchPattern = matchPattern + "$"
+	}
+
+	matchPattern = strings.ReplaceAll(matchPattern, wildcardSearch, wildcardReplacement)
 	matcher := regexp.MustCompile(matchPattern)
 	return &Route{
 		handler:  handler,
 		matcher:  matcher,
 		pattern:  pattern,
-		sortLen:  len(strings.ReplaceAll(pattern, "/**", "/")),
+		sortLen:  sortLen,
 		wildcard: strings.HasSuffix(matchPattern, wildcardReplacement),
 	}, nil
 
@@ -68,8 +78,8 @@ func (r *Route) Pattern() string {
 }
 
 func validWildcardPath(path string) bool {
-	if cnt := strings.Count(path, "/**"); cnt > 1 ||
-		(cnt == 1) && !strings.HasSuffix(path, "/**") {
+	if cnt := strings.Count(path, wildcardSearch); cnt > 1 ||
+		(cnt == 1) && !strings.HasSuffix(path, wildcardSearch) {
 		return false
 	}
 	return true
