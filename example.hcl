@@ -12,7 +12,7 @@ server "couperConnect" {
     }
 
     api {
-        base_path = "/api/v1/"
+        base_path = "/api/v1/${env.NOT_EXIST}"
 
         # pattern
         endpoint "/proxy/" {
@@ -31,6 +31,7 @@ server "couperConnect" {
 
         endpoint "/httpbin/**" {
             backend {
+                description = "${env.NOT_EXIST}"
                 origin = "https://httpbin.org"
                 path = "/**"
             }

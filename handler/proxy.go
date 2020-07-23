@@ -18,12 +18,13 @@ var (
 type Proxy struct {
 	originURL              *url.URL
 	origin, hostname, path string
+	evalContext            *hcl.EvalContext
 	contextOptions         hcl.Body
 	rp                     *httputil.ReverseProxy
 	log                    *logrus.Entry
 }
 
-func NewProxy(origin, hostname, path string, log *logrus.Entry, options hcl.Body) http.Handler {
+func NewProxy(origin, hostname, path string, log *logrus.Entry, evalCtx *hcl.EvalContext, options hcl.Body) http.Handler {
 	originURL, err := url.Parse(origin)
 	if err != nil {
 		panic("err parsing origin url: " + err.Error())
@@ -35,6 +36,7 @@ func NewProxy(origin, hostname, path string, log *logrus.Entry, options hcl.Body
 	proxy := &Proxy{
 		origin:         origin,
 		originURL:      originURL,
+		evalContext:    evalCtx,
 		hostname:       hostname,
 		path:           path,
 		log:            log,
@@ -68,7 +70,8 @@ func (p *Proxy) director(req *http.Request) {
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
-	contextOptions, err := NewRequestCtxOptions(p.contextOptions, req)
+
+	contextOptions, err := NewRequestCtxOptions(p.evalContext, p.contextOptions, req)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return
@@ -91,7 +94,7 @@ func (p *Proxy) director(req *http.Request) {
 
 func (p *Proxy) modifyResponse(res *http.Response) error {
 	log := p.log.WithField("uid", res.Request.Context().Value("requestID"))
-	contextOptions, err := NewResponseCtxOptions(p.contextOptions, res)
+	contextOptions, err := NewResponseCtxOptions(p.evalContext, p.contextOptions, res)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return err

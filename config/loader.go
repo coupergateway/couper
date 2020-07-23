@@ -1,43 +1,46 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"sort"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
 	"go.avenga.cloud/couper/gateway/handler"
 )
 
-func LoadFile(name string, log *logrus.Entry) *Gateway {
-	config := &Gateway{}
-	err := hclsimple.DecodeFile(name, nil, config)
+func LoadFile(filename string, log *logrus.Entry) *Gateway {
+	src, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err)
 	}
-	return Load(config, log)
+	return LoadBytes(src, log)
 }
 
 func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
 	config := &Gateway{}
+	evalContext := handler.NewEvalContext(decodeEnvironmentRefs(src))
 	// filename must match .hcl ending for further []byte processing
-	if err := hclsimple.Decode("loadBytes.hcl", src, nil, config); err != nil {
+	if err := hclsimple.Decode("loadBytes.hcl", src, evalContext, config); err != nil {
 		log.Fatalf("Failed to load configuration bytes: %s", err)
 	}
-	return Load(config, log)
+	return Load(config, log, evalContext)
 }
 
-func Load(config *Gateway, log *logrus.Entry) *Gateway {
+func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway {
 	accessControls := configureAccessControls(config)
 
-	backends, err := configureBackends(config, log)
+	backends, err := configureBackends(config, log, evalCtx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,11 +100,11 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 				log.Fatal(backendErr)
 			}
 
-			beConf, err := newInlineBackend(content)
+			beConf, err := newInlineBackend(evalCtx, content)
 			if err != nil {
 				log.Fatal(err)
 			}
-			inlineBackend := handler.NewProxy(beConf.Origin, beConf.Hostname, beConf.Path, log, leftOver)
+			inlineBackend := handler.NewProxy(beConf.Origin, beConf.Hostname, beConf.Path, log, evalCtx, leftOver)
 
 			if len(acList) > 0 {
 				server.API.PathHandler[endpoint] = handler.NewAccessControl(inlineBackend, acList...)
@@ -162,7 +165,7 @@ func configureAccessControls(conf *Gateway) ac.Map {
 	return accessControls
 }
 
-func configureBackends(conf *Gateway, log *logrus.Entry) (map[string]http.Handler, error) {
+func configureBackends(conf *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) (map[string]http.Handler, error) {
 	backends := make(map[string]http.Handler)
 	if conf.Definitions == nil {
 		return backends, nil
@@ -172,17 +175,37 @@ func configureBackends(conf *Gateway, log *logrus.Entry) (map[string]http.Handle
 		if _, ok := backends[be.Name]; ok {
 			return nil, fmt.Errorf("backend name must be unique: '%s'", be.Name)
 		}
-		backends[be.Name] = handler.NewProxy(be.Origin, be.Hostname, be.Path, log, be.Options)
+		backends[be.Name] = handler.NewProxy(be.Origin, be.Hostname, be.Path, log, evalCtx, be.Options)
 	}
 
 	return backends, nil
 }
 
-func newInlineBackend(content *hcl.BodyContent) (*Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, content *hcl.BodyContent) (*Backend, error) {
 	backendConf := &Backend{}
-	diags := gohcl.DecodeBody(content.Blocks[0].Body, nil, backendConf)
+	diags := gohcl.DecodeBody(content.Blocks[0].Body, evalCtx, backendConf)
 	if diags.HasErrors() {
 		return backendConf, diags
 	}
 	return backendConf, nil
+}
+
+func decodeEnvironmentRefs(src []byte) []string {
+	tokens, diags := hclsyntax.LexConfig(src, "tmp.hcl", hcl.InitialPos)
+	if diags.HasErrors() {
+		panic(diags)
+	}
+	needle := []byte("env")
+	var keys []string
+	for i, token := range tokens {
+		if token.Type == hclsyntax.TokenIdent &&
+			bytes.Equal(token.Bytes, needle) &&
+			i+2 < len(tokens) {
+			value := string(tokens[i+2].Bytes)
+			if sort.SearchStrings(keys, value) == len(keys) {
+				keys = append(keys, value)
+			}
+		}
+	}
+	return keys
 }
