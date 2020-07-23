@@ -16,9 +16,10 @@ var (
 const wildcardCtx = "route_wildcard"
 
 type Route struct {
-	handler http.Handler
-	matcher *regexp.Regexp
-	pattern string
+	handler  http.Handler
+	matcher  *regexp.Regexp
+	pattern  string
+	sortLen  int
 	wildcard bool
 }
 
@@ -40,9 +41,10 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	matchPattern = strings.ReplaceAll(matchPattern, "/**", wildcardReplacement)
 	matcher := regexp.MustCompile(matchPattern)
 	return &Route{
-		handler: handler,
-		matcher: matcher,
-		pattern: pattern,
+		handler:  handler,
+		matcher:  matcher,
+		pattern:  pattern,
+		sortLen:  len(strings.ReplaceAll(matchPattern, "/**", "/")),
 		wildcard: strings.HasSuffix(matchPattern, wildcardReplacement),
 	}, nil
 

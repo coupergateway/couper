@@ -24,7 +24,7 @@ func NewMux(conf *config.Gateway) *Mux {
 		var files, spa http.Handler
 
 		if server.Files != nil {
-			files = backend.NewFile(conf.WD, server.Files.DocumentRoot, server.Files.ErrorFile)
+			files = backend.NewFile(conf.WD, server.Files.BasePath, server.Files.DocumentRoot, server.Files.ErrorFile)
 		}
 
 		if server.Spa != nil {
@@ -37,7 +37,13 @@ func NewMux(conf *config.Gateway) *Mux {
 			mux.routes[domain] = make([]*Route, 0)
 
 			if server.Files != nil {
-				mux.register(domain, server.Files.BasePath, files)
+				mux.register(domain, utils.JoinPath(server.Files.BasePath, "/**"), files)
+
+				// Register base_path-302 case
+				if server.Files.BasePath != "/" {
+					base := strings.TrimRight(server.Files.BasePath, "/") + "$"
+					mux.register(domain, base, files)
+				}
 			}
 
 			if server.Api != nil {
@@ -87,7 +93,7 @@ func (r routes) append(pattern string, handler http.Handler) routes {
 	}
 
 	for n, v := range r {
-		if v.pattern == pattern {
+		if v.pattern == route.pattern {
 			route, err = NewRoute(pattern, backend.NewSelector(v.handler, handler))
 			if err != nil {
 				panic(err)
@@ -100,7 +106,7 @@ func (r routes) append(pattern string, handler http.Handler) routes {
 
 	n := len(r)
 	idx := sort.Search(n, func(i int) bool {
-		return len(r[i].pattern) < len(pattern)
+		return (r[i].sortLen) < (route.sortLen)
 	})
 	if idx == n {
 		return append(r, route)

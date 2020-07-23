@@ -97,10 +97,10 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var handlerName string
 	sr := &StatusReader{rw: rw}
 	if handler != nil {
+		handler.ServeHTTP(sr, req)
 		if name, ok := handler.(interface{ String() string }); ok {
 			handlerName = name.String()
 		}
-		handler.ServeHTTP(sr, req)
 	} else {
 		handlerName = "none"
 		sr.WriteHeader(http.StatusInternalServerError)

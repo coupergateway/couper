@@ -39,3 +39,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func (s *Spa) hasResponse(req *http.Request) bool {
 	return true
 }
+
+func (s *Spa) String() string {
+	return "SPA"
+}
