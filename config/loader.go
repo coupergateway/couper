@@ -6,19 +6,15 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
 	"go.avenga.cloud/couper/gateway/handler"
 )
-
-var typeMap = map[string]func(*logrus.Entry, hcl.Body) http.Handler{
-	"proxy": handler.NewProxy(),
-}
 
 func LoadFile(name string, log *logrus.Entry) *Gateway {
 	config := &Gateway{}
@@ -90,20 +86,23 @@ func Load(config *Gateway, log *logrus.Entry) *Gateway {
 			}
 
 			backendErr := fmt.Errorf("expected backend attribute reference or block for endpoint: %s", endpoint)
-			if config.Definitions == nil {
-				log.Fatal(backendErr)
-			}
-			content, leftOver, diags := endpoint.Options.PartialContent(config.Definitions.Schema(true))
+
+			// endpoint.Options usecase is optional blocks, so we do not need to edit and set leftOver content back to endpoint.
+			content, leftOver, diags := endpoint.Options.PartialContent(Definitions{}.Schema(true))
 			if diags.HasErrors() {
 				log.Fatal(diags.Error())
 			}
-			endpoint.Options = leftOver
 
 			if content == nil || len(content.Blocks) == 0 {
 				log.Fatal(backendErr)
 			}
 
-			inlineBackend := newBackend(content.Blocks[0].Body, log)
+			beConf, err := newInlineBackend(content)
+			if err != nil {
+				log.Fatal(err)
+			}
+			inlineBackend := handler.NewProxy(beConf.Origin, beConf.Hostname, beConf.Path, log, leftOver)
+
 			if len(acList) > 0 {
 				server.API.PathHandler[endpoint] = handler.NewAccessControl(inlineBackend, acList...)
 				continue
@@ -123,21 +122,6 @@ func configureDomains(server *Server) {
 	}
 	// TODO: ipv6
 	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0"}
-}
-
-func newBackend(options hcl.Body, log *logrus.Entry) http.Handler {
-	kind := "proxy" // TODO: other types?
-	if !isKeyword(kind) {
-		log.Fatalf("Invalid backend: %s", kind)
-	}
-	b := typeMap[strings.ToLower(kind)](log, options)
-
-	return b
-}
-
-func isKeyword(other string) bool {
-	_, yes := typeMap[other]
-	return yes
 }
 
 func configureAccessControls(conf *Gateway) ac.Map {
@@ -185,14 +169,20 @@ func configureBackends(conf *Gateway, log *logrus.Entry) (map[string]http.Handle
 	}
 
 	for _, be := range conf.Definitions.Backend {
-		if isKeyword(be.Name) {
-			return nil, fmt.Errorf("backend name not allowed, reserved keyword: '%s'", be.Name)
-		}
 		if _, ok := backends[be.Name]; ok {
 			return nil, fmt.Errorf("backend name must be unique: '%s'", be.Name)
 		}
-		backends[be.Name] = newBackend(be.Options, log)
+		backends[be.Name] = handler.NewProxy(be.Origin, be.Hostname, be.Path, log, be.Options)
 	}
 
 	return backends, nil
+}
+
+func newInlineBackend(content *hcl.BodyContent) (*Backend, error) {
+	backendConf := &Backend{}
+	diags := gohcl.DecodeBody(content.Blocks[0].Body, nil, backendConf)
+	if diags.HasErrors() {
+		return backendConf, diags
+	}
+	return backendConf, nil
 }

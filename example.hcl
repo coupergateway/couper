@@ -23,16 +23,15 @@ server "couperConnect" {
         endpoint "/filex/" {
             # inline backend definition
             backend {
-                origin_address = "filex.github.io:80"
-                origin_host = "ferndrang.de"
+                origin = "http://filex.github.io"
+                hostname = "ferndrang.de"
                 path = "/"
             }
         }
 
         endpoint "/httpbin/**" {
             backend {
-                origin_address = "httpbin.org:443"
-                origin_host = "httpbin.org"
+                origin = "https://httpbin.org"
                 path = "/**"
             }
         }
@@ -47,8 +46,7 @@ server "couperConnect" {
 definitions {
     backend "my_proxy" {
         description = "you could reference me with endpoint blocks"
-        origin_address = "couper.io:${442 + 1}"
-        origin_host = "couper.io"
+        origin = "https://couper.io:${442 + 1}"
         request {
             headers = {
                 X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
@@ -64,10 +62,9 @@ definitions {
     }
 
     backend "httpbin" {
-        path = "/anything/${to_upper(env.USER)}" #Optional and only if set, remove basePath+endpoint path
+        path = "/anything/" #Optional and only if set, remove basePath+endpoint path
         description = "optional field"
-        origin_address = "httpbin.org:443"
-        origin_host = "httpbin.org"
+        origin = "https://httpbin.org:443"
         request {
             headers = {
                 X-Env-User = [env.USER]

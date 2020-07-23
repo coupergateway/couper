@@ -12,9 +12,9 @@ server "TestFileServing" {
     base_path = "/api"
 
     endpoint "/" {
-      backend "proxy" {
-        origin_address = "{{.origin_address}}"
-        origin_host = "{{.origin_host}}"
+      backend {
+        origin = "{{.origin}}"
+        hostname = "{{.hostname}}"
       }
     }
   }

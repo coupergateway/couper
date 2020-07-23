@@ -10,7 +10,7 @@ type Definitions struct {
 	JWT     []*JWT     `hcl:"jwt,block"`
 }
 
-func (d *Definitions) Schema(inline bool) *hcl.BodySchema {
+func (d Definitions) Schema(inline bool) *hcl.BodySchema {
 	schema, _ := gohcl.ImpliedBodySchema(d)
 	if !inline {
 		return schema
