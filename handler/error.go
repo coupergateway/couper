@@ -25,12 +25,17 @@ func ServeError(rw http.ResponseWriter, req *http.Request, status int) {
 		return
 	}
 
-	// TODO: gzip, br?
 	if req.Method != "HEAD" {
 		if ct := file.CT(); ct != "" {
 			rw.Header().Set("Content-Type", ct)
 		}
 		rw.Header().Set("Content-Length", file.Size())
+	}
+
+	rw.WriteHeader(status)
+
+	// TODO: gzip, br?
+	if req.Method != "HEAD" {
 		rw.Write(file.Bytes())
 	}
 }
