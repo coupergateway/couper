@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"go.avenga.cloud/couper/gateway/backend"
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/handler"
 	"go.avenga.cloud/couper/gateway/utils"
 )
 
@@ -24,11 +24,11 @@ func NewMux(conf *config.Gateway) *Mux {
 		var files, spa http.Handler
 
 		if server.Files != nil {
-			files = backend.NewFile(conf.WD, server.Files.BasePath, server.Files.DocumentRoot, server.Files.ErrorFile)
+			files = handler.NewFile(conf.WD, server.Files.BasePath, server.Files.DocumentRoot, server.Files.ErrorFile)
 		}
 
 		if server.Spa != nil {
-			spa = backend.NewSpa(conf.WD, server.Spa.BootstrapFile)
+			spa = handler.NewSpa(conf.WD, server.Spa.BootstrapFile)
 		}
 
 		for _, domain := range server.Domains {
@@ -46,13 +46,13 @@ func NewMux(conf *config.Gateway) *Mux {
 				}
 			}
 
-			if server.Api != nil {
-				for _, endpoint := range server.Api.Endpoint {
-					pattern := utils.JoinPath(server.Api.BasePath, endpoint.Pattern)
+			if server.API != nil {
+				for _, endpoint := range server.API.Endpoint {
+					pattern := utils.JoinPath(server.API.BasePath, endpoint.Pattern)
 
 					// TODO: shadow clone slice per domain (len(server.Domains) > 1)
 					for _, domain := range server.Domains {
-						mux.register(domain, pattern, server.Api.PathHandler[endpoint])
+						mux.register(domain, pattern, server.API.PathHandler[endpoint])
 					}
 				}
 			}
@@ -86,15 +86,15 @@ func (m *Mux) register(domain, pattern string, handler http.Handler) {
 	m.routes[domain] = m.routes[domain].append(pattern, handler)
 }
 
-func (r routes) append(pattern string, handler http.Handler) routes {
-	route, err := NewRoute(pattern, handler)
+func (r routes) append(pattern string, h http.Handler) routes {
+	route, err := NewRoute(pattern, h)
 	if err != nil {
 		panic(err)
 	}
 
 	for n, v := range r {
 		if v.pattern == route.pattern {
-			route, err = NewRoute(pattern, backend.NewSelector(v.handler, handler))
+			route, err = NewRoute(pattern, handler.NewSelector(v.handler, h))
 			if err != nil {
 				panic(err)
 			}

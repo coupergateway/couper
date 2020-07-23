@@ -1,4 +1,4 @@
-package backend
+package handler
 
 import (
 	"net/http"
@@ -8,8 +8,8 @@ import (
 )
 
 type RequestOptions struct {
-	Request  ContextOptions `hcl:"request,block"`
-	Rest     hcl.Body       `hcl:",remain"`
+	Request ContextOptions `hcl:"request,block"`
+	Rest    hcl.Body       `hcl:",remain"`
 }
 
 type ResponseOptions struct {
