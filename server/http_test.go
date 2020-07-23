@@ -13,6 +13,7 @@ import (
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"go.avenga.cloud/couper/gateway/assets"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/server"
 )
@@ -68,13 +69,15 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		},
 	}}
 
+	content500, err := assets.Assets.Open("500.html")
+
 	for _, testCase := range []struct {
 		path           string
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", nil, http.StatusInternalServerError},
-		{"/apps/", nil, http.StatusInternalServerError},
+		{"/", content500.Bytes(), http.StatusInternalServerError},
+		{"/apps/", content500.Bytes(), http.StatusInternalServerError},
 		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
