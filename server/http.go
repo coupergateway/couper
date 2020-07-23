@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/handler"
 )
 
 const RequestIDKey = "requestID"
@@ -91,19 +92,19 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("server", "couper.io")
 	rw.Header().Set("X-Request-Id", uid)
 
-	handler, pattern := s.mux.Match(req)
+	h, pattern := s.mux.Match(req)
 
 	var err error
 	var handlerName string
 	sr := &StatusReader{rw: rw}
-	if handler != nil {
-		handler.ServeHTTP(sr, req)
-		if name, ok := handler.(interface{ String() string }); ok {
+	if h != nil {
+		h.ServeHTTP(sr, req)
+		if name, ok := h.(interface{ String() string }); ok {
 			handlerName = name.String()
 		}
 	} else {
 		handlerName = "none"
-		sr.WriteHeader(http.StatusInternalServerError)
+		handler.ServeError(rw, req, http.StatusInternalServerError)
 		err = errors.New("no configuration found: " + req.URL.String())
 	}
 

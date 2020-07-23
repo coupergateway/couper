@@ -27,11 +27,16 @@ type File struct {
 }
 
 func NewFile(wd, basePath, docRoot, errFile string) *File {
-	return &File{
+	f := &File{
 		basePath: basePath,
-		errFile:  path.Join(wd, errFile),
 		rootDir:  http.Dir(path.Join(wd, docRoot)),
 	}
+
+	if errFile != "" {
+		f.errFile = path.Join(wd, errFile)
+	}
+
+	return f
 }
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -55,8 +60,8 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (f *File) serveErrFile(rw http.ResponseWriter, req *http.Request) {
 	file, info, err := openFile(f.errFile)
-	if err != nil {
-		http.NotFoundHandler().ServeHTTP(rw, req)
+	if f.errFile == "" || err != nil {
+		ServeError(rw, req, http.StatusNotFound)
 		return
 	}
 	defer file.Close()

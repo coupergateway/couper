@@ -22,14 +22,14 @@ func NewSpa(wd, bsFile string) *Spa {
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(s.file)
 	if err != nil {
-		http.NotFoundHandler().ServeHTTP(rw, req)
+		ServeError(rw, req, http.StatusNotFound)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		http.NotFoundHandler().ServeHTTP(rw, req)
+		ServeError(rw, req, http.StatusNotFound)
 		return
 	}
 

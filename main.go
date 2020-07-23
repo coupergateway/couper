@@ -1,3 +1,5 @@
+//go:generate go run assets/generate/generate.go
+
 package main
 
 import (
