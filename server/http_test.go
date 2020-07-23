@@ -73,8 +73,8 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", errorPageContent, http.StatusNotFound},
-		{"/apps/", errorPageContent, http.StatusNotFound},
+		{"/", nil, http.StatusInternalServerError},
+		{"/apps/", nil, http.StatusInternalServerError},
 		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},

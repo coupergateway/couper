@@ -44,7 +44,7 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 		handler:  handler,
 		matcher:  matcher,
 		pattern:  pattern,
-		sortLen:  len(strings.ReplaceAll(matchPattern, "/**", "/")),
+		sortLen:  len(strings.ReplaceAll(pattern, "/**", "/")),
 		wildcard: strings.HasSuffix(matchPattern, wildcardReplacement),
 	}, nil
 
