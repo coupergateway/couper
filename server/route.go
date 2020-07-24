@@ -28,7 +28,6 @@ type Route struct {
 }
 
 func NewRoute(pattern string, handler http.Handler) (*Route, error) {
-
 	if pattern == "" || pattern[0] != '/' {
 		return nil, PatternSlashError
 	}
@@ -44,7 +43,7 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	}
 
 	sortLen := len(strings.ReplaceAll(pattern, wildcardSearch, "/"))
-	if !strings.HasSuffix(pattern, wildcardSearch) {
+	if !strings.HasSuffix(pattern, wildcardSearch) && !strings.HasSuffix(pattern, "$") {
 		matchPattern = matchPattern + "$"
 	}
 
@@ -57,7 +56,6 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 		sortLen:  sortLen,
 		wildcard: strings.HasSuffix(matchPattern, wildcardReplacement),
 	}, nil
-
 }
 
 func (r *Route) Match(req *http.Request) http.Handler {
