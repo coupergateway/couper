@@ -14,10 +14,11 @@ server "couperConnect" {
     api {
         base_path = "/api/v1/${env.NOT_EXIST}"
 
+        # reference backend definition
+        backend = "my_proxy"
+
         # pattern
         endpoint "/proxy/" {
-            # reference backend definition
-            backend = "my_proxy"
         }
 
         endpoint "/filex/" {
