@@ -59,7 +59,12 @@ func NewMux(conf *config.Gateway) *Mux {
 
 			if server.Spa != nil {
 				for _, path := range server.Spa.Paths {
-					mux.register(domain, utils.JoinPath(server.Spa.BasePath, path), spa)
+					path := utils.JoinPath(server.Spa.BasePath, path)
+					if path != "/**" && strings.HasSuffix(path, "/**") {
+						mux.register(domain, path[:len(path)-len("/**")], spa)
+					}
+
+					mux.register(domain, path, spa)
 				}
 			}
 		}
