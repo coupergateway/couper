@@ -35,15 +35,15 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	}
 	confBytes := &bytes.Buffer{}
 	err = tpl.Execute(confBytes, map[string]string{
-		"origin_address": originBackend.Listener.Addr().String(),
-		"origin_host":    expectedAPIHost,
+		"origin":   "http://" + originBackend.Listener.Addr().String(),
+		"hostname": expectedAPIHost,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	log, _ := logrustest.NewNullLogger()
-	//log.Out = os.Stdout
+	// log.Out = os.Stdout
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

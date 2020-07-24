@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -12,24 +11,9 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-func NewEvalContext(request *http.Request, response *http.Response) *hcl.EvalContext {
+func NewEvalContext(envKeys []string) *hcl.EvalContext {
 	variables := make(map[string]cty.Value)
-
-	variables["env"] = newCtyEnvMap()
-
-	if request != nil {
-		variables["req"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(request.Header),
-			"cookies": newCtyCookiesMap(request),
-			//"params":  newCtyParametersMap(mux.Vars(request)),
-		})
-	}
-
-	if response != nil {
-		variables["res"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(response.Header),
-		})
-	}
+	variables["env"] = newCtyEnvMap(envKeys)
 
 	return &hcl.EvalContext{
 		Variables: variables,
@@ -37,12 +21,34 @@ func NewEvalContext(request *http.Request, response *http.Response) *hcl.EvalCon
 	}
 }
 
-func newCtyEnvMap() cty.Value {
+func NewHTTPEvalContext(parent *hcl.EvalContext, request *http.Request, response *http.Response) *hcl.EvalContext {
+	ctx := parent.NewChild()
+
+	if request != nil {
+		ctx.Variables["req"] = cty.MapVal(map[string]cty.Value{
+			"headers": newCtyHeadersMap(request.Header),
+			"cookies": newCtyCookiesMap(request),
+			//"params":  newCtyParametersMap(mux.Vars(request)),
+		})
+	}
+
+	if response != nil {
+		ctx.Variables["res"] = cty.MapVal(map[string]cty.Value{
+			"headers": newCtyHeadersMap(response.Header),
+		})
+	}
+
+	return ctx
+}
+
+func newCtyEnvMap(envKeys []string) cty.Value {
+	if len(envKeys) == 0 {
+		return cty.MapValEmpty(cty.String)
+	}
 	ctyMap := make(map[string]cty.Value)
-	for _, v := range os.Environ() {
-		kv := strings.Split(v, "=") // TODO: multiple vals
-		if _, ok := ctyMap[kv[0]]; !ok {
-			ctyMap[kv[0]] = cty.StringVal(kv[1])
+	for _, key := range envKeys {
+		if _, ok := ctyMap[key]; !ok {
+			ctyMap[key] = cty.StringVal(os.Getenv(key))
 		}
 	}
 	return cty.MapVal(ctyMap)
@@ -93,23 +99,6 @@ func isValidKey(key string) bool {
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"to_upper": stdlib.UpperFunc,
-		"to_lower": toLower(), // Custom function
+		"to_lower": stdlib.LowerFunc,
 	}
-}
-
-// Example function
-func toLower() function.Function {
-	return function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "s",
-				Type: cty.String,
-			},
-		},
-		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			s := args[0].AsString()
-			return cty.StringVal(strings.ToLower(s)), nil
-		},
-	})
 }

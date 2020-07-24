@@ -21,9 +21,7 @@ type ContextOptions *struct {
 	Headers http.Header `hcl:"headers,optional"`
 }
 
-func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*RequestOptions, error) {
-	decodeCtx := NewEvalContext(req, nil)
-
+func NewRequestCtxOptions(decodeCtx *hcl.EvalContext, hclBody hcl.Body, req *http.Request) (*RequestOptions, error) {
 	options := &RequestOptions{}
 	diags := gohcl.DecodeBody(hclBody, decodeCtx, options)
 	if diags.HasErrors() {
@@ -32,9 +30,7 @@ func NewRequestCtxOptions(hclBody hcl.Body, req *http.Request) (*RequestOptions,
 	return options, nil
 }
 
-func NewResponseCtxOptions(hclBody hcl.Body, res *http.Response) (*ResponseOptions, error) {
-	decodeCtx := NewEvalContext(res.Request, res)
-
+func NewResponseCtxOptions(decodeCtx *hcl.EvalContext, hclBody hcl.Body, res *http.Response) (*ResponseOptions, error) {
 	options := &ResponseOptions{}
 	diags := gohcl.DecodeBody(hclBody, decodeCtx, options)
 	if diags.HasErrors() {

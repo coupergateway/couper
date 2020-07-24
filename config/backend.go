@@ -10,8 +10,10 @@ const (
 )
 
 type Backend struct {
-	Kind        string   `hcl:"kind,label"`
 	Name        string   `hcl:"name,label"`
 	Description string   `hcl:"description,optional"`
+	Hostname    string   `hcl:"hostname,optional"`
+	Origin      string   `hcl:"origin"`
+	Path        string   `hcl:"path,optional"`
 	Options     hcl.Body `hcl:",remain"`
 }

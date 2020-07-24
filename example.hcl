@@ -12,7 +12,7 @@ server "couperConnect" {
     }
 
     api {
-        base_path = "/api/v1/"
+        base_path = "/api/v1/${env.NOT_EXIST}"
 
         # pattern
         endpoint "/proxy/" {
@@ -22,17 +22,17 @@ server "couperConnect" {
 
         endpoint "/filex/" {
             # inline backend definition
-            backend "proxy" { #kind with reserved keyword 'proxy'
-                origin_address = "filex.github.io:80"
-                origin_host = "ferndrang.de"
+            backend {
+                origin = "http://filex.github.io"
+                hostname = "ferndrang.de"
                 path = "/"
             }
         }
 
         endpoint "/httpbin/**" {
-            backend "proxy" {
-                origin_address = "httpbin.org:443"
-                origin_host = "httpbin.org"
+            backend {
+                description = "${env.NOT_EXIST}"
+                origin = "https://httpbin.org"
                 path = "/**"
             }
         }
@@ -41,43 +41,42 @@ server "couperConnect" {
             access_control = ["AccessToken"]
             backend = "httpbin"
         }
-
-        backend "proxy" "my_proxy" {
-            description = "you could reference me with endpoint blocks"
-            origin_address = "couper.io:${442 + 1}"
-            origin_host = "couper.io"
-            request {
-                headers = {
-                    X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
-                    X-Env-User = [env.USER]
-                }
-            }
-
-            response {
-                headers = {
-                    Server = [to_lower("mySuperService")]
-                }
-            }
-        }
-
-        backend "proxy" "httpbin" {
-            path = "/anything/${to_upper(env.USER)}" #Optional and only if set, remove basePath+endpoint path
-            description = "optional field"
-            origin_address = "httpbin.org:443"
-            origin_host = "httpbin.org"
-            request {
-                headers = {
-                    X-Env-User = [env.USER]
-                    X-Req-Header = [req.headers.X-Set-Me]
-                    Authorization = ["Bearer ${req.cookies.AccessToken}"]
-                    Cookie: []
-                }
-            }
-        }
     }
 }
 
 definitions {
+    backend "my_proxy" {
+        description = "you could reference me with endpoint blocks"
+        origin = "https://couper.io:${442 + 1}"
+        request {
+            headers = {
+                X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
+                X-Env-User = [env.USER]
+            }
+        }
+
+        response {
+            headers = {
+                Server = [to_lower("mySuperService")]
+            }
+        }
+    }
+
+    backend "httpbin" {
+        path = "/anything/" #Optional and only if set, remove basePath+endpoint path
+        description = "optional field"
+        origin = "https://httpbin.org:443"
+        request {
+            headers = {
+                X-Env-User = [env.USER]
+                X-Req-Header = [req.headers.X-Set-Me]
+                Authorization = ["Bearer ${req.cookies.AccessToken}"]
+                Cookie: []
+            }
+        }
+    }
+
+
     jwt "AccessToken" {
     cookie = "AccessToken"
 
