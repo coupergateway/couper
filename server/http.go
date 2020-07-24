@@ -76,6 +76,11 @@ func (s *HTTPServer) Listen() {
 	}()
 }
 
+// Close closes the listener
+func (s *HTTPServer) Close() error {
+	return s.listener.Close()
+}
+
 func (s *HTTPServer) listenForCtx() {
 	select {
 	case <-s.ctx.Done():
