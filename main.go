@@ -14,6 +14,7 @@ import (
 
 var (
 	configFile = flag.String("f", "example.hcl", "-f ./couper.conf")
+	listenPort = flag.String("p", config.DefaultHTTP.ListenPort, "-p 8080")
 )
 
 func main() {
@@ -25,6 +26,7 @@ func main() {
 	logger := newLogger()
 
 	exampleConf := config.LoadFile(*configFile, logger)
+	exampleConf.Addr = *listenPort
 
 	ctx := command.ContextWithSignal(context.Background())
 	srv := server.New(ctx, logger, exampleConf)
