@@ -17,7 +17,7 @@ const dirIndexFile = "index.html"
 
 var (
 	_ http.Handler = &File{}
-	_ selectable   = &File{}
+	_ Selectable   = &File{}
 )
 
 type File struct {
@@ -101,28 +101,14 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
 }
 
-func (f *File) hasResponse(req *http.Request) bool {
+func (f *File) HasResponse(req *http.Request) bool {
 	reqPath := f.removeBasePath(req.URL.Path)
 
-	file, info, err := f.openDocRootFile(reqPath)
+	file, _, err := f.openDocRootFile(reqPath)
 	if err != nil {
 		return false
 	}
 	defer file.Close()
-
-	if info.IsDir() {
-		reqPath := path.Join(reqPath, dirIndexFile)
-
-		index, info, err := f.openDocRootFile(reqPath)
-		if err != nil {
-			return false
-		}
-		defer index.Close()
-
-		if info.IsDir() {
-			return false
-		}
-	}
 
 	return true
 }

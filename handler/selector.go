@@ -6,11 +6,11 @@ import (
 
 var (
 	_ http.Handler = &Selector{}
-	_ selectable   = &Selector{}
+	_ Selectable   = &Selector{}
 )
 
-type selectable interface {
-	hasResponse(req *http.Request) bool
+type Selectable interface {
+	HasResponse(req *http.Request) bool
 }
 
 type Selector struct {
@@ -27,7 +27,7 @@ func NewSelector(first, second http.Handler) *Selector {
 }
 
 func (s *Selector) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if a, ok := s.first.(selectable); ok && a.hasResponse(req) {
+	if a, ok := s.first.(Selectable); ok && a.HasResponse(req) {
 		if name, ok := s.first.(interface{ String() string }); ok {
 			s.name = name.String()
 		}
@@ -43,7 +43,7 @@ func (s *Selector) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	s.second.ServeHTTP(rw, req)
 }
 
-func (s *Selector) hasResponse(req *http.Request) bool {
+func (s *Selector) HasResponse(req *http.Request) bool {
 	return true
 }
 

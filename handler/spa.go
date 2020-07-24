@@ -8,7 +8,7 @@ import (
 
 var (
 	_ http.Handler = &Spa{}
-	_ selectable   = &Spa{}
+	_ Selectable   = &Spa{}
 )
 
 type Spa struct {
@@ -36,7 +36,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
 }
 
-func (s *Spa) hasResponse(req *http.Request) bool {
+func (s *Spa) HasResponse(req *http.Request) bool {
 	return true
 }
 
