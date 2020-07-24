@@ -36,16 +36,6 @@ func NewMux(conf *config.Gateway) *Mux {
 
 			mux.routes[domain] = make([]*Route, 0)
 
-			if server.Files != nil {
-				mux.register(domain, utils.JoinPath(server.Files.BasePath, "/**"), files)
-
-				// Register base_path-302 case
-				if server.Files.BasePath != "/" {
-					base := strings.TrimRight(server.Files.BasePath, "/") + "$"
-					mux.register(domain, base, files)
-				}
-			}
-
 			if server.API != nil {
 				for _, endpoint := range server.API.Endpoint {
 					pattern := utils.JoinPath(server.API.BasePath, endpoint.Pattern)
@@ -54,6 +44,16 @@ func NewMux(conf *config.Gateway) *Mux {
 					for _, domain := range server.Domains {
 						mux.register(domain, pattern, server.API.PathHandler[endpoint])
 					}
+				}
+			}
+
+			if server.Files != nil {
+				mux.register(domain, utils.JoinPath(server.Files.BasePath, "/**"), files)
+
+				// Register base_path-302 case
+				if server.Files.BasePath != "/" {
+					base := strings.TrimRight(server.Files.BasePath, "/") + "$"
+					mux.register(domain, base, files)
 				}
 			}
 
