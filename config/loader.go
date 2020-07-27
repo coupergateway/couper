@@ -195,8 +195,8 @@ func configureDomains(server *Server) {
 	if len(server.Domains) > 0 {
 		return
 	}
-	// TODO: ipv6
-	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0"}
+
+	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 }
 
 func configureAccessControls(conf *Gateway) ac.Map {
