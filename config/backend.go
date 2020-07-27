@@ -21,6 +21,10 @@ var (
 
 // Merge overrides the left backend configuration and returns a new instance.
 func (b *Backend) Merge(other *Backend) *Backend {
+	if b == nil || other == nil {
+		return nil
+	}
+
 	result := *b
 
 	if other.Hostname != "" {
