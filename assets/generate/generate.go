@@ -67,7 +67,7 @@ func init() {
 
 		println("\t" + asset.Name())
 
-		io.WriteString(generated, fmt.Sprintf(`	Assets.files["%s"] = &AssetFile {bytes: %v, ct: "%s", size: "%d"}
+		io.WriteString(generated, fmt.Sprintf(`	Assets.files["%s"] = &AssetFile{bytes: %v, ct: "%s", size: "%d"}
 `, asset.Name(), &StringBuffer{bytes.NewBuffer(raw)}, ct, len(raw)))
 	}
 
