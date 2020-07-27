@@ -124,7 +124,7 @@ func (m *Mux) Match(req *http.Request) (http.Handler, string) {
 		if routes, ok := m.fs[domain]; ok {
 			for _, r := range routes { // routes are sorted by len desc
 				if h := r.Match(req); h != nil {
-					if a, ok := h.(handler.Selectable); ok && a.HasResponse(req) {
+					if a, ok := h.(handler.Lookupable); ok && a.HasResponse(req) {
 						return h, r.Pattern()
 					}
 				}

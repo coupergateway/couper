@@ -17,8 +17,12 @@ const dirIndexFile = "index.html"
 
 var (
 	_ http.Handler = &File{}
-	_ Selectable   = &File{}
+	_ Lookupable   = &File{}
 )
+
+type Lookupable interface {
+	HasResponse(req *http.Request) bool
+}
 
 type File struct {
 	basePath string
