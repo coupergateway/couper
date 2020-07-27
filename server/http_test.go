@@ -174,6 +174,8 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		{"/dir", nil, 302},
 		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
 		{"/robots.txt", []byte("Disallow: /secret\n"), 200},
+		{"/foo bar.txt", []byte("foo-and-bar\n"), 200},
+		{"/foo%20bar.txt", []byte("foo-and-bar\n"), 200},
 		{"/favicon.ico", content404.Bytes(), 404},
 		{"/app", spaContent, 200},
 		{"/app/", spaContent, 200},
