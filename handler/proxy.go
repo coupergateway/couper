@@ -11,10 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	_ http.Handler = &Proxy{}
-	_ Selectable   = &Proxy{}
-)
+var _ http.Handler = &Proxy{}
 
 type Proxy struct {
 	originURL              *url.URL
@@ -53,10 +50,6 @@ func NewProxy(origin, hostname, path string, log *logrus.Entry, evalCtx *hcl.Eva
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	p.rp.ServeHTTP(rw, req)
-}
-
-func (p *Proxy) HasResponse(req *http.Request) bool {
-	return true
 }
 
 // director request modification before roundtrip

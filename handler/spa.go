@@ -6,10 +6,7 @@ import (
 	"path"
 )
 
-var (
-	_ http.Handler = &Spa{}
-	_ Selectable   = &Spa{}
-)
+var _ http.Handler = &Spa{}
 
 type Spa struct {
 	file string
@@ -34,10 +31,6 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
-}
-
-func (s *Spa) HasResponse(req *http.Request) bool {
-	return true
 }
 
 func (s *Spa) String() string {
