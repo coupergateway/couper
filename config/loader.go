@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -50,6 +51,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 
 	for idx, server := range config.Server {
 		configureDomains(server)
+		configureBasePathes(server)
 
 		if server.API == nil {
 			continue
@@ -120,6 +122,33 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 	}
 
 	return config
+}
+
+func configureBasePathes(server *Server) {
+	if server.BasePath == "" {
+		server.BasePath = "/"
+	}
+	if !strings.HasSuffix(server.BasePath, "/") {
+		server.BasePath = server.BasePath + "/"
+	}
+	if server.Files != nil {
+		server.Files.BasePath = path.Join(server.BasePath, server.Files.BasePath)
+		if !strings.HasSuffix(server.Files.BasePath, "/") {
+			server.Files.BasePath = server.Files.BasePath + "/"
+		}
+	}
+	if server.Spa != nil {
+		server.Spa.BasePath = path.Join(server.BasePath, server.Spa.BasePath) + "/"
+		if !strings.HasSuffix(server.Spa.BasePath, "/") {
+			server.Spa.BasePath = server.Spa.BasePath + "/"
+		}
+	}
+	if server.API != nil {
+		server.API.BasePath = path.Join(server.BasePath, server.API.BasePath) + "/"
+		if !strings.HasSuffix(server.API.BasePath, "/") {
+			server.API.BasePath = server.API.BasePath + "/"
+		}
+	}
 }
 
 // configureDomains is a fallback configuration which ensures

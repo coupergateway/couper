@@ -11,9 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	_ http.Handler = &Proxy{}
-)
+var _ http.Handler = &Proxy{}
 
 type Proxy struct {
 	originURL              *url.URL

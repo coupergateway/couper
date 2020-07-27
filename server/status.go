@@ -11,6 +11,10 @@ type StatusReader struct {
 	status int
 }
 
+func NewStatusReader(rw http.ResponseWriter) *StatusReader {
+	return &StatusReader{rw: rw}
+}
+
 func (sr *StatusReader) Header() http.Header {
 	return sr.rw.Header()
 }
