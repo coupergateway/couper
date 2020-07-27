@@ -1,11 +1,15 @@
 package handler
 
 import (
+	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -14,16 +18,21 @@ import (
 var _ http.Handler = &Proxy{}
 
 type Proxy struct {
-	originURL              *url.URL
-	origin, hostname, path string
-	evalContext            *hcl.EvalContext
-	contextOptions         hcl.Body
-	rp                     *httputil.ReverseProxy
-	log                    *logrus.Entry
+	evalContext *hcl.EvalContext
+	log         *logrus.Entry
+	options     *ProxyOptions
+	originURL   *url.URL
+	rp          *httputil.ReverseProxy
 }
 
-func NewProxy(origin, hostname, path string, log *logrus.Entry, evalCtx *hcl.EvalContext, options hcl.Body) http.Handler {
-	originURL, err := url.Parse(origin)
+type ProxyOptions struct {
+	ConnectTimeout, Timeout time.Duration
+	Context                 hcl.Body
+	Hostname, Origin, Path  string
+}
+
+func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) http.Handler {
+	originURL, err := url.Parse(options.Origin)
 	if err != nil {
 		panic("err parsing origin url: " + err.Error())
 	}
@@ -32,24 +41,38 @@ func NewProxy(origin, hostname, path string, log *logrus.Entry, evalCtx *hcl.Eva
 	}
 
 	proxy := &Proxy{
-		origin:         origin,
-		originURL:      originURL,
-		evalContext:    evalCtx,
-		hostname:       hostname,
-		path:           path,
-		log:            log,
-		contextOptions: options,
+		evalContext: evalCtx,
+		log:         log,
+		options:     options,
+		originURL:   originURL,
 	}
 
+	d := &net.Dialer{Timeout: options.ConnectTimeout}
 	proxy.rp = &httputil.ReverseProxy{
-		Director:       proxy.director, // request modification
+		Director: proxy.director, // request modification
+		ErrorHandler: func(rw http.ResponseWriter, req *http.Request, err error) { // TODO: merge with error logging
+			rw.WriteHeader(http.StatusBadGateway)
+			log.WithField("uid", req.Context().Value("requestID")).Error(err)
+		},
 		ModifyResponse: proxy.modifyResponse,
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				conn, err := d.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, fmt.Errorf("connecting to %s failed: %w", originURL.String(), err)
+				}
+				return conn, nil
+			},
+		},
 	}
 	return proxy
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	p.rp.ServeHTTP(rw, req)
+	deadline := time.Now().Add(p.options.Timeout)
+	ctx, cancelFn := context.WithDeadline(req.Context(), deadline)
+	defer cancelFn()
+	p.rp.ServeHTTP(rw, req.WithContext(ctx))
 }
 
 // director request modification before roundtrip
@@ -57,19 +80,19 @@ func (p *Proxy) director(req *http.Request) {
 	req.URL.Host = p.originURL.Host
 	req.URL.Scheme = p.originURL.Scheme
 	req.Host = p.originURL.Host
-	if p.hostname != "" {
-		req.Host = p.hostname
+	if p.options.Hostname != "" {
+		req.Host = p.options.Hostname
 	}
 
-	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.path != "" {
-		req.URL.Path = path.Join(strings.ReplaceAll(p.path, "/**", "/"), pathMatch)
-	} else if p.path != "" {
-		req.URL.Path = p.path
+	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.options.Path != "" {
+		req.URL.Path = path.Join(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
+	} else if p.options.Path != "" {
+		req.URL.Path = p.options.Path
 	}
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
 
-	contextOptions, err := NewRequestCtxOptions(p.evalContext, p.contextOptions, req)
+	contextOptions, err := NewRequestCtxOptions(p.evalContext, p.options.Context, req)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return
@@ -92,7 +115,7 @@ func (p *Proxy) director(req *http.Request) {
 
 func (p *Proxy) modifyResponse(res *http.Response) error {
 	log := p.log.WithField("uid", res.Request.Context().Value("requestID"))
-	contextOptions, err := NewResponseCtxOptions(p.evalContext, p.contextOptions, res)
+	contextOptions, err := NewResponseCtxOptions(p.evalContext, p.options.Context, res)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return err

@@ -4,18 +4,20 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-const (
-	ServeDir  = "ServeDir"
-	ServeFile = "ServeFile"
-)
-
 type Backend struct {
-	Hostname string   `hcl:"hostname,optional"`
-	Name     string   `hcl:"name,label"`
-	Origin   string   `hcl:"origin"`
-	Path     string   `hcl:"path,optional"`
-	Options  hcl.Body `hcl:",remain"`
+	Hostname       string   `hcl:"hostname,optional"`
+	Name           string   `hcl:"name,label"`
+	Origin         string   `hcl:"origin"`
+	Path           string   `hcl:"path,optional"`
+	Timeout        string   `hcl:"timeout,optional"`
+	ConnectTimeout string   `hcl:"connect_timeout,optional"`
+	Options        hcl.Body `hcl:",remain"`
 }
+
+var (
+	backendDefaultTimeout        = "60s"
+	backendDefaultConnectTimeout = "10s"
+)
 
 // Merge overrides the left backend configuration and returns a new instance.
 func (b *Backend) Merge(other *Backend) *Backend {
@@ -39,6 +41,14 @@ func (b *Backend) Merge(other *Backend) *Backend {
 
 	if other.Options != nil {
 		result.Options = other.Options
+	}
+
+	if other.Timeout != "" {
+		result.Timeout = other.Timeout
+	}
+
+	if other.ConnectTimeout != "" {
+		result.ConnectTimeout = other.ConnectTimeout
 	}
 
 	return &result

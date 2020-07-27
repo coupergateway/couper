@@ -17,6 +17,21 @@ server "couperConnect" {
         # reference backend definition
         backend = "my_proxy"
 
+        endpoint "/timeout" {
+            backend "my_proxy" {
+                origin = "http://blackhole.webpagetest.org"
+                # > timeout
+                connect_timeout = "60s"
+            }
+        }
+
+        endpoint "/connect-timeout" {
+            backend "my_proxy" {
+                origin = "http://1.2.3.4"
+                connect_timeout = "2s"
+            }
+        }
+
         # pattern
         endpoint "/proxy/" {
         }
@@ -49,6 +64,7 @@ definitions {
     backend "my_proxy" {
         description = "you could reference me with endpoint blocks"
         origin = "https://couper.io:${442 + 1}"
+        timeout = "20s"
         request {
             headers = {
                 X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
