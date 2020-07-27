@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -19,6 +20,8 @@ import (
 	ac "go.avenga.cloud/couper/gateway/access_control"
 	"go.avenga.cloud/couper/gateway/handler"
 )
+
+var ErrorMissingBackend = errors.New("no backend attribute reference or block")
 
 func LoadFile(filename string, log *logrus.Entry) *Gateway {
 	src, err := ioutil.ReadFile(filename)
@@ -63,7 +66,6 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 			if endpoints[endpoint.Pattern] {
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
-
 			endpoints[endpoint.Pattern] = true
 
 			var acList ac.List
@@ -78,41 +80,44 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				acList = append(acList, accessControls[acName])
 			}
 
+			setACHandlerFn := func(protectedHandler http.Handler) {
+				if len(acList) > 0 {
+					server.API.PathHandler[endpoint] = handler.NewAccessControl(protectedHandler, acList...)
+					return
+				}
+				server.API.PathHandler[endpoint] = protectedHandler
+			}
+
+			// lookup for backend reference, prefer endpoint definition over api one
 			if endpoint.Backend != "" {
 				if _, ok := backends[endpoint.Backend]; !ok {
 					log.Fatalf("backend %q is not defined", endpoint.Backend)
 				}
-				if len(acList) > 0 {
-					server.API.PathHandler[endpoint] = handler.NewAccessControl(backends[endpoint.Backend], acList...)
+				setACHandlerFn(backends[endpoint.Backend])
+				continue
+			}
+
+			// otherwise try to parse an inline block and fallback for api reference or inline block
+			inlineBackend, err := newInlineBackend(evalCtx, endpoint.InlineDefinition, log)
+			if err == ErrorMissingBackend {
+				if server.API.Backend != "" {
+					if _, ok := backends[server.API.Backend]; !ok {
+						log.Fatalf("backend %q is not defined", server.API.Backend)
+					}
+					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				server.API.PathHandler[endpoint] = backends[endpoint.Backend]
+				inlineBackend, err = newInlineBackend(evalCtx, server.API.InlineDefinition, log)
+				if err != nil {
+					log.Fatal(err)
+				}
+				setACHandlerFn(inlineBackend)
 				continue
-			}
-
-			backendErr := fmt.Errorf("expected backend attribute reference or block for endpoint: %s", endpoint)
-
-			// endpoint.Options usecase is optional blocks, so we do not need to edit and set leftOver content back to endpoint.
-			content, leftOver, diags := endpoint.Options.PartialContent(Definitions{}.Schema(true))
-			if diags.HasErrors() {
-				log.Fatal(diags.Error())
-			}
-
-			if content == nil || len(content.Blocks) == 0 {
-				log.Fatal(backendErr)
-			}
-
-			beConf, err := newInlineBackend(evalCtx, content)
-			if err != nil {
+			} else if err != nil {
 				log.Fatal(err)
 			}
-			inlineBackend := handler.NewProxy(beConf.Origin, beConf.Hostname, beConf.Path, log, evalCtx, leftOver)
 
-			if len(acList) > 0 {
-				server.API.PathHandler[endpoint] = handler.NewAccessControl(inlineBackend, acList...)
-				continue
-			}
-			server.API.PathHandler[endpoint] = inlineBackend
+			setACHandlerFn(inlineBackend)
 		}
 	}
 
@@ -210,13 +215,23 @@ func configureBackends(conf *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContex
 	return backends, nil
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, content *hcl.BodyContent) (*Backend, error) {
-	backendConf := &Backend{}
-	diags := gohcl.DecodeBody(content.Blocks[0].Body, evalCtx, backendConf)
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, error) {
+	content, leftOver, diags := inlineDef.PartialContent(Definitions{}.Schema(true))
 	if diags.HasErrors() {
-		return backendConf, diags
+		return nil, diags
 	}
-	return backendConf, nil
+
+	if content == nil || len(content.Blocks) == 0 {
+		return nil, ErrorMissingBackend
+	}
+
+	beConf := &Backend{}
+	diags = gohcl.DecodeBody(content.Blocks[0].Body, evalCtx, beConf)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	return handler.NewProxy(beConf.Origin, beConf.Hostname, beConf.Path, log, evalCtx, leftOver), nil
 }
 
 func decodeEnvironmentRefs(src []byte) []string {
