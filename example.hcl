@@ -65,17 +65,13 @@ definitions {
         description = "you could reference me with endpoint blocks"
         origin = "https://couper.io:${442 + 1}"
         timeout = "20s"
-        request {
-            headers = {
-                X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
-                X-Env-User = [env.USER]
-            }
+        request_headers = {
+            X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
+            X-Env-User = [env.USER]
         }
-
-        response {
-            headers = {
-                Server = [to_lower("mySuperService")]
-            }
+        
+        reponse_headers = {
+            Server = [to_lower("mySuperService")]
         }
     }
 
@@ -83,13 +79,11 @@ definitions {
         path = "/anything/" #Optional and only if set, remove basePath+endpoint path
         description = "optional field"
         origin = "https://httpbin.org:443"
-        request {
-            headers = {
-                X-Env-User = [env.USER]
-                X-Req-Header = [req.headers.X-Set-Me]
-                Authorization = ["Bearer ${req.cookies.AccessToken}"]
-                Cookie: []
-            }
+        request_headers = {
+            X-Env-User = env.USER
+            X-Req-Header = [req.headers.X-Set-Me]
+            Authorization = ["Bearer ${req.cookies.AccessToken}"]
+            Cookie: ""
         }
     }
 

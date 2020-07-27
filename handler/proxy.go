@@ -92,52 +92,62 @@ func (p *Proxy) director(req *http.Request) {
 
 	log := p.log.WithField("uid", req.Context().Value("requestID"))
 
-	contextOptions, err := NewRequestCtxOptions(p.evalContext, p.options.Context, req)
+	ctxHeaders := &RequestContext{Options: make(MapOptions)}
+	err := NewCtxOptions(ctxHeaders, p.evalContext, p.options.Context)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		return
 	}
 
-	if contextOptions.Request == nil {
-		return
-	}
-	for header, value := range contextOptions.Request.Headers {
-		if len(value) == 0 {
-			req.Header.Del(header)
-		} else {
-			req.Header.Set(header, value[0])
-		}
-	}
-	if len(contextOptions.Request.Headers) > 0 {
-		log.WithField("custom-req-header", contextOptions.Request.Headers).Debug()
+	fields := setFields(req.Header, ctxHeaders.Options)
+	if len(fields) > 0 {
+		log.WithField("custom-req-header", fields).Debug()
 	}
 }
 
 func (p *Proxy) modifyResponse(res *http.Response) error {
 	log := p.log.WithField("uid", res.Request.Context().Value("requestID"))
-	contextOptions, err := NewResponseCtxOptions(p.evalContext, p.options.Context, res)
+	ctxHeaders := &ResponseContext{Options: make(MapOptions)}
+	err := NewCtxOptions(ctxHeaders, p.evalContext, p.options.Context)
 	if err != nil {
 		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
-		return err
-	}
-
-	if contextOptions.Response == nil {
 		return nil
 	}
 
-	for header, value := range contextOptions.Response.Headers {
-		if len(value) == 0 {
-			res.Header.Del(header)
-		} else {
-			res.Header.Set(header, value[0])
-		}
-	}
-	if len(contextOptions.Response.Headers) > 0 {
-		log.WithField("custom-res-header", contextOptions.Response.Headers).Debug()
+	fields := setFields(res.Header, ctxHeaders.Options)
+	if len(fields) > 0 {
+		log.WithField("custom-res-header", fields).Debug()
 	}
 	return nil
 }
 
 func (p *Proxy) String() string {
 	return "Proxy"
+}
+
+func setFields(header http.Header, ctx MapOptions) []string {
+	var fields []string
+	if len(ctx) == 0 {
+		return fields
+	}
+
+	for key, value := range ctx {
+		switch value.(type) {
+		case []string:
+			l := value.([]string)
+			if len(l) == 0 {
+				header.Del(key)
+				continue
+			}
+			header[http.CanonicalHeaderKey(key)] = l
+		case string:
+			s := value.(string)
+			if s == "" {
+				header.Del(key)
+				continue
+			}
+			header.Set(key, s)
+		}
+	}
+	return fields
 }
