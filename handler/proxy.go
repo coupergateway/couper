@@ -17,6 +17,10 @@ import (
 
 var _ http.Handler = &Proxy{}
 
+// headerBlacklist lists all header keys which will be removed after
+// context variable evaluation to ensure to not pass them upstream.
+var headerBlacklist = []string{"Authentication", "Cookie"}
+
 type Proxy struct {
 	evalContext *hcl.EvalContext
 	log         *logrus.Entry
@@ -110,6 +114,13 @@ func (p *Proxy) setRoundtripContext(req *http.Request, res *http.Response) {
 	var fields []string
 
 	evalCtx := NewHTTPEvalContext(p.evalContext, req, res)
+
+	if req != nil {
+		for _, key := range headerBlacklist {
+			req.Header.Del(key)
+		}
+	}
+
 	for _, ctx := range p.options.Context {
 		ctxHeaders := &ContextOptions{}
 		err := NewCtxOptions(ctxHeaders, evalCtx, ctx)
