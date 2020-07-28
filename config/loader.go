@@ -57,10 +57,13 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 			if beConf.Timeout == "" {
 				beConf.Timeout = backendDefaultTimeout
 			}
+			if beConf.TTFBTimeout == "" {
+				beConf.TTFBTimeout = backendDefaultTTFBTimeout
+			}
 			if beConf.ConnectTimeout == "" {
 				beConf.ConnectTimeout = backendDefaultConnectTimeout
 			}
-			t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
+			t, ttfbt, ct := parseBackendTimings(beConf)
 			backends[beConf.Name] = backendDefinition{
 				conf: beConf,
 				handler: handler.NewProxy(&handler.ProxyOptions{
@@ -70,6 +73,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
 					Timeout:        t,
+					TTFBTimeout:    ttfbt,
 				}, log, evalCtx),
 			}
 		}
@@ -115,7 +119,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&Backend{Path: endpoint.Path})
-					t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
+					t, ttfbt, ct := parseBackendTimings(beConf)
 					protectedHandler = handler.NewProxy(&handler.ProxyOptions{
 						ConnectTimeout: ct,
 						Context:        remainCtx,
@@ -123,6 +127,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 						Origin:         beConf.Origin,
 						Path:           beConf.Path,
 						Timeout:        t,
+						TTFBTimeout:    ttfbt,
 					}, log, evalCtx)
 				}
 
@@ -163,7 +168,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 					log.Fatalf("override backend %q is not defined", inlineConf.Name)
 				}
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
-				t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
+				t, ttfbt, ct := parseBackendTimings(beConf)
 				inlineBackend = handler.NewProxy(&handler.ProxyOptions{
 					ConnectTimeout: ct,
 					Context:        remainCtx,
@@ -171,6 +176,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
 					Timeout:        t,
+					TTFBTimeout:    ttfbt,
 				}, log, evalCtx)
 			}
 
@@ -280,7 +286,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 		beConf.Name = content.Blocks[0].Labels[0]
 	}
 
-	t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
+	t, ttfbt, ct := parseBackendTimings(beConf)
 	return handler.NewProxy(&handler.ProxyOptions{
 		ConnectTimeout: ct,
 		Context:        []hcl.Body{beConf.Options},
@@ -288,14 +294,19 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 		Origin:         beConf.Origin,
 		Path:           beConf.Path,
 		Timeout:        t,
+		TTFBTimeout:    ttfbt,
 	}, log, evalCtx), beConf, nil
 }
 
-func parseBackendTimings(total, connect string) (time.Duration, time.Duration) {
-	t := total
-	c := connect
+func parseBackendTimings(conf *Backend) (time.Duration, time.Duration, time.Duration) {
+	t := conf.Timeout
+	ttfb := conf.TTFBTimeout
+	c := conf.ConnectTimeout
 	if t == "" {
 		t = backendDefaultTimeout
+	}
+	if ttfb == "" {
+		ttfb = backendDefaultTTFBTimeout
 	}
 	if c == "" {
 		c = backendDefaultConnectTimeout
@@ -304,11 +315,15 @@ func parseBackendTimings(total, connect string) (time.Duration, time.Duration) {
 	if err != nil {
 		panic(err)
 	}
+	ttfbD, err := time.ParseDuration(ttfb)
+	if err != nil {
+		panic(err)
+	}
 	connectD, err := time.ParseDuration(c)
 	if err != nil {
 		panic(err)
 	}
-	return totalD, connectD
+	return totalD, ttfbD, connectD
 }
 
 func decodeEnvironmentRefs(src []byte) []string {

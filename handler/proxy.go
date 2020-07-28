@@ -30,9 +30,9 @@ type Proxy struct {
 }
 
 type ProxyOptions struct {
-	ConnectTimeout, Timeout time.Duration
-	Context                 []hcl.Body
-	Hostname, Origin, Path  string
+	ConnectTimeout, Timeout, TTFBTimeout time.Duration
+	Context                              []hcl.Body
+	Hostname, Origin, Path               string
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) http.Handler {
@@ -68,6 +68,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 				}
 				return conn, nil
 			},
+			ResponseHeaderTimeout: proxy.options.TTFBTimeout,
 		},
 	}
 	return proxy

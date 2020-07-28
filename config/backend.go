@@ -5,18 +5,20 @@ import (
 )
 
 type Backend struct {
+	ConnectTimeout string   `hcl:"connect_timeout,optional"`
 	Hostname       string   `hcl:"hostname,optional"`
 	Name           string   `hcl:"name,label"`
+	Options        hcl.Body `hcl:",remain"`
 	Origin         string   `hcl:"origin"`
 	Path           string   `hcl:"path,optional"`
 	Timeout        string   `hcl:"timeout,optional"`
-	ConnectTimeout string   `hcl:"connect_timeout,optional"`
-	Options        hcl.Body `hcl:",remain"`
+	TTFBTimeout    string   `hcl:"ttfb_timeout,optional"`
 }
 
 var (
-	backendDefaultTimeout        = "60s"
 	backendDefaultConnectTimeout = "10s"
+	backendDefaultTimeout        = "300s"
+	backendDefaultTTFBTimeout    = "60s"
 )
 
 // Merge overrides the left backend configuration and returns a new instance.
@@ -60,6 +62,10 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 
 	if other.ConnectTimeout != "" {
 		result.ConnectTimeout = other.ConnectTimeout
+	}
+
+	if other.TTFBTimeout != "" {
+		result.TTFBTimeout = other.TTFBTimeout
 	}
 
 	return &result, bodies
