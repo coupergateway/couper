@@ -20,10 +20,12 @@ var (
 )
 
 // Merge overrides the left backend configuration and returns a new instance.
-func (b *Backend) Merge(other *Backend) *Backend {
+func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 	if b == nil || other == nil {
-		return nil
+		return nil, nil
 	}
+
+	var bodies []hcl.Body
 
 	result := *b
 
@@ -43,7 +45,12 @@ func (b *Backend) Merge(other *Backend) *Backend {
 		result.Path = other.Path
 	}
 
+	if result.Options != nil {
+		bodies = append(bodies, result.Options)
+	}
+
 	if other.Options != nil {
+		bodies = append(bodies, other.Options)
 		result.Options = other.Options
 	}
 
@@ -55,5 +62,5 @@ func (b *Backend) Merge(other *Backend) *Backend {
 		result.ConnectTimeout = other.ConnectTimeout
 	}
 
-	return &result
+	return &result, bodies
 }

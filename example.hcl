@@ -46,10 +46,17 @@ server "couperConnect" {
         }
 
         endpoint "/httpbin/**" {
-            backend {
-                description = "${env.NOT_EXIST}"
+            backend "my_proxy" {
                 origin = "https://httpbin.org"
                 path = "/**"
+
+                request_headers = {
+                    x-env-user = ["override-user"]
+                }
+
+                response_headers = {
+                    server = ["my-override"]
+                }
             }
         }
 
@@ -62,22 +69,20 @@ server "couperConnect" {
 
 definitions {
     backend "my_proxy" {
-        description = "you could reference me with endpoint blocks"
         origin = "https://couper.io:${442 + 1}"
         timeout = "20s"
         request_headers = {
-            X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
-            X-Env-User = [env.USER]
+            x-my-custom-ua = [req.headers.user-agent, to_upper("muh")]
+            x-env-user = [env.USER]
         }
         
-        reponse_headers = {
+        response_headers = {
             Server = [to_lower("mySuperService")]
         }
     }
 
     backend "httpbin" {
         path = "/anything/" #Optional and only if set, remove basePath+endpoint path
-        description = "optional field"
         origin = "https://httpbin.org:443"
         request_headers = {
             X-Env-User = env.USER

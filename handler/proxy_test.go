@@ -49,15 +49,17 @@ func TestProxy_director(t *testing.T) {
 		options     *ProxyOptions
 	}
 
+	emptyOptions := []hcl.Body{hcl.EmptyBody()}
+
 	tests := []struct {
 		name   string
 		fields fields
 		req    *http.Request
 		expReq *http.Request
 	}{
-		{"proxy url settings", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Context: hcl.EmptyBody()}}, defaultReq, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
-		{"proxy url settings w/hostname", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: hcl.EmptyBody()}}, defaultReq, httptest.NewRequest("GET", "http://couper.io", nil)},
-		{"proxy url settings w/wildcard ctx", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: hcl.EmptyBody()}}, defaultReq.WithContext(context.WithValue(defaultReq.Context(), "route_wildcard", "/hans")), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
+		{"proxy url settings", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings w/hostname", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://couper.io", nil)},
+		{"proxy url settings w/wildcard ctx", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, defaultReq.WithContext(context.WithValue(defaultReq.Context(), "route_wildcard", "/hans")), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
 	}
 
 	for _, tt := range tests {

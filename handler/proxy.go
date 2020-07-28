@@ -27,7 +27,7 @@ type Proxy struct {
 
 type ProxyOptions struct {
 	ConnectTimeout, Timeout time.Duration
-	Context                 hcl.Body
+	Context                 []hcl.Body
 	Hostname, Origin, Path  string
 }
 
@@ -56,6 +56,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		},
 		ModifyResponse: proxy.modifyResponse,
 		Transport: &http.Transport{
+			// DisableCompression: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				conn, err := d.DialContext(ctx, network, addr)
 				if err != nil {
@@ -90,64 +91,64 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Path = p.options.Path
 	}
 
-	log := p.log.WithField("uid", req.Context().Value("requestID"))
-
-	ctxHeaders := &RequestContext{Options: make(MapOptions)}
-	err := NewCtxOptions(ctxHeaders, p.evalContext, p.options.Context)
-	if err != nil {
-		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
-		return
-	}
-
-	fields := setFields(req.Header, ctxHeaders.Options)
-	if len(fields) > 0 {
-		log.WithField("custom-req-header", fields).Debug()
-	}
+	p.setRoundtripContext(req, nil)
 }
 
 func (p *Proxy) modifyResponse(res *http.Response) error {
-	log := p.log.WithField("uid", res.Request.Context().Value("requestID"))
-	ctxHeaders := &ResponseContext{Options: make(MapOptions)}
-	err := NewCtxOptions(ctxHeaders, p.evalContext, p.options.Context)
-	if err != nil {
-		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
-		return nil
+	p.setRoundtripContext(nil, res)
+	return nil
+}
+
+func (p *Proxy) setRoundtripContext(req *http.Request, res *http.Response) {
+	var reqCtx context.Context
+	if req != nil {
+		reqCtx = req.Context()
+	} else if res != nil {
+		reqCtx = res.Request.Context()
+	}
+	log := p.log.WithField("uid", reqCtx.Value("requestID"))
+	var fields []string
+
+	evalCtx := NewHTTPEvalContext(p.evalContext, req, res)
+	for _, ctx := range p.options.Context {
+		ctxHeaders := &ContextOptions{}
+		err := NewCtxOptions(ctxHeaders, evalCtx, ctx)
+		if err != nil {
+			log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+			return
+		}
+		if req != nil {
+			fields = append(fields, setFields(req.Header, ctxHeaders.ReqOptions)...)
+		} else if res != nil {
+			fields = append(fields, setFields(res.Header, ctxHeaders.RespOptions)...)
+		}
 	}
 
-	fields := setFields(res.Header, ctxHeaders.Options)
+	logKey := "custom-req-header"
 	if len(fields) > 0 {
-		log.WithField("custom-res-header", fields).Debug()
+		if res != nil {
+			logKey = "custom-res-header"
+		}
+		log.WithField(logKey, fields).Debug()
 	}
-	return nil
 }
 
 func (p *Proxy) String() string {
 	return "Proxy"
 }
 
-func setFields(header http.Header, ctx MapOptions) []string {
+func setFields(header http.Header, ctx http.Header) []string {
 	var fields []string
 	if len(ctx) == 0 {
 		return fields
 	}
 
 	for key, value := range ctx {
-		switch value.(type) {
-		case []string:
-			l := value.([]string)
-			if len(l) == 0 {
-				header.Del(key)
-				continue
-			}
-			header[http.CanonicalHeaderKey(key)] = l
-		case string:
-			s := value.(string)
-			if s == "" {
-				header.Del(key)
-				continue
-			}
-			header.Set(key, s)
+		if len(value) == 0 || value[0] == "" {
+			header.Del(key)
+			continue
 		}
+		header[http.CanonicalHeaderKey(key)] = value
 	}
 	return fields
 }

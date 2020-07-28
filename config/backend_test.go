@@ -64,7 +64,7 @@ func TestBackend_Merge(t *testing.T) {
 				ConnectTimeout: tt.fields.ConnectTimeout,
 				Options:        tt.fields.Options,
 			}
-			if got := b.Merge(tt.args.other); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := b.Merge(tt.args.other); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)
 			}
 		})

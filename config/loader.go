@@ -65,7 +65,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				conf: beConf,
 				handler: handler.NewProxy(&handler.ProxyOptions{
 					ConnectTimeout: ct,
-					Context:        beConf.Options,
+					Context:        []hcl.Body{beConf.Options},
 					Hostname:       beConf.Hostname,
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
@@ -114,11 +114,11 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
-					beConf := protectedBackend.conf.Merge(&Backend{Path: endpoint.Path})
+					beConf, remainCtx := protectedBackend.conf.Merge(&Backend{Path: endpoint.Path})
 					t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
 					protectedHandler = handler.NewProxy(&handler.ProxyOptions{
 						ConnectTimeout: ct,
-						Context:        beConf.Options,
+						Context:        remainCtx,
 						Hostname:       beConf.Hostname,
 						Origin:         beConf.Origin,
 						Path:           beConf.Path,
@@ -162,11 +162,11 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				if _, ok := backends[inlineConf.Name]; !ok {
 					log.Fatalf("override backend %q is not defined", inlineConf.Name)
 				}
-				beConf := backends[inlineConf.Name].conf.Merge(inlineConf)
+				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 				t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
 				inlineBackend = handler.NewProxy(&handler.ProxyOptions{
 					ConnectTimeout: ct,
-					Context:        beConf.Options,
+					Context:        remainCtx,
 					Hostname:       beConf.Hostname,
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
@@ -257,11 +257,11 @@ func configureAccessControls(conf *Gateway) ac.Map {
 }
 
 func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *Backend, error) {
-	content, leftOver, diags := inlineDef.PartialContent(Definitions{}.Schema(true))
+	content, _, diags := inlineDef.PartialContent(Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
 		// no inline conf, retry for override definitions with label
-		content, leftOver, diags = inlineDef.PartialContent(Definitions{}.Schema(false))
+		content, _, diags = inlineDef.PartialContent(Definitions{}.Schema(false))
 		if diags.HasErrors() {
 			return nil, nil, diags
 		}
@@ -280,11 +280,10 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 		beConf.Name = content.Blocks[0].Labels[0]
 	}
 
-	beConf.Options = leftOver
 	t, ct := parseBackendTimings(beConf.Timeout, beConf.ConnectTimeout)
 	return handler.NewProxy(&handler.ProxyOptions{
 		ConnectTimeout: ct,
-		Context:        leftOver,
+		Context:        []hcl.Body{beConf.Options},
 		Hostname:       beConf.Hostname,
 		Origin:         beConf.Origin,
 		Path:           beConf.Path,

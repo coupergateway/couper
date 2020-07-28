@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -21,20 +22,28 @@ func NewEvalContext(envKeys []string) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPEvalContext(parent *hcl.EvalContext, request *http.Request, response *http.Response) *hcl.EvalContext {
-	ctx := parent.NewChild()
-
-	if request != nil {
+func NewHTTPEvalContext(ctx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
+	if req != nil {
 		ctx.Variables["req"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(request.Header),
-			"cookies": newCtyCookiesMap(request),
+			"headers": newCtyHeadersMap(req.Header),
+			"cookies": newCtyCookiesMap(req.Cookies()),
 			//"params":  newCtyParametersMap(mux.Vars(request)),
 		})
+		if req.Response != nil {
+			ctx.Variables["resp"] = cty.MapVal(map[string]cty.Value{
+				"headers": newCtyHeadersMap(req.Response.Header),
+				"cookies": newCtyCookiesMap(req.Response.Cookies()),
+				//"params":  newCtyParametersMap(mux.Vars(request)),
+			})
+		}
 	}
 
-	if response != nil {
-		ctx.Variables["res"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(response.Header),
+	if beresp != nil {
+		ctx.Variables["bereq"] = cty.MapVal(map[string]cty.Value{
+			"headers": newCtyHeadersMap(beresp.Request.Header),
+		})
+		ctx.Variables["beresp"] = cty.MapVal(map[string]cty.Value{
+			"headers": newCtyHeadersMap(beresp.Header),
 		})
 	}
 
@@ -58,15 +67,18 @@ func newCtyHeadersMap(headers http.Header) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range headers {
 		if isValidKey(k) {
-			ctyMap[k] = cty.StringVal(v[0]) // TODO: ListVal??
+			ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
 		}
+	}
+	if len(ctyMap) == 0 {
+		return cty.MapValEmpty(cty.String)
 	}
 	return cty.MapVal(ctyMap)
 }
 
-func newCtyCookiesMap(req *http.Request) cty.Value {
+func newCtyCookiesMap(cookies []*http.Cookie) cty.Value {
 	ctyMap := make(map[string]cty.Value)
-	for _, cookie := range req.Cookies() {
+	for _, cookie := range cookies {
 		ctyMap[cookie.Name] = cty.StringVal(cookie.Value) // TODO: ListVal??
 	}
 
