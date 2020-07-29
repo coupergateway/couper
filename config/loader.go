@@ -161,6 +161,8 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				if err != nil {
 					log.Fatal(err)
 				}
+			} else if err != nil {
+				log.Fatal(err)
 			}
 
 			if inlineConf.Name != "" { // inline backends have no label, assume a reference and override settings
