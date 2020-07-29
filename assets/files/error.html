@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>{{.http_status}} {{.message}}</title>
+	</head>
+	<body>
+		<div>
+			<div>
+				Code: {{.error_code}}
+			</div>
+			<div>
+				Path: {{.path}}
+			</div>
+			<div>
+				Request-ID: {{.request_id}}
+			</div>
+		</div>
+	</body>
+</html>
