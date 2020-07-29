@@ -11,6 +11,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
+	"go.avenga.cloud/couper/gateway/assets"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/handler"
 )
@@ -110,7 +111,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		handlerName = "none"
-		handler.ServeError(rw, req, http.StatusInternalServerError)
+		asset := assets.Assets.MustOpen("error.html")
+		handler.NewErrorHandler(asset, 1001, http.StatusInternalServerError).ServeHTTP(rw, req)
 		err = errors.New("no configuration found: " + req.URL.String())
 	}
 

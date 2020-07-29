@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+
+	"go.avenga.cloud/couper/gateway/assets"
 )
 
 var _ http.Handler = &Spa{}
@@ -20,18 +22,21 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(s.file)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
-			ServeError(rw, req, http.StatusNotFound)
+			asset, _ := assets.Assets.Open("error.html")
+			NewErrorHandler(asset, 2001, http.StatusNotFound).ServeHTTP(rw, req)
 			return
 		}
 
-		ServeError(rw, req, http.StatusInternalServerError)
+		asset, _ := assets.Assets.Open("error.html")
+		NewErrorHandler(asset, 2001, http.StatusInternalServerError).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
 	if err != nil || fileInfo.IsDir() {
-		ServeError(rw, req, http.StatusInternalServerError)
+		asset, _ := assets.Assets.Open("error.html")
+		NewErrorHandler(asset, 2001, http.StatusInternalServerError).ServeHTTP(rw, req)
 		return
 	}
 
