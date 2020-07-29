@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -51,6 +52,13 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		originURL:   originURL,
 	}
 
+	var tlsConf *tls.Config
+	if options.Hostname != "" {
+		tlsConf = &tls.Config{
+			ServerName: options.Hostname,
+		}
+	}
+
 	d := &net.Dialer{Timeout: options.ConnectTimeout}
 	proxy.rp = &httputil.ReverseProxy{
 		Director: proxy.director, // request modification
@@ -69,6 +77,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 				return conn, nil
 			},
 			ResponseHeaderTimeout: proxy.options.TTFBTimeout,
+			TLSClientConfig:       tlsConf,
 		},
 	}
 	return proxy
