@@ -131,18 +131,18 @@ func (p *Proxy) setRoundtripContext(req *http.Request, res *http.Response) {
 		}
 	}
 
+	dynamicHeader := make(http.Header)
 	for _, ctx := range p.options.Context {
-		ctxHeaders := &ContextOptions{}
-		err := NewCtxOptions(ctxHeaders, evalCtx, ctx)
+		err := NewCtxOptions(dynamicHeader, evalCtx, ctx)
 		if err != nil {
 			log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 			return
 		}
-		if req != nil {
-			fields = append(fields, setFields(req.Header, ctxHeaders.ReqOptions)...)
-		} else if res != nil {
-			fields = append(fields, setFields(res.Header, ctxHeaders.RespOptions)...)
-		}
+	}
+	if req != nil {
+		fields = append(fields, setFields(req.Header, dynamicHeader)...)
+	} else if res != nil {
+		fields = append(fields, setFields(res.Header, dynamicHeader)...)
 	}
 
 	logKey := "custom-req-header"

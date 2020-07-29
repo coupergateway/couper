@@ -52,6 +52,7 @@ server "couperConnect" {
 
                 request_headers = {
                     x-env-user = ["override-user"]
+                    x-single-val = "val"
                 }
 
                 response_headers = {
