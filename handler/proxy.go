@@ -16,11 +16,19 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"go.avenga.cloud/couper/gateway/assets"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/eval"
 )
 
-var _ http.Handler = &Proxy{}
+var (
+	_ http.Handler    = &Proxy{}
+	_ ErrorHandleable = &Proxy{}
+)
+
+type ErrorHandleable interface {
+	SetErrorAsset(errFile *assets.AssetFile)
+}
 
 var OriginRequiredError = errors.New("origin is required")
 
@@ -30,6 +38,7 @@ var headerBlacklist = []string{"Authentication", "Cookie"}
 
 type Proxy struct {
 	evalContext *hcl.EvalContext
+	errAsset    *assets.AssetFile
 	log         *logrus.Entry
 	options     *ProxyOptions
 	originURL   *url.URL
@@ -101,6 +110,10 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		defer cancelFn()
 	}
 	p.rp.ServeHTTP(rw, req.WithContext(ctx))
+}
+
+func (p *Proxy) SetErrorAsset(errFile *assets.AssetFile) {
+	p.errAsset = errFile
 }
 
 // director request modification before roundtrip

@@ -1,10 +1,17 @@
 package server
 
 import (
+	"fmt"
+	"io/ioutil"
+	"mime"
 	"net"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
+	"go.avenga.cloud/couper/gateway/assets"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/handler"
 	"go.avenga.cloud/couper/gateway/utils"
@@ -14,8 +21,10 @@ import (
 type Mux struct {
 	api     routesMap
 	apiPath map[string]string
+	apiErr  map[string]*assets.AssetFile
 	fs      routesMap
 	fsPath  map[string]string
+	fsErr   map[string]*assets.AssetFile
 	spa     routesMap
 	spaPath map[string]string
 }
@@ -24,8 +33,10 @@ type Mux struct {
 func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 	mux := &Mux{
 		api:     make(routesMap),
+		apiErr:  make(map[string]*assets.AssetFile),
 		apiPath: make(map[string]string),
 		fs:      make(routesMap),
+		fsErr:   make(map[string]*assets.AssetFile),
 		fsPath:  make(map[string]string),
 		spa:     make(routesMap),
 		spaPath: make(map[string]string),
@@ -34,8 +45,10 @@ func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 	for _, server := range conf.Server {
 		var files, spa http.Handler
 
+		apiErrAsset, fsErrAsset := getErrorAssets(conf.WorkDir, server)
+
 		if server.Files != nil {
-			files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, server.Files.ErrorFile)
+			files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, fsErrAsset)
 		}
 
 		if server.Spa != nil {
@@ -48,8 +61,14 @@ func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 			if server.API != nil {
 				mux.api[domain] = make([]*Route, 0)
 				mux.apiPath[domain] = server.API.BasePath
+				mux.apiErr[domain] = apiErrAsset
 
 				for _, endpoint := range server.API.Endpoint {
+					h := ph[endpoint]
+					if v, ok := h.(handler.ErrorHandleable); ok {
+						v.SetErrorAsset(apiErrAsset)
+					}
+
 					mux.api[domain] = mux.api[domain].add(
 						utils.JoinPath(server.API.BasePath, endpoint.Pattern),
 						ph[endpoint],
@@ -60,6 +79,7 @@ func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 			if server.Files != nil {
 				mux.fs[domain] = make([]*Route, 0)
 				mux.fsPath[domain] = server.Files.BasePath
+				mux.fsErr[domain] = fsErrAsset
 
 				mux.fs[domain] = mux.fs[domain].add(
 					utils.JoinPath(server.Files.BasePath, "/**"),
@@ -109,10 +129,11 @@ func (m *Mux) Match(req *http.Request) http.Handler {
 			return h
 		}
 
-		if _, ok := m.api[domain]; ok && m.isAPIError(req.URL.Path, domain) {
-			// TODO: RETURN API-ERROR (JSON)
+		if m.isAPIError(req.URL.Path, domain) {
+			return handler.NewErrorHandler(m.apiErr[domain], 4001, http.StatusNotFound)
 		}
 	}
+
 	if m.fs != nil {
 		if h, ok := m.fs.Match(domain, req); ok {
 			if a, ok := h.(handler.Lookupable); ok && a.HasResponse(req) {
@@ -127,9 +148,7 @@ func (m *Mux) Match(req *http.Request) http.Handler {
 	}
 
 	if m.fs != nil && m.isFSError(req.URL.Path, domain) {
-		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			handler.ServeError(rw, r, http.StatusNotFound)
-		})
+		return handler.NewErrorHandler(m.fsErr[domain], 3001, http.StatusNotFound)
 	}
 
 	return nil
@@ -183,4 +202,66 @@ func stripHostPort(h string) string {
 		return h // on error, return unchanged
 	}
 	return host
+}
+
+func getErrorAssets(wd string, server *config.Server) (*assets.AssetFile, *assets.AssetFile) {
+	var apiErrAsset, fsErrAsset *assets.AssetFile
+
+	if server.API != nil && server.API.ErrorFile != "" {
+		file, info, err := openFile(path.Join(wd, server.API.ErrorFile))
+		if err != nil {
+			panic(err)
+		}
+		file.Close()
+
+		body, _ := ioutil.ReadFile(path.Join(wd, server.API.ErrorFile))
+		ct := mime.TypeByExtension(filepath.Ext(server.API.ErrorFile))
+		size := fmt.Sprintf("%d", info.Size())
+		apiErrAsset = assets.NewAssetFile(body, ct, size)
+	} else {
+		a, err := assets.Assets.Open("error.json")
+		if err != nil {
+			panic(err)
+		}
+		apiErrAsset = a
+	}
+
+	if server.Files != nil && server.Files.ErrorFile != "" {
+		file, info, err := openFile(path.Join(wd, server.Files.ErrorFile))
+		if err != nil {
+			panic(err)
+		}
+		file.Close()
+
+		body, _ := ioutil.ReadFile(path.Join(wd, server.Files.ErrorFile))
+		ct := mime.TypeByExtension(filepath.Ext(server.Files.ErrorFile))
+		size := fmt.Sprintf("%d", info.Size())
+		fsErrAsset = assets.NewAssetFile(body, ct, size)
+	} else {
+		a, err := assets.Assets.Open("error.html")
+		if err != nil {
+			panic(err)
+		}
+		fsErrAsset = a
+	}
+
+	apiErrAsset.MakeTemplate()
+	fsErrAsset.MakeTemplate()
+
+	return apiErrAsset, fsErrAsset
+}
+
+func openFile(name string) (*os.File, os.FileInfo, error) {
+	file, err := os.Open(name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return nil, nil, err
+	}
+
+	return file, info, nil
 }
