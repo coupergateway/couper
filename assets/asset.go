@@ -3,6 +3,7 @@ package assets
 import (
 	"bytes"
 	"errors"
+	"html/template"
 	"io"
 )
 
@@ -12,6 +13,7 @@ type AssetFile struct {
 	bytes []byte
 	ct    string
 	size  string
+	tpl   *template.Template
 }
 
 type Box struct {
@@ -20,6 +22,18 @@ type Box struct {
 
 // Assets is referenced by the servers file serving.
 var Assets *Box
+
+func NewAssetFile(bytes []byte, ct, size string) *AssetFile {
+	return &AssetFile{
+		bytes: bytes,
+		ct:    ct,
+		size:  size,
+	}
+}
+
+func (af *AssetFile) MakeTemplate() {
+	af.tpl = template.Must(template.New("").Parse(string(af.bytes)))
+}
 
 func (af *AssetFile) Bytes() []byte {
 	return af.bytes[:]
@@ -36,6 +50,10 @@ func (af *AssetFile) Size() string {
 
 func (af *AssetFile) CT() string {
 	return af.ct
+}
+
+func (af *AssetFile) Tpl() *template.Template {
+	return af.tpl
 }
 
 func New() *Box {

@@ -1,41 +1,83 @@
 package handler
 
 import (
-	"fmt"
+	"bytes"
+	"html/template"
 	"net/http"
+	"strings"
 
 	"go.avenga.cloud/couper/gateway/assets"
+	"go.avenga.cloud/couper/gateway/utils"
 )
 
-// ServeError writes asset error content into the response
-func ServeError(rw http.ResponseWriter, req *http.Request, status int) {
-	var file *assets.AssetFile
+const RequestIDKey = "requestID"
 
-	if assets.Assets != nil {
-		key := fmt.Sprintf("%d.html", status)
+var _ http.Handler = &ServingError{}
 
-		v, err := assets.Assets.Open(key)
-		if err == nil {
-			file = v
-		}
+// ServingError represents a ServingError object
+type ServingError struct {
+	Asset      *assets.AssetFile
+	Code       int
+	HTTPStatus int
+	Message    string
+}
+
+func NewErrorHandler(asset *assets.AssetFile, code, status int) *ServingError {
+	if asset == nil {
+		return nil
 	}
 
-	if file == nil {
-		rw.WriteHeader(status)
+	return &ServingError{
+		Asset:      asset,
+		Code:       code,
+		HTTPStatus: status,
+		Message:    utils.GetErrorMessage(code),
+	}
+}
+
+func (s *ServingError) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if s.Asset == nil {
+		rw.WriteHeader(s.HTTPStatus)
+		return
+	}
+
+	confBytes := &bytes.Buffer{}
+	err := s.Asset.Tpl().Execute(confBytes, map[string]interface{}{
+		"http_status": s.HTTPStatus,
+		"message":     s.escapeValue(s.Message),
+		"error_code":  s.Code,
+		"path":        s.escapeValue(req.URL.Path),
+		"request_id":  s.escapeValue(req.Context().Value(RequestIDKey).(string)),
+	})
+	if err != nil {
+		rw.WriteHeader(s.HTTPStatus)
 		return
 	}
 
 	if req.Method != "HEAD" {
-		if ct := file.CT(); ct != "" {
+		if ct := s.Asset.CT(); ct != "" {
 			rw.Header().Set("Content-Type", ct)
 		}
-		rw.Header().Set("Content-Length", file.Size())
+		// FIXME: The asset-size is changed after replacements
+		// rw.Header().Set("Content-Length", s.Asset.Size())
 	}
 
-	rw.WriteHeader(status)
+	rw.WriteHeader(s.HTTPStatus)
 
 	// TODO: gzip, br?
 	if req.Method != "HEAD" {
-		rw.Write(file.Bytes())
+		rw.Write(confBytes.Bytes())
 	}
+}
+
+func (s *ServingError) escapeValue(v string) string {
+	if strings.HasPrefix(s.Asset.CT(), "text/html") {
+		return template.HTMLEscapeString(v)
+	}
+
+	return template.JSEscapeString(v)
+}
+
+func (s *ServingError) String() string {
+	return "Error"
 }
