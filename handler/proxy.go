@@ -113,41 +113,43 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 	return nil
 }
 
-func (p *Proxy) setRoundtripContext(req *http.Request, res *http.Response) {
+func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	var reqCtx context.Context
+	var attrCtx string
+	var headerCtx http.Header
 	if req != nil {
 		reqCtx = req.Context()
-	} else if res != nil {
-		reqCtx = res.Request.Context()
+		headerCtx = req.Header
+		attrCtx = attrReqHeaders
+	} else if beresp != nil {
+		reqCtx = beresp.Request.Context()
+		headerCtx = beresp.Header
+		attrCtx = attrResHeaders
 	}
 	log := p.log.WithField("uid", reqCtx.Value("requestID"))
 	var fields []string
 
-	evalCtx := NewHTTPEvalContext(p.evalContext, req, res)
+	evalCtx := NewHTTPEvalContext(p.evalContext, req, beresp)
 
-	if req != nil {
+	// Remove blacklisted headers after evaluation to be accessable within our context configuration.
+	if attrCtx == attrReqHeaders {
 		for _, key := range headerBlacklist {
-			req.Header.Del(key)
+			headerCtx.Del(key)
 		}
 	}
 
-	dynamicHeader := make(http.Header)
-	for _, ctx := range p.options.Context {
-		err := NewCtxOptions(dynamicHeader, evalCtx, ctx)
+	for _, ctxBody := range p.options.Context {
+		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
 		if err != nil {
 			log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 			return
 		}
-	}
-	if req != nil {
-		fields = append(fields, setFields(req.Header, dynamicHeader)...)
-	} else if res != nil {
-		fields = append(fields, setFields(res.Header, dynamicHeader)...)
+		fields = append(fields, setFields(headerCtx, options)...)
 	}
 
 	logKey := "custom-req-header"
 	if len(fields) > 0 {
-		if res != nil {
+		if beresp != nil {
 			logKey = "custom-res-header"
 		}
 		log.WithField(logKey, fields).Debug()
@@ -158,18 +160,20 @@ func (p *Proxy) String() string {
 	return "Proxy"
 }
 
-func setFields(header http.Header, ctx http.Header) []string {
+func setFields(header http.Header, options OptionsMap) []string {
 	var fields []string
-	if len(ctx) == 0 {
+	if len(options) == 0 {
 		return fields
 	}
 
-	for key, value := range ctx {
+	for key, value := range options {
 		if len(value) == 0 || value[0] == "" {
 			header.Del(key)
 			continue
 		}
-		header[http.CanonicalHeaderKey(key)] = value
+		k := http.CanonicalHeaderKey(key)
+		header[k] = value
+		fields = append(fields, k+": "+strings.Join(value, ""))
 	}
 	return fields
 }

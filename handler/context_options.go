@@ -1,49 +1,106 @@
 package handler
 
 import (
-	"net/http"
+	"math/big"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 )
 
-func NewCtxOptions(target http.Header, decodeCtx *hcl.EvalContext, body hcl.Body) error {
+type OptionsMap map[string][]string
+
+func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (OptionsMap, error) {
 	var diags hcl.Diagnostics
+	var options OptionsMap
+
 	content, d := body.Content(headersAttributeSchema)
 	diags = append(diags, d...)
 
-	if attr, ok := content.Attributes["request_headers"]; ok {
-		emap, mapDiags := hcl.ExprMap(attr.Expr)
-		diags = append(diags, mapDiags...)
-		for i := range emap {
-			val, valDiags := emap[i].Value.Value(decodeCtx)
-			diags = append(diags, valDiags...)
-			key, keyDiags := emap[i].Key.Value(decodeCtx)
-			diags = append(diags, keyDiags...)
-			if val.Type().IsPrimitiveType() {
-				target.Set(key.AsString(), val.AsString())
-				continue
-			}
-			var values []string
-			for _, v := range val.AsValueSlice() {
-				values = append(values, v.AsString())
-			}
-			target[key.AsString()] = values
+	for _, attr := range content.Attributes {
+		if attr.Name != attrName {
+			continue
 		}
+		o, d := NewOptionsMap(evalCtx, attr)
+		diags = append(diags, d...)
+		options = o
+		break
+	}
 
-	}
 	if diags.HasErrors() {
-		return diags
+		return nil, diags
 	}
-	return nil
+	return options, nil
 }
+
+func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, hcl.Diagnostics) {
+	options := make(OptionsMap)
+	var diags hcl.Diagnostics
+
+	emap, mapDiags := hcl.ExprMap(attr.Expr)
+	diags = append(diags, mapDiags...)
+	for i := range emap {
+		val, valDiags := emap[i].Value.Value(evalCtx)
+		diags = append(diags, valDiags...)
+		key, keyDiags := emap[i].Key.Value(evalCtx)
+		diags = append(diags, keyDiags...)
+		if key.Type() != cty.String {
+			diags = append(diags, &hcl.Diagnostic{
+				Context:     &attr.Range,
+				Detail:      "key must be a string type",
+				EvalContext: evalCtx,
+				Expression:  emap[i].Key,
+				Severity:    hcl.DiagError,
+				Subject:     &attr.Range,
+				Summary:     "invalid key type",
+			})
+			return nil, diags
+		}
+		if val.Type().IsPrimitiveType() {
+			options[key.AsString()] = []string{ValueToString(val)}
+			continue
+		}
+		var values []string
+		for _, v := range val.AsValueSlice() {
+			values = append(values, ValueToString(v))
+		}
+		options[key.AsString()] = values
+	}
+	return options, diags
+}
+
+func ValueToString(v cty.Value) string {
+	switch v.Type() {
+	case cty.String:
+		return v.AsString()
+	case cty.Number:
+		n := v.AsBigFloat()
+		ni, accuracy := n.Int(nil)
+		if accuracy == big.Exact {
+			return ni.String()
+		}
+		return n.String()
+	case cty.Bool:
+		if v.True() {
+			return "true"
+		}
+		return "false"
+	default:
+		return ""
+	}
+}
+
+const (
+	attrReqHeaders = "request_headers"
+	attrResHeaders = "response_headers"
+)
 
 var headersAttributeSchema = &hcl.BodySchema{
 	Attributes: []hcl.AttributeSchema{
 		{
-			Name: "request_headers",
+			Name: attrReqHeaders,
 		},
 		{
-			Name: "response_headers",
+			Name: attrResHeaders,
 		},
 	},
 }

@@ -52,11 +52,13 @@ server "couperConnect" {
 
                 request_headers = {
                     x-env-user = ["override-user"]
-                    x-single-val = "val"
+                    x-single-val = 12+14
+                    user-agent = "moo"
                 }
 
                 response_headers = {
                     server = ["my-override"]
+                    x-single-val = true
                 }
             }
         }
