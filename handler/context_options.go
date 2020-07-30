@@ -61,7 +61,10 @@ func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, h
 		}
 		var values []string
 		for _, v := range val.AsValueSlice() {
-			values = append(values, ValueToString(v))
+			str := ValueToString(v)
+			if str != "" {
+				values = append(values, str)
+			}
 		}
 		options[key.AsString()] = values
 	}
@@ -83,7 +86,7 @@ func ValueToString(v cty.Value) string {
 		if v.True() {
 			return "true"
 		}
-		return "false"
+		return ""
 	default:
 		return ""
 	}

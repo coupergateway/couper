@@ -75,7 +75,7 @@ definitions {
         origin = "https://couper.io:${442 + 1}"
         timeout = "20s"
         request_headers = {
-            x-my-custom-ua = [req.headers.user-agent, to_upper("muh")]
+            x-my-custom-ua = [req.headers.user-agent, false, to_upper("muh")]
             x-env-user = [env.USER]
         }
         

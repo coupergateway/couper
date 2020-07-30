@@ -173,7 +173,7 @@ func setFields(header http.Header, options OptionsMap) []string {
 		}
 		k := http.CanonicalHeaderKey(key)
 		header[k] = value
-		fields = append(fields, k+": "+strings.Join(value, ""))
+		fields = append(fields, k+": "+strings.Join(value, ","))
 	}
 	return fields
 }
