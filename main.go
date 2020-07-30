@@ -26,7 +26,7 @@ func main() {
 	logger := newLogger()
 
 	exampleConf := config.LoadFile(*configFile, logger)
-	exampleConf.Addr = *listenPort
+	exampleConf.Addr = ":" + *listenPort
 
 	ctx := command.ContextWithSignal(context.Background())
 	srv := server.New(ctx, logger, exampleConf)
