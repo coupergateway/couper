@@ -27,5 +27,6 @@ func (sr *StatusReader) WriteHeader(statusCode int) {
 	if sr.status == 0 {
 		sr.status = statusCode
 	}
+	sr.rw.Header().Set("Server", "couper.io")
 	sr.rw.WriteHeader(statusCode)
 }

@@ -94,7 +94,6 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
 	req.Header.Set("X-Request-Id", uid)
-	rw.Header().Set("server", "couper.io")
 	rw.Header().Set("X-Request-Id", uid)
 
 	h, pattern := s.mux.Match(req)
