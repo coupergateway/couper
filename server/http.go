@@ -111,7 +111,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		handlerName = "none"
-		asset := assets.Assets.MustOpen("error.html")
+		asset, _ := assets.Assets.Open("error.html")
+		asset.MakeTemplate()
 		handler.NewErrorHandler(asset, 1001, http.StatusInternalServerError).ServeHTTP(rw, req)
 		err = errors.New("no configuration found: " + req.URL.String())
 	}

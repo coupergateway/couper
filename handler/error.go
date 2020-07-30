@@ -36,7 +36,7 @@ func NewErrorHandler(asset *assets.AssetFile, code, status int) *ServingError {
 }
 
 func (s *ServingError) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if s.Asset == nil {
+	if s.Asset == nil || s.Asset.Tpl() == nil {
 		rw.WriteHeader(s.HTTPStatus)
 		return
 	}

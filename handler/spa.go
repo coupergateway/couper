@@ -23,6 +23,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			asset, _ := assets.Assets.Open("error.html")
+			asset.MakeTemplate()
 			NewErrorHandler(asset, 2001, http.StatusNotFound).ServeHTTP(rw, req)
 			return
 		}
@@ -36,6 +37,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	fileInfo, err := file.Stat()
 	if err != nil || fileInfo.IsDir() {
 		asset, _ := assets.Assets.Open("error.html")
+		asset.MakeTemplate()
 		NewErrorHandler(asset, 2001, http.StatusInternalServerError).ServeHTTP(rw, req)
 		return
 	}
