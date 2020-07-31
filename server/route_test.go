@@ -26,8 +26,9 @@ func TestNewRoute(t *testing.T) {
 		{"missing handler", args{"/", nil}, nil, true},
 		{"path: /", args{"/", noopHandlerFn}, &Route{pattern: "/", matcher: regexp.MustCompile("^/$"), handler: noopHandlerFn}, false},
 		{"path: /sub/", args{"/sub/", noopHandlerFn}, &Route{pattern: "/sub/", matcher: regexp.MustCompile("^/sub/$"), handler: noopHandlerFn}, false},
-		{"path: /**", args{"/**", noopHandlerFn}, &Route{pattern: "/**", matcher: regexp.MustCompile("^/(.*)"), handler: noopHandlerFn}, false},
-		{"path: /sub/**", args{"/sub/**", noopHandlerFn}, &Route{pattern: "/sub/**", matcher: regexp.MustCompile("^/sub/(.*)"), handler: noopHandlerFn}, false},
+		{"path: /**", args{"/**", noopHandlerFn}, &Route{pattern: "/**", matcher: regexp.MustCompile("^/?(.*)"), handler: noopHandlerFn}, false},
+		{"path: /sub", args{"/sub/**", noopHandlerFn}, &Route{pattern: "/sub/**", matcher: regexp.MustCompile("^/sub/?(.*)"), handler: noopHandlerFn}, false},
+		{"path: /sub/**", args{"/sub/**", noopHandlerFn}, &Route{pattern: "/sub/**", matcher: regexp.MustCompile("^/sub/?(.*)"), handler: noopHandlerFn}, false},
 		{"path: /sub/**/foo/", args{"/sub/**/foo/", noopHandlerFn}, nil, true},
 		{"path: /sub/**/foo/**", args{"/sub/**/foo/**", noopHandlerFn}, nil, true},
 	}

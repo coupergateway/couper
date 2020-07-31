@@ -96,7 +96,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Request-Id", uid)
 	rw.Header().Set("X-Request-Id", uid)
 
-	h, pattern := s.mux.Match(req)
+	h := s.mux.Match(req)
 
 	var err error
 	var handlerName string
@@ -114,7 +114,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	fields := logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
-		"pattern": pattern,
 		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,
