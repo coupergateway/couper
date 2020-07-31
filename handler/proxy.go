@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 )
 
 var _ http.Handler = &Proxy{}
+
+var OriginRequiredError = errors.New("origin is required")
 
 // headerBlacklist lists all header keys which will be removed after
 // context variable evaluation to ensure to not pass them upstream.
@@ -36,13 +39,16 @@ type ProxyOptions struct {
 	Hostname, Origin, Path               string
 }
 
-func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) http.Handler {
+func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+	if options.Origin == "" {
+		return nil, OriginRequiredError
+	}
 	originURL, err := url.Parse(options.Origin)
 	if err != nil {
-		panic("err parsing origin url: " + err.Error())
+		return nil, fmt.Errorf("err parsing origin url: %w", err)
 	}
 	if originURL.Scheme != "http" && originURL.Scheme != "https" {
-		panic("err: backend origin must define a scheme")
+		return nil, errors.New("backend origin must define a scheme")
 	}
 
 	proxy := &Proxy{
@@ -80,7 +86,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 			TLSClientConfig:       tlsConf,
 		},
 	}
-	return proxy
+	return proxy, nil
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

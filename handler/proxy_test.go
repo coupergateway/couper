@@ -30,7 +30,10 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			p, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			if err != nil {
+				t.Fatal(err)
+			}
 			// TODO: eval changes
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(rec, tt.args.req)
@@ -64,7 +67,10 @@ func TestProxy_director(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			p, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			if err != nil {
+				t.Fatal(err)
+			}
 			proxy := p.(*Proxy)
 			proxy.director(tt.req)
 
@@ -100,7 +106,10 @@ func TestProxy_modifyResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			p, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			if err != nil {
+				t.Fatal(err)
+			}
 			proxy := p.(*Proxy)
 			if err := proxy.modifyResponse(tt.args.res); (err != nil) != tt.wantErr {
 				t.Errorf("modifyResponse() error = %v, wantErr %v", err, tt.wantErr)

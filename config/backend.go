@@ -9,7 +9,7 @@ type Backend struct {
 	Hostname       string   `hcl:"hostname,optional"`
 	Name           string   `hcl:"name,label"`
 	Options        hcl.Body `hcl:",remain"`
-	Origin         string   `hcl:"origin"`
+	Origin         string   `hcl:"origin,optional"` // mixed, not required for overrides
 	Path           string   `hcl:"path,optional"`
 	Timeout        string   `hcl:"timeout,optional"`
 	TTFBTimeout    string   `hcl:"ttfb_timeout,optional"`

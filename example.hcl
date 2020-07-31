@@ -47,7 +47,6 @@ server "couperConnect" {
 
         endpoint "/httpbin/**" {
             backend "my_proxy" {
-                origin = "https://httpbin.org"
                 path = "/**"
 
                 request_headers = {
