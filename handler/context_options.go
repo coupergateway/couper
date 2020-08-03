@@ -2,6 +2,7 @@ package handler
 
 import (
 	"math/big"
+	"regexp"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -71,10 +72,16 @@ func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, h
 	return options, diags
 }
 
+var whitespaceRegex = regexp.MustCompile(`^\s*$`)
+
 func ValueToString(v cty.Value) string {
 	switch v.Type() {
 	case cty.String:
-		return v.AsString()
+		str := v.AsString()
+		if whitespaceRegex.MatchString(str) {
+			return ""
+		}
+		return str
 	case cty.Number:
 		n := v.AsBigFloat()
 		ni, accuracy := n.Int(nil)
@@ -82,11 +89,6 @@ func ValueToString(v cty.Value) string {
 			return ni.String()
 		}
 		return n.String()
-	case cty.Bool:
-		if v.True() {
-			return "true"
-		}
-		return ""
 	default:
 		return ""
 	}
