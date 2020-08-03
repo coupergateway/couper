@@ -17,6 +17,21 @@ server "couperConnect" {
         # reference backend definition
         backend = "my_proxy"
 
+        endpoint "/timeout" {
+            backend "my_proxy" {
+                origin = "http://blackhole.webpagetest.org"
+                # > timeout
+                connect_timeout = "60s"
+            }
+        }
+
+        endpoint "/connect-timeout" {
+            backend "my_proxy" {
+                origin = "http://1.2.3.4"
+                connect_timeout = "2s"
+            }
+        }
+
         # pattern
         endpoint "/proxy/" {
         }
@@ -31,10 +46,19 @@ server "couperConnect" {
         }
 
         endpoint "/httpbin/**" {
-            backend {
-                description = "${env.NOT_EXIST}"
-                origin = "https://httpbin.org"
+            backend "my_proxy" {
                 path = "/**"
+
+                request_headers = {
+                    x-env-user = ["override-user"]
+                    x-single-val = 12+14
+                    user-agent = "moo"
+                }
+
+                response_headers = {
+                    server = ["my-override"]
+                    x-single-val = true
+                }
             }
         }
 
@@ -47,33 +71,26 @@ server "couperConnect" {
 
 definitions {
     backend "my_proxy" {
-        description = "you could reference me with endpoint blocks"
         origin = "https://couper.io:${442 + 1}"
-        request {
-            headers = {
-                X-My-Custom-Foo-UA = [req.headers.User-Agent, to_upper("muh")]
-                X-Env-User = [env.USER]
-            }
+        timeout = "20s"
+        request_headers = {
+            x-my-custom-ua = [req.headers.user-agent, false, to_upper("muh")]
+            x-env-user = [env.USER]
         }
-
-        response {
-            headers = {
-                Server = [to_lower("mySuperService")]
-            }
+        
+        response_headers = {
+            Server = [to_lower("mySuperService")]
         }
     }
 
     backend "httpbin" {
         path = "/anything/" #Optional and only if set, remove basePath+endpoint path
-        description = "optional field"
         origin = "https://httpbin.org:443"
-        request {
-            headers = {
-                X-Env-User = [env.USER]
-                X-Req-Header = [req.headers.X-Set-Me]
-                Authorization = ["Bearer ${req.cookies.AccessToken}"]
-                Cookie: []
-            }
+        request_headers = {
+            X-Env-User = env.USER
+            X-Req-Header = [req.headers.X-Set-Me]
+            Authorization = ["Bearer ${req.cookies.AccessToken}"]
+            Cookie: ""
         }
     }
 

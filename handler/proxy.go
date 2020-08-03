@@ -1,11 +1,17 @@
 package handler
 
 import (
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -13,43 +19,81 @@ import (
 
 var _ http.Handler = &Proxy{}
 
+var OriginRequiredError = errors.New("origin is required")
+
+// headerBlacklist lists all header keys which will be removed after
+// context variable evaluation to ensure to not pass them upstream.
+var headerBlacklist = []string{"Authentication", "Cookie"}
+
 type Proxy struct {
-	originURL              *url.URL
-	origin, hostname, path string
-	evalContext            *hcl.EvalContext
-	contextOptions         hcl.Body
-	rp                     *httputil.ReverseProxy
-	log                    *logrus.Entry
+	evalContext *hcl.EvalContext
+	log         *logrus.Entry
+	options     *ProxyOptions
+	originURL   *url.URL
+	rp          *httputil.ReverseProxy
 }
 
-func NewProxy(origin, hostname, path string, log *logrus.Entry, evalCtx *hcl.EvalContext, options hcl.Body) http.Handler {
-	originURL, err := url.Parse(origin)
+type ProxyOptions struct {
+	ConnectTimeout, Timeout, TTFBTimeout time.Duration
+	Context                              []hcl.Body
+	Hostname, Origin, Path               string
+}
+
+func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+	if options.Origin == "" {
+		return nil, OriginRequiredError
+	}
+	originURL, err := url.Parse(options.Origin)
 	if err != nil {
-		panic("err parsing origin url: " + err.Error())
+		return nil, fmt.Errorf("err parsing origin url: %w", err)
 	}
 	if originURL.Scheme != "http" && originURL.Scheme != "https" {
-		panic("err: backend origin must define a scheme")
+		return nil, errors.New("backend origin must define a scheme")
 	}
 
 	proxy := &Proxy{
-		origin:         origin,
-		originURL:      originURL,
-		evalContext:    evalCtx,
-		hostname:       hostname,
-		path:           path,
-		log:            log,
-		contextOptions: options,
+		evalContext: evalCtx,
+		log:         log,
+		options:     options,
+		originURL:   originURL,
 	}
 
-	proxy.rp = &httputil.ReverseProxy{
-		Director:       proxy.director, // request modification
-		ModifyResponse: proxy.modifyResponse,
+	var tlsConf *tls.Config
+	if options.Hostname != "" {
+		tlsConf = &tls.Config{
+			ServerName: options.Hostname,
+		}
 	}
-	return proxy
+
+	d := &net.Dialer{Timeout: options.ConnectTimeout}
+	proxy.rp = &httputil.ReverseProxy{
+		Director: proxy.director, // request modification
+		ErrorHandler: func(rw http.ResponseWriter, req *http.Request, err error) { // TODO: merge with error logging
+			rw.WriteHeader(http.StatusBadGateway)
+			log.WithField("uid", req.Context().Value("requestID")).Error(err)
+		},
+		ModifyResponse: proxy.modifyResponse,
+		Transport: &http.Transport{
+			// DisableCompression: true,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				conn, err := d.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, fmt.Errorf("connecting to %s failed: %w", originURL.String(), err)
+				}
+				return conn, nil
+			},
+			ResponseHeaderTimeout: proxy.options.TTFBTimeout,
+			TLSClientConfig:       tlsConf,
+		},
+	}
+	return proxy, nil
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	p.rp.ServeHTTP(rw, req)
+	deadline := time.Now().Add(p.options.Timeout)
+	ctx, cancelFn := context.WithDeadline(req.Context(), deadline)
+	defer cancelFn()
+	p.rp.ServeHTTP(rw, req.WithContext(ctx))
 }
 
 // director request modification before roundtrip
@@ -57,64 +101,85 @@ func (p *Proxy) director(req *http.Request) {
 	req.URL.Host = p.originURL.Host
 	req.URL.Scheme = p.originURL.Scheme
 	req.Host = p.originURL.Host
-	if p.hostname != "" {
-		req.Host = p.hostname
+	if p.options.Hostname != "" {
+		req.Host = p.options.Hostname
 	}
 
-	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.path != "" {
-		req.URL.Path = path.Join(strings.ReplaceAll(p.path, "/**", "/"), pathMatch)
-	} else if p.path != "" {
-		req.URL.Path = p.path
+	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.options.Path != "" {
+		req.URL.Path = path.Join(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
+	} else if p.options.Path != "" {
+		req.URL.Path = p.options.Path
 	}
 
-	log := p.log.WithField("uid", req.Context().Value("requestID"))
-
-	contextOptions, err := NewRequestCtxOptions(p.evalContext, p.contextOptions, req)
-	if err != nil {
-		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
-		return
-	}
-
-	if contextOptions.Request == nil {
-		return
-	}
-	for header, value := range contextOptions.Request.Headers {
-		if len(value) == 0 {
-			req.Header.Del(header)
-		} else {
-			req.Header.Set(header, value[0])
-		}
-	}
-	if len(contextOptions.Request.Headers) > 0 {
-		log.WithField("custom-req-header", contextOptions.Request.Headers).Debug()
-	}
+	p.setRoundtripContext(req, nil)
 }
 
 func (p *Proxy) modifyResponse(res *http.Response) error {
-	log := p.log.WithField("uid", res.Request.Context().Value("requestID"))
-	contextOptions, err := NewResponseCtxOptions(p.evalContext, p.contextOptions, res)
-	if err != nil {
-		log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
-		return err
-	}
+	p.setRoundtripContext(nil, res)
+	return nil
+}
 
-	if contextOptions.Response == nil {
-		return nil
+func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
+	var reqCtx context.Context
+	var attrCtx string
+	var headerCtx http.Header
+	if req != nil {
+		reqCtx = req.Context()
+		headerCtx = req.Header
+		attrCtx = attrReqHeaders
+	} else if beresp != nil {
+		reqCtx = beresp.Request.Context()
+		headerCtx = beresp.Header
+		attrCtx = attrResHeaders
 	}
+	log := p.log.WithField("uid", reqCtx.Value("requestID"))
+	var fields []string
 
-	for header, value := range contextOptions.Response.Headers {
-		if len(value) == 0 {
-			res.Header.Del(header)
-		} else {
-			res.Header.Set(header, value[0])
+	evalCtx := NewHTTPEvalContext(p.evalContext, req, beresp)
+
+	// Remove blacklisted headers after evaluation to be accessable within our context configuration.
+	if attrCtx == attrReqHeaders {
+		for _, key := range headerBlacklist {
+			headerCtx.Del(key)
 		}
 	}
-	if len(contextOptions.Response.Headers) > 0 {
-		log.WithField("custom-res-header", contextOptions.Response.Headers).Debug()
+
+	for _, ctxBody := range p.options.Context {
+		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
+		if err != nil {
+			log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+			return
+		}
+		fields = append(fields, setFields(headerCtx, options)...)
 	}
-	return nil
+
+	logKey := "custom-req-header"
+	if len(fields) > 0 {
+		if beresp != nil {
+			logKey = "custom-res-header"
+		}
+		log.WithField(logKey, fields).Debug()
+	}
 }
 
 func (p *Proxy) String() string {
 	return "Proxy"
+}
+
+func setFields(header http.Header, options OptionsMap) []string {
+	var fields []string
+	if len(options) == 0 {
+		return fields
+	}
+
+	for key, value := range options {
+		if len(value) == 0 || value[0] == "" {
+			header.Del(key)
+			continue
+		}
+		k := http.CanonicalHeaderKey(key)
+		header[k] = value
+		fields = append(fields, k+": "+strings.Join(value, ","))
+	}
+	return fields
 }

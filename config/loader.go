@@ -10,6 +10,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -21,7 +22,7 @@ import (
 	"go.avenga.cloud/couper/gateway/handler"
 )
 
-var ErrorMissingBackend = errors.New("no backend attribute reference or block")
+var errorMissingBackend = errors.New("no backend attribute reference or block")
 
 func LoadFile(filename string, log *logrus.Entry) *Gateway {
 	src, err := ioutil.ReadFile(filename)
@@ -42,12 +43,52 @@ func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
 }
 
 func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway {
-	accessControls := configureAccessControls(config)
-
-	backends, err := configureBackends(config, log, evalCtx)
-	if err != nil {
-		log.Fatal(err)
+	type backendDefinition struct {
+		conf    *Backend
+		handler http.Handler
 	}
+	backends := make(map[string]backendDefinition)
+
+	if config.Definitions != nil {
+		for _, beConf := range config.Definitions.Backend {
+			if _, ok := backends[beConf.Name]; ok {
+				log.Fatalf("backend name must be unique: '%s'", beConf.Name)
+			}
+
+			if beConf.Origin == "" {
+				log.Fatalf("backend %q: origin attribute is required", beConf.Name)
+			}
+
+			if beConf.Timeout == "" {
+				beConf.Timeout = backendDefaultTimeout
+			}
+			if beConf.TTFBTimeout == "" {
+				beConf.TTFBTimeout = backendDefaultTTFBTimeout
+			}
+			if beConf.ConnectTimeout == "" {
+				beConf.ConnectTimeout = backendDefaultConnectTimeout
+			}
+			t, ttfbt, ct := parseBackendTimings(beConf)
+			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				ConnectTimeout: ct,
+				Context:        []hcl.Body{beConf.Options},
+				Hostname:       beConf.Hostname,
+				Origin:         beConf.Origin,
+				Path:           beConf.Path,
+				Timeout:        t,
+				TTFBTimeout:    ttfbt,
+			}, log, evalCtx)
+			if err != nil {
+				log.Fatal(err)
+			}
+			backends[beConf.Name] = backendDefinition{
+				conf:    beConf,
+				handler: proxy,
+			}
+		}
+	}
+
+	accessControls := configureAccessControls(config)
 
 	for idx, server := range config.Server {
 		configureDomains(server)
@@ -80,7 +121,29 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				acList = append(acList, accessControls[acName])
 			}
 
-			setACHandlerFn := func(protectedHandler http.Handler) {
+			// setACHandlerFn individual wrap for access_control configuration per endpoint
+			setACHandlerFn := func(protectedBackend backendDefinition) {
+				protectedHandler := protectedBackend.handler
+
+				// prefer endpoint 'path' definition over 'backend.Path'
+				if endpoint.Path != "" {
+					beConf, remainCtx := protectedBackend.conf.Merge(&Backend{Path: endpoint.Path})
+					t, ttfbt, ct := parseBackendTimings(beConf)
+					proxy, err := handler.NewProxy(&handler.ProxyOptions{
+						ConnectTimeout: ct,
+						Context:        remainCtx,
+						Hostname:       beConf.Hostname,
+						Origin:         beConf.Origin,
+						Path:           beConf.Path,
+						Timeout:        t,
+						TTFBTimeout:    ttfbt,
+					}, log, evalCtx)
+					if err != nil {
+						log.Fatal(err)
+					}
+					protectedHandler = proxy
+				}
+
 				if len(acList) > 0 {
 					server.API.PathHandler[endpoint] = handler.NewAccessControl(protectedHandler, acList...)
 					return
@@ -98,8 +161,8 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, err := newInlineBackend(evalCtx, endpoint.InlineDefinition, log)
-			if err == ErrorMissingBackend {
+			inlineBackend, inlineConf, err := newInlineBackend(evalCtx, endpoint.InlineDefinition, log)
+			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
 						log.Fatalf("backend %q is not defined", server.API.Backend)
@@ -107,17 +170,44 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, err = newInlineBackend(evalCtx, server.API.InlineDefinition, log)
+				inlineBackend, inlineConf, err = newInlineBackend(evalCtx, server.API.InlineDefinition, log)
 				if err != nil {
 					log.Fatal(err)
 				}
-				setACHandlerFn(inlineBackend)
-				continue
+
+				if inlineConf.Name == "" && inlineConf.Origin == "" {
+					log.Fatal("api inline backend requires an origin attribute")
+				}
+
 			} else if err != nil {
-				log.Fatal(err)
+				if err == handler.OriginRequiredError && inlineConf.Name == "" || err != handler.OriginRequiredError {
+					log.Fatalf("Range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err) // TODO diags error
+				}
 			}
 
-			setACHandlerFn(inlineBackend)
+			if inlineConf.Name != "" { // inline backends have no label, assume a reference and override settings
+				if _, ok := backends[inlineConf.Name]; !ok {
+					log.Fatalf("override backend %q is not defined", inlineConf.Name)
+				}
+
+				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
+				t, ttfbt, ct := parseBackendTimings(beConf)
+				proxy, err := handler.NewProxy(&handler.ProxyOptions{
+					ConnectTimeout: ct,
+					Context:        remainCtx,
+					Hostname:       beConf.Hostname,
+					Origin:         beConf.Origin,
+					Path:           beConf.Path,
+					Timeout:        t,
+					TTFBTimeout:    ttfbt,
+				}, log, evalCtx)
+				if err != nil {
+					log.Fatal(err)
+				}
+				inlineBackend = proxy
+			}
+
+			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
 		}
 	}
 
@@ -157,8 +247,8 @@ func configureDomains(server *Server) {
 	if len(server.Domains) > 0 {
 		return
 	}
-	// TODO: ipv6
-	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0"}
+
+	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 }
 
 func configureAccessControls(conf *Gateway) ac.Map {
@@ -199,39 +289,69 @@ func configureAccessControls(conf *Gateway) ac.Map {
 	return accessControls
 }
 
-func configureBackends(conf *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) (map[string]http.Handler, error) {
-	backends := make(map[string]http.Handler)
-	if conf.Definitions == nil {
-		return backends, nil
-	}
-
-	for _, be := range conf.Definitions.Backend {
-		if _, ok := backends[be.Name]; ok {
-			return nil, fmt.Errorf("backend name must be unique: '%s'", be.Name)
-		}
-		backends[be.Name] = handler.NewProxy(be.Origin, be.Hostname, be.Path, log, evalCtx, be.Options)
-	}
-
-	return backends, nil
-}
-
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, error) {
-	content, leftOver, diags := inlineDef.PartialContent(Definitions{}.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *Backend, error) {
+	content, _, diags := inlineDef.PartialContent(Definitions{}.Schema(true))
+	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
-		return nil, ErrorMissingBackend
+		// no inline conf, retry for override definitions with label
+		content, _, diags = inlineDef.PartialContent(Definitions{}.Schema(false))
+		if diags.HasErrors() {
+			return nil, nil, diags
+		}
+
+		if content == nil || len(content.Blocks) == 0 {
+			return nil, nil, errorMissingBackend
+		}
 	}
 
 	beConf := &Backend{}
 	diags = gohcl.DecodeBody(content.Blocks[0].Body, evalCtx, beConf)
 	if diags.HasErrors() {
-		return nil, diags
+		return nil, nil, diags
+	}
+	if len(content.Blocks[0].Labels) > 0 {
+		beConf.Name = content.Blocks[0].Labels[0]
 	}
 
-	return handler.NewProxy(beConf.Origin, beConf.Hostname, beConf.Path, log, evalCtx, leftOver), nil
+	t, ttfbt, ct := parseBackendTimings(beConf)
+	proxy, err := handler.NewProxy(&handler.ProxyOptions{
+		ConnectTimeout: ct,
+		Context:        []hcl.Body{beConf.Options},
+		Hostname:       beConf.Hostname,
+		Origin:         beConf.Origin,
+		Path:           beConf.Path,
+		Timeout:        t,
+		TTFBTimeout:    ttfbt,
+	}, log, evalCtx)
+	return proxy, beConf, err
+}
+
+func parseBackendTimings(conf *Backend) (time.Duration, time.Duration, time.Duration) {
+	t := conf.Timeout
+	ttfb := conf.TTFBTimeout
+	c := conf.ConnectTimeout
+	if t == "" {
+		t = backendDefaultTimeout
+	}
+	if ttfb == "" {
+		ttfb = backendDefaultTTFBTimeout
+	}
+	if c == "" {
+		c = backendDefaultConnectTimeout
+	}
+	totalD, err := time.ParseDuration(t)
+	if err != nil {
+		panic(err)
+	}
+	ttfbD, err := time.ParseDuration(ttfb)
+	if err != nil {
+		panic(err)
+	}
+	connectD, err := time.ParseDuration(c)
+	if err != nil {
+		panic(err)
+	}
+	return totalD, ttfbD, connectD
 }
 
 func decodeEnvironmentRefs(src []byte) []string {

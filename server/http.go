@@ -61,7 +61,7 @@ func (s *HTTPServer) Listen() {
 	}
 	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
-		s.log.Error(err)
+		s.log.Fatal(err)
 		return
 	}
 	s.listener = ln
@@ -94,10 +94,9 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := req.Context().Value(RequestIDKey).(string)
 	req.Header.Set("X-Request-Id", uid)
-	rw.Header().Set("server", "couper.io")
 	rw.Header().Set("X-Request-Id", uid)
 
-	h, pattern := s.mux.Match(req)
+	h := s.mux.Match(req)
 
 	var err error
 	var handlerName string
@@ -115,7 +114,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	fields := logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
-		"pattern": pattern,
 		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,

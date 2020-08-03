@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ var (
 
 const (
 	wildcardCtx         = "route_wildcard"
-	wildcardReplacement = "/(.*)"
+	wildcardReplacement = "/?(.*)"
 	wildcardSearch      = "/**"
 )
 
@@ -73,6 +74,58 @@ func (r *Route) Match(req *http.Request) http.Handler {
 
 func (r *Route) Pattern() string {
 	return r.matcher.String()
+}
+
+type routes []*Route
+
+func (r routes) add(pattern string, h http.Handler) routes {
+	route, err := NewRoute(pattern, h)
+	if err != nil {
+		panic(err)
+	}
+
+	n := len(r)
+	idx := sort.Search(n, func(i int) bool {
+		return (r[i].sortLen) < (route.sortLen)
+	})
+	if idx == n {
+		return append(r, route)
+	}
+
+	routes := append(r, &Route{})      // try to grow the slice in place, any entry works.
+	copy(routes[idx+1:], routes[idx:]) // Move shorter entries down
+	routes[idx] = route
+	return routes
+}
+
+type routesMap map[string]routes
+
+// Match searches for explicit pathes first and finally the wildcard ones.
+func (m routesMap) Match(domain string, req *http.Request) (http.Handler, bool) {
+	var wildcardRoutes routes
+
+	r, ok := m[domain]
+	if !ok {
+		return nil, false
+	}
+
+	for _, route := range r {
+		if route.wildcard {
+			wildcardRoutes = append(wildcardRoutes, route)
+			continue
+		}
+		if h := route.Match(req); h != nil {
+			return h, true
+		}
+	}
+
+	for _, route := range wildcardRoutes {
+		if h := route.Match(req); h != nil {
+			return h, true
+		}
+	}
+
+	return nil, false
 }
 
 func validWildcardPath(path string) bool {

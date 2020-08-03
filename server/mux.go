@@ -3,7 +3,6 @@ package server
 import (
 	"net"
 	"net/http"
-	"sort"
 	"strings"
 
 	"go.avenga.cloud/couper/gateway/config"
@@ -11,26 +10,24 @@ import (
 	"go.avenga.cloud/couper/gateway/utils"
 )
 
-type routes []*Route
-
 // Mux represents a Mux object
 type Mux struct {
-	api     map[string]routes
+	api     routesMap
 	apiPath map[string]string
-	fs      map[string]routes
+	fs      routesMap
 	fsPath  map[string]string
-	spa     map[string]routes
+	spa     routesMap
 	spaPath map[string]string
 }
 
 // NewMux creates a new Mux object
 func NewMux(conf *config.Gateway) *Mux {
 	mux := &Mux{
-		api:     make(map[string]routes),
+		api:     make(routesMap),
 		apiPath: make(map[string]string),
-		fs:      make(map[string]routes),
+		fs:      make(routesMap),
 		fsPath:  make(map[string]string),
-		spa:     make(map[string]routes),
+		spa:     make(routesMap),
 		spaPath: make(map[string]string),
 	}
 
@@ -104,48 +101,36 @@ func NewMux(conf *config.Gateway) *Mux {
 	return mux
 }
 
-func (m *Mux) Match(req *http.Request) (http.Handler, string) {
+func (m *Mux) Match(req *http.Request) http.Handler {
 	domain := stripHostPort(req.Host)
 
 	if m.api != nil {
-		if routes, ok := m.api[domain]; ok {
-			for _, r := range routes { // routes are sorted by len desc
-				if h := r.Match(req); h != nil {
-					return h, r.Pattern()
-				}
-			}
+		if h, ok := m.api.Match(domain, req); ok {
+			return h
+		}
 
-			if m.isAPIError(req.URL.Path, domain) {
-				// TODO: RETURN API-ERROR (JSON)
-			}
+		if _, ok := m.api[domain]; ok && m.isAPIError(req.URL.Path, domain) {
+			// TODO: RETURN API-ERROR (JSON)
 		}
 	}
 	if m.fs != nil {
-		if routes, ok := m.fs[domain]; ok {
-			for _, r := range routes { // routes are sorted by len desc
-				if h := r.Match(req); h != nil {
-					if a, ok := h.(handler.Lookupable); ok && a.HasResponse(req) {
-						return h, r.Pattern()
-					}
-				}
+		if h, ok := m.fs.Match(domain, req); ok {
+			if a, ok := h.(handler.Lookupable); ok && a.HasResponse(req) {
+				return h
 			}
 		}
 	}
 	if m.spa != nil {
-		if routes, ok := m.spa[domain]; ok {
-			for _, r := range routes { // routes are sorted by len desc
-				if h := r.Match(req); h != nil {
-					return h, r.Pattern()
-				}
-			}
+		if h, ok := m.spa.Match(domain, req); ok {
+			return h
 		}
 	}
 
 	if m.fs != nil && m.isFSError(req.URL.Path, domain) {
-		return handler.NewFS(http.StatusNotFound), ""
+		return handler.NewFS(http.StatusNotFound)
 	}
 
-	return nil, ""
+	return nil
 }
 
 func (m *Mux) isAPIError(reqPath, domain string) bool {
@@ -183,26 +168,6 @@ func (m *Mux) isFSError(reqPath, domain string) bool {
 	}
 
 	return false
-}
-
-func (r routes) add(pattern string, h http.Handler) routes {
-	route, err := NewRoute(pattern, h)
-	if err != nil {
-		panic(err)
-	}
-
-	n := len(r)
-	idx := sort.Search(n, func(i int) bool {
-		return (r[i].sortLen) < (route.sortLen)
-	})
-	if idx == n {
-		return append(r, route)
-	}
-
-	routes := append(r, &Route{})      // try to grow the slice in place, any entry works.
-	copy(routes[idx+1:], routes[idx:]) // Move shorter entries down
-	routes[idx] = route
-	return routes
 }
 
 // stripHostPort returns h without any trailing ":<port>".

@@ -9,6 +9,7 @@ type Endpoint struct {
 	Backend              string   `hcl:"backend,optional"`
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
 	InlineDefinition     hcl.Body `hcl:",remain" json:"-"`
+	Path                 string   `hcl:"path,optional"`
 	Pattern              string   `hcl:"path,label"`
 	Server               *Server  `hcl:"-"` // parent
 }
