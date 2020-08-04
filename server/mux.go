@@ -127,7 +127,9 @@ func (m *Mux) Match(req *http.Request) http.Handler {
 	}
 
 	if m.fs != nil && m.isFSError(req.URL.Path, domain) {
-		return handler.NewFS(http.StatusNotFound)
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			handler.ServeError(rw, r, http.StatusNotFound)
+		})
 	}
 
 	return nil
