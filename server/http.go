@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"path"
@@ -29,7 +30,7 @@ type HTTPServer struct {
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
 	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf)}
 
-	addr := ":" + config.DefaultHTTP.ListenPort
+	addr := fmt.Sprintf(":%d", config.DefaultHTTP.ListenPort)
 	if conf.Addr != "" {
 		addr = conf.Addr
 	}
