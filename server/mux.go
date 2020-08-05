@@ -124,7 +124,7 @@ func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 func (m *Mux) Match(req *http.Request) http.Handler {
 	domain := stripHostPort(req.Host)
 
-	if m.api != nil {
+	if len(m.api) > 0 {
 		if h, ok := m.api.Match(domain, req); ok {
 			return h
 		}
@@ -134,20 +134,20 @@ func (m *Mux) Match(req *http.Request) http.Handler {
 		}
 	}
 
-	if m.fs != nil {
+	if len(m.fs) > 0 {
 		if h, ok := m.fs.Match(domain, req); ok {
 			if a, ok := h.(handler.Lookupable); ok && a.HasResponse(req) {
 				return h
 			}
 		}
 	}
-	if m.spa != nil {
+	if len(m.spa) > 0 {
 		if h, ok := m.spa.Match(domain, req); ok {
 			return h
 		}
 	}
 
-	if m.fs != nil && m.isFSError(req.URL.Path, domain) {
+	if len(m.fs) > 0 && m.isFSError(req.URL.Path, domain) {
 		return handler.NewErrorHandler(m.fsErr[domain], 3001, http.StatusNotFound)
 	}
 
@@ -163,10 +163,10 @@ func (m *Mux) isAPIError(reqPath, domain string) bool {
 	}
 
 	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
-		if m.fs != nil && m.apiPath[domain] == m.fsPath[domain] {
+		if len(m.fs) > 0 && m.apiPath[domain] == m.fsPath[domain] {
 			return false
 		}
-		if m.spa != nil && m.apiPath[domain] == m.spaPath[domain] {
+		if len(m.spa) > 0 && m.apiPath[domain] == m.spaPath[domain] {
 			return false
 		}
 
