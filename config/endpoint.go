@@ -6,9 +6,10 @@ import (
 
 type Endpoint struct {
 	AccessControl        []string `hcl:"access_control,optional"`
-	DisableAccessControl []string `hcl:"disable_access_control,optional"`
 	Backend              string   `hcl:"backend,optional"`
-	Options              hcl.Body `hcl:",remain" json:"-"`
+	DisableAccessControl []string `hcl:"disable_access_control,optional"`
+	InlineDefinition     hcl.Body `hcl:",remain" json:"-"`
+	Path                 string   `hcl:"path,optional"`
 	Pattern              string   `hcl:"path,label"`
 	Server               *Server  `hcl:"-"` // parent
 }

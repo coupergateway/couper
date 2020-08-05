@@ -3,29 +3,36 @@ package handler
 import (
 	"net/http"
 	"os"
+	"path"
 )
+
+var _ http.Handler = &Spa{}
 
 type Spa struct {
 	file string
 }
 
-func NewSpa(filePath string) *Spa {
-	return &Spa{file: filePath}
+func NewSpa(wd, bsFile string) *Spa {
+	return &Spa{file: path.Join(wd, bsFile)}
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(s.file)
 	if err != nil {
-		http.NotFoundHandler().ServeHTTP(rw, req)
+		ServeError(rw, req, http.StatusNotFound)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		http.NotFoundHandler().ServeHTTP(rw, req)
+		ServeError(rw, req, http.StatusNotFound)
 		return
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
+}
+
+func (s *Spa) String() string {
+	return "SPA"
 }
