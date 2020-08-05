@@ -46,7 +46,7 @@ func (s *ServingError) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		"http_status": s.HTTPStatus,
 		"message":     s.escapeValue(s.Message),
 		"error_code":  s.Code,
-		"path":        s.escapeValue(req.URL.Path),
+		"path":        req.URL.EscapedPath(),
 		"request_id":  s.escapeValue(req.Context().Value(RequestIDKey).(string)),
 	})
 	if err != nil {

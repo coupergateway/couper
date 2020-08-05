@@ -86,6 +86,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
+		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
 	} {
 		res, err := connectClient.Get("http://example.com" + testCase.path)
 		if err != nil {
