@@ -94,7 +94,7 @@ func (s *HTTPServer) Listen() {
 	}
 	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
-		s.log.Error(err)
+		s.log.Fatal(err)
 		return
 	}
 	s.listener = ln
