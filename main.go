@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"os"
+	"regexp"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 
@@ -15,6 +17,8 @@ import (
 var (
 	configFile = flag.String("f", "example.hcl", "-f ./couper.conf")
 	listenPort = flag.String("p", config.DefaultHTTP.ListenPort, "-p 8080")
+
+	regexCheckPort = regexp.MustCompile(`^(0|[1-9]\d*)$`)
 )
 
 func main() {
@@ -24,6 +28,11 @@ func main() {
 	}
 
 	logger := newLogger()
+
+	p, err := strconv.Atoi(*listenPort)
+	if !regexCheckPort.MatchString(*listenPort) || err != nil || p > 65535 {
+		logger.Fatalf("Invalid listen port given: '%s'", *listenPort)
+	}
 
 	exampleConf := config.LoadFile(*configFile, logger)
 	exampleConf.Addr = ":" + *listenPort
