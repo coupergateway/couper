@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -19,6 +20,7 @@ const defaultConfigFile = "example.hcl"
 
 var (
 	configFile = flag.String("f", defaultConfigFile, "-f ./couper.conf")
+	listenPort = flag.Int("p", config.DefaultHTTP.ListenPort, "-p 8080")
 )
 
 func main() {
@@ -29,7 +31,12 @@ func main() {
 
 	logger := newLogger()
 
+	if *listenPort < 0 || *listenPort > 65535 {
+		logger.Fatalf("Invalid listen port given: %d", *listenPort)
+	}
+
 	exampleConf := config.LoadFile(*configFile, logger)
+	exampleConf.Addr = fmt.Sprintf(":%d", *listenPort)
 
 	err := os.Chdir(filepath.Dir(*configFile))
 	if err != nil {

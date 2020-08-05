@@ -6,12 +6,12 @@ import "time"
 type HTTP struct {
 	IdleTimeout       time.Duration
 	ReadHeaderTimeout time.Duration
-	ListenPort        string
+	ListenPort        int
 }
 
 // DefaultHTTP sets some defaults for the http server.
 var DefaultHTTP = HTTP{
 	IdleTimeout:       time.Second * 60,
 	ReadHeaderTimeout: time.Second * 10,
-	ListenPort:        "8083",
+	ListenPort:        8083,
 }
