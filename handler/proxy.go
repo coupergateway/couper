@@ -15,6 +15,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+
+	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/eval"
 )
 
 var _ http.Handler = &Proxy{}
@@ -105,7 +108,7 @@ func (p *Proxy) director(req *http.Request) {
 		req.Host = p.options.Hostname
 	}
 
-	if pathMatch, ok := req.Context().Value("route_wildcard").(string); ok && p.options.Path != "" {
+	if pathMatch, ok := req.Context().Value(config.WildcardCtxKey).(string); ok && p.options.Path != "" {
 		req.URL.Path = path.Join(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
 	} else if p.options.Path != "" {
 		req.URL.Path = p.options.Path
@@ -135,7 +138,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	log := p.log.WithField("uid", reqCtx.Value("requestID"))
 	var fields []string
 
-	evalCtx := NewHTTPEvalContext(p.evalContext, req, beresp)
+	evalCtx := eval.NewHTTPContext(p.evalContext, req, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessable within our context configuration.
 	if attrCtx == attrReqHeaders {

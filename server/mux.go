@@ -21,7 +21,7 @@ type Mux struct {
 }
 
 // NewMux creates a new Mux object
-func NewMux(conf *config.Gateway) *Mux {
+func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 	mux := &Mux{
 		api:     make(routesMap),
 		apiPath: make(map[string]string),
@@ -35,11 +35,11 @@ func NewMux(conf *config.Gateway) *Mux {
 		var files, spa http.Handler
 
 		if server.Files != nil {
-			files = handler.NewFile(conf.WD, server.Files.BasePath, server.Files.DocumentRoot, server.Files.ErrorFile)
+			files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, server.Files.ErrorFile)
 		}
 
 		if server.Spa != nil {
-			spa = handler.NewSpa(conf.WD, server.Spa.BootstrapFile)
+			spa = handler.NewSpa(conf.WorkDir, server.Spa.BootstrapFile)
 		}
 
 		for _, domain := range server.Domains {
@@ -52,7 +52,7 @@ func NewMux(conf *config.Gateway) *Mux {
 				for _, endpoint := range server.API.Endpoint {
 					mux.api[domain] = mux.api[domain].add(
 						utils.JoinPath(server.API.BasePath, endpoint.Pattern),
-						server.API.PathHandler[endpoint],
+						ph[endpoint],
 					)
 				}
 			}

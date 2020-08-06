@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/eval"
 	"go.avenga.cloud/couper/gateway/handler"
 )
 
@@ -27,9 +28,10 @@ type HTTPServer struct {
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf)}
+	_, ph := configure(conf, logger, eval.NewENVContext(nil))
+	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf, ph)}
 
-	addr := fmt.Sprintf(":%d", config.DefaultHTTP.ListenPort)
+	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)
 	if conf.Addr != "" {
 		addr = conf.Addr
 	}
@@ -39,8 +41,8 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 			return context.WithValue(context.Background(), RequestIDKey, xid.New().String())
 		},
 		Handler:           httpSrv,
-		IdleTimeout:       config.DefaultHTTP.IdleTimeout,
-		ReadHeaderTimeout: config.DefaultHTTP.ReadHeaderTimeout,
+		IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
+		ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,
 	}
 
 	httpSrv.srv = srv

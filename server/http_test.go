@@ -49,7 +49,10 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := config.LoadBytes(confBytes.Bytes(), log.WithContext(ctx))
+	conf, err := config.LoadBytes(confBytes.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
 	if err != nil {
@@ -142,7 +145,10 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := config.LoadBytes(confBytes.Bytes(), log.WithContext(ctx))
+	conf, err := config.LoadBytes(confBytes.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	if err != nil {

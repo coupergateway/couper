@@ -16,15 +16,12 @@ import (
 	"go.avenga.cloud/couper/gateway/server"
 )
 
-const defaultConfigFile = "example.hcl"
-
 var (
-	configFile = flag.String("f", defaultConfigFile, "-f ./couper.conf")
-	listenPort = flag.Int("p", config.DefaultHTTP.ListenPort, "-p 8080")
+	configFile = flag.String("f", "example.hcl", "-f ./couper.conf")
+	listenPort = flag.Int("p", server.DefaultHTTPConfig.ListenPort, "-p 8080")
 )
 
 func main() {
-	// TODO: command / args
 	if !flag.Parsed() {
 		flag.Parse()
 	}
@@ -35,23 +32,25 @@ func main() {
 		logger.Fatalf("Invalid listen port given: %d", *listenPort)
 	}
 
-	exampleConf := config.LoadFile(*configFile, logger)
-	exampleConf.Addr = fmt.Sprintf(":%d", *listenPort)
-
-	err := os.Chdir(filepath.Dir(*configFile))
+	configuration, err := config.LoadFile(*configFile)
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
+	}
+	configuration.Addr = fmt.Sprintf(":%d", *listenPort)
+
+	err = os.Chdir(filepath.Dir(*configFile))
+	if err != nil {
+		logger.Fatal(err)
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
-
-	exampleConf.WD = wd
+	configuration.WorkDir = wd
 
 	ctx := command.ContextWithSignal(context.Background())
-	srv := server.New(ctx, logger, exampleConf)
+	srv := server.New(ctx, logger, configuration)
 	srv.Listen()
 	<-ctx.Done() // TODO: shutdown deadline
 }

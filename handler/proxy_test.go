@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+
+	"go.avenga.cloud/couper/gateway/eval"
 )
 
 func TestProxy_ServeHTTP(t *testing.T) {
@@ -60,9 +62,9 @@ func TestProxy_director(t *testing.T) {
 		req    *http.Request
 		expReq *http.Request
 	}{
-		{"proxy url settings", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
-		{"proxy url settings w/hostname", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://couper.io", nil)},
-		{"proxy url settings w/wildcard ctx", fields{NewEvalContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, defaultReq.WithContext(context.WithValue(defaultReq.Context(), "route_wildcard", "/hans")), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
+		{"proxy url settings", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings w/hostname", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://couper.io", nil)},
+		{"proxy url settings w/wildcard ctx", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, defaultReq.WithContext(context.WithValue(defaultReq.Context(), "route_wildcard", "/hans")), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
 	}
 
 	for _, tt := range tests {
@@ -93,15 +95,19 @@ func TestProxy_modifyResponse(t *testing.T) {
 		log         *logrus.Entry
 		options     *ProxyOptions
 	}
+
 	type args struct {
 		res *http.Response
 	}
-	tests := []struct {
+
+	type testCase struct{
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
-	}{
+	}
+
+	tests := []testCase {
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
