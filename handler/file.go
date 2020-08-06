@@ -78,7 +78,7 @@ func (f *File) serveErrFile(rw http.ResponseWriter, req *http.Request) {
 	rw.WriteHeader(http.StatusNotFound)
 
 	// TODO: gzip, br?
-	if req.Method != "HEAD" {
+	if req.Method != http.MethodHead {
 		rw.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
 		rw.Header().Set("Last-Modified", info.ModTime().UTC().Format(http.TimeFormat))
 		io.Copy(rw, file) // TODO: log
