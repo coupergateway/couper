@@ -24,9 +24,9 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 	defer origin.Close()
 
 	tests := []struct {
-		name   string
-		options *ProxyOptions
-		req   *http.Request
+		name           string
+		options        *ProxyOptions
+		req            *http.Request
 		expectedStatus int
 	}{
 		{"with zero timings", &ProxyOptions{Origin: origin.URL}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
@@ -34,7 +34,7 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 		{"with connect timeout", &ProxyOptions{Origin: "http://blackhole.webpagetest.org/", ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
 		{"with ttfb timeout", &ProxyOptions{Origin: origin.URL, TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
 	}
-		for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
 			p, err := NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
@@ -118,14 +118,14 @@ func TestProxy_modifyResponse(t *testing.T) {
 		res *http.Response
 	}
 
-	type testCase struct{
+	type testCase struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}
 
-	tests := []testCase {
+	tests := []testCase{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {

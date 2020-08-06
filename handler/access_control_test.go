@@ -16,9 +16,9 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		fields fields
-		req   *http.Request
+		name           string
+		fields         fields
+		req            *http.Request
 		expectedStatus int
 	}{
 		{"no access control", fields{nil, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
@@ -35,7 +35,7 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 			rw.WriteHeader(http.StatusGone)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusForbidden},
 	}
-		for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AccessControl{
 				ac:        tt.fields.ac,
