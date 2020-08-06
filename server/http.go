@@ -103,7 +103,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	var err error
 	var handlerName string
-	sr := &StatusReader{rw: rw}
+	sr := NewStatusReader(rw)
 	if h != nil {
 		h.ServeHTTP(sr, req)
 		if name, ok := h.(interface{ String() string }); ok {
