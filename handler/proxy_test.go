@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -13,32 +14,49 @@ import (
 	"go.avenga.cloud/couper/gateway/eval"
 )
 
-func TestProxy_ServeHTTP(t *testing.T) {
-	type fields struct {
-		evalContext *hcl.EvalContext
-		log         *logrus.Entry
-		options     *ProxyOptions
-	}
-	type args struct {
-		rw  http.ResponseWriter
-		req *http.Request
-	}
+func TestProxy_ServeHTTP_Timings(t *testing.T) {
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodHead {
+			time.Sleep(time.Second * 2) // > ttfb proxy settings
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
 	tests := []struct {
 		name   string
-		fields fields
-		args   args
+		options *ProxyOptions
+		req   *http.Request
+		expectedStatus int
 	}{
-		// TODO: Add test cases.
+		{"with zero timings", &ProxyOptions{Origin: origin.URL}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
+		{"with overall timeout", &ProxyOptions{Origin: "http://1.2.3.4/", Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with connect timeout", &ProxyOptions{Origin: "http://blackhole.webpagetest.org/", ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with ttfb timeout", &ProxyOptions{Origin: origin.URL, TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
 	}
-	for _, tt := range tests {
+		for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			logger, hook := logrustest.NewNullLogger()
+			p, err := NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
-			// TODO: eval changes
+
+			hook.Reset()
 			rec := httptest.NewRecorder()
-			p.ServeHTTP(rec, tt.args.req)
+			p.ServeHTTP(rec, tt.req)
+
+			if rec.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
+			} else {
+				return // no error log for expected codes
+			}
+
+			for _, log := range hook.AllEntries() {
+				if log.Level >= logrus.ErrorLevel {
+					t.Error(log.Message)
+				}
+			}
 		})
 	}
 }

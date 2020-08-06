@@ -93,9 +93,13 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	deadline := time.Now().Add(p.options.Timeout)
-	ctx, cancelFn := context.WithDeadline(req.Context(), deadline)
-	defer cancelFn()
+	ctx := req.Context()
+	if p.options.Timeout > 0 {
+		deadline := time.Now().Add(p.options.Timeout)
+		c, cancelFn := context.WithDeadline(req.Context(), deadline)
+		ctx = c
+		defer cancelFn()
+	}
 	p.rp.ServeHTTP(rw, req.WithContext(ctx))
 }
 
