@@ -2,7 +2,6 @@ package eval
 
 import (
 	"bytes"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"net/http"
 	"os"
 	"regexp"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
