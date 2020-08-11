@@ -23,10 +23,6 @@ type ServingError struct {
 }
 
 func NewErrorHandler(asset *assets.AssetFile, code, status int) *ServingError {
-	if asset == nil {
-		return nil
-	}
-
 	return &ServingError{
 		Asset:      asset,
 		Code:       code,
@@ -54,7 +50,7 @@ func (s *ServingError) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.Method != "HEAD" {
+	if req.Method != http.MethodHead {
 		if ct := s.Asset.CT(); ct != "" {
 			rw.Header().Set("Content-Type", ct)
 		}
