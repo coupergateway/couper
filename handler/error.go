@@ -23,6 +23,7 @@ type ServingError struct {
 }
 
 func NewErrorHandler(asset *assets.AssetFile, code, status int) *ServingError {
+	asset.MakeTemplate()
 	return &ServingError{
 		Asset:      asset,
 		Code:       code,
