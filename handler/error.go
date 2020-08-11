@@ -12,19 +12,19 @@ import (
 
 const RequestIDKey = "requestID"
 
-var _ http.Handler = &ServingError{}
+var _ http.Handler = &Error{}
 
-// ServingError represents a ServingError object
-type ServingError struct {
+// Error represents a Error object
+type Error struct {
 	Asset      *assets.AssetFile
 	Code       int
 	HTTPStatus int
 	Message    string
 }
 
-func NewErrorHandler(asset *assets.AssetFile, code, status int) *ServingError {
+func NewErrorHandler(asset *assets.AssetFile, code, status int) *Error {
 	asset.MakeTemplate()
-	return &ServingError{
+	return &Error{
 		Asset:      asset,
 		Code:       code,
 		HTTPStatus: status,
@@ -32,7 +32,7 @@ func NewErrorHandler(asset *assets.AssetFile, code, status int) *ServingError {
 	}
 }
 
-func (s *ServingError) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (s *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if s.Asset == nil || s.Asset.Tpl() == nil {
 		rw.WriteHeader(s.HTTPStatus)
 		return
@@ -67,7 +67,7 @@ func (s *ServingError) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *ServingError) escapeValue(v string) string {
+func (s *Error) escapeValue(v string) string {
 	if strings.HasPrefix(s.Asset.CT(), "text/html") {
 		return template.HTMLEscapeString(v)
 	}
@@ -75,6 +75,6 @@ func (s *ServingError) escapeValue(v string) string {
 	return template.JSEscapeString(v)
 }
 
-func (s *ServingError) String() string {
+func (s *Error) String() string {
 	return "Error"
 }
