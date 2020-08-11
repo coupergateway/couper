@@ -65,6 +65,12 @@ func TestJWT_Validate(t *testing.T) {
 				sourceKey: "Authorization",
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
+			{"src: header /w no cookie", fields{
+				algorithm: algo,
+				source:    ac.Cookie,
+				sourceKey: "token",
+				pubKey:    pubKeyBytes,
+			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
 				source:    ac.Cookie,
