@@ -1,56 +1,59 @@
-package config
+package server
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclsimple"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
+	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/handler"
+)
+
+// HTTPConfig configures the ingress http server.
+type HTTPConfig struct {
+	IdleTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
+	ListenPort        int
+}
+
+type pathHandler map[*config.Endpoint]http.Handler
+
+// DefaultHTTPConfig sets some defaults for the http server.
+var DefaultHTTPConfig = HTTPConfig{
+	IdleTimeout:       time.Second * 60,
+	ReadHeaderTimeout: time.Second * 10,
+	ListenPort:        8083,
+}
+
+var (
+	backendDefaultConnectTimeout = "10s"
+	backendDefaultTimeout        = "300s"
+	backendDefaultTTFBTimeout    = "60s"
 )
 
 var errorMissingBackend = errors.New("no backend attribute reference or block")
 
-func LoadFile(filename string, log *logrus.Entry) *Gateway {
-	src, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %s", err)
-	}
-	return LoadBytes(src, log)
-}
-
-func LoadBytes(src []byte, log *logrus.Entry) *Gateway {
-	config := &Gateway{}
-	evalContext := handler.NewEvalContext(decodeEnvironmentRefs(src))
-	// filename must match .hcl ending for further []byte processing
-	if err := hclsimple.Decode("loadBytes.hcl", src, evalContext, config); err != nil {
-		log.Fatalf("Failed to load configuration bytes: %s", err)
-	}
-	return Load(config, log, evalContext)
-}
-
-func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway {
+// Configure sets defaults and validates the given gateway configuration. Creates all configured endpoint http handler.
+func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) (*config.Gateway, pathHandler) {
 	type backendDefinition struct {
-		conf    *Backend
+		conf    *config.Backend
 		handler http.Handler
 	}
 	backends := make(map[string]backendDefinition)
+	ph := make(pathHandler)
 
-	if config.Definitions != nil {
-		for _, beConf := range config.Definitions.Backend {
+	if conf.Definitions != nil {
+		for _, beConf := range conf.Definitions.Backend {
 			if _, ok := backends[beConf.Name]; ok {
 				log.Fatalf("backend name must be unique: '%s'", beConf.Name)
 			}
@@ -88,9 +91,9 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 		}
 	}
 
-	accessControls := configureAccessControls(config)
+	accessControls := configureAccessControls(conf)
 
-	for idx, server := range config.Server {
+	for idx, server := range conf.Server {
 		configureDomains(server)
 		configureBasePathes(server)
 
@@ -98,22 +101,20 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 			continue
 		}
 
-		server.API.PathHandler = make(PathHandler)
-
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.API.Endpoint {
-			config.Server[idx].API.Endpoint[e].Server = server // assign parent
+			conf.Server[idx].API.Endpoint[e].Server = server // assign parent
 			if endpoints[endpoint.Pattern] {
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
 			endpoints[endpoint.Pattern] = true
 
 			var acList ac.List
-			ac := AccessControl{server.AccessControl, server.DisableAccessControl}
+			ac := config.NewAccessControl(server.AccessControl, server.DisableAccessControl)
 			for _, acName := range ac.
-				Merge(AccessControl{server.API.AccessControl, server.API.DisableAccessControl}).
-				Merge(AccessControl{endpoint.AccessControl, endpoint.DisableAccessControl}).
+				Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)).
+				Merge(config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl)).
 				List() {
 				if _, ok := accessControls[acName]; !ok {
 					log.Fatalf("access control %q is not defined", acName)
@@ -127,7 +128,7 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
-					beConf, remainCtx := protectedBackend.conf.Merge(&Backend{Path: endpoint.Path})
+					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
 					t, ttfbt, ct := parseBackendTimings(beConf)
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
 						ConnectTimeout: ct,
@@ -145,10 +146,10 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 				}
 
 				if len(acList) > 0 {
-					server.API.PathHandler[endpoint] = handler.NewAccessControl(protectedHandler, acList...)
+					ph[endpoint] = handler.NewAccessControl(protectedHandler, acList...)
 					return
 				}
-				server.API.PathHandler[endpoint] = protectedHandler
+				ph[endpoint] = protectedHandler
 			}
 
 			// lookup for backend reference, prefer endpoint definition over api one
@@ -211,10 +212,10 @@ func Load(config *Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) *Gateway
 		}
 	}
 
-	return config
+	return conf, ph
 }
 
-func configureBasePathes(server *Server) {
+func configureBasePathes(server *config.Server) {
 	if server.BasePath == "" {
 		server.BasePath = "/"
 	}
@@ -243,7 +244,7 @@ func configureBasePathes(server *Server) {
 
 // configureDomains is a fallback configuration which ensures
 // the request multiplexer is working properly.
-func configureDomains(server *Server) {
+func configureDomains(server *config.Server) {
 	if len(server.Domains) > 0 {
 		return
 	}
@@ -251,7 +252,7 @@ func configureDomains(server *Server) {
 	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 }
 
-func configureAccessControls(conf *Gateway) ac.Map {
+func configureAccessControls(conf *config.Gateway) ac.Map {
 	accessControls := make(ac.Map)
 	if conf.Definitions != nil {
 		for _, jwt := range conf.Definitions.JWT {
@@ -289,12 +290,12 @@ func configureAccessControls(conf *Gateway) ac.Map {
 	return accessControls
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *Backend, error) {
-	content, _, diags := inlineDef.PartialContent(Definitions{}.Schema(true))
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *config.Backend, error) {
+	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
 		// no inline conf, retry for override definitions with label
-		content, _, diags = inlineDef.PartialContent(Definitions{}.Schema(false))
+		content, _, diags = inlineDef.PartialContent(config.Definitions{}.Schema(false))
 		if diags.HasErrors() {
 			return nil, nil, diags
 		}
@@ -304,7 +305,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 		}
 	}
 
-	beConf := &Backend{}
+	beConf := &config.Backend{}
 	diags = gohcl.DecodeBody(content.Blocks[0].Body, evalCtx, beConf)
 	if diags.HasErrors() {
 		return nil, nil, diags
@@ -326,7 +327,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 	return proxy, beConf, err
 }
 
-func parseBackendTimings(conf *Backend) (time.Duration, time.Duration, time.Duration) {
+func parseBackendTimings(conf *config.Backend) (time.Duration, time.Duration, time.Duration) {
 	t := conf.Timeout
 	ttfb := conf.TTFBTimeout
 	c := conf.ConnectTimeout
@@ -352,24 +353,4 @@ func parseBackendTimings(conf *Backend) (time.Duration, time.Duration, time.Dura
 		panic(err)
 	}
 	return totalD, ttfbD, connectD
-}
-
-func decodeEnvironmentRefs(src []byte) []string {
-	tokens, diags := hclsyntax.LexConfig(src, "tmp.hcl", hcl.InitialPos)
-	if diags.HasErrors() {
-		panic(diags)
-	}
-	needle := []byte("env")
-	var keys []string
-	for i, token := range tokens {
-		if token.Type == hclsyntax.TokenIdent &&
-			bytes.Equal(token.Bytes, needle) &&
-			i+2 < len(tokens) {
-			value := string(tokens[i+2].Bytes)
-			if sort.SearchStrings(keys, value) == len(keys) {
-				keys = append(keys, value)
-			}
-		}
-	}
-	return keys
 }

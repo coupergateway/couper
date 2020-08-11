@@ -6,6 +6,14 @@ type AccessControl struct {
 	DisableAccessControl []string
 }
 
+// NewAccessControl creates the container object for ac configuration.
+func NewAccessControl(ac, dac []string) AccessControl {
+	return AccessControl{
+		AccessControl:        ac,
+		DisableAccessControl: dac,
+	}
+}
+
 // List returns all active access controls.
 func (ac AccessControl) List() []string {
 	var result []string

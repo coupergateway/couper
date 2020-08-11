@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"go.avenga.cloud/couper/gateway/config"
 )
 
 var (
@@ -15,7 +17,6 @@ var (
 )
 
 const (
-	wildcardCtx         = "route_wildcard"
 	wildcardReplacement = "/?(.*)"
 	wildcardSearch      = "/**"
 )
@@ -64,7 +65,7 @@ func (r *Route) Match(req *http.Request) http.Handler {
 		if r.wildcard {
 			match := r.matcher.FindStringSubmatch(req.URL.Path)
 			if len(match) > 1 {
-				*req = *req.WithContext(context.WithValue(req.Context(), wildcardCtx, match[1]))
+				*req = *req.WithContext(context.WithValue(req.Context(), config.WildcardCtxKey, match[1]))
 			}
 		}
 		return r.handler

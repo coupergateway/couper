@@ -15,12 +15,6 @@ type Backend struct {
 	TTFBTimeout    string   `hcl:"ttfb_timeout,optional"`
 }
 
-var (
-	backendDefaultConnectTimeout = "10s"
-	backendDefaultTimeout        = "300s"
-	backendDefaultTTFBTimeout    = "60s"
-)
-
 // Merge overrides the left backend configuration and returns a new instance.
 func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 	if b == nil || other == nil {

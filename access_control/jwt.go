@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"strings"
@@ -28,6 +29,7 @@ var (
 	ErrorBearerRequired = errors.New("authorization header value must start with 'Bearer '")
 	ErrorEmptyToken     = errors.New("empty token")
 	ErrorMissingKey     = errors.New("either key_file or key must be specified")
+	ErrorNotConfigured  = errors.New("jwt handler not configured")
 	ErrorNotSupported   = errors.New("only RSA and HMAC key encodings are supported")
 	ErrorUnknownSource  = errors.New("unknown source definition")
 )
@@ -70,7 +72,7 @@ func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []by
 		sourceKey:  srcKey,
 	}
 
-	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(key)
+	pubKey, err := parsePublicPEMKey(key)
 	if err != nil && (err != jwt.ErrKeyMustBePEMEncoded || err != jwt.ErrNotRSAPublicKey) {
 		cert, err := x509.ParseCertificate(key)
 		if err != nil {
@@ -95,6 +97,10 @@ func (j *JWT) Validate(req *http.Request) error {
 	var tokenValue string
 	var err error
 
+	if j == nil {
+		return ErrorNotConfigured
+	}
+
 	switch j.source {
 	case Cookie:
 		if cookie, err := req.Cookie(j.sourceKey); err != nil && err != http.ErrNoCookie {
@@ -103,8 +109,16 @@ func (j *JWT) Validate(req *http.Request) error {
 			tokenValue = cookie.Value
 		}
 	case Header:
-		if tokenValue, err = getBearer(req.Header.Get(j.sourceKey)); err != nil {
-			return err
+		if j.sourceKey == "Authorization" {
+			if tokenValue = req.Header.Get(j.sourceKey); tokenValue == "" {
+				return ErrorEmptyToken
+			}
+
+			if tokenValue, err = getBearer(tokenValue); err != nil {
+				return err
+			}
+		} else {
+			tokenValue = req.Header.Get(j.sourceKey)
 		}
 	}
 
@@ -168,4 +182,33 @@ func (a Algorithm) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+// parsePublicPEMKey tries to parse all supported publicKey variations which
+// must be given in PEM encoded format.
+func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
+	pemBlock, _ := pem.Decode(key)
+	if pemBlock == nil {
+		return nil, jwt.ErrKeyMustBePEMEncoded
+	}
+	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
+	if pubErr != nil {
+		pkixKey, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
+		if err != nil {
+			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
+			if cerr != nil {
+				return nil, jwt.ErrNotRSAPublicKey
+			}
+			if k, ok := cert.PublicKey.(*rsa.PublicKey); ok {
+				return k, nil
+			}
+			return nil, jwt.ErrNotRSAPublicKey
+		}
+		if k, ok := pkixKey.(*rsa.PublicKey); !ok {
+			return nil, jwt.ErrNotRSAPublicKey
+		} else {
+			pubKey = k
+		}
+	}
+	return pubKey, nil
 }

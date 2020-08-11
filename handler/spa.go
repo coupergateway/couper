@@ -19,14 +19,19 @@ func NewSpa(wd, bsFile string) *Spa {
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(s.file)
 	if err != nil {
-		ServeError(rw, req, http.StatusNotFound)
+		if _, ok := err.(*os.PathError); ok {
+			ServeError(rw, req, http.StatusNotFound)
+			return
+		}
+
+		ServeError(rw, req, http.StatusInternalServerError)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
-	if err != nil {
-		ServeError(rw, req, http.StatusNotFound)
+	if err != nil || fileInfo.IsDir() {
+		ServeError(rw, req, http.StatusInternalServerError)
 		return
 	}
 

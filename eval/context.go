@@ -1,18 +1,22 @@
-package handler
+package eval
 
 import (
+	"bytes"
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-func NewEvalContext(envKeys []string) *hcl.EvalContext {
+func NewENVContext(src []byte) *hcl.EvalContext {
+	envKeys := decodeEnvironmentRefs(src)
 	variables := make(map[string]cty.Value)
 	variables["env"] = newCtyEnvMap(envKeys)
 
@@ -22,7 +26,7 @@ func NewEvalContext(envKeys []string) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPEvalContext(ctx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(ctx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
 	if req != nil {
 		ctx.Variables["req"] = cty.MapVal(map[string]cty.Value{
 			"headers": newCtyHeadersMap(req.Header),
@@ -113,4 +117,24 @@ func newFunctionsMap() map[string]function.Function {
 		"to_upper": stdlib.UpperFunc,
 		"to_lower": stdlib.LowerFunc,
 	}
+}
+
+func decodeEnvironmentRefs(src []byte) []string {
+	tokens, diags := hclsyntax.LexConfig(src, "tmp.hcl", hcl.InitialPos)
+	if diags.HasErrors() {
+		panic(diags)
+	}
+	needle := []byte("env")
+	var keys []string
+	for i, token := range tokens {
+		if token.Type == hclsyntax.TokenIdent &&
+			bytes.Equal(token.Bytes, needle) &&
+			i+2 < len(tokens) {
+			value := string(tokens[i+2].Bytes)
+			if sort.SearchStrings(keys, value) == len(keys) {
+				keys = append(keys, value)
+			}
+		}
+	}
+	return keys
 }

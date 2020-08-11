@@ -1,8 +1,6 @@
 package config
 
 import (
-	"net/http"
-
 	"github.com/hashicorp/hcl/v2"
 )
 
@@ -13,7 +11,4 @@ type Api struct {
 	DisableAccessControl []string    `hcl:"disable_access_control,optional"`
 	Endpoint             []*Endpoint `hcl:"endpoint,block"`
 	InlineDefinition     hcl.Body    `hcl:",remain" json:"-"`
-	PathHandler          PathHandler
 }
-
-type PathHandler map[*Endpoint]http.Handler
