@@ -15,9 +15,9 @@ func TestSpa_ServeHTTP(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		filePath string
-		req   *http.Request
+		name         string
+		filePath     string
+		req          *http.Request
 		expectedCode int
 	}{
 		{"serve bootstrap file", "testdata/spa/app.html", httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
