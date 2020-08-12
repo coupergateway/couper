@@ -12,7 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/eval"
 	"go.avenga.cloud/couper/gateway/handler"
 )
 
@@ -28,7 +27,7 @@ type HTTPServer struct {
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	_, ph := configure(conf, logger, eval.NewENVContext(nil))
+	_, ph := configure(conf, logger)
 	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf, ph)}
 
 	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)

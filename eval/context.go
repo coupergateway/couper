@@ -26,7 +26,8 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(ctx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
+	ctx := cloneContext(baseCtx)
 	if req != nil {
 		ctx.Variables["req"] = cty.MapVal(map[string]cty.Value{
 			"headers": newCtyHeadersMap(req.Header),
@@ -52,6 +53,22 @@ func NewHTTPContext(ctx *hcl.EvalContext, req *http.Request, beresp *http.Respon
 	}
 
 	return ctx
+}
+
+func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
+	c := &hcl.EvalContext{
+		Variables: make(map[string]cty.Value),
+		Functions: make(map[string]function.Function),
+	}
+
+	for key, val := range ctx.Variables {
+		c.Variables[key] = val
+	}
+
+	for key, val := range ctx.Functions {
+		c.Functions[key] = val
+	}
+	return c
 }
 
 func newCtyEnvMap(envKeys []string) cty.Value {

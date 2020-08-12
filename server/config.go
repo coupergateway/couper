@@ -44,7 +44,7 @@ var (
 var errorMissingBackend = errors.New("no backend attribute reference or block")
 
 // Configure sets defaults and validates the given gateway configuration. Creates all configured endpoint http handler.
-func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext) (*config.Gateway, pathHandler) {
+func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHandler) {
 	type backendDefinition struct {
 		conf    *config.Backend
 		handler http.Handler
@@ -80,7 +80,7 @@ func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext
 				Path:           beConf.Path,
 				Timeout:        t,
 				TTFBTimeout:    ttfbt,
-			}, log, evalCtx)
+			}, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -138,7 +138,7 @@ func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext
 						Path:           beConf.Path,
 						Timeout:        t,
 						TTFBTimeout:    ttfbt,
-					}, log, evalCtx)
+					}, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -162,7 +162,7 @@ func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(evalCtx, endpoint.InlineDefinition, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, log)
 			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
@@ -171,7 +171,7 @@ func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(evalCtx, server.API.InlineDefinition, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -201,7 +201,7 @@ func configure(conf *config.Gateway, log *logrus.Entry, evalCtx *hcl.EvalContext
 					Path:           beConf.Path,
 					Timeout:        t,
 					TTFBTimeout:    ttfbt,
-				}, log, evalCtx)
+				}, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
