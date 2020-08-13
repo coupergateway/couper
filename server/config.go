@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -41,7 +40,7 @@ var (
 	backendDefaultTTFBTimeout    = "60s"
 )
 
-var errorMissingBackend = errors.New("no backend attribute reference or block")
+var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
 // Configure sets defaults and validates the given gateway configuration. Creates all configured endpoint http handler.
 func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHandler) {

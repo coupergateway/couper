@@ -79,8 +79,8 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<title>500 Route not found</title>"), http.StatusInternalServerError},
-		{"/apps/", []byte("<title>500 Route not found</title>"), http.StatusInternalServerError},
+		{"/", []byte("<title>500 Configuration failed</title>"), http.StatusInternalServerError},
+		{"/apps/", []byte("<title>500 Configuration failed</title>"), http.StatusInternalServerError},
 		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
@@ -174,13 +174,13 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<title>404 Files route not found</title>"), 404},
+		{"/", []byte("<title>404 FilesRouteNotFound</title>"), 404},
 		{"/dir", nil, 302},
 		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
 		{"/robots.txt", []byte("Disallow: /secret\n"), 200},
 		{"/foo bar.txt", []byte("foo-and-bar\n"), 200},
 		{"/foo%20bar.txt", []byte("foo-and-bar\n"), 200},
-		{"/favicon.ico", []byte("<title>404 Files route not found</title>"), 404},
+		{"/favicon.ico", []byte("<title>404 FilesRouteNotFound</title>"), 404},
 		{"/app", spaContent, 200},
 		{"/app/", spaContent, 200},
 		{"/app/bla", spaContent, 200},

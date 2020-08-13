@@ -31,10 +31,6 @@ func NewAssetFile(bytes []byte, ct, size string) *AssetFile {
 	}
 }
 
-func (af *AssetFile) MakeTemplate() {
-	af.tpl = template.Must(template.New("").Parse(string(af.bytes)))
-}
-
 func (af *AssetFile) Bytes() []byte {
 	return af.bytes[:]
 }
@@ -50,10 +46,6 @@ func (af *AssetFile) Size() string {
 
 func (af *AssetFile) CT() string {
 	return af.ct
-}
-
-func (af *AssetFile) Tpl() *template.Template {
-	return af.tpl
 }
 
 func New() *Box {

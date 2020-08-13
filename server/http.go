@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,31 +10,28 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
-	"go.avenga.cloud/couper/gateway/assets"
 	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/handler"
+	"go.avenga.cloud/couper/gateway/errors"
 )
 
 const RequestIDKey = "requestID"
 
 type HTTPServer struct {
-	config     *config.Gateway
-	ctx        context.Context
-	errHandler http.Handler
-	log        *logrus.Entry
-	listener   net.Listener
-	mux        *Mux
-	srv        *http.Server
+	config   *config.Gateway
+	ctx      context.Context
+	log      *logrus.Entry
+	listener net.Listener
+	mux      *Mux
+	srv      *http.Server
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
 	_, ph := configure(conf, logger)
 	httpSrv := &HTTPServer{
-		errHandler: handler.NewErrorHandler(assets.Assets.MustOpen("error.html"), 1001, http.StatusInternalServerError),
-		ctx:        ctx,
-		config:     conf,
-		log:        logger,
-		mux:        NewMux(conf, ph),
+		ctx:    ctx,
+		config: conf,
+		log:    logger,
+		mux:    NewMux(conf, ph),
 	}
 
 	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)
@@ -118,8 +114,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		handlerName = "none"
-		s.errHandler.ServeHTTP(rw, req)
-		err = errors.New("no configuration found: " + req.URL.String())
+		errors.DefaultHTML.ServeError(errors.ConfigurationError).ServeHTTP(rw, req)
+		err = fmt.Errorf("%w: %s", errors.ConfigurationError, req.URL.String())
 	}
 
 	fields := logrus.Fields{

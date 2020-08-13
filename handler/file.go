@@ -6,7 +6,8 @@ import (
 	"path"
 	"strings"
 
-	"go.avenga.cloud/couper/gateway/assets"
+	"go.avenga.cloud/couper/gateway/errors"
+
 	"go.avenga.cloud/couper/gateway/utils"
 )
 
@@ -23,14 +24,14 @@ type Lookupable interface {
 
 type File struct {
 	basePath string
-	errAsset *assets.AssetFile
+	errorTpl *errors.Template
 	rootDir  http.Dir
 }
 
-func NewFile(wd, basePath, docRoot string, asset *assets.AssetFile) *File {
+func NewFile(wd, basePath, docRoot string, errTpl *errors.Template) *File {
 	f := &File{
 		basePath: basePath,
-		errAsset: asset,
+		errorTpl: errTpl,
 		rootDir:  http.Dir(path.Join(wd, docRoot)),
 	}
 
@@ -42,7 +43,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil {
-		NewErrorHandler(f.errAsset, 3001, http.StatusNotFound).ServeHTTP(rw, req)
+		f.errorTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -67,7 +68,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil || info.IsDir() {
-		NewErrorHandler(f.errAsset, 3001, http.StatusNotFound).ServeHTTP(rw, req)
+		f.errorTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
