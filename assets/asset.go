@@ -11,7 +11,6 @@ var _ io.WriterTo = &AssetFile{}
 
 type AssetFile struct {
 	bytes []byte
-	ct    string
 	size  string
 	tpl   *template.Template
 }
@@ -22,14 +21,6 @@ type Box struct {
 
 // Assets is referenced by the servers file serving.
 var Assets *Box
-
-func NewAssetFile(bytes []byte, ct, size string) *AssetFile {
-	return &AssetFile{
-		bytes: bytes,
-		ct:    ct,
-		size:  size,
-	}
-}
 
 func (af *AssetFile) Bytes() []byte {
 	return af.bytes[:]
@@ -42,10 +33,6 @@ func (af *AssetFile) WriteTo(w io.Writer) (int64, error) {
 
 func (af *AssetFile) Size() string {
 	return af.size
-}
-
-func (af *AssetFile) CT() string {
-	return af.ct
 }
 
 func New() *Box {
