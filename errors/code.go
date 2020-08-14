@@ -23,7 +23,7 @@ const (
 )
 
 const (
-	AuthorizationRequired = 5000 + iota
+	AuthorizationRequired Code = 5000 + iota
 	AuthorizationFailed
 )
 
