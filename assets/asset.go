@@ -3,6 +3,7 @@ package assets
 import (
 	"bytes"
 	"errors"
+	"html/template"
 	"io"
 )
 
@@ -10,8 +11,8 @@ var _ io.WriterTo = &AssetFile{}
 
 type AssetFile struct {
 	bytes []byte
-	ct    string
 	size  string
+	tpl   *template.Template
 }
 
 type Box struct {
@@ -32,10 +33,6 @@ func (af *AssetFile) WriteTo(w io.Writer) (int64, error) {
 
 func (af *AssetFile) Size() string {
 	return af.size
-}
-
-func (af *AssetFile) CT() string {
-	return af.ct
 }
 
 func New() *Box {

@@ -20,7 +20,9 @@ import (
 	"go.avenga.cloud/couper/gateway/eval"
 )
 
-var _ http.Handler = &Proxy{}
+var (
+	_ http.Handler = &Proxy{}
+)
 
 var OriginRequiredError = errors.New("origin is required")
 

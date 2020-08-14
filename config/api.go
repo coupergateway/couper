@@ -10,5 +10,6 @@ type Api struct {
 	BasePath             string      `hcl:"base_path,optional"`
 	DisableAccessControl []string    `hcl:"disable_access_control,optional"`
 	Endpoint             []*Endpoint `hcl:"endpoint,block"`
+	ErrorFile            string      `hcl:"error_file,optional"`
 	InlineDefinition     hcl.Body    `hcl:",remain" json:"-"`
 }

@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code":    {{.error_code}},
+    "id":      "{{.request_id}}",
+    "message": "{{.message}}",
+    "path":    "{{.path}}",
+    "status":  {{.http_status}}
+  }
+}

@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/handler"
+	"go.avenga.cloud/couper/gateway/errors"
 )
 
 const RequestIDKey = "requestID"
@@ -28,7 +27,12 @@ type HTTPServer struct {
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
 	_, ph := configure(conf, logger)
-	httpSrv := &HTTPServer{ctx: ctx, config: conf, log: logger, mux: NewMux(conf, ph)}
+	httpSrv := &HTTPServer{
+		ctx:    ctx,
+		config: conf,
+		log:    logger,
+		mux:    NewMux(conf, ph),
+	}
 
 	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)
 	if conf.Addr != "" {
@@ -110,8 +114,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		handlerName = "none"
-		handler.ServeError(rw, req, http.StatusInternalServerError)
-		err = errors.New("no configuration found: " + req.URL.String())
+		errors.DefaultHTML.ServeError(errors.ConfigurationError).ServeHTTP(sr, req)
+		err = fmt.Errorf("%w: %s", errors.ConfigurationError, req.URL.String())
 	}
 
 	fields := logrus.Fields{

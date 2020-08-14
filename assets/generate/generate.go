@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"mime"
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 )
 
 type StringBuffer struct {
@@ -63,12 +61,10 @@ func init() {
 		raw, err := ioutil.ReadFile(path.Join(filesDir, asset.Name()))
 		must(err)
 
-		ct := mime.TypeByExtension(filepath.Ext(asset.Name()))
-
 		println("\t" + asset.Name())
 
-		io.WriteString(generated, fmt.Sprintf(`	Assets.files["%s"] = &AssetFile{bytes: %v, ct: "%s", size: "%d"}
-`, asset.Name(), &StringBuffer{bytes.NewBuffer(raw)}, ct, len(raw)))
+		io.WriteString(generated, fmt.Sprintf(`	Assets.files["%s"] = &AssetFile{bytes: %v, size: "%d"}
+`, asset.Name(), &StringBuffer{bytes.NewBuffer(raw)}, len(raw)))
 	}
 
 	io.WriteString(generated, "}\n")

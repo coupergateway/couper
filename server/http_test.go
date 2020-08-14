@@ -14,7 +14,6 @@ import (
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"go.avenga.cloud/couper/gateway/assets"
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/server"
 )
@@ -75,20 +74,19 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		},
 	}}
 
-	content500, err := assets.Assets.Open("500.html")
-
 	for _, testCase := range []struct {
 		path           string
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", content500.Bytes(), http.StatusInternalServerError},
-		{"/apps/", content500.Bytes(), http.StatusInternalServerError},
+		{"/", []byte("<title>500 Configuration failed</title>"), http.StatusInternalServerError},
+		{"/apps/", []byte("<title>500 Configuration failed</title>"), http.StatusInternalServerError},
 		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
+		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
 	} {
 		res, err := connectClient.Get("http://example.com" + testCase.path)
 		if err != nil {
@@ -104,7 +102,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Equal(testCase.expectedBody, result.Bytes()) {
+		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
 			t.Errorf("Expected body:\n%s\ngot:\n%s", string(testCase.expectedBody), result.String())
 		}
 	}
@@ -171,21 +169,18 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		},
 	}
 
-	content404, err := assets.Assets.Open("404.html")
-	// content500, err := assets.Assets.Open("500.html")
-
 	for _, testCase := range []struct {
 		path           string
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", content404.Bytes(), 404},
+		{"/", []byte("<title>404 FilesRouteNotFound</title>"), 404},
 		{"/dir", nil, 302},
 		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
 		{"/robots.txt", []byte("Disallow: /secret\n"), 200},
 		{"/foo bar.txt", []byte("foo-and-bar\n"), 200},
 		{"/foo%20bar.txt", []byte("foo-and-bar\n"), 200},
-		{"/favicon.ico", content404.Bytes(), 404},
+		{"/favicon.ico", []byte("<title>404 FilesRouteNotFound</title>"), 404},
 		{"/app", spaContent, 200},
 		{"/app/", spaContent, 200},
 		{"/app/bla", spaContent, 200},
@@ -208,7 +203,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Equal(testCase.expectedBody, result.Bytes()) {
+		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
 			t.Errorf("Expected body:\n%s\ngot:\n%s", string(testCase.expectedBody), result.String())
 		}
 	}
