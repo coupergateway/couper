@@ -86,6 +86,10 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 		}
 		err := t.tpl.Execute(rw, data)
 
+		// FIXME: If the fallback triggers, maybe we set
+		// different/double headers on the top of this method
+		// (recursive call)
+
 		// fallback behaviour, execute internal template once
 		if err != nil && (t != DefaultHTML && t != DefaultJSON) {
 			if !strings.Contains(t.mime, "text/html") {
