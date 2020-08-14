@@ -114,7 +114,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		handlerName = "none"
-		errors.DefaultHTML.ServeError(errors.ConfigurationError).ServeHTTP(rw, req)
+		errors.DefaultHTML.ServeError(errors.ConfigurationError).ServeHTTP(sr, req)
 		err = fmt.Errorf("%w: %s", errors.ConfigurationError, req.URL.String())
 	}
 
