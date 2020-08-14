@@ -1,12 +1,13 @@
 package handler
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"go.avenga.cloud/couper/gateway/access_control"
+	"go.avenga.cloud/couper/gateway/errors"
 )
 
 func TestAccessControl_ServeHTTP(t *testing.T) {
@@ -29,18 +30,20 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusNoContent},
+		{"with access control invalid req/empty token", fields{access_control.List{access_control.ValidateFunc(func(r *http.Request) error {
+			return access_control.ErrorEmptyToken
+		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			rw.WriteHeader(http.StatusGone)
+		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusUnauthorized},
 		{"with access control invalid req", fields{access_control.List{access_control.ValidateFunc(func(r *http.Request) error {
-			return errors.New("invalid payload")
+			return fmt.Errorf("no! ")
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &AccessControl{
-				ac:        tt.fields.ac,
-				protected: tt.fields.protected,
-			}
+			a := NewAccessControl(tt.fields.protected, errors.DefaultJSON, tt.fields.ac...)
 
 			res := httptest.NewRecorder()
 			a.ServeHTTP(res, tt.req)

@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	_ http.Handler    = &Proxy{}
+	_ http.Handler = &Proxy{}
 )
 
 var OriginRequiredError = errors.New("origin is required")

@@ -3,6 +3,7 @@ package errors
 const (
 	ServerError Code = 1000 + iota
 	ConfigurationError
+	RequestError
 	RouteNotFound
 )
 
@@ -21,10 +22,16 @@ const (
 	APIRouteNotFound
 )
 
+const (
+	AuthorizationRequired = 5000 + iota
+	AuthorizationFailed
+)
+
 var codes = map[Code]string{
 	// 1xxx
 	ServerError:        "Server error",
 	ConfigurationError: "Configuration failed",
+	RequestError:       "Invalid request",
 	RouteNotFound:      "Route not found",
 	// 2xxx
 	SPAError:         "SPA failed",
@@ -35,6 +42,9 @@ var codes = map[Code]string{
 	// 4xxx
 	APIError:         "API failed",
 	APIRouteNotFound: "API route not found",
+	// 5xxx
+	AuthorizationRequired: "Authorization required",
+	AuthorizationFailed:   "Authorization failed",
 }
 
 type Code int

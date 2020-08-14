@@ -15,6 +15,7 @@ import (
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/errors"
 	"go.avenga.cloud/couper/gateway/handler"
 )
 
@@ -100,6 +101,15 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHa
 			continue
 		}
 
+		apiErrTpl := errors.DefaultJSON
+		if server.API.ErrorFile != "" {
+			tpl, err := errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile))
+			if err != nil {
+				log.Fatal(err)
+			}
+			apiErrTpl = tpl
+		}
+
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.API.Endpoint {
@@ -145,7 +155,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHa
 				}
 
 				if len(acList) > 0 {
-					ph[endpoint] = handler.NewAccessControl(protectedHandler, acList...)
+					ph[endpoint] = handler.NewAccessControl(protectedHandler, apiErrTpl, acList...)
 					return
 				}
 				ph[endpoint] = protectedHandler
