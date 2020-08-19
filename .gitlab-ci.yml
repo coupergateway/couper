@@ -1,42 +1,51 @@
 variables:
   GOFLAGS: '-mod=vendor'
 
+after_script:
+  - docker logout docker.io
+
+
 build image:
   stage: build
   script:
     - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
   except:
     - master
-    - docker-build
     - develop
+    - tags
 
 build and push image:
   stage: push
-  before_script:
-    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
   script:
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
     - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
     - docker push avenga/couper:$CI_COMMIT_SHORT_SHA
-  after_script:
-    - docker logout docker.io
   only:
     - master
-    - docker-build
+    - tags
     - develop
+  when: manual
+
+push tag:
+  stage: push
+  script:
+    - docker pull avenga/couper:$CI_COMMIT_SHORT_SHA
+    - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:$CI_COMMIT_REF_NAME
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
+    - docker push avenga/couper:$CI_COMMIT_REF_NAME
+  only:
+    - tags
+  when: manual
 
 push latest:
   stage: push
-  before_script:
-    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
   script:
     - docker pull avenga/couper:$CI_COMMIT_SHORT_SHA
     - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
     - docker push avenga/couper:latest
-  after_script:
-    - docker logout docker.io
   only:
-    - master
-    - docker-build
+    - tags
   when: manual
 
 
