@@ -41,12 +41,8 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 		uidFn:  uidFn,
 	}
 
-	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)
-	if conf.Addr != "" {
-		addr = conf.Addr
-	}
 	srv := &http.Server{
-		Addr:              addr,
+		Addr:              fmt.Sprintf(":%d", conf.ListenPort),
 		Handler:           httpSrv,
 		IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
 		ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,

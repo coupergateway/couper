@@ -269,11 +269,11 @@ func configureBasePathes(server *config.Server) {
 // configureDomains is a fallback configuration which ensures
 // the request multiplexer is working properly.
 func configureDomains(server *config.Server) {
-	if len(server.Domains) > 0 {
+	if len(server.Listen) > 0 {
 		return
 	}
 
-	server.Domains = []string{"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+	server.Listen = []string{"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 }
 
 func configureAccessControls(conf *config.Gateway) ac.Map {

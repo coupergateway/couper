@@ -63,7 +63,6 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conf.Addr = ":"
 	gw := server.New(ctx, log.WithContext(ctx), conf)
 	gw.Listen()
 	defer gw.Close()
@@ -153,7 +152,6 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conf.Addr = ":"
 	couper := server.New(ctx, log.WithContext(ctx), conf)
 	couper.Listen()
 	defer couper.Close()

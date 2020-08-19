@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
-
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/errors"
 	"go.avenga.cloud/couper/gateway/handler"
@@ -50,7 +49,7 @@ func NewMux(conf *config.Gateway, ph *pathHandler) *Mux {
 			mux.apiErrTpl = errors.DefaultJSON
 		}
 
-		for _, srvDomain := range server.Domains {
+		for _, srvDomain := range server.Listen {
 			domain := stripHostPort(srvDomain)
 
 			if server.API != nil {

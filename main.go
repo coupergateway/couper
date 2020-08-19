@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -36,7 +35,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	configuration.Addr = fmt.Sprintf(":%d", *listenPort)
+	configuration.ListenPort = *listenPort
 
 	err = os.Chdir(filepath.Dir(*configFile))
 	if err != nil {

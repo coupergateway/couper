@@ -1,6 +1,6 @@
 server "fileserving-tests" {
     //fixme: make optional
-    domains = ["example.com:443"]
+    listen = ["example.com:443"]
     files {
         document_root = "./htdocs"
     }
