@@ -13,12 +13,12 @@ build image:
 build and push image:
   stage: push
   before_script:
-    - docker login -u serverteam --password-stdin index.docker.io < $DOCKER_CREDS
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
   script:
     - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
     - docker push avenga/couper:$CI_COMMIT_SHORT_SHA
   after_script:
-    - docker logout index.docker.io
+    - docker logout docker.io
   only:
     - master
     - docker-build
@@ -27,13 +27,13 @@ build and push image:
 push latest:
   stage: push
   before_script:
-    - docker login -u serverteam --password-stdin index.docker.io < $DOCKER_CREDS
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
   script:
     - docker pull avenga/couper:$CI_COMMIT_SHORT_SHA
     - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
     - docker push avenga/couper:latest
   after_script:
-    - docker logout index.docker.io
+    - docker logout docker.io
   only:
     - master
     - docker-build
