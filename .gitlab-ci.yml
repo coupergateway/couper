@@ -5,22 +5,39 @@ build image:
   stage: build
   script:
     - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
+  except:
+    - master
+    - docker-build
+    - develop
 
-push master:
+build and push image:
   stage: push
-  script:
+  before_script:
     - docker login -u serverteam --password-stdin index.docker.io < $DOCKER_CREDS
-    - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
+  script:
+    - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
     - docker push avenga/couper:$CI_COMMIT_SHORT_SHA
-    - docker push avenga/couper:latest
   after_script:
     - docker logout index.docker.io
   only:
     - master
     - docker-build
     - develop
-  when: manual
 
+push latest:
+  stage: push
+  before_script:
+    - docker login -u serverteam --password-stdin index.docker.io < $DOCKER_CREDS
+  script:
+    - docker pull avenga/couper:$CI_COMMIT_SHORT_SHA
+    - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
+    - docker push avenga/couper:latest
+  after_script:
+    - docker logout index.docker.io
+  only:
+    - master
+    - docker-build
+  when: manual
 
 
 tests:
