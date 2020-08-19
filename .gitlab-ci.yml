@@ -1,10 +1,27 @@
 variables:
   GOFLAGS: '-mod=vendor'
 
-build:
+build image:
   stage: build
   script:
     - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
+
+push master:
+  stage: push
+  script:
+    - docker login -u serverteam --password-stdin index.docker.io < $DOCKER_CREDS
+    - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
+    - docker push avenga/couper:$CI_COMMIT_SHORT_SHA
+    - docker push avenga/couper:latest
+  after_script:
+    - docker logout index.docker.io
+  only:
+    - master
+    - docker-build
+    - develop
+  when: manual
+
+
 
 tests:
   stage: test
@@ -15,3 +32,4 @@ tests:
 stages:
   - test
   - build
+  - push
