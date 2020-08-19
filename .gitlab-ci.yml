@@ -1,18 +1,14 @@
-building couper:
+variables:
+  GOFLAGS: '-mod=vendor'
+
+build:
   stage: build
-  image: 'golang:1.14'
-  variables:
-    GOFLAGS: '-mod=vendor'
-  before_script:
-    - go version
   script:
-    - go build -v main.go
+    - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
 
 tests:
   stage: test
   image: 'golang:1.14'
-  variables:
-    GOFLAGS: '-mod=vendor'
   script:
     - go test -v -short -race -timeout 30s ./...
 
