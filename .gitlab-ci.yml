@@ -9,42 +9,33 @@ build image:
   stage: build
   script:
     - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
-  except:
-    - master
-    - develop
-    - tags
-
-build and push image:
-  stage: push
-  script:
-    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
-    - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
-    - docker push avenga/couper:$CI_COMMIT_SHORT_SHA
-  only:
-    - master
-    - tags
-    - develop
-  when: manual
+    - mkdir artifacts
+    - docker save avenga/couper:$CI_COMMIT_SHORT_SHA -o artifacts/image.tar
+  artifacts:
+    paths:
+      - artifacts
 
 push tag:
   stage: push
   script:
-    - docker pull avenga/couper:$CI_COMMIT_SHORT_SHA
+    - docker load -i artifacts/image.tar
     - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:$CI_COMMIT_REF_NAME
     - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
     - docker push avenga/couper:$CI_COMMIT_REF_NAME
   only:
     - tags
-  when: manual
 
 push latest:
   stage: push
   script:
-    - docker pull avenga/couper:$CI_COMMIT_SHORT_SHA
+    - docker load -i artifacts/image.tar
     - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
     - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
     - docker push avenga/couper:latest
   only:
+    - master
+    - develop
+    - docker-image
     - tags
   when: manual
 
