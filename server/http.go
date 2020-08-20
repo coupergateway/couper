@@ -138,7 +138,11 @@ func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
 		return nil
 	}
 	if _, ok := s.config.Lookups[port][host]; !ok {
-		return nil
+		if _, ok := s.config.Lookups[port]["*"]; !ok {
+			return nil
+		}
+
+		host = "*"
 	}
 
 	return NewMuxer(s.config.Lookups[port][host].Mux).Match(req)
