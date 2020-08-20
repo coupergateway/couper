@@ -1,21 +1,52 @@
-building couper:
+variables:
+  GOFLAGS: '-mod=vendor'
+
+after_script:
+  - docker logout docker.io
+
+
+build image:
   stage: build
-  image: 'golang:1.14'
-  variables:
-    GOFLAGS: '-mod=vendor'
-  before_script:
-    - go version
   script:
-    - go build -v main.go
+    - docker build -t avenga/couper:$CI_COMMIT_SHORT_SHA .
+    - mkdir artifacts
+    - docker save avenga/couper:$CI_COMMIT_SHORT_SHA -o artifacts/image.tar
+  artifacts:
+    paths:
+      - artifacts
+
+push tag:
+  stage: push
+  script:
+    - docker load -i artifacts/image.tar
+    - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:$CI_COMMIT_REF_NAME
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
+    - docker push avenga/couper:$CI_COMMIT_REF_NAME
+  only:
+    - tags
+
+push latest:
+  stage: push
+  script:
+    - docker load -i artifacts/image.tar
+    - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
+    - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
+    - docker push avenga/couper:latest
+  only:
+    - master
+    - develop
+    - docker-image
+    - tags
+  when: manual
+
 
 tests:
   stage: test
   image: 'golang:1.14'
-  variables:
-    GOFLAGS: '-mod=vendor'
   script:
     - go test -v -short -race -timeout 30s ./...
 
 stages:
   - test
   - build
+  - push

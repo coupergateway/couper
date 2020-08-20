@@ -1,8 +1,19 @@
-FROM golang:1.14
+FROM golang:1.14 AS builder
 
 WORKDIR /go/src/app
 COPY . .
 
-RUN go test -v -timeout=30s -race ./...
+ENV GOFLAGS="-mod=vendor"
 
-RUN go build main.go
+RUN go generate && \
+	CGO_ENABLED=0 go build -v -o /couper main.go && \
+	ls -lh /couper
+
+RUN mkdir /conf
+
+FROM scratch
+COPY --from=builder /couper /couper
+COPY --from=builder /conf /conf
+EXPOSE 8080
+WORKDIR /conf
+ENTRYPOINT ["/couper"]

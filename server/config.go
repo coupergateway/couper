@@ -32,7 +32,7 @@ type pathHandler map[*config.Endpoint]http.Handler
 var DefaultHTTPConfig = HTTPConfig{
 	IdleTimeout:       time.Second * 60,
 	ReadHeaderTimeout: time.Second * 10,
-	ListenPort:        8083,
+	ListenPort:        8080,
 }
 
 var (
