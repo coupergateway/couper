@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path"
@@ -18,6 +19,7 @@ import (
 	"go.avenga.cloud/couper/gateway/errors"
 	"go.avenga.cloud/couper/gateway/handler"
 	"go.avenga.cloud/couper/gateway/internal/seetie"
+	"go.avenga.cloud/couper/gateway/utils"
 )
 
 // HTTPConfig configures the ingress http server.
@@ -48,11 +50,16 @@ var (
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
 // Configure sets defaults and validates the given gateway configuration. Creates all configured endpoint http handler.
-func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, *pathHandler) {
+func configure(conf *config.Gateway, log *logrus.Entry) {
+	if len(conf.Server) == 0 {
+		log.Fatal("Missing server definitions")
+	}
+
 	type backendDefinition struct {
 		conf    *config.Backend
 		handler http.Handler
 	}
+
 	backends := make(map[string]backendDefinition)
 	ph := &pathHandler{api: make(map[*config.Endpoint]http.Handler)}
 
@@ -98,21 +105,25 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, *pathH
 	accessControls := configureAccessControls(conf)
 
 	var err error
+	conf.Lookups = make(config.Ports, 0)
 
 	for idx, server := range conf.Server {
-		configureDomains(server)
+		configureLookups(conf, server, log)
 		configureBasePathes(server)
 
-		fileErrTpl := errors.DefaultHTML
+		server.Mux = &config.Mux{
+			APIErrTpl: errors.DefaultJSON,
+			FSErrTpl:  errors.DefaultHTML,
+		}
+
 		if server.Files != nil {
 			if server.Files.ErrorFile != "" {
-				if fileErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile)); err != nil {
+				if server.Mux.FSErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile)); err != nil {
 					log.Fatal(err)
 				}
 			}
-
-			ph.files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, fileErrTpl)
-			ph.files = configureProtectedHandler(accessControls, fileErrTpl,
+			ph.files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, server.Mux.FSErrTpl)
+			ph.files = configureProtectedHandler(accessControls, server.Mux.FSErrTpl,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
 				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), ph.files)
 		}
@@ -124,17 +135,55 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, *pathH
 				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), ph.spa)
 		}
 
+		if server.Files != nil {
+			server.Mux.FS = make(config.Routes, 0)
+			server.Mux.FSPath = server.Files.BasePath
+			server.Mux.FS = server.Mux.FS.Add(
+				utils.JoinPath(server.Files.BasePath, "/**"),
+				ph.files,
+			)
+
+			// Register base_path-302 case
+			if server.Files.BasePath != "/" {
+				server.Mux.FS = server.Mux.FS.Add(
+					strings.TrimRight(server.Files.BasePath, "/")+"$",
+					ph.files,
+				)
+			}
+		}
+
+		if server.Spa != nil {
+			server.Mux.SPA = make(config.Routes, 0)
+			server.Mux.SPAPath = server.Spa.BasePath
+
+			for _, spaPath := range server.Spa.Paths {
+				spaPath := utils.JoinPath(server.Spa.BasePath, spaPath)
+
+				server.Mux.SPA = server.Mux.SPA.Add(
+					spaPath,
+					ph.spa,
+				)
+
+				if spaPath != "/**" && strings.HasSuffix(spaPath, "/**") {
+					server.Mux.SPA = server.Mux.SPA.Add(
+						spaPath[:len(spaPath)-len("/**")],
+						ph.spa,
+					)
+				}
+			}
+		}
+
 		if server.API == nil {
 			continue
 		}
 
-		apiErrTpl := errors.DefaultJSON
+		server.Mux.API = make(config.Routes, 0)
+		server.Mux.APIPath = server.API.BasePath
+
 		if server.API.ErrorFile != "" {
-			tpl, err := errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile))
-			if err != nil {
+			if server.Mux.APIErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile)); err != nil {
 				log.Fatal(err)
 			}
-			apiErrTpl = tpl
 		}
 
 		// map backends to endpoint
@@ -169,7 +218,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, *pathH
 					protectedHandler = proxy
 				}
 
-				ph.api[endpoint] = configureProtectedHandler(accessControls, apiErrTpl,
+				ph.api[endpoint] = configureProtectedHandler(accessControls, server.Mux.APIErrTpl,
 					config.NewAccessControl(server.AccessControl, server.DisableAccessControl).
 						Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)),
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
@@ -234,9 +283,14 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, *pathH
 
 			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
 		}
-	}
 
-	return conf, ph
+		for _, endpoint := range server.API.Endpoint {
+			server.Mux.API = server.Mux.API.Add(
+				utils.JoinPath(server.API.BasePath, endpoint.Pattern),
+				ph.api[endpoint],
+			)
+		}
+	}
 }
 
 func configureBasePathes(server *config.Server) {
@@ -266,14 +320,42 @@ func configureBasePathes(server *config.Server) {
 	}
 }
 
-// configureDomains is a fallback configuration which ensures
-// the request multiplexer is working properly.
-func configureDomains(server *config.Server) {
-	if len(server.Listen) > 0 {
-		return
+func configureLookups(conf *config.Gateway, server *config.Server, log *logrus.Entry) {
+	list := server.Listen
+	if len(list) == 0 {
+		list = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
 	}
 
-	server.Listen = []string{"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+	for _, hp := range list {
+		var host, port string
+
+		if strings.IndexByte(hp, ':') == -1 {
+			host = hp
+			port = fmt.Sprintf("%d", conf.ListenPort)
+		} else {
+			h, p, err := net.SplitHostPort(hp)
+			if err != nil {
+				log.Fatal(err)
+			} else if p == "" {
+				p = fmt.Sprintf("%d", conf.ListenPort)
+			}
+
+			host = h
+			port = p
+		}
+
+		// TODO: Check port range 0-65535 just here or let it crash on net.Listen()?
+
+		if _, ok := conf.Lookups[port]; !ok {
+			conf.Lookups[port] = make(config.Domains, 0)
+		}
+
+		if _, ok := conf.Lookups[port][host]; ok {
+			log.Fatalf("Multiple <host:port> combination found: '%s:%s'", host, port)
+		}
+
+		conf.Lookups[port][host] = server
+	}
 }
 
 func configureAccessControls(conf *config.Gateway) ac.Map {

@@ -1,15 +1,11 @@
-package server
+package config
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"regexp"
 	"sort"
 	"strings"
-
-	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/config/runtime"
 )
 
 var (
@@ -29,6 +25,8 @@ type Route struct {
 	sortLen  int
 	wildcard bool
 }
+
+type Routes []*Route
 
 func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	if pattern == "" || pattern[0] != '/' {
@@ -61,26 +59,7 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	}, nil
 }
 
-func (r *Route) Match(req *http.Request) http.Handler {
-	if r.matcher.MatchString(req.URL.Path) {
-		if r.wildcard {
-			match := r.matcher.FindStringSubmatch(req.URL.Path)
-			if len(match) > 1 {
-				*req = *req.WithContext(context.WithValue(req.Context(), config.WildcardCtxKey, match[1]))
-			}
-		}
-		return r.handler
-	}
-	return nil
-}
-
-func (r *Route) Pattern() string {
-	return r.matcher.String()
-}
-
-type routes []*Route
-
-func (r routes) add(pattern string, h http.Handler) routes {
+func (r Routes) Add(pattern string, h http.Handler) Routes {
 	route, err := NewRoute(pattern, h)
 	if err != nil {
 		panic(err)
@@ -94,50 +73,26 @@ func (r routes) add(pattern string, h http.Handler) routes {
 		return append(r, route)
 	}
 
-	routes := append(r, &Route{})      // try to grow the slice in place, any entry works.
-	copy(routes[idx+1:], routes[idx:]) // Move shorter entries down
-	routes[idx] = route
-	return routes
+	Routes := append(r, &Route{})      // try to grow the slice in place, any entry works.
+	copy(Routes[idx+1:], Routes[idx:]) // Move shorter entries down
+	Routes[idx] = route
+	return Routes
 }
 
-type routesMap map[string]routes
-
-func (m routesMap) Add(domain, pattern string, h http.Handler) routesMap {
-	_, ok := m[domain]
-	if !ok {
-		m[domain] = make(routes, 0)
-	}
-	m[domain] = m[domain].add(pattern, h)
-	return m
+func (r *Route) HasWildcard() bool {
+	return r.wildcard
 }
 
-// Match searches for explicit domain paths first and finally the wildcard ones.
-func (m routesMap) Match(domain string, req *http.Request) (http.Handler, bool) {
-	var wildcardRoutes routes
+func (r *Route) GetHandler() http.Handler {
+	return r.handler
+}
 
-	r, ok := m[domain]
-	if !ok {
-		return nil, false
-	}
+func (r *Route) GetMatcher() *regexp.Regexp {
+	return r.matcher
+}
 
-	for _, route := range r {
-		if route.wildcard {
-			wildcardRoutes = append(wildcardRoutes, route)
-			continue
-		}
-		if h := route.Match(req); h != nil {
-			*req = *req.WithContext(context.WithValue(req.Context(), runtime.Endpoint, route.pattern))
-			return h, true
-		}
-	}
-
-	for _, route := range wildcardRoutes {
-		if h := route.Match(req); h != nil {
-			return h, true
-		}
-	}
-
-	return nil, false
+func (r *Route) Name() string {
+	return r.pattern
 }
 
 func validWildcardPath(path string) bool {

@@ -9,4 +9,5 @@ type Server struct {
 	Files                *Files   `hcl:"files,block"`
 	Name                 string   `hcl:"name,label"`
 	Spa                  *Spa     `hcl:"spa,block"`
+	Mux                  *Mux
 }

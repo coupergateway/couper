@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rs/xid"
@@ -20,14 +21,12 @@ type HTTPServer struct {
 	ctx      context.Context
 	log      *logrus.Entry
 	listener net.Listener
-	mux      *Mux
 	srv      *http.Server
 	uidFn    func() string
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	_, ph := configure(conf, logger)
-
+	configure(conf, logger)
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
@@ -37,7 +36,6 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 		ctx:    ctx,
 		config: conf,
 		log:    logger,
-		mux:    NewMux(conf, ph),
 		uidFn:  uidFn,
 	}
 
@@ -62,9 +60,6 @@ func (s *HTTPServer) Addr() string {
 
 // Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() {
-	if s.srv.Addr == "" {
-		s.srv.Addr = ":http"
-	}
 	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
 		s.log.Fatal(err)
@@ -105,7 +100,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Request-Id", uid)
 	rw.Header().Set("X-Request-Id", uid)
 
-	h := s.mux.Match(req)
+	h := s.getHandler(req)
 
 	var err error
 	var handlerName string
@@ -134,4 +129,31 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		s.log.WithFields(fields).Info()
 	}
+}
+
+func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
+	host, port := s.getHostPort(req)
+
+	if _, ok := s.config.Lookups[port]; !ok {
+		return nil
+	}
+	if _, ok := s.config.Lookups[port][host]; !ok {
+		return nil
+	}
+
+	return NewMuxer(s.config.Lookups[port][host].Mux).Match(req)
+}
+
+func (s *HTTPServer) getHostPort(req *http.Request) (string, string) {
+	host := req.Host
+	if strings.IndexByte(host, ':') == -1 {
+		return host, fmt.Sprintf("%d", s.config.ListenPort)
+	}
+
+	h, p, err := net.SplitHostPort(host)
+	if err != nil {
+		return host, fmt.Sprintf("%d", s.config.ListenPort)
+	}
+
+	return h, p
 }
