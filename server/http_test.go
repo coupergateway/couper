@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -63,13 +64,16 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	conf.ListenPort = server.DefaultHTTPConfig.ListenPort
+	port := fmt.Sprintf("%d", conf.ListenPort)
+
 	gw := server.New(ctx, log.WithContext(ctx), conf)
 	gw.Listen()
 	defer gw.Close()
 
 	connectClient := http.Client{Transport: &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return net.Dial("tcp4", gw.Addr())
+			return net.Dial("tcp4", gw.Addr(port))
 		},
 	}}
 
@@ -87,7 +91,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
 	} {
-		res, err := connectClient.Get("http://example.com" + testCase.path)
+		res, err := connectClient.Get("http://example.com:" + port + testCase.path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,6 +156,9 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	conf.ListenPort = server.DefaultHTTPConfig.ListenPort
+	port := fmt.Sprintf("%d", conf.ListenPort)
+
 	couper := server.New(ctx, log.WithContext(ctx), conf)
 	couper.Listen()
 	defer couper.Close()
@@ -159,7 +166,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	connectClient := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial("tcp4", couper.Addr())
+				return net.Dial("tcp4", couper.Addr(port))
 			},
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -187,7 +194,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//FIXME:
 		//{"/api", content500.Bytes(), 500},
 	} {
-		res, err := connectClient.Get("http://example.com" + testCase.path)
+		res, err := connectClient.Get("http://example.com:" + port + testCase.path)
 		if err != nil {
 			t.Fatal(err)
 		}

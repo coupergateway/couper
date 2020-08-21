@@ -20,66 +20,87 @@ type HTTPServer struct {
 	config   *config.Gateway
 	ctx      context.Context
 	log      *logrus.Entry
-	listener net.Listener
-	srv      *http.Server
+	listener map[string]net.Listener
+	srv      map[string]*http.Server
 	uidFn    func() string
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
 	configure(conf, logger)
+
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
 	}
 
 	httpSrv := &HTTPServer{
-		ctx:    ctx,
-		config: conf,
-		log:    logger,
-		uidFn:  uidFn,
+		ctx:      ctx,
+		config:   conf,
+		log:      logger,
+		listener: make(map[string]net.Listener, 0),
+		srv:      make(map[string]*http.Server, 0),
+		uidFn:    uidFn,
 	}
 
-	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%d", conf.ListenPort),
-		Handler:           httpSrv,
-		IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
-		ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,
+	for port := range conf.Lookups {
+		srv := &http.Server{
+			Addr:              ":" + port,
+			Handler:           httpSrv,
+			IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
+			ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,
+		}
+		httpSrv.srv[port] = srv
 	}
-
-	httpSrv.srv = srv
 
 	return httpSrv
 }
 
-func (s *HTTPServer) Addr() string {
-	if s.listener != nil {
-		return s.listener.Addr().String()
+func (s *HTTPServer) Addr(port string) string {
+	if len(s.listener) > 0 {
+		if l, ok := s.listener[port]; ok {
+			return l.Addr().String()
+		}
 	}
 	return ""
 }
 
 // Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() {
-	ln, err := net.Listen("tcp4", s.srv.Addr)
-	if err != nil {
-		s.log.Fatal(err)
-		return
-	}
-	s.listener = ln
-	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
-
-	go s.listenForCtx()
-
-	go func() {
-		if err := s.srv.Serve(ln); err != nil {
-			s.log.Error(err)
+	for port := range s.config.Lookups {
+		ln, err := net.Listen("tcp4", s.srv[port].Addr)
+		if err != nil {
+			s.log.Fatal(err)
+			return
 		}
-	}()
+		s.listener[port] = ln
+		s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
+
+		go s.listenForCtx()
+
+		go func() {
+			if err := s.srv[port].Serve(ln); err != nil {
+				s.log.Error(err)
+			}
+		}()
+	}
 }
 
 // Close closes the listener
 func (s *HTTPServer) Close() error {
-	return s.listener.Close()
+	var msg []string
+
+	for port := range s.config.Lookups {
+		err := s.listener[port].Close()
+		if err != nil {
+			msg = append(msg, fmt.Sprintf("%s", err))
+		}
+	}
+
+	if len(msg) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf("closing: %s", strings.Join(msg, ", "))
 }
 
 func (s *HTTPServer) listenForCtx() {
@@ -88,7 +109,9 @@ func (s *HTTPServer) listenForCtx() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		s.log.WithField("deadline", "10s").Warn("shutting down")
-		s.srv.Shutdown(ctx)
+		for port := range s.config.Lookups {
+			s.srv[port].Shutdown(ctx)
+		}
 	}
 }
 
