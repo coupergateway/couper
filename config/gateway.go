@@ -6,14 +6,14 @@ const (
 	WildcardCtxKey = "route_wildcard"
 )
 
-type Domains map[string]*Server
-type Ports map[string]Domains
+type Hosts map[string]*Server
+type Ports map[string]Hosts
 
 type Gateway struct {
 	Context     *hcl.EvalContext
 	Definitions *Definitions `hcl:"definitions,block"`
 	ListenPort  int
-	Lookups     Ports     // map[<port:string>][<domain:string>]*Server
+	Lookups     Ports     // map[<port:string>][<host:string>]*Server
 	Server      []*Server `hcl:"server,block"`
 	WorkDir     string
 }

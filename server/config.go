@@ -321,12 +321,12 @@ func configureBasePathes(server *config.Server) {
 }
 
 func configureLookups(conf *config.Gateway, server *config.Server, log *logrus.Entry) {
-	list := server.Listen
-	if len(list) == 0 {
-		list = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
+	hosts := server.Hosts
+	if len(hosts) == 0 {
+		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
 	}
 
-	for _, hp := range list {
+	for _, hp := range hosts {
 		var host, port string
 
 		if strings.IndexByte(hp, ':') == -1 {
@@ -347,7 +347,7 @@ func configureLookups(conf *config.Gateway, server *config.Server, log *logrus.E
 		// TODO: Check port range 0-65535 just here or let it crash on net.Listen()?
 
 		if _, ok := conf.Lookups[port]; !ok {
-			conf.Lookups[port] = make(config.Domains, 0)
+			conf.Lookups[port] = make(config.Hosts, 0)
 		}
 
 		if _, ok := conf.Lookups[port][host]; ok {

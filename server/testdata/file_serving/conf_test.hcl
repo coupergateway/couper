@@ -1,5 +1,5 @@
 server "TestFileServing" {
-  listen = ["example.com"]
+  hosts = ["example.com"]
 
   files {
     document_root = "testdata/file_serving/htdocs"
