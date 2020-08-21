@@ -32,6 +32,8 @@ var (
 	ErrorNotConfigured  = errors.New("jwt handler not configured")
 	ErrorNotSupported   = errors.New("only RSA and HMAC key encodings are supported")
 	ErrorUnknownSource  = errors.New("unknown source definition")
+
+	_ AccessControl = &JWT{}
 )
 
 type (

@@ -26,7 +26,10 @@ type HTTPConfig struct {
 	ListenPort        int
 }
 
-type pathHandler map[*config.Endpoint]http.Handler
+type pathHandler struct {
+	api        map[*config.Endpoint]http.Handler
+	files, spa http.Handler
+}
 
 // DefaultHTTPConfig sets some defaults for the http server.
 var DefaultHTTPConfig = HTTPConfig{
@@ -44,13 +47,13 @@ var (
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
 // Configure sets defaults and validates the given gateway configuration. Creates all configured endpoint http handler.
-func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHandler) {
+func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, *pathHandler) {
 	type backendDefinition struct {
 		conf    *config.Backend
 		handler http.Handler
 	}
 	backends := make(map[string]backendDefinition)
-	ph := make(pathHandler)
+	ph := &pathHandler{api: make(map[*config.Endpoint]http.Handler)}
 
 	if conf.Definitions != nil {
 		for _, beConf := range conf.Definitions.Backend {
@@ -93,9 +96,32 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHa
 
 	accessControls := configureAccessControls(conf)
 
+	var err error
+
 	for idx, server := range conf.Server {
 		configureDomains(server)
 		configureBasePathes(server)
+
+		fileErrTpl := errors.DefaultHTML
+		if server.Files != nil {
+			if server.Files.ErrorFile != "" {
+				if fileErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile)); err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			ph.files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, fileErrTpl)
+			ph.files = configureProtectedHandler(accessControls, fileErrTpl,
+				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
+				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), ph.files)
+		}
+
+		if server.Spa != nil {
+			ph.spa = handler.NewSpa(conf.WorkDir, server.Spa.BootstrapFile)
+			ph.spa = configureProtectedHandler(accessControls, errors.DefaultHTML,
+				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
+				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), ph.spa)
+		}
 
 		if server.API == nil {
 			continue
@@ -118,18 +144,6 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHa
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
 			endpoints[endpoint.Pattern] = true
-
-			var acList ac.List
-			ac := config.NewAccessControl(server.AccessControl, server.DisableAccessControl)
-			for _, acName := range ac.
-				Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)).
-				Merge(config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl)).
-				List() {
-				if _, ok := accessControls[acName]; !ok {
-					log.Fatalf("access control %q is not defined", acName)
-				}
-				acList = append(acList, accessControls[acName])
-			}
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedBackend backendDefinition) {
@@ -154,11 +168,11 @@ func configure(conf *config.Gateway, log *logrus.Entry) (*config.Gateway, pathHa
 					protectedHandler = proxy
 				}
 
-				if len(acList) > 0 {
-					ph[endpoint] = handler.NewAccessControl(protectedHandler, apiErrTpl, acList...)
-					return
-				}
-				ph[endpoint] = protectedHandler
+				ph.api[endpoint] = configureProtectedHandler(accessControls, apiErrTpl,
+					config.NewAccessControl(server.AccessControl, server.DisableAccessControl).
+						Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)),
+					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
+					protectedHandler)
 			}
 
 			// lookup for backend reference, prefer endpoint definition over api one
@@ -297,6 +311,19 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 		}
 	}
 	return accessControls
+}
+
+func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {
+	var acList ac.List
+	for _, acName := range parentAC.
+		Merge(handlerAC).List() {
+		m.MustExist(acName)
+		acList = append(acList, m[acName])
+	}
+	if len(acList) > 0 {
+		return handler.NewAccessControl(h, errTpl, acList...)
+	}
+	return h
 }
 
 func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *config.Backend, error) {

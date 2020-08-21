@@ -7,6 +7,12 @@ import (
 	"go.avenga.cloud/couper/gateway/errors"
 )
 
+var (
+	_ http.Handler         = &AccessControl{}
+	_ errors.ErrorTemplate = &AccessControl{}
+	_ ac.ProtectedHandler  = &AccessControl{}
+)
+
 type AccessControl struct {
 	ac        ac.List
 	errorTpl  *errors.Template
@@ -38,6 +44,14 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 	a.protected.ServeHTTP(rw, req)
+}
+
+func (a *AccessControl) Child() http.Handler {
+	return a.protected
+}
+
+func (a *AccessControl) Template() *errors.Template {
+	return a.errorTpl
 }
 
 func (a *AccessControl) String() string {

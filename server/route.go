@@ -101,7 +101,16 @@ func (r routes) add(pattern string, h http.Handler) routes {
 
 type routesMap map[string]routes
 
-// Match searches for explicit pathes first and finally the wildcard ones.
+func (m routesMap) Add(domain, pattern string, h http.Handler) routesMap {
+	_, ok := m[domain]
+	if !ok {
+		m[domain] = make(routes, 0)
+	}
+	m[domain] = m[domain].add(pattern, h)
+	return m
+}
+
+// Match searches for explicit domain paths first and finally the wildcard ones.
 func (m routesMap) Match(domain string, req *http.Request) (http.Handler, bool) {
 	var wildcardRoutes routes
 

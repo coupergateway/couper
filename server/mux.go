@@ -6,9 +6,10 @@ import (
 	"path"
 	"strings"
 
-	"go.avenga.cloud/couper/gateway/errors"
+	ac "go.avenga.cloud/couper/gateway/access_control"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/errors"
 	"go.avenga.cloud/couper/gateway/handler"
 	"go.avenga.cloud/couper/gateway/utils"
 )
@@ -26,7 +27,7 @@ type Mux struct {
 }
 
 // NewMux creates a new Mux object
-func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
+func NewMux(conf *config.Gateway, ph *pathHandler) *Mux {
 	mux := &Mux{
 		api:     make(routesMap),
 		apiPath: make(map[string]string),
@@ -39,25 +40,6 @@ func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 	var err error
 
 	for _, server := range conf.Server {
-		var files, spa http.Handler
-
-		if server.Files != nil {
-			if server.Files.ErrorFile != "" {
-				mux.fsErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile))
-				if err != nil {
-					panic(err)
-				}
-			}
-			if mux.fsErrTpl == nil {
-				mux.fsErrTpl = errors.DefaultHTML
-			}
-			files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, mux.fsErrTpl)
-		}
-
-		if server.Spa != nil {
-			spa = handler.NewSpa(conf.WorkDir, server.Spa.BootstrapFile)
-		}
-
 		if server.API != nil && server.API.ErrorFile != "" {
 			mux.apiErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile))
 			if err != nil {
@@ -68,55 +50,47 @@ func NewMux(conf *config.Gateway, ph pathHandler) *Mux {
 			mux.apiErrTpl = errors.DefaultJSON
 		}
 
-		for _, domain := range server.Domains {
-			domain := stripHostPort(domain)
+		for _, srvDomain := range server.Domains {
+			domain := stripHostPort(srvDomain)
 
 			if server.API != nil {
-				mux.api[domain] = make([]*Route, 0)
 				mux.apiPath[domain] = server.API.BasePath
 
 				for _, endpoint := range server.API.Endpoint {
-					mux.api[domain] = mux.api[domain].add(
+					mux.api.Add(domain,
 						utils.JoinPath(server.API.BasePath, endpoint.Pattern),
-						ph[endpoint],
+						ph.api[endpoint],
 					)
 				}
 			}
 
 			if server.Files != nil {
-				mux.fs[domain] = make([]*Route, 0)
 				mux.fsPath[domain] = server.Files.BasePath
-				mux.fs[domain] = mux.fs[domain].add(
+				mux.fs.Add(domain,
 					utils.JoinPath(server.Files.BasePath, "/**"),
-					files,
+					ph.files,
 				)
+
+				filesErrTpl := ph.files.(errors.ErrorTemplate).Template()
+				mux.fsErrTpl = filesErrTpl
 
 				// Register base_path-302 case
 				if server.Files.BasePath != "/" {
-					mux.fs[domain] = mux.fs[domain].add(
-						strings.TrimRight(server.Files.BasePath, "/")+"$",
-						files,
-					)
+					filesPath := strings.TrimRight(server.Files.BasePath, "/") + "$"
+					mux.fs.Add(domain, filesPath, ph.files)
 				}
 			}
 
 			if server.Spa != nil {
-				mux.spa[domain] = make([]*Route, 0)
 				mux.spaPath[domain] = server.Spa.BasePath
 
 				for _, spaPath := range server.Spa.Paths {
 					spaPath := utils.JoinPath(server.Spa.BasePath, spaPath)
-
-					mux.spa[domain] = mux.spa[domain].add(
-						spaPath,
-						spa,
-					)
+					mux.spa.Add(domain, spaPath, ph.spa)
 
 					if spaPath != "/**" && strings.HasSuffix(spaPath, "/**") {
-						mux.spa[domain] = mux.spa[domain].add(
-							spaPath[:len(spaPath)-len("/**")],
-							spa,
-						)
+						spaPath = spaPath[:len(spaPath)-len("/**")]
+						mux.spa.Add(domain, spaPath, ph.spa)
 					}
 				}
 			}
@@ -141,7 +115,11 @@ func (m *Mux) Match(req *http.Request) http.Handler {
 
 	if len(m.fs) > 0 {
 		if h, ok := m.fs.Match(domain, req); ok {
-			if a, ok := h.(handler.Lookupable); ok && a.HasResponse(req) {
+			fileHandler := h
+			if p, isProtected := h.(ac.ProtectedHandler); isProtected {
+				fileHandler = p.Child()
+			}
+			if fh, ok := fileHandler.(handler.HasResponse); ok && fh.HasResponse(req) {
 				return h
 			}
 		}
