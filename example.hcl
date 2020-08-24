@@ -97,21 +97,6 @@ definitions {
         }
     }
 
-
-    jwt "AccessToken" {
-        header = "Authorization"
-
-        signature_algorithm = "RS256"
-//        signature_algorithm = "HS256"
-        key_file = "access_control/testdata/jwt/pubkey.pem"
-
-        claims = {
-            iss = "TokenFactory"
-            aud = "MyApp"
-            cpt = "hook"
-        }
-    }
-
     jwt "jwtio" {
         header = "Authorization"
         signature_algorithm = "RS512"
