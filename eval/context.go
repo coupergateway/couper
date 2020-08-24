@@ -2,10 +2,13 @@ package eval
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -13,6 +16,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+
+	ac "go.avenga.cloud/couper/gateway/access_control"
 )
 
 func NewENVContext(src []byte) *hcl.EvalContext {
@@ -29,27 +34,13 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 func NewHTTPContext(baseCtx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
 	ctx := cloneContext(baseCtx)
 	if req != nil {
-		ctx.Variables["req"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(req.Header),
-			"cookies": newCtyCookiesMap(req.Cookies()),
-			//"params":  newCtyParametersMap(mux.Vars(request)),
-		})
-		if req.Response != nil {
-			ctx.Variables["resp"] = cty.MapVal(map[string]cty.Value{
-				"headers": newCtyHeadersMap(req.Response.Header),
-				"cookies": newCtyCookiesMap(req.Response.Cookies()),
-				//"params":  newCtyParametersMap(mux.Vars(request)),
-			})
-		}
+		ctx.Variables["req"] = newVariable(req.Context(), req.Cookies(), req.Header)
 	}
 
 	if beresp != nil {
-		ctx.Variables["bereq"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(beresp.Request.Header),
-		})
-		ctx.Variables["beresp"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(beresp.Header),
-		})
+		bereq := beresp.Request
+		ctx.Variables["bereq"] = newVariable(bereq.Context(), bereq.Cookies(), bereq.Header)
+		ctx.Variables["beresp"] = newVariable(context.Background(), beresp.Cookies(), beresp.Header)
 	}
 
 	return ctx
@@ -69,6 +60,16 @@ func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
 		c.Functions[key] = val
 	}
 	return c
+}
+
+func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) cty.Value {
+	return cty.ObjectVal(map[string]cty.Value{
+		"ctx": cty.MapVal(map[string]cty.Value{
+			newString(ctx.Value(ac.ContextAccessControlKey)): newCtyClaimsMap(ctx.Value(ac.ContextJWTClaimKey)),
+		}),
+		"cookies": newCtyCookiesMap(cookies),
+		"headers": newCtyHeadersMap(headers),
+	})
 }
 
 func newCtyEnvMap(envKeys []string) cty.Value {
@@ -109,11 +110,18 @@ func newCtyCookiesMap(cookies []*http.Cookie) cty.Value {
 	return cty.MapVal(ctyMap)
 }
 
-func newCtyParametersMap(parameters map[string]string) cty.Value {
+func newCtyClaimsMap(value interface{}) cty.Value {
+	valueMap, ok := value.(map[string]interface{})
+	if !ok {
+		valueMap, ok = value.(ac.Claims)
+	}
+	if !ok {
+		cty.MapValEmpty(cty.String)
+	}
 	ctyMap := make(map[string]cty.Value)
-	for k, v := range parameters {
+	for k, v := range valueMap {
 		if isValidKey(k) {
-			ctyMap[k] = cty.StringVal(v)
+			ctyMap[k] = cty.StringVal(newString(v))
 		}
 	}
 
@@ -121,6 +129,24 @@ func newCtyParametersMap(parameters map[string]string) cty.Value {
 		return cty.MapValEmpty(cty.String)
 	}
 	return cty.MapVal(ctyMap)
+}
+
+func newString(s interface{}) string {
+	switch s.(type) {
+	case string:
+		return s.(string)
+	case int:
+		return strconv.Itoa(s.(int))
+	case float64:
+		return fmt.Sprintf("%0.f", s)
+	case bool:
+		if !s.(bool) {
+			return "false"
+		}
+		return "true"
+	default:
+		return ""
+	}
 }
 
 func isValidKey(key string) bool {

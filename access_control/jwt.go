@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -176,6 +177,19 @@ func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
 		val, exist := tokenClaims[k]
 		if !exist {
 			return nil, errors.New("expected claim not found: '" + k + "'")
+		}
+
+		// map jwt package claim map to expected string values
+		switch val.(type) {
+		case bool:
+			if val.(bool) {
+				val = "true"
+			} else {
+				val = "false"
+			}
+		case float64:
+			val = fmt.Sprintf("%0.f", val)
+			tokenClaims[k] = val
 		}
 
 		if val != v {

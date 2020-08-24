@@ -63,7 +63,7 @@ server "couperConnect" {
         }
 
         endpoint "/httpbin" {
-            access_control = ["AccessToken"]
+            access_control = ["jwtio"]
             backend = "httpbin"
         }
     }
@@ -84,32 +84,44 @@ definitions {
     }
 
     backend "httpbin" {
-        path = "/anything/" #Optional and only if set, remove basePath+endpoint path
+        path = "/anything" #Optional and only if set, remove basePath+endpoint path
         origin = "https://httpbin.org:443"
         request_headers = {
             X-Env-User = env.USER
-            X-Req-Header = [req.headers.X-Set-Me]
-            Authorization = ["Bearer ${req.cookies.AccessToken}"]
-            Cookie: ""
+            X-Claims = [
+                req.ctx.jwtio.sub,
+                req.ctx.jwtio.name,
+                req.ctx.jwtio.admin,
+                req.ctx.jwtio.iat,
+            ]
         }
     }
 
 
     jwt "AccessToken" {
-    header = "Authorization"
+        header = "Authorization"
 
-    // signature_algorithm = "RS256"
-    key_file = "access_control/testdata/jwt/pubkey.pem"
-    # x5c from auth0
-    // key = "MIIC/zCCAeegAwIBAgIJKTPK12WWhWaJMA0GCSqGSIb3DQEBCwUAMB0xGzAZBgNVBAMTEndhb2lvLmV1LmF1dGgwLmNvbTAeFw0yMDAzMTMxNjA3MjFaFw0zMzExMjAxNjA3MjFaMB0xGzAZBgNVBAMTEndhb2lvLmV1LmF1dGgwLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALjDhC362yZR6MDBGuALhCZJqVML3dfvoCt5qhEe4cFOP1SfhUUnjEZpArJEMKncINyZmJSwQxPwevBS+UTiE+TjcinJZMeuALrI/87CZ2Fp0TkMkkyxv6X9e+VlgQQRE+7lbkMNm4wOLCHMXIdnWOm1zXCz962TYUplmJQwwijPtzBC0M0n+TMaDVbaCQLRD74uPzR2sJuB8h8ABCOYz2YnVu9aHkIe+7KYtPn1gsl6EjltJvzDac5dKxIa79VGojCf276EiNoS8Fej4VXtopLW3TUHVvwrR6MjaqGwzselC36rDUM4fULOcM9LCThCmB6VTTnBSGO524zOA7fieDMCAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQU5R7M7FMi1CwvN+xlw8rsoCEjnAkwDgYDVR0PAQH/BAQDAgKEMA0GCSqGSIb3DQEBCwUAA4IBAQA1+WH7yJVdnae6dW7t0IJ9b3hiy6GbJs3qF1hjIxPfynrMdPwQ9ong6UoISV8lwpK7rlVlgwF6peeYfbbYxl+4MnzTLECXjaYxdTsrzuB4AS4THeR4nU/1Mx0XQGt5xRij5/dtViVDBVGPQCieI/oU2UfOWnuFREiCMhGgPRNxT6P5lRUfa32rXiTiwRiSRDJA41xiWjdXxUY7lyNR/r+dRtpOufzFqtwHQ7KGMrzquygNvRcysJQyrxPNLmFXwTQB9NTcffSrmb0FIoe63pa958eoXmKSBgpT0DzfyFDZhKN6yZ27DV9ZMwBPgrwEzeqU5j4Epr8AnhnegEb3owi2"
-    // key = "secret"
-    
-    signature_algorithm = "HS256"
-    
-    claims = {
-        iss = "TokenFactory"
-        aud = "MyApp"
-        cpt = "hook"
+        signature_algorithm = "RS256"
+//        signature_algorithm = "HS256"
+        key_file = "access_control/testdata/jwt/pubkey.pem"
+
+        claims = {
+            iss = "TokenFactory"
+            aud = "MyApp"
+            cpt = "hook"
+        }
     }
-  }
+
+    jwt "jwtio" {
+        header = "Authorization"
+        signature_algorithm = "RS512"
+        key = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFuenlpczFaamZOQjBiQmdLRk1Tdgp2a1R0d2x2QnNhSnE3UzV3QStremVWT1ZwVld3a1dkVmhhNHMzOFhNL3BhL3lyNDdhdjcrejNWVG12RFJ5QUhjCmFUOTJ3aFJFRnBMdjljajVsVGVKU2lieXIvTXJtL1l0akNaVldnYU9ZSWh3clh3S0xxUHIvMTFpbldzQWtmSXkKdHZIV1R4WllFY1hMZ0FYRnVVdWFTM3VGOWdFaU5Rd3pHVFUxdjBGcWtxVEJyNEI4blczSENONDdYVXUwdDhZMAplK2xmNHM0T3hRYXdXRDc5SjkvNWQzUnkwdmJWM0FtMUZ0R0ppSnZPd1JzSWZWQ2hEcFlTdFRjSFRDTXF0dldiClY2TDExQldrcHpHWFNXNEh2NDNxYStHU1lPRDJRVTY4TWI1OW9TazJPQitCdE9McEpvZm1iR0VHZ3Ztd3lDSTkKTXdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+
+        claims = {
+            admin   = true
+            iat     = 1516239022
+            name    = "John Doe"
+            sub     = 1234567890
+        }
+    }
 }
