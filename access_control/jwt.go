@@ -13,13 +13,6 @@ import (
 )
 
 const (
-	AlgorithmUnknown Algorithm = iota - 1
-	_
-	AlgorithmRSA
-	AlgorithmHMAC
-)
-
-const (
 	Unknown Source = iota - 1
 	Cookie
 	Header
@@ -62,7 +55,7 @@ func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []by
 		return nil, ErrorUnknownSource
 	}
 
-	algo := newAlgorithm(algorithm)
+	algo := NewAlgorithm(algorithm)
 	if algo == AlgorithmUnknown {
 		return nil, ErrorNotSupported
 	}
@@ -141,9 +134,9 @@ func (j *JWT) Validate(req *http.Request) error {
 
 func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
 	switch j.algorithm {
-	case AlgorithmRSA:
+	case AlgorithmRSA256, AlgorithmRSA384, AlgorithmRSA512:
 		return j.pubKey, nil
-	case AlgorithmHMAC:
+	case AlgorithmHMAC256, AlgorithmHMAC384, AlgorithmHMAC512:
 		return j.hmacSecret, nil
 	default:
 		return nil, ErrorNotSupported
@@ -204,28 +197,6 @@ func newParser(algo Algorithm, claims Claims) *jwt.Parser {
 	}
 
 	return jwt.NewParser(options...)
-}
-
-func newAlgorithm(a string) Algorithm {
-	switch a {
-	case "RS256":
-		return AlgorithmRSA
-	case "HS256":
-		return AlgorithmHMAC
-	default:
-		return AlgorithmUnknown
-	}
-}
-
-func (a Algorithm) String() string {
-	switch a {
-	case AlgorithmRSA:
-		return "RS256"
-	case AlgorithmHMAC:
-		return "HS256"
-	default:
-		return "Unknown"
-	}
 }
 
 // parsePublicPEMKey tries to parse all supported publicKey variations which

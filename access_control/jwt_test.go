@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -24,7 +25,10 @@ func TestJWT_Validate(t *testing.T) {
 		pubKey    []byte
 	}
 
-	for _, signingMethod := range []jwt.SigningMethod{jwt.SigningMethodRS256, jwt.SigningMethodHS256} {
+	for _, signingMethod := range []jwt.SigningMethod{
+		jwt.SigningMethodRS256, jwt.SigningMethodRS384, jwt.SigningMethodRS512,
+		jwt.SigningMethodHS256, jwt.SigningMethodHS384, jwt.SigningMethodHS512,
+	} {
 
 		pubKeyBytes, privKey := newRSAKeyPair()
 
@@ -32,15 +36,12 @@ func TestJWT_Validate(t *testing.T) {
 		var token string
 		var tokenErr error
 
-		var algo ac.Algorithm
-		switch signingMethod {
-		case jwt.SigningMethodHS256:
+		if strings.HasPrefix(signingMethod.Alg(), "HS") {
 			token, tokenErr = tok.SignedString(pubKeyBytes)
-			algo = ac.AlgorithmHMAC
-		case jwt.SigningMethodRS256:
+		} else if strings.HasPrefix(signingMethod.Alg(), "RS") {
 			token, tokenErr = tok.SignedString(privKey)
-			algo = ac.AlgorithmRSA
 		}
+		algo := ac.NewAlgorithm(signingMethod.Alg())
 
 		if tokenErr != nil {
 			t.Error(tokenErr)
