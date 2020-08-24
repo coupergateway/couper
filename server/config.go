@@ -299,9 +299,13 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 			} else if jwt.Key != "" {
 				key = []byte(jwt.Key)
 			}
-			claims := ac.Claims{
-				Audience: jwt.Claims.Audience,
-				Issuer:   jwt.Claims.Issuer,
+
+			var claims ac.Claims
+			if jwt.Claims != nil {
+				claims = make(ac.Claims)
+				for k, v := range jwt.Claims {
+					claims[k] = v
+				}
 			}
 			j, err := ac.NewJWT(jwt.SignatureAlgorithm, claims, jwtSource, jwtKey, key)
 			if err != nil {

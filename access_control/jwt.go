@@ -38,12 +38,13 @@ var (
 
 type (
 	Algorithm int
-	Claims    struct{ Audience, Issuer string }
+	Claims    map[string]interface{}
 	Source    int
 )
 
 type JWT struct {
 	algorithm  Algorithm
+	claims     Claims
 	source     Source
 	sourceKey  string
 	hmacSecret []byte
@@ -68,8 +69,9 @@ func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []by
 
 	jwtObj := &JWT{
 		algorithm:  algo,
+		claims:     claims,
 		hmacSecret: key,
-		parser:     newParser(algo, claims.Issuer, claims.Audience),
+		parser:     newParser(algo, claims),
 		source:     src,
 		sourceKey:  srcKey,
 	}
@@ -129,17 +131,51 @@ func (j *JWT) Validate(req *http.Request) error {
 		return ErrorEmptyToken
 	}
 
-	_, err = j.parser.Parse(tokenValue, func(_ *jwt.Token) (interface{}, error) {
-		switch j.algorithm {
-		case AlgorithmRSA:
-			return j.pubKey, nil
-		case AlgorithmHMAC:
-			return j.hmacSecret, nil
-		default:
-			return nil, ErrorNotSupported
+	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
+	if err != nil {
+		return err
+	}
+
+	return j.validateClaims(token)
+}
+
+func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
+	switch j.algorithm {
+	case AlgorithmRSA:
+		return j.pubKey, nil
+	case AlgorithmHMAC:
+		return j.hmacSecret, nil
+	default:
+		return nil, ErrorNotSupported
+	}
+}
+
+func (j *JWT) validateClaims(token *jwt.Token) error {
+	var tokenClaims jwt.MapClaims
+	if tc, ok := token.Claims.(jwt.MapClaims); ok {
+		tokenClaims = tc
+	}
+
+	if tokenClaims == nil {
+		return nil // TODO: specific error?
+	}
+
+	for k, v := range j.claims {
+
+		if k == "iss" || k == "aud" { // gets validated during parsing
+			continue
 		}
-	})
-	return err
+
+		val, exist := tokenClaims[k]
+		if !exist {
+			return errors.New("expected claim not found: '" + k + "'")
+		}
+
+		if val != v {
+			return errors.New("unexpected value for claim '" + k + "'")
+		}
+	}
+	return nil
 }
 
 func getBearer(val string) (string, error) {
@@ -150,17 +186,23 @@ func getBearer(val string) (string, error) {
 	return "", ErrorBearerRequired
 }
 
-func newParser(algo Algorithm, iss, aud string) *jwt.Parser {
+func newParser(algo Algorithm, claims Claims) *jwt.Parser {
 	var options []jwt.ParserOption
 	options = append(options, jwt.WithValidMethods([]string{algo.String()}))
-	if iss != "" {
-		options = append(options, jwt.WithIssuer(iss))
+	if claims == nil {
+		options = append(options, jwt.WithoutAudienceValidation())
+		return jwt.NewParser(options...)
 	}
-	if aud != "" {
-		options = append(options, jwt.WithAudience(aud))
+
+	if iss, ok := claims["iss"]; ok {
+		options = append(options, jwt.WithIssuer(iss.(string)))
+	}
+	if aud, ok := claims["aud"]; ok {
+		options = append(options, jwt.WithAudience(aud.(string)))
 	} else {
 		options = append(options, jwt.WithoutAudienceValidation())
 	}
+
 	return jwt.NewParser(options...)
 }
 

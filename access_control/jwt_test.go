@@ -18,6 +18,7 @@ import (
 func TestJWT_Validate(t *testing.T) {
 	type fields struct {
 		algorithm ac.Algorithm
+		claims    ac.Claims
 		source    ac.Source
 		sourceKey string
 		pubKey    []byte
@@ -27,8 +28,7 @@ func TestJWT_Validate(t *testing.T) {
 
 		pubKeyBytes, privKey := newRSAKeyPair()
 
-		tok := jwt.New(signingMethod)
-		tok.Header["test123"] = "value123"
+		tok := jwt.NewWithClaims(signingMethod, jwt.MapClaims{"test123": "value123"})
 		var token string
 		var tokenErr error
 
@@ -83,10 +83,30 @@ func TestJWT_Validate(t *testing.T) {
 				sourceKey: "token",
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
+			{"src: header /w valid bearer & claims", fields{
+				algorithm: algo,
+				claims: ac.Claims{
+					"aud":     "peter",
+					"test123": "value123",
+				},
+				source:    ac.Header,
+				sourceKey: "Authorization",
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
+			{"src: header /w valid bearer & w/o claims", fields{
+				algorithm: algo,
+				claims: ac.Claims{
+					"aud":  "peter",
+					"cptn": "hook",
+				},
+				source:    ac.Header,
+				sourceKey: "Authorization",
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
-				j, err := ac.NewJWT(tt.fields.algorithm.String(), ac.Claims{}, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
+				j, err := ac.NewJWT(tt.fields.algorithm.String(), tt.fields.claims, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
 
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)

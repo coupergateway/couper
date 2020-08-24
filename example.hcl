@@ -96,7 +96,7 @@ definitions {
 
 
     jwt "AccessToken" {
-    cookie = "AccessToken"
+    header = "Authorization"
 
     // signature_algorithm = "RS256"
     key_file = "access_control/testdata/jwt/pubkey.pem"
@@ -106,9 +106,10 @@ definitions {
     
     signature_algorithm = "HS256"
     
-    claims {
-      iss = "TokenFactory"
-      aud = "MyApp"
+    claims = {
+        iss = "TokenFactory"
+        aud = "MyApp"
+        cpt = "hook"
     }
   }
 }
