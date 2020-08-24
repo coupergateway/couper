@@ -15,5 +15,6 @@ type Gateway struct {
 	ListenPort  int
 	Lookups     Ports     // map[<port:string>][<host:string>]*Server
 	Server      []*Server `hcl:"server,block"`
+	UseXFH      bool
 	WorkDir     string
 }

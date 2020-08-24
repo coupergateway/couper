@@ -18,6 +18,7 @@ import (
 var (
 	configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
 	listenPort = flag.Int("p", server.DefaultHTTPConfig.ListenPort, "-p 8080")
+	useXFH     = flag.Bool("xfh", false, "-xfh")
 )
 
 func main() {
@@ -36,6 +37,7 @@ func main() {
 		logger.Fatal(err)
 	}
 	configuration.ListenPort = *listenPort
+	configuration.UseXFH = *useXFH
 
 	err = os.Chdir(filepath.Dir(*configFile))
 	if err != nil {

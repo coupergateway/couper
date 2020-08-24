@@ -173,14 +173,22 @@ func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
 
 func (s *HTTPServer) getHostPort(req *http.Request) (string, string) {
 	host := req.Host
+	if s.config.UseXFH {
+		host = req.Header.Get("X-Forwarded-Host")
+	}
+
 	if strings.IndexByte(host, ':') == -1 {
-		return host, fmt.Sprintf("%d", s.config.ListenPort)
+		return cleanHost(host), fmt.Sprintf("%d", s.config.ListenPort)
 	}
 
 	h, p, err := net.SplitHostPort(host)
 	if err != nil {
-		return host, fmt.Sprintf("%d", s.config.ListenPort)
+		return cleanHost(host), fmt.Sprintf("%d", s.config.ListenPort)
 	}
 
-	return h, p
+	return cleanHost(h), p
+}
+
+func cleanHost(host string) string {
+	return strings.TrimRight(host, ".")
 }
