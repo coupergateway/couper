@@ -1,10 +1,6 @@
 variables:
   GOFLAGS: '-mod=vendor'
 
-after_script:
-  - docker logout docker.io
-
-
 build image:
   stage: build
   script:
@@ -22,6 +18,8 @@ push tag:
     - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:$CI_COMMIT_REF_NAME
     - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
     - docker push avenga/couper:$CI_COMMIT_REF_NAME
+  after_script:
+    - docker logout docker.io
   only:
     - tags
 
@@ -32,6 +30,8 @@ push latest:
     - docker tag avenga/couper:$CI_COMMIT_SHORT_SHA avenga/couper:latest
     - docker login -u serverteam --password-stdin docker.io < $DOCKER_CREDS
     - docker push avenga/couper:latest
+  after_script:
+    - docker logout docker.io
   only:
     - master
     - develop
