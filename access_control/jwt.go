@@ -218,7 +218,14 @@ func newParser(algo Algorithm, claims Claims) *jwt.Parser {
 func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 	pemBlock, _ := pem.Decode(key)
 	if pemBlock == nil {
-		return nil, jwt.ErrKeyMustBePEMEncoded
+		decKey, err := base64.StdEncoding.DecodeString(string(key))
+		if err != nil {
+			return nil, ErrorNotSupported
+		}
+		pemBlock, _ = pem.Decode(decKey)
+		if pemBlock == nil {
+			return nil, jwt.ErrKeyMustBePEMEncoded
+		}
 	}
 	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
 	if pubErr != nil {
