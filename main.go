@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 
@@ -36,8 +37,27 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
 	configuration.ListenPort = *listenPort
+	if p := os.Getenv("COUPER_PORT"); p != "" {
+		port, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		if port < 0 || port > 65535 {
+			logger.Fatalf("Invalid COUPER_PORT given: %d", port)
+		}
+
+		configuration.ListenPort = int(port)
+	}
+
 	configuration.UseXFH = *useXFH
+	switch os.Getenv("COUPER_XFH") {
+	case "true":
+		configuration.UseXFH = true
+	case "false":
+		configuration.UseXFH = false
+	}
 
 	err = os.Chdir(filepath.Dir(*configFile))
 	if err != nil {

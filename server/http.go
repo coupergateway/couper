@@ -123,10 +123,10 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Request-Id", uid)
 	rw.Header().Set("X-Request-Id", uid)
 
-	h := s.getHandler(req)
+	srv, h := s.getHandler(req)
 
 	var err error
-	var handlerName string
+	var handle, handlerName string
 	sr := NewStatusReader(rw)
 	if h != nil {
 		h.ServeHTTP(sr, req)
@@ -139,8 +139,13 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		err = fmt.Errorf("%w: %s", errors.ConfigurationError, req.URL.String())
 	}
 
+	if srv != nil {
+		handle = srv.Name
+	}
+
 	fields := logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
+		"handle":  handle,
 		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,
@@ -154,21 +159,21 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
+func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler) {
 	host, port := s.getHostPort(req)
 
 	if _, ok := s.config.Lookups[port]; !ok {
-		return nil
+		return nil, nil
 	}
 	if _, ok := s.config.Lookups[port][host]; !ok {
 		if _, ok := s.config.Lookups[port]["*"]; !ok {
-			return nil
+			return nil, nil
 		}
 
 		host = "*"
 	}
 
-	return NewMuxer(s.config.Lookups[port][host].Mux).Match(req)
+	return s.config.Lookups[port][host], NewMuxer(s.config.Lookups[port][host].Mux).Match(req)
 }
 
 func (s *HTTPServer) getHostPort(req *http.Request) (string, string) {
