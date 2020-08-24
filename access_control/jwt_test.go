@@ -32,7 +32,10 @@ func TestJWT_Validate(t *testing.T) {
 
 		pubKeyBytes, privKey := newRSAKeyPair()
 
-		tok := jwt.NewWithClaims(signingMethod, jwt.MapClaims{"test123": "value123"})
+		tok := jwt.NewWithClaims(signingMethod, jwt.MapClaims{
+			"aud":     "peter",
+			"test123": "value123",
+		})
 		var token string
 		var tokenErr error
 
@@ -107,10 +110,28 @@ func TestJWT_Validate(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
-				j, err := ac.NewJWT(tt.fields.algorithm.String(), tt.fields.claims, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
+				j, err := ac.NewJWT(tt.fields.algorithm.String(), "test_ac", tt.fields.claims, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
 
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				}
+
+				if !tt.wantErr && tt.fields.claims != nil {
+					accessControlName := tt.req.Context().Value(ac.ContextAccessControlKey).(string)
+					if accessControlName != "test_ac" {
+						t.Errorf("Expected a configured access control name within request context")
+					}
+
+					if claims, ok := tt.req.Context().Value(ac.ContextJWTClaimKey).(ac.Claims); !ok {
+						t.Errorf("Expected request claims within request context after successful validation")
+					} else {
+						for k, v := range tt.fields.claims {
+							if claims[k] != v {
+								t.Errorf("Claim does not match: %q want: %v, got: %v", k, v, claims[k])
+							}
+						}
+					}
+
 				}
 			})
 		}

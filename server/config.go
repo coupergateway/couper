@@ -307,7 +307,7 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 					claims[k] = v
 				}
 			}
-			j, err := ac.NewJWT(jwt.SignatureAlgorithm, claims, jwtSource, jwtKey, key)
+			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwt.Name, claims, jwtSource, jwtKey, key)
 			if err != nil {
 				panic(fmt.Sprintf("loading jwt %q definition failed: %s", jwt.Name, err))
 			}

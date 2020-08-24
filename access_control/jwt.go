@@ -1,6 +1,7 @@
 package access_control
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -16,6 +17,8 @@ const (
 	Unknown Source = iota - 1
 	Cookie
 	Header
+
+	ContextJWTClaimKey = "jwt_claims"
 )
 
 var (
@@ -41,12 +44,13 @@ type JWT struct {
 	source     Source
 	sourceKey  string
 	hmacSecret []byte
+	name       string
 	parser     *jwt.Parser
 	pubKey     *rsa.PublicKey
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []byte) (*JWT, error) {
+func NewJWT(algorithm, name string, claims Claims, src Source, srcKey string, key []byte) (*JWT, error) {
 	if len(key) == 0 {
 		return nil, ErrorMissingKey
 	}
@@ -64,6 +68,7 @@ func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []by
 		algorithm:  algo,
 		claims:     claims,
 		hmacSecret: key,
+		name:       name,
 		parser:     newParser(algo, claims),
 		source:     src,
 		sourceKey:  srcKey,
@@ -129,7 +134,16 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	return j.validateClaims(token)
+	tokenClaims, err := j.validateClaims(token)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.WithValue(req.Context(), ContextAccessControlKey, j.name)
+	ctx = context.WithValue(ctx, ContextJWTClaimKey, tokenClaims)
+	*req = *req.WithContext(ctx)
+
+	return nil
 }
 
 func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
@@ -143,14 +157,14 @@ func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
 	}
 }
 
-func (j *JWT) validateClaims(token *jwt.Token) error {
+func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
 	var tokenClaims jwt.MapClaims
 	if tc, ok := token.Claims.(jwt.MapClaims); ok {
 		tokenClaims = tc
 	}
 
 	if tokenClaims == nil {
-		return nil // TODO: specific error?
+		return Claims{}, nil // TODO: specific error?
 	}
 
 	for k, v := range j.claims {
@@ -161,14 +175,14 @@ func (j *JWT) validateClaims(token *jwt.Token) error {
 
 		val, exist := tokenClaims[k]
 		if !exist {
-			return errors.New("expected claim not found: '" + k + "'")
+			return nil, errors.New("expected claim not found: '" + k + "'")
 		}
 
 		if val != v {
-			return errors.New("unexpected value for claim '" + k + "'")
+			return nil, errors.New("unexpected value for claim '" + k + "'")
 		}
 	}
-	return nil
+	return Claims(tokenClaims), nil
 }
 
 func getBearer(val string) (string, error) {
