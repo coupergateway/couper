@@ -15,10 +15,10 @@ const dirIndexFile = "index.html"
 
 var (
 	_ http.Handler = &File{}
-	_ Lookupable   = &File{}
+	_ HasResponse  = &File{}
 )
 
-type Lookupable interface {
+type HasResponse interface {
 	HasResponse(req *http.Request) bool
 }
 
@@ -116,6 +116,10 @@ func (f *File) removeBasePath(reqPath string) string {
 	}
 
 	return reqPath
+}
+
+func (f *File) Template() *errors.Template {
+	return f.errorTpl
 }
 
 func (f *File) String() string {

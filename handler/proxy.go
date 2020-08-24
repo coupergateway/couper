@@ -22,13 +22,14 @@ import (
 
 var (
 	_ http.Handler = &Proxy{}
+
+	OriginRequiredError = errors.New("origin is required")
+	SchemeRequiredError = errors.New("backend origin must define a scheme")
+
+	// headerBlacklist lists all header keys which will be removed after
+	// context variable evaluation to ensure to not pass them upstream.
+	headerBlacklist = []string{"Authentication", "Cookie"}
 )
-
-var OriginRequiredError = errors.New("origin is required")
-
-// headerBlacklist lists all header keys which will be removed after
-// context variable evaluation to ensure to not pass them upstream.
-var headerBlacklist = []string{"Authentication", "Cookie"}
 
 type Proxy struct {
 	evalContext *hcl.EvalContext
@@ -53,7 +54,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		return nil, fmt.Errorf("err parsing origin url: %w", err)
 	}
 	if originURL.Scheme != "http" && originURL.Scheme != "https" {
-		return nil, errors.New("backend origin must define a scheme")
+		return nil, SchemeRequiredError
 	}
 
 	proxy := &Proxy{
