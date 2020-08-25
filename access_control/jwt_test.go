@@ -129,17 +129,14 @@ func TestJWT_Validate(t *testing.T) {
 				}
 
 				if !tt.wantErr && tt.fields.claims != nil {
-					accessControlName := tt.req.Context().Value(ac.ContextAccessControlKey).(string)
-					if accessControlName != "test_ac" {
+					acMap := tt.req.Context().Value(ac.ContextAccessControlKey).(map[string]interface{})
+					if claims, ok := acMap["test_ac"]; !ok {
 						t.Errorf("Expected a configured access control name within request context")
-					}
-
-					if claims, ok := tt.req.Context().Value(ac.ContextJWTClaimKey).(ac.Claims); !ok {
-						t.Errorf("Expected request claims within request context after successful validation")
 					} else {
+						claimsMap := claims.(ac.Claims)
 						for k, v := range tt.fields.claims {
-							if claims[k] != v {
-								t.Errorf("Claim does not match: %q want: %v, got: %v", k, v, claims[k])
+							if claimsMap[k] != v {
+								t.Errorf("Claim does not match: %q want: %v, got: %v", k, v, claimsMap[k])
 							}
 						}
 					}

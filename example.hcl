@@ -89,10 +89,11 @@ definitions {
         request_headers = {
             X-Env-User = env.USER
             X-Claims = [
-                req.ctx.jwtio.sub,
-                req.ctx.jwtio.name,
                 req.ctx.jwtio.admin,
+                req.ctx.jwtio.aud,
                 req.ctx.jwtio.iat,
+                req.ctx.jwtio.name,
+                req.ctx.jwtio.sub,
             ]
         }
     }
@@ -103,10 +104,11 @@ definitions {
         key = "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFuenlpczFaamZOQjBiQmdLRk1Tdgp2a1R0d2x2QnNhSnE3UzV3QStremVWT1ZwVld3a1dkVmhhNHMzOFhNL3BhL3lyNDdhdjcrejNWVG12RFJ5QUhjCmFUOTJ3aFJFRnBMdjljajVsVGVKU2lieXIvTXJtL1l0akNaVldnYU9ZSWh3clh3S0xxUHIvMTFpbldzQWtmSXkKdHZIV1R4WllFY1hMZ0FYRnVVdWFTM3VGOWdFaU5Rd3pHVFUxdjBGcWtxVEJyNEI4blczSENONDdYVXUwdDhZMAplK2xmNHM0T3hRYXdXRDc5SjkvNWQzUnkwdmJWM0FtMUZ0R0ppSnZPd1JzSWZWQ2hEcFlTdFRjSFRDTXF0dldiClY2TDExQldrcHpHWFNXNEh2NDNxYStHU1lPRDJRVTY4TWI1OW9TazJPQitCdE9McEpvZm1iR0VHZ3Ztd3lDSTkKTXdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
 
         claims = {
+            aud     = ["one","two"]
             admin   = true
             iat     = 1516239022
             name    = "John Doe"
-            sub     = 1234567890
+            sub     = "1234567890"
         }
 
         required_claims = ["name"]

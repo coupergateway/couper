@@ -4,7 +4,7 @@ import "net/http"
 
 var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
 
-const ContextAccessControlKey = "access_control_name"
+const ContextAccessControlKey = "access_controls"
 
 type Map map[string]AccessControl
 type List []AccessControl

@@ -3,13 +3,9 @@ package eval
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 	"os"
-	"regexp"
 	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -18,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
+	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
 func NewENVContext(src []byte) *hcl.EvalContext {
@@ -63,12 +60,23 @@ func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
 }
 
 func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) cty.Value {
+	jwtClaims, _ := ctx.Value(ac.ContextAccessControlKey).(map[string]interface{})
+	ctxAcMap := make(map[string]cty.Value)
+	for name, data := range jwtClaims {
+		dataMap, ok := data.(ac.Claims)
+		if !ok {
+			continue
+		}
+		ctxAcMap[name] = seetie.MapToValue(dataMap)
+	}
+	var ctxAcMapValue cty.Value
+	if len(ctxAcMap) > 0 {
+		ctxAcMapValue = cty.MapVal(ctxAcMap)
+	}
 	return cty.ObjectVal(map[string]cty.Value{
-		"ctx": cty.MapVal(map[string]cty.Value{
-			newString(ctx.Value(ac.ContextAccessControlKey)): newCtyClaimsMap(ctx.Value(ac.ContextJWTClaimKey)),
-		}),
-		"cookies": newCtyCookiesMap(cookies),
-		"headers": newCtyHeadersMap(headers),
+		"ctx":     ctxAcMapValue,
+		"cookies": seetie.CookiesToMapValue(cookies),
+		"headers": seetie.HeaderToMapValue(headers),
 	})
 }
 
@@ -83,75 +91,6 @@ func newCtyEnvMap(envKeys []string) cty.Value {
 		}
 	}
 	return cty.MapVal(ctyMap)
-}
-
-func newCtyHeadersMap(headers http.Header) cty.Value {
-	ctyMap := make(map[string]cty.Value)
-	for k, v := range headers {
-		if isValidKey(k) {
-			ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
-		}
-	}
-	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
-	return cty.MapVal(ctyMap)
-}
-
-func newCtyCookiesMap(cookies []*http.Cookie) cty.Value {
-	ctyMap := make(map[string]cty.Value)
-	for _, cookie := range cookies {
-		ctyMap[cookie.Name] = cty.StringVal(cookie.Value) // TODO: ListVal??
-	}
-
-	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
-	return cty.MapVal(ctyMap)
-}
-
-func newCtyClaimsMap(value interface{}) cty.Value {
-	valueMap, ok := value.(map[string]interface{})
-	if !ok {
-		valueMap, ok = value.(ac.Claims)
-	}
-	if !ok {
-		cty.MapValEmpty(cty.String)
-	}
-	ctyMap := make(map[string]cty.Value)
-	for k, v := range valueMap {
-		if isValidKey(k) {
-			ctyMap[k] = cty.StringVal(newString(v))
-		}
-	}
-
-	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
-	return cty.MapVal(ctyMap)
-}
-
-func newString(s interface{}) string {
-	switch s.(type) {
-	case string:
-		return s.(string)
-	case int:
-		return strconv.Itoa(s.(int))
-	case float64:
-		return fmt.Sprintf("%0.f", s)
-	case bool:
-		if !s.(bool) {
-			return "false"
-		}
-		return "true"
-	default:
-		return ""
-	}
-}
-
-func isValidKey(key string) bool {
-	valid, _ := regexp.MatchString("[a-zA-Z_][a-zA-Z0-9_-]*", key)
-	return valid
 }
 
 // Functions

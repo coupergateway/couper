@@ -17,6 +17,7 @@ import (
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/errors"
 	"go.avenga.cloud/couper/gateway/handler"
+	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
 // HTTPConfig configures the ingress http server.
@@ -300,13 +301,7 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 				key = []byte(jwt.Key)
 			}
 
-			var claims ac.Claims
-			if jwt.Claims != nil {
-				claims = make(ac.Claims)
-				for k, v := range jwt.Claims {
-					claims[k] = v
-				}
-			}
+			claims := ac.Claims(seetie.ExpToMap(conf.Context, jwt.Claims))
 			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwt.Name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
 			if err != nil {
 				panic(fmt.Sprintf("loading jwt %q definition failed: %s", jwt.Name, err))

@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -19,8 +18,6 @@ const (
 	Unknown Source = iota - 1
 	Cookie
 	Header
-
-	ContextJWTClaimKey = "jwt_claims"
 )
 
 var (
@@ -144,8 +141,13 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	ctx := context.WithValue(req.Context(), ContextAccessControlKey, j.name)
-	ctx = context.WithValue(ctx, ContextJWTClaimKey, tokenClaims)
+	ctx := req.Context()
+	acMap, ok := ctx.Value(ContextAccessControlKey).(map[string]interface{})
+	if !ok {
+		acMap = make(map[string]interface{})
+	}
+	acMap[j.name] = tokenClaims
+	ctx = context.WithValue(ctx, ContextAccessControlKey, acMap)
 	*req = *req.WithContext(ctx)
 
 	return nil
@@ -180,26 +182,32 @@ func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
 
 	for k, v := range j.claims {
 
-		if k == "iss" || k == "aud" { // gets validated during parsing
+		if k == "iss" { // gets validated during parsing
 			continue
+		}
+
+		if k == "aud" {
+			if expectedAuds, ok := v.([]string); ok {
+				tokenAud, exist := tokenClaims["aud"]
+				if !exist {
+					return nil, &jwt.InvalidAudienceError{Message: "expected audience claim"}
+				}
+
+				tokenAudClaim := newClaimString(tokenAud)
+				for _, aud := range expectedAuds {
+					err := jwt.DefaultValidationHelper.ValidateAudienceAgainst(tokenAudClaim, aud)
+					if err != nil {
+						return nil, err
+					}
+				}
+
+			}
+			continue // one entry gets verified by jwt.Parser
 		}
 
 		val, exist := tokenClaims[k]
 		if !exist {
 			return nil, errors.New("expected claim not found: '" + k + "'")
-		}
-
-		// map jwt package claim map to expected string values
-		switch val.(type) {
-		case bool:
-			if val.(bool) {
-				val = "true"
-			} else {
-				val = "false"
-			}
-		case float64:
-			val = fmt.Sprintf("%0.f", val)
-			tokenClaims[k] = val
 		}
 
 		if val != v {
@@ -232,7 +240,15 @@ func newParser(algo Algorithm, claims Claims) *jwt.Parser {
 		options = append(options, jwt.WithIssuer(iss.(string)))
 	}
 	if aud, ok := claims["aud"]; ok {
-		options = append(options, jwt.WithAudience(aud.(string)))
+		switch aud.(type) {
+		case string:
+			options = append(options, jwt.WithAudience(aud.(string)))
+		case []string:
+			auds := aud.([]string)
+			if len(auds) > 0 { // last audOptions overrides the previous one, check ourselves later on.
+				options = append(options, jwt.WithAudience(aud.([]string)[0]))
+			}
+		}
 	} else {
 		options = append(options, jwt.WithoutAudienceValidation())
 	}
@@ -274,4 +290,21 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 		}
 	}
 	return pubKey, nil
+}
+
+func newClaimString(v interface{}) jwt.ClaimStrings {
+	var result jwt.ClaimStrings
+	iSlice, ok := v.([]interface{})
+	if !ok {
+		return result
+	}
+
+	for _, str := range iSlice {
+		s, ok := str.(string)
+		if !ok {
+			continue
+		}
+		result = append(result, s)
+	}
+	return result
 }
