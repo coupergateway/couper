@@ -18,11 +18,12 @@ import (
 
 func TestJWT_Validate(t *testing.T) {
 	type fields struct {
-		algorithm ac.Algorithm
-		claims    ac.Claims
-		source    ac.Source
-		sourceKey string
-		pubKey    []byte
+		algorithm      ac.Algorithm
+		claims         ac.Claims
+		claimsRequired []string
+		source         ac.Source
+		sourceKey      string
+		pubKey         []byte
 	}
 
 	for _, signingMethod := range []jwt.SigningMethod{
@@ -93,9 +94,10 @@ func TestJWT_Validate(t *testing.T) {
 					"aud":     "peter",
 					"test123": "value123",
 				},
-				source:    ac.Header,
-				sourceKey: "Authorization",
-				pubKey:    pubKeyBytes,
+				claimsRequired: []string{"aud"},
+				source:         ac.Header,
+				sourceKey:      "Authorization",
+				pubKey:         pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w valid bearer & w/o claims", fields{
 				algorithm: algo,
@@ -107,10 +109,20 @@ func TestJWT_Validate(t *testing.T) {
 				sourceKey: "Authorization",
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
+			{"src: header /w valid bearer & w/o required claims", fields{
+				algorithm: algo,
+				claims: ac.Claims{
+					"aud": "peter",
+				},
+				claimsRequired: []string{"exp"},
+				source:         ac.Header,
+				sourceKey:      "Authorization",
+				pubKey:         pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
-				j, err := ac.NewJWT(tt.fields.algorithm.String(), "test_ac", tt.fields.claims, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
+				j, err := ac.NewJWT(tt.fields.algorithm.String(), "test_ac", tt.fields.claims, tt.fields.claimsRequired, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
 
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)

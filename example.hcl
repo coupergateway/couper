@@ -108,5 +108,7 @@ definitions {
             name    = "John Doe"
             sub     = 1234567890
         }
+
+        required_claims = ["name"]
     }
 }

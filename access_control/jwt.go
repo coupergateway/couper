@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
 )
@@ -40,18 +41,20 @@ type (
 )
 
 type JWT struct {
-	algorithm  Algorithm
-	claims     Claims
-	source     Source
-	sourceKey  string
-	hmacSecret []byte
-	name       string
-	parser     *jwt.Parser
-	pubKey     *rsa.PublicKey
+	algorithm      Algorithm
+	claims         Claims
+	claimsRequired []string
+	ignoreExp      bool
+	source         Source
+	sourceKey      string
+	hmacSecret     []byte
+	name           string
+	parser         *jwt.Parser
+	pubKey         *rsa.PublicKey
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(algorithm, name string, claims Claims, src Source, srcKey string, key []byte) (*JWT, error) {
+func NewJWT(algorithm, name string, claims Claims, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
 	if len(key) == 0 {
 		return nil, ErrorMissingKey
 	}
@@ -66,13 +69,14 @@ func NewJWT(algorithm, name string, claims Claims, src Source, srcKey string, ke
 	}
 
 	jwtObj := &JWT{
-		algorithm:  algo,
-		claims:     claims,
-		hmacSecret: key,
-		name:       name,
-		parser:     newParser(algo, claims),
-		source:     src,
-		sourceKey:  srcKey,
+		algorithm:      algo,
+		claims:         claims,
+		claimsRequired: reqClaims,
+		hmacSecret:     key,
+		name:           name,
+		parser:         newParser(algo, claims),
+		source:         src,
+		sourceKey:      srcKey,
 	}
 
 	pubKey, err := parsePublicPEMKey(key)
@@ -165,7 +169,13 @@ func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
 	}
 
 	if tokenClaims == nil {
-		return Claims{}, nil // TODO: specific error?
+		return nil, &jwt.InvalidClaimsError{Message: "token claims has to be a map type"}
+	}
+
+	for _, key := range j.claimsRequired {
+		if _, ok := tokenClaims[key]; !ok {
+			return nil, &jwt.InvalidClaimsError{Message: "required claim is missing: " + key}
+		}
 	}
 
 	for k, v := range j.claims {
@@ -208,8 +218,11 @@ func getBearer(val string) (string, error) {
 }
 
 func newParser(algo Algorithm, claims Claims) *jwt.Parser {
-	var options []jwt.ParserOption
-	options = append(options, jwt.WithValidMethods([]string{algo.String()}))
+	options := []jwt.ParserOption{
+		jwt.WithValidMethods([]string{algo.String()}),
+		jwt.WithLeeway(time.Second),
+	}
+
 	if claims == nil {
 		options = append(options, jwt.WithoutAudienceValidation())
 		return jwt.NewParser(options...)
