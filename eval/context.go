@@ -14,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
+	"go.avenga.cloud/couper/gateway/eval/lib"
 	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
@@ -96,8 +97,10 @@ func newCtyEnvMap(envKeys []string) cty.Value {
 // Functions
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
-		"to_upper": stdlib.UpperFunc,
-		"to_lower": stdlib.LowerFunc,
+		"base64_decode": lib.Base64DecodeFunc,
+		"base64_encode": lib.Base64EncodeFunc,
+		"to_upper":      stdlib.UpperFunc,
+		"to_lower":      stdlib.LowerFunc,
 	}
 }
 

@@ -107,7 +107,7 @@ definitions {
             aud     = ["one","two"]
             admin   = true
             iat     = 1516239022
-            name    = "John Doe"
+            name    = base64_decode("Sm9obiBEb2U=")
             sub     = "1234567890"
         }
 
