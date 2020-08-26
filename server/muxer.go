@@ -5,18 +5,18 @@ import (
 	"strings"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/errors"
 	"go.avenga.cloud/couper/gateway/handler"
 )
 
-// Muxer object
+// Muxer represents the Muxer object.
 type Muxer struct {
-	mux *config.Mux
+	mux *runtime.Mux
 }
 
 // NewMuxer creates a new Muxer object
-func NewMuxer(mux *config.Mux) *Muxer {
+func NewMuxer(mux *runtime.Mux) *Muxer {
 	return &Muxer{mux: mux}
 }
 

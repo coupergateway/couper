@@ -1,4 +1,4 @@
-package server
+package runtime
 
 import (
 	"fmt"
@@ -22,26 +22,12 @@ import (
 	"go.avenga.cloud/couper/gateway/utils"
 )
 
-// HTTPConfig configures the ingress http server.
-type HTTPConfig struct {
-	IdleTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
-	ListenPort        int
-}
-
 type pathHandler struct {
 	api        map[*config.Endpoint]http.Handler
 	files, spa http.Handler
 }
 
-// DefaultHTTPConfig sets some defaults for the http server.
-var DefaultHTTPConfig = HTTPConfig{
-	IdleTimeout:       time.Second * 60,
-	ReadHeaderTimeout: time.Second * 10,
-	ListenPort:        8080,
-}
-
-var (
+const (
 	backendDefaultConnectTimeout = "10s"
 	backendDefaultTimeout        = "300s"
 	backendDefaultTTFBTimeout    = "60s"
@@ -49,9 +35,10 @@ var (
 
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
-// Configure sets defaults and validates the given gateway configuration. Creates all configured endpoint http handler.
-func configure(conf *config.Gateway, log *logrus.Entry) {
-	if len(conf.Server) == 0 {
+// ConfigureHCL sets defaults and validates the given gateway configuration.
+// Creates all configured endpoint HTTP handler.
+func ConfigureHCL(conf *Config, log *logrus.Entry) {
+	if len(conf.HCL.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}
 
@@ -63,8 +50,8 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 	backends := make(map[string]backendDefinition)
 	ph := &pathHandler{api: make(map[*config.Endpoint]http.Handler)}
 
-	if conf.Definitions != nil {
-		for _, beConf := range conf.Definitions.Backend {
+	if conf.HCL.Definitions != nil {
+		for _, beConf := range conf.HCL.Definitions.Backend {
 			if _, ok := backends[beConf.Name]; ok {
 				log.Fatalf("backend name must be unique: '%s'", beConf.Name)
 			}
@@ -91,7 +78,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 				Path:           beConf.Path,
 				Timeout:        t,
 				TTFBTimeout:    ttfbt,
-			}, log, conf.Context)
+			}, log, conf.HCL.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -102,28 +89,27 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 		}
 	}
 
-	accessControls := configureAccessControls(conf)
+	accessControls := configureAccessControls(conf.HCL)
 
 	var err error
-	conf.Lookups = make(config.Ports, 0)
+	conf.Lookups = make(Ports, 0)
 
-	for idx, server := range conf.Server {
-		configureLookups(conf, server, log)
+	for idx, server := range conf.HCL.Server {
 		configureBasePathes(server)
 
-		server.Mux = &config.Mux{
+		mux := &Mux{
 			APIErrTpl: errors.DefaultJSON,
 			FSErrTpl:  errors.DefaultHTML,
 		}
 
 		if server.Files != nil {
 			if server.Files.ErrorFile != "" {
-				if server.Mux.FSErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile)); err != nil {
+				if mux.FSErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile)); err != nil {
 					log.Fatal(err)
 				}
 			}
-			ph.files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, server.Mux.FSErrTpl)
-			ph.files = configureProtectedHandler(accessControls, server.Mux.FSErrTpl,
+			ph.files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, mux.FSErrTpl)
+			ph.files = configureProtectedHandler(accessControls, mux.FSErrTpl,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
 				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), ph.files)
 		}
@@ -136,16 +122,16 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 		}
 
 		if server.Files != nil {
-			server.Mux.FS = make(config.Routes, 0)
-			server.Mux.FSPath = server.Files.BasePath
-			server.Mux.FS = server.Mux.FS.Add(
+			mux.FS = make(Routes, 0)
+			mux.FSPath = server.Files.BasePath
+			mux.FS = mux.FS.Add(
 				utils.JoinPath(server.Files.BasePath, "/**"),
 				ph.files,
 			)
 
 			// Register base_path-302 case
 			if server.Files.BasePath != "/" {
-				server.Mux.FS = server.Mux.FS.Add(
+				mux.FS = mux.FS.Add(
 					strings.TrimRight(server.Files.BasePath, "/")+"$",
 					ph.files,
 				)
@@ -153,19 +139,19 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 		}
 
 		if server.Spa != nil {
-			server.Mux.SPA = make(config.Routes, 0)
-			server.Mux.SPAPath = server.Spa.BasePath
+			mux.SPA = make(Routes, 0)
+			mux.SPAPath = server.Spa.BasePath
 
 			for _, spaPath := range server.Spa.Paths {
 				spaPath := utils.JoinPath(server.Spa.BasePath, spaPath)
 
-				server.Mux.SPA = server.Mux.SPA.Add(
+				mux.SPA = mux.SPA.Add(
 					spaPath,
 					ph.spa,
 				)
 
 				if spaPath != "/**" && strings.HasSuffix(spaPath, "/**") {
-					server.Mux.SPA = server.Mux.SPA.Add(
+					mux.SPA = mux.SPA.Add(
 						spaPath[:len(spaPath)-len("/**")],
 						ph.spa,
 					)
@@ -177,11 +163,11 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 			continue
 		}
 
-		server.Mux.API = make(config.Routes, 0)
-		server.Mux.APIPath = server.API.BasePath
+		mux.API = make(Routes, 0)
+		mux.APIPath = server.API.BasePath
 
 		if server.API.ErrorFile != "" {
-			if server.Mux.APIErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile)); err != nil {
+			if mux.APIErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile)); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -189,7 +175,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.API.Endpoint {
-			conf.Server[idx].API.Endpoint[e].Server = server // assign parent
+			conf.HCL.Server[idx].API.Endpoint[e].Server = server // assign parent
 			if endpoints[endpoint.Pattern] {
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
@@ -211,14 +197,14 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 						Path:           beConf.Path,
 						Timeout:        t,
 						TTFBTimeout:    ttfbt,
-					}, log, conf.Context)
+					}, log, conf.HCL.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
 					protectedHandler = proxy
 				}
 
-				ph.api[endpoint] = configureProtectedHandler(accessControls, server.Mux.APIErrTpl,
+				ph.api[endpoint] = configureProtectedHandler(accessControls, mux.APIErrTpl,
 					config.NewAccessControl(server.AccessControl, server.DisableAccessControl).
 						Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)),
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
@@ -235,7 +221,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.HCL.Context, endpoint.InlineDefinition, log)
 			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
@@ -244,7 +230,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.HCL.Context, server.API.InlineDefinition, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -274,7 +260,7 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 					Path:           beConf.Path,
 					Timeout:        t,
 					TTFBTimeout:    ttfbt,
-				}, log, conf.Context)
+				}, log, conf.HCL.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -285,11 +271,13 @@ func configure(conf *config.Gateway, log *logrus.Entry) {
 		}
 
 		for _, endpoint := range server.API.Endpoint {
-			server.Mux.API = server.Mux.API.Add(
+			mux.API = mux.API.Add(
 				utils.JoinPath(server.API.BasePath, endpoint.Pattern),
 				ph.api[endpoint],
 			)
 		}
+
+		configureLookups(conf, server, mux, log)
 	}
 }
 
@@ -320,7 +308,7 @@ func configureBasePathes(server *config.Server) {
 	}
 }
 
-func configureLookups(conf *config.Gateway, server *config.Server, log *logrus.Entry) {
+func configureLookups(conf *Config, server *config.Server, mux *Mux, log *logrus.Entry) {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
 		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
@@ -347,14 +335,14 @@ func configureLookups(conf *config.Gateway, server *config.Server, log *logrus.E
 		// TODO: Check port range 0-65535 just here or let it crash on net.Listen()?
 
 		if _, ok := conf.Lookups[port]; !ok {
-			conf.Lookups[port] = make(config.Hosts, 0)
+			conf.Lookups[port] = make(Hosts, 0)
 		}
 
 		if _, ok := conf.Lookups[port][host]; ok {
 			log.Fatalf("Multiple <host:port> combination found: '%s:%s'", host, port)
 		}
 
-		conf.Lookups[port][host] = server
+		conf.Lookups[port][host] = &ServerMux{Server: server, Mux: mux}
 	}
 }
 

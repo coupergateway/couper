@@ -16,17 +16,33 @@ import (
 	"go.avenga.cloud/couper/gateway/errors"
 )
 
+// HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	config   *config.Gateway
+	config   *runtime.Config
 	ctx      context.Context
 	log      *logrus.Entry
-	listener map[string]net.Listener
-	srv      map[string]*http.Server
+	listener net.Listener
+	muxes    runtime.Hosts
+	port     string
+	srv      *http.Server
 	uidFn    func() string
 }
 
-func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	configure(conf, logger)
+// NewServerList creates a list of all configured HTTP server.
+func NewServerList(ctx context.Context, logger *logrus.Entry, conf *runtime.Config) []*HTTPServer {
+	runtime.ConfigureHCL(conf, logger)
+
+	var list []*HTTPServer
+
+	for port, hosts := range conf.Lookups {
+		list = append(list, New(ctx, logger, conf, port, hosts))
+	}
+
+	return list
+}
+
+// New creates a configured HTTP server.
+func New(ctx context.Context, logger *logrus.Entry, conf *runtime.Config, port string, hosts runtime.Hosts) *HTTPServer {
 
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
@@ -34,73 +50,58 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 	}
 
 	httpSrv := &HTTPServer{
-		ctx:      ctx,
-		config:   conf,
-		log:      logger,
-		listener: make(map[string]net.Listener, 0),
-		srv:      make(map[string]*http.Server, 0),
-		uidFn:    uidFn,
+		config: conf,
+		ctx:    ctx,
+		log:    logger,
+		muxes:  hosts,
+		port:   port,
+		uidFn:  uidFn,
 	}
 
-	for port := range conf.Lookups {
-		srv := &http.Server{
-			Addr:              ":" + port,
-			Handler:           httpSrv,
-			IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
-			ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,
-		}
-		httpSrv.srv[port] = srv
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           httpSrv,
+		IdleTimeout:       conf.IdleTimeout,
+		ReadHeaderTimeout: conf.ReadHeaderTimeout,
 	}
+
+	httpSrv.srv = srv
 
 	return httpSrv
 }
 
-func (s *HTTPServer) Addr(port string) string {
-	if len(s.listener) > 0 {
-		if l, ok := s.listener[port]; ok {
-			return l.Addr().String()
-		}
+// Addr returns the listener address.
+func (s *HTTPServer) Addr() string {
+	if s.listener != nil {
+		return s.listener.Addr().String()
 	}
 	return ""
 }
 
 // Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() {
-	for port := range s.config.Lookups {
-		ln, err := net.Listen("tcp4", s.srv[port].Addr)
-		if err != nil {
-			s.log.Fatal(err)
-			return
-		}
-		s.listener[port] = ln
-		s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
-
-		go s.listenForCtx()
-
-		go func() {
-			if err := s.srv[port].Serve(ln); err != nil {
-				s.log.Error(err)
-			}
-		}()
+	if s.srv.Addr == "" {
+		s.srv.Addr = ":http"
 	}
+	ln, err := net.Listen("tcp4", s.srv.Addr)
+	if err != nil {
+		s.log.Fatal(err)
+	}
+	s.listener = ln
+	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
+
+	go s.listenForCtx()
+
+	go func() {
+		if err := s.srv.Serve(ln); err != nil {
+			s.log.Error(err)
+		}
+	}()
 }
 
 // Close closes the listener
 func (s *HTTPServer) Close() error {
-	var msg []string
-
-	for port := range s.config.Lookups {
-		err := s.listener[port].Close()
-		if err != nil {
-			msg = append(msg, fmt.Sprintf("%s", err))
-		}
-	}
-
-	if len(msg) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("closing: %s", strings.Join(msg, ", "))
+	return s.listener.Close()
 }
 
 func (s *HTTPServer) listenForCtx() {
@@ -109,9 +110,7 @@ func (s *HTTPServer) listenForCtx() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		s.log.WithField("deadline", "10s").Warn("shutting down")
-		for port := range s.config.Lookups {
-			s.srv[port].Shutdown(ctx)
-		}
+		s.srv.Shutdown(ctx)
 	}
 }
 
@@ -160,38 +159,35 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler) {
-	host, port := s.getHostPort(req)
+	host := s.getHost(req)
 
-	if _, ok := s.config.Lookups[port]; !ok {
-		return nil, nil
-	}
-	if _, ok := s.config.Lookups[port][host]; !ok {
-		if _, ok := s.config.Lookups[port]["*"]; !ok {
+	if _, ok := s.muxes[host]; !ok {
+		if _, ok := s.muxes["*"]; !ok {
 			return nil, nil
 		}
 
 		host = "*"
 	}
 
-	return s.config.Lookups[port][host], NewMuxer(s.config.Lookups[port][host].Mux).Match(req)
+	return s.muxes[host].Server, NewMuxer(s.muxes[host].Mux).Match(req)
 }
 
-func (s *HTTPServer) getHostPort(req *http.Request) (string, string) {
+func (s *HTTPServer) getHost(req *http.Request) string {
 	host := req.Host
 	if s.config.UseXFH {
 		host = req.Header.Get("X-Forwarded-Host")
 	}
 
 	if strings.IndexByte(host, ':') == -1 {
-		return cleanHost(host), fmt.Sprintf("%d", s.config.ListenPort)
+		return cleanHost(host)
 	}
 
-	h, p, err := net.SplitHostPort(host)
+	h, _, err := net.SplitHostPort(host)
 	if err != nil {
-		return cleanHost(host), fmt.Sprintf("%d", s.config.ListenPort)
+		return cleanHost(host)
 	}
 
-	return cleanHost(h), p
+	return cleanHost(h)
 }
 
 func cleanHost(host string) string {

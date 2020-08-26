@@ -16,6 +16,7 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/server"
 )
 
@@ -49,31 +50,37 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := config.LoadBytes(confBytes.Bytes())
+	conf := *runtime.DefaultConfig
+	conf.ConfigFile = ""
+	runtime.Configure(&conf, log.WithContext(nil))
+
+	hcl, err := config.LoadBytes(confBytes.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf.HCL = hcl
+
+	runtime.ConfigureHCL(&conf, log.WithContext(nil))
+
+	errorPageContent, err := ioutil.ReadFile(conf.HCL.Server[0].Files.ErrorFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
+	spaContent, err := ioutil.ReadFile(conf.HCL.Server[0].Spa.BootstrapFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	conf.ListenPort = server.DefaultHTTPConfig.ListenPort
 	port := fmt.Sprintf("%d", conf.ListenPort)
 
-	gw := server.New(ctx, log.WithContext(ctx), conf)
+	gw := server.New(ctx, log.WithContext(ctx), &conf, port, conf.Lookups[port])
 	gw.Listen()
 	defer gw.Close()
 
 	connectClient := http.Client{Transport: &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return net.Dial("tcp4", gw.Addr(port))
+			return net.Dial("tcp4", gw.Addr())
 		},
 	}}
 
@@ -146,27 +153,32 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := config.LoadBytes(confBytes.Bytes())
+	conf := *runtime.DefaultConfig
+	conf.ConfigFile = ""
+	runtime.Configure(&conf, log.WithContext(nil))
+
+	hcl, err := config.LoadBytes(confBytes.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf.HCL = hcl
+	runtime.ConfigureHCL(&conf, log.WithContext(nil))
+
+	spaContent, err := ioutil.ReadFile(conf.HCL.Server[0].Spa.BootstrapFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	conf.ListenPort = server.DefaultHTTPConfig.ListenPort
 	port := fmt.Sprintf("%d", conf.ListenPort)
 
-	couper := server.New(ctx, log.WithContext(ctx), conf)
+	couper := server.New(ctx, log.WithContext(ctx), &conf, port, conf.Lookups[port])
 	couper.Listen()
 	defer couper.Close()
 
 	connectClient := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial("tcp4", couper.Addr(port))
+				return net.Dial("tcp4", couper.Addr())
 			},
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {

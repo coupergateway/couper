@@ -8,17 +8,19 @@ import (
 	"go.avenga.cloud/couper/gateway/config/runtime"
 )
 
+// Router represents the Router object.
 type Router struct {
-	routes config.Routes
+	routes runtime.Routes
 }
 
-func NewRouter(routes config.Routes) *Router {
+// NewRouter creates a new Router object.
+func NewRouter(routes runtime.Routes) *Router {
 	return &Router{routes: routes}
 }
 
 // Match searches for explicit pathes first and finally the wildcard ones.
 func (r *Router) Match(req *http.Request) (http.Handler, bool) {
-	var wildcardRoutes config.Routes
+	var wildcardRoutes runtime.Routes
 
 	if len(r.routes) == 0 {
 		return nil, false
@@ -44,7 +46,7 @@ func (r *Router) Match(req *http.Request) (http.Handler, bool) {
 	return nil, false
 }
 
-func (r *Router) match(req *http.Request, route *config.Route) http.Handler {
+func (r *Router) match(req *http.Request, route *runtime.Route) http.Handler {
 	if route.GetMatcher().MatchString(req.URL.Path) {
 		if route.HasWildcard() {
 			match := route.GetMatcher().FindStringSubmatch(req.URL.Path)

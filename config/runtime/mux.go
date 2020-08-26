@@ -1,8 +1,8 @@
-package config
+package runtime
 
 import "go.avenga.cloud/couper/gateway/errors"
 
-// Mux represents a Mux object
+// Mux represents a Mux object.
 type Mux struct {
 	API       Routes
 	APIPath   string

@@ -9,5 +9,4 @@ type Server struct {
 	Hosts                []string `hcl:"hosts,optional"`
 	Name                 string   `hcl:"name,label"`
 	Spa                  *Spa     `hcl:"spa,block"`
-	Mux                  *Mux
 }

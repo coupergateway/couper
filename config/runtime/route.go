@@ -1,4 +1,4 @@
-package config
+package runtime
 
 import (
 	"errors"
@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	PatternSlashError = errors.New("missing slash in first place")
-	WildcardPathError = errors.New("wildcard path must end with /** and has no other occurrences")
+	errPatternSlash = errors.New("missing slash in first place")
+	errWildcardPath = errors.New("wildcard path must end with /** and has no other occurrences")
 )
 
 const (
@@ -18,6 +18,7 @@ const (
 	wildcardSearch      = "/**"
 )
 
+// Route represents the Route object.
 type Route struct {
 	handler  http.Handler
 	matcher  *regexp.Regexp
@@ -26,11 +27,13 @@ type Route struct {
 	wildcard bool
 }
 
+// Routes represents the list of Route objects.
 type Routes []*Route
 
+// NewRoute creates a new Route object.
 func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	if pattern == "" || pattern[0] != '/' {
-		return nil, PatternSlashError
+		return nil, errPatternSlash
 	}
 
 	if handler == nil {
@@ -40,7 +43,7 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	// TODO: parse/create regexp "template" parsing
 	matchPattern := "^" + pattern
 	if !validWildcardPath(matchPattern) {
-		return nil, WildcardPathError
+		return nil, errWildcardPath
 	}
 
 	sortLen := len(strings.ReplaceAll(pattern, wildcardSearch, "/"))
@@ -59,6 +62,7 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 	}, nil
 }
 
+// Add adds a new Route to the Routes list.
 func (r Routes) Add(pattern string, h http.Handler) Routes {
 	route, err := NewRoute(pattern, h)
 	if err != nil {
@@ -79,14 +83,17 @@ func (r Routes) Add(pattern string, h http.Handler) Routes {
 	return Routes
 }
 
+// HasWildcard returns the state of the wildcard flag.
 func (r *Route) HasWildcard() bool {
 	return r.wildcard
 }
 
+// GetHandler returns the HTTP handler.
 func (r *Route) GetHandler() http.Handler {
 	return r.handler
 }
 
+// GetMatcher returns the regexp matcher.
 func (r *Route) GetMatcher() *regexp.Regexp {
 	return r.matcher
 }
