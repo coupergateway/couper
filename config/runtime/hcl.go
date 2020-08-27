@@ -160,6 +160,8 @@ func ConfigureHCL(conf *Config, log *logrus.Entry) {
 		}
 
 		if server.API == nil {
+			configureLookups(conf, server, mux, log)
+
 			continue
 		}
 
