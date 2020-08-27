@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -223,15 +224,16 @@ func newParser(algo Algorithm, claims Claims) (*jwt.Parser, error) {
 	}
 
 	if iss, ok := claims["iss"]; ok {
+		if err := isStringType(iss); err != nil {
+			return nil, fmt.Errorf("iss: %w", err)
+		}
 		options = append(options, jwt.WithIssuer(iss.(string)))
 	}
 	if aud, ok := claims["aud"]; ok {
-		switch aud.(type) {
-		case string:
-			options = append(options, jwt.WithAudience(aud.(string)))
-		case []string:
-			return nil, errors.New("expected string value for 'aud' claim")
+		if err := isStringType(aud); err != nil {
+			return nil, fmt.Errorf("aud: %w", err)
 		}
+		options = append(options, jwt.WithAudience(aud.(string)))
 	} else {
 		options = append(options, jwt.WithoutAudienceValidation())
 	}
@@ -275,19 +277,11 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 	return pubKey, nil
 }
 
-func newClaimString(v interface{}) jwt.ClaimStrings {
-	var result jwt.ClaimStrings
-	iSlice, ok := v.([]interface{})
-	if !ok {
-		return result
+func isStringType(val interface{}) error {
+	switch val.(type) {
+	case string:
+		return nil
+	default:
+		return errors.New("expected a string value type")
 	}
-
-	for _, str := range iSlice {
-		s, ok := str.(string)
-		if !ok {
-			continue
-		}
-		result = append(result, s)
-	}
-	return result
 }
