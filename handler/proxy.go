@@ -28,7 +28,7 @@ var (
 
 	// headerBlacklist lists all header keys which will be removed after
 	// context variable evaluation to ensure to not pass them upstream.
-	headerBlacklist = []string{"Authentication", "Cookie"}
+	headerBlacklist = []string{"Authorization", "Cookie"}
 )
 
 type Proxy struct {

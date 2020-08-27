@@ -1,22 +1,18 @@
 package access_control
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
-)
-
-const (
-	AlgorithmUnknown Algorithm = iota - 1
-	_
-	AlgorithmRSA
-	AlgorithmHMAC
 )
 
 const (
@@ -38,21 +34,25 @@ var (
 
 type (
 	Algorithm int
-	Claims    struct{ Audience, Issuer string }
+	Claims    map[string]interface{}
 	Source    int
 )
 
 type JWT struct {
-	algorithm  Algorithm
-	source     Source
-	sourceKey  string
-	hmacSecret []byte
-	parser     *jwt.Parser
-	pubKey     *rsa.PublicKey
+	algorithm      Algorithm
+	claims         Claims
+	claimsRequired []string
+	ignoreExp      bool
+	source         Source
+	sourceKey      string
+	hmacSecret     []byte
+	name           string
+	parser         *jwt.Parser
+	pubKey         *rsa.PublicKey
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []byte) (*JWT, error) {
+func NewJWT(algorithm, name string, claims Claims, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
 	if len(key) == 0 {
 		return nil, ErrorMissingKey
 	}
@@ -61,17 +61,25 @@ func NewJWT(algorithm string, claims Claims, src Source, srcKey string, key []by
 		return nil, ErrorUnknownSource
 	}
 
-	algo := newAlgorithm(algorithm)
+	algo := NewAlgorithm(algorithm)
 	if algo == AlgorithmUnknown {
 		return nil, ErrorNotSupported
 	}
 
+	parser, err := newParser(algo, claims)
+	if err != nil {
+		return nil, err
+	}
+
 	jwtObj := &JWT{
-		algorithm:  algo,
-		hmacSecret: key,
-		parser:     newParser(algo, claims.Issuer, claims.Audience),
-		source:     src,
-		sourceKey:  srcKey,
+		algorithm:      algo,
+		claims:         claims,
+		claimsRequired: reqClaims,
+		hmacSecret:     key,
+		name:           name,
+		parser:         parser,
+		source:         src,
+		sourceKey:      srcKey,
 	}
 
 	pubKey, err := parsePublicPEMKey(key)
@@ -129,17 +137,71 @@ func (j *JWT) Validate(req *http.Request) error {
 		return ErrorEmptyToken
 	}
 
-	_, err = j.parser.Parse(tokenValue, func(_ *jwt.Token) (interface{}, error) {
-		switch j.algorithm {
-		case AlgorithmRSA:
-			return j.pubKey, nil
-		case AlgorithmHMAC:
-			return j.hmacSecret, nil
-		default:
-			return nil, ErrorNotSupported
+	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
+	if err != nil {
+		return err
+	}
+
+	tokenClaims, err := j.validateClaims(token)
+	if err != nil {
+		return err
+	}
+
+	ctx := req.Context()
+	acMap, ok := ctx.Value(ContextAccessControlKey).(map[string]interface{})
+	if !ok {
+		acMap = make(map[string]interface{})
+	}
+	acMap[j.name] = tokenClaims
+	ctx = context.WithValue(ctx, ContextAccessControlKey, acMap)
+	*req = *req.WithContext(ctx)
+
+	return nil
+}
+
+func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
+	switch j.algorithm {
+	case AlgorithmRSA256, AlgorithmRSA384, AlgorithmRSA512:
+		return j.pubKey, nil
+	case AlgorithmHMAC256, AlgorithmHMAC384, AlgorithmHMAC512:
+		return j.hmacSecret, nil
+	default:
+		return nil, ErrorNotSupported
+	}
+}
+
+func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
+	var tokenClaims jwt.MapClaims
+	if tc, ok := token.Claims.(jwt.MapClaims); ok {
+		tokenClaims = tc
+	}
+
+	if tokenClaims == nil {
+		return nil, &jwt.InvalidClaimsError{Message: "token claims has to be a map type"}
+	}
+
+	for _, key := range j.claimsRequired {
+		if _, ok := tokenClaims[key]; !ok {
+			return nil, &jwt.InvalidClaimsError{Message: "required claim is missing: " + key}
 		}
-	})
-	return err
+	}
+
+	for k, v := range j.claims {
+
+		if k == "iss" || k == "aud" { // gets validated during parsing
+			continue
+		}
+
+		val, exist := tokenClaims[k]
+		if !exist {
+			return nil, errors.New("expected claim not found: '" + k + "'")
+		}
+
+		if val != v {
+			return nil, errors.New("unexpected value for claim '" + k + "'")
+		}
+	}
+	return Claims(tokenClaims), nil
 }
 
 func getBearer(val string) (string, error) {
@@ -150,40 +212,33 @@ func getBearer(val string) (string, error) {
 	return "", ErrorBearerRequired
 }
 
-func newParser(algo Algorithm, iss, aud string) *jwt.Parser {
-	var options []jwt.ParserOption
-	options = append(options, jwt.WithValidMethods([]string{algo.String()}))
-	if iss != "" {
-		options = append(options, jwt.WithIssuer(iss))
+func newParser(algo Algorithm, claims Claims) (*jwt.Parser, error) {
+	options := []jwt.ParserOption{
+		jwt.WithValidMethods([]string{algo.String()}),
+		jwt.WithLeeway(time.Second),
 	}
-	if aud != "" {
-		options = append(options, jwt.WithAudience(aud))
+
+	if claims == nil {
+		options = append(options, jwt.WithoutAudienceValidation())
+		return jwt.NewParser(options...), nil
+	}
+
+	if iss, ok := claims["iss"]; ok {
+		if err := isStringType(iss); err != nil {
+			return nil, fmt.Errorf("iss: %w", err)
+		}
+		options = append(options, jwt.WithIssuer(iss.(string)))
+	}
+	if aud, ok := claims["aud"]; ok {
+		if err := isStringType(aud); err != nil {
+			return nil, fmt.Errorf("aud: %w", err)
+		}
+		options = append(options, jwt.WithAudience(aud.(string)))
 	} else {
 		options = append(options, jwt.WithoutAudienceValidation())
 	}
-	return jwt.NewParser(options...)
-}
 
-func newAlgorithm(a string) Algorithm {
-	switch a {
-	case "RS256":
-		return AlgorithmRSA
-	case "HS256":
-		return AlgorithmHMAC
-	default:
-		return AlgorithmUnknown
-	}
-}
-
-func (a Algorithm) String() string {
-	switch a {
-	case AlgorithmRSA:
-		return "RS256"
-	case AlgorithmHMAC:
-		return "HS256"
-	default:
-		return "Unknown"
-	}
+	return jwt.NewParser(options...), nil
 }
 
 // parsePublicPEMKey tries to parse all supported publicKey variations which
@@ -191,7 +246,14 @@ func (a Algorithm) String() string {
 func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 	pemBlock, _ := pem.Decode(key)
 	if pemBlock == nil {
-		return nil, jwt.ErrKeyMustBePEMEncoded
+		decKey, err := base64.StdEncoding.DecodeString(string(key))
+		if err != nil {
+			return nil, ErrorNotSupported
+		}
+		pemBlock, _ = pem.Decode(decKey)
+		if pemBlock == nil {
+			return nil, jwt.ErrKeyMustBePEMEncoded
+		}
 	}
 	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
 	if pubErr != nil {
@@ -213,4 +275,13 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 		}
 	}
 	return pubKey, nil
+}
+
+func isStringType(val interface{}) error {
+	switch val.(type) {
+	case string:
+		return nil
+	default:
+		return errors.New("expected a string value type")
+	}
 }

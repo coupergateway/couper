@@ -2,17 +2,20 @@ package eval
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"os"
-	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+
+	ac "go.avenga.cloud/couper/gateway/access_control"
+	"go.avenga.cloud/couper/gateway/eval/lib"
+	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
 func NewENVContext(src []byte) *hcl.EvalContext {
@@ -29,27 +32,13 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 func NewHTTPContext(baseCtx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
 	ctx := cloneContext(baseCtx)
 	if req != nil {
-		ctx.Variables["req"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(req.Header),
-			"cookies": newCtyCookiesMap(req.Cookies()),
-			//"params":  newCtyParametersMap(mux.Vars(request)),
-		})
-		if req.Response != nil {
-			ctx.Variables["resp"] = cty.MapVal(map[string]cty.Value{
-				"headers": newCtyHeadersMap(req.Response.Header),
-				"cookies": newCtyCookiesMap(req.Response.Cookies()),
-				//"params":  newCtyParametersMap(mux.Vars(request)),
-			})
-		}
+		ctx.Variables["req"] = newVariable(req.Context(), req.Cookies(), req.Header)
 	}
 
 	if beresp != nil {
-		ctx.Variables["bereq"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(beresp.Request.Header),
-		})
-		ctx.Variables["beresp"] = cty.MapVal(map[string]cty.Value{
-			"headers": newCtyHeadersMap(beresp.Header),
-		})
+		bereq := beresp.Request
+		ctx.Variables["bereq"] = newVariable(bereq.Context(), bereq.Cookies(), bereq.Header)
+		ctx.Variables["beresp"] = newVariable(context.Background(), beresp.Cookies(), beresp.Header)
 	}
 
 	return ctx
@@ -71,6 +60,27 @@ func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
 	return c
 }
 
+func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) cty.Value {
+	jwtClaims, _ := ctx.Value(ac.ContextAccessControlKey).(map[string]interface{})
+	ctxAcMap := make(map[string]cty.Value)
+	for name, data := range jwtClaims {
+		dataMap, ok := data.(ac.Claims)
+		if !ok {
+			continue
+		}
+		ctxAcMap[name] = seetie.MapToValue(dataMap)
+	}
+	var ctxAcMapValue cty.Value
+	if len(ctxAcMap) > 0 {
+		ctxAcMapValue = cty.MapVal(ctxAcMap)
+	}
+	return cty.ObjectVal(map[string]cty.Value{
+		"ctx":     ctxAcMapValue,
+		"cookies": seetie.CookiesToMapValue(cookies),
+		"headers": seetie.HeaderToMapValue(headers),
+	})
+}
+
 func newCtyEnvMap(envKeys []string) cty.Value {
 	if len(envKeys) == 0 {
 		return cty.MapValEmpty(cty.String)
@@ -84,55 +94,13 @@ func newCtyEnvMap(envKeys []string) cty.Value {
 	return cty.MapVal(ctyMap)
 }
 
-func newCtyHeadersMap(headers http.Header) cty.Value {
-	ctyMap := make(map[string]cty.Value)
-	for k, v := range headers {
-		if isValidKey(k) {
-			ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
-		}
-	}
-	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
-	return cty.MapVal(ctyMap)
-}
-
-func newCtyCookiesMap(cookies []*http.Cookie) cty.Value {
-	ctyMap := make(map[string]cty.Value)
-	for _, cookie := range cookies {
-		ctyMap[cookie.Name] = cty.StringVal(cookie.Value) // TODO: ListVal??
-	}
-
-	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
-	return cty.MapVal(ctyMap)
-}
-
-func newCtyParametersMap(parameters map[string]string) cty.Value {
-	ctyMap := make(map[string]cty.Value)
-	for k, v := range parameters {
-		if isValidKey(k) {
-			ctyMap[k] = cty.StringVal(v)
-		}
-	}
-
-	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
-	return cty.MapVal(ctyMap)
-}
-
-func isValidKey(key string) bool {
-	valid, _ := regexp.MatchString("[a-zA-Z_][a-zA-Z0-9_-]*", key)
-	return valid
-}
-
 // Functions
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
-		"to_upper": stdlib.UpperFunc,
-		"to_lower": stdlib.LowerFunc,
+		"base64_decode": lib.Base64DecodeFunc,
+		"base64_encode": lib.Base64EncodeFunc,
+		"to_upper":      stdlib.UpperFunc,
+		"to_lower":      stdlib.LowerFunc,
 	}
 }
 

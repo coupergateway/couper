@@ -1,11 +1,10 @@
 package handler
 
 import (
-	"math/big"
-	"regexp"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
+
+	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
 type OptionsMap map[string][]string
@@ -57,41 +56,18 @@ func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, h
 			return nil, diags
 		}
 		if val.Type().IsPrimitiveType() {
-			options[key.AsString()] = []string{ValueToString(val)}
+			options[key.AsString()] = []string{seetie.ValueToString(val)}
 			continue
 		}
 		var values []string
 		for _, v := range val.AsValueSlice() {
-			str := ValueToString(v)
-			if str != "" {
+			if str := seetie.ValueToString(v); str != "" {
 				values = append(values, str)
 			}
 		}
 		options[key.AsString()] = values
 	}
 	return options, diags
-}
-
-var whitespaceRegex = regexp.MustCompile(`^\s*$`)
-
-func ValueToString(v cty.Value) string {
-	switch v.Type() {
-	case cty.String:
-		str := v.AsString()
-		if whitespaceRegex.MatchString(str) {
-			return ""
-		}
-		return str
-	case cty.Number:
-		n := v.AsBigFloat()
-		ni, accuracy := n.Int(nil)
-		if accuracy == big.Exact {
-			return ni.String()
-		}
-		return n.String()
-	default:
-		return ""
-	}
 }
 
 const (
