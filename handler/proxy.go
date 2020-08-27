@@ -17,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/eval"
 )
 
@@ -76,7 +77,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		Director: proxy.director, // request modification
 		ErrorHandler: func(rw http.ResponseWriter, req *http.Request, err error) { // TODO: merge with error logging
 			rw.WriteHeader(http.StatusBadGateway)
-			log.WithField("uid", req.Context().Value("requestID")).Error(err)
+			log.WithField("uid", req.Context().Value(runtime.RequestID)).Error(err)
 		},
 		ModifyResponse: proxy.modifyResponse,
 		Transport: &http.Transport{
@@ -142,7 +143,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = beresp.Header
 		attrCtx = attrResHeaders
 	}
-	log := p.log.WithField("uid", reqCtx.Value("requestID"))
+	log := p.log.WithField("uid", reqCtx.Value(runtime.RequestID))
 	var fields []string
 
 	evalCtx := eval.NewHTTPContext(p.evalContext, req, beresp)

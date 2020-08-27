@@ -14,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/eval/lib"
 	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
@@ -38,7 +39,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req *http.Request, beresp *http.Re
 	if beresp != nil {
 		bereq := beresp.Request
 		ctx.Variables["bereq"] = newVariable(bereq.Context(), bereq.Cookies(), bereq.Header)
-		ctx.Variables["beresp"] = newVariable(context.Background(), beresp.Cookies(), beresp.Header)
+		ctx.Variables["beresp"] = newVariable(bereq.Context(), beresp.Cookies(), beresp.Header)
 	}
 
 	return ctx
@@ -73,11 +74,19 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	var ctxAcMapValue cty.Value
 	if len(ctxAcMap) > 0 {
 		ctxAcMapValue = cty.MapVal(ctxAcMap)
+	} else {
+		ctxAcMapValue = cty.MapValEmpty(cty.String)
+	}
+
+	var id string
+	if i, ok := ctx.Value(runtime.RequestID).(string); ok {
+		id = i
 	}
 	return cty.ObjectVal(map[string]cty.Value{
 		"ctx":     ctxAcMapValue,
 		"cookies": seetie.CookiesToMapValue(cookies),
 		"headers": seetie.HeaderToMapValue(headers),
+		"id":      cty.StringVal(id),
 	})
 }
 

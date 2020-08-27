@@ -14,9 +14,15 @@ import (
 
 var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
 
-func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) map[string]interface{} {
-	val, _ := exp.Value(ctx)
+func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{}, hcl.Diagnostics) {
+	val, diags := exp.Value(ctx)
+	if diags.HasErrors() {
+		return nil, diags
+	}
 	result := make(map[string]interface{})
+	if val.IsNull() {
+		return result, nil
+	}
 
 	for k, v := range val.AsValueMap() {
 		switch v.Type() {
@@ -30,14 +36,14 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) map[string]interface{} {
 			f, _ := v.AsBigFloat().Float64()
 			result[k] = f
 		default:
-			if v.Type().FriendlyNameForConstraint() == "tuple" { // tuple is not comparable by type
+			if isTuple(v) {
 				result[k] = toStringSlice(v)
 				continue
 			}
 			result[k] = v
 		}
 	}
-	return result
+	return result, nil
 }
 
 func MapToValue(m map[string]interface{}) cty.Value {
@@ -86,7 +92,10 @@ func CookiesToMapValue(cookies []*http.Cookie) cty.Value {
 func toStringSlice(src cty.Value) []string {
 	var l []string
 	for _, s := range src.AsValueSlice() {
-		l = append(l, s.AsString())
+		if !s.IsKnown() {
+			continue
+		}
+		l = append(l, ValueToString(s))
 	}
 	return l
 }
@@ -117,6 +126,14 @@ func ValueToString(v cty.Value) string {
 
 func ToString(s interface{}) string {
 	switch s.(type) {
+	case []interface{}:
+		var str []string
+		for _, s := range s.([]interface{}) {
+			if result := ToString(s); result != "" {
+				str = append(str, result)
+			}
+		}
+		return strings.Join(str, ",")
 	case string:
 		return s.(string)
 	case int:
@@ -131,4 +148,9 @@ func ToString(s interface{}) string {
 	default:
 		return ""
 	}
+}
+
+// isTuple checks by type name since tuple is not comparable by type.
+func isTuple(v cty.Value) bool {
+	return v.Type().FriendlyNameForConstraint() == "tuple"
 }

@@ -53,11 +53,7 @@ server "couperConnect" {
                     x-env-user = ["override-user"]
                     x-single-val = 12+14
                     user-agent = "moo"
-                }
-
-                response_headers = {
-                    server = ["my-override"]
-                    x-single-val = true
+                    x-uuid = req.id
                 }
             }
         }
@@ -95,6 +91,7 @@ definitions {
                 req.ctx.jwtio.name,
                 req.ctx.jwtio.sub,
             ]
+            x-uuid = req.id
         }
     }
 

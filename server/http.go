@@ -11,10 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/errors"
 )
-
-const RequestIDKey = "requestID"
 
 type HTTPServer struct {
 	config   *config.Gateway
@@ -23,15 +22,23 @@ type HTTPServer struct {
 	listener net.Listener
 	mux      *Mux
 	srv      *http.Server
+	uidFn    func() string
 }
 
 func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
 	_, ph := configure(conf, logger)
+
+	// TODO: uuid package switch with global option
+	uidFn := func() string {
+		return xid.New().String()
+	}
+
 	httpSrv := &HTTPServer{
 		ctx:    ctx,
 		config: conf,
 		log:    logger,
 		mux:    NewMux(conf, ph),
+		uidFn:  uidFn,
 	}
 
 	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)
@@ -39,10 +46,7 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 		addr = conf.Addr
 	}
 	srv := &http.Server{
-		Addr: addr,
-		BaseContext: func(l net.Listener) context.Context {
-			return context.WithValue(context.Background(), RequestIDKey, xid.New().String())
-		},
+		Addr:              addr,
 		Handler:           httpSrv,
 		IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
 		ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,
@@ -98,7 +102,10 @@ func (s *HTTPServer) listenForCtx() {
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	uid := req.Context().Value(RequestIDKey).(string)
+	uid := s.uidFn()
+	ctx := context.WithValue(req.Context(), runtime.RequestID, uid)
+	*req = *req.WithContext(ctx)
+
 	req.Header.Set("X-Request-Id", uid)
 	rw.Header().Set("X-Request-Id", uid)
 

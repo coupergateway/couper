@@ -301,7 +301,14 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 				key = []byte(jwt.Key)
 			}
 
-			claims := ac.Claims(seetie.ExpToMap(conf.Context, jwt.Claims))
+			var claims ac.Claims
+			if jwt.Claims != nil {
+				c, diags := seetie.ExpToMap(conf.Context, jwt.Claims)
+				if diags.HasErrors() {
+					panic(diags.Error())
+				}
+				claims = c
+			}
 			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwt.Name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
 			if err != nil {
 				panic(fmt.Sprintf("loading jwt %q definition failed: %s", jwt.Name, err))
