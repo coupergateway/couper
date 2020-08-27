@@ -65,13 +65,18 @@ func NewJWT(algorithm, name string, claims Claims, reqClaims []string, src Sourc
 		return nil, ErrorNotSupported
 	}
 
+	parser, err := newParser(algo, claims)
+	if err != nil {
+		return nil, err
+	}
+
 	jwtObj := &JWT{
 		algorithm:      algo,
 		claims:         claims,
 		claimsRequired: reqClaims,
 		hmacSecret:     key,
 		name:           name,
-		parser:         newParser(algo, claims),
+		parser:         parser,
 		source:         src,
 		sourceKey:      srcKey,
 	}
@@ -182,27 +187,8 @@ func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
 
 	for k, v := range j.claims {
 
-		if k == "iss" { // gets validated during parsing
+		if k == "iss" || k == "aud" { // gets validated during parsing
 			continue
-		}
-
-		if k == "aud" {
-			if expectedAuds, ok := v.([]string); ok {
-				tokenAud, exist := tokenClaims["aud"]
-				if !exist {
-					return nil, &jwt.InvalidAudienceError{Message: "expected audience claim"}
-				}
-
-				tokenAudClaim := newClaimString(tokenAud)
-				for _, aud := range expectedAuds {
-					err := jwt.DefaultValidationHelper.ValidateAudienceAgainst(tokenAudClaim, aud)
-					if err != nil {
-						return nil, err
-					}
-				}
-
-			}
-			continue // one entry gets verified by jwt.Parser
 		}
 
 		val, exist := tokenClaims[k]
@@ -225,7 +211,7 @@ func getBearer(val string) (string, error) {
 	return "", ErrorBearerRequired
 }
 
-func newParser(algo Algorithm, claims Claims) *jwt.Parser {
+func newParser(algo Algorithm, claims Claims) (*jwt.Parser, error) {
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),
@@ -233,7 +219,7 @@ func newParser(algo Algorithm, claims Claims) *jwt.Parser {
 
 	if claims == nil {
 		options = append(options, jwt.WithoutAudienceValidation())
-		return jwt.NewParser(options...)
+		return jwt.NewParser(options...), nil
 	}
 
 	if iss, ok := claims["iss"]; ok {
@@ -244,16 +230,13 @@ func newParser(algo Algorithm, claims Claims) *jwt.Parser {
 		case string:
 			options = append(options, jwt.WithAudience(aud.(string)))
 		case []string:
-			auds := aud.([]string)
-			if len(auds) > 0 { // last audOptions overrides the previous one, check ourselves later on.
-				options = append(options, jwt.WithAudience(aud.([]string)[0]))
-			}
+			return nil, errors.New("expected string value for 'aud' claim")
 		}
 	} else {
 		options = append(options, jwt.WithoutAudienceValidation())
 	}
 
-	return jwt.NewParser(options...)
+	return jwt.NewParser(options...), nil
 }
 
 // parsePublicPEMKey tries to parse all supported publicKey variations which
