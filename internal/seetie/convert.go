@@ -16,8 +16,8 @@ var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
 
 func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{}, hcl.Diagnostics) {
 	val, diags := exp.Value(ctx)
-	if d := setSeverityLevel(diags); d.HasErrors() {
-		return nil, d
+	if setSeverityLevel(diags).HasErrors() {
+		return nil, filterErrors(diags)
 	}
 	result := make(map[string]interface{})
 	if val.IsNull() {
@@ -157,11 +157,18 @@ func isTuple(v cty.Value) bool {
 }
 
 func setSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
-	for i, d := range diags {
+	for _, d := range diags {
 		if d.Summary == "Missing map element" {
 			d.Severity = hcl.DiagWarning
-			return setSeverityLevel(diags[i+1:])
 		}
 	}
 	return diags
+}
+
+func filterErrors(diags hcl.Diagnostics) hcl.Diagnostics {
+	var errs hcl.Diagnostics
+	for _, err := range diags.Errs() {
+		errs = append(errs, err.(*hcl.Diagnostic))
+	}
+	return errs
 }
