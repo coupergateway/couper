@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	configFile = flag.String("f", "example.hcl", "-f ./couper.conf")
+	configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
 	listenPort = flag.Int("p", server.DefaultHTTPConfig.ListenPort, "-p 8080")
 )
 
