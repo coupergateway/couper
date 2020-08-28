@@ -37,7 +37,7 @@ var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
 // ConfigureHCL sets defaults and validates the given gateway configuration.
 // Creates all configured endpoint HTTP handler.
-func ConfigureHCL(conf *Config, log *logrus.Entry) {
+func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 	if len(conf.HCL.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}
@@ -310,7 +310,7 @@ func configureBasePathes(server *config.Server) {
 	}
 }
 
-func configureLookups(conf *Config, server *config.Server, mux *Mux, log *logrus.Entry) {
+func configureLookups(conf *HTTPConfig, server *config.Server, mux *Mux, log *logrus.Entry) {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
 		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}

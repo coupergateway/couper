@@ -18,51 +18,50 @@ import (
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	config   *runtime.Config
-	ctx      context.Context
-	log      *logrus.Entry
-	listener net.Listener
-	muxes    runtime.Hosts
-	port     string
-	srv      *http.Server
-	uidFn    func() string
+	config     *runtime.HTTPConfig
+	commandCtx context.Context
+	log        *logrus.Entry
+	listener   net.Listener
+	muxes      runtime.Hosts
+	port       string
+	srv        *http.Server
+	uidFn      func() string
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(ctx context.Context, logger *logrus.Entry, conf *runtime.Config) []*HTTPServer {
+func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig) []*HTTPServer {
 	runtime.ConfigureHCL(conf, logger)
 
 	var list []*HTTPServer
 
 	for port, hosts := range conf.Lookups {
-		list = append(list, New(ctx, logger, conf, port, hosts))
+		list = append(list, New(cmdCtx, logger, conf, port, hosts))
 	}
 
 	return list
 }
 
 // New creates a configured HTTP server.
-func New(ctx context.Context, logger *logrus.Entry, conf *runtime.Config, port string, hosts runtime.Hosts) *HTTPServer {
+func New(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, port string, hosts runtime.Hosts) *HTTPServer {
 
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
 	}
-
 	httpSrv := &HTTPServer{
-		config: conf,
-		ctx:    ctx,
-		log:    logger,
-		muxes:  hosts,
-		port:   port,
-		uidFn:  uidFn,
+		config:     conf,
+		commandCtx: cmdCtx,
+		log:        logger,
+		muxes:      hosts,
+		port:       port,
+		uidFn:      uidFn,
 	}
 
 	srv := &http.Server{
 		Addr:              ":" + port,
 		Handler:           httpSrv,
-		IdleTimeout:       conf.IdleTimeout,
-		ReadHeaderTimeout: conf.ReadHeaderTimeout,
+		IdleTimeout:       conf.Timings.IdleTimeout,
+		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
 	}
 
 	httpSrv.srv = srv
@@ -106,7 +105,7 @@ func (s *HTTPServer) Close() error {
 
 func (s *HTTPServer) listenForCtx() {
 	select {
-	case <-s.ctx.Done():
+	case <-s.commandCtx.Done():
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		s.log.WithField("deadline", "10s").Warn("shutting down")

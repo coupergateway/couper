@@ -10,7 +10,7 @@ const (
 	envXFH  = "COUPER_XFH"
 )
 
-func undateByENV(conf *Config) error {
+func undateByENV(conf *HTTPConfig) error {
 	if err := configurePortByEnv(conf); err != nil {
 		return err
 	}
@@ -20,7 +20,7 @@ func undateByENV(conf *Config) error {
 	return nil
 }
 
-func configurePortByEnv(conf *Config) error {
+func configurePortByEnv(conf *HTTPConfig) error {
 	if p := os.Getenv(envPort); p != "" {
 		port, err := strconv.ParseInt(p, 10, 64)
 		if err != nil {
@@ -33,7 +33,7 @@ func configurePortByEnv(conf *Config) error {
 	return nil
 }
 
-func configureXfhByEnv(conf *Config) {
+func configureXfhByEnv(conf *HTTPConfig) {
 	switch os.Getenv(envXFH) {
 	case "true":
 		conf.UseXFH = true

@@ -22,30 +22,35 @@ type ServerMux struct {
 	Mux    *Mux
 }
 
-// Config represents the configuration of the ingress HTTP server.
-type Config struct {
-	ConfigFile        string
-	HCL               *config.Gateway
-	IdleTimeout       time.Duration
-	Lookups           Ports // map[<port:string>][<host:string>]*ServerMux
-	ReadHeaderTimeout time.Duration
-	ListenPort        int
-	UseXFH            bool
-	WorkDir           string
+// HTTPConfig represents the configuration of the ingress HTTP server.
+type HTTPConfig struct {
+	ConfigFile string
+	HCL        *config.Gateway
+	ListenPort int
+	Lookups    Ports // map[<port:string>][<host:string>]*ServerMux
+	Timings    HTTPTimings
+	UseXFH     bool
+	WorkDir    string
+}
+
+type HTTPTimings struct {
+	IdleTimeout, ReadHeaderTimeout time.Duration
 }
 
 // DefaultConfig sets some defaults for the ingress HTTP server.
-var DefaultConfig = &Config{
-	ConfigFile:        "couper.hcl",
-	IdleTimeout:       time.Second * 60,
-	ReadHeaderTimeout: time.Second * 10,
-	ListenPort:        8080,
-	UseXFH:            false,
-	WorkDir:           "",
+var DefaultConfig = &HTTPConfig{
+	ConfigFile: "couper.hcl",
+	Timings: HTTPTimings{
+		IdleTimeout:       time.Second * 60,
+		ReadHeaderTimeout: time.Second * 10,
+	},
+	ListenPort: 8080,
+	UseXFH:     false,
+	WorkDir:    "",
 }
 
 // Configure configurates the ingress HTTP server.
-func Configure(conf *Config, logger *logrus.Entry) {
+func Configure(conf *HTTPConfig, logger *logrus.Entry) {
 	if conf == nil {
 		return
 	}
@@ -63,7 +68,7 @@ func Configure(conf *Config, logger *logrus.Entry) {
 	}
 }
 
-func configureWorkDir(conf *Config) error {
+func configureWorkDir(conf *HTTPConfig) error {
 	err := os.Chdir(filepath.Dir(conf.ConfigFile))
 	if err != nil {
 		return err
@@ -77,7 +82,7 @@ func configureWorkDir(conf *Config) error {
 	return nil
 }
 
-func readHCL(conf *Config) error {
+func readHCL(conf *HTTPConfig) error {
 	if conf.ConfigFile == "" {
 		return nil // For test cases
 	}
