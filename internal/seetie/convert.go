@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,6 +46,14 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 		}
 	}
 	return result, nil
+}
+
+func ValuesMapToValue(m url.Values) cty.Value {
+	result := make(map[string]interface{})
+	for k, v := range m {
+		result[k] = v
+	}
+	return MapToValue(result)
 }
 
 func MapToValue(m map[string]interface{}) cty.Value {
@@ -125,16 +134,22 @@ func ValueToString(v cty.Value) string {
 	}
 }
 
+func SliceToString(sl []interface{}) string {
+	var str []string
+	for _, s := range sl {
+		if result := ToString(s); result != "" {
+			str = append(str, result)
+		}
+	}
+	return strings.Join(str, ",")
+}
+
 func ToString(s interface{}) string {
 	switch s.(type) {
+	case []string:
+		return strings.Join(s.([]string), ",")
 	case []interface{}:
-		var str []string
-		for _, s := range s.([]interface{}) {
-			if result := ToString(s); result != "" {
-				str = append(str, result)
-			}
-		}
-		return strings.Join(str, ",")
+		return SliceToString(s.([]interface{}))
 	case string:
 		return s.(string)
 	case int:
@@ -147,8 +162,8 @@ func ToString(s interface{}) string {
 		}
 		return "true"
 	default:
-		return ""
 	}
+	return ""
 }
 
 // isTuple checks by type name since tuple is not comparable by type.

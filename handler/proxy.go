@@ -131,24 +131,23 @@ func (p *Proxy) modifyResponse(res *http.Response) error {
 }
 
 func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
-	var reqCtx context.Context
-	var attrCtx string
-	var headerCtx http.Header
-	if req != nil {
-		reqCtx = req.Context()
-		headerCtx = req.Header
-		attrCtx = attrReqHeaders
-	} else if beresp != nil {
-		reqCtx = beresp.Request.Context()
-		headerCtx = beresp.Header
+	var (
+		attrCtx   = attrReqHeaders
+		bereq     *http.Request
+		headerCtx http.Header
+	)
+
+	if beresp != nil {
 		attrCtx = attrResHeaders
+		bereq = beresp.Request
+		headerCtx = beresp.Header
+	} else if req != nil {
+		headerCtx = req.Header
 	}
-	log := p.log.WithField("uid", reqCtx.Value(runtime.RequestID))
-	var fields []string
 
-	evalCtx := eval.NewHTTPContext(p.evalContext, req, beresp)
+	evalCtx := eval.NewHTTPContext(p.evalContext, req, bereq, beresp)
 
-	// Remove blacklisted headers after evaluation to be accessable within our context configuration.
+	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
 	if attrCtx == attrReqHeaders {
 		for _, key := range headerBlacklist {
 			headerCtx.Del(key)
@@ -158,18 +157,9 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	for _, ctxBody := range p.options.Context {
 		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
 		if err != nil {
-			log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
-			return
+			p.log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		}
-		fields = append(fields, setFields(headerCtx, options)...)
-	}
-
-	logKey := "custom-req-header"
-	if len(fields) > 0 {
-		if beresp != nil {
-			logKey = "custom-res-header"
-		}
-		log.WithField(logKey, fields).Debug()
+		setHeaderFields(headerCtx, options)
 	}
 }
 
@@ -177,10 +167,9 @@ func (p *Proxy) String() string {
 	return "Proxy"
 }
 
-func setFields(header http.Header, options OptionsMap) []string {
-	var fields []string
+func setHeaderFields(header http.Header, options OptionsMap) {
 	if len(options) == 0 {
-		return fields
+		return
 	}
 
 	for key, value := range options {
@@ -190,7 +179,5 @@ func setFields(header http.Header, options OptionsMap) []string {
 		}
 		k := http.CanonicalHeaderKey(key)
 		header[k] = value
-		fields = append(fields, k+": "+strings.Join(value, ","))
 	}
-	return fields
 }

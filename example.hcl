@@ -91,7 +91,7 @@ definitions {
                 req.ctx.jwtio.name,
                 req.ctx.jwtio.sub,
             ]
-            x-uuid = req.id
+            x-vars = [req.id, req.method, req.endpoint, req.path, req.url]
         }
     }
 

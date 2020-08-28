@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -19,6 +20,20 @@ import (
 	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
+type Roundtrip interface {
+	Context() context.Context
+	Cookies() []*http.Cookie
+}
+
+type ContextMap map[string]cty.Value
+
+func (m ContextMap) Merge(other ContextMap) ContextMap {
+	for k, v := range other {
+		m[k] = v
+	}
+	return m
+}
+
 func NewENVContext(src []byte) *hcl.EvalContext {
 	envKeys := decodeEnvironmentRefs(src)
 	variables := make(map[string]cty.Value)
@@ -30,19 +45,47 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, req *http.Request, beresp *http.Response) *hcl.EvalContext {
-	ctx := cloneContext(baseCtx)
-	if req != nil {
-		ctx.Variables["req"] = newVariable(req.Context(), req.Cookies(), req.Header)
+func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
+	if req == nil {
+		return baseCtx
 	}
+	evalCtx := cloneContext(baseCtx)
+	httpCtx := req.Context()
+
+	reqCtxMap := ContextMap{}
+	if endpoint, ok := httpCtx.Value(runtime.Endpoint).(string); ok {
+		reqCtxMap["endpoint"] = cty.StringVal(endpoint)
+	}
+
+	var id string
+	if uid, ok := httpCtx.Value(runtime.RequestID).(string); ok {
+		id = uid
+	}
+
+	evalCtx.Variables["req"] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
+		"id":     cty.StringVal(id),
+		"method": cty.StringVal(req.Method),
+		"path":   cty.StringVal(req.URL.Path),
+		"url":    cty.StringVal(req.URL.String()),
+		"query":  seetie.ValuesMapToValue(req.URL.Query()),
+		"post":   seetie.ValuesMapToValue(req.PostForm),
+	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
-		bereq := beresp.Request
-		ctx.Variables["bereq"] = newVariable(bereq.Context(), bereq.Cookies(), bereq.Header)
-		ctx.Variables["beresp"] = newVariable(bereq.Context(), beresp.Cookies(), beresp.Header)
+		evalCtx.Variables["bereq"] = cty.ObjectVal(ContextMap{
+			"method": cty.StringVal(bereq.Method),
+			"path":   cty.StringVal(bereq.URL.Path),
+			"url":    cty.StringVal(bereq.URL.String()),
+			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
+			"post":   seetie.ValuesMapToValue(bereq.PostForm),
+		}.
+			Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
+		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
+			"status": cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
 	}
 
-	return ctx
+	return evalCtx
 }
 
 func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
@@ -61,7 +104,10 @@ func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
 	return c
 }
 
-func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) cty.Value {
+func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) ContextMap {
+	if ctx == nil {
+		return nil
+	}
 	jwtClaims, _ := ctx.Value(ac.ContextAccessControlKey).(map[string]interface{})
 	ctxAcMap := make(map[string]cty.Value)
 	for name, data := range jwtClaims {
@@ -78,16 +124,11 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 		ctxAcMapValue = cty.MapValEmpty(cty.String)
 	}
 
-	var id string
-	if i, ok := ctx.Value(runtime.RequestID).(string); ok {
-		id = i
-	}
-	return cty.ObjectVal(map[string]cty.Value{
+	return map[string]cty.Value{
 		"ctx":     ctxAcMapValue,
 		"cookies": seetie.CookiesToMapValue(cookies),
 		"headers": seetie.HeaderToMapValue(headers),
-		"id":      cty.StringVal(id),
-	})
+	}
 }
 
 func newCtyEnvMap(envKeys []string) cty.Value {

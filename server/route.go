@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 )
 
 var (
@@ -125,6 +126,7 @@ func (m routesMap) Match(domain string, req *http.Request) (http.Handler, bool) 
 			continue
 		}
 		if h := route.Match(req); h != nil {
+			*req = *req.WithContext(context.WithValue(req.Context(), runtime.Endpoint, route.pattern))
 			return h, true
 		}
 	}
