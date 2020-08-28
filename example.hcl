@@ -93,6 +93,12 @@ definitions {
             ]
             x-vars = [req.id, req.method, req.endpoint, req.path, req.url]
         }
+
+        response_headers = {
+            uuid = req.id
+            bereq-path = bereq.path
+            status = beresp.status
+        }
     }
 
     jwt "jwtio" {
