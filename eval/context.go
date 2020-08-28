@@ -62,20 +62,24 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 		id = uid
 	}
 
+	rawUrl := *req.URL
+	rawUrl.RawQuery = ""
 	evalCtx.Variables["req"] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
 		"id":     cty.StringVal(id),
 		"method": cty.StringVal(req.Method),
 		"path":   cty.StringVal(req.URL.Path),
-		"url":    cty.StringVal(req.URL.String()),
+		"url":    cty.StringVal(rawUrl.String()),
 		"query":  seetie.ValuesMapToValue(req.URL.Query()),
 		"post":   seetie.ValuesMapToValue(req.PostForm),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
+		rawUrl = *req.URL
+		rawUrl.RawQuery = ""
 		evalCtx.Variables["bereq"] = cty.ObjectVal(ContextMap{
 			"method": cty.StringVal(bereq.Method),
 			"path":   cty.StringVal(bereq.URL.Path),
-			"url":    cty.StringVal(bereq.URL.String()),
+			"url":    cty.StringVal(rawUrl.String()),
 			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
 			"post":   seetie.ValuesMapToValue(bereq.PostForm),
 		}.
