@@ -18,7 +18,7 @@ var (
 )
 
 const (
-	wildcardReplacement = "/?(.*)"
+	wildcardReplacement = "(:?$|/(.*))"
 	wildcardSearch      = "/**"
 )
 
