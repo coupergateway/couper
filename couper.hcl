@@ -46,13 +46,13 @@ server "couperConnect" {
         }
 
         endpoint "/httpbin/**" {
-            backend "my_proxy" {
+            backend "httpbin" {
                 path = "/**"
 
                 request_headers = {
                     x-env-user = ["override-user"]
                     x-single-val = 12+14
-                    user-agent = "moo"
+                    user-agent = ""
                     x-uuid = req.id
                 }
             }

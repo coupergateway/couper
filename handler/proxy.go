@@ -367,11 +367,11 @@ func setHeaderFields(header http.Header, options OptionsMap) {
 	}
 
 	for key, value := range options {
-		if len(value) == 0 || value[0] == "" {
-			header.Del(key)
+		k := http.CanonicalHeaderKey(key)
+		if (len(value) == 0 || value[0] == "") && k != "User-Agent" {
+			header.Del(k)
 			continue
 		}
-		k := http.CanonicalHeaderKey(key)
 		header[k] = value
 	}
 }
