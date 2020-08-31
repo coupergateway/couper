@@ -8,4 +8,5 @@ require (
 	github.com/rs/xid v1.2.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/zclconf/go-cty v1.2.0
+	golang.org/x/net v0.0.0-20200822124328-c89045814202
 )

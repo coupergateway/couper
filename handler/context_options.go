@@ -2,8 +2,6 @@ package handler
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/zclconf/go-cty/cty"
-
 	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
 
@@ -34,40 +32,21 @@ func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (Op
 
 func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, hcl.Diagnostics) {
 	options := make(OptionsMap)
-	var diags hcl.Diagnostics
-
-	emap, mapDiags := hcl.ExprMap(attr.Expr)
-	diags = append(diags, mapDiags...)
-	for i := range emap {
-		val, valDiags := emap[i].Value.Value(evalCtx)
-		diags = append(diags, valDiags...)
-		key, keyDiags := emap[i].Key.Value(evalCtx)
-		diags = append(diags, keyDiags...)
-		if key.Type() != cty.String {
-			diags = append(diags, &hcl.Diagnostic{
-				Context:     &attr.Range,
-				Detail:      "key must be a string type",
-				EvalContext: evalCtx,
-				Expression:  emap[i].Key,
-				Severity:    hcl.DiagError,
-				Subject:     &attr.Range,
-				Summary:     "invalid key type",
-			})
-			return nil, diags
-		}
-		if val.Type().IsPrimitiveType() {
-			options[key.AsString()] = []string{seetie.ValueToString(val)}
-			continue
-		}
-		var values []string
-		for _, v := range val.AsValueSlice() {
-			if str := seetie.ValueToString(v); str != "" {
-				values = append(values, str)
-			}
-		}
-		options[key.AsString()] = values
+	expMap, diags := seetie.ExpToMap(evalCtx, attr.Expr)
+	if diags.HasErrors() {
+		return nil, diags
 	}
-	return options, diags
+
+	for key, val :=range expMap {
+		switch val.(type) {
+		case string:
+			options[key] = []string{val.(string)}
+			continue
+		case []string:
+			options[key] = val.([]string)
+		}
+	}
+	return options, nil
 }
 
 const (

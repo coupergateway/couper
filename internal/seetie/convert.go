@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,9 +15,15 @@ import (
 
 var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
 
-func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) map[string]interface{} {
-	val, _ := exp.Value(ctx)
+func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{}, hcl.Diagnostics) {
+	val, diags := exp.Value(ctx)
+	if setSeverityLevel(diags).HasErrors() {
+		return nil, filterErrors(diags)
+	}
 	result := make(map[string]interface{})
+	if val.IsNull() {
+		return result, nil
+	}
 
 	for k, v := range val.AsValueMap() {
 		switch v.Type() {
@@ -30,14 +37,23 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) map[string]interface{} {
 			f, _ := v.AsBigFloat().Float64()
 			result[k] = f
 		default:
-			if v.Type().FriendlyNameForConstraint() == "tuple" { // tuple is not comparable by type
+			if isTuple(v) {
 				result[k] = toStringSlice(v)
 				continue
 			}
-			result[k] = v
+			// unknown types results in empty string which gets removed later on
+			result[k] = ""
 		}
 	}
-	return result
+	return result, nil
+}
+
+func ValuesMapToValue(m url.Values) cty.Value {
+	result := make(map[string]interface{})
+	for k, v := range m {
+		result[k] = v
+	}
+	return MapToValue(result)
 }
 
 func MapToValue(m map[string]interface{}) cty.Value {
@@ -86,7 +102,10 @@ func CookiesToMapValue(cookies []*http.Cookie) cty.Value {
 func toStringSlice(src cty.Value) []string {
 	var l []string
 	for _, s := range src.AsValueSlice() {
-		l = append(l, s.AsString())
+		if !s.IsKnown() {
+			continue
+		}
+		l = append(l, ValueToString(s))
 	}
 	return l
 }
@@ -115,8 +134,22 @@ func ValueToString(v cty.Value) string {
 	}
 }
 
+func SliceToString(sl []interface{}) string {
+	var str []string
+	for _, s := range sl {
+		if result := ToString(s); result != "" {
+			str = append(str, result)
+		}
+	}
+	return strings.Join(str, ",")
+}
+
 func ToString(s interface{}) string {
 	switch s.(type) {
+	case []string:
+		return strings.Join(s.([]string), ",")
+	case []interface{}:
+		return SliceToString(s.([]interface{}))
 	case string:
 		return s.(string)
 	case int:
@@ -129,6 +162,28 @@ func ToString(s interface{}) string {
 		}
 		return "true"
 	default:
-		return ""
 	}
+	return ""
+}
+
+// isTuple checks by type name since tuple is not comparable by type.
+func isTuple(v cty.Value) bool {
+	return v.Type().FriendlyNameForConstraint() == "tuple"
+}
+
+func setSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
+	for _, d := range diags {
+		if d.Summary == "Missing map element" {
+			d.Severity = hcl.DiagWarning
+		}
+	}
+	return diags
+}
+
+func filterErrors(diags hcl.Diagnostics) hcl.Diagnostics {
+	var errs hcl.Diagnostics
+	for _, err := range diags.Errs() {
+		errs = append(errs, err.(*hcl.Diagnostic))
+	}
+	return errs
 }
