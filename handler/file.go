@@ -89,7 +89,7 @@ func (f *File) HasResponse(req *http.Request) bool {
 	if err != nil {
 		return false
 	}
-	defer file.Close()
+	file.Close()
 
 	return true
 }
