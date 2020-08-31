@@ -115,7 +115,8 @@ func (p *Proxy) director(req *http.Request) {
 		req.Host = p.options.Hostname
 	}
 
-	if pathMatch, ok := req.Context().Value(config.WildcardCtxKey).(string); ok && p.options.Path != "" {
+	if pathMatch, ok := req.Context().
+		Value(config.WildcardCtxKey).(string); ok && strings.HasSuffix(p.options.Path, "/**") {
 		req.URL.Path = path.Join(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
 	} else if p.options.Path != "" {
 		req.URL.Path = p.options.Path
