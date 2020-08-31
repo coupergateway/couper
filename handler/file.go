@@ -80,6 +80,11 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 func (f *File) HasResponse(req *http.Request) bool {
 	reqPath := f.removeBasePath(req.URL.Path)
 
+	// Handling dir / only makes sense if index.html exists
+	if reqPath == "/" {
+		reqPath = path.Join(reqPath, dirIndexFile)
+	}
+
 	file, _, err := f.openDocRootFile(reqPath)
 	if err != nil {
 		return false
