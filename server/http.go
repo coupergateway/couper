@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/request"
 	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/errors"
 )
@@ -115,7 +116,7 @@ func (s *HTTPServer) listenForCtx() {
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := s.uidFn()
-	ctx := context.WithValue(req.Context(), runtime.RequestID, uid)
+	ctx := context.WithValue(req.Context(), request.RequestID, uid)
 	*req = *req.WithContext(ctx)
 
 	req.Header.Set("X-Request-Id", uid)

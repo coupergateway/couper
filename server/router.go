@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/request"
 	"go.avenga.cloud/couper/gateway/config/runtime"
 )
 
@@ -32,7 +33,7 @@ func (r *Router) Match(req *http.Request) (http.Handler, bool) {
 			continue
 		}
 		if h := r.match(req, route); h != nil {
-			*req = *req.WithContext(context.WithValue(req.Context(), runtime.Endpoint, route.Name()))
+			*req = *req.WithContext(context.WithValue(req.Context(), request.Endpoint, route.Name()))
 			return h, true
 		}
 	}

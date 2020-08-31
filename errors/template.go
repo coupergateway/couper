@@ -9,7 +9,7 @@ import (
 	"text/template"
 
 	"go.avenga.cloud/couper/gateway/assets"
-	"go.avenga.cloud/couper/gateway/config/runtime"
+	"go.avenga.cloud/couper/gateway/config/request"
 )
 
 var (
@@ -73,7 +73,7 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 		}
 
 		var reqID string
-		if r, ok := req.Context().Value(runtime.RequestID).(string); ok {
+		if r, ok := req.Context().Value(request.RequestID).(string); ok {
 			reqID = r // could be nil within (unit) test cases
 		}
 		data := map[string]interface{}{
