@@ -25,9 +25,10 @@ type ServerMux struct {
 
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {
-	ListenPort int `env:"port"`
+	ListenPort int    `env:"port"`
+	LogFormat  string `env:"log_format"`
+	UseXFH     bool   `env:"xfh"`
 	Timings    HTTPTimings
-	UseXFH     bool `env:"xfh"`
 }
 
 type HTTPTimings struct {
@@ -45,8 +46,9 @@ var DefaultConfig = &HTTPConfig{
 }
 
 var (
-	flagPort = flag.Int("p", DefaultConfig.ListenPort, "-p 8080")
-	flagXFH  = flag.Bool("xfh", DefaultConfig.UseXFH, "-xfh")
+	flagPort      = flag.Int("p", DefaultConfig.ListenPort, "-p 8080")
+	flagXFH       = flag.Bool("xfh", DefaultConfig.UseXFH, "-xfh")
+	flagLogFormat = flag.String("log-format", "default", "-log-format json")
 )
 
 func NewHTTPConfig() *HTTPConfig {
@@ -57,6 +59,7 @@ func NewHTTPConfig() *HTTPConfig {
 	conf := *DefaultConfig
 	conf.UseXFH = *flagXFH
 	conf.ListenPort = *flagPort
+	conf.LogFormat = *flagLogFormat
 
 	env.Decode(&conf)
 	return &conf

@@ -19,5 +19,6 @@ COPY --from=builder /couper /couper
 COPY --from=builder /conf /conf
 EXPOSE 8080
 WORKDIR /conf
+ENV COUPER_LOG_FORMAT=json
 USER 1000:1000
 ENTRYPOINT ["/couper"]

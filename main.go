@@ -18,11 +18,8 @@ import (
 var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
 
 func main() {
-	if !flag.Parsed() {
-		flag.Parse()
-	}
-
-	logger := newLogger()
+	httpConf := runtime.NewHTTPConfig()
+	logger := newLogger(httpConf)
 	if err := runtime.SetWorkingDirectory(*configFile); err != nil {
 		logger.Fatal(err)
 	}
@@ -35,7 +32,6 @@ func main() {
 		logger.Error(err)
 	}
 
-	httpConf := runtime.NewHTTPConfig()
 	ports := runtime.NewPorts(gatewayConf, httpConf, logger)
 
 	ctx := command.ContextWithSignal(context.Background())
@@ -45,13 +41,15 @@ func main() {
 	<-ctx.Done() // TODO: shutdown deadline
 }
 
-func newLogger() *logrus.Entry {
+func newLogger(conf *runtime.HTTPConfig) *logrus.Entry {
 	logger := logrus.New()
 	logger.Out = os.Stdout
-	logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
-		logrus.FieldKeyTime: "timestamp",
-		logrus.FieldKeyMsg:  "message",
-	}}
+	if conf.LogFormat == "json" {
+		logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
+			logrus.FieldKeyTime: "timestamp",
+			logrus.FieldKeyMsg:  "message",
+		}}
+	}
 	logger.Level = logrus.DebugLevel
 	return logger.WithField("type", "couper")
 }

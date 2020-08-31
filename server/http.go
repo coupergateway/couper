@@ -163,7 +163,6 @@ func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler
 		if _, ok := s.muxes["*"]; !ok {
 			return nil, nil
 		}
-
 		host = "*"
 	}
 
