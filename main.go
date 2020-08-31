@@ -16,7 +16,6 @@ import (
 
 func main() {
 	config := *runtime.DefaultConfig
-	logger := newLogger()
 
 	flag.StringVar(&config.ConfigFile, "f", runtime.DefaultConfig.ConfigFile, "-f ./couper.conf")
 	flag.IntVar(&config.ListenPort, "p", runtime.DefaultConfig.ListenPort, "-p 8080")
@@ -26,6 +25,7 @@ func main() {
 		flag.Parse()
 	}
 
+	logger := newLogger()
 	runtime.Configure(&config, logger)
 
 	ctx := command.ContextWithSignal(context.Background())

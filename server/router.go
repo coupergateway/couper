@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/config/request"
 	"go.avenga.cloud/couper/gateway/config/runtime"
 )
@@ -52,7 +51,7 @@ func (r *Router) match(req *http.Request, route *runtime.Route) http.Handler {
 		if route.HasWildcard() {
 			match := route.GetMatcher().FindStringSubmatch(req.URL.Path)
 			if len(match) > 1 {
-				*req = *req.WithContext(context.WithValue(req.Context(), config.WildcardCtxKey, match[1]))
+				*req = *req.WithContext(context.WithValue(req.Context(), request.Wildcard, match[1]))
 			}
 		}
 		return route.GetHandler()
