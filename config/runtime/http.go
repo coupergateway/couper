@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/env"
 )
 
 // Hosts represents the Hosts map.
@@ -26,15 +27,16 @@ type ServerMux struct {
 type HTTPConfig struct {
 	ConfigFile string
 	HCL        *config.Gateway
-	ListenPort int
-	Lookups    Ports // map[<port:string>][<host:string>]*ServerMux
+	ListenPort int `env:"port"`
+	Lookups    Ports
 	Timings    HTTPTimings
-	UseXFH     bool
+	UseXFH     bool `env:"xfh"`
 	WorkDir    string
 }
 
 type HTTPTimings struct {
-	IdleTimeout, ReadHeaderTimeout time.Duration
+	IdleTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
 }
 
 // DefaultConfig sets some defaults for the ingress HTTP server.
@@ -45,8 +47,6 @@ var DefaultConfig = &HTTPConfig{
 		ReadHeaderTimeout: time.Second * 10,
 	},
 	ListenPort: 8080,
-	UseXFH:     false,
-	WorkDir:    "",
 }
 
 // Configure configurates the ingress HTTP server.
@@ -55,9 +55,7 @@ func Configure(conf *HTTPConfig, logger *logrus.Entry) {
 		return
 	}
 
-	if err := undateByENV(conf); err != nil {
-		logger.Fatal(err)
-	}
+	env.Decode(conf)
 
 	if err := configureWorkDir(conf); err != nil {
 		logger.Fatal(err)
