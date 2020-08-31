@@ -30,12 +30,10 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig) []*HTTPServer {
-	runtime.ConfigureHCL(conf, logger)
-
+func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, ports runtime.Ports) []*HTTPServer {
 	var list []*HTTPServer
 
-	for port, hosts := range conf.Lookups {
+	for port, hosts := range ports {
 		list = append(list, New(cmdCtx, logger, conf, port, hosts))
 	}
 

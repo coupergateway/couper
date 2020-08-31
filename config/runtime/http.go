@@ -1,11 +1,11 @@
 package runtime
 
 import (
+	"flag"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
-
-	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/config/env"
@@ -25,13 +25,9 @@ type ServerMux struct {
 
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {
-	ConfigFile string
-	HCL        *config.Gateway
 	ListenPort int `env:"port"`
-	Lookups    Ports
 	Timings    HTTPTimings
 	UseXFH     bool `env:"xfh"`
-	WorkDir    string
 }
 
 type HTTPTimings struct {
@@ -41,7 +37,6 @@ type HTTPTimings struct {
 
 // DefaultConfig sets some defaults for the ingress HTTP server.
 var DefaultConfig = &HTTPConfig{
-	ConfigFile: "couper.hcl",
 	Timings: HTTPTimings{
 		IdleTimeout:       time.Second * 60,
 		ReadHeaderTimeout: time.Second * 10,
@@ -49,48 +44,30 @@ var DefaultConfig = &HTTPConfig{
 	ListenPort: 8080,
 }
 
-// Configure configurates the ingress HTTP server.
-func Configure(conf *HTTPConfig, logger *logrus.Entry) {
-	if conf == nil {
-		return
+var (
+	flagPort = flag.Int("p", DefaultConfig.ListenPort, "-p 8080")
+	flagXFH  = flag.Bool("xfh", DefaultConfig.UseXFH, "-xfh")
+)
+
+func NewHTTPConfig() *HTTPConfig {
+	if !flag.Parsed() {
+		flag.Parse()
 	}
 
-	env.Decode(conf)
+	conf := *DefaultConfig
+	conf.UseXFH = *flagXFH
+	conf.ListenPort = *flagPort
 
-	if err := configureWorkDir(conf); err != nil {
-		logger.Fatal(err)
-	}
-
-	if err := readHCL(conf); err != nil {
-		logger.Fatal(err)
-	}
+	env.Decode(&conf)
+	return &conf
 }
 
-func configureWorkDir(conf *HTTPConfig) error {
-	err := os.Chdir(filepath.Dir(conf.ConfigFile))
+func SetWorkingDirectory(configFile string) error {
+	currentWD, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	conf.WorkDir, err = os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func readHCL(conf *HTTPConfig) error {
-	if conf.ConfigFile == "" {
-		return nil // For test cases
-	}
-
-	hcl, err := config.LoadFile(conf.ConfigFile)
-	if err != nil {
-		return err
-	}
-
-	conf.HCL = hcl
-
-	return nil
+	couperWD := path.Join(currentWD, filepath.Dir(configFile))
+	return os.Chdir(couperWD)
 }

@@ -10,26 +10,36 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/command"
+	"go.avenga.cloud/couper/gateway/config"
 	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/server"
 )
 
+var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
+
 func main() {
-	config := *runtime.DefaultConfig
-
-	flag.StringVar(&config.ConfigFile, "f", runtime.DefaultConfig.ConfigFile, "-f ./couper.conf")
-	flag.IntVar(&config.ListenPort, "p", runtime.DefaultConfig.ListenPort, "-p 8080")
-	flag.BoolVar(&config.UseXFH, "xfh", runtime.DefaultConfig.UseXFH, "-xfh")
-
 	if !flag.Parsed() {
 		flag.Parse()
 	}
 
 	logger := newLogger()
-	runtime.Configure(&config, logger)
+	if err := runtime.SetWorkingDirectory(*configFile); err != nil {
+		logger.Fatal(err)
+	}
+
+	wd, _ := os.Getwd()
+	logger.WithField("working-directory", wd).Info()
+
+	gatewayConf, err := config.LoadFile(*configFile)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	httpConf := runtime.NewHTTPConfig()
+	ports := runtime.NewPorts(gatewayConf, httpConf, logger)
 
 	ctx := command.ContextWithSignal(context.Background())
-	for _, srv := range server.NewServerList(ctx, logger, &config) {
+	for _, srv := range server.NewServerList(ctx, logger, httpConf, ports) {
 		srv.Listen()
 	}
 	<-ctx.Done() // TODO: shutdown deadline

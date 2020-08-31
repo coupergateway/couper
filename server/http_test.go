@@ -50,31 +50,27 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := *runtime.DefaultConfig
-	conf.ConfigFile = ""
-	runtime.Configure(&conf, log.WithContext(nil))
+	httpConf := runtime.NewHTTPConfig()
 
-	hcl, err := config.LoadBytes(confBytes.Bytes())
-	if err != nil {
-		t.Fatal(err)
-	}
-	conf.HCL = hcl
-
-	runtime.ConfigureHCL(&conf, log.WithContext(nil))
-
-	errorPageContent, err := ioutil.ReadFile(conf.HCL.Server[0].Files.ErrorFile)
+	conf, err := config.LoadBytes(confBytes.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	spaContent, err := ioutil.ReadFile(conf.HCL.Server[0].Spa.BootstrapFile)
+	ports := runtime.NewPorts(conf, httpConf, log.WithContext(nil))
+
+	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	port := fmt.Sprintf("%d", conf.ListenPort)
+	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	gw := server.New(ctx, log.WithContext(ctx), &conf, port, conf.Lookups[port])
+	port := fmt.Sprintf("%d", httpConf.ListenPort)
+	gw := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
 	gw.Listen()
 	defer gw.Close()
 
@@ -153,25 +149,23 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := *runtime.DefaultConfig
-	conf.ConfigFile = ""
-	runtime.Configure(&conf, log.WithContext(nil))
+	httpConf := runtime.NewHTTPConfig()
 
-	hcl, err := config.LoadBytes(confBytes.Bytes())
-	if err != nil {
-		t.Fatal(err)
-	}
-	conf.HCL = hcl
-	runtime.ConfigureHCL(&conf, log.WithContext(nil))
-
-	spaContent, err := ioutil.ReadFile(conf.HCL.Server[0].Spa.BootstrapFile)
+	conf, err := config.LoadBytes(confBytes.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	port := fmt.Sprintf("%d", conf.ListenPort)
+	ports := runtime.NewPorts(conf, httpConf, log.WithContext(nil))
 
-	couper := server.New(ctx, log.WithContext(ctx), &conf, port, conf.Lookups[port])
+	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	port := fmt.Sprintf("%d", httpConf.ListenPort)
+
+	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
 	couper.Listen()
 	defer couper.Close()
 

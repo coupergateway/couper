@@ -35,10 +35,10 @@ const (
 
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
-// ConfigureHCL sets defaults and validates the given gateway configuration.
+// NewPorts sets defaults and validates the given gateway configuration.
 // Creates all configured endpoint HTTP handler.
-func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
-	if len(conf.HCL.Server) == 0 {
+func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Ports {
+	if len(conf.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}
 
@@ -50,8 +50,8 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 	backends := make(map[string]backendDefinition)
 	ph := &pathHandler{api: make(map[*config.Endpoint]http.Handler)}
 
-	if conf.HCL.Definitions != nil {
-		for _, beConf := range conf.HCL.Definitions.Backend {
+	if conf.Definitions != nil {
+		for _, beConf := range conf.Definitions.Backend {
 			if _, ok := backends[beConf.Name]; ok {
 				log.Fatalf("backend name must be unique: '%s'", beConf.Name)
 			}
@@ -78,7 +78,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 				Path:           beConf.Path,
 				Timeout:        t,
 				TTFBTimeout:    ttfbt,
-			}, log, conf.HCL.Context)
+			}, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -89,12 +89,11 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 		}
 	}
 
-	accessControls := configureAccessControls(conf.HCL)
+	accessControls := configureAccessControls(conf)
 
-	var err error
-	conf.Lookups = make(Ports, 0)
+	ports := make(Ports, 0)
 
-	for idx, server := range conf.HCL.Server {
+	for idx, server := range conf.Server {
 		configureBasePathes(server)
 
 		mux := &Mux{
@@ -102,20 +101,25 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 			FSErrTpl:  errors.DefaultHTML,
 		}
 
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		if server.Files != nil {
 			if server.Files.ErrorFile != "" {
-				if mux.FSErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.Files.ErrorFile)); err != nil {
+				if mux.FSErrTpl, err = errors.NewTemplateFromFile(path.Join(wd, server.Files.ErrorFile)); err != nil {
 					log.Fatal(err)
 				}
 			}
-			ph.files = handler.NewFile(conf.WorkDir, server.Files.BasePath, server.Files.DocumentRoot, mux.FSErrTpl)
+			ph.files = handler.NewFile(wd, server.Files.BasePath, server.Files.DocumentRoot, mux.FSErrTpl)
 			ph.files = configureProtectedHandler(accessControls, mux.FSErrTpl,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
 				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), ph.files)
 		}
 
 		if server.Spa != nil {
-			ph.spa = handler.NewSpa(conf.WorkDir, server.Spa.BootstrapFile)
+			ph.spa = handler.NewSpa(wd, server.Spa.BootstrapFile)
 			ph.spa = configureProtectedHandler(accessControls, errors.DefaultHTML,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
 				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), ph.spa)
@@ -160,8 +164,9 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 		}
 
 		if server.API == nil {
-			configureLookups(conf, server, mux, log)
-
+			if err = configureLookups(httpConf, server, mux, ports); err != nil {
+				log.Fatal(err)
+			}
 			continue
 		}
 
@@ -169,7 +174,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 		mux.APIPath = server.API.BasePath
 
 		if server.API.ErrorFile != "" {
-			if mux.APIErrTpl, err = errors.NewTemplateFromFile(path.Join(conf.WorkDir, server.API.ErrorFile)); err != nil {
+			if mux.APIErrTpl, err = errors.NewTemplateFromFile(path.Join(wd, server.API.ErrorFile)); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -177,7 +182,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.API.Endpoint {
-			conf.HCL.Server[idx].API.Endpoint[e].Server = server // assign parent
+			conf.Server[idx].API.Endpoint[e].Server = server // assign parent
 			if endpoints[endpoint.Pattern] {
 				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
 			}
@@ -199,7 +204,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 						Path:           beConf.Path,
 						Timeout:        t,
 						TTFBTimeout:    ttfbt,
-					}, log, conf.HCL.Context)
+					}, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -223,7 +228,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.HCL.Context, endpoint.InlineDefinition, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, log)
 			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
@@ -232,7 +237,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.HCL.Context, server.API.InlineDefinition, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -262,7 +267,7 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 					Path:           beConf.Path,
 					Timeout:        t,
 					TTFBTimeout:    ttfbt,
-				}, log, conf.HCL.Context)
+				}, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -279,8 +284,11 @@ func ConfigureHCL(conf *HTTPConfig, log *logrus.Entry) {
 			)
 		}
 
-		configureLookups(conf, server, mux, log)
+		if err = configureLookups(httpConf, server, mux, ports); err != nil {
+			log.Fatal(err)
+		}
 	}
+	return ports
 }
 
 func configureBasePathes(server *config.Server) {
@@ -310,7 +318,7 @@ func configureBasePathes(server *config.Server) {
 	}
 }
 
-func configureLookups(conf *HTTPConfig, server *config.Server, mux *Mux, log *logrus.Entry) {
+func configureLookups(conf *HTTPConfig, server *config.Server, mux *Mux, ports Ports) error {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
 		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
@@ -325,7 +333,7 @@ func configureLookups(conf *HTTPConfig, server *config.Server, mux *Mux, log *lo
 		} else {
 			h, p, err := net.SplitHostPort(hp)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			} else if p == "" {
 				p = fmt.Sprintf("%d", conf.ListenPort)
 			}
@@ -336,16 +344,17 @@ func configureLookups(conf *HTTPConfig, server *config.Server, mux *Mux, log *lo
 
 		// TODO: Check port range 0-65535 just here or let it crash on net.Listen()?
 
-		if _, ok := conf.Lookups[port]; !ok {
-			conf.Lookups[port] = make(Hosts, 0)
+		if _, ok := ports[port]; !ok {
+			ports[port] = make(Hosts, 0)
 		}
 
-		if _, ok := conf.Lookups[port][host]; ok {
-			log.Fatalf("Multiple <host:port> combination found: '%s:%s'", host, port)
+		if _, ok := ports[port][host]; ok {
+			return fmt.Errorf("multiple <host:port> combination found: '%s:%s'", host, port)
 		}
 
-		conf.Lookups[port][host] = &ServerMux{Server: server, Mux: mux}
+		ports[port][host] = &ServerMux{Server: server, Mux: mux}
 	}
+	return nil
 }
 
 func configureAccessControls(conf *config.Gateway) ac.Map {
