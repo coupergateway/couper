@@ -12,7 +12,9 @@ server "fileserving-tests" {
             "/dir/**",
             "/app/**",
             // api wins
-            "/api/**"
+            "/api/**",
+            // spa wins
+            "/"
         ]
     }
 

@@ -174,7 +174,8 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<title>404 FilesRouteNotFound</title>"), 404},
+		{"/", spaContent, 200},
+		{"/dirdoesnotexist", []byte("<title>404 FilesRouteNotFound</title>"), 404},
 		{"/dir", nil, 302},
 		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
 		{"/robots.txt", []byte("Disallow: /secret\n"), 200},
@@ -195,7 +196,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		}
 
 		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("Expected status %d, got %d", testCase.expectedStatus, res.StatusCode)
+			t.Errorf("Expected status for path %q %d, got %d", testCase.path, testCase.expectedStatus, res.StatusCode)
 		}
 
 		result := &bytes.Buffer{}
@@ -204,7 +205,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
-			t.Errorf("Expected body:\n%s\ngot:\n%s", string(testCase.expectedBody), result.String())
+			t.Errorf("Expected body for path %q:\n%s\ngot:\n%s", testCase.path, string(testCase.expectedBody), result.String())
 		}
 	}
 }
