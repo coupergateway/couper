@@ -79,7 +79,8 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				Path:           beConf.Path,
 				Timeout:        t,
 				TTFBTimeout:    ttfbt,
-			}, log, conf.Context)
+// TODO ist das nil ok so? wie kommt man hier sonst an die CORS-Konfiguration?
+			}, nil, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -186,7 +187,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 						Path:           beConf.Path,
 						Timeout:        t,
 						TTFBTimeout:    ttfbt,
-					}, log, conf.Context)
+					}, server.API.CORS, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -210,7 +211,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, server.API.CORS, log)
 			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
@@ -219,7 +220,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, server.API.CORS, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -249,7 +250,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 					Path:           beConf.Path,
 					Timeout:        t,
 					TTFBTimeout:    ttfbt,
-				}, log, conf.Context)
+				}, server.API.CORS, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -391,7 +392,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *config.Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry) (http.Handler, *config.Backend, error) {
 	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
@@ -424,7 +425,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 		Path:           beConf.Path,
 		Timeout:        t,
 		TTFBTimeout:    ttfbt,
-	}, log, evalCtx)
+	}, cors, log, evalCtx)
 	return proxy, beConf, err
 }
 

@@ -14,6 +14,13 @@ server "couperConnect" {
     api {
         base_path = "/api/v1/${env.NOT_EXIST}"
 
+        cors {
+            # allowed values: "*", "null", "origin1", ["origin1", ...]
+            allowed_origins = ["*"]
+            allow_credentials = true
+            max_age = "1h"
+        }
+
         # reference backend definition
         backend = "my_proxy"
 

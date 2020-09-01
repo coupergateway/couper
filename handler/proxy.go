@@ -17,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 )
@@ -34,6 +35,7 @@ var (
 
 type Proxy struct {
 	evalContext *hcl.EvalContext
+	cors        *config.CORS
 	log         *logrus.Entry
 	options     *ProxyOptions
 	originURL   *url.URL
@@ -46,7 +48,7 @@ type ProxyOptions struct {
 	Hostname, Origin, Path               string
 }
 
-func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+func NewProxy(options *ProxyOptions, cors *config.CORS, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -60,6 +62,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 
 	proxy := &Proxy{
 		evalContext: evalCtx,
+		cors:        cors,
 		log:         log,
 		options:     options,
 		originURL:   originURL,
@@ -95,6 +98,14 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		c, cancelFn := context.WithDeadline(req.Context(), deadline)
 		ctx = c
 		defer cancelFn()
+	}
+
+	if isCorsPreflightRequest(req) {
+		p.setCorsRespHeaders(rw.Header(), req)
+		// TODO Setting Content-Length has no effect. Why?
+		rw.Header().Set("Content-Length", "0")
+		rw.WriteHeader(http.StatusNoContent)
+		return
 	}
 
 	outreq := req.Clone(ctx)
@@ -247,6 +258,64 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 			p.log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
 		}
 		setHeaderFields(headerCtx, options)
+	}
+
+	if beresp != nil && isCorsRequest(req) {
+		p.setCorsRespHeaders(headerCtx, req)
+		if !isCorsPreflightRequest(req) && headerCtx.Get("Access-Control-Allow-Origin") != "*" {
+			headerCtx.Add("Vary", "Origin")
+		}
+	}
+}
+
+func isCorsRequest(req *http.Request) bool {
+	return req.Header.Get("Origin") != ""
+}
+
+func isCorsPreflightRequest(req *http.Request) bool {
+	return isCorsRequest(req) && req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
+}
+
+func (p *Proxy) isCredentialed(headers http.Header) bool {
+	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
+}
+
+func (p *Proxy) allowsWildcardOrigin() bool {
+	for _, a := range p.cors.AllowedOrigins {
+		if a == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
+	if p.allowsWildcardOrigin() && !p.isCredentialed(req.Header) {
+		headers.Set("Access-Control-Allow-Origin", "*")
+	} else {
+		headers.Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+	}
+	// Reflect request header value
+	acrm := req.Header.Get("Access-Control-Request-Method")
+	if acrm != "" {
+		headers.Set("Access-Control-Allow-Methods", acrm)
+	}
+	// Reflect request header value
+	acrh := req.Header.Get("Access-Control-Request-Headers")
+	if acrh != "" {
+		headers.Set("Access-Control-Allow-Headers", acrh)
+	}
+	if p.cors.AllowCredentials == true {
+		headers.Set("Access-Control-Allow-Credentials", "true")
+	}
+	if p.cors.MaxAge != "" {
+		// TODO Das sollte besser schon beim Einlesen konvertiert/geprüft werden
+		dur, err := time.ParseDuration(p.cors.MaxAge);
+		if (err != nil) {
+			p.log.Error(fmt.Errorf("Error parsing cors/max_age: %v", err))
+		} else {
+			headers.Set("Access-Control-Max-Age", fmt.Sprintf("%.0f", dur.Seconds()))
+		}
 	}
 }
 
