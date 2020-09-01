@@ -3,7 +3,6 @@ package runtime
 import (
 	"flag"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 
@@ -66,11 +65,5 @@ func NewHTTPConfig() *HTTPConfig {
 }
 
 func SetWorkingDirectory(configFile string) error {
-	currentWD, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	couperWD := path.Join(currentWD, filepath.Dir(configFile))
-	return os.Chdir(couperWD)
+	return os.Chdir(filepath.Dir(configFile))
 }

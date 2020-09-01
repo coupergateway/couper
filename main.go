@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"os"
+	"path"
 
 	"github.com/sirupsen/logrus"
 
@@ -27,7 +28,7 @@ func main() {
 	wd, _ := os.Getwd()
 	logger.WithField("working-directory", wd).Info()
 
-	gatewayConf, err := config.LoadFile(*configFile)
+	gatewayConf, err := config.LoadFile(path.Base(*configFile))
 	if err != nil {
 		logger.Fatal(err)
 	}
