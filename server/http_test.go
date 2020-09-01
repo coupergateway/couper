@@ -188,6 +188,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	}{
 		{"/", spaContent, 200},
 		{"/dirdoesnotexist", []byte("<title>404 FilesRouteNotFound</title>"), 404},
+		{"/dir:", []byte("<title>404 FilesRouteNotFound</title>"), 404},
 		{"/dir", nil, 302},
 		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
 		{"/robots.txt", []byte("Disallow: /secret\n"), 200},
