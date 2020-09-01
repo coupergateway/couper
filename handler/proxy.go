@@ -17,7 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
 
-	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/request"
 	"go.avenga.cloud/couper/gateway/eval"
 )
 
@@ -208,7 +208,7 @@ func (p *Proxy) director(req *http.Request) {
 	}
 
 	if pathMatch, ok := req.Context().
-		Value(config.WildcardCtxKey).(string); ok && strings.HasSuffix(p.options.Path, "/**") {
+		Value(request.Wildcard).(string); ok && strings.HasSuffix(p.options.Path, "/**") {
 		req.URL.Path = path.Join(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
 	} else if p.options.Path != "" {
 		req.URL.Path = p.options.Path
@@ -367,11 +367,11 @@ func setHeaderFields(header http.Header, options OptionsMap) {
 	}
 
 	for key, value := range options {
-		if len(value) == 0 || value[0] == "" {
-			header.Del(key)
+		k := http.CanonicalHeaderKey(key)
+		if (len(value) == 0 || value[0] == "") && k != "User-Agent" {
+			header.Del(k)
 			continue
 		}
-		k := http.CanonicalHeaderKey(key)
 		header[k] = value
 	}
 }

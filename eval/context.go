@@ -16,7 +16,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/config/runtime"
+	"go.avenga.cloud/couper/gateway/config/request"
 	"go.avenga.cloud/couper/gateway/eval/lib"
 	"go.avenga.cloud/couper/gateway/internal/seetie"
 )
@@ -54,12 +54,12 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 	httpCtx := req.Context()
 
 	reqCtxMap := ContextMap{}
-	if endpoint, ok := httpCtx.Value(runtime.Endpoint).(string); ok {
+	if endpoint, ok := httpCtx.Value(request.Endpoint).(string); ok {
 		reqCtxMap["endpoint"] = cty.StringVal(endpoint)
 	}
 
 	var id string
-	if uid, ok := httpCtx.Value(runtime.RequestID).(string); ok {
+	if uid, ok := httpCtx.Value(request.RequestID).(string); ok {
 		id = uid
 	}
 
