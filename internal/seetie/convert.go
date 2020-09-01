@@ -32,13 +32,13 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 		case cty.String:
 			result[k] = v.AsString()
 		case cty.List(cty.String):
-			result[k] = toStringSlice(v)
+			result[k] = ValueToStringSlice(v)
 		case cty.Number:
 			f, _ := v.AsBigFloat().Float64()
 			result[k] = f
 		default:
 			if isTuple(v) {
-				result[k] = toStringSlice(v)
+				result[k] = ValueToStringSlice(v)
 				continue
 			}
 			// unknown types results in empty string which gets removed later on
@@ -99,13 +99,20 @@ func CookiesToMapValue(cookies []*http.Cookie) cty.Value {
 	return cty.MapVal(ctyMap)
 }
 
-func toStringSlice(src cty.Value) []string {
+func ValueToStringSlice(src cty.Value) []string {
 	var l []string
-	for _, s := range src.AsValueSlice() {
-		if !s.IsKnown() {
-			continue
+	switch src.Type() {
+	case cty.NilType:
+		return l
+	case cty.Bool, cty.Number, cty.String:
+		return append(l, ValueToString(src))
+	default:
+		for _, s := range src.AsValueSlice() {
+			if !s.IsKnown() {
+				continue
+			}
+			l = append(l, ValueToString(s))
 		}
-		l = append(l, ValueToString(s))
 	}
 	return l
 }
