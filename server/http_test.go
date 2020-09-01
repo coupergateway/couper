@@ -3,18 +3,21 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"text/template"
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/server"
 )
 
@@ -48,10 +51,14 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	httpConf := runtime.NewHTTPConfig()
+
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
 
 	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
 	if err != nil {
@@ -63,8 +70,8 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conf.Addr = ":"
-	gw := server.New(ctx, log.WithContext(ctx), conf)
+	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
+	gw := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
 	gw.Listen()
 	defer gw.Close()
 
@@ -88,7 +95,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
 	} {
-		res, err := connectClient.Get("http://example.com" + testCase.path)
+		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -143,18 +150,23 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	httpConf := runtime.NewHTTPConfig()
+
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	conf.Addr = ":"
-	couper := server.New(ctx, log.WithContext(ctx), conf)
+	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
+
+	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
 	couper.Listen()
 	defer couper.Close()
 
@@ -190,7 +202,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//FIXME:
 		//{"/api", content500.Bytes(), 500},
 	} {
-		res, err := connectClient.Get("http://example.com" + testCase.path)
+		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
 		if err != nil {
 			t.Fatal(err)
 		}

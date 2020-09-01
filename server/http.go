@@ -5,51 +5,60 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
 	"go.avenga.cloud/couper/gateway/config"
+	"go.avenga.cloud/couper/gateway/config/request"
 	"go.avenga.cloud/couper/gateway/config/runtime"
 	"go.avenga.cloud/couper/gateway/errors"
 )
 
+// HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	config   *config.Gateway
-	ctx      context.Context
-	log      *logrus.Entry
-	listener net.Listener
-	mux      *Mux
-	srv      *http.Server
-	uidFn    func() string
+	config     *runtime.HTTPConfig
+	commandCtx context.Context
+	log        *logrus.Entry
+	listener   net.Listener
+	muxes      runtime.HostHandlers
+	srv        *http.Server
+	uidFn      func() string
 }
 
-func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPServer {
-	_, ph := configure(conf, logger)
+// NewServerList creates a list of all configured HTTP server.
+func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
+	var list []*HTTPServer
 
+	for port, hosts := range handlers {
+		list = append(list, New(cmdCtx, logger, conf, port, hosts))
+	}
+
+	return list
+}
+
+// New creates a configured HTTP server.
+func New(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
 	}
 
 	httpSrv := &HTTPServer{
-		ctx:    ctx,
-		config: conf,
-		log:    logger,
-		mux:    NewMux(conf, ph),
-		uidFn:  uidFn,
+		config:     conf,
+		commandCtx: cmdCtx,
+		log:        logger,
+		muxes:      hosts,
+		uidFn:      uidFn,
 	}
 
-	addr := fmt.Sprintf(":%d", DefaultHTTPConfig.ListenPort)
-	if conf.Addr != "" {
-		addr = conf.Addr
-	}
 	srv := &http.Server{
-		Addr:              addr,
+		Addr:              ":" + string(p),
 		Handler:           httpSrv,
-		IdleTimeout:       DefaultHTTPConfig.IdleTimeout,
-		ReadHeaderTimeout: DefaultHTTPConfig.ReadHeaderTimeout,
+		IdleTimeout:       conf.Timings.IdleTimeout,
+		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
 	}
 
 	httpSrv.srv = srv
@@ -57,6 +66,7 @@ func New(ctx context.Context, logger *logrus.Entry, conf *config.Gateway) *HTTPS
 	return httpSrv
 }
 
+// Addr returns the listener address.
 func (s *HTTPServer) Addr() string {
 	if s.listener != nil {
 		return s.listener.Addr().String()
@@ -72,10 +82,9 @@ func (s *HTTPServer) Listen() {
 	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
 		s.log.Fatal(err)
-		return
 	}
 	s.listener = ln
-	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
+	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving") // TODO: server name
 
 	go s.listenForCtx()
 
@@ -93,7 +102,7 @@ func (s *HTTPServer) Close() error {
 
 func (s *HTTPServer) listenForCtx() {
 	select {
-	case <-s.ctx.Done():
+	case <-s.commandCtx.Done():
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		s.log.WithField("deadline", "10s").Warn("shutting down")
@@ -103,16 +112,16 @@ func (s *HTTPServer) listenForCtx() {
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := s.uidFn()
-	ctx := context.WithValue(req.Context(), runtime.RequestID, uid)
+	ctx := context.WithValue(req.Context(), request.RequestID, uid)
 	*req = *req.WithContext(ctx)
 
 	req.Header.Set("X-Request-Id", uid)
 	rw.Header().Set("X-Request-Id", uid)
 
-	h := s.mux.Match(req)
+	srv, h := s.getHandler(req)
 
 	var err error
-	var handlerName string
+	var serverName, handlerName string
 	sr := NewStatusReader(rw)
 	if h != nil {
 		h.ServeHTTP(sr, req)
@@ -125,8 +134,13 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		err = fmt.Errorf("%w: %s", errors.ConfigurationError, req.URL.String())
 	}
 
+	if srv != nil {
+		serverName = srv.Name
+	}
+
 	fields := logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
+		"server":  serverName,
 		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,
@@ -138,4 +152,39 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		s.log.WithFields(fields).Info()
 	}
+}
+
+func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler) {
+	host := s.getHost(req)
+
+	if _, ok := s.muxes[host]; !ok {
+		if _, ok := s.muxes["*"]; !ok {
+			return nil, nil
+		}
+		host = "*"
+	}
+
+	return s.muxes[host].Server, NewMuxer(s.muxes[host].Mux).Match(req)
+}
+
+func (s *HTTPServer) getHost(req *http.Request) string {
+	host := req.Host
+	if s.config.UseXFH {
+		host = req.Header.Get("X-Forwarded-Host")
+	}
+
+	if strings.IndexByte(host, ':') == -1 {
+		return cleanHost(host)
+	}
+
+	h, _, err := net.SplitHostPort(host)
+	if err != nil {
+		return cleanHost(host)
+	}
+
+	return cleanHost(h)
+}
+
+func cleanHost(host string) string {
+	return strings.TrimRight(host, ".")
 }

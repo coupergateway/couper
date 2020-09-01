@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 
 	"github.com/hashicorp/hcl/v2/hclsimple"
 
@@ -10,7 +12,11 @@ import (
 )
 
 func LoadFile(filename string) (*Gateway, error) {
-	src, err := ioutil.ReadFile(filename)
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	src, err := ioutil.ReadFile(path.Join(wd, filename))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load configuration: %w", err)
 	}
