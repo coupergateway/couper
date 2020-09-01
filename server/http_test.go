@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"text/template"
 
@@ -69,7 +70,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	port := fmt.Sprintf("%d", httpConf.ListenPort)
+	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
 	gw := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
 	gw.Listen()
 	defer gw.Close()
@@ -94,7 +95,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
 	} {
-		res, err := connectClient.Get("http://example.com:" + port + testCase.path)
+		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -163,7 +164,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	port := fmt.Sprintf("%d", httpConf.ListenPort)
+	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
 
 	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
 	couper.Listen()
@@ -200,7 +201,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//FIXME:
 		//{"/api", content500.Bytes(), 500},
 	} {
-		res, err := connectClient.Get("http://example.com:" + port + testCase.path)
+		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
 		if err != nil {
 			t.Fatal(err)
 		}
