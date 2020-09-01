@@ -29,7 +29,7 @@ func main() {
 
 	gatewayConf, err := config.LoadFile(*configFile)
 	if err != nil {
-		logger.Error(err)
+		logger.Fatal(err)
 	}
 
 	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logger)
