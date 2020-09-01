@@ -20,6 +20,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
@@ -281,7 +282,7 @@ func (p *Proxy) isCredentialed(headers http.Header) bool {
 }
 
 func (p *Proxy) allowsWildcardOrigin() bool {
-	for _, a := range p.cors.AllowedOrigins {
+	for _, a := range seetie.ValueToStringSlice(p.cors.AllowedOrigins) {
 		if a == "*" {
 			return true
 		}
