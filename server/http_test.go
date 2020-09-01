@@ -57,7 +57,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ports := runtime.NewPorts(conf, httpConf, log.WithContext(nil))
+	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
 
 	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
 	if err != nil {
@@ -156,7 +156,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ports := runtime.NewPorts(conf, httpConf, log.WithContext(nil))
+	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	if err != nil {

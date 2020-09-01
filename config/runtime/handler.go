@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +23,7 @@ import (
 	"go.avenga.cloud/couper/gateway/utils"
 )
 
-type pathHandler struct {
+type entrypointHandler struct {
 	api        map[*config.Endpoint]http.Handler
 	files, spa http.Handler
 }
@@ -35,9 +36,9 @@ const (
 
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
-// NewPorts sets defaults and validates the given gateway configuration.
-// Creates all configured endpoint HTTP handler.
-func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Ports {
+// BuildEntrypointHandlers sets http handler specific defaults and validates the given gateway configuration.
+// Wire up all endpoints and maps them within the returned EntrypointHandlers.
+func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) EntrypointHandlers {
 	if len(conf.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}
@@ -48,7 +49,7 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 	}
 
 	backends := make(map[string]backendDefinition)
-	ph := &pathHandler{api: make(map[*config.Endpoint]http.Handler)}
+	entryHandler := &entrypointHandler{api: make(map[*config.Endpoint]http.Handler)}
 
 	if conf.Definitions != nil {
 		for _, beConf := range conf.Definitions.Backend {
@@ -91,7 +92,7 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 
 	accessControls := configureAccessControls(conf)
 
-	ports := make(Ports, 0)
+	handlers := make(EntrypointHandlers, 0)
 
 	for idx, server := range conf.Server {
 		configureBasePathes(server)
@@ -112,17 +113,17 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 					log.Fatal(err)
 				}
 			}
-			ph.files = handler.NewFile(wd, server.Files.BasePath, server.Files.DocumentRoot, mux.FSErrTpl)
-			ph.files = configureProtectedHandler(accessControls, mux.FSErrTpl,
+			entryHandler.files = handler.NewFile(wd, server.Files.BasePath, server.Files.DocumentRoot, mux.FSErrTpl)
+			entryHandler.files = configureProtectedHandler(accessControls, mux.FSErrTpl,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
-				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), ph.files)
+				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), entryHandler.files)
 		}
 
 		if server.Spa != nil {
-			ph.spa = handler.NewSpa(wd, server.Spa.BootstrapFile)
-			ph.spa = configureProtectedHandler(accessControls, errors.DefaultHTML,
+			entryHandler.spa = handler.NewSpa(wd, server.Spa.BootstrapFile)
+			entryHandler.spa = configureProtectedHandler(accessControls, errors.DefaultHTML,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
-				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), ph.spa)
+				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), entryHandler.spa)
 		}
 
 		if server.Files != nil {
@@ -130,14 +131,14 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 			mux.FSPath = server.Files.BasePath
 			mux.FS = mux.FS.Add(
 				utils.JoinPath(server.Files.BasePath, "/**"),
-				ph.files,
+				entryHandler.files,
 			)
 
 			// Register base_path-302 case
 			if server.Files.BasePath != "/" {
 				mux.FS = mux.FS.Add(
 					strings.TrimRight(server.Files.BasePath, "/")+"$",
-					ph.files,
+					entryHandler.files,
 				)
 			}
 		}
@@ -151,20 +152,20 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 
 				mux.SPA = mux.SPA.Add(
 					spaPath,
-					ph.spa,
+					entryHandler.spa,
 				)
 
 				if spaPath != "/**" && strings.HasSuffix(spaPath, "/**") {
 					mux.SPA = mux.SPA.Add(
 						spaPath[:len(spaPath)-len("/**")],
-						ph.spa,
+						entryHandler.spa,
 					)
 				}
 			}
 		}
 
 		if server.API == nil {
-			if err = configureLookups(httpConf, server, mux, ports); err != nil {
+			if err = configureHandlers(httpConf, server, mux, handlers); err != nil {
 				log.Fatal(err)
 			}
 			continue
@@ -211,7 +212,7 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 					protectedHandler = proxy
 				}
 
-				ph.api[endpoint] = configureProtectedHandler(accessControls, mux.APIErrTpl,
+				entryHandler.api[endpoint] = configureProtectedHandler(accessControls, mux.APIErrTpl,
 					config.NewAccessControl(server.AccessControl, server.DisableAccessControl).
 						Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)),
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
@@ -280,15 +281,15 @@ func NewPorts(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Por
 		for _, endpoint := range server.API.Endpoint {
 			mux.API = mux.API.Add(
 				utils.JoinPath(server.API.BasePath, endpoint.Pattern),
-				ph.api[endpoint],
+				entryHandler.api[endpoint],
 			)
 		}
 
-		if err = configureLookups(httpConf, server, mux, ports); err != nil {
+		if err = configureHandlers(httpConf, server, mux, handlers); err != nil {
 			log.Fatal(err)
 		}
 	}
-	return ports
+	return handlers
 }
 
 func configureBasePathes(server *config.Server) {
@@ -318,41 +319,37 @@ func configureBasePathes(server *config.Server) {
 	}
 }
 
-func configureLookups(conf *HTTPConfig, server *config.Server, mux *Mux, ports Ports) error {
+func configureHandlers(conf *HTTPConfig, server *config.Server, mux *Mux, handlers EntrypointHandlers) error {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
 		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
 	}
 
 	for _, hp := range hosts {
-		var host, port string
+		var host string
+		port := Port(strconv.Itoa(conf.ListenPort))
 
 		if strings.IndexByte(hp, ':') == -1 {
 			host = hp
-			port = fmt.Sprintf("%d", conf.ListenPort)
 		} else {
 			h, p, err := net.SplitHostPort(hp)
 			if err != nil {
 				return err
-			} else if p == "" {
-				p = fmt.Sprintf("%d", conf.ListenPort)
+			} else if p != "" {
+				port = Port(p)
 			}
-
 			host = h
-			port = p
 		}
 
-		// TODO: Check port range 0-65535 just here or let it crash on net.Listen()?
-
-		if _, ok := ports[port]; !ok {
-			ports[port] = make(Hosts, 0)
+		if _, ok := handlers[port]; !ok {
+			handlers[port] = make(HostHandlers, 0)
 		}
 
-		if _, ok := ports[port][host]; ok {
+		if _, ok := handlers[port][host]; ok {
 			return fmt.Errorf("multiple <host:port> combination found: '%s:%s'", host, port)
 		}
 
-		ports[port][host] = &ServerMux{Server: server, Mux: mux}
+		handlers[port][host] = &ServerMux{Server: server, Mux: mux}
 	}
 	return nil
 }

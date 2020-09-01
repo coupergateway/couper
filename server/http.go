@@ -23,17 +23,16 @@ type HTTPServer struct {
 	commandCtx context.Context
 	log        *logrus.Entry
 	listener   net.Listener
-	muxes      runtime.Hosts
-	port       string
+	muxes      runtime.HostHandlers
 	srv        *http.Server
 	uidFn      func() string
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, ports runtime.Ports) []*HTTPServer {
+func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
 	var list []*HTTPServer
 
-	for port, hosts := range ports {
+	for port, hosts := range handlers {
 		list = append(list, New(cmdCtx, logger, conf, port, hosts))
 	}
 
@@ -41,23 +40,22 @@ func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.H
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, port string, hosts runtime.Hosts) *HTTPServer {
-
+func New(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
 	}
+
 	httpSrv := &HTTPServer{
 		config:     conf,
 		commandCtx: cmdCtx,
 		log:        logger,
 		muxes:      hosts,
-		port:       port,
 		uidFn:      uidFn,
 	}
 
 	srv := &http.Server{
-		Addr:              ":" + port,
+		Addr:              ":" + string(p),
 		Handler:           httpSrv,
 		IdleTimeout:       conf.Timings.IdleTimeout,
 		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
@@ -86,7 +84,7 @@ func (s *HTTPServer) Listen() {
 		s.log.Fatal(err)
 	}
 	s.listener = ln
-	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving")
+	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving") // TODO: server name
 
 	go s.listenForCtx()
 
@@ -123,7 +121,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	srv, h := s.getHandler(req)
 
 	var err error
-	var handle, handlerName string
+	var serverName, handlerName string
 	sr := NewStatusReader(rw)
 	if h != nil {
 		h.ServeHTTP(sr, req)
@@ -137,12 +135,12 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if srv != nil {
-		handle = srv.Name
+		serverName = srv.Name
 	}
 
 	fields := logrus.Fields{
 		"agent":   req.Header.Get("User-Agent"),
-		"handle":  handle,
+		"server":  serverName,
 		"handler": handlerName,
 		"status":  sr.status,
 		"uid":     uid,

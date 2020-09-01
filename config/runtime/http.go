@@ -11,11 +11,11 @@ import (
 	"go.avenga.cloud/couper/gateway/config/env"
 )
 
-// Hosts represents the Hosts map.
-type Hosts map[string]*ServerMux
+type Port string
 
-// Ports represents the Ports map.
-type Ports map[string]Hosts
+type HostHandlers map[string]*ServerMux
+
+type EntrypointHandlers map[Port]HostHandlers
 
 // ServerMux represents the ServerMux struct.
 type ServerMux struct {

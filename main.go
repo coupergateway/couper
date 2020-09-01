@@ -32,10 +32,10 @@ func main() {
 		logger.Error(err)
 	}
 
-	ports := runtime.NewPorts(gatewayConf, httpConf, logger)
+	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logger)
 
 	ctx := command.ContextWithSignal(context.Background())
-	for _, srv := range server.NewServerList(ctx, logger, httpConf, ports) {
+	for _, srv := range server.NewServerList(ctx, logger, httpConf, entrypointHandlers) {
 		srv.Listen()
 	}
 	<-ctx.Done() // TODO: shutdown deadline
