@@ -37,7 +37,7 @@ func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, h
 		return nil, diags
 	}
 
-	for key, val :=range expMap {
+	for key, val := range expMap {
 		switch val.(type) {
 		case string:
 			options[key] = []string{val.(string)}
