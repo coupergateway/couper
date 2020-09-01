@@ -38,7 +38,8 @@ var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
 // BuildEntrypointHandlers sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned EntrypointHandlers.
-func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) EntrypointHandlers {
+func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger logrus.FieldLogger) EntrypointHandlers {
+	log := logger.WithField("type", "couper-config")
 	if len(conf.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}

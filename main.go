@@ -42,7 +42,7 @@ func main() {
 	<-ctx.Done() // TODO: shutdown deadline
 }
 
-func newLogger(conf *runtime.HTTPConfig) *logrus.Entry {
+func newLogger(conf *runtime.HTTPConfig) logrus.FieldLogger {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	if conf.LogFormat == "json" {
@@ -52,5 +52,5 @@ func newLogger(conf *runtime.HTTPConfig) *logrus.Entry {
 		}}
 	}
 	logger.Level = logrus.DebugLevel
-	return logger.WithField("type", "couper")
+	return logger
 }
