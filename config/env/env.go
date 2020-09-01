@@ -45,7 +45,7 @@ func Decode(conf interface{}) {
 		}
 
 		mapVal, exist := envMap[envVal]
-		if !exist {
+		if !exist || mapVal == "" {
 			continue
 		}
 
