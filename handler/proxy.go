@@ -20,7 +20,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
@@ -281,17 +280,8 @@ func (p *Proxy) isCredentialed(headers http.Header) bool {
 	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
 }
 
-func (p *Proxy) allowsWildcardOrigin() bool {
-	for _, a := range seetie.ValueToStringSlice(p.cors.AllowedOrigins) {
-		if a == "*" {
-			return true
-		}
-	}
-	return false
-}
-
 func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
-	if p.allowsWildcardOrigin() && !p.isCredentialed(req.Header) {
+	if p.cors.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else {
 		headers.Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
