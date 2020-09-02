@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -19,8 +20,9 @@ type AccessLog struct {
 	logger logrus.FieldLogger
 }
 
-func NewAccessLog(logger logrus.FieldLogger) *AccessLog {
+func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	return &AccessLog{
+		conf:   c,
 		logger: logger,
 	}
 }
@@ -30,17 +32,23 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	statusReader := NewStatusReader(rw)
 	rw = statusReader // TODO: rename to recorder?
 
-	reqID := req.Context().Value(request.RequestID)
+	uniqueID := req.Context().Value(request.RequestID)
+
+	requestFields := Fields{
+		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
+	}
 
 	fields := Fields{
 		"timestamp": now.UTC(),
-		"request": Fields{
-			"headers": filterHeader(DefaultConfig.RequestHeaders, req.Header),
-		},
-		"serial":     nextSerial(),
-		"request_id": reqID,
-		"method":     req.Method,
-		"proto":      req.Proto,
+		"request":   requestFields,
+		"serial":    nextSerial(),
+		"uid":       uniqueID,
+		"method":    req.Method,
+		"proto":     req.Proto,
+	}
+
+	if log.conf.TypeFieldKey != "" {
+		fields["type"] = log.conf.TypeFieldKey
 	}
 
 	path := &url.URL{
@@ -50,17 +58,20 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		ForceQuery: req.URL.ForceQuery,
 		Fragment:   req.URL.Fragment,
 	}
-	fields["request_path"] = path.String()
+	requestFields["path"] = path.String()
 
 	if req.Host != "" {
-		fields["request_addr"] = req.Host
-		fields["request_host"], fields["request_port"] = splitHostPort(req.Host)
+		requestFields["addr"] = req.Host
+		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
 	}
 
-	fields["client_addr"] = req.RemoteAddr
-	fields["client_host"], fields["client_port"] = splitHostPort(req.RemoteAddr)
+	clientFields := Fields{
+		"addr": req.RemoteAddr,
+	}
+	fields["client"] = clientFields
+	clientFields["host"], clientFields["port"] = splitHostPort(req.RemoteAddr)
 	if xff := req.Header.Get("X-Forwarded-For"); xff != "" { // TODO: if conf use xff
-		fields["client_host"] = xff
+		clientFields["host"] = xff
 	}
 
 	if req.URL.User != nil && req.URL.User.Username() != "" {
@@ -77,10 +88,15 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	fields["status"] = statusReader.status
 	fields["response"] = Fields{
-		"headers": filterHeader(DefaultConfig.ResponseHeaders, rw.Header()),
+		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
 	}
 
-	entry := log.logger.WithField("access", fields)
+	var entry *logrus.Entry
+	if log.conf.ParentFieldKey != "" {
+		entry = log.logger.WithField(log.conf.ParentFieldKey, fields)
+	} else {
+		entry = log.logger.WithFields(logrus.Fields(fields))
+	}
 	if statusReader.status == http.StatusInternalServerError {
 		entry.Error()
 	} else {
@@ -88,15 +104,15 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 }
 
-func filterHeader(list []string, src http.Header) http.Header {
-	header := make(http.Header)
+func filterHeader(list []string, src http.Header) map[string]string {
+	header := make(map[string]string)
 	for _, key := range list {
 		ck := http.CanonicalHeaderKey(key)
 		val, ok := src[http.CanonicalHeaderKey(ck)]
 		if !ok || len(val) == 0 || val[0] == "" {
 			continue
 		}
-		header[ck] = val
+		header[strings.ToLower(key)] = strings.Join(val, "|")
 	}
 	return header
 }

@@ -47,8 +47,12 @@ func New(cmdCtx context.Context, logger logrus.FieldLogger, conf *runtime.HTTPCo
 		return xid.New().String()
 	}
 
+	// TODO: hcl conf
+	logConf := *logging.DefaultConfig
+	logConf.TypeFieldKey = "couper_access"
+
 	httpSrv := &HTTPServer{
-		accessLog:  logging.NewAccessLog(logger),
+		accessLog:  logging.NewAccessLog(&logConf, logger),
 		config:     conf,
 		commandCtx: cmdCtx,
 		log:        logger,
