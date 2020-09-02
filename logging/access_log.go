@@ -29,8 +29,8 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
 	now := time.Now()
-	statusReader := NewStatusReader(rw)
-	rw = statusReader // TODO: rename to recorder?
+	statusRecorder := NewStatusRecorder(rw)
+	rw = statusRecorder
 
 	uniqueID := req.Context().Value(request.RequestID)
 
@@ -86,7 +86,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	nextHandler.ServeHTTP(rw, req)
 
-	fields["status"] = statusReader.status
+	fields["status"] = statusRecorder.status
 	fields["response"] = Fields{
 		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
 	}
@@ -97,7 +97,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	} else {
 		entry = log.logger.WithFields(logrus.Fields(fields))
 	}
-	if statusReader.status == http.StatusInternalServerError {
+	if statusRecorder.status == http.StatusInternalServerError {
 		entry.Error()
 	} else {
 		entry.Info()
