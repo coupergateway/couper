@@ -10,9 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
-	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 )
@@ -41,7 +39,7 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := NewProxy(tt.options, &config.CORS{AllowedOrigins: cty.StringVal("*")}, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +89,7 @@ func TestProxy_director(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := NewProxy(tt.fields.options, &config.CORS{AllowedOrigins: cty.StringVal("*")}, tt.fields.log, tt.fields.evalContext)
+			p, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -134,7 +132,7 @@ func TestProxy_modifyResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewProxy(tt.fields.options, &config.CORS{AllowedOrigins: cty.StringVal("*")}, tt.fields.log, tt.fields.evalContext)
+			_, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
 			if err != nil {
 				t.Fatal(err)
 			}

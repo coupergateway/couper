@@ -46,9 +46,32 @@ type ProxyOptions struct {
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              []hcl.Body
 	Hostname, Origin, Path               string
+	CORS                                 *CORSOptions
 }
 
-func NewProxy(options *ProxyOptions, cors *config.CORS, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+type CORSOptions struct {
+	AllowedOrigins   []string
+	AllowCredentials bool
+	MaxAge           string
+}
+
+func (c *CORSOptions) NeedsVary() bool {
+	// If request with not allowed Origin is ignored
+	return !c.AllowsOrigin("*")
+	// Otherwise
+	// return len(c.AllowedOrigins) > 1
+}
+
+func (c* CORSOptions) AllowsOrigin(origin string) bool {
+	for _, a := range c.AllowedOrigins {
+		if a == origin || a == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -62,7 +85,6 @@ func NewProxy(options *ProxyOptions, cors *config.CORS, log *logrus.Entry, evalC
 
 	proxy := &Proxy{
 		evalContext: evalCtx,
-		cors:        cors,
 		log:         log,
 		options:     options,
 		originURL:   originURL,
@@ -279,16 +301,16 @@ func (p *Proxy) isCredentialed(headers http.Header) bool {
 
 func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 	requestOrigin := req.Header.Get("Origin")
-	if !p.cors.AllowsOrigin(requestOrigin) {
+	if !p.options.CORS.AllowsOrigin(requestOrigin) {
 		return
 	}
 	// see https://fetch.spec.whatwg.org/#http-responses
-	if p.cors.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
+	if p.options.CORS.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
-	if p.cors.AllowCredentials == true {
+	if p.options.CORS.AllowCredentials == true {
 		headers.Set("Access-Control-Allow-Credentials", "true")
 	}
 	if isCorsPreflightRequest(req) {
@@ -302,16 +324,10 @@ func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		if acrh != "" {
 			headers.Set("Access-Control-Allow-Headers", acrh)
 		}
-		if p.cors.MaxAge != "" {
-			// TODO Das sollte besser schon beim Einlesen konvertiert/geprüft werden
-			dur, err := time.ParseDuration(p.cors.MaxAge);
-			if (err != nil) {
-				p.log.Error(fmt.Errorf("Error parsing cors/max_age: %v", err))
-			} else {
-				headers.Set("Access-Control-Max-Age", fmt.Sprintf("%.0f", dur.Seconds()))
-			}
+		if p.options.CORS.MaxAge != "" {
+			headers.Set("Access-Control-Max-Age", p.options.CORS.MaxAge)
 		}
-	} else if p.cors.NeedsVary() {
+	} else if p.options.CORS.NeedsVary() {
 		headers.Add("Vary", "Origin")
 	}
 }

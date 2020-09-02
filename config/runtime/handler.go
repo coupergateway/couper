@@ -3,6 +3,7 @@ package runtime
 import (
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -79,8 +80,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				Path:           beConf.Path,
 				Timeout:        t,
 				TTFBTimeout:    ttfbt,
-// TODO ist das nil ok so? wie kommt man hier sonst an die CORS-Konfiguration?
-			}, nil, log, conf.Context)
+			}, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -179,15 +179,25 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
 					t, ttfbt, ct := parseBackendTimings(beConf)
+					dur, err := time.ParseDuration(server.API.CORS.MaxAge)
+					if err != nil {
+						panic(err)
+					}
+					cors_max_age := strconv.Itoa(int(math.Floor(dur.Seconds())))
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
 						ConnectTimeout: ct,
 						Context:        remainCtx,
+						CORS:           &handler.CORSOptions{
+							AllowedOrigins:   seetie.ValueToStringSlice(server.API.CORS.AllowedOrigins),
+							AllowCredentials: server.API.CORS.AllowCredentials,
+							MaxAge:           cors_max_age,
+						},
 						Hostname:       beConf.Hostname,
 						Origin:         beConf.Origin,
 						Path:           beConf.Path,
 						Timeout:        t,
 						TTFBTimeout:    ttfbt,
-					}, server.API.CORS, log, conf.Context)
+					}, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -242,15 +252,25 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 				t, ttfbt, ct := parseBackendTimings(beConf)
+				dur, err := time.ParseDuration(server.API.CORS.MaxAge)
+				if err != nil {
+					panic(err)
+				}
+				cors_max_age := strconv.Itoa(int(math.Floor(dur.Seconds())))
 				proxy, err := handler.NewProxy(&handler.ProxyOptions{
 					ConnectTimeout: ct,
 					Context:        remainCtx,
+					CORS:           &handler.CORSOptions{
+						AllowedOrigins:   seetie.ValueToStringSlice(server.API.CORS.AllowedOrigins),
+						AllowCredentials: server.API.CORS.AllowCredentials,
+						MaxAge:           cors_max_age,
+					},
 					Hostname:       beConf.Hostname,
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
 					Timeout:        t,
 					TTFBTimeout:    ttfbt,
-				}, server.API.CORS, log, conf.Context)
+				}, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -417,15 +437,25 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	}
 
 	t, ttfbt, ct := parseBackendTimings(beConf)
+	dur, err := time.ParseDuration(cors.MaxAge)
+	if err != nil {
+		panic(err)
+	}
+	cors_max_age := strconv.Itoa(int(math.Floor(dur.Seconds())))
 	proxy, err := handler.NewProxy(&handler.ProxyOptions{
 		ConnectTimeout: ct,
 		Context:        []hcl.Body{beConf.Options},
+		CORS:           &handler.CORSOptions{
+			AllowedOrigins:   seetie.ValueToStringSlice(cors.AllowedOrigins),
+			AllowCredentials: cors.AllowCredentials,
+			MaxAge:           cors_max_age,
+		},
 		Hostname:       beConf.Hostname,
 		Origin:         beConf.Origin,
 		Path:           beConf.Path,
 		Timeout:        t,
 		TTFBTimeout:    ttfbt,
-	}, cors, log, evalCtx)
+	}, log, evalCtx)
 	return proxy, beConf, err
 }
 
