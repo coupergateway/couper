@@ -39,6 +39,11 @@ func NewFile(wd, basePath, docRoot string, errTpl *errors.Template) *File {
 }
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet && req.Method != http.MethodHead {
+		rw.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	reqPath := f.removeBasePath(req.URL.Path)
 
 	file, info, err := f.openDocRootFile(reqPath)
