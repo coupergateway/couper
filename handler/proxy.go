@@ -262,9 +262,6 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 
 	if beresp != nil && isCorsRequest(req) {
 		p.setCorsRespHeaders(headerCtx, req)
-		if !isCorsPreflightRequest(req) && p.cors.NeedsVary() {
-			headerCtx.Add("Vary", "Origin")
-		}
 	}
 }
 
@@ -285,32 +282,37 @@ func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 	if !p.cors.AllowsOrigin(requestOrigin) {
 		return
 	}
+	// see https://fetch.spec.whatwg.org/#http-responses
 	if p.cors.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
-	// Reflect request header value
-	acrm := req.Header.Get("Access-Control-Request-Method")
-	if acrm != "" {
-		headers.Set("Access-Control-Allow-Methods", acrm)
-	}
-	// Reflect request header value
-	acrh := req.Header.Get("Access-Control-Request-Headers")
-	if acrh != "" {
-		headers.Set("Access-Control-Allow-Headers", acrh)
-	}
 	if p.cors.AllowCredentials == true {
 		headers.Set("Access-Control-Allow-Credentials", "true")
 	}
-	if p.cors.MaxAge != "" {
-		// TODO Das sollte besser schon beim Einlesen konvertiert/geprüft werden
-		dur, err := time.ParseDuration(p.cors.MaxAge);
-		if (err != nil) {
-			p.log.Error(fmt.Errorf("Error parsing cors/max_age: %v", err))
-		} else {
-			headers.Set("Access-Control-Max-Age", fmt.Sprintf("%.0f", dur.Seconds()))
+	if isCorsPreflightRequest(req) {
+		// Reflect request header value
+		acrm := req.Header.Get("Access-Control-Request-Method")
+		if acrm != "" {
+			headers.Set("Access-Control-Allow-Methods", acrm)
 		}
+		// Reflect request header value
+		acrh := req.Header.Get("Access-Control-Request-Headers")
+		if acrh != "" {
+			headers.Set("Access-Control-Allow-Headers", acrh)
+		}
+		if p.cors.MaxAge != "" {
+			// TODO Das sollte besser schon beim Einlesen konvertiert/geprüft werden
+			dur, err := time.ParseDuration(p.cors.MaxAge);
+			if (err != nil) {
+				p.log.Error(fmt.Errorf("Error parsing cors/max_age: %v", err))
+			} else {
+				headers.Set("Access-Control-Max-Age", fmt.Sprintf("%.0f", dur.Seconds()))
+			}
+		}
+	} else if p.cors.NeedsVary() {
+		headers.Add("Vary", "Origin")
 	}
 }
 
