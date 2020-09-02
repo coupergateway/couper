@@ -1,11 +1,13 @@
 package handler_test
 
 import (
-	"go.avenga.cloud/couper/gateway/handler"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"testing"
+
+	"go.avenga.cloud/couper/gateway/handler"
 )
 
 func TestSpa_ServeHTTP(t *testing.T) {
@@ -26,7 +28,7 @@ func TestSpa_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := handler.NewSpa(wd, tt.filePath)
+			s := handler.NewSpa(path.Join(wd, tt.filePath))
 
 			res := httptest.NewRecorder()
 			s.ServeHTTP(res, tt.req)

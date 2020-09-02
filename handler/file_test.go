@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"testing"
 
 	"go.avenga.cloud/couper/gateway/errors"
@@ -38,7 +39,7 @@ func TestFile_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewFile(wd, tt.fields.basePath, tt.fields.docRootDir, errors.DefaultHTML)
+			f := NewFile(tt.fields.basePath, path.Join(wd, tt.fields.docRootDir), errors.DefaultHTML)
 
 			rec := httptest.NewRecorder()
 			f.ServeHTTP(rec, tt.req)
