@@ -13,11 +13,10 @@ import (
 	"github.com/avenga/couper/config/request"
 )
 
-var requestSerial uint64
-
 type AccessLog struct {
-	conf   *Config
-	logger logrus.FieldLogger
+	conf          *Config
+	logger        logrus.FieldLogger
+	requestSerial uint64
 }
 
 func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
@@ -41,7 +40,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	fields := Fields{
 		"timestamp": now.UTC(),
 		"request":   requestFields,
-		"serial":    nextSerial(),
+		"serial":    log.nextSerial(),
 		"uid":       uniqueID,
 		"method":    req.Method,
 		"proto":     req.Proto,
@@ -104,6 +103,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 }
 
+func (log *AccessLog) nextSerial() uint64 {
+	return atomic.AddUint64(&log.requestSerial, 1)
+}
+
 func filterHeader(list []string, src http.Header) map[string]string {
 	header := make(map[string]string)
 	for _, key := range list {
@@ -126,8 +129,4 @@ func splitHostPort(hp string) (string, string) {
 		port = "-"
 	}
 	return host, port
-}
-
-func nextSerial() uint64 {
-	return atomic.AddUint64(&requestSerial, 1)
 }
