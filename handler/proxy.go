@@ -262,7 +262,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 
 	if beresp != nil && isCorsRequest(req) {
 		p.setCorsRespHeaders(headerCtx, req)
-		if !isCorsPreflightRequest(req) && headerCtx.Get("Access-Control-Allow-Origin") != "*" {
+		if !isCorsPreflightRequest(req) && p.cors.NeedsVary() {
 			headerCtx.Add("Vary", "Origin")
 		}
 	}
@@ -281,10 +281,14 @@ func (p *Proxy) isCredentialed(headers http.Header) bool {
 }
 
 func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
+	requestOrigin := req.Header.Get("Origin")
+	if !p.cors.AllowsOrigin(requestOrigin) {
+		return
+	}
 	if p.cors.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else {
-		headers.Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
 	// Reflect request header value
 	acrm := req.Header.Get("Access-Control-Request-Method")
