@@ -94,6 +94,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 	handlers := make(EntrypointHandlers, 0)
 
+	var err error
 	for idx, server := range conf.Server {
 		configureBasePathes(server)
 
@@ -102,25 +103,20 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 			FSErrTpl:  errors.DefaultHTML,
 		}
 
-		wd, err := os.Getwd()
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		if server.Files != nil {
 			if server.Files.ErrorFile != "" {
-				if mux.FSErrTpl, err = errors.NewTemplateFromFile(path.Join(wd, server.Files.ErrorFile)); err != nil {
+				if mux.FSErrTpl, err = errors.NewTemplateFromFile(getAbsPath(server.Files.ErrorFile, log)); err != nil {
 					log.Fatal(err)
 				}
 			}
-			entryHandler.files = handler.NewFile(wd, server.Files.BasePath, server.Files.DocumentRoot, mux.FSErrTpl)
+			entryHandler.files = handler.NewFile(server.Files.BasePath, getAbsPath(server.Files.DocumentRoot, log), mux.FSErrTpl)
 			entryHandler.files = configureProtectedHandler(accessControls, mux.FSErrTpl,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
 				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), entryHandler.files)
 		}
 
 		if server.Spa != nil {
-			entryHandler.spa = handler.NewSpa(wd, server.Spa.BootstrapFile)
+			entryHandler.spa = handler.NewSpa(getAbsPath(server.Spa.BootstrapFile, log))
 			entryHandler.spa = configureProtectedHandler(accessControls, errors.DefaultHTML,
 				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
 				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), entryHandler.spa)
@@ -175,7 +171,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 		mux.APIPath = server.API.BasePath
 
 		if server.API.ErrorFile != "" {
-			if mux.APIErrTpl, err = errors.NewTemplateFromFile(path.Join(wd, server.API.ErrorFile)); err != nil {
+			if mux.APIErrTpl, err = errors.NewTemplateFromFile(getAbsPath(server.API.ErrorFile, log)); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -473,4 +469,17 @@ func parseBackendTimings(conf *config.Backend) (time.Duration, time.Duration, ti
 		panic(err)
 	}
 	return totalD, ttfbD, connectD
+}
+
+func getAbsPath(file string, log *logrus.Entry) string {
+	if strings.HasPrefix(file, "/") {
+		return file
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return path.Join(wd, file)
 }
