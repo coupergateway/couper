@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -14,9 +13,8 @@ import (
 )
 
 type AccessLog struct {
-	conf          *Config
-	logger        logrus.FieldLogger
-	requestSerial uint64
+	conf   *Config
+	logger logrus.FieldLogger
 }
 
 func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
@@ -32,18 +30,23 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	rw = statusRecorder
 
 	uniqueID := req.Context().Value(request.RequestID)
+	connectionSerial := req.Context().Value(request.ConnectionSerial)
 
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
 	}
 
+	if req.ContentLength > 0 {
+		requestFields["bytes"] = req.ContentLength
+	}
+
 	fields := Fields{
-		"timestamp": now.UTC(),
-		"request":   requestFields,
-		"serial":    log.nextSerial(),
-		"uid":       uniqueID,
-		"method":    req.Method,
-		"proto":     req.Proto,
+		"connection_serial": connectionSerial,
+		"method":            req.Method,
+		"proto":             req.Proto,
+		"request":           requestFields,
+		"timestamp":         now.UTC(),
+		"uid":               uniqueID,
 	}
 
 	if log.conf.TypeFieldKey != "" {
@@ -86,8 +89,14 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	nextHandler.ServeHTTP(rw, req)
 
 	fields["status"] = statusRecorder.status
-	fields["response"] = Fields{
+
+	responseFields := Fields{
 		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
+	}
+	fields["response"] = responseFields
+
+	if statusRecorder.writtenBytes > 0 {
+		responseFields["bytes"] = statusRecorder.writtenBytes
 	}
 
 	var entry *logrus.Entry
@@ -101,10 +110,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	} else {
 		entry.Info()
 	}
-}
-
-func (log *AccessLog) nextSerial() uint64 {
-	return atomic.AddUint64(&log.requestSerial, 1)
 }
 
 func filterHeader(list []string, src http.Header) map[string]string {

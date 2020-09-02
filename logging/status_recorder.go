@@ -4,31 +4,34 @@ import (
 	"net/http"
 )
 
-var _ http.ResponseWriter = &StatusRecorder{}
+var _ http.ResponseWriter = &Recorder{}
 
-// StatusRecorder represents the StatusRecorder object.
-type StatusRecorder struct {
-	rw     http.ResponseWriter
-	status int
+// Recorder represents the Recorder object.
+type Recorder struct {
+	rw           http.ResponseWriter
+	status       int
+	writtenBytes int
 }
 
-// NewStatusRecorder creates a new StatusRecorder object.
-func NewStatusRecorder(rw http.ResponseWriter) *StatusRecorder {
-	return &StatusRecorder{rw: rw}
+// NewStatusRecorder creates a new Recorder object.
+func NewStatusRecorder(rw http.ResponseWriter) *Recorder {
+	return &Recorder{rw: rw}
 }
 
 // Header wraps the Header method of the ResponseWriter.
-func (sr *StatusRecorder) Header() http.Header {
+func (sr *Recorder) Header() http.Header {
 	return sr.rw.Header()
 }
 
 // Write wraps the Write method of the ResponseWriter.
-func (sr *StatusRecorder) Write(p []byte) (int, error) {
-	return sr.rw.Write(p)
+func (sr *Recorder) Write(p []byte) (int, error) {
+	i, err := sr.rw.Write(p)
+	sr.writtenBytes += i
+	return i, err
 }
 
 // WriteHeader wraps the WriteHeader method of the ResponseWriter.
-func (sr *StatusRecorder) WriteHeader(statusCode int) {
+func (sr *Recorder) WriteHeader(statusCode int) {
 	if sr.status == 0 {
 		sr.status = statusCode
 	}
