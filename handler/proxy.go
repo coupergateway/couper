@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"path"
 	"strconv"
@@ -23,6 +24,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/logging"
 )
 
 var (
@@ -42,6 +44,7 @@ type Proxy struct {
 	options     *ProxyOptions
 	originURL   *url.URL
 	transport   *http.Transport
+	upstreamLog *logging.AccessLog
 }
 
 type ProxyOptions struct {
@@ -86,7 +89,7 @@ func (c *CORSOptions) NeedsVary() bool {
 	// return len(c.AllowedOrigins) > 1
 }
 
-func (c* CORSOptions) AllowsOrigin(origin string) bool {
+func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	for _, a := range c.AllowedOrigins {
 		if a == strings.ToLower(origin) || a == "*" {
 			return true
@@ -95,7 +98,7 @@ func (c* CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+func NewProxy(options *ProxyOptions, logger logrus.FieldLogger, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -107,11 +110,16 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		return nil, SchemeRequiredError
 	}
 
+	// TODO: via hcl conf file
+	logConf := *logging.DefaultConfig
+	logConf.TypeFieldKey = "couper_upstream"
+
 	proxy := &Proxy{
 		evalContext: evalCtx,
-		log:         log,
+		log:         logger.WithField("type", logConf.TypeFieldKey),
 		options:     options,
 		originURL:   originURL,
+		upstreamLog: logging.NewAccessLog(&logConf, logger),
 	}
 
 	var tlsConf *tls.Config
@@ -160,6 +168,19 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
 
+	var upstreamErr error
+	var beresp *http.Response
+	upstreamHandler := http.HandlerFunc(func(rc http.ResponseWriter, bereq *http.Request) {
+		beresp, upstreamErr = p.transport.RoundTrip(bereq)
+		if upstreamErr != nil {
+			return
+		}
+
+		// Just writes log related data to the response recorder
+		copyHeader(rc.Header(), beresp.Header)
+		rc.WriteHeader(beresp.StatusCode)
+	})
+
 	p.director(outreq)
 	outreq.Close = false
 
@@ -185,10 +206,10 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
-	res, err := p.transport.RoundTrip(outreq)
+	upstreamRecorder := &httptest.ResponseRecorder{}
+	p.upstreamLog.ServeHTTP(upstreamRecorder, outreq, upstreamHandler)
+	res, err := beresp, upstreamErr
 	if err != nil {
-		p.log.
-			WithField("type", "access").Errorf("request error: %s: %v", outreq.URL.String(), err)
 		return
 	}
 
@@ -299,7 +320,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	for _, ctxBody := range p.options.Context {
 		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
 		if err != nil {
-			p.log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+			p.log.WithField("parse config", p.String()).Error(err)
 		}
 		setHeaderFields(headerCtx, options)
 	}

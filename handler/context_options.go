@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/hashicorp/hcl/v2"
 )
 
 type OptionsMap map[string][]string
