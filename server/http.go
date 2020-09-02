@@ -129,7 +129,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		h = errors.DefaultHTML.ServeError(errors.ConfigurationError)
 	}
 
-	s.accessLog.ServeHTTP(rw, req, h)
+	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)
 }
 
 func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler) {
