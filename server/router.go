@@ -32,7 +32,6 @@ func (r *Router) Match(req *http.Request) (http.Handler, bool) {
 			continue
 		}
 		if h := r.match(req, route); h != nil {
-			*req = *req.WithContext(context.WithValue(req.Context(), request.Endpoint, route.Name()))
 			return h, true
 		}
 	}
@@ -54,6 +53,7 @@ func (r *Router) match(req *http.Request, route *runtime.Route) http.Handler {
 				*req = *req.WithContext(context.WithValue(req.Context(), request.Wildcard, match[1]))
 			}
 		}
+		*req = *req.WithContext(context.WithValue(req.Context(), request.Endpoint, route.Name()))
 		return route.GetHandler()
 	}
 	return nil
