@@ -63,6 +63,116 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 	}
 }
 
+func TestProxy_ServeHTTP_CORS(t *testing.T) {
+	// t.Skip("todo: fixme")
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodHead {
+			time.Sleep(time.Second * 2) // > ttfb proxy settings
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	tests := []struct {
+		name                  string
+		options               *ProxyOptions
+		req                   *http.Request
+		origin                string
+		acrm                  string
+		acrh                  string
+		expectedStatus        int
+		expectedContentLength string
+		expectedACAO          string
+		expectedACAM          string
+		expectedACAH          string
+		expectedACAC          bool
+		expectedACMA          string
+		expectedVary          string
+	}{
+		{"preflight check: ACRM", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "0", "https://www.example.com", "POST", "", false, "", ""},
+		{"preflight check: ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "", "X-Foo, X-Bar", http.StatusNoContent, "0", "https://www.example.com", "", "X-Foo, X-Bar", false, "", ""},
+		{"preflight check: ACRM, ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "X-Foo, X-Bar", http.StatusNoContent, "0", "https://www.example.com", "POST", "X-Foo, X-Bar", false, "", ""},
+		{"preflight check: ACRM, credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "0", "https://www.example.com", "POST", "", true, "", ""},
+		{"preflight check: ACRM, max-age", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "0", "https://www.example.com", "POST", "", false, "3600", ""},
+		{"preflight check: origin mismatch", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.org", "POST", "", http.StatusNoContent, "", "", "", "", false, "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger, hook := logrustest.NewNullLogger()
+			p, err := NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			tt.req.Header.Set("Origin", tt.origin)
+			if tt.acrm != "" {
+				tt.req.Header.Set("Access-Control-Request-Method", tt.acrm)
+			}
+			if tt.acrh != "" {
+				tt.req.Header.Set("Access-Control-Request-Headers", tt.acrh)
+			}
+
+			hook.Reset()
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(rec, tt.req)
+
+			acao := rec.HeaderMap.Get("Access-Control-Allow-Origin")
+            if acao != tt.expectedACAO {
+				t.Errorf("Expected Access-Control-Allow-Origin %s, got: %s", tt.expectedACAO, acao)
+			}
+
+			acam := rec.HeaderMap.Get("Access-Control-Allow-Methods")
+            if acam != tt.expectedACAM {
+				t.Errorf("Expected Access-Control-Allow-Methods %s, got: %s", tt.expectedACAM, acam)
+			}
+
+			acah := rec.HeaderMap.Get("Access-Control-Allow-Headers")
+            if acah != tt.expectedACAH {
+				t.Errorf("Expected Access-Control-Allow-Headers %s, got: %s", tt.expectedACAH, acah)
+			}
+
+			acac := rec.HeaderMap.Get("Access-Control-Allow-Credentials")
+			if tt.expectedACAC {
+				if acac != "true" {
+					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "true", acac)
+				}
+			} else {
+				if acac != "" {
+					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "", acac)
+				}
+			}
+
+			acma := rec.HeaderMap.Get("Access-Control-Max-Age")
+            if acma != tt.expectedACMA {
+				t.Errorf("Expected Access-Control-Max-Age %s, got: %s", tt.expectedACMA, acma)
+			}
+
+			vary := rec.HeaderMap.Get("Vary")
+            if vary != tt.expectedVary {
+				t.Errorf("Expected VaryAge %s, got: %s", tt.expectedVary, vary)
+			}
+
+			// currently not working
+			// cl := rec.HeaderMap.Get("Content-Length")
+            // if cl != tt.expectedContentLength {
+				// t.Errorf("Expected Content-Length %s, got: %s", tt.expectedContentLength, cl)
+			// }
+
+			if rec.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
+			} else {
+				return // no error log for expected codes
+			}
+
+			for _, log := range hook.AllEntries() {
+				if log.Level >= logrus.ErrorLevel {
+					t.Error(log.Message)
+				}
+			}
+		})
+	}
+}
+
 func TestProxy_director(t *testing.T) {
 	defaultReq := httptest.NewRequest("GET", "http://example.com", nil)
 
