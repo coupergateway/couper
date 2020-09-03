@@ -127,9 +127,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	ctx := context.WithValue(req.Context(), request.RequestID, uid)
 	*req = *req.WithContext(ctx)
 
-	//req.Header.Set("X-Request-Id", uid)
-	//rw.Header().Set("X-Request-Id", uid)
-
 	_, h := s.getHandler(req)
 	if h == nil {
 		h = errors.DefaultHTML.ServeError(errors.ConfigurationError)
