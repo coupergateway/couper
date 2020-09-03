@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
@@ -53,6 +56,19 @@ type CORSOptions struct {
 	AllowedOrigins   []string
 	AllowCredentials bool
 	MaxAge           string
+}
+
+func NewCORSOptions(cors *config.CORS) *CORSOptions {
+	dur, err := time.ParseDuration(cors.MaxAge)
+	if err != nil {
+		panic(err)
+	}
+	cors_max_age := strconv.Itoa(int(math.Floor(dur.Seconds())))
+	return &CORSOptions{
+		AllowedOrigins:   seetie.ValueToStringSlice(cors.AllowedOrigins),
+		AllowCredentials: cors.AllowCredentials,
+		MaxAge:           cors_max_age,
+	}
 }
 
 func (c *CORSOptions) NeedsVary() bool {
