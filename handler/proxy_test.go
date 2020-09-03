@@ -81,7 +81,6 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		acrm                  string
 		acrh                  string
 		expectedStatus        int
-		expectedContentLength string
 		expectedACAO          string
 		expectedACAM          string
 		expectedACAH          string
@@ -89,12 +88,12 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		expectedACMA          string
 		expectedVary          string
 	}{
-		{"preflight check: ACRM", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "0", "https://www.example.com", "POST", "", false, "", ""},
-		{"preflight check: ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "", "X-Foo, X-Bar", http.StatusNoContent, "0", "https://www.example.com", "", "X-Foo, X-Bar", false, "", ""},
-		{"preflight check: ACRM, ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "X-Foo, X-Bar", http.StatusNoContent, "0", "https://www.example.com", "POST", "X-Foo, X-Bar", false, "", ""},
-		{"preflight check: ACRM, credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "0", "https://www.example.com", "POST", "", true, "", ""},
-		{"preflight check: ACRM, max-age", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "0", "https://www.example.com", "POST", "", false, "3600", ""},
-		{"preflight check: origin mismatch", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.org", "POST", "", http.StatusNoContent, "", "", "", "", false, "", ""},
+		{"preflight check: ACRM", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "https://www.example.com", "POST", "", false, "", ""},
+		{"preflight check: ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "", "X-Foo, X-Bar", http.StatusNoContent, "https://www.example.com", "", "X-Foo, X-Bar", false, "", ""},
+		{"preflight check: ACRM, ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "X-Foo, X-Bar", http.StatusNoContent, "https://www.example.com", "POST", "X-Foo, X-Bar", false, "", ""},
+		{"preflight check: ACRM, credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "https://www.example.com", "POST", "", true, "", ""},
+		{"preflight check: ACRM, max-age", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "https://www.example.com", "POST", "", false, "3600", ""},
+		{"preflight check: origin mismatch", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.org", "POST", "", http.StatusNoContent, "", "", "", false, "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -151,12 +150,6 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
             if vary != tt.expectedVary {
 				t.Errorf("Expected VaryAge %s, got: %s", tt.expectedVary, vary)
 			}
-
-			// currently not working
-			// cl := rec.HeaderMap.Get("Content-Length")
-            // if cl != tt.expectedContentLength {
-				// t.Errorf("Expected Content-Length %s, got: %s", tt.expectedContentLength, cl)
-			// }
 
 			if rec.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)

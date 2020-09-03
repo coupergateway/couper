@@ -149,8 +149,6 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if p.options.CORS != nil && isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
-		// TODO Setting Content-Length has no effect. Why?
-		rw.Header().Set("Content-Length", "0")
 		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
