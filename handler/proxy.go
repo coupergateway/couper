@@ -59,6 +59,9 @@ type CORSOptions struct {
 }
 
 func NewCORSOptions(cors *config.CORS) *CORSOptions {
+	if cors == nil {
+		return nil
+	}
 	dur, err := time.ParseDuration(cors.MaxAge)
 	if err != nil {
 		panic(err)
@@ -144,7 +147,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		defer cancelFn()
 	}
 
-	if isCorsPreflightRequest(req) {
+	if p.options.CORS != nil && isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
 		// TODO Setting Content-Length has no effect. Why?
 		rw.Header().Set("Content-Length", "0")
@@ -322,6 +325,9 @@ func (p *Proxy) isCredentialed(headers http.Header) bool {
 }
 
 func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
+	if p.options.CORS == nil {
+		return
+	}
 	requestOrigin := req.Header.Get("Origin")
 	if !p.options.CORS.AllowsOrigin(requestOrigin) {
 		return
