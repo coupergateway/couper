@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/config/env"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 )
 
 type Port string

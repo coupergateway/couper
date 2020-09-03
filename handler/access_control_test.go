@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/errors"
+	"github.com/avenga/couper/access_control"
+	"github.com/avenga/couper/errors"
 )
 
 func TestAccessControl_ServeHTTP(t *testing.T) {

@@ -17,8 +17,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
 
-	"go.avenga.cloud/couper/gateway/config/request"
-	"go.avenga.cloud/couper/gateway/eval"
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
 )
 
 var (

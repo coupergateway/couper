@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"go.avenga.cloud/couper/gateway/utils"
+	"github.com/avenga/couper/utils"
 )
 
 func TestUtils_JoinPath(t *testing.T) {

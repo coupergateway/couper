@@ -15,12 +15,12 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
-	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/errors"
-	"go.avenga.cloud/couper/gateway/handler"
-	"go.avenga.cloud/couper/gateway/internal/seetie"
-	"go.avenga.cloud/couper/gateway/utils"
+	ac "github.com/avenga/couper/access_control"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/utils"
 )
 
 type entrypointHandler struct {

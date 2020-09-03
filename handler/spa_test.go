@@ -1,7 +1,7 @@
 package handler_test
 
 import (
-	"go.avenga.cloud/couper/gateway/handler"
+	"github.com/avenga/couper/handler"
 	"net/http"
 	"net/http/httptest"
 	"os"

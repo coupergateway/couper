@@ -13,7 +13,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
-	ac "go.avenga.cloud/couper/gateway/access_control"
+	ac "github.com/avenga/couper/access_control"
 )
 
 func TestJWT_Validate(t *testing.T) {
