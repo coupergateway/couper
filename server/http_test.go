@@ -16,9 +16,9 @@ import (
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/config/runtime"
-	"go.avenga.cloud/couper/gateway/server"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/server"
 )
 
 func TestHTTPServer_ServeHTTP_Files(t *testing.T) {

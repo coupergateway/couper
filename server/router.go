@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"go.avenga.cloud/couper/gateway/config/request"
-	"go.avenga.cloud/couper/gateway/config/runtime"
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime"
 )
 
 // Router represents the Router object.

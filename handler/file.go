@@ -6,9 +6,9 @@ import (
 	"path"
 	"strings"
 
-	"go.avenga.cloud/couper/gateway/errors"
+	"github.com/avenga/couper/errors"
 
-	"go.avenga.cloud/couper/gateway/utils"
+	"github.com/avenga/couper/utils"
 )
 
 const dirIndexFile = "index.html"

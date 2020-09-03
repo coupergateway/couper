@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	"go.avenga.cloud/couper/gateway/assets"
-	"go.avenga.cloud/couper/gateway/config/request"
+	"github.com/avenga/couper/assets"
+	"github.com/avenga/couper/config/request"
 )
 
 var (

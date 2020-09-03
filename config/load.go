@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2/hclsimple"
 
-	"go.avenga.cloud/couper/gateway/eval"
+	"github.com/avenga/couper/eval"
 )
 
 func LoadFile(filename string) (*Gateway, error) {

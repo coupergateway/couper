@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 
-	"go.avenga.cloud/couper/gateway/config"
+	"github.com/avenga/couper/config"
 )
 
 func TestWriteGateway(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"path"
 	"testing"
 
-	"go.avenga.cloud/couper/gateway/errors"
+	"github.com/avenga/couper/errors"
 )
 
 func TestFile_ServeHTTP(t *testing.T) {

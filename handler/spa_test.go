@@ -7,7 +7,7 @@ import (
 	"path"
 	"testing"
 
-	"go.avenga.cloud/couper/gateway/handler"
+	"github.com/avenga/couper/handler"
 )
 
 func TestSpa_ServeHTTP(t *testing.T) {
