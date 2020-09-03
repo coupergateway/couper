@@ -3,8 +3,10 @@ package request
 type ContextKey uint8
 
 const (
-	RequestID ContextKey = iota
+	UID ContextKey = iota
 	ConnectionSerial
 	Endpoint
+	StartTime
+	StartTimeUpstream
 	Wildcard
 )

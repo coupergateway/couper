@@ -146,6 +146,7 @@ func NewProxy(options *ProxyOptions, logger logrus.FieldLogger, evalCtx *hcl.Eva
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	now := time.Now()
 	ctx := req.Context()
 	if p.options.Timeout > 0 {
 		deadline := time.Now().Add(p.options.Timeout)
@@ -153,6 +154,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		ctx = c
 		defer cancelFn()
 	}
+	ctx = context.WithValue(ctx, request.StartTimeUpstream, &now)
 
 	if p.options.CORS != nil && isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)

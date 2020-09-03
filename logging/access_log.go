@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -25,12 +26,15 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 }
 
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
-	now := time.Now()
 	statusRecorder := NewStatusRecorder(rw)
 	rw = statusRecorder
 
-	uniqueID := req.Context().Value(request.RequestID)
+	uniqueID := req.Context().Value(request.UID)
 	connectionSerial := req.Context().Value(request.ConnectionSerial)
+	startTime := req.Context().Value(request.StartTime).(*time.Time)
+	if startTimeUpstream, ok := req.Context().Value(request.StartTimeUpstream).(*time.Time); ok {
+		startTime = startTimeUpstream
+	}
 
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
@@ -45,7 +49,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		"method":            req.Method,
 		"proto":             req.Proto,
 		"request":           requestFields,
-		"timestamp":         now.UTC(),
+		"timestamp":         startTime.UTC(),
 		"uid":               uniqueID,
 	}
 
@@ -88,6 +92,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	nextHandler.ServeHTTP(rw, req)
 
+	fields["realtime"] = sinceMS(startTime)
 	fields["status"] = statusRecorder.status
 
 	responseFields := Fields{
@@ -134,4 +139,8 @@ func splitHostPort(hp string) (string, string) {
 		port = "-"
 	}
 	return host, port
+}
+
+func sinceMS(start *time.Time) float64 {
+	return math.Round(float64(time.Since(*start)/time.Millisecond*1000)) / 1000
 }

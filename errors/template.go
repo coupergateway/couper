@@ -73,7 +73,7 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 		}
 
 		var reqID string
-		if r, ok := req.Context().Value(request.RequestID).(string); ok {
+		if r, ok := req.Context().Value(request.UID).(string); ok {
 			reqID = r // could be nil within (unit) test cases
 		}
 		data := map[string]interface{}{

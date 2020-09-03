@@ -123,8 +123,10 @@ func (s *HTTPServer) listenForCtx() {
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	now := time.Now()
 	uid := s.uidFn()
-	ctx := context.WithValue(req.Context(), request.RequestID, uid)
+	ctx := context.WithValue(req.Context(), request.UID, uid)
+	ctx = context.WithValue(ctx, request.StartTime, &now)
 	*req = *req.WithContext(ctx)
 
 	_, h := s.getHandler(req)
