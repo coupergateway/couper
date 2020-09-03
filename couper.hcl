@@ -16,7 +16,7 @@ server "couperConnect" {
 
         cors {
             # allowed values: "*", "null", "origin1", ["origin1", ...]
-            allowed_origins = "https://www.foo.com"
+            allowed_origins = "https://www.Foo.com"
             allow_credentials = true
             max_age = "1h"
         }
