@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"go.avenga.cloud/couper/gateway/internal/seetie"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 type OptionsMap map[string][]string

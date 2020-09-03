@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/config/runtime"
-	"go.avenga.cloud/couper/gateway/errors"
-	"go.avenga.cloud/couper/gateway/handler"
+	ac "github.com/avenga/couper/access_control"
+	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler"
 )
 
 // Muxer represents the Muxer object.

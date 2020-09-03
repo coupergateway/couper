@@ -10,10 +10,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"go.avenga.cloud/couper/gateway/command"
-	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/config/runtime"
-	"go.avenga.cloud/couper/gateway/server"
+	"github.com/avenga/couper/command"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/server"
 )
 
 var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")

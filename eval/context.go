@@ -15,10 +15,10 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/config/request"
-	"go.avenga.cloud/couper/gateway/eval/lib"
-	"go.avenga.cloud/couper/gateway/internal/seetie"
+	ac "github.com/avenga/couper/access_control"
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 type Roundtrip interface {

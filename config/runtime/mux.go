@@ -1,6 +1,6 @@
 package runtime
 
-import "go.avenga.cloud/couper/gateway/errors"
+import "github.com/avenga/couper/errors"
 
 // Mux represents a Mux object.
 type Mux struct {

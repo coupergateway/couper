@@ -11,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"go.avenga.cloud/couper/gateway/config/request"
-	"go.avenga.cloud/couper/gateway/eval"
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
 )
 
 func TestProxy_ServeHTTP_Timings(t *testing.T) {

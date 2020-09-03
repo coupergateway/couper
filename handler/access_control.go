@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	ac "go.avenga.cloud/couper/gateway/access_control"
-	"go.avenga.cloud/couper/gateway/errors"
+	ac "github.com/avenga/couper/access_control"
+	"github.com/avenga/couper/errors"
 )
 
 var (

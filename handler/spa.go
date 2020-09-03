@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"go.avenga.cloud/couper/gateway/errors"
+	"github.com/avenga/couper/errors"
 )
 
 var _ http.Handler = &Spa{}

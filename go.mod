@@ -1,4 +1,4 @@
-module go.avenga.cloud/couper/gateway
+module github.com/avenga/couper
 
 go 1.14
 

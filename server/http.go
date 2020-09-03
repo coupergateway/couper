@@ -11,10 +11,10 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
-	"go.avenga.cloud/couper/gateway/config"
-	"go.avenga.cloud/couper/gateway/config/request"
-	"go.avenga.cloud/couper/gateway/config/runtime"
-	"go.avenga.cloud/couper/gateway/errors"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 )
 
 // HTTPServer represents a configured HTTP server.
