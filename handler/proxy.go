@@ -113,7 +113,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 
 	// TODO: via hcl conf file
 	logConf := *logging.DefaultConfig
-	logConf.TypeFieldKey = "couper_upstream"
+	logConf.TypeFieldKey = "couper_backend"
 
 	proxy := &Proxy{
 		evalContext: evalCtx,
