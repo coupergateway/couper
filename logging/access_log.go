@@ -1,10 +1,13 @@
 package logging
 
 import (
+	"crypto/tls"
 	"math"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 
@@ -25,16 +28,61 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	}
 }
 
+var handlerFuncType = reflect.ValueOf(http.HandlerFunc(nil)).Type()
+
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
+	startTime := time.Now()
+
+	isUpstreamRequest := reflect.ValueOf(nextHandler).Type() == handlerFuncType
+
+	clientAddr := req.RemoteAddr
+	timings := Fields{}
+	var timeTTFB, timeGotConn time.Time
+	trace := &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			timeGotConn = time.Now()
+		},
+		GotFirstResponseByte: func() {
+			timeTTFB = time.Now()
+			if isUpstreamRequest {
+				timings["ttfb"] = roundMS(timeTTFB.Sub(timeGotConn))
+			}
+		},
+	}
+
+	if isUpstreamRequest {
+		var timeConnect, timeDNS, timeTLS time.Time
+		trace.ConnectStart = func(_, _ string) {
+			timeConnect = time.Now()
+		}
+		trace.DNSStart = func(_ httptrace.DNSStartInfo) {
+			timeDNS = time.Now()
+		}
+		trace.TLSHandshakeStart = func() {
+			timeTLS = time.Now()
+		}
+		trace.ConnectDone = func(network, addr string, err error) {
+			if err == nil {
+				timings["connect"] = roundMS(time.Since(timeConnect))
+			}
+		}
+		trace.DNSDone = func(_ httptrace.DNSDoneInfo) {
+			timings["dns"] = roundMS(time.Since(timeDNS))
+		}
+		trace.TLSHandshakeDone = func(_ tls.ConnectionState, err error) {
+			if err == nil {
+				timings["tls"] = roundMS(time.Since(timeTLS))
+			}
+		}
+	}
+
+	*req = *req.Clone(httptrace.WithClientTrace(req.Context(), trace))
+
 	statusRecorder := NewStatusRecorder(rw)
 	rw = statusRecorder
 
 	uniqueID := req.Context().Value(request.UID)
 	connectionSerial := req.Context().Value(request.ConnectionSerial)
-	startTime := req.Context().Value(request.StartTime).(*time.Time)
-	if startTimeUpstream, ok := req.Context().Value(request.StartTimeUpstream).(*time.Time); ok {
-		startTime = startTimeUpstream
-	}
 
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
@@ -51,6 +99,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		"request":           requestFields,
 		"timestamp":         startTime.UTC(),
 		"uid":               uniqueID,
+		"timings":           timings,
 	}
 
 	if log.conf.TypeFieldKey != "" {
@@ -72,7 +121,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	clientFields := Fields{
-		"addr": req.RemoteAddr,
+		"addr": clientAddr,
 	}
 	fields["client"] = clientFields
 	clientFields["host"], clientFields["port"] = splitHostPort(req.RemoteAddr)
@@ -91,8 +140,11 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	fields["scheme"] = scheme
 
 	nextHandler.ServeHTTP(rw, req)
+	serveDone := time.Now()
 
-	fields["realtime"] = sinceMS(startTime)
+	timings["ttlb"] = roundMS(serveDone.Sub(timeTTFB))
+
+	fields["realtime"] = roundMS(serveDone.Sub(startTime))
 	fields["status"] = statusRecorder.status
 
 	responseFields := Fields{
@@ -104,13 +156,25 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		responseFields["bytes"] = statusRecorder.writtenBytes
 	}
 
+	var err error
+	if reqErr, ok := req.Context().Value(request.Error).(error); ok {
+		err = reqErr
+		if isUpstreamRequest && statusRecorder.status == http.StatusBadGateway {
+			fields["status"] = 0
+		}
+	}
+
 	var entry *logrus.Entry
 	if log.conf.ParentFieldKey != "" {
 		entry = log.logger.WithField(log.conf.ParentFieldKey, fields)
 	} else {
 		entry = log.logger.WithFields(logrus.Fields(fields))
 	}
-	if statusRecorder.status == http.StatusInternalServerError {
+	if statusRecorder.status == http.StatusInternalServerError || err != nil {
+		if err != nil {
+			entry.Error(err)
+			return
+		}
 		entry.Error()
 	} else {
 		entry.Info()
@@ -141,6 +205,10 @@ func splitHostPort(hp string) (string, string) {
 	return host, port
 }
 
-func sinceMS(start *time.Time) float64 {
-	return math.Round(float64(time.Since(*start)/time.Millisecond*1000)) / 1000
+func roundMS(d time.Duration) float64 {
+	const maxDuration time.Duration = 1<<63 - 1
+	if d == maxDuration {
+		return 0.0
+	}
+	return math.Round(float64(d/time.Millisecond*1000)) / 1000
 }

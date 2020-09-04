@@ -9,7 +9,6 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"path"
 	"strconv"
@@ -146,7 +145,10 @@ func NewProxy(options *ProxyOptions, logger logrus.FieldLogger, evalCtx *hcl.Eva
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	now := time.Now()
+	p.upstreamLog.ServeHTTP(rw, req, http.HandlerFunc(p.roundtrip))
+}
+
+func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	if p.options.Timeout > 0 {
 		deadline := time.Now().Add(p.options.Timeout)
@@ -154,7 +156,6 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		ctx = c
 		defer cancelFn()
 	}
-	ctx = context.WithValue(ctx, request.StartTimeUpstream, &now)
 
 	if p.options.CORS != nil && isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
@@ -169,19 +170,6 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if outreq.Header == nil {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
-
-	var upstreamErr error
-	var beresp *http.Response
-	upstreamHandler := http.HandlerFunc(func(rc http.ResponseWriter, bereq *http.Request) {
-		beresp, upstreamErr = p.transport.RoundTrip(bereq)
-		if upstreamErr != nil {
-			return
-		}
-
-		// Just writes log related data to the response recorder
-		copyHeader(rc.Header(), beresp.Header)
-		rc.WriteHeader(beresp.StatusCode)
-	})
 
 	p.director(outreq)
 	outreq.Close = false
@@ -208,16 +196,16 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
-	upstreamRecorder := &httptest.ResponseRecorder{}
-	p.upstreamLog.ServeHTTP(upstreamRecorder, outreq, upstreamHandler)
-	res, err := beresp, upstreamErr
+	res, err := p.transport.RoundTrip(outreq)
 	if err != nil {
+		*req = *req.Clone(context.WithValue(req.Context(), request.Error, err))
+		rw.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
 	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
 	if res.StatusCode == http.StatusSwitchingProtocols {
-		p.setRoundtripContext(req, res)
+		p.setRoundtripContext(outreq, res)
 		p.handleUpgradeResponse(rw, outreq, res)
 		return
 	}
@@ -228,7 +216,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		res.Header.Del(h)
 	}
 
-	p.setRoundtripContext(req, res)
+	p.setRoundtripContext(outreq, res)
 
 	copyHeader(rw.Header(), res.Header)
 
@@ -248,7 +236,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	_, err = io.Copy(rw, res.Body)
 	if err != nil {
 		defer res.Body.Close()
-		p.log.Error(err)
+		*req = *req.Clone(context.WithValue(req.Context(), request.Error, err))
 		return
 	}
 

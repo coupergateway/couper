@@ -7,6 +7,6 @@ const (
 	ConnectionSerial
 	Endpoint
 	StartTime
-	StartTimeUpstream
+	Error
 	Wildcard
 )
