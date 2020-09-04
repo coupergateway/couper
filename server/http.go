@@ -131,7 +131,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	_, h := s.getHandler(req)
 	if h == nil {
-		h = errors.DefaultHTML.ServeError(errors.ConfigurationError)
+		h = errors.DefaultHTML.ServeError(errors.Configuration)
 	}
 
 	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)

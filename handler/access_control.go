@@ -33,7 +33,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			var code errors.Code
 			switch err {
 			case ac.ErrorNotConfigured:
-				code = errors.ConfigurationError
+				code = errors.Configuration
 			case ac.ErrorEmptyToken:
 				code = errors.AuthorizationRequired
 			default:

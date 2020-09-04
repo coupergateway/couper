@@ -21,6 +21,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
@@ -199,7 +200,8 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	res, err := p.transport.RoundTrip(outreq)
 	if err != nil {
 		*req = *req.Clone(context.WithValue(req.Context(), request.Error, err))
-		rw.WriteHeader(http.StatusBadGateway)
+		// TODO: use error template from parent endpoint>api>server
+		couperErr.DefaultJSON.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
 
