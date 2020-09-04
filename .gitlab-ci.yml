@@ -34,10 +34,6 @@ push latest:
     - docker logout docker.io
   only:
     - master
-    - develop
-    - docker-image
-    - tags
-  when: manual
 
 
 tests:
