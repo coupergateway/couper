@@ -99,7 +99,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	serveDone := time.Now()
 
 	reqCtx := req
-	if isUpstreamRequest && roundtripInfo != nil {
+	if isUpstreamRequest && roundtripInfo != nil && roundtripInfo.BeReq != nil {
 		reqCtx = roundtripInfo.BeReq
 		if roundtripInfo.BeResp != nil {
 			reqCtx.TLS = roundtripInfo.BeResp.TLS
