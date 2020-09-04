@@ -64,12 +64,10 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 }
 
 func TestProxy_ServeHTTP_CORS(t *testing.T) {
-	// t.Skip("todo: fixme")
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodHead {
-			time.Sleep(time.Second * 2) // > ttfb proxy settings
-		}
-		rw.WriteHeader(http.StatusNoContent)
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusOK)
+		rw.Write([]byte("from upstream"))
 	}))
 	defer origin.Close()
 
