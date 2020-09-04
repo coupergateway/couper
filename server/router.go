@@ -50,7 +50,7 @@ func (r *Router) match(req *http.Request, route *runtime.Route) http.Handler {
 		if route.HasWildcard() {
 			match := route.GetMatcher().FindStringSubmatch(req.URL.Path)
 			if len(match) > 1 {
-				*req = *req.WithContext(context.WithValue(req.Context(), request.Wildcard, match[1]))
+				*req = *req.WithContext(context.WithValue(req.Context(), request.Wildcard, match[2]))
 			}
 		}
 		*req = *req.WithContext(context.WithValue(req.Context(), request.Endpoint, route.Name()))

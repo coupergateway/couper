@@ -133,14 +133,6 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				utils.JoinPath(server.Files.BasePath, "/**"),
 				entryHandler.files,
 			)
-
-			// Register base_path-302 case
-			if server.Files.BasePath != "/" {
-				mux.FS = mux.FS.Add(
-					strings.TrimRight(server.Files.BasePath, "/")+"$",
-					entryHandler.files,
-				)
-			}
 		}
 
 		if server.Spa != nil {
@@ -154,13 +146,6 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 					spaPath,
 					entryHandler.spa,
 				)
-
-				if spaPath != "/**" && strings.HasSuffix(spaPath, "/**") {
-					mux.SPA = mux.SPA.Add(
-						spaPath[:len(spaPath)-len("/**")],
-						entryHandler.spa,
-					)
-				}
 			}
 		}
 

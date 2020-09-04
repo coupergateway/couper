@@ -157,13 +157,13 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
-
+	error404Content := []byte("<title>404 FilesRouteNotFound</title>")
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
 	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
 
 	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
@@ -186,13 +186,28 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<title>404 FilesRouteNotFound</title>"), 404},
+		// spa path /
+		{"/", spaContent, 200},
+		// 404 check that spa /dir/** rule doesn't match here
+		{"/dirdoesnotexist", error404Content, 404},
+		{"/dir:", error404Content, 404},
+		{"/dir.txt", error404Content, 404},
+		// dir w/ index in files
 		{"/dir", nil, 302},
+		// dir/ w/ index in files
 		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
+		// dir w/o index in files
+		{"/assets/noindex", error404Content, 404},
+		{"/assets/noindex/", error404Content, 404},
+		{"/assets/noindex/file.txt", []byte("foo\n"), 200},
+		// dir w/o index in spa
+		{"/dir/noindex", spaContent, 200},
+		// file > spa
+		{"/dir/noindex/otherfile.txt", []byte("bar\n"), 200},
 		{"/robots.txt", []byte("Disallow: /secret\n"), 200},
 		{"/foo bar.txt", []byte("foo-and-bar\n"), 200},
 		{"/foo%20bar.txt", []byte("foo-and-bar\n"), 200},
-		{"/favicon.ico", []byte("<title>404 FilesRouteNotFound</title>"), 404},
+		{"/favicon.ico", error404Content, 404},
 		{"/app", spaContent, 200},
 		{"/app/", spaContent, 200},
 		{"/app/bla", spaContent, 200},
@@ -207,7 +222,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		}
 
 		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("Expected status %d, got %d", testCase.expectedStatus, res.StatusCode)
+			t.Errorf("Expected status for path %q %d, got %d", testCase.path, testCase.expectedStatus, res.StatusCode)
 		}
 
 		result := &bytes.Buffer{}
@@ -216,7 +231,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
-			t.Errorf("Expected body:\n%s\ngot:\n%s", string(testCase.expectedBody), result.String())
+			t.Errorf("Expected body for path %q:\n%s\ngot:\n%s", testCase.path, string(testCase.expectedBody), result.String())
 		}
 	}
 }
