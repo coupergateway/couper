@@ -108,7 +108,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	uniqueID := reqCtx.Context().Value(request.UID)
-	connectionSerial := reqCtx.Context().Value(request.ConnectionSerial)
 
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, reqCtx.Header),
@@ -119,7 +118,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	fields := Fields{
-		"connection_serial": connectionSerial,
 		"method":  reqCtx.Method,
 		"proto":   reqCtx.Proto,
 		"request": requestFields,

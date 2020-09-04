@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/rs/xid"
@@ -61,13 +60,8 @@ func New(cmdCtx context.Context, logger logrus.FieldLogger, conf *runtime.HTTPCo
 		uidFn:      uidFn,
 	}
 
-	var connectionSerial uint64
-
 	srv := &http.Server{
 		Addr: ":" + string(p),
-		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			return context.WithValue(ctx, request.ConnectionSerial, atomic.AddUint64(&connectionSerial, 1))
-		},
 		Handler:           httpSrv,
 		IdleTimeout:       conf.Timings.IdleTimeout,
 		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
