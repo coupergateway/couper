@@ -149,15 +149,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		requestFields["host"], requestFields["port"] = splitHostPort(reqCtx.Host)
 	}
 
-	clientFields := Fields{
-		"addr": reqCtx.RemoteAddr,
-	}
-	fields["client"] = clientFields
-	clientFields["host"], clientFields["port"] = splitHostPort(reqCtx.RemoteAddr)
-	if xff := reqCtx.Header.Get("X-Forwarded-For"); xff != "" { // TODO: if conf use xff
-		clientFields["host"] = xff
-	}
-
 	if reqCtx.URL.User != nil && reqCtx.URL.User.Username() != "" {
 		fields["auth_user"] = reqCtx.URL.User.Username()
 	}
@@ -190,6 +181,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 			fields["scheme"] = reqCtx.URL.Scheme
 		}
 	} else if !isUpstreamRequest {
+		fields["client_ip"], _ = splitHostPort(reqCtx.RemoteAddr)
 		if couperErr := statusRecorder.Header().Get(errors.HeaderErrorCode); couperErr != "" {
 			i, _ := strconv.Atoi(couperErr[:4])
 			err = errors.Code(i)
