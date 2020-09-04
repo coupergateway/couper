@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"crypto/tls"
 	"math"
 	"net"
@@ -17,6 +18,12 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
+
+type RoundtripInfo struct {
+	BeReq  *http.Request
+	BeResp *http.Response
+	Err    error
+}
 
 type AccessLog struct {
 	conf   *Config
@@ -37,7 +44,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	isUpstreamRequest := reflect.ValueOf(nextHandler).Type() == handlerFuncType
 
-	clientAddr := req.RemoteAddr
 	timings := Fields{}
 	var timeTTFB, timeGotConn time.Time
 	trace := &httptrace.ClientTrace{
@@ -78,26 +84,43 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		}
 	}
 
-	*req = *req.Clone(httptrace.WithClientTrace(req.Context(), trace))
+	ctx := httptrace.WithClientTrace(req.Context(), trace)
+	var roundtripInfo *RoundtripInfo
+	if isUpstreamRequest {
+		roundtripInfo = &RoundtripInfo{}
+		ctx = context.WithValue(ctx, request.RoundtripInfo, roundtripInfo)
+	}
+	*req = *req.Clone(ctx)
 
 	statusRecorder := NewStatusRecorder(rw)
 	rw = statusRecorder
 
-	uniqueID := req.Context().Value(request.UID)
-	connectionSerial := req.Context().Value(request.ConnectionSerial)
+	nextHandler.ServeHTTP(rw, req)
+	serveDone := time.Now()
+
+	reqCtx := req
+	if isUpstreamRequest && roundtripInfo != nil {
+		reqCtx = roundtripInfo.BeReq
+		if roundtripInfo.BeResp != nil {
+			reqCtx.TLS = roundtripInfo.BeResp.TLS
+		}
+	}
+
+	uniqueID := reqCtx.Context().Value(request.UID)
+	connectionSerial := reqCtx.Context().Value(request.ConnectionSerial)
 
 	requestFields := Fields{
-		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
+		"headers": filterHeader(log.conf.RequestHeaders, reqCtx.Header),
 	}
 
 	if req.ContentLength > 0 {
-		requestFields["bytes"] = req.ContentLength
+		requestFields["bytes"] = reqCtx.ContentLength
 	}
 
 	fields := Fields{
 		"connection_serial": connectionSerial,
-		"method":            req.Method,
-		"proto":             req.Proto,
+		"method":            reqCtx.Method,
+		"proto":             reqCtx.Proto,
 		"request":           requestFields,
 		"timestamp":         startTime.UTC(),
 		"uid":               uniqueID,
@@ -109,40 +132,31 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	path := &url.URL{
-		Path:       req.URL.Path,
-		RawPath:    req.URL.RawPath,
-		RawQuery:   req.URL.RawQuery,
-		ForceQuery: req.URL.ForceQuery,
-		Fragment:   req.URL.Fragment,
+		Path:       reqCtx.URL.Path,
+		RawPath:    reqCtx.URL.RawPath,
+		RawQuery:   reqCtx.URL.RawQuery,
+		ForceQuery: reqCtx.URL.ForceQuery,
+		Fragment:   reqCtx.URL.Fragment,
 	}
 	requestFields["path"] = path.String()
 
 	if req.Host != "" {
-		requestFields["addr"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
+		requestFields["addr"] = reqCtx.Host
+		requestFields["host"], requestFields["port"] = splitHostPort(reqCtx.Host)
 	}
 
 	clientFields := Fields{
-		"addr": clientAddr,
+		"addr": reqCtx.RemoteAddr,
 	}
 	fields["client"] = clientFields
-	clientFields["host"], clientFields["port"] = splitHostPort(req.RemoteAddr)
-	if xff := req.Header.Get("X-Forwarded-For"); xff != "" { // TODO: if conf use xff
+	clientFields["host"], clientFields["port"] = splitHostPort(reqCtx.RemoteAddr)
+	if xff := reqCtx.Header.Get("X-Forwarded-For"); xff != "" { // TODO: if conf use xff
 		clientFields["host"] = xff
 	}
 
-	if req.URL.User != nil && req.URL.User.Username() != "" {
-		fields["auth_user"] = req.URL.User.Username()
+	if reqCtx.URL.User != nil && reqCtx.URL.User.Username() != "" {
+		fields["auth_user"] = reqCtx.URL.User.Username()
 	}
-
-	scheme := "http"
-	if req.TLS != nil {
-		scheme = "https"
-	}
-	fields["scheme"] = scheme
-
-	nextHandler.ServeHTTP(rw, req)
-	serveDone := time.Now()
 
 	timings["ttlb"] = roundMS(serveDone.Sub(timeTTFB))
 
@@ -158,20 +172,25 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		responseFields["bytes"] = statusRecorder.writtenBytes
 	}
 
-	var err error
-	if reqErr, ok := req.Context().Value(request.Error).(error); ok {
-		err = reqErr
-		if isUpstreamRequest && statusRecorder.status == http.StatusBadGateway {
-			fields["status"] = 0
-		}
+	scheme := "http"
+	if reqCtx.TLS != nil {
+		scheme = "https"
 	}
+	fields["scheme"] = scheme
 
-	if couperErr := statusRecorder.Header().Get(errors.HeaderErrorCode); couperErr != "" {
-		i, _ := strconv.Atoi(couperErr[:4])
-		if err == nil {
-			err = errors.Code(i)
+	var err error
+	if isUpstreamRequest && roundtripInfo != nil {
+		err = roundtripInfo.Err
+		if roundtripInfo.BeResp == nil {
+			fields["status"] = 0
+			fields["scheme"] = reqCtx.URL.Scheme
 		}
-		fields["code"] = i
+	} else if !isUpstreamRequest {
+		if couperErr := statusRecorder.Header().Get(errors.HeaderErrorCode); couperErr != "" {
+			i, _ := strconv.Atoi(couperErr[:4])
+			err = errors.Code(i)
+			fields["code"] = i
+		}
 	}
 
 	var entry *logrus.Entry

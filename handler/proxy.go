@@ -198,8 +198,9 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	res, err := p.transport.RoundTrip(outreq)
+	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
+	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		*req = *req.Clone(context.WithValue(req.Context(), request.Error, err))
 		// TODO: use error template from parent endpoint>api>server
 		couperErr.DefaultJSON.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
@@ -238,7 +239,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	_, err = io.Copy(rw, res.Body)
 	if err != nil {
 		defer res.Body.Close()
-		*req = *req.Clone(context.WithValue(req.Context(), request.Error, err))
+		roundtripInfo.Err = err
 		return
 	}
 
