@@ -96,9 +96,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	statusRecorder := NewStatusRecorder(rw)
 	rw = statusRecorder
 
-	if !isUpstreamRequest && timeTTFB.IsZero() {
-		timeTTFB = time.Now() // provide at least a ttlb for file/spa requests
-	}
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
@@ -153,8 +150,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		fields["auth_user"] = reqCtx.URL.User.Username()
 	}
 
-	timings["ttlb"] = roundMS(serveDone.Sub(timeTTFB))
-
 	fields["realtime"] = roundMS(serveDone.Sub(startTime))
 	fields["status"] = statusRecorder.status
 
@@ -176,7 +171,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	var err error
 	if isUpstreamRequest && roundtripInfo != nil {
 		err = roundtripInfo.Err
-		if roundtripInfo.BeResp == nil {
+		if roundtripInfo.BeResp != nil {
+			fields["timings"] = timings
+			timings["ttlb"] = roundMS(serveDone.Sub(timeTTFB))
+		} else {
 			fields["status"] = 0
 			fields["scheme"] = reqCtx.URL.Scheme
 		}
