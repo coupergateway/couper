@@ -8,12 +8,14 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 )
 
 type AccessLog struct {
@@ -164,12 +166,21 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		}
 	}
 
+	if couperErr := statusRecorder.Header().Get(errors.HeaderErrorCode); couperErr != "" {
+		i, _ := strconv.Atoi(couperErr[:4])
+		if err == nil {
+			err = errors.Code(i)
+		}
+		fields["code"] = i
+	}
+
 	var entry *logrus.Entry
 	if log.conf.ParentFieldKey != "" {
 		entry = log.logger.WithField(log.conf.ParentFieldKey, fields)
 	} else {
 		entry = log.logger.WithFields(logrus.Fields(fields))
 	}
+
 	if statusRecorder.status == http.StatusInternalServerError || err != nil {
 		if err != nil {
 			entry.Error(err)

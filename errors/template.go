@@ -17,6 +17,8 @@ var (
 	DefaultJSON *Template
 )
 
+const HeaderErrorCode = "Couper-Error"
+
 func init() {
 	var err error
 	DefaultHTML, err = NewTemplate("text/html", assets.Assets.MustOpen("error.html").Bytes())
@@ -63,7 +65,7 @@ func NewTemplate(mime string, src []byte) (*Template, error) {
 func (t *Template) ServeError(errCode Code) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
-		rw.Header().Set("Couper-Error", fmt.Sprintf("%d - %q", errCode, errCode))
+		rw.Header().Set(HeaderErrorCode, fmt.Sprintf("%d - %q", errCode, errCode))
 
 		status := httpStatus(errCode)
 		rw.WriteHeader(status)
