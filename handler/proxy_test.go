@@ -149,6 +149,13 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 				t.Errorf("Expected VaryAge %s, got: %s", tt.expectedVary, vary)
 			}
 
+			if tt.expectedStatus == http.StatusNoContent {
+				// PFC
+				ct := rec.HeaderMap.Get("Content-Type")
+				if ct != "" {
+					t.Errorf("Expected Content-Type %s, got: %s", "", ct)
+				}
+			}
 			if rec.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
 			} else {
