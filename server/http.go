@@ -10,7 +10,6 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
@@ -61,7 +60,7 @@ func New(cmdCtx context.Context, logger logrus.FieldLogger, conf *runtime.HTTPCo
 	}
 
 	srv := &http.Server{
-		Addr: ":" + string(p),
+		Addr:              ":" + string(p),
 		Handler:           httpSrv,
 		IdleTimeout:       conf.Timings.IdleTimeout,
 		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
@@ -117,13 +116,11 @@ func (s *HTTPServer) listenForCtx() {
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	now := time.Now()
 	uid := s.uidFn()
 	ctx := context.WithValue(req.Context(), request.UID, uid)
-	ctx = context.WithValue(ctx, request.StartTime, &now)
 	*req = *req.WithContext(ctx)
 
-	_, h := s.getHandler(req)
+	h := s.getHandler(req)
 	if h == nil {
 		h = errors.DefaultHTML.ServeError(errors.Configuration)
 	}
@@ -131,17 +128,20 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)
 }
 
-func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler) {
+func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
 	host := s.getHost(req)
 
 	if _, ok := s.muxes[host]; !ok {
 		if _, ok := s.muxes["*"]; !ok {
-			return nil, nil
+			*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, "-"))
+			return nil
 		}
 		host = "*"
 	}
 
-	return s.muxes[host].Server, NewMuxer(s.muxes[host].Mux).Match(req)
+	*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, s.muxes[host].Server.Name))
+
+	return NewMuxer(s.muxes[host].Mux).Match(req)
 }
 
 func (s *HTTPServer) getHost(req *http.Request) string {

@@ -5,7 +5,7 @@ type ContextKey uint8
 const (
 	UID ContextKey = iota
 	Endpoint
-	StartTime
+	ServerName
 	RoundtripInfo
 	Wildcard
 )

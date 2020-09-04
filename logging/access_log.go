@@ -121,6 +121,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		"method":  reqCtx.Method,
 		"proto":   reqCtx.Proto,
 		"request": requestFields,
+		"server":  reqCtx.Context().Value(request.ServerName),
 		"uid":     uniqueID,
 	}
 
