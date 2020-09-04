@@ -50,6 +50,7 @@ type Proxy struct {
 type ProxyOptions struct {
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              []hcl.Body
+	BackendName                          string
 	Hostname, Origin, Path               string
 	CORS                                 *CORSOptions
 }
@@ -98,7 +99,7 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewProxy(options *ProxyOptions, logger logrus.FieldLogger, evalCtx *hcl.EvalContext) (http.Handler, error) {
+func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -116,10 +117,10 @@ func NewProxy(options *ProxyOptions, logger logrus.FieldLogger, evalCtx *hcl.Eva
 
 	proxy := &Proxy{
 		evalContext: evalCtx,
-		log:         logger.WithField("type", logConf.TypeFieldKey),
+		log:         log,
 		options:     options,
 		originURL:   originURL,
-		upstreamLog: logging.NewAccessLog(&logConf, logger),
+		upstreamLog: logging.NewAccessLog(&logConf, log.Logger),
 	}
 
 	var tlsConf *tls.Config
@@ -146,6 +147,7 @@ func NewProxy(options *ProxyOptions, logger logrus.FieldLogger, evalCtx *hcl.Eva
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
 	p.upstreamLog.ServeHTTP(rw, req, http.HandlerFunc(p.roundtrip))
 }
 

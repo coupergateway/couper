@@ -29,18 +29,18 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, logger logrus.FieldLogger, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
+func NewServerList(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
 	var list []*HTTPServer
 
 	for port, hosts := range handlers {
-		list = append(list, New(cmdCtx, logger, conf, port, hosts))
+		list = append(list, New(cmdCtx, log, conf, port, hosts))
 	}
 
 	return list
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, logger logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
+func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
@@ -51,10 +51,10 @@ func New(cmdCtx context.Context, logger logrus.FieldLogger, conf *runtime.HTTPCo
 	logConf.TypeFieldKey = "couper_access"
 
 	httpSrv := &HTTPServer{
-		accessLog:  logging.NewAccessLog(&logConf, logger),
+		accessLog:  logging.NewAccessLog(&logConf, log.Logger),
 		config:     conf,
 		commandCtx: cmdCtx,
-		log:        logger,
+		log:        log,
 		muxes:      hosts,
 		uidFn:      uidFn,
 	}

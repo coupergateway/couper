@@ -38,8 +38,7 @@ var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
 // BuildEntrypointHandlers sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned EntrypointHandlers.
-func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger logrus.FieldLogger) EntrypointHandlers {
-	log := logger.WithField("type", "couper-config")
+func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) EntrypointHandlers {
 	if len(conf.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}
@@ -73,6 +72,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 			}
 			t, ttfbt, ct := parseBackendTimings(beConf)
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				BackendName:    beConf.Name,
 				ConnectTimeout: ct,
 				Context:        []hcl.Body{beConf.Options},
 				Hostname:       beConf.Hostname,
@@ -80,7 +80,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 				Path:           beConf.Path,
 				Timeout:        t,
 				TTFBTimeout:    ttfbt,
-			}, logger, conf.Context)
+			}, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -184,6 +184,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 						log.Fatal(err)
 					}
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
+						BackendName:    beConf.Name,
 						ConnectTimeout: ct,
 						Context:        remainCtx,
 						CORS:           corsOptions,
@@ -192,7 +193,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 						Path:           beConf.Path,
 						Timeout:        t,
 						TTFBTimeout:    ttfbt,
-					}, logger, conf.Context)
+					}, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -216,7 +217,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, server.API.CORS, logger)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, server.API.CORS, log)
 			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
@@ -225,7 +226,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, server.API.CORS, logger)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, server.API.CORS, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -252,6 +253,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 					log.Fatal(err)
 				}
 				proxy, err := handler.NewProxy(&handler.ProxyOptions{
+					BackendName:    beConf.Name,
 					ConnectTimeout: ct,
 					Context:        remainCtx,
 					CORS:           corsOptions,
@@ -260,7 +262,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, logger 
 					Path:           beConf.Path,
 					Timeout:        t,
 					TTFBTimeout:    ttfbt,
-				}, logger, conf.Context)
+				}, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -402,7 +404,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, logger logrus.FieldLogger) (http.Handler, *config.Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry) (http.Handler, *config.Backend, error) {
 	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
@@ -432,6 +434,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 		return nil, nil, err
 	}
 	proxy, err := handler.NewProxy(&handler.ProxyOptions{
+		BackendName:    beConf.Name,
 		ConnectTimeout: ct,
 		Context:        []hcl.Body{beConf.Options},
 		CORS:           corsOptions,
@@ -440,7 +443,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 		Path:           beConf.Path,
 		Timeout:        t,
 		TTFBTimeout:    ttfbt,
-	}, logger, evalCtx)
+	}, log, evalCtx)
 	return proxy, beConf, err
 }
 

@@ -21,22 +21,23 @@ var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
 func main() {
 	httpConf := runtime.NewHTTPConfig()
 	logger := newLogger(httpConf)
+	logEntry := logger.WithField("type", "couper_daemon")
 	if err := runtime.SetWorkingDirectory(*configFile); err != nil {
-		logger.Fatal(err)
+		logEntry.Fatal(err)
 	}
 
 	wd, _ := os.Getwd()
-	logger.WithField("working-directory", wd).Info()
+	logEntry.WithField("working-directory", wd).Info()
 
 	gatewayConf, err := config.LoadFile(path.Base(*configFile))
 	if err != nil {
-		logger.Fatal(err)
+		logEntry.Fatal(err)
 	}
 
-	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logger)
+	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logEntry)
 
 	ctx := command.ContextWithSignal(context.Background())
-	for _, srv := range server.NewServerList(ctx, logger, httpConf, entrypointHandlers) {
+	for _, srv := range server.NewServerList(ctx, logEntry, httpConf, entrypointHandlers) {
 		srv.Listen()
 	}
 	<-ctx.Done() // TODO: shutdown deadline

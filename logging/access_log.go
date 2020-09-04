@@ -117,12 +117,23 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		requestFields["bytes"] = reqCtx.ContentLength
 	}
 
+	serverName, _ := reqCtx.Context().Value(request.ServerName).(string)
+
 	fields := Fields{
 		"method":  reqCtx.Method,
 		"proto":   reqCtx.Proto,
 		"request": requestFields,
-		"server":  reqCtx.Context().Value(request.ServerName),
+		"server":  serverName,
 		"uid":     uniqueID,
+	}
+
+	if isUpstreamRequest {
+		backendName, _ := reqCtx.Context().Value(request.BackendName).(string)
+		if backendName == "" {
+			endpointName, _ := reqCtx.Context().Value(request.Endpoint).(string)
+			backendName = serverName + ":" + endpointName
+		}
+		fields["backend"] = backendName
 	}
 
 	if log.conf.TypeFieldKey != "" {
