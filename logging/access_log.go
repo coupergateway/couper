@@ -120,12 +120,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	fields := Fields{
 		"connection_serial": connectionSerial,
-		"method":            reqCtx.Method,
-		"proto":             reqCtx.Proto,
-		"request":           requestFields,
-		"timestamp":         startTime.UTC(),
-		"uid":               uniqueID,
-		"timings":           timings,
+		"method":  reqCtx.Method,
+		"proto":   reqCtx.Proto,
+		"request": requestFields,
+		"uid":     uniqueID,
 	}
 
 	if log.conf.TypeFieldKey != "" {
@@ -193,6 +191,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	} else {
 		entry = log.logger.WithFields(logrus.Fields(fields))
 	}
+	entry.Time = startTime
 
 	if statusRecorder.status == http.StatusInternalServerError || err != nil {
 		if err != nil {
