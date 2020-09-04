@@ -3,6 +3,7 @@ package logging
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"math"
 	"net"
 	"net/http"
@@ -95,6 +96,9 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	statusRecorder := NewStatusRecorder(rw)
 	rw = statusRecorder
 
+	if !isUpstreamRequest && timeTTFB.IsZero() {
+		timeTTFB = time.Now() // provide at least a ttlb for file/spa requests
+	}
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
@@ -235,10 +239,10 @@ func splitHostPort(hp string) (string, string) {
 	return host, port
 }
 
-func roundMS(d time.Duration) float64 {
+func roundMS(d time.Duration) string {
 	const maxDuration time.Duration = 1<<63 - 1
 	if d == maxDuration {
-		return 0.0
+		return "0.0"
 	}
-	return math.Round(float64(d/time.Millisecond*1000)) / 1000
+	return fmt.Sprintf("%.3f", math.Round(float64(d)*1000)/1000/float64(time.Millisecond))
 }
