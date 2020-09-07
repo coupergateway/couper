@@ -10,6 +10,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
@@ -46,9 +47,9 @@ func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p 
 		return xid.New().String()
 	}
 
-	// TODO: hcl conf
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_access"
+	env.DecodeWithPrefix(&logConf, "ACCESS_")
 
 	httpSrv := &HTTPServer{
 		accessLog:  logging.NewAccessLog(&logConf, log.Logger),

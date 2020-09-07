@@ -20,6 +20,7 @@ import (
 	"golang.org/x/net/http/httpguts"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -111,9 +112,9 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		return nil, SchemeRequiredError
 	}
 
-	// TODO: via hcl conf file
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
+	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
 	proxy := &Proxy{
 		evalContext: evalCtx,
