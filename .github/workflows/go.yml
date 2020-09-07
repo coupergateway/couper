@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 jobs:
 
@@ -24,8 +23,8 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Build
-      run: go build -v -o couper .
-
     - name: Test
       run: go test -v -timeout 30s -race ./...
+
+    - name: Build binary
+      run: go build -v -o couper .

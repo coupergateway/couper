@@ -7,15 +7,23 @@ on:
 jobs:
 
   build:
-    name: Build
+    name: Test and build container image
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+      id: go
+    - run: go version
+
     - name: checkout
       uses: actions/checkout@v2
 
-    - name: Build and test application
-      uses: ./.github/workflows/go.yml
+    - name: Test
+      run: go test -v -timeout 30s -race ./...
 
     - name: Build and push docker image
       # Recommended to refer to an explicit sha in combination with secrets
