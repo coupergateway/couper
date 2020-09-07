@@ -1,14 +1,20 @@
 # Couper 2.0 Docs - Version 0.1
+
+<!--
+* TODO: update access control in overview image  
+* OPEN: allow `access_control` for backend????
+* TODO: hosts attribute section needs some love
+* TODO: defaults block 
+* TODO: update basic auth section 
+* TODO: better access_control example 
+--->
+
 ## Introduction to Couper 2.0
 Couper 2.0 is a lightweight API gateway especially designed to support building and running API-driven Web projects.
 Acting as a proxy component it connects clients with (micro) services and adds access control and observability to the project. Couper does not need any special development skills and offers easy configuration and integration. 
 
 ## Core Concepts
-<!---TODOs:
-* `access_control` in Bildchen ergänzenl
-* `server` in Bildchen mit rein?
-* Description überarbeiten
---->
+
 ![](./overview.png)
 
 | Concept / Feature | Description                           |
@@ -16,7 +22,7 @@ Acting as a proxy component it connects clients with (micro) services and adds a
 | Client(s)| Browser, App or API Client that sends requests to Couper.|
 | Web Serving|Couper supports file serving and Web serving for SPA assets.|
 |API| Configuration block that bundles endpoints under a certain base path.|
-|Access Control| Couper controls access for incoming client requests.|
+|Access Control| Couper handles access control for incoming client requests.|
 |Endpoint| Configuration block that specifies how (and if) requests are sent to backend service(s) after they reach Couper.|
 |Backend|Configuration block that specifies the connection to a local/remote backend service.|
 |Logging|Couper provides standard logs for analysis and monitoring.|
@@ -26,9 +32,6 @@ Acting as a proxy component it connects clients with (micro) services and adds a
 
 The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp. 
 
-OPEN
-
-* allow `access_control` for backend????
 
 ---
 
@@ -57,6 +60,7 @@ definitions {...}
 * `endpoint`: configuration block for Couper's entry points
 * `backend`: configuration block for connection to local/remote backend service(s)
 * `definitions`: block for predefined configurations, that can be referenced
+* `defaults`: block for default configurations
 
 
 ### The `server` block 
@@ -192,6 +196,8 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 
 ### The `definitions` block 
 Use the `definitions` block to define configurations you want to reuse. `access_control` is **always** defined in the `definitions` block.
+
+### The `defaults` block 
 
 #### Referencing and Overwriting
 
