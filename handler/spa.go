@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 	"os"
-	"path"
 
 	"github.com/avenga/couper/errors"
 )
@@ -14,8 +13,8 @@ type Spa struct {
 	file string
 }
 
-func NewSpa(wd, bsFile string) *Spa {
-	return &Spa{file: path.Join(wd, bsFile)}
+func NewSpa(bsFile string) *Spa {
+	return &Spa{file: bsFile}
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
