@@ -5,6 +5,7 @@
 Couper 2 is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a  lightweight API gateway component.
 
 * Tutorials: [couper examples](https://github.com/avenga/couper-examples)
+* Documentation: [docs](https://github.com/avenga/couper/tree/master/docs)
 
 **Couper**
 * is a proxy component connecting clients with (micro) services
@@ -42,7 +43,7 @@ Couper runs on Linux, Mac OS X, FreeBSD and Windows.
 
 ## Documentation
 
-Docs comming soon. Please take a look at our [examples](https://github.com/avenga/couper-examples).
+You can find our current documentation [here](https://github.com/avenga/couper/tree/master/docs).
 
 ## Contributing
 
