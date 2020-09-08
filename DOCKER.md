@@ -18,3 +18,11 @@ See our [documentation](https://github.com/avenga/couper/trees/master/docs/) how
 | COUPER_PORT   | `8080`    | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
 | COUPER_XFH    | `false`   | Global configurations which uses the `Forwarded-Host` header instead of the request host.   |
 | COUPER_LOG_FORMAT | `common`  | Can be set to `json` output which is the _container default_. |
+| COUPER_ACCESS_LOG_PARENT_FIELD | `""`  | An option for `json` log format to add all log fields as child properties. |
+| COUPER_ACCESS_LOG_TYPE_VALUE | `couper_access`  | Value for the log field `type`. |
+| COUPER_ACCESS_LOG_REQUEST_HEADERS | `User-Agent, Accept, Referer`  | A comma separated list of header names whose values should be logged. |
+| COUPER_ACCESS_LOG_RESPONSE_HEADERS | `Cache-Control, Content-Encoding, Content-Type, Location`  | A comma separated list of header names whose values should be logged. |
+| COUPER_BACKEND_LOG_PARENT_FIELD | `""`  | An option for `json` log format to add all log fields as child properties. |
+| COUPER_BACKEND_LOG_TYPE_VALUE | `couper_backend`  | Value for the log field `type`. |
+| COUPER_BACKEND_LOG_REQUEST_HEADERS | `User-Agent, Accept, Referer`  | A comma separated list of header names whose values should be logged. |
+| COUPER_BACKEND_LOG_RESPONSE_HEADERS | `Cache-Control, Content-Encoding, Content-Type, Location`  | A comma separated list of header names whose values should be logged. |
