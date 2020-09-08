@@ -27,7 +27,7 @@ func main() {
 	}
 
 	wd, _ := os.Getwd()
-	logEntry.WithField("working-directory", wd).Info()
+	logEntry.Infof("working directory: %s", wd)
 
 	gatewayConf, err := config.LoadFile(path.Base(*configFile))
 	if err != nil {

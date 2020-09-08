@@ -90,7 +90,7 @@ func (s *HTTPServer) Listen() {
 		s.log.Fatal(err)
 	}
 	s.listener = ln
-	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving") // TODO: server name
+	s.log.Infof("couper gateway is serving: %s", ln.Addr().String()) // TODO: server name
 
 	go s.listenForCtx()
 
