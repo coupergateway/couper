@@ -149,7 +149,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
-	p.upstreamLog.ServeHTTP(rw, req, http.HandlerFunc(p.roundtrip))
+	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip))
 }
 
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {

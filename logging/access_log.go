@@ -26,6 +26,12 @@ type RoundtripInfo struct {
 	Err    error
 }
 
+type RoundtripHandlerFunc http.HandlerFunc
+
+func (f RoundtripHandlerFunc) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	f(rw, req)
+}
+
 type AccessLog struct {
 	conf   *Config
 	logger logrus.FieldLogger
@@ -38,7 +44,7 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	}
 }
 
-var handlerFuncType = reflect.ValueOf(http.HandlerFunc(nil)).Type()
+var handlerFuncType = reflect.ValueOf(RoundtripHandlerFunc(nil)).Type()
 
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
 	startTime := time.Now()
