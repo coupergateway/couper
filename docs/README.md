@@ -1,16 +1,7 @@
-# Couper 2.0 Docs - Version 0.1
+# Couper 2 Docs - Version 0.1
 
-<!--
-* TODO: update access control in overview image  
-* OPEN: allow `access_control` for backend????
-* TODO: hosts attribute section needs some love
-* TODO: defaults block 
-* TODO: update basic auth section 
-* TODO: better access_control example 
---->
-
-## Introduction to Couper 2.0
-Couper 2.0 is a lightweight API gateway especially designed to support building and running API-driven Web projects.
+## Introduction to Couper 2
+Couper 2 is a lightweight API gateway especially designed to support building and running API-driven Web projects.
 Acting as a proxy component it connects clients with (micro) services and adds access control and observability to the project. Couper does not need any special development skills and offers easy configuration and integration. 
 
 ## Core Concepts
