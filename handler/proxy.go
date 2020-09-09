@@ -38,7 +38,6 @@ var (
 
 type Proxy struct {
 	evalContext *hcl.EvalContext
-	cors        *config.CORS
 	log         *logrus.Entry
 	options     *ProxyOptions
 	originURL   *url.URL
