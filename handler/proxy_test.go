@@ -170,6 +170,107 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	}
 }
 
+func TestProxy_ServeHTTP_CORS(t *testing.T) {
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusOK)
+		rw.Write([]byte("from upstream"))
+	}))
+	defer origin.Close()
+
+	tests := []struct {
+		name                  string
+		options               *ProxyOptions
+		req                   *http.Request
+		origin                string
+		cookie                bool
+		auth                  bool
+		expectedStatus        int
+		expectedACAO          string
+		expectedACAC          bool
+		expectedVary          string
+	}{
+		{"specific origin", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", false, false, http.StatusOK, "https://www.example.com", false, "Origin"},
+		{"any origin", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", false, false, http.StatusOK, "*", false, ""},
+		{"any origin, cookie credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", true, false, http.StatusOK, "https://www.example.com", true, ""},
+		{"any origin, auth credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", false, true, http.StatusOK, "https://www.example.com", true, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger, hook := logrustest.NewNullLogger()
+			p, err := NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			tt.req.Header.Set("Origin", tt.origin)
+			if tt.cookie {
+				tt.req.Header.Set("Cookie", "a=b")
+			}
+			if tt.auth {
+				tt.req.Header.Set("Authorization", "Basic oertnbin")
+			}
+
+			hook.Reset()
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(rec, tt.req)
+
+			acao := rec.HeaderMap.Get("Access-Control-Allow-Origin")
+            if acao != tt.expectedACAO {
+				t.Errorf("Expected Access-Control-Allow-Origin %s, got: %s", tt.expectedACAO, acao)
+			}
+
+			acam := rec.HeaderMap.Get("Access-Control-Allow-Methods")
+            if acam != "" {
+				t.Errorf("Expected Access-Control-Allow-Methods %s, got: %s", "", acam)
+			}
+
+			acah := rec.HeaderMap.Get("Access-Control-Allow-Headers")
+            if acah != "" {
+				t.Errorf("Expected Access-Control-Allow-Headers %s, got: %s", "", acah)
+			}
+
+			acac := rec.HeaderMap.Get("Access-Control-Allow-Credentials")
+			if tt.expectedACAC {
+				if acac != "true" {
+					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "true", acac)
+				}
+			} else {
+				if acac != "" {
+					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "", acac)
+				}
+			}
+
+			acma := rec.HeaderMap.Get("Access-Control-Max-Age")
+            if acma != "" {
+				t.Errorf("Expected Access-Control-Max-Age %s, got: %s", "", acma)
+			}
+
+			vary := rec.HeaderMap.Get("Vary")
+            if vary != tt.expectedVary {
+				t.Errorf("Expected Vary %s, got: %s", tt.expectedVary, vary)
+			}
+
+			ct := rec.HeaderMap.Get("Content-Type")
+			if ct != "text/plain" {
+				t.Errorf("Expected Content-Type %s, got: %s", "text/plain", ct)
+			}
+
+			if rec.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
+			} else {
+				return // no error log for expected codes
+			}
+
+			for _, log := range hook.AllEntries() {
+				if log.Level >= logrus.ErrorLevel {
+					t.Error(log.Message)
+				}
+			}
+		})
+	}
+}
+
 func TestProxy_director(t *testing.T) {
 	defaultReq := httptest.NewRequest("GET", "http://example.com", nil)
 
