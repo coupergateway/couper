@@ -65,7 +65,7 @@ func NewCORSOptions(cors *config.CORS) *CORSOptions {
 	if err != nil {
 		panic(err)
 	}
-	cors_max_age := strconv.Itoa(int(math.Floor(dur.Seconds())))
+	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 
 	allowed_origins := seetie.ValueToStringSlice(cors.AllowedOrigins)
 	for i, a := range allowed_origins {
@@ -75,7 +75,7 @@ func NewCORSOptions(cors *config.CORS) *CORSOptions {
 	return &CORSOptions{
 		AllowedOrigins:   allowed_origins,
 		AllowCredentials: cors.AllowCredentials,
-		MaxAge:           cors_max_age,
+		MaxAge:           corsMaxAge,
 	}
 }
 
