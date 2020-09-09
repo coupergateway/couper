@@ -178,10 +178,14 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
 					t, ttfbt, ct := parseBackendTimings(beConf)
+					corsOptions, err := handler.NewCORSOptions(server.API.CORS)
+					if err != nil {
+						log.Fatal(err)
+					}
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
 						ConnectTimeout: ct,
 						Context:        remainCtx,
-						CORS:           handler.NewCORSOptions(server.API.CORS),
+						CORS:           corsOptions,
 						Hostname:       beConf.Hostname,
 						Origin:         beConf.Origin,
 						Path:           beConf.Path,
@@ -242,10 +246,14 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 				t, ttfbt, ct := parseBackendTimings(beConf)
+				corsOptions, err := handler.NewCORSOptions(server.API.CORS)
+				if err != nil {
+					log.Fatal(err)
+				}
 				proxy, err := handler.NewProxy(&handler.ProxyOptions{
 					ConnectTimeout: ct,
 					Context:        remainCtx,
-					CORS:           handler.NewCORSOptions(server.API.CORS),
+					CORS:           corsOptions,
 					Hostname:       beConf.Hostname,
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
@@ -418,10 +426,14 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	}
 
 	t, ttfbt, ct := parseBackendTimings(beConf)
+	corsOptions, err := handler.NewCORSOptions(cors)
+	if err != nil {
+		return nil, nil, err
+	}
 	proxy, err := handler.NewProxy(&handler.ProxyOptions{
 		ConnectTimeout: ct,
 		Context:        []hcl.Body{beConf.Options},
-		CORS:           handler.NewCORSOptions(cors),
+		CORS:           corsOptions,
 		Hostname:       beConf.Hostname,
 		Origin:         beConf.Origin,
 		Path:           beConf.Path,

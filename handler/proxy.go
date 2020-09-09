@@ -57,13 +57,13 @@ type CORSOptions struct {
 	MaxAge           string
 }
 
-func NewCORSOptions(cors *config.CORS) *CORSOptions {
+func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	if cors == nil {
-		return nil
+		return nil, nil
 	}
 	dur, err := time.ParseDuration(cors.MaxAge)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 
@@ -76,7 +76,7 @@ func NewCORSOptions(cors *config.CORS) *CORSOptions {
 		AllowedOrigins:   allowed_origins,
 		AllowCredentials: cors.AllowCredentials,
 		MaxAge:           corsMaxAge,
-	}
+	}, nil
 }
 
 func (c *CORSOptions) NeedsVary() bool {
