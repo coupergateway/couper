@@ -74,14 +74,12 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	tests := []struct {
 		name                    string
 		corsOptions             *CORSOptions
-		req                     *http.Request
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
 	}{
 		{
 			"with ACRM",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -97,7 +95,6 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		{
 			"with ACRH",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Access-Control-Request-Headers": "X-Foo, X-Bar",
@@ -113,7 +110,6 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		{
 			"with ACRM, ACRH",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -130,7 +126,6 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		{
 			"with ACRM, credentials",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -146,7 +141,6 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		{
 			"with ACRM, max-age",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -162,7 +156,6 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		{
 			"origin mismatch",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.org",
 				"Access-Control-Request-Method": "POST",
@@ -184,13 +177,14 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
-				tt.req.Header.Set(name, value)
+				req.Header.Set(name, value)
 			}
 
 			hook.Reset()
 			rec := httptest.NewRecorder()
-			p.ServeHTTP(rec, tt.req)
+			p.ServeHTTP(rec, req)
 
 			tt.expectedResponseHeaders["Vary"] = ""
 			tt.expectedResponseHeaders["Content-Type"] = ""
@@ -228,14 +222,12 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 	tests := []struct {
 		name                    string
 		corsOptions             *CORSOptions
-		req                     *http.Request
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
 	}{
 		{
 			"specific origin",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
-			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -248,7 +240,6 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"any origin",
 			&CORSOptions{AllowedOrigins:[]string{"*"}},
-			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -261,7 +252,6 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"any origin, cookie credentials",
 			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
-			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Cookie": "a=b",
@@ -275,7 +265,6 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"any origin, auth credentials",
 			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
-			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Authorization": "Basic oertnbin",
@@ -295,13 +284,14 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
-				tt.req.Header.Set(name, value)
+				req.Header.Set(name, value)
 			}
 
 			hook.Reset()
 			rec := httptest.NewRecorder()
-			p.ServeHTTP(rec, tt.req)
+			p.ServeHTTP(rec, req)
 
 			tt.expectedResponseHeaders["Access-Control-Allow-Methods"] = ""
 			tt.expectedResponseHeaders["Access-Control-Allow-Headers"] = ""
