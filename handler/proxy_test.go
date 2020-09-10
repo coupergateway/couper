@@ -78,12 +78,103 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
 	}{
-		{"with ACRM", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},  map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
-		{"with ACRH", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Headers": "X-Foo, X-Bar"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "", "Access-Control-Allow-Headers": "X-Foo, X-Bar", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
-		{"with ACRM, ACRH", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "X-Foo, X-Bar"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "X-Foo, X-Bar", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
-		{"with ACRM, credentials", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "true", "Access-Control-Max-Age": ""}},
-		{"with ACRM, max-age", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": "3600"}},
-		{"origin mismatch", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.org", "Access-Control-Request-Method": "POST"}, map[string]string{"Access-Control-Allow-Origin": "", "Access-Control-Allow-Methods": "", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
+		{
+			"with ACRM",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Access-Control-Request-Method": "POST",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Methods": "POST",
+				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age": "",
+			},
+		},
+		{
+			"with ACRH",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Access-Control-Request-Headers": "X-Foo, X-Bar",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Methods": "",
+				"Access-Control-Allow-Headers": "X-Foo, X-Bar",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age": "",
+			},
+		},
+		{
+			"with ACRM, ACRH",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Access-Control-Request-Method": "POST",
+				"Access-Control-Request-Headers": "X-Foo, X-Bar",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Methods": "POST",
+				"Access-Control-Allow-Headers": "X-Foo, X-Bar",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age": "",
+			},
+		},
+		{
+			"with ACRM, credentials",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Access-Control-Request-Method": "POST",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Methods": "POST",
+				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Credentials": "true",
+				"Access-Control-Max-Age": "",
+			},
+		},
+		{
+			"with ACRM, max-age",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Access-Control-Request-Method": "POST",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Methods": "POST",
+				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age": "3600",
+			},
+		},
+		{
+			"origin mismatch",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.org",
+				"Access-Control-Request-Method": "POST",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "",
+				"Access-Control-Allow-Methods": "",
+				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age": "",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,10 +232,60 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
 	}{
-		{"specific origin", &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Credentials": "", "Vary": "Origin"}},
-		{"any origin", &CORSOptions{AllowedOrigins:[]string{"*"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com"}, map[string]string{"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "", "Vary": ""}},
-		{"any origin, cookie credentials", &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Cookie": "a=b"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Credentials": "true", "Vary": ""}},
-		{"any origin, auth credentials", &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Authorization": "Basic oertnbin"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Credentials": "true", "Vary": ""}},
+		{
+			"specific origin",
+			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Credentials": "",
+				"Vary": "Origin",
+			},
+		},
+		{
+			"any origin",
+			&CORSOptions{AllowedOrigins:[]string{"*"}},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Credentials": "",
+				"Vary": "",
+			},
+		},
+		{
+			"any origin, cookie credentials",
+			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Cookie": "a=b",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary": "",
+			},
+		},
+		{
+			"any origin, auth credentials",
+			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
+			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Authorization": "Basic oertnbin",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary": "",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
