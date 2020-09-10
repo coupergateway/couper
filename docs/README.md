@@ -115,7 +115,16 @@ The `api` block contains all information about endpoints and the connection to r
 |[**`access_control`**](#ac)|<ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`backend`**](#be) block|<ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`endpoint`**](#ep) block|configures specific endpoint for `api` block context|
+|[**`cors`**](#cors) block|configures CORS behaviour for `api` block context|
 
+### <a name="cors"></a> The `cors` block
+The CORS block configures the CORS (Cross-Origin Resource Sharing) behaviour in Couper.
+
+| Name | Description                           |
+|:-------------------|:---------------------------------------|
+| `allowed_origins` | (list of) allowed origin(s), can be either a string with a single specific origin (e.g. `https://www.example.com`) or `*` (all origins allowed) or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`) |
+| `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
+| `max_age` | indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers can be cached (string with time unit, e.g. `"1h"`) |
 
 ### <a name="ep"></a> The `endpoint` block
 Endpoints define the entry points of Couper. The mandatory *label* defines the path suffix for the incoming client request. The `path` attribute changes the path for the outgoing request (compare [request routing example](#request_example)). Each `endpoint` must have at least one `backend` which can be declared in the `api` context above or inside an `endpoint`. 
