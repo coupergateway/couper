@@ -235,7 +235,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"specific origin",
 			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -248,7 +248,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"any origin",
 			&CORSOptions{AllowedOrigins:[]string{"*"}},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -261,7 +261,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"any origin, cookie credentials",
 			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Cookie": "a=b",
@@ -275,7 +275,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		{
 			"any origin, auth credentials",
 			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
-			httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil),
+			httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil),
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Authorization": "Basic oertnbin",
