@@ -72,25 +72,18 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	defer origin.Close()
 
 	tests := []struct {
-		name                  string
-		options               *ProxyOptions
-		req                   *http.Request
-		origin                string
-		acrm                  string
-		acrh                  string
-		expectedStatus        int
-		expectedACAO          string
-		expectedACAM          string
-		expectedACAH          string
-		expectedACAC          bool
-		expectedACMA          string
+		name                    string
+		options                 *ProxyOptions
+		req                     *http.Request
+		requestHeaders          map[string]string
+		expectedResponseHeaders map[string]string
 	}{
-		{"with ACRM", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "https://www.example.com", "POST", "", false, ""},
-		{"with ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "", "X-Foo, X-Bar", http.StatusNoContent, "https://www.example.com", "", "X-Foo, X-Bar", false, ""},
-		{"with ACRM, ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "X-Foo, X-Bar", http.StatusNoContent, "https://www.example.com", "POST", "X-Foo, X-Bar", false, ""},
-		{"with ACRM, credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "https://www.example.com", "POST", "", true, ""},
-		{"with ACRM, max-age", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", "POST", "", http.StatusNoContent, "https://www.example.com", "POST", "", false, "3600"},
-		{"origin mismatch", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.org", "POST", "", http.StatusNoContent, "", "", "", false, ""},
+		{"with ACRM", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},  map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
+		{"with ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Headers": "X-Foo, X-Bar"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "", "Access-Control-Allow-Headers": "X-Foo, X-Bar", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
+		{"with ACRM, ACRH", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "X-Foo, X-Bar"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "X-Foo, X-Bar", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
+		{"with ACRM, credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "true", "Access-Control-Max-Age": ""}},
+		{"with ACRM, max-age", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": "3600"}},
+		{"origin mismatch", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.org", "Access-Control-Request-Method": "POST"}, map[string]string{"Access-Control-Allow-Origin": "", "Access-Control-Allow-Methods": "", "Access-Control-Allow-Headers": "", "Access-Control-Allow-Credentials": "", "Access-Control-Max-Age": ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -100,63 +93,26 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tt.req.Header.Set("Origin", tt.origin)
-			if tt.acrm != "" {
-				tt.req.Header.Set("Access-Control-Request-Method", tt.acrm)
-			}
-			if tt.acrh != "" {
-				tt.req.Header.Set("Access-Control-Request-Headers", tt.acrh)
+			for name, value := range tt.requestHeaders {
+				tt.req.Header.Set(name, value)
 			}
 
 			hook.Reset()
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(rec, tt.req)
 
-			acao := rec.HeaderMap.Get("Access-Control-Allow-Origin")
-            if acao != tt.expectedACAO {
-				t.Errorf("Expected Access-Control-Allow-Origin %s, got: %s", tt.expectedACAO, acao)
-			}
+			tt.expectedResponseHeaders["Vary"] = ""
+			tt.expectedResponseHeaders["Content-Type"] = ""
 
-			acam := rec.HeaderMap.Get("Access-Control-Allow-Methods")
-            if acam != tt.expectedACAM {
-				t.Errorf("Expected Access-Control-Allow-Methods %s, got: %s", tt.expectedACAM, acam)
-			}
-
-			acah := rec.HeaderMap.Get("Access-Control-Allow-Headers")
-            if acah != tt.expectedACAH {
-				t.Errorf("Expected Access-Control-Allow-Headers %s, got: %s", tt.expectedACAH, acah)
-			}
-
-			acac := rec.HeaderMap.Get("Access-Control-Allow-Credentials")
-			if tt.expectedACAC {
-				if acac != "true" {
-					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "true", acac)
-				}
-			} else {
-				if acac != "" {
-					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "", acac)
+			for name, expValue := range tt.expectedResponseHeaders {
+				value := rec.HeaderMap.Get(name)
+				if value != expValue {
+					t.Errorf("Expected %s %s, got: %s", name, expValue, value)
 				}
 			}
 
-			acma := rec.HeaderMap.Get("Access-Control-Max-Age")
-            if acma != tt.expectedACMA {
-				t.Errorf("Expected Access-Control-Max-Age %s, got: %s", tt.expectedACMA, acma)
-			}
-
-			vary := rec.HeaderMap.Get("Vary")
-            if vary != "" {
-				t.Errorf("Expected Vary %s, got: %s", "", vary)
-			}
-
-			if tt.expectedStatus == http.StatusNoContent {
-				// PFC
-				ct := rec.HeaderMap.Get("Content-Type")
-				if ct != "" {
-					t.Errorf("Expected Content-Type %s, got: %s", "", ct)
-				}
-			}
-			if rec.Code != tt.expectedStatus {
-				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
+			if rec.Code != http.StatusNoContent {
+				t.Errorf("Expected status %d, got: %d", http.StatusNoContent, rec.Code)
 			} else {
 				return // no error log for expected codes
 			}
@@ -182,18 +138,13 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		name                  string
 		options               *ProxyOptions
 		req                   *http.Request
-		origin                string
-		cookie                bool
-		auth                  bool
-		expectedStatus        int
-		expectedACAO          string
-		expectedACAC          bool
-		expectedVary          string
+		requestHeaders          map[string]string
+		expectedResponseHeaders map[string]string
 	}{
-		{"specific origin", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", false, false, http.StatusOK, "https://www.example.com", false, "Origin"},
-		{"any origin", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", false, false, http.StatusOK, "*", false, ""},
-		{"any origin, cookie credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", true, false, http.StatusOK, "https://www.example.com", true, ""},
-		{"any origin, auth credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), "https://www.example.com", false, true, http.StatusOK, "https://www.example.com", true, ""},
+		{"specific origin", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Credentials": "", "Vary": "Origin"}},
+		{"any origin", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com"}, map[string]string{"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "", "Vary": ""}},
+		{"any origin, cookie credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Cookie": "a=b"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Credentials": "true", "Vary": ""}},
+		{"any origin, auth credentials", &ProxyOptions{Origin: origin.URL, CORS: &CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true}}, httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil), map[string]string{"Origin": "https://www.example.com", "Authorization": "Basic oertnbin"}, map[string]string{"Access-Control-Allow-Origin": "https://www.example.com", "Access-Control-Allow-Credentials": "true", "Vary": ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -203,61 +154,28 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tt.req.Header.Set("Origin", tt.origin)
-			if tt.cookie {
-				tt.req.Header.Set("Cookie", "a=b")
-			}
-			if tt.auth {
-				tt.req.Header.Set("Authorization", "Basic oertnbin")
+			for name, value := range tt.requestHeaders {
+				tt.req.Header.Set(name, value)
 			}
 
 			hook.Reset()
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(rec, tt.req)
 
-			acao := rec.HeaderMap.Get("Access-Control-Allow-Origin")
-            if acao != tt.expectedACAO {
-				t.Errorf("Expected Access-Control-Allow-Origin %s, got: %s", tt.expectedACAO, acao)
-			}
+			tt.expectedResponseHeaders["Access-Control-Allow-Methods"] = ""
+			tt.expectedResponseHeaders["Access-Control-Allow-Headers"] = ""
+			tt.expectedResponseHeaders["Access-Control-Max-Age"] = ""
+			tt.expectedResponseHeaders["Content-Type"] = "text/plain"
 
-			acam := rec.HeaderMap.Get("Access-Control-Allow-Methods")
-            if acam != "" {
-				t.Errorf("Expected Access-Control-Allow-Methods %s, got: %s", "", acam)
-			}
-
-			acah := rec.HeaderMap.Get("Access-Control-Allow-Headers")
-            if acah != "" {
-				t.Errorf("Expected Access-Control-Allow-Headers %s, got: %s", "", acah)
-			}
-
-			acac := rec.HeaderMap.Get("Access-Control-Allow-Credentials")
-			if tt.expectedACAC {
-				if acac != "true" {
-					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "true", acac)
-				}
-			} else {
-				if acac != "" {
-					t.Errorf("Expected Access-Control-Allow-Credentials %s, got: %s", "", acac)
+			for name, expValue := range tt.expectedResponseHeaders {
+				value := rec.HeaderMap.Get(name)
+				if value != expValue {
+					t.Errorf("Expected %s %s, got: %s", name, expValue, value)
 				}
 			}
 
-			acma := rec.HeaderMap.Get("Access-Control-Max-Age")
-            if acma != "" {
-				t.Errorf("Expected Access-Control-Max-Age %s, got: %s", "", acma)
-			}
-
-			vary := rec.HeaderMap.Get("Vary")
-            if vary != tt.expectedVary {
-				t.Errorf("Expected Vary %s, got: %s", tt.expectedVary, vary)
-			}
-
-			ct := rec.HeaderMap.Get("Content-Type")
-			if ct != "text/plain" {
-				t.Errorf("Expected Content-Type %s, got: %s", "text/plain", ct)
-			}
-
-			if rec.Code != tt.expectedStatus {
-				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
+			if rec.Code != http.StatusOK {
+				t.Errorf("Expected status %d, got: %d", http.StatusOK, rec.Code)
 			} else {
 				return // no error log for expected codes
 			}
