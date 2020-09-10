@@ -148,6 +148,12 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if p.options.CORS != nil && isCorsPreflightRequest(req) {
+		p.setCorsRespHeaders(rw.Header(), req)
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
 	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip))
 }
@@ -159,12 +165,6 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		c, cancelFn := context.WithDeadline(req.Context(), deadline)
 		ctx = c
 		defer cancelFn()
-	}
-
-	if p.options.CORS != nil && isCorsPreflightRequest(req) {
-		p.setCorsRespHeaders(rw.Header(), req)
-		rw.WriteHeader(http.StatusNoContent)
-		return
 	}
 
 	outreq := req.Clone(ctx)
