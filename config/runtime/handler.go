@@ -178,9 +178,14 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
 					t, ttfbt, ct := parseBackendTimings(beConf)
+					corsOptions, err := handler.NewCORSOptions(server.API.CORS)
+					if err != nil {
+						log.Fatal(err)
+					}
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
 						ConnectTimeout: ct,
 						Context:        remainCtx,
+						CORS:           corsOptions,
 						Hostname:       beConf.Hostname,
 						Origin:         beConf.Origin,
 						Path:           beConf.Path,
@@ -210,7 +215,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, server.API.CORS, log)
 			if err == errorMissingBackend {
 				if server.API.Backend != "" {
 					if _, ok := backends[server.API.Backend]; !ok {
@@ -219,7 +224,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 					setACHandlerFn(backends[server.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, server.API.CORS, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -241,9 +246,14 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 				t, ttfbt, ct := parseBackendTimings(beConf)
+				corsOptions, err := handler.NewCORSOptions(server.API.CORS)
+				if err != nil {
+					log.Fatal(err)
+				}
 				proxy, err := handler.NewProxy(&handler.ProxyOptions{
 					ConnectTimeout: ct,
 					Context:        remainCtx,
+					CORS:           corsOptions,
 					Hostname:       beConf.Hostname,
 					Origin:         beConf.Origin,
 					Path:           beConf.Path,
@@ -391,7 +401,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.Entry) (http.Handler, *config.Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry) (http.Handler, *config.Backend, error) {
 	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
@@ -416,9 +426,14 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, log *logrus.
 	}
 
 	t, ttfbt, ct := parseBackendTimings(beConf)
+	corsOptions, err := handler.NewCORSOptions(cors)
+	if err != nil {
+		return nil, nil, err
+	}
 	proxy, err := handler.NewProxy(&handler.ProxyOptions{
 		ConnectTimeout: ct,
 		Context:        []hcl.Body{beConf.Options},
+		CORS:           corsOptions,
 		Hostname:       beConf.Hostname,
 		Origin:         beConf.Origin,
 		Path:           beConf.Path,
