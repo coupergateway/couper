@@ -211,7 +211,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
 	if res.StatusCode == http.StatusSwitchingProtocols {
-		p.setRoundtripContext(outreq, res)
+		p.setRoundtripContext(req, res)
 		p.handleUpgradeResponse(rw, outreq, res)
 		return
 	}
@@ -222,7 +222,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Header.Del(h)
 	}
 
-	p.setRoundtripContext(outreq, res)
+	p.setRoundtripContext(req, res)
 
 	copyHeader(rw.Header(), res.Header)
 
