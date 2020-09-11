@@ -84,11 +84,9 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	}, nil
 }
 
+// NeedsVary if a request with not allowed origin is ignored.
 func (c *CORSOptions) NeedsVary() bool {
-	// If request with not allowed Origin is ignored
 	return !c.AllowsOrigin("*")
-	// Otherwise
-	// return len(c.AllowedOrigins) > 1
 }
 
 func (c *CORSOptions) AllowsOrigin(origin string) bool {
@@ -352,9 +350,11 @@ func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
+
 	if p.options.CORS.AllowCredentials == true {
 		headers.Set("Access-Control-Allow-Credentials", "true")
 	}
+
 	if isCorsPreflightRequest(req) {
 		// Reflect request header value
 		acrm := req.Header.Get("Access-Control-Request-Method")

@@ -238,6 +238,18 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 			},
 		},
 		{
+			"specific origins",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "https://example.com"}},
+			map[string]string{
+				"Origin": "https://example.com",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://example.com",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "Origin",
+			},
+		},
+		{
 			"any origin",
 			&CORSOptions{AllowedOrigins: []string{"*"}},
 			map[string]string{
@@ -247,6 +259,44 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 				"Access-Control-Allow-Origin":      "*",
 				"Access-Control-Allow-Credentials": "",
 				"Vary":                             "",
+			},
+		},
+		{
+			"any and specific origin",
+			&CORSOptions{AllowedOrigins: []string{"https://example.com", "https://www.example.com", "*"}},
+			map[string]string{
+				"Origin": "https://www.example.com",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "*",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "",
+			},
+		},
+		{
+			"specific origin, cookie credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Cookie": "a=b",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"specific origin, auth credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			map[string]string{
+				"Origin":        "https://www.example.com",
+				"Authorization": "Basic oertnbin",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary":                             "Origin",
 			},
 		},
 		{
@@ -277,11 +327,11 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := NewProxy(&ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := NewProxy(&ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), eval.NewENVContext(nil))
 			if err != nil {
-				t.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
@@ -293,27 +343,22 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(rec, req)
 
-			tt.expectedResponseHeaders["Access-Control-Allow-Methods"] = ""
-			tt.expectedResponseHeaders["Access-Control-Allow-Headers"] = ""
-			tt.expectedResponseHeaders["Access-Control-Max-Age"] = ""
-			tt.expectedResponseHeaders["Content-Type"] = "text/plain"
-
 			for name, expValue := range tt.expectedResponseHeaders {
 				value := rec.HeaderMap.Get(name)
 				if value != expValue {
-					t.Errorf("Expected %s %s, got: %s", name, expValue, value)
+					subT.Errorf("%s:\n\tExpected: %s %q, got: %s", tt.name, name, expValue, value)
 				}
 			}
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("Expected status %d, got: %d", http.StatusOK, rec.Code)
+				subT.Errorf("Expected status %d, got: %d", http.StatusOK, rec.Code)
 			} else {
 				return // no error log for expected codes
 			}
 
 			for _, log := range hook.AllEntries() {
 				if log.Level >= logrus.ErrorLevel {
-					t.Error(log.Message)
+					subT.Error(log.Message)
 				}
 			}
 		})
