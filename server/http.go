@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -11,17 +10,19 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/logging"
 )
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
+	accessLog  *logging.AccessLog
 	config     *runtime.HTTPConfig
 	commandCtx context.Context
-	log        *logrus.Entry
+	log        logrus.FieldLogger
 	listener   net.Listener
 	muxes      runtime.HostHandlers
 	srv        *http.Server
@@ -29,27 +30,32 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
+func NewServerList(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
 	var list []*HTTPServer
 
 	for port, hosts := range handlers {
-		list = append(list, New(cmdCtx, logger, conf, port, hosts))
+		list = append(list, New(cmdCtx, log, conf, port, hosts))
 	}
 
 	return list
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, logger *logrus.Entry, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
+func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
 	}
 
+	logConf := *logging.DefaultConfig
+	logConf.TypeFieldKey = "couper_access"
+	env.DecodeWithPrefix(&logConf, "ACCESS_")
+
 	httpSrv := &HTTPServer{
+		accessLog:  logging.NewAccessLog(&logConf, log.Logger),
 		config:     conf,
 		commandCtx: cmdCtx,
-		log:        logger,
+		log:        log,
 		muxes:      hosts,
 		uidFn:      uidFn,
 	}
@@ -84,7 +90,7 @@ func (s *HTTPServer) Listen() {
 		s.log.Fatal(err)
 	}
 	s.listener = ln
-	s.log.WithField("addr", ln.Addr().String()).Info("couper gateway is serving") // TODO: server name
+	s.log.Infof("couper gateway is serving: %s", ln.Addr().String()) // TODO: server name
 
 	go s.listenForCtx()
 
@@ -112,59 +118,31 @@ func (s *HTTPServer) listenForCtx() {
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := s.uidFn()
-	ctx := context.WithValue(req.Context(), request.RequestID, uid)
+	ctx := context.WithValue(req.Context(), request.UID, uid)
 	*req = *req.WithContext(ctx)
 
-	req.Header.Set("X-Request-Id", uid)
-	rw.Header().Set("X-Request-Id", uid)
-
-	srv, h := s.getHandler(req)
-
-	var err error
-	var serverName, handlerName string
-	sr := NewStatusReader(rw)
-	if h != nil {
-		h.ServeHTTP(sr, req)
-		if name, ok := h.(interface{ String() string }); ok {
-			handlerName = name.String()
-		}
-	} else {
-		handlerName = "none"
-		errors.DefaultHTML.ServeError(errors.ConfigurationError).ServeHTTP(sr, req)
-		err = fmt.Errorf("%w: %s", errors.ConfigurationError, req.URL.String())
+	h := s.getHandler(req)
+	if h == nil {
+		h = errors.DefaultHTML.ServeError(errors.Configuration)
 	}
 
-	if srv != nil {
-		serverName = srv.Name
-	}
-
-	fields := logrus.Fields{
-		"agent":   req.Header.Get("User-Agent"),
-		"server":  serverName,
-		"handler": handlerName,
-		"status":  sr.status,
-		"uid":     uid,
-		"url":     req.URL.String(),
-	}
-
-	if sr.status == http.StatusInternalServerError {
-		s.log.WithFields(fields).Error(err)
-	} else {
-		s.log.WithFields(fields).Info()
-	}
+	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)
 }
 
-func (s *HTTPServer) getHandler(req *http.Request) (*config.Server, http.Handler) {
+func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
 	host := s.getHost(req)
 
 	if _, ok := s.muxes[host]; !ok {
 		if _, ok := s.muxes["*"]; !ok {
-			return nil, nil
+			*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, "-"))
+			return nil
 		}
 		host = "*"
 	}
 
-	return s.muxes[host].Server, NewMuxer(s.muxes[host].Mux).Match(req)
+	*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, s.muxes[host].Server.Name))
+
+	return NewMuxer(s.muxes[host].Mux).Match(req)
 }
 
 func (s *HTTPServer) getHost(req *http.Request) string {

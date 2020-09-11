@@ -3,7 +3,10 @@ package request
 type ContextKey uint8
 
 const (
-	RequestID ContextKey = iota
+	UID ContextKey = iota
+	BackendName
 	Endpoint
+	ServerName
+	RoundtripInfo
 	Wildcard
 )

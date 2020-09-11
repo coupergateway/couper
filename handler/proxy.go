@@ -20,9 +20,12 @@ import (
 	"golang.org/x/net/http/httpguts"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
+	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/logging"
 )
 
 var (
@@ -42,11 +45,13 @@ type Proxy struct {
 	options     *ProxyOptions
 	originURL   *url.URL
 	transport   *http.Transport
+	upstreamLog *logging.AccessLog
 }
 
 type ProxyOptions struct {
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              []hcl.Body
+	BackendName                          string
 	Hostname, Origin, Path               string
 	CORS                                 *CORSOptions
 }
@@ -79,14 +84,12 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	}, nil
 }
 
+// NeedsVary if a request with not allowed origin is ignored.
 func (c *CORSOptions) NeedsVary() bool {
-	// If request with not allowed Origin is ignored
 	return !c.AllowsOrigin("*")
-	// Otherwise
-	// return len(c.AllowedOrigins) > 1
 }
 
-func (c* CORSOptions) AllowsOrigin(origin string) bool {
+func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	for _, a := range c.AllowedOrigins {
 		if a == strings.ToLower(origin) || a == "*" {
 			return true
@@ -107,11 +110,16 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		return nil, SchemeRequiredError
 	}
 
+	logConf := *logging.DefaultConfig
+	logConf.TypeFieldKey = "couper_backend"
+	env.DecodeWithPrefix(&logConf, "BACKEND_")
+
 	proxy := &Proxy{
 		evalContext: evalCtx,
 		log:         log,
 		options:     options,
 		originURL:   originURL,
+		upstreamLog: logging.NewAccessLog(&logConf, log.Logger),
 	}
 
 	var tlsConf *tls.Config
@@ -138,18 +146,23 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if p.options.CORS != nil && isCorsPreflightRequest(req) {
+		p.setCorsRespHeaders(rw.Header(), req)
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
+	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip))
+}
+
+func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	if p.options.Timeout > 0 {
 		deadline := time.Now().Add(p.options.Timeout)
 		c, cancelFn := context.WithDeadline(req.Context(), deadline)
 		ctx = c
 		defer cancelFn()
-	}
-
-	if p.options.CORS != nil && isCorsPreflightRequest(req) {
-		p.setCorsRespHeaders(rw.Header(), req)
-		rw.WriteHeader(http.StatusNoContent)
-		return
 	}
 
 	outreq := req.Clone(ctx)
@@ -186,9 +199,11 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	res, err := p.transport.RoundTrip(outreq)
+	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
+	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		p.log.
-			WithField("type", "access").Errorf("request error: %s: %v", outreq.URL.String(), err)
+		// TODO: use error template from parent endpoint>api>server
+		couperErr.DefaultJSON.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
 
@@ -225,7 +240,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	_, err = io.Copy(rw, res.Body)
 	if err != nil {
 		defer res.Body.Close()
-		p.log.Error(err)
+		roundtripInfo.Err = err
 		return
 	}
 
@@ -299,7 +314,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	for _, ctxBody := range p.options.Context {
 		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
 		if err != nil {
-			p.log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+			p.log.WithField("parse config", p.String()).Error(err)
 		}
 		setHeaderFields(headerCtx, options)
 	}
@@ -335,9 +350,11 @@ func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
+
 	if p.options.CORS.AllowCredentials == true {
 		headers.Set("Access-Control-Allow-Credentials", "true")
 	}
+
 	if isCorsPreflightRequest(req) {
 		// Reflect request header value
 		acrm := req.Header.Get("Access-Control-Request-Method")

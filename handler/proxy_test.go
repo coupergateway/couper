@@ -79,93 +79,93 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	}{
 		{
 			"with ACRM",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
-				"Origin": "https://www.example.com",
+				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
-				"Access-Control-Allow-Methods": "POST",
-				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "POST",
+				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
-				"Access-Control-Max-Age": "",
+				"Access-Control-Max-Age":           "",
 			},
 		},
 		{
 			"with ACRH",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
-				"Origin": "https://www.example.com",
+				"Origin":                         "https://www.example.com",
 				"Access-Control-Request-Headers": "X-Foo, X-Bar",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
-				"Access-Control-Allow-Methods": "",
-				"Access-Control-Allow-Headers": "X-Foo, X-Bar",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "",
+				"Access-Control-Allow-Headers":     "X-Foo, X-Bar",
 				"Access-Control-Allow-Credentials": "",
-				"Access-Control-Max-Age": "",
+				"Access-Control-Max-Age":           "",
 			},
 		},
 		{
 			"with ACRM, ACRH",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
-				"Origin": "https://www.example.com",
-				"Access-Control-Request-Method": "POST",
+				"Origin":                         "https://www.example.com",
+				"Access-Control-Request-Method":  "POST",
 				"Access-Control-Request-Headers": "X-Foo, X-Bar",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
-				"Access-Control-Allow-Methods": "POST",
-				"Access-Control-Allow-Headers": "X-Foo, X-Bar",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "POST",
+				"Access-Control-Allow-Headers":     "X-Foo, X-Bar",
 				"Access-Control-Allow-Credentials": "",
-				"Access-Control-Max-Age": "",
+				"Access-Control-Max-Age":           "",
 			},
 		},
 		{
 			"with ACRM, credentials",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}, AllowCredentials:true},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
-				"Origin": "https://www.example.com",
+				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
-				"Access-Control-Allow-Methods": "POST",
-				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "POST",
+				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "true",
-				"Access-Control-Max-Age": "",
+				"Access-Control-Max-Age":           "",
 			},
 		},
 		{
 			"with ACRM, max-age",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"},MaxAge:"3600"},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, MaxAge: "3600"},
 			map[string]string{
-				"Origin": "https://www.example.com",
+				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
-				"Access-Control-Allow-Methods": "POST",
-				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "POST",
+				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
-				"Access-Control-Max-Age": "3600",
+				"Access-Control-Max-Age":           "3600",
 			},
 		},
 		{
 			"origin mismatch",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
-				"Origin": "https://www.example.org",
+				"Origin":                        "https://www.example.org",
 				"Access-Control-Request-Method": "POST",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "",
-				"Access-Control-Allow-Methods": "",
-				"Access-Control-Allow-Headers": "",
+				"Access-Control-Allow-Origin":      "",
+				"Access-Control-Allow-Methods":     "",
+				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
-				"Access-Control-Max-Age": "",
+				"Access-Control-Max-Age":           "",
 			},
 		},
 	}
@@ -227,61 +227,111 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 	}{
 		{
 			"specific origin",
-			&CORSOptions{AllowedOrigins:[]string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
 				"Access-Control-Allow-Credentials": "",
-				"Vary": "Origin",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"specific origins",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "https://example.com"}},
+			map[string]string{
+				"Origin": "https://example.com",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://example.com",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "Origin",
 			},
 		},
 		{
 			"any origin",
-			&CORSOptions{AllowedOrigins:[]string{"*"}},
+			&CORSOptions{AllowedOrigins: []string{"*"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Origin":      "*",
 				"Access-Control-Allow-Credentials": "",
-				"Vary": "",
+				"Vary":                             "",
 			},
 		},
 		{
-			"any origin, cookie credentials",
-			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
+			"any and specific origin",
+			&CORSOptions{AllowedOrigins: []string{"https://example.com", "https://www.example.com", "*"}},
+			map[string]string{
+				"Origin": "https://www.example.com",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "*",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "",
+			},
+		},
+		{
+			"specific origin, cookie credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Cookie": "a=b",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
 				"Access-Control-Allow-Credentials": "true",
-				"Vary": "",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"specific origin, auth credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			map[string]string{
+				"Origin":        "https://www.example.com",
+				"Authorization": "Basic oertnbin",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"any origin, cookie credentials",
+			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			map[string]string{
+				"Origin": "https://www.example.com",
+				"Cookie": "a=b",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary":                             "",
 			},
 		},
 		{
 			"any origin, auth credentials",
-			&CORSOptions{AllowedOrigins:[]string{"*"}, AllowCredentials:true},
+			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
-				"Origin": "https://www.example.com",
+				"Origin":        "https://www.example.com",
 				"Authorization": "Basic oertnbin",
 			},
 			map[string]string{
-				"Access-Control-Allow-Origin": "https://www.example.com",
+				"Access-Control-Allow-Origin":      "https://www.example.com",
 				"Access-Control-Allow-Credentials": "true",
-				"Vary": "",
+				"Vary":                             "",
 			},
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := NewProxy(&ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := NewProxy(&ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), eval.NewENVContext(nil))
 			if err != nil {
-				t.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
@@ -293,27 +343,22 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(rec, req)
 
-			tt.expectedResponseHeaders["Access-Control-Allow-Methods"] = ""
-			tt.expectedResponseHeaders["Access-Control-Allow-Headers"] = ""
-			tt.expectedResponseHeaders["Access-Control-Max-Age"] = ""
-			tt.expectedResponseHeaders["Content-Type"] = "text/plain"
-
 			for name, expValue := range tt.expectedResponseHeaders {
 				value := rec.HeaderMap.Get(name)
 				if value != expValue {
-					t.Errorf("Expected %s %s, got: %s", name, expValue, value)
+					subT.Errorf("%s:\n\tExpected: %s %q, got: %s", tt.name, name, expValue, value)
 				}
 			}
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("Expected status %d, got: %d", http.StatusOK, rec.Code)
+				subT.Errorf("Expected status %d, got: %d", http.StatusOK, rec.Code)
 			} else {
 				return // no error log for expected codes
 			}
 
 			for _, log := range hook.AllEntries() {
 				if log.Level >= logrus.ErrorLevel {
-					t.Error(log.Message)
+					subT.Error(log.Message)
 				}
 			}
 		})

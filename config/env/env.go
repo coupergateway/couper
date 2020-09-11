@@ -8,16 +8,21 @@ import (
 	"strings"
 )
 
-const prefix = "COUPER_"
+const PREFIX = "COUPER_"
 
 func Decode(conf interface{}) {
+	DecodeWithPrefix(conf, "")
+}
+
+func DecodeWithPrefix(conf interface{}, prefix string) {
+	ctxPrefix := PREFIX + prefix
 	envMap := make(map[string]string)
 	for _, v := range os.Environ() {
 		key := strings.Split(v, "=")
-		if !strings.HasPrefix(key[0], prefix) {
+		if !strings.HasPrefix(key[0], ctxPrefix) {
 			continue
 		}
-		envMap[strings.ToLower(key[0][len(prefix):])] = key[1]
+		envMap[strings.ToLower(key[0][len(ctxPrefix):])] = key[1]
 	}
 
 	if len(envMap) == 0 {
@@ -35,7 +40,7 @@ func Decode(conf interface{}) {
 		case reflect.Ptr:
 			continue
 		case reflect.Struct:
-			Decode(val.Field(i).Interface())
+			DecodeWithPrefix(val.Field(i).Interface(), prefix)
 		default:
 		}
 
@@ -60,8 +65,10 @@ func Decode(conf interface{}) {
 			val.Field(i).SetInt(int64(intVal))
 		case string:
 			val.Field(i).SetString(mapVal)
+		case []string:
+			val.Field(i).Set(reflect.ValueOf(strings.Split(mapVal, ",")))
 		default:
-			panic(fmt.Sprintf("type mapping not implemented: %v", reflect.TypeOf(val.Field(i).Interface())))
+			panic(fmt.Sprintf("env decode: type mapping not implemented: %v", reflect.TypeOf(val.Field(i).Interface())))
 		}
 	}
 }

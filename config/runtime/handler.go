@@ -72,6 +72,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 			}
 			t, ttfbt, ct := parseBackendTimings(beConf)
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				BackendName:    beConf.Name,
 				ConnectTimeout: ct,
 				Context:        []hcl.Body{beConf.Options},
 				Hostname:       beConf.Hostname,
@@ -183,6 +184,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 						log.Fatal(err)
 					}
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
+						BackendName:    beConf.Name,
 						ConnectTimeout: ct,
 						Context:        remainCtx,
 						CORS:           corsOptions,
@@ -251,6 +253,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 					log.Fatal(err)
 				}
 				proxy, err := handler.NewProxy(&handler.ProxyOptions{
+					BackendName:    beConf.Name,
 					ConnectTimeout: ct,
 					Context:        remainCtx,
 					CORS:           corsOptions,
@@ -431,6 +434,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 		return nil, nil, err
 	}
 	proxy, err := handler.NewProxy(&handler.ProxyOptions{
+		BackendName:    beConf.Name,
 		ConnectTimeout: ct,
 		Context:        []hcl.Body{beConf.Options},
 		CORS:           corsOptions,

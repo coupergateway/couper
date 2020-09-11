@@ -59,7 +59,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 	}
 
 	var id string
-	if uid, ok := httpCtx.Value(request.RequestID).(string); ok {
+	if uid, ok := httpCtx.Value(request.UID).(string); ok {
 		id = uid
 	}
 
