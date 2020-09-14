@@ -325,6 +325,19 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 				"Vary":                             "",
 			},
 		},
+		{
+			"any origin, proxy auth credentials",
+			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			map[string]string{
+				"Origin":        "https://www.example.com",
+				"Proxy-Authorization": "Basic oertnbin",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Credentials": "true",
+				"Vary":                             "",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
