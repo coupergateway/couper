@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	ac "github.com/avenga/couper/access_control"
+	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/errors"
 )
 
