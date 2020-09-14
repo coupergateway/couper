@@ -8,7 +8,6 @@
      * [Basic file structure](#basic_conf)  
 * [Reference](#reference) 
   * [The `server` block](#server_block)
-  * [The `hosts` attribute](#hosts_attribute)
   * [The `files` block](#files_block)
   * [The `spa` block](#spa_block) 
   * [The `api` block](#api_block) 	
@@ -89,24 +88,11 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 |:-------------------|:-------------------------------|
 |context|none|
 | *label*|optional|
-| `hosts`|<ul><li>list  </li><li>*example:*`hosts = ["example.com", "..."]`</li><li>&#9888; mandatory, if there is more than one `server` block</li></ul>|
+| `hosts`|<ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:*`hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul>|
 |[**`files`**](#fi) block|configures file serving|
 |[**`spa`**](#spa) block|configures web serving for spa assets|
 |[**`api`**](#api) block|configures routing and backend connection(s)|
-
-### <a name="hosts"></a> The `hosts` attribute  <a name="hosts_attribute"></a>
-The `hosts` attribute specifies the requests your server should listen to. 
-
-* default listen port: 8080
-* if there is only one `server` block, the `hosts` attribute is optional
-  * your server responds to **all** requests 
-  * `hosts = ["*"]`
-* if there is more than one `server` block, the `hosts` attribute is mandatory
-* only **one** `hosts` attribute per `server` block is allowed
-
-
-Compare the `hosts` [example](#hosts_conf_ex) for details. 
 
 
 ### <a name="fi"></a> The `files` block <a name="files_block"></a>
@@ -202,8 +188,8 @@ The `basic_auth` block let you configure basic auth for your gateway. Like all `
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
 |`user`||
 |`password`||
-|`credentials`||
-|`values`||
+|`htpasswd_file`||
+
 
 #### <a name="jwt"></a> The `jwt` block <a name="jwt_block"></a>
 The `jwt` block let you configure JSON Web Token access control for your gateway. Like all `access_control` types, the `jwt` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
