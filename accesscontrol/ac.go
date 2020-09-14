@@ -1,4 +1,4 @@
-package access_control
+package accesscontrol
 
 import "net/http"
 
@@ -6,8 +6,10 @@ var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
 
 const ContextAccessControlKey = "access_controls"
 
-type Map map[string]AccessControl
-type List []AccessControl
+type (
+	Map  map[string]AccessControl
+	List []AccessControl
+)
 
 type ValidateFunc func(*http.Request) error
 

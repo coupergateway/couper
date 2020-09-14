@@ -6,13 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avenga/couper/access_control"
+	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/errors"
 )
 
 func TestAccessControl_ServeHTTP(t *testing.T) {
 	type fields struct {
-		ac        access_control.List
+		ac        accesscontrol.List
 		protected http.Handler
 	}
 
@@ -25,17 +25,17 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		{"no access control", fields{nil, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusNoContent},
-		{"with access control valid req", fields{access_control.List{access_control.ValidateFunc(func(r *http.Request) error {
+		{"with access control valid req", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return nil // valid
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusNoContent},
-		{"with access control invalid req/empty token", fields{access_control.List{access_control.ValidateFunc(func(r *http.Request) error {
-			return access_control.ErrorEmptyToken
+		{"with access control invalid req/empty token", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
+			return accesscontrol.ErrorEmptyToken
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusUnauthorized},
-		{"with access control invalid req", fields{access_control.List{access_control.ValidateFunc(func(r *http.Request) error {
+		{"with access control invalid req", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return fmt.Errorf("no! ")
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)

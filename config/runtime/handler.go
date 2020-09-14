@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
-	ac "github.com/avenga/couper/access_control"
+	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
