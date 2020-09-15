@@ -1,4 +1,4 @@
-package access_control
+package accesscontrol
 
 const (
 	AlgorithmUnknown Algorithm = iota - 1

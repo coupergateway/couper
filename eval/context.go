@@ -15,7 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	ac "github.com/avenga/couper/access_control"
+	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
@@ -59,7 +59,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 	}
 
 	var id string
-	if uid, ok := httpCtx.Value(request.RequestID).(string); ok {
+	if uid, ok := httpCtx.Value(request.UID).(string); ok {
 		id = uid
 	}
 

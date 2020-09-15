@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	ac "github.com/avenga/couper/access_control"
+	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/errors"
 )
 
@@ -33,7 +33,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			var code errors.Code
 			switch err {
 			case ac.ErrorNotConfigured:
-				code = errors.ConfigurationError
+				code = errors.Configuration
 			case ac.ErrorEmptyToken:
 				code = errors.AuthorizationRequired
 			default:

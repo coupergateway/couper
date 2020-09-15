@@ -28,11 +28,11 @@ type File struct {
 	rootDir  http.Dir
 }
 
-func NewFile(wd, basePath, docRoot string, errTpl *errors.Template) *File {
+func NewFile(basePath, docRoot string, errTpl *errors.Template) *File {
 	f := &File{
 		basePath: basePath,
 		errorTpl: errTpl,
-		rootDir:  http.Dir(path.Join(wd, docRoot)),
+		rootDir:  http.Dir(docRoot),
 	}
 
 	return f

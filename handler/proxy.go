@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,8 +19,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
 
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
+	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/logging"
 )
 
 var (
@@ -38,12 +45,57 @@ type Proxy struct {
 	options     *ProxyOptions
 	originURL   *url.URL
 	transport   *http.Transport
+	upstreamLog *logging.AccessLog
 }
 
 type ProxyOptions struct {
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              []hcl.Body
+	BackendName                          string
 	Hostname, Origin, Path               string
+	CORS                                 *CORSOptions
+}
+
+type CORSOptions struct {
+	AllowedOrigins   []string
+	AllowCredentials bool
+	MaxAge           string
+}
+
+func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
+	if cors == nil {
+		return nil, nil
+	}
+	dur, err := time.ParseDuration(cors.MaxAge)
+	if err != nil {
+		return nil, err
+	}
+	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
+
+	allowed_origins := seetie.ValueToStringSlice(cors.AllowedOrigins)
+	for i, a := range allowed_origins {
+		allowed_origins[i] = strings.ToLower(a)
+	}
+
+	return &CORSOptions{
+		AllowedOrigins:   allowed_origins,
+		AllowCredentials: cors.AllowCredentials,
+		MaxAge:           corsMaxAge,
+	}, nil
+}
+
+// NeedsVary if a request with not allowed origin is ignored.
+func (c *CORSOptions) NeedsVary() bool {
+	return !c.AllowsOrigin("*")
+}
+
+func (c *CORSOptions) AllowsOrigin(origin string) bool {
+	for _, a := range c.AllowedOrigins {
+		if a == strings.ToLower(origin) || a == "*" {
+			return true
+		}
+	}
+	return false
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
@@ -58,11 +110,16 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 		return nil, SchemeRequiredError
 	}
 
+	logConf := *logging.DefaultConfig
+	logConf.TypeFieldKey = "couper_backend"
+	env.DecodeWithPrefix(&logConf, "BACKEND_")
+
 	proxy := &Proxy{
 		evalContext: evalCtx,
 		log:         log,
 		options:     options,
 		originURL:   originURL,
+		upstreamLog: logging.NewAccessLog(&logConf, log.Logger),
 	}
 
 	var tlsConf *tls.Config
@@ -89,6 +146,17 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if p.options.CORS != nil && isCorsPreflightRequest(req) {
+		p.setCorsRespHeaders(rw.Header(), req)
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
+	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip))
+}
+
+func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	if p.options.Timeout > 0 {
 		deadline := time.Now().Add(p.options.Timeout)
@@ -131,9 +199,11 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	res, err := p.transport.RoundTrip(outreq)
+	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
+	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		p.log.
-			WithField("type", "access").Errorf("request error: %s: %v", outreq.URL.String(), err)
+		// TODO: use error template from parent endpoint>api>server
+		couperErr.DefaultJSON.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
 
@@ -170,7 +240,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	_, err = io.Copy(rw, res.Body)
 	if err != nil {
 		defer res.Body.Close()
-		p.log.Error(err)
+		roundtripInfo.Err = err
 		return
 	}
 
@@ -244,9 +314,63 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	for _, ctxBody := range p.options.Context {
 		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
 		if err != nil {
-			p.log.WithField("type", "couper_hcl").WithField("parse config", p.String()).Error(err)
+			p.log.WithField("parse config", p.String()).Error(err)
 		}
 		setHeaderFields(headerCtx, options)
+	}
+
+	if beresp != nil && isCorsRequest(req) {
+		p.setCorsRespHeaders(headerCtx, req)
+	}
+}
+
+func isCorsRequest(req *http.Request) bool {
+	return req.Header.Get("Origin") != ""
+}
+
+func isCorsPreflightRequest(req *http.Request) bool {
+	return isCorsRequest(req) && req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
+}
+
+func (p *Proxy) isCredentialed(headers http.Header) bool {
+	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
+}
+
+func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
+	if p.options.CORS == nil {
+		return
+	}
+	requestOrigin := req.Header.Get("Origin")
+	if !p.options.CORS.AllowsOrigin(requestOrigin) {
+		return
+	}
+	// see https://fetch.spec.whatwg.org/#http-responses
+	if p.options.CORS.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
+		headers.Set("Access-Control-Allow-Origin", "*")
+	} else {
+		headers.Set("Access-Control-Allow-Origin", requestOrigin)
+	}
+
+	if p.options.CORS.AllowCredentials == true {
+		headers.Set("Access-Control-Allow-Credentials", "true")
+	}
+
+	if isCorsPreflightRequest(req) {
+		// Reflect request header value
+		acrm := req.Header.Get("Access-Control-Request-Method")
+		if acrm != "" {
+			headers.Set("Access-Control-Allow-Methods", acrm)
+		}
+		// Reflect request header value
+		acrh := req.Header.Get("Access-Control-Request-Headers")
+		if acrh != "" {
+			headers.Set("Access-Control-Allow-Headers", acrh)
+		}
+		if p.options.CORS.MaxAge != "" {
+			headers.Set("Access-Control-Max-Age", p.options.CORS.MaxAge)
+		}
+	} else if p.options.CORS.NeedsVary() {
+		headers.Add("Vary", "Origin")
 	}
 }
 
