@@ -598,3 +598,106 @@ func TestCORSOptions_AllowsOrigin(t *testing.T) {
 		})
 	}
 }
+
+func TestCORSOptions_isCorsRequest(t *testing.T) {
+	tests := []struct {
+		name           string
+		requestHeaders map[string]string
+		exp            bool
+	}{
+		{
+			"without Origin",
+			map[string]string{},
+			false,
+		},
+		{
+			"with Origin",
+			map[string]string{"Origin": "https://www.example.com"},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
+			for name, value := range tt.requestHeaders {
+				req.Header.Set(name, value)
+			}
+
+			corsRequest := isCorsRequest(req)
+			if corsRequest != tt.exp {
+				subT.Errorf("Expected %t, got: %t", tt.exp, corsRequest)
+			}
+		})
+	}
+}
+
+func TestCORSOptions_isCorsPreflightRequest(t *testing.T) {
+	tests := []struct {
+		name           string
+		method         string
+		requestHeaders map[string]string
+		exp            bool
+	}{
+		{
+			"OPTIONS, without Origin",
+			http.MethodOptions,
+			map[string]string{},
+			false,
+		},
+		{
+			"OPTIONS, with Origin",
+			http.MethodOptions,
+			map[string]string{"Origin": "https://www.example.com"},
+			false,
+		},
+		{
+			"OPTIONS, without Origin, with ACRM",
+			http.MethodOptions,
+			map[string]string{"Access-Control-Request-Method": "POST"},
+			false,
+		},
+		{
+			"OPTIONS, without Origin, with ACRH",
+			http.MethodOptions,
+			map[string]string{"Access-Control-Request-Headers": "Content-Type"},
+			false,
+		},
+		{
+			"POST, with Origin, with ACRM",
+			http.MethodPost,
+			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},
+			false,
+		},
+		{
+			"POST, with Origin, with ACRH",
+			http.MethodPost,
+			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Headers": "Content-Type"},
+			false,
+		},
+		{
+			"OPTIONS, with Origin, with ACRM",
+			http.MethodOptions,
+			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},
+			true,
+		},
+		{
+			"OPTIONS, with Origin, with ACRH",
+			http.MethodOptions,
+			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Headers": "Content-Type"},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			req := httptest.NewRequest(tt.method, "http://1.2.3.4/", nil)
+			for name, value := range tt.requestHeaders {
+				req.Header.Set(name, value)
+			}
+
+			corsPfRequest := isCorsPreflightRequest(req)
+			if corsPfRequest != tt.exp {
+				subT.Errorf("Expected %t, got: %t", tt.exp, corsPfRequest)
+			}
+		})
+	}
+}
