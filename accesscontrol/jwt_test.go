@@ -1,4 +1,4 @@
-package access_control_test
+package accesscontrol_test
 
 import (
 	"crypto/rand"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
-	ac "github.com/avenga/couper/access_control"
+	ac "github.com/avenga/couper/accesscontrol"
 )
 
 func TestJWT_Validate(t *testing.T) {
