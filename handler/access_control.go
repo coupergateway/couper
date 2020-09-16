@@ -38,6 +38,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				code = errors.AuthorizationRequired
 			case ac.ErrorBasicAuthUnauthorized:
 				code = errors.BasicAuthFailed
+				rw.Header().Set("WWW-Authenticate", "Basic")
 			default:
 				code = errors.AuthorizationFailed
 			}
