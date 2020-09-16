@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,11 @@ import (
 )
 
 var _ AccessControl = &BasicAuth{}
+
+var (
+	ErrorBasicAuthNotConfigured = errors.New("basic-auth handler not configured")
+	ErrorBasicAuthUnauthorized  = errors.New("Unauthorized")
+)
 
 const authHeader = "Authorization"
 
@@ -100,38 +106,42 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 
 // Validate implements the AccessControl interface
 func (ba *BasicAuth) Validate(req *http.Request) error {
+	if ba == nil {
+		return ErrorBasicAuthNotConfigured
+	}
+
 	auth := req.Header.Get(authHeader)
 	if auth == "" {
-		return fmt.Errorf("Empty %q HTTP header field given", authHeader)
+		return ErrorBasicAuthUnauthorized
 	}
 
 	if l := len("Basic "); l < len(auth) {
 		auth = strings.TrimSpace(auth[l:])
 	} else {
-		return fmt.Errorf("Invalid %q HTTP header field given", authHeader)
+		return ErrorBasicAuthUnauthorized
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(auth)
 	if err != nil {
-		return err
+		return ErrorBasicAuthUnauthorized
 	}
 
 	up := strings.Split(string(decoded), ":")
 	if len(up) != 2 {
-		return fmt.Errorf("Invalid %q HTTP header field given", authHeader)
+		return ErrorBasicAuthUnauthorized
 	}
 
 	if ba.user == up[0] {
-		if subtle.ConstantTimeCompare([]byte(ba.user), []byte(up[1])) == 1 {
+		if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(up[1])) == 1 {
 			return nil
 		}
 
-		return fmt.Errorf("Invalid access data given")
+		return ErrorBasicAuthUnauthorized
 	}
 
 	if validateAccessData(up[0], up[1], ba.htFile) {
 		return nil
 	}
 
-	return fmt.Errorf("Invalid access data given")
+	return ErrorBasicAuthUnauthorized
 }

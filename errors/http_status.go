@@ -14,6 +14,8 @@ func httpStatus(code Code) int {
 		return http.StatusUnauthorized
 	case AuthorizationFailed:
 		return http.StatusForbidden
+	case BasicAuthFailed:
+		return http.StatusUnauthorized
 	default:
 		return http.StatusInternalServerError
 	}

@@ -36,6 +36,8 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				code = errors.Configuration
 			case ac.ErrorEmptyToken:
 				code = errors.AuthorizationRequired
+			case ac.ErrorBasicAuthUnauthorized:
+				code = errors.BasicAuthFailed
 			default:
 				code = errors.AuthorizationFailed
 			}

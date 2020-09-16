@@ -68,6 +68,11 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 		rw.Header().Set(HeaderErrorCode, fmt.Sprintf("%d - %q", errCode, errCode))
 
 		status := httpStatus(errCode)
+
+		if status == http.StatusUnauthorized {
+			rw.Header().Set("WWW-Authenticate", "Basic")
+		}
+
 		rw.WriteHeader(status)
 
 		if req.Method == http.MethodHead { // Its fine to send CT
