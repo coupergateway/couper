@@ -15,6 +15,9 @@ type Backend struct {
 	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
+	SwaggerDef       string   `hcl:"swagger_definition,optional"`
+	ValidateReq      bool     `hcl:"validate_request,optional"`
+	ValidateRes      bool     `hcl:"validate_response,optional"`
 }
 
 func (b Backend) Body() hcl.Body {
@@ -81,6 +84,18 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 
 	if other.Timeout != "" {
 		result.Timeout = other.Timeout
+	}
+
+	if other.SwaggerDef != "" {
+		result.SwaggerDef = other.SwaggerDef
+	}
+
+	if other.ValidateReq {
+		result.ValidateReq = other.ValidateReq
+	}
+
+	if other.ValidateRes {
+		result.ValidateRes = other.ValidateRes
 	}
 
 	return &result, bodies

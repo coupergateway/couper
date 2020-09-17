@@ -7,16 +7,19 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
@@ -170,6 +173,44 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip), startTime)
 }
 
+func (p *Proxy) prepareRequestValidation(outreq *http.Request) (context.Context, *openapi3filter.Route, *openapi3filter.RequestValidationInput, error) {
+	if p.options.ValidateReq || p.options.ValidateRes {
+		dir, err := os.Getwd()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		router := openapi3filter.NewRouter().WithSwaggerFromFile(dir + "/" + p.options.SwaggerDef)
+		validationCtx := context.Background()
+		route, pathParams, _ := router.FindRoute(outreq.Method, outreq.URL)
+
+		requestValidationInput := &openapi3filter.RequestValidationInput{
+			Request:    outreq,
+			PathParams: pathParams,
+			Route:      route,
+		}
+		return validationCtx, route, requestValidationInput, nil
+	}
+	return nil, nil, nil, nil
+}
+
+func (p *Proxy) prepareResponseValidation(requestValidationInput *openapi3filter.RequestValidationInput, res *http.Response) (*openapi3filter.ResponseValidationInput, []byte, error) {
+	if p.options.ValidateRes {
+		responseValidationInput := &openapi3filter.ResponseValidationInput{
+			RequestValidationInput: requestValidationInput,
+			Status:                 res.StatusCode,
+			Header:                 res.Header,
+			Options:                &openapi3filter.Options{IncludeResponseStatus: true /* undefined response codes are invalid */},
+		}
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, nil, err
+		}
+		responseValidationInput.SetBodyBytes(body)
+		return responseValidationInput, body, nil
+	}
+	return nil, nil, nil
+}
+
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	if p.options.Timeout > 0 {
@@ -222,6 +263,23 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
+	validationCtx, route, requestValidationInput, err := p.prepareRequestValidation(outreq)
+	if err != nil {
+		// this only happens if os.Getwd() fails
+		// TODO: use error template from parent endpoint>api>server
+		p.log.WithField("upstream request validation", err).Error()
+		couperErr.DefaultJSON.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+		return
+	}
+	if p.options.ValidateReq {
+		if err := openapi3filter.ValidateRequest(validationCtx, requestValidationInput); err != nil {
+			// TODO: use error template from parent endpoint>api>server
+			p.log.WithField("upstream request validation", err).Error()
+			couperErr.DefaultJSON.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+			return
+		}
+	}
+
 	res, err := p.getTransport(outreq.URL.Scheme, outreq.URL.Host, outreq.Host).RoundTrip(outreq)
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
@@ -251,6 +309,26 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Body = eval.NewReadCloser(src, res.Body)
 	}
 
+	responseValidationInput, body, err := p.prepareResponseValidation(requestValidationInput, res)
+	if err != nil {
+		// TODO: use error template from parent endpoint>api>server
+		p.log.WithField("upstream response validation", err).Error()
+		couperErr.DefaultJSON.ServeError(couperErr.UpstreamResponseBufferingFailed).ServeHTTP(rw, req)
+		return
+	}
+	if responseValidationInput != nil {
+		if route != nil {
+			if err := openapi3filter.ValidateResponse(validationCtx, responseValidationInput); err != nil {
+				// TODO: use error template from parent endpoint>api>server
+				p.log.WithField("upstream response validation", err).Error()
+				couperErr.DefaultJSON.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
+				return
+			}
+		} else {
+			p.log.Info("response validation enabled, but no route found")
+		}
+	}
+
 	removeConnectionHeaders(res.Header)
 
 	for _, h := range hopHeaders {
@@ -274,11 +352,15 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	rw.WriteHeader(res.StatusCode)
 
-	_, err = io.Copy(rw, res.Body)
-	if err != nil {
-		defer res.Body.Close()
-		roundtripInfo.Err = err
-		return
+	if body != nil {
+		rw.Write(body)
+	} else {
+		_, err = io.Copy(rw, res.Body)
+		if err != nil {
+			defer res.Body.Close()
+			roundtripInfo.Err = err
+			return
+		}
 	}
 
 	res.Body.Close() // close now, instead of defer, to populate res.Trailer
