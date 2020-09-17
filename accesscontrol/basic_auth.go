@@ -80,7 +80,6 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 				}
 
 				ba.htFile[up[0]] = pwd{
-					pwdHashed: []byte(parts[1]),
 					pwdOrig:   []byte(up[1]),
 					pwdPrefix: prefix,
 					pwdSalt:   parts[0],
@@ -88,8 +87,8 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 				}
 			case pwdTypeBcrypt:
 				ba.htFile[up[0]] = pwd{
-					pwdHashed: []byte(up[1]),
-					pwdType:   pwdType,
+					pwdOrig: []byte(up[1]),
+					pwdType: pwdType,
 				}
 			default:
 				return nil, fmt.Errorf("Unsupported password algorithm in %q found", file)

@@ -43,7 +43,6 @@ var pwdPrefixes = map[string]int{
 type htData map[string]pwd
 
 type pwd struct {
-	pwdHashed []byte
 	pwdOrig   []byte
 	pwdPrefix string
 	pwdSalt   string
@@ -71,7 +70,7 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 					return true
 				}
 			case pwdTypeBcrypt:
-				if err := bcrypt.CompareHashAndPassword(pass.pwdHashed, []byte(plainPass)); err == nil {
+				if err := bcrypt.CompareHashAndPassword(pass.pwdOrig, []byte(plainPass)); err == nil {
 					return true
 				}
 			}
