@@ -47,4 +47,8 @@ func Test_ValidateAccessData(t *testing.T) {
 	if !validateAccessData("jane", pass, data) {
 		t.Error("Unexpected validation failed")
 	}
+
+	if validateAccessData("foo", "bar", data) {
+		t.Error("Unexpected success validation")
+	}
 }

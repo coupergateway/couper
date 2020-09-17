@@ -56,7 +56,7 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 				return nil, fmt.Errorf("Too long line %q in %q found", line, file)
 			}
 
-			up := strings.Split(line, ":")
+			up := strings.SplitN(line, ":", 2)
 			if len(up) != 2 {
 				return nil, fmt.Errorf("Invalid line %q in %q found", line, file)
 			}
@@ -74,7 +74,7 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 					prefix = pwdPrefixMD5
 				}
 
-				parts := strings.SplitN(strings.TrimPrefix(up[1], prefix), "$", 2)
+				parts := strings.Split(strings.TrimPrefix(up[1], prefix), "$")
 				if len(parts) != 2 {
 					return nil, fmt.Errorf("Malformed %q password %q in %q found", prefix, up[1], file)
 				}
