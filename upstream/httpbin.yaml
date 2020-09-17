@@ -1,0 +1,134 @@
+openapi: 3.0.1
+info:
+  title: httpbin.org API
+  version: "1.0"
+servers:
+- url: https://httpbin.org:443
+paths:
+  /get:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpbinGet'
+  /post:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - username
+              - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpbinPost'
+  /status/{codes}:
+    get:
+      parameters:
+      - name: codes
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        200:
+          description: OK
+        500:
+          description: Internal Server Error
+  /headers:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpbinHeaders'
+  /anything:
+    post:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpbinAnything'
+components:
+  schemas:
+    HttpbinAnything:
+      allOf:
+      - $ref: '#/components/schemas/HttpbinPost'
+      - type: object
+        additionalProperties: true
+        required:
+        - method
+        properties:
+          method:
+            type: string
+            enum: [GET, POST]
+    HttpbinGet:
+      allOf:
+      - $ref: '#/components/schemas/HttpbinHeaders'
+      - type: object
+        additionalProperties: true
+        required:
+        - args
+        - origin
+        - url
+        properties:
+          args:
+            type: object
+          origin:
+            type: string
+          url:
+            type: string
+    HttpbinHeaders:
+      type: object
+      required:
+      - headers
+      properties:
+        headers:
+          type: object
+    HttpbinPost:
+      allOf:
+      - $ref: '#/components/schemas/HttpbinGet'
+      - type: object
+        additionalProperties: true
+        required:
+        - data
+        - files
+        - form
+        - json
+        properties:
+          data:
+            type: string
+          files:
+            type: object
+          form:
+            type: object
+          json:
+            $ref: '#/components/schemas/JSON'
+    JSON:
+      nullable: true
+      oneOf:
+      - type: boolean
+      - type: number
+      - type: string
+      - type: array
+      - type: object
