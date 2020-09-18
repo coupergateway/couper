@@ -12,56 +12,56 @@ import (
 	"github.com/avenga/couper/handler"
 )
 
-// Muxer represents the Muxer object.
-type Muxer struct{}
+// Handler represents the Handler object.
+type Handler struct{}
 
-// NewMuxer creates a new Muxer object
-func NewMuxer() *Muxer {
-	return &Muxer{}
+// NewHandler creates a new Handler object
+func NewHandler() *Handler {
+	return &Handler{}
 }
 
 // Match tries to find a http.Handler by the given request
-func (m *Muxer) Match(mux *runtime.Mux, req *http.Request) http.Handler {
-	if m == nil {
+func (h *Handler) Match(mux *runtime.Mux, req *http.Request) http.Handler {
+	if h == nil {
 		return nil
 	}
 
 	if len(mux.API) > 0 {
-		if h, ok := m.matchRoute(mux.API, req); ok {
-			return h
+		if hh, ok := h.matchRoute(mux.API, req); ok {
+			return hh
 		}
 
-		if m.isAPIError(mux, req.URL.Path) {
+		if h.isAPIError(mux, req.URL.Path) {
 			return mux.APIErrTpl.ServeError(errors.APIRouteNotFound)
 		}
 	}
 
 	if len(mux.FS) > 0 {
-		if h, ok := m.matchRoute(mux.FS, req); ok {
-			fileHandler := h
-			if p, isProtected := h.(ac.ProtectedHandler); isProtected {
+		if hh, ok := h.matchRoute(mux.FS, req); ok {
+			fileHandler := hh
+			if p, isProtected := hh.(ac.ProtectedHandler); isProtected {
 				fileHandler = p.Child()
 			}
 			if fh, ok := fileHandler.(handler.HasResponse); ok && fh.HasResponse(req) {
-				return h
+				return hh
 			}
 		}
 	}
 
 	if len(mux.SPA) > 0 {
-		if h, ok := m.matchRoute(mux.SPA, req); ok {
-			return h
+		if hh, ok := h.matchRoute(mux.SPA, req); ok {
+			return hh
 		}
 	}
 
-	if len(mux.FS) > 0 && m.isFileError(mux, req.URL.Path) {
+	if len(mux.FS) > 0 && h.isFileError(mux, req.URL.Path) {
 		return mux.FSErrTpl.ServeError(errors.FilesRouteNotFound)
 	}
 
 	return nil
 }
 
-func (m *Muxer) isAPIError(mux *runtime.Mux, reqPath string) bool {
+func (h *Handler) isAPIError(mux *runtime.Mux, reqPath string) bool {
 	p1 := mux.APIPath
 	p2 := mux.APIPath
 
@@ -83,7 +83,7 @@ func (m *Muxer) isAPIError(mux *runtime.Mux, reqPath string) bool {
 	return false
 }
 
-func (m *Muxer) isFileError(mux *runtime.Mux, reqPath string) bool {
+func (h *Handler) isFileError(mux *runtime.Mux, reqPath string) bool {
 	p1 := mux.FSPath
 	p2 := mux.FSPath
 
@@ -98,7 +98,7 @@ func (m *Muxer) isFileError(mux *runtime.Mux, reqPath string) bool {
 	return false
 }
 
-func (m *Muxer) matchRoute(routes runtime.Routes, req *http.Request) (http.Handler, bool) {
+func (h *Handler) matchRoute(routes runtime.Routes, req *http.Request) (http.Handler, bool) {
 	var wildcardRoutes runtime.Routes
 
 	if len(routes) == 0 {
@@ -110,21 +110,21 @@ func (m *Muxer) matchRoute(routes runtime.Routes, req *http.Request) (http.Handl
 			wildcardRoutes = append(wildcardRoutes, route)
 			continue
 		}
-		if h := m.matchHandler(route, req); h != nil {
-			return h, true
+		if hh := h.matchHandler(route, req); hh != nil {
+			return hh, true
 		}
 	}
 
 	for _, route := range wildcardRoutes {
-		if h := m.matchHandler(route, req); h != nil {
-			return h, true
+		if hh := h.matchHandler(route, req); hh != nil {
+			return hh, true
 		}
 	}
 
 	return nil, false
 }
 
-func (m *Muxer) matchHandler(route *runtime.Route, req *http.Request) http.Handler {
+func (h *Handler) matchHandler(route *runtime.Route, req *http.Request) http.Handler {
 	if route.GetMatcher().MatchString(req.URL.Path) {
 		if route.HasWildcard() {
 			match := route.GetMatcher().FindStringSubmatch(req.URL.Path)

@@ -24,7 +24,7 @@ type HTTPServer struct {
 	commandCtx context.Context
 	log        logrus.FieldLogger
 	listener   net.Listener
-	muxer      *Muxer
+	handler    *Handler
 	muxes      runtime.HostHandlers
 	srv        *http.Server
 	uidFn      func() string
@@ -57,7 +57,7 @@ func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p 
 		config:     conf,
 		commandCtx: cmdCtx,
 		log:        log,
-		muxer:      NewMuxer(),
+		handler:    NewHandler(),
 		muxes:      hosts,
 		uidFn:      uidFn,
 	}
@@ -144,7 +144,7 @@ func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
 
 	*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, s.muxes[host].Server.Name))
 
-	return s.muxer.Match(s.muxes[host].Mux, req)
+	return s.handler.Match(s.muxes[host].Mux, req)
 }
 
 func (s *HTTPServer) getHost(req *http.Request) string {
