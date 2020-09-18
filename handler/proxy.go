@@ -179,7 +179,7 @@ func (p *Proxy) prepareRequestValidation(outreq *http.Request) (context.Context,
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		router := openapi3filter.NewRouter().WithSwaggerFromFile(dir + "/" + p.options.SwaggerDef)
+		router := openapi3filter.NewRouter().WithSwaggerFromFile(dir + "/" + p.options.OpenAPIFile)
 		validationCtx := context.Background()
 		route, pathParams, _ := router.FindRoute(outreq.Method, outreq.URL)
 

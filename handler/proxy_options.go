@@ -14,7 +14,7 @@ type ProxyOptions struct {
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              []hcl.Body
 	BackendName                          string
-	SwaggerDef                           string
+	OpenAPIFile                          string
 	ValidateReq, ValidateRes             bool
 	CORS                                 *CORSOptions
 	RequestBodyLimit                     int64
@@ -52,7 +52,7 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hc
 		RequestBodyLimit: bodyLimit,
 		TTFBTimeout:      ttfbD,
 		Timeout:          totalD,
-		SwaggerDef:       conf.SwaggerDef,
+		OpenAPIFile:      conf.OpenAPIFile,
 		ValidateReq:      conf.ValidateReq,
 		ValidateRes:      conf.ValidateRes,
 	}, nil
