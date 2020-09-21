@@ -5,7 +5,8 @@
 * [Introduction](#introduction)
   * [Core concepts](#core_concepts)
   * [Configuration file](#conf_file)
-     * [Basic file structure](#basic_conf)  
+     * [Basic file structure](#basic_conf)
+     * [Variables](#variables_conf)
 * [Reference](#reference) 
   * [The `server` block](#server_block)
   * [The `files` block](#files_block)
@@ -77,6 +78,82 @@ definitions {...}
 * `definitions`: block for predefined configurations, that can be referenced
 * `defaults`: block for default configurations
 
+### Variables <a name="variables_conf"></a>
+
+The configuration file allows to use some predefined variables. There are two phases when those variables get evaluated.
+1st time is at config load which is currently related to `env` and **function** usage.
+The 2nd evaluation will happen during the request/response handling.
+
+`env` are the environment variables.
+`req` is the client request.
+`bereq` is the modified backend request.
+`beresp` is the original backend response.
+
+Most fields are self-explanatory:
+- `req`:
+  - `id` - unique request id
+  - `method` http method
+  - `path` url path
+  - `endpoint` matched endpoint pattern
+  - `headers.<name>` http header value for requested key
+  - `cookies.<name>` http cookie value for requested key (last wins)
+  - `query.<name>` query parameter values (last wins)
+  - `post.<name>` post form parameter
+- `bereq`:
+  - almost the same as `req` except `endpoint` does not exist
+  - `url` backend origin url
+- `beresp`:
+  - `status` http status code
+  - `headers|cookies<name>` value from `set-cookie-header` (last wins)
+
+
+An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
+
+```hcl
+server "variables-srv" {
+  api {
+    endpoint "/" {
+        backend "my_backend_definition" {
+            request_headers = {
+                x-env-user = env.USER
+                user-agent = "myproxyClient/${req.header.app.version}"
+                x-uuid = req.id
+            }
+        }
+    }
+  }
+}
+```
+
+#### Expressions
+
+Since we use HCL2 for our configuration we are able to use attribute values as expression:
+
+```hcl
+# Arithmetic with literals and application-provided variables
+sum = 1 + addend
+
+# String interpolation and templates
+message = "Hello, ${name}!"
+
+# Application-provided functions
+shouty_message = upper(message)
+```
+
+#### Functions
+
+Functions are little helper methods which are registered for every hcl evaluation context.
+
+- `base64_decode`
+- `base64_encode`
+- `to_upper`
+- `to_lower`
+
+Example usage:
+
+```hcl
+my_attribute = base64_decode("aGVsbG8gd29ybGQK")
+```
 
 ## Reference <a name="reference"></a>
 
