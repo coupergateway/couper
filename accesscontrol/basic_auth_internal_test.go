@@ -51,4 +51,17 @@ func Test_ValidateAccessData(t *testing.T) {
 	if validateAccessData("foo", "bar", data) {
 		t.Error("Unexpected success validation")
 	}
+
+	// php -r 'echo crypt("my-pass")."\n";'
+	// $1$drjdAXLW$P9cBlaFpBbi2xszjrmUV11
+	data["jock"] = pwd{
+		pwdOrig:   []byte("$1$drjdAXLW$P9cBlaFpBbi2xszjrmUV11"),
+		pwdPrefix: "$1$",
+		pwdSalt:   "drjdAXLW",
+		pwdType:   pwdTypeMD5,
+	}
+
+	if !validateAccessData("jock", pass, data) {
+		t.Error("Unexpected validation failed")
+	}
 }
