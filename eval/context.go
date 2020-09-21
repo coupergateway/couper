@@ -69,7 +69,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 		"path":   cty.StringVal(req.URL.Path),
 		"url":    cty.StringVal(newRawURL(req.URL).String()),
 		"query":  seetie.ValuesMapToValue(req.URL.Query()),
-		"post":   seetie.ValuesMapToValue(req.PostForm),
+		"post":   seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
@@ -78,7 +78,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 			"path":   cty.StringVal(bereq.URL.Path),
 			"url":    cty.StringVal(newRawURL(bereq.URL).String()),
 			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
-			"post":   seetie.ValuesMapToValue(bereq.PostForm),
+			"post":   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 		}.
 			Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
 		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
@@ -87,6 +87,19 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 	}
 
 	return evalCtx
+}
+
+const defaultMaxMemory = 32 << 20 // 32 MB
+
+// parseForm populates the request PostForm field.
+func parseForm(r *http.Request) *http.Request {
+	switch r.Method {
+	case http.MethodPut, http.MethodPatch, http.MethodPost:
+		_ = r.ParseMultipartForm(defaultMaxMemory)
+	default:
+		r.PostForm = make(url.Values)
+	}
+	return r
 }
 
 func newRawURL(u *url.URL) *url.URL {

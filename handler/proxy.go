@@ -284,14 +284,6 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Path = p.options.Path
 	}
 
-	// populate PostForm field
-	switch req.Method {
-	case http.MethodPut, http.MethodPatch, http.MethodPost:
-		_ = req.ParseForm()
-	default:
-		req.PostForm = make(url.Values)
-	}
-
 	p.setRoundtripContext(req, nil)
 }
 
