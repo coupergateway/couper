@@ -113,6 +113,16 @@ func Test_Validate(t *testing.T) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
+	req.Header.Set("Authorization", "bAsIc   "+b64.StdEncoding.EncodeToString([]byte("user:pass")))
+	if err := ba.Validate(req); err != nil {
+		t.Errorf("Got unexpected error: %s", err)
+	}
+
+	req.Header.Set("Authorization", "Asdfg "+b64.StdEncoding.EncodeToString([]byte("user:bass")))
+	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+		t.Errorf("Got unexpected error: %s", err)
+	}
+
 	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("user:bass")))
 	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
 		t.Errorf("Got unexpected error: %s", err)

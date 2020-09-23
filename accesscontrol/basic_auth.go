@@ -114,13 +114,12 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 		return ErrorBasicAuthUnauthorized
 	}
 
-	if l := len("Basic "); l < len(auth) {
-		auth = strings.TrimSpace(auth[l:])
-	} else {
-		return ErrorBasicAuthUnauthorized
+	credentials, err := getCredentials(auth)
+	if err != nil {
+		return err
 	}
 
-	decoded, err := base64.StdEncoding.DecodeString(auth)
+	decoded, err := base64.StdEncoding.DecodeString(credentials)
 	if err != nil {
 		return ErrorBasicAuthUnauthorized
 	}
@@ -143,4 +142,12 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	return ErrorBasicAuthUnauthorized
+}
+
+func getCredentials(val string) (string, error) {
+	const basic = "basic "
+	if strings.HasPrefix(strings.ToLower(val), basic) {
+		return strings.Trim(val[len(basic):], " "), nil
+	}
+	return "", ErrorBasicAuthUnauthorized
 }
