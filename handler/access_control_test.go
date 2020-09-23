@@ -46,10 +46,16 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusForbidden, ""},
 
 		{"with basic_auth", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
-			return accesscontrol.ErrorBasicAuthUnauthorized
+			return accesscontrol.NewErrorBAUnauthorized("")
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusUnauthorized, "Basic"},
+
+		{"with basic_auth with realm", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
+			return accesscontrol.NewErrorBAUnauthorized("My-Realn")
+		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			rw.WriteHeader(http.StatusNoContent)
+		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusUnauthorized, "Basic realm=My-Realn"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

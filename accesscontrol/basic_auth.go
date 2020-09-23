@@ -15,10 +15,22 @@ var _ AccessControl = &BasicAuth{}
 
 var (
 	ErrorBasicAuthNotConfigured = errors.New("basic-auth handler not configured")
-	ErrorBasicAuthUnauthorized  = errors.New("Unauthorized")
+	ErrorBasicAuthMissingCredentials  = errors.New("Missing credentials")
 )
 
 const authHeader = "Authorization"
+
+type ErrorBAUnauthorized struct {
+	Realm string
+}
+
+func NewErrorBAUnauthorized(realm string) *ErrorBAUnauthorized {
+	return &ErrorBAUnauthorized{Realm: realm}
+}
+
+func (e ErrorBAUnauthorized) Error() string {
+	return "Unauthorized"
+}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
@@ -26,7 +38,7 @@ type BasicAuth struct {
 	name   string
 	user   string
 	pass   string
-	realm  string
+	ebau   *ErrorBAUnauthorized
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
@@ -36,6 +48,7 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 		name:   name,
 		user:   user,
 		pass:   pass,
+		ebau:   NewErrorBAUnauthorized(realm),
 	}
 
 	if file != "" {
@@ -111,22 +124,22 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 
 	auth := req.Header.Get(authHeader)
 	if auth == "" {
-		return ErrorBasicAuthUnauthorized
+		return ba.ebau
 	}
 
 	credentials, err := getCredentials(auth)
 	if err != nil {
-		return err
+		return ba.ebau
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(credentials)
 	if err != nil {
-		return ErrorBasicAuthUnauthorized
+		return ba.ebau
 	}
 
 	up := strings.Split(string(decoded), ":")
 	if len(up) != 2 {
-		return ErrorBasicAuthUnauthorized
+		return ba.ebau
 	}
 
 	if ba.user == up[0] {
@@ -134,14 +147,14 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 			return nil
 		}
 
-		return ErrorBasicAuthUnauthorized
+		return ba.ebau
 	}
 
 	if validateAccessData(up[0], up[1], ba.htFile) {
 		return nil
 	}
 
-	return ErrorBasicAuthUnauthorized
+	return ba.ebau
 }
 
 func getCredentials(val string) (string, error) {
@@ -149,5 +162,5 @@ func getCredentials(val string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(val), basic) {
 		return strings.Trim(val[len(basic):], " "), nil
 	}
-	return "", ErrorBasicAuthUnauthorized
+	return "", ErrorBasicAuthMissingCredentials
 }

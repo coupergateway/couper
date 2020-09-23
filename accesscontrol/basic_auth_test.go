@@ -2,6 +2,7 @@ package accesscontrol_test
 
 import (
 	b64 "encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -89,22 +90,24 @@ func Test_Validate(t *testing.T) {
 		t.Fatal("Got unexpected error")
 	}
 
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	var ebau *ac.ErrorBAUnauthorized
+
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
 	req.Header.Set("Authorization", "Foo")
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
 	req.Header.Set("Authorization", "Basic X")
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
 	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")))
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
@@ -119,12 +122,12 @@ func Test_Validate(t *testing.T) {
 	}
 
 	req.Header.Set("Authorization", "Asdfg "+b64.StdEncoding.EncodeToString([]byte("user:bass")))
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
 	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("user:bass")))
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
@@ -134,7 +137,7 @@ func Test_Validate(t *testing.T) {
 	}
 
 	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("john:my-bass")))
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthUnauthorized {
+	if err := ba.Validate(req); !errors.As(err, &ebau) {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 }
