@@ -1,6 +1,6 @@
-# Couper 2
+# Couper
 
-Couper 2 is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a  lightweight API gateway component.
+Couper is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a frontend gateway component.
 
 _For additional information, tutorials and documentation please visit the [couper repository](https://github.com/avenga/couper)._
 
