@@ -32,7 +32,7 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 
 	if !validateAccessData("john", pass, data) {
-		t.Error("Unexpected validation failed")
+		t.Error("Unexpected validation failure")
 	}
 
 	// $ htpasswd -bB .htpasswd jane my-pass
@@ -45,11 +45,11 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 
 	if !validateAccessData("jane", pass, data) {
-		t.Error("Unexpected validation failed")
+		t.Error("Unexpected validation failure")
 	}
 
 	if validateAccessData("foo", "bar", data) {
-		t.Error("Unexpected success validation")
+		t.Error("Unexpected validation success")
 	}
 
 	// php -r 'echo crypt("my-pass")."\n";'
@@ -62,6 +62,6 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 
 	if !validateAccessData("jock", pass, data) {
-		t.Error("Unexpected validation failed")
+		t.Error("Unexpected validation failure")
 	}
 }
