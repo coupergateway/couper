@@ -95,8 +95,6 @@ func parseForm(r *http.Request) *http.Request {
 	switch r.Method {
 	case http.MethodPut, http.MethodPatch, http.MethodPost:
 		_ = r.ParseMultipartForm(defaultMaxMemory)
-	default:
-		r.PostForm = make(url.Values)
 	}
 	return r
 }
