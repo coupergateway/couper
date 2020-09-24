@@ -79,8 +79,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 			"url":    cty.StringVal(newRawURL(bereq.URL).String()),
 			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
 			"post":   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
-		}.
-			Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
+		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
 		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
 			"status": cty.StringVal(strconv.Itoa(beresp.StatusCode)),
 		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
