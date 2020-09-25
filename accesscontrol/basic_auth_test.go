@@ -55,7 +55,7 @@ func Test_Validate(t *testing.T) {
 		t.Fatal("Expected a basic auth object")
 	}
 
-	var ebau *ac.ErrorBAUnauthorized
+	var ebau *ac.BasicAuthUnauthorizedError
 
 	type testCase struct {
 		headerValue string

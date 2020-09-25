@@ -31,7 +31,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, control := range a.ac {
 		if err := control.Validate(req); err != nil {
 			var code errors.Code
-			if ebau, ok := err.(*ac.ErrorBAUnauthorized); ok {
+			if ebau, ok := err.(*ac.BasicAuthUnauthorizedError); ok {
 				code = errors.BasicAuthFailed
 				wwwAuthenticateValue := "Basic"
 				if ebau.Realm != "" {

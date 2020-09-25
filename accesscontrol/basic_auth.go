@@ -20,7 +20,7 @@ var (
 
 const authHeader = "Authorization"
 
-type ErrorBAUnauthorized struct {
+type BasicAuthUnauthorizedError struct {
 	Realm string
 }
 
@@ -49,31 +49,31 @@ func (e *BasicAuthHTParseError) Error() string {
 	return fmt.Sprintf("basic auth ht parse error: %s: %s", basicAuthErrors[e.code], e.error)
 }
 
-func NewErrorBAUnauthorized(realm string) *ErrorBAUnauthorized {
-	return &ErrorBAUnauthorized{Realm: realm}
+func NewBasicAuthUnauthorizedError(realm string) *BasicAuthUnauthorizedError {
+	return &BasicAuthUnauthorizedError{Realm: realm}
 }
 
-func (e ErrorBAUnauthorized) Error() string {
+func (e BasicAuthUnauthorizedError) Error() string {
 	return "Unauthorized"
 }
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile htData
-	name   string
-	user   string
-	pass   string
-	ebau   *ErrorBAUnauthorized
+	htFile          htData
+	name            string
+	user            string
+	pass            string
+	errUnauthorized *BasicAuthUnauthorizedError
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
 func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 	ba := &BasicAuth{
-		htFile: make(htData),
-		name:   name,
-		user:   user,
-		pass:   pass,
-		ebau:   NewErrorBAUnauthorized(realm),
+		htFile:          make(htData),
+		name:            name,
+		user:            user,
+		pass:            pass,
+		errUnauthorized: NewBasicAuthUnauthorizedError(realm),
 	}
 
 	if file == "" {
@@ -153,22 +153,22 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 
 	auth := req.Header.Get(authHeader)
 	if auth == "" {
-		return ba.ebau
+		return ba.errUnauthorized
 	}
 
 	credentials, err := getCredentials(auth)
 	if err != nil {
-		return ba.ebau
+		return ba.errUnauthorized
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(credentials)
 	if err != nil {
-		return ba.ebau
+		return ba.errUnauthorized
 	}
 
 	up := strings.Split(string(decoded), ":")
 	if len(up) != 2 {
-		return ba.ebau
+		return ba.errUnauthorized
 	}
 
 	if ba.user == up[0] {
@@ -176,14 +176,14 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 			return nil
 		}
 
-		return ba.ebau
+		return ba.errUnauthorized
 	}
 
 	if validateAccessData(up[0], up[1], ba.htFile) {
 		return nil
 	}
 
-	return ba.ebau
+	return ba.errUnauthorized
 }
 
 func getCredentials(val string) (string, error) {
