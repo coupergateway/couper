@@ -95,8 +95,8 @@ Most fields are self-explanatory:
   - `method` http method
   - `path` url path
   - `endpoint` matched endpoint pattern
-  - `headers.<name>` http header value for requested key
-  - `cookies.<name>` http cookie value for requested key (last wins)
+  - `headers.<name>` http request header value for requested key
+  - `cookies.<name>` value from `Cookie` request header for requested key (last wins)
   - `query.<name>` query parameter values (last wins)
   - `post.<name>` post form parameter
 - `bereq`:
@@ -104,7 +104,8 @@ Most fields are self-explanatory:
   - `url` backend origin url
 - `beresp`:
   - `status` http status code
-  - `headers|cookies<name>` value from `set-cookie-header` (last wins)
+  - `headers.<name>` http response header value for requested key
+  - `cookies.<name>` value from `Set-Cookie` response header for requested key (last wins)
 
 
 An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
