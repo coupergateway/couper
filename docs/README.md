@@ -117,7 +117,7 @@ server "variables-srv" {
         backend "my_backend_definition" {
             request_headers = {
                 x-env-user = env.USER
-                user-agent = "myproxyClient/${req.header.app.version}"
+                user-agent = "myproxyClient/${req.header.app-version}"
                 x-uuid = req.id
             }
         }
