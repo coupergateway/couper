@@ -14,8 +14,8 @@ import (
 var _ AccessControl = &BasicAuth{}
 
 var (
-	ErrorBasicAuthNotConfigured = errors.New("basic-auth handler not configured")
-	ErrorBasicAuthMissingCredentials  = errors.New("Missing credentials")
+	ErrorBasicAuthMissingCredentials = errors.New("missing credentials")
+	ErrorBasicAuthNotConfigured      = errors.New("basic-auth handler not configured")
 )
 
 const authHeader = "Authorization"
@@ -51,69 +51,68 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 		ebau:   NewErrorBAUnauthorized(realm),
 	}
 
-	if file != "" {
-		fp, err := os.Open(file)
-		if err != nil {
-			return nil, err
-		}
-		defer fp.Close()
+	if file == "" {
+		return ba, nil
+	}
 
-		scanner := bufio.NewScanner(fp)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if len(line) == 0 || line[0] == '#' {
-				continue
-			}
+	fp, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer fp.Close()
 
-			if len(line) > 255 {
-				return nil, fmt.Errorf("Too long line %q in %q found", line, file)
-			}
-
-			up := strings.SplitN(line, ":", 2)
-			if len(up) != 2 {
-				return nil, fmt.Errorf("Invalid line %q in %q found", line, file)
-			}
-
-			if _, ok := ba.htFile[up[0]]; ok {
-				return nil, fmt.Errorf("Multiple user %q in %q found", up[0], file)
-			}
-
-			switch pwdType := getPwdType(up[1]); pwdType {
-			case pwdTypeApr1:
-				fallthrough
-			case pwdTypeMD5:
-				prefix := pwdPrefixApr1
-				if pwdType == pwdTypeMD5 {
-					prefix = pwdPrefixMD5
-				}
-
-				parts := strings.Split(strings.TrimPrefix(up[1], prefix), "$")
-				if len(parts) != 2 {
-					return nil, fmt.Errorf("Malformed %q password %q in %q found", prefix, up[1], file)
-				}
-
-				ba.htFile[up[0]] = pwd{
-					pwdOrig:   []byte(up[1]),
-					pwdPrefix: prefix,
-					pwdSalt:   parts[0],
-					pwdType:   pwdType,
-				}
-			case pwdTypeBcrypt:
-				ba.htFile[up[0]] = pwd{
-					pwdOrig: []byte(up[1]),
-					pwdType: pwdType,
-				}
-			default:
-				return nil, fmt.Errorf("Unsupported password algorithm in %q found", file)
-			}
+	scanner := bufio.NewScanner(fp)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if len(line) == 0 || line[0] == '#' {
+			continue
 		}
 
-		if err := scanner.Err(); err != nil {
-			return nil, err
+		if len(line) > 255 {
+			return nil, fmt.Errorf("too long line %q in %q found", line, file)
+		}
+
+		up := strings.SplitN(line, ":", 2)
+		if len(up) != 2 {
+			return nil, fmt.Errorf("invalid line %q in %q found", line, file)
+		}
+
+		if _, ok := ba.htFile[up[0]]; ok {
+			return nil, fmt.Errorf("multiple user %q in %q found", up[0], file)
+		}
+
+		switch pwdType := getPwdType(up[1]); pwdType {
+		case pwdTypeApr1:
+			fallthrough
+		case pwdTypeMD5:
+			prefix := pwdPrefixApr1
+			if pwdType == pwdTypeMD5 {
+				prefix = pwdPrefixMD5
+			}
+
+			parts := strings.Split(strings.TrimPrefix(up[1], prefix), "$")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("malformed %q password %q in %q found", prefix, up[1], file)
+			}
+
+			ba.htFile[up[0]] = pwd{
+				pwdOrig:   []byte(up[1]),
+				pwdPrefix: prefix,
+				pwdSalt:   parts[0],
+				pwdType:   pwdType,
+			}
+		case pwdTypeBcrypt:
+			ba.htFile[up[0]] = pwd{
+				pwdOrig: []byte(up[1]),
+				pwdType: pwdType,
+			}
+		default:
+			return nil, fmt.Errorf("unsupported password algorithm in %q found", file)
 		}
 	}
 
-	return ba, nil
+	err = scanner.Err()
+	return ba, err
 }
 
 // Validate implements the AccessControl interface

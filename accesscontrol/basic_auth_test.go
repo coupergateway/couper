@@ -39,7 +39,7 @@ func Test_NewBasicAuth(t *testing.T) {
 	if ba != nil || err == nil {
 		t.Error("Got unexpected BasicAuth object")
 	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "Invalid line") {
+	if !strings.Contains(fmt.Sprintf("%s", err), "invalid line") {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
@@ -47,7 +47,7 @@ func Test_NewBasicAuth(t *testing.T) {
 	if ba != nil || err == nil {
 		t.Error("Got unexpected BasicAuth object")
 	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "Too long line") {
+	if !strings.Contains(fmt.Sprintf("%s", err), "too long line") {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
@@ -55,7 +55,7 @@ func Test_NewBasicAuth(t *testing.T) {
 	if ba != nil || err == nil {
 		t.Error("Got unexpected BasicAuth object")
 	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "Malformed") {
+	if !strings.Contains(fmt.Sprintf("%s", err), "malformed") {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
@@ -63,7 +63,7 @@ func Test_NewBasicAuth(t *testing.T) {
 	if ba != nil || err == nil {
 		t.Error("Got unexpected BasicAuth object")
 	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "Multiple user") {
+	if !strings.Contains(fmt.Sprintf("%s", err), "multiple user") {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
@@ -71,20 +71,19 @@ func Test_NewBasicAuth(t *testing.T) {
 	if ba != nil || err == nil {
 		t.Error("Got unexpected BasicAuth object")
 	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "Unsupported password algorithm") {
+	if !strings.Contains(fmt.Sprintf("%s", err), "unsupported password algorithm") {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 }
 
 func Test_Validate(t *testing.T) {
 	var ba *ac.BasicAuth
-	var req *http.Request = &http.Request{}
+	req := &http.Request{Header: make(http.Header)}
 
 	if err := ba.Validate(req); err != ac.ErrorBasicAuthNotConfigured {
 		t.Errorf("Got unexpected error: %s", err)
 	}
 
-	req.Header = http.Header{}
 	ba, _ = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", "Basic")
 	if ba == nil {
 		t.Fatal("Got unexpected error")
