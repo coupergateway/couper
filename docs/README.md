@@ -129,7 +129,7 @@ server "variables-srv" {
 
 #### Expressions
 
-Since we use HCL2 for our configuration we are able to use attribute values as expression:
+Since we use HCL2 for our configuration, we are able to use attribute values as expression:
 
 ```hcl
 # Arithmetic with literals and application-provided variables
