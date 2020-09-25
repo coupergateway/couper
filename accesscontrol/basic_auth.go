@@ -24,6 +24,31 @@ type ErrorBAUnauthorized struct {
 	Realm string
 }
 
+const (
+	InvalidLine uint8 = iota
+	LineTooLong
+	MalformedPassword
+	MultipleUser
+	NotSupported
+)
+
+type BasicAuthHTParseError struct {
+	error
+	code uint8
+}
+
+var basicAuthErrors = map[uint8]string{
+	InvalidLine:       "invalidLine",
+	LineTooLong:       "lineTooLong",
+	MalformedPassword: "malformedPassword",
+	MultipleUser:      "multipleUser",
+	NotSupported:      "notSupported",
+}
+
+func (e *BasicAuthHTParseError) Error() string {
+	return fmt.Sprintf("basic auth ht parse error: %s: %s", basicAuthErrors[e.code], e.error)
+}
+
 func NewErrorBAUnauthorized(realm string) *ErrorBAUnauthorized {
 	return &ErrorBAUnauthorized{Realm: realm}
 }
@@ -62,23 +87,25 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 	defer fp.Close()
 
 	scanner := bufio.NewScanner(fp)
+	var lineNr int
 	for scanner.Scan() {
+		lineNr++
 		line := strings.TrimSpace(scanner.Text())
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
 
 		if len(line) > 255 {
-			return nil, fmt.Errorf("too long line %q in %q found", line, file)
+			return nil, &BasicAuthHTParseError{code: LineTooLong, error: fmt.Errorf("%s:%d", file, lineNr)}
 		}
 
 		up := strings.SplitN(line, ":", 2)
 		if len(up) != 2 {
-			return nil, fmt.Errorf("invalid line %q in %q found", line, file)
+			return nil, &BasicAuthHTParseError{code: InvalidLine, error: fmt.Errorf("%s:%d", file, lineNr)}
 		}
 
 		if _, ok := ba.htFile[up[0]]; ok {
-			return nil, fmt.Errorf("multiple user %q in %q found", up[0], file)
+			return nil, &BasicAuthHTParseError{code: MultipleUser, error: fmt.Errorf("%s:%d: %q", file, lineNr, up[0])}
 		}
 
 		switch pwdType := getPwdType(up[1]); pwdType {
@@ -92,7 +119,7 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 
 			parts := strings.Split(strings.TrimPrefix(up[1], prefix), "$")
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("malformed %q password %q in %q found", prefix, up[1], file)
+				return nil, &BasicAuthHTParseError{code: MalformedPassword, error: fmt.Errorf("%s:%d: user %q", file, lineNr, up[0])}
 			}
 
 			ba.htFile[up[0]] = pwd{
@@ -107,7 +134,10 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 				pwdType: pwdType,
 			}
 		default:
-			return nil, fmt.Errorf("unsupported password algorithm in %q found", file)
+			return nil, &BasicAuthHTParseError{
+				code:  NotSupported,
+				error: fmt.Errorf("%s:%d: unknown password algorithm", file, lineNr),
+			}
 		}
 	}
 

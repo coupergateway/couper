@@ -3,76 +3,42 @@ package accesscontrol_test
 import (
 	b64 "encoding/base64"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	ac "github.com/avenga/couper/accesscontrol"
 )
 
 func Test_NewBasicAuth(t *testing.T) {
-	ba, err := ac.NewBasicAuth("name", "user", "pass", "", "Basic")
-	if ba == nil || err != nil {
-		t.Errorf("Got unexpected error: '%s'", err)
+	type testCase struct {
+		name, user, pass, file, realm string
+		expErrMsg                     string
+		shouldFail                    bool
 	}
 
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", "Basic")
-	if ba == nil || err != nil {
-		t.Errorf("Got unexpected error: '%s'", err)
-	}
+	for _, tc := range []testCase{
+		{"name", "user", "pass", "", "Basic", "", false},
+		{"name", "user", "pass", "testdata/htpasswd", "Basic", "", false},
+		{"name", "john", "pass", "testdata/htpasswd", "Basic", "", false},
+		{"name", "user", "pass", "file", "Basic", "open file: no such file or directory", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "Basic", "basic auth ht parse error: invalidLine: testdata/htpasswd_err_invalid:1", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "Basic", "basic auth ht parse error: lineTooLong: testdata/htpasswd_err_too_long:1", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_malformed", "Basic", `basic auth ht parse error: malformedPassword: testdata/htpasswd_err_malformed:1: user "foo"`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_multi", "Basic", `basic auth ht parse error: multipleUser: testdata/htpasswd_err_multi:2: "foo"`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "Basic", "basic auth ht parse error: notSupported: testdata/htpasswd_err_unsupported:1: unknown password algorithm", true},
+	} {
+		ba, err := ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, tc.realm)
+		if tc.shouldFail && ba != nil {
+			t.Error("Expected no successful basic auth creation")
+		}
 
-	ba, err = ac.NewBasicAuth("name", "john", "pass", "testdata/htpasswd", "Basic")
-	if ba == nil || err != nil {
-		t.Errorf("Got unexpected error: '%s'", err)
-	}
-
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "file", "Basic")
-	if ba != nil || err == nil {
-		t.Error("Got unexpected BasicAuth object")
-	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "no such file or directory") {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd_err_invalid", "Basic")
-	if ba != nil || err == nil {
-		t.Error("Got unexpected BasicAuth object")
-	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "invalid line") {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd_err_too_long", "Basic")
-	if ba != nil || err == nil {
-		t.Error("Got unexpected BasicAuth object")
-	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "too long line") {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd_err_malformed", "Basic")
-	if ba != nil || err == nil {
-		t.Error("Got unexpected BasicAuth object")
-	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "malformed") {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd_err_multi", "Basic")
-	if ba != nil || err == nil {
-		t.Error("Got unexpected BasicAuth object")
-	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "multiple user") {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	ba, err = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd_err_unsupported", "Basic")
-	if ba != nil || err == nil {
-		t.Error("Got unexpected BasicAuth object")
-	}
-	if !strings.Contains(fmt.Sprintf("%s", err), "unsupported password algorithm") {
-		t.Errorf("Got unexpected error: %s", err)
+		if tc.shouldFail && err != nil && tc.expErrMsg != "" {
+			if err.Error() != tc.expErrMsg {
+				t.Errorf("Expected error message: %q, got: %q", tc.expErrMsg, err.Error())
+			}
+		} else if err != nil {
+			t.Error(err)
+		}
 	}
 }
 
