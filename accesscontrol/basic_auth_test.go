@@ -81,62 +81,39 @@ func Test_Validate(t *testing.T) {
 	req := &http.Request{Header: make(http.Header)}
 
 	if err := ba.Validate(req); err != ac.ErrorBasicAuthNotConfigured {
-		t.Errorf("Got unexpected error: %s", err)
+		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 
-	ba, _ = ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", "Basic")
-	if ba == nil {
-		t.Fatal("Got unexpected error")
+	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", "Basic")
+	if err != nil || ba == nil {
+		t.Fatal("Expected a basic auth object")
 	}
 
 	var ebau *ac.ErrorBAUnauthorized
 
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
+	type testCase struct {
+		headerValue string
+		expErr      error
 	}
 
-	req.Header.Set("Authorization", "Foo")
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Basic X")
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")))
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("user:pass")))
-	if err := ba.Validate(req); err != nil {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "bAsIc   "+b64.StdEncoding.EncodeToString([]byte("user:pass")))
-	if err := ba.Validate(req); err != nil {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Asdfg "+b64.StdEncoding.EncodeToString([]byte("user:bass")))
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("user:bass")))
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("john:my-pass")))
-	if err := ba.Validate(req); err != nil {
-		t.Errorf("Got unexpected error: %s", err)
-	}
-
-	req.Header.Set("Authorization", "Basic "+b64.StdEncoding.EncodeToString([]byte("john:my-bass")))
-	if err := ba.Validate(req); !errors.As(err, &ebau) {
-		t.Errorf("Got unexpected error: %s", err)
+	for _, testcase := range []testCase{
+		{"", ebau},
+		{"Foo", ebau},
+		{"Basic X", ebau},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")), ebau},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), nil},
+		{"bAsIc   " + b64.StdEncoding.EncodeToString([]byte("user:pass")), nil},
+		{"Asdfg " + b64.StdEncoding.EncodeToString([]byte("user:bass")), nil},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:bass")), ebau},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-pass")), nil},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), ebau},
+	} {
+		t.Run(testcase.headerValue, func(t *testing.T) {
+			req.Header.Set("Authorization", testcase.headerValue)
+			err := ba.Validate(req)
+			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
+				t.Errorf("Expected Unauthorized error, got: %v", err)
+			}
+		})
 	}
 }
