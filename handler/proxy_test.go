@@ -2,12 +2,15 @@ package handler
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -329,7 +332,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 			"any origin, proxy auth credentials",
 			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
-				"Origin":        "https://www.example.com",
+				"Origin":              "https://www.example.com",
 				"Proxy-Authorization": "Basic oertnbin",
 			},
 			map[string]string{
@@ -424,34 +427,100 @@ func TestProxy_director(t *testing.T) {
 	}
 }
 
-func TestProxy_modifyResponse(t *testing.T) {
+func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	type fields struct {
 		evalContext *hcl.EvalContext
-		log         *logrus.Entry
 		options     *ProxyOptions
 	}
 
-	type args struct {
-		res *http.Response
-	}
+	type header map[string]string
 
 	type testCase struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name       string
+		fields     fields
+		hcl        string
+		method     string
+		body       io.Reader
+		wantHeader header
+		wantErr    bool
 	}
 
-	tests := []testCase{
-		// TODO: Add test cases.
+	baseCtx := eval.NewENVContext(nil)
+	log, hook := logrustest.NewNullLogger()
+
+	type hclBody struct {
+		Inline hcl.Body `hcl:",remain"`
 	}
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			if err := r.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	opts := &ProxyOptions{BackendName: "test-origin", Origin: "http://" + origin.Listener.Addr().String(), CORS: &CORSOptions{}}
+
+	tests := []testCase{
+		{"GET use req.Header", fields{baseCtx, opts}, `
+		response_headers = {
+			X-Method = req.method
+		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}, false},
+		{"POST use req.post", fields{baseCtx, opts}, `
+		response_headers = {
+			X-Method = req.method
+			X-Post = req.post.foo
+		}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
+			"X-Method": http.MethodPost,
+			"X-Post":   "bar",
+		}, false},
+	}
+
 	for _, tt := range tests {
+		hook.Reset()
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			var remain hclBody
+			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), baseCtx, &remain)
 			if err != nil {
 				t.Fatal(err)
 			}
-			// TODO: test me
+			tt.fields.options.Context = append(tt.fields.options.Context, remain.Inline)
+			p, err := NewProxy(tt.fields.options, log.WithContext(context.Background()), tt.fields.evalContext)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
+			rw := httptest.NewRecorder()
+
+			if tt.body != nil {
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			}
+
+			p.ServeHTTP(rw, req)
+			res := rw.Result()
+
+			if res == nil {
+				t.Fatal("Expected a response")
+				t.Log(hook.LastEntry().String())
+			}
+
+			if res.StatusCode != http.StatusNoContent {
+				t.Errorf("Expected StatusNoContent 204, got: %q %d", res.Status, res.StatusCode)
+				t.Log(hook.LastEntry().String())
+			}
+
+			for k, v := range tt.wantHeader {
+				if got := res.Header.Get(k); got != v {
+					t.Errorf("Expected value for header %q: %q, got: %q", k, v, got)
+					t.Log(hook.LastEntry().String())
+				}
+			}
+
 		})
 	}
 }
@@ -494,209 +563,8 @@ func TestProxy_isCredentialed(t *testing.T) {
 
 			p := &Proxy{}
 			credentialed := p.isCredentialed(req.Header)
-			if (credentialed != tt.exp) {
+			if credentialed != tt.exp {
 				t.Errorf("expected: %t, got: %t", tt.exp, credentialed)
-			}
-		})
-	}
-}
-
-func TestCORSOptions_NeedsVary(t *testing.T) {
-	tests := []struct {
-		name        string
-		corsOptions *CORSOptions
-		exp         bool
-	}{
-		{
-			"any origin",
-			&CORSOptions{AllowedOrigins: []string{"*"}},
-			false,
-		},
-		{
-			"one specific origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
-			true,
-		},
-		{
-			"several specific origins",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "http://www.another.host.com"}},
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			needed := tt.corsOptions.NeedsVary()
-			if needed != tt.exp {
-				subT.Errorf("Expected %t, got: %t", tt.exp, needed)
-			}
-		})
-	}
-}
-
-func TestCORSOptions_AllowsOrigin(t *testing.T) {
-	tests := []struct {
-		name        string
-		corsOptions *CORSOptions
-		origin      string
-		exp         bool
-	}{
-		{
-			"any origin allowed, specific origin",
-			&CORSOptions{AllowedOrigins: []string{"*"}},
-			"https://www.example.com",
-			true,
-		},
-		{
-			"any origin allowed, *",
-			&CORSOptions{AllowedOrigins: []string{"*"}},
-			"*",
-			true,
-		},
-		{
-			"one specific origin allowed, specific allowed origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
-			"https://www.example.com",
-			true,
-		},
-		{
-			"one specific origin allowed, specific disallowed origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
-			"http://www.another.host.com",
-			false,
-		},
-		{
-			"one specific origin allowed, *",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
-			"*",
-			false,
-		},
-		{
-			"several specific origins allowed, specific origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "http://www.another.host.com"}},
-			"https://www.example.com",
-			true,
-		},
-		{
-			"several specific origins allowed, specific disallowed origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "http://www.another.host.com"}},
-			"https://www.disallowed.host.org",
-			false,
-		},
-		{
-			"several specific origins allowed, *",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "http://www.another.host.com"}},
-			"*",
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			allowed := tt.corsOptions.AllowsOrigin(tt.origin)
-			if allowed != tt.exp {
-				subT.Errorf("Expected %t, got: %t", tt.exp, allowed)
-			}
-		})
-	}
-}
-
-func TestCORSOptions_isCorsRequest(t *testing.T) {
-	tests := []struct {
-		name           string
-		requestHeaders map[string]string
-		exp            bool
-	}{
-		{
-			"without Origin",
-			map[string]string{},
-			false,
-		},
-		{
-			"with Origin",
-			map[string]string{"Origin": "https://www.example.com"},
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
-			for name, value := range tt.requestHeaders {
-				req.Header.Set(name, value)
-			}
-
-			corsRequest := isCorsRequest(req)
-			if corsRequest != tt.exp {
-				subT.Errorf("Expected %t, got: %t", tt.exp, corsRequest)
-			}
-		})
-	}
-}
-
-func TestCORSOptions_isCorsPreflightRequest(t *testing.T) {
-	tests := []struct {
-		name           string
-		method         string
-		requestHeaders map[string]string
-		exp            bool
-	}{
-		{
-			"OPTIONS, without Origin",
-			http.MethodOptions,
-			map[string]string{},
-			false,
-		},
-		{
-			"OPTIONS, with Origin",
-			http.MethodOptions,
-			map[string]string{"Origin": "https://www.example.com"},
-			false,
-		},
-		{
-			"OPTIONS, without Origin, with ACRM",
-			http.MethodOptions,
-			map[string]string{"Access-Control-Request-Method": "POST"},
-			false,
-		},
-		{
-			"OPTIONS, without Origin, with ACRH",
-			http.MethodOptions,
-			map[string]string{"Access-Control-Request-Headers": "Content-Type"},
-			false,
-		},
-		{
-			"POST, with Origin, with ACRM",
-			http.MethodPost,
-			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},
-			false,
-		},
-		{
-			"POST, with Origin, with ACRH",
-			http.MethodPost,
-			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Headers": "Content-Type"},
-			false,
-		},
-		{
-			"OPTIONS, with Origin, with ACRM",
-			http.MethodOptions,
-			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},
-			true,
-		},
-		{
-			"OPTIONS, with Origin, with ACRH",
-			http.MethodOptions,
-			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Headers": "Content-Type"},
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			req := httptest.NewRequest(tt.method, "http://1.2.3.4/", nil)
-			for name, value := range tt.requestHeaders {
-				req.Header.Set(name, value)
-			}
-
-			corsPfRequest := isCorsPreflightRequest(req)
-			if corsPfRequest != tt.exp {
-				subT.Errorf("Expected %t, got: %t", tt.exp, corsPfRequest)
 			}
 		})
 	}

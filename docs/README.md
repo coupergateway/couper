@@ -1,4 +1,4 @@
-# Couper 2 Docs - Version 0.1
+# Couper Docs - Version 0.1
 
 ## Table of contents
 
@@ -28,7 +28,7 @@
   * [`hosts` configuration](#hosts_conf_ex) 
    
 ## Introduction <a name="introduction"></a>
-Couper 2 is a lightweight API gateway especially designed to support building and running API-driven Web projects.
+Couper is a frontend gateway especially designed to support building and running API-driven Web projects.
 Acting as a proxy component it connects clients with (micro) services and adds access control and observability to the project. Couper does not need any special development skills and offers easy configuration and integration. 
 
 ## Core concepts <a name="core_concepts"></a>

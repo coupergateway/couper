@@ -176,6 +176,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	p.director(outreq)
 	outreq.Close = false
 
+	// Deal with req.post access on the way back
+	if outreq.GetBody != nil {
+		req.GetBody = outreq.GetBody
+	}
+
 	reqUpType := upgradeType(outreq.Header)
 	removeConnectionHeaders(outreq.Header)
 
