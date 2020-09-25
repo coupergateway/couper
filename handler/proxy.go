@@ -86,9 +86,6 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 
 // NeedsVary if a request with not allowed origin is ignored.
 func (c *CORSOptions) NeedsVary() bool {
-	if c == nil {
-		return false
-	}
 	return !c.AllowsOrigin("*")
 }
 
