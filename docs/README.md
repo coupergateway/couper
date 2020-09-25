@@ -92,19 +92,19 @@ The second evaluation will happen during the request/response handling.
 Most fields are self-explanatory:
 - `req`:
   - `id` - unique request id
-  - `method` http method
-  - `path` url path
+  - `method` HTTP method
+  - `path` URL path
   - `endpoint` matched endpoint pattern
-  - `headers.<name>` http request header value for requested key
+  - `headers.<name>` HTTP request header value for requested key
   - `cookies.<name>` value from `Cookie` request header for requested key (last wins)
   - `query.<name>` query parameter values (last wins)
   - `post.<name>` post form parameter
 - `bereq`:
   - almost the same as `req` except `endpoint` does not exist
-  - `url` backend origin url
+  - `url` backend origin URL
 - `beresp`:
-  - `status` http status code
-  - `headers.<name>` http response header value for requested key
+  - `status` HTTP status code
+  - `headers.<name>` HTTP response header value for requested key
   - `cookies.<name>` value from `Set-Cookie` response header for requested key (last wins)
 
 
@@ -225,7 +225,7 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 |:-------------------|:--------------------------------------|
 |context|`api` block|
 |*label*|<ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" { `</li><li>incoming client request: `example.com/api/dashboard`</li></ul>|
-| `path`|<ul><li>changeable part of upstream url</li><li>changes the path suffix of the outgoing request</li></ul>|
+| `path`|<ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul>|
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
 
@@ -238,7 +238,7 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
 | `origin`||
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
-|`path`|changeable part of upstream url|
+|`path`|changeable part of upstream URL|
 |`timeout`||
 |`max_parallel_requests`||
 | `request_headers`||
