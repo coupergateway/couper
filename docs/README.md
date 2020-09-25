@@ -92,21 +92,21 @@ The second evaluation will happen during the request/response handling.
 Most fields are self-explanatory:
 - `req`:
   - `id` - unique request id
-  - `method` HTTP method
-  - `path` URL path
-  - `endpoint` matched endpoint pattern
-  - `headers.<name>` HTTP request header value for requested lower-case key
-  - `cookies.<name>` value from `Cookie` request header for requested key (last wins)
-  - `query.<name>` query parameter values (last wins)
-  - `post.<name>` post form parameter
-  - `ctx.<name>.<claim_name>` request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name.
+  - `method` - HTTP method
+  - `path` - URL path
+  - `endpoint` - matched endpoint pattern
+  - `headers.<name>` - HTTP request header value for requested lower-case key
+  - `cookies.<name>` - value from `Cookie` request header for requested key (last wins)
+  - `query.<name>` - query parameter values (last wins)
+  - `post.<name>` - post form parameter
+  - `ctx.<name>.<claim_name>` - request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name.
 - `bereq`:
   - almost the same as `req` except `endpoint` does not exist
-  - `url` backend origin URL
+  - `url` - backend origin URL
 - `beresp`:
-  - `status` HTTP status code
-  - `headers.<name>` HTTP response header value for requested lower-case key
-  - `cookies.<name>` value from `Set-Cookie` response header for requested key (last wins)
+  - `status` - HTTP status code
+  - `headers.<name>` - HTTP response header value for requested lower-case key
+  - `cookies.<name>` - value from `Set-Cookie` response header for requested key (last wins)
 
 
 An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
