@@ -471,10 +471,10 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 			X-Method = req.method
 		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}, false},
 		{"POST use req.post", fields{baseCtx, opts}, `
-	response_headers = {
-		X-Method = req.method
-		X-Post = req.post.foo
-	}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
+		response_headers = {
+			X-Method = req.method
+			X-Post = req.post.foo
+		}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
 			"X-Method": http.MethodPost,
 			"X-Post":   "bar",
 		}, false},
