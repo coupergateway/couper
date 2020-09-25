@@ -99,6 +99,7 @@ Most fields are self-explanatory:
   - `cookies.<name>` value from `Cookie` request header for requested key (last wins)
   - `query.<name>` query parameter values (last wins)
   - `post.<name>` post form parameter
+  - `ctx.<name>.<claim_name>` request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name.
 - `bereq`:
   - almost the same as `req` except `endpoint` does not exist
   - `url` backend origin URL
