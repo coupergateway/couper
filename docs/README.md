@@ -80,9 +80,9 @@ definitions {...}
 
 ### Variables <a name="variables_conf"></a>
 
-The configuration file allows to use some predefined variables. There are two phases when those variables get evaluated.
-1st time is at config load which is currently related to `env` and **function** usage.
-The 2nd evaluation will happen during the request/response handling.
+The configuration file allows the use of some predefined variables. There are two phases when those variables get evaluated.
+The first phase is at config load which is currently related to `env` and **function** usage.
+The second evaluation will happen during the request/response handling.
 
 `env` are the environment variables.
 `req` is the client request.
