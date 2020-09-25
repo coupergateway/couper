@@ -95,7 +95,7 @@ Most fields are self-explanatory:
   - `method` HTTP method
   - `path` URL path
   - `endpoint` matched endpoint pattern
-  - `headers.<name>` HTTP request header value for requested key
+  - `headers.<name>` HTTP request header value for requested lower-case key
   - `cookies.<name>` value from `Cookie` request header for requested key (last wins)
   - `query.<name>` query parameter values (last wins)
   - `post.<name>` post form parameter
@@ -104,7 +104,7 @@ Most fields are self-explanatory:
   - `url` backend origin URL
 - `beresp`:
   - `status` HTTP status code
-  - `headers.<name>` HTTP response header value for requested key
+  - `headers.<name>` HTTP response header value for requested lower-case key
   - `cookies.<name>` value from `Set-Cookie` response header for requested key (last wins)
 
 
