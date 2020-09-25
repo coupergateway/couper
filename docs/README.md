@@ -114,13 +114,13 @@ An example to send an additional header with client request header to a configur
 server "variables-srv" {
   api {
     endpoint "/" {
-        backend "my_backend_definition" {
-            request_headers = {
-                x-env-user = env.USER
-                user-agent = "myproxyClient/${req.header.app-version}"
-                x-uuid = req.id
-            }
+      backend "my_backend_definition" {
+        request_headers = {
+          x-env-user = env.USER
+          user-agent = "myproxyClient/${req.header.app-version}"
+          x-uuid = req.id
         }
+      }
     }
   }
 }
