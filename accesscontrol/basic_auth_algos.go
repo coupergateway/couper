@@ -66,7 +66,7 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 			case pwdTypeApr1:
 				fallthrough
 			case pwdTypeMD5:
-				if subtle.ConstantTimeCompare(_Apr1MD5(plainPass, pass.pwdSalt, pass.pwdPrefix), pass.pwdOrig) == 1 {
+				if subtle.ConstantTimeCompare(apr1MD5(plainPass, pass.pwdSalt, pass.pwdPrefix), pass.pwdOrig) == 1 {
 					return true
 				}
 			case pwdTypeBcrypt:
@@ -80,7 +80,7 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 	return false
 }
 
-func _Apr1MD5(pass, salt, pref string) []byte {
+func apr1MD5(pass, salt, pref string) []byte {
 	var passLen int = len(pass)
 
 	h := md5.New()
