@@ -26,6 +26,7 @@ const (
 const (
 	AuthorizationRequired Code = 5000 + iota
 	AuthorizationFailed
+	BasicAuthFailed
 )
 
 var codes = map[Code]string{
@@ -47,6 +48,7 @@ var codes = map[Code]string{
 	// 5xxx
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",
+	BasicAuthFailed:       "Unauthorized",
 }
 
 type Code int

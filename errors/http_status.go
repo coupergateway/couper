@@ -10,7 +10,7 @@ func httpStatus(code Code) int {
 		return http.StatusBadGateway
 	case InvalidRequest:
 		return http.StatusBadRequest
-	case AuthorizationRequired:
+	case AuthorizationRequired, BasicAuthFailed:
 		return http.StatusUnauthorized
 	case AuthorizationFailed:
 		return http.StatusForbidden
