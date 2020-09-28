@@ -3,6 +3,8 @@ package handler
 import (
 	"net/http"
 	"strings"
+
+	"github.com/avenga/couper/errors"
 )
 
 const healthPath = "/healthz"
@@ -28,6 +30,7 @@ func NewHealthCheck(path string, shutdownCh chan struct{}) *Health {
 func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
 	select {
 	case <-h.shutdownCh:
+		errors.SetHeader(rw, errors.ServerShutdown)
 		rw.WriteHeader(http.StatusInternalServerError)
 	default:
 		rw.WriteHeader(http.StatusOK)
