@@ -37,10 +37,11 @@ func main() {
 	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logEntry)
 
 	ctx := command.ContextWithSignal(context.Background())
-	for _, srv := range server.NewServerList(ctx, logEntry, httpConf, entrypointHandlers) {
+	serverList, listenCmdShutdown := server.NewServerList(ctx, logEntry, httpConf, entrypointHandlers)
+	for _, srv := range serverList {
 		srv.Listen()
 	}
-	<-ctx.Done() // TODO: shutdown deadline
+	listenCmdShutdown()
 }
 
 func newLogger(conf *runtime.HTTPConfig) logrus.FieldLogger {
