@@ -19,20 +19,25 @@ import (
 var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
 
 func main() {
-	httpConf := runtime.NewHTTPConfig()
-	logger := newLogger(httpConf)
-	logEntry := logger.WithField("type", "couper_daemon")
-	if err := runtime.SetWorkingDirectory(*configFile); err != nil {
-		logEntry.Fatal(err)
+	fields := logrus.Fields{"type": "couper_daemon"}
+	defaultLogger := newLogger(runtime.DefaultConfig).WithFields(fields)
+	wd, err := runtime.SetWorkingDirectory(*configFile)
+	if err != nil {
+		defaultLogger.Fatal(err)
 	}
-
-	wd, _ := os.Getwd()
-	logEntry.Infof("working directory: %s", wd)
 
 	gatewayConf, err := config.LoadFile(path.Base(*configFile))
 	if err != nil {
-		logEntry.Fatal(err)
+		defaultLogger.Fatal(err)
 	}
+
+	httpConf, err := runtime.NewHTTPConfig(gatewayConf, os.Args[1:])
+	if err != nil {
+		defaultLogger.Fatal(err)
+	}
+
+	logEntry := newLogger(httpConf).WithFields(fields)
+	logEntry.Infof("working directory: %s", wd)
 
 	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logEntry)
 
