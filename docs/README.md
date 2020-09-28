@@ -261,13 +261,16 @@ Compare the `access_control` [example](#access_control_conf_ex) for details.
 #### <a name="ba"></a> The `basic_auth` block <a name="basic_auth_block"></a>
 The `basic_auth` block let you configure basic auth for your gateway. Like all `access_control` types, the `basic_auth` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
 
+If both `user`/`password` and `htpasswd_file` are configured, the incoming credentials from the `Authorization` request header are checked against `user`/`password` if the user matches, and against the data in the file referenced by `htpasswd_file` otherwise.
+
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`server` block</li><li>`files` block</li><li>`spa` block</li><li>`api` block</li><li>`endpoint` block</li></ul>|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
-|`user`||
-|`password`||
-|`htpasswd_file`||
+|`user`| The user name |
+|`password`| The corresponding password |
+|`htpasswd_file`| The htpasswd file |
+|`realm`| The realm to be sent in a `WWW-Authenticate` response header |
 
 
 #### <a name="jwt"></a> The `jwt` block <a name="jwt_block"></a>

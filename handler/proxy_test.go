@@ -2,12 +2,15 @@ package handler
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -424,34 +427,100 @@ func TestProxy_director(t *testing.T) {
 	}
 }
 
-func TestProxy_modifyResponse(t *testing.T) {
+func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	type fields struct {
 		evalContext *hcl.EvalContext
-		log         *logrus.Entry
 		options     *ProxyOptions
 	}
 
-	type args struct {
-		res *http.Response
-	}
+	type header map[string]string
 
 	type testCase struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name       string
+		fields     fields
+		hcl        string
+		method     string
+		body       io.Reader
+		wantHeader header
+		wantErr    bool
 	}
 
-	tests := []testCase{
-		// TODO: Add test cases.
+	baseCtx := eval.NewENVContext(nil)
+	log, hook := logrustest.NewNullLogger()
+
+	type hclBody struct {
+		Inline hcl.Body `hcl:",remain"`
 	}
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			if err := r.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	opts := &ProxyOptions{BackendName: "test-origin", Origin: "http://" + origin.Listener.Addr().String(), CORS: &CORSOptions{}}
+
+	tests := []testCase{
+		{"GET use req.Header", fields{baseCtx, opts}, `
+		response_headers = {
+			X-Method = req.method
+		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}, false},
+		{"POST use req.post", fields{baseCtx, opts}, `
+		response_headers = {
+			X-Method = req.method
+			X-Post = req.post.foo
+		}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
+			"X-Method": http.MethodPost,
+			"X-Post":   "bar",
+		}, false},
+	}
+
 	for _, tt := range tests {
+		hook.Reset()
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			var remain hclBody
+			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), baseCtx, &remain)
 			if err != nil {
 				t.Fatal(err)
 			}
-			// TODO: test me
+			tt.fields.options.Context = append(tt.fields.options.Context, remain.Inline)
+			p, err := NewProxy(tt.fields.options, log.WithContext(context.Background()), tt.fields.evalContext)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
+			rw := httptest.NewRecorder()
+
+			if tt.body != nil {
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			}
+
+			p.ServeHTTP(rw, req)
+			res := rw.Result()
+
+			if res == nil {
+				t.Fatal("Expected a response")
+				t.Log(hook.LastEntry().String())
+			}
+
+			if res.StatusCode != http.StatusNoContent {
+				t.Errorf("Expected StatusNoContent 204, got: %q %d", res.Status, res.StatusCode)
+				t.Log(hook.LastEntry().String())
+			}
+
+			for k, v := range tt.wantHeader {
+				if got := res.Header.Get(k); got != v {
+					t.Errorf("Expected value for header %q: %q, got: %q", k, v, got)
+					t.Log(hook.LastEntry().String())
+				}
+			}
+
 		})
 	}
 }

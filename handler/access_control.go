@@ -31,13 +31,22 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, control := range a.ac {
 		if err := control.Validate(req); err != nil {
 			var code errors.Code
-			switch err {
-			case ac.ErrorNotConfigured:
-				code = errors.Configuration
-			case ac.ErrorEmptyToken:
-				code = errors.AuthorizationRequired
-			default:
-				code = errors.AuthorizationFailed
+			if ebau, ok := err.(*ac.BasicAuthUnauthorizedError); ok {
+				code = errors.BasicAuthFailed
+				wwwAuthenticateValue := "Basic"
+				if ebau.Realm != "" {
+					wwwAuthenticateValue += " realm=" + ebau.Realm
+				}
+				rw.Header().Set("WWW-Authenticate", wwwAuthenticateValue)
+			} else {
+				switch err {
+				case ac.ErrorNotConfigured:
+					code = errors.Configuration
+				case ac.ErrorEmptyToken:
+					code = errors.AuthorizationRequired
+				default:
+					code = errors.AuthorizationFailed
+				}
 			}
 			a.errorTpl.ServeError(code).ServeHTTP(rw, req)
 			return

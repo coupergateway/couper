@@ -24,7 +24,7 @@ Couper provides some key features:
     - Metrics endpoint (soon)
     - Health probes for backends (soon)
 - Centralized **Access-Control** layer:
-    - Basic-Auth (soon)
+    - Basic-Auth
     - JWT
         - RS/HM 256,386,512 algorithms
         - Custom claim validation
