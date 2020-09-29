@@ -84,30 +84,55 @@ The configuration file allows the use of some predefined variables. There are tw
 The first phase is at config load which is currently related to `env` and **function** usage.
 The second evaluation will happen during the request/response handling.
 
-`env` are the environment variables.
-`req` is the client request.
-`bereq` is the modified backend request.
-`beresp` is the original backend response.
+* `env` are the environment variables
+* `req` is the client request
+* `bereq` is the modified backend request
+* `beresp` is the original backend response
 
-Most fields are self-explanatory:
-- `req`:
-  - `id` - unique request id
-  - `method` - HTTP method
-  - `path` - URL path
-  - `endpoint` - matched endpoint pattern
-  - `headers.<name>` - HTTP request header value for requested lower-case key
-  - `cookies.<name>` - value from `Cookie` request header for requested key (last wins)
-  - `query.<name>` - query parameter values (last wins)
-  - `post.<name>` - post form parameter
-  - `ctx.<name>.<claim_name>` - request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name.
-- `bereq`:
-  - almost the same as `req` except `endpoint` does not exist
-  - `url` - backend origin URL
-- `beresp`:
-  - `status` - HTTP status code
-  - `headers.<name>` - HTTP response header value for requested lower-case key
-  - `cookies.<name>` - value from `Set-Cookie` response header for requested key (last wins)
+Most fields are self-explanatory (compare tables below).
 
+#### `env` variables
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|tba|tba|
+|...|...|
+
+#### `req` (client request) variables
+
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|`id` | unique request id |
+| `method` | HTTP method|
+| `path` | URL path|
+| `endpoint` | matched endpoint pattern
+| `headers.<name>` | HTTP request header value for requested lower-case key|
+| `cookies.<name>` | value from `Cookie` request header for requested key (last wins)|
+| `query.<name>` | query parameter values (last wins)|
+| `post.<name>` | post form parameter|
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
+
+#### `bereq`(modified backend request) variables 
+
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|`id` | unique request id |
+| `method` | HTTP method|
+| `path` | URL path|
+| `headers.<name>` | HTTP request header value for requested lower-case key|
+| `cookies.<name>` | value from `Cookie` request header for requested key (last wins)|
+| `query.<name>` | query parameter values (last wins)|
+| `post.<name>` | post form parameter|
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
+|`url`|backend origin URL|
+
+#### `beresp` (original backend response) variables
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+| `status` | HTTP status code |
+| `headers.<name>` | HTTP response header value for requested lower-case key |
+| `cookies.<name>` | value from `Set-Cookie` response header for requested key (last wins)|
+
+#### Variable Example
 
 An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
 
