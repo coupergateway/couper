@@ -123,8 +123,8 @@ func (s *HTTPServer) listenForCtx() {
 	select {
 	case <-s.commandCtx.Done():
 		logFields := logrus.Fields{
-			"delay":    s.config.Timings.ShutdownDelay,
-			"deadline": s.config.Timings.ShutdownTimeout,
+			"delay":    s.config.Timings.ShutdownDelay.String(),
+			"deadline": s.config.Timings.ShutdownTimeout.String(),
 		}
 		if serverName := s.name(); serverName != "" {
 			logFields["server"] = serverName
