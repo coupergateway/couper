@@ -21,6 +21,11 @@ func NewHealthCheck(path string, shutdownCh chan struct{}) *Health {
 	if p == "" {
 		p = healthPath
 	}
+
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+
 	return &Health{
 		path:       p,
 		shutdownCh: shutdownCh,
