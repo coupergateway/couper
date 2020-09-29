@@ -7,6 +7,8 @@
   * [Configuration file](#conf_file)
      * [Basic file structure](#basic_conf)
      * [Variables](#variables_conf)
+     * [Expressions](#expressions)
+     * [Functions](#functions)
 * [Reference](#reference) 
   * [The `server` block](#server_block)
   * [The `files` block](#files_block)
@@ -56,7 +58,8 @@ Couper's configuration file consists of nested configuration blocks that configu
 
 For orientation compare the fallowing example and the information below:
 
-<pre><code>server "my_project" {		
+```hcl
+server "my_project" {		
 	files {...}
 	spa {...}
 	api {
@@ -66,7 +69,7 @@ For orientation compare the fallowing example and the information below:
 		}
 	}
 definitions {...}
-</code></pre>
+```
 
 * `server`: main configuration block
 * `files`: configuration block for file serving
@@ -132,7 +135,7 @@ Most fields are self-explanatory (compare tables below).
 | `headers.<name>` | HTTP response header value for requested lower-case key |
 | `cookies.<name>` | value from `Set-Cookie` response header for requested key (last wins)|
 
-#### Variable Example
+##### Variable Example
 
 An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
 
@@ -152,8 +155,7 @@ server "variables-srv" {
 }
 ```
 
-#### Expressions
-
+### Expressions <a name="expressions">
 Since we use HCL2 for our configuration, we are able to use attribute values as expression:
 
 ```hcl
@@ -167,7 +169,7 @@ message = "Hello, ${name}!"
 shouty_message = upper(message)
 ```
 
-#### Functions
+### Functions <a name="functions">
 
 Functions are little helper methods which are registered for every hcl evaluation context.
 
@@ -337,7 +339,8 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 
 ### Routing configuration example <a name="routing_conf_ex"></a>
 
-<pre><code>api "my_api" {
+```hcl
+api "my_api" {
     base_path = "/api/novoconnect"
 
     endpoint "/login/**" {
@@ -365,10 +368,11 @@ Use the `definitions` block to define configurations you want to reuse. `access_
         origin = "http://accountservice:8080"
       }    
     }
-</code></pre>
+```
 
 ### Web serving configuration example <a name="web_serving_ex"></a> 
-<pre><code>server "my_project" {		
+```hcl
+server "my_project" {		
 	files {
 		document_root = "./htdocs"
 		error_file = "./404.html"
@@ -381,12 +385,12 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 		]
 	}
 ...
-</code></pre>
-
+```
 
 ### `access_control` configuration example <a name="access_control_conf_ex"></a> 
 
-<pre><code>server {
+```hcl
+server {
 	access\_control = ["ac1"]
 	files {
 		access\_control = ["ac2"]
@@ -415,7 +419,8 @@ definitions {
  	jwt "ac4" {
  	...
  	}
-}</pre></code>
+}
+```
 
 The following table shows which `access_control` is set for which context:
 
