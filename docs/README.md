@@ -109,8 +109,8 @@ Most fields are self-explanatory (compare tables below).
 | `path` | URL path|
 | `endpoint` | matched endpoint pattern
 | `headers.<name>` | HTTP request header value for requested lower-case key|
-| `cookies.<name>` | value from `Cookie` request header for requested key (last wins)|
-| `query.<name>` | query parameter values (last wins)|
+| `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
+| `query.<name>` | query parameter values (&#9888; last wins!)|
 | `post.<name>` | post form parameter|
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
 
@@ -122,8 +122,8 @@ Most fields are self-explanatory (compare tables below).
 | `method` | HTTP method|
 | `path` | URL path|
 | `headers.<name>` | HTTP request header value for requested lower-case key|
-| `cookies.<name>` | value from `Cookie` request header for requested key (last wins)|
-| `query.<name>` | query parameter values (last wins)|
+| `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
+| `query.<name>` | query parameter values (&#9888; last wins!)|
 | `post.<name>` | post form parameter|
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
 |`url`|backend origin URL|
@@ -133,7 +133,7 @@ Most fields are self-explanatory (compare tables below).
 |:-------------------|:-------------------------------|
 | `status` | HTTP status code |
 | `headers.<name>` | HTTP response header value for requested lower-case key |
-| `cookies.<name>` | value from `Set-Cookie` response header for requested key (last wins)|
+| `cookies.<name>` | value from `Set-Cookie` response header for requested key (&#9888; last wins!)|
 
 ##### Variable Example
 
