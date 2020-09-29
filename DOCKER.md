@@ -15,7 +15,7 @@ See our [documentation](https://github.com/avenga/couper/trees/master/docs/) how
 
 | Variable  | Default  | Description  |
 |---        |---       |---           |
-| COUPER_PORT   | `8080`    | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
+| COUPER_DEFAULT_PORT   | `8080`    | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
 | COUPER_XFH    | `false`   | Global configurations which uses the `Forwarded-Host` header instead of the request host.   |
 | COUPER_HEALTH_PATH    | `/healthz`   | Path for health-check requests for all servers and ports.   |
 | COUPER_LOG_FORMAT | `common`  | Can be set to `json` output which is the _container default_. |

@@ -25,7 +25,7 @@ type ServerMux struct {
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {
 	HealthPath string `env:"health_path"`
-	ListenPort int    `env:"port"`
+	ListenPort int    `env:"default_port"`
 	LogFormat  string `env:"log_format"`
 	UseXFH     bool   `env:"xfh"`
 	Timings    HTTPTimings
