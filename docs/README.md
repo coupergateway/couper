@@ -5,7 +5,10 @@
 * [Introduction](#introduction)
   * [Core concepts](#core_concepts)
   * [Configuration file](#conf_file)
-     * [Basic file structure](#basic_conf)  
+     * [Basic file structure](#basic_conf)
+     * [Variables](#variables_conf)
+     * [Expressions](#expressions)
+     * [Functions](#functions)
 * [Reference](#reference) 
   * [The `server` block](#server_block)
   * [The `files` block](#files_block)
@@ -55,7 +58,8 @@ Couper's configuration file consists of nested configuration blocks that configu
 
 For orientation compare the fallowing example and the information below:
 
-<pre><code>server "my_project" {		
+```hcl
+server "my_project" {		
 	files {...}
 	spa {...}
 	api {
@@ -65,7 +69,7 @@ For orientation compare the fallowing example and the information below:
 		}
 	}
 definitions {...}
-</code></pre>
+```
 
 * `server`: main configuration block
 * `files`: configuration block for file serving
@@ -77,6 +81,108 @@ definitions {...}
 * `definitions`: block for predefined configurations, that can be referenced
 * `defaults`: block for default configurations
 
+### Variables <a name="variables_conf"></a>
+
+The configuration file allows the use of some predefined variables. There are two phases when those variables get evaluated.
+The first phase is at config load which is currently related to `env` and **function** usage.
+The second evaluation will happen during the request/response handling.
+
+* `env` are the environment variables
+* `req` is the client request
+* `bereq` is the modified backend request
+* `beresp` is the original backend response
+
+Most fields are self-explanatory (compare tables below).
+
+#### `env` variables
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|tba|tba|
+|...|...|
+
+#### `req` (client request) variables
+
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|`id` | unique request id |
+| `method` | HTTP method|
+| `path` | URL path|
+| `endpoint` | matched endpoint pattern
+| `headers.<name>` | HTTP request header value for requested lower-case key|
+| `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
+| `query.<name>` | query parameter values (&#9888; last wins!)|
+| `post.<name>` | post form parameter|
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
+
+#### `bereq`(modified backend request) variables 
+
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|`id` | unique request id |
+| `method` | HTTP method|
+| `path` | URL path|
+| `headers.<name>` | HTTP request header value for requested lower-case key|
+| `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
+| `query.<name>` | query parameter values (&#9888; last wins!)|
+| `post.<name>` | post form parameter|
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
+|`url`|backend origin URL|
+
+#### `beresp` (original backend response) variables
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+| `status` | HTTP status code |
+| `headers.<name>` | HTTP response header value for requested lower-case key |
+| `cookies.<name>` | value from `Set-Cookie` response header for requested key (&#9888; last wins!)|
+
+##### Variable Example
+
+An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
+
+```hcl
+server "variables-srv" {
+  api {
+    endpoint "/" {
+      backend "my_backend_definition" {
+        request_headers = {
+          x-env-user = env.USER
+          user-agent = "myproxyClient/${req.headers.app-version}"
+          x-uuid = req.id
+        }
+      }
+    }
+  }
+}
+```
+
+### Expressions <a name="expressions">
+Since we use HCL2 for our configuration, we are able to use attribute values as expression:
+
+```hcl
+# Arithmetic with literals and application-provided variables
+sum = 1 + addend
+
+# String interpolation and templates
+message = "Hello, ${name}!"
+
+# Application-provided functions
+shouty_message = upper(message)
+```
+
+### Functions <a name="functions">
+
+Functions are little helper methods which are registered for every hcl evaluation context.
+
+- `base64_decode`
+- `base64_encode`
+- `to_upper`
+- `to_lower`
+
+Example usage:
+
+```hcl
+my_attribute = base64_decode("aGVsbG8gd29ybGQK")
+```
 
 ## Reference <a name="reference"></a>
 
@@ -147,7 +253,7 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 |:-------------------|:--------------------------------------|
 |context|`api` block|
 |*label*|<ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" { `</li><li>incoming client request: `example.com/api/dashboard`</li></ul>|
-| `path`|<ul><li>changeable part of upstream url</li><li>changes the path suffix of the outgoing request</li></ul>|
+| `path`|<ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul>|
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
 
@@ -160,7 +266,7 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
 | `origin`||
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
-|`path`|changeable part of upstream url|
+|`path`|changeable part of upstream URL|
 |`timeout`||
 |`max_parallel_requests`||
 | `request_headers`||
@@ -233,7 +339,8 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 
 ### Routing configuration example <a name="routing_conf_ex"></a>
 
-<pre><code>api "my_api" {
+```hcl
+api "my_api" {
     base_path = "/api/novoconnect"
 
     endpoint "/login/**" {
@@ -261,10 +368,11 @@ Use the `definitions` block to define configurations you want to reuse. `access_
         origin = "http://accountservice:8080"
       }    
     }
-</code></pre>
+```
 
 ### Web serving configuration example <a name="web_serving_ex"></a> 
-<pre><code>server "my_project" {		
+```hcl
+server "my_project" {		
 	files {
 		document_root = "./htdocs"
 		error_file = "./404.html"
@@ -277,12 +385,12 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 		]
 	}
 ...
-</code></pre>
-
+```
 
 ### `access_control` configuration example <a name="access_control_conf_ex"></a> 
 
-<pre><code>server {
+```hcl
+server {
 	access\_control = ["ac1"]
 	files {
 		access\_control = ["ac2"]
@@ -311,7 +419,8 @@ definitions {
  	jwt "ac4" {
  	...
  	}
-}</pre></code>
+}
+```
 
 The following table shows which `access_control` is set for which context:
 
