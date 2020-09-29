@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 )
@@ -58,7 +59,7 @@ var DefaultConfig = &HTTPConfig{
 
 // NewHTTPConfig creates the server config which could be overridden in order:
 // internal.defaults -> config.settings -> flag.args -> env.vars
-func NewHTTPConfig(c *config.Gateway, args []string) (*HTTPConfig, error) {
+func NewHTTPConfig(c *config.Gateway, args command.Args) (*HTTPConfig, error) {
 	defaultConf := *DefaultConfig
 	conf := &defaultConf
 	if c != nil && c.Settings != nil {
@@ -70,7 +71,7 @@ func NewHTTPConfig(c *config.Gateway, args []string) (*HTTPConfig, error) {
 	set.StringVar(&conf.LogFormat, "log-format", conf.LogFormat, "-log-format json")
 	set.IntVar(&conf.ListenPort, "p", conf.ListenPort, "-p 8080")
 	set.BoolVar(&conf.UseXFH, "xfh", conf.UseXFH, "-xfh")
-	if err := set.Parse(args); err != nil {
+	if err := set.Parse(args.Filter(set)); err != nil {
 		return nil, err
 	}
 

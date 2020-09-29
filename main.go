@@ -16,22 +16,31 @@ import (
 	"github.com/avenga/couper/server"
 )
 
-var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
-
 func main() {
 	fields := logrus.Fields{"type": "couper_daemon"}
 	defaultLogger := newLogger(runtime.DefaultConfig).WithFields(fields)
-	wd, err := runtime.SetWorkingDirectory(*configFile)
+
+	args := command.NewArgs()
+
+	var configFile string
+	set := flag.NewFlagSet("global", flag.ContinueOnError)
+	set.StringVar(&configFile, "f", "couper.hcl", "-f ./couper.conf")
+	err := set.Parse(args.Filter(set))
 	if err != nil {
 		defaultLogger.Fatal(err)
 	}
 
-	gatewayConf, err := config.LoadFile(path.Base(*configFile))
+	wd, err := runtime.SetWorkingDirectory(configFile)
 	if err != nil {
 		defaultLogger.Fatal(err)
 	}
 
-	httpConf, err := runtime.NewHTTPConfig(gatewayConf, os.Args[1:])
+	gatewayConf, err := config.LoadFile(path.Base(configFile))
+	if err != nil {
+		defaultLogger.Fatal(err)
+	}
+
+	httpConf, err := runtime.NewHTTPConfig(gatewayConf, args)
 	if err != nil {
 		defaultLogger.Fatal(err)
 	}
