@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -42,6 +43,7 @@ var (
 type Proxy struct {
 	evalContext *hcl.EvalContext
 	log         *logrus.Entry
+	mustBuffer  bool
 	options     *ProxyOptions
 	originURL   *url.URL
 	transport   *http.Transport
@@ -117,6 +119,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 	proxy := &Proxy{
 		evalContext: evalCtx,
 		log:         log,
+		mustBuffer:  mustBuffer(options),
 		options:     options,
 		originURL:   originURL,
 		upstreamLog: logging.NewAccessLog(&logConf, log.Logger),
@@ -312,7 +315,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = req.Header
 	}
 
-	evalCtx := eval.NewHTTPContext(p.evalContext, req, bereq, beresp)
+	evalCtx := eval.NewHTTPContext(p.evalContext, p.mustBuffer, req, bereq, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
 	if attrCtx == attrReqHeaders {
@@ -332,6 +335,32 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	if beresp != nil && isCorsRequest(req) {
 		p.setCorsRespHeaders(headerCtx, req)
 	}
+}
+
+// mustBuffer determines if any of the hcl.bodies makes use of 'post' or 'json_body'.
+func mustBuffer(opts *ProxyOptions) bool {
+	for _, body := range opts.Context {
+		attrs, err := body.JustAttributes()
+		if err != nil {
+			return false
+		}
+		for _, attr := range attrs {
+			for _, traversal := range attr.Expr.Variables() {
+				if traversal.RootName() != "req" {
+					continue
+				}
+				for _, step := range traversal[1:] {
+					nameField := reflect.ValueOf(step).FieldByName("Name")
+					name := nameField.String()
+					switch name {
+					case "json_body", "post":
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 func isCorsRequest(req *http.Request) bool {

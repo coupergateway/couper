@@ -71,7 +71,7 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			got := NewHTTPContext(tt.baseCtx, req, bereq, beresp)
+			got := NewHTTPContext(tt.baseCtx, true, req, bereq, beresp)
 			got.Functions = nil // we are not interested in a functions test
 
 			var hclResult EvalTestContext

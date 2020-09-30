@@ -3,8 +3,10 @@ package eval
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,7 +49,7 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, buffer bool, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
 	if req == nil {
 		return baseCtx
 	}
@@ -64,13 +66,21 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 		id = uid
 	}
 
+	if buffer {
+		switch req.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch:
+			setGetBody(req)
+		}
+	}
+
 	evalCtx.Variables["req"] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
-		"id":     cty.StringVal(id),
-		"method": cty.StringVal(req.Method),
-		"path":   cty.StringVal(req.URL.Path),
-		"url":    cty.StringVal(newRawURL(req.URL).String()),
-		"query":  seetie.ValuesMapToValue(req.URL.Query()),
-		"post":   seetie.ValuesMapToValue(parseForm(req).PostForm),
+		"id":        cty.StringVal(id),
+		"method":    cty.StringVal(req.Method),
+		"path":      cty.StringVal(req.URL.Path),
+		"url":       cty.StringVal(newRawURL(req.URL).String()),
+		"query":     seetie.ValuesMapToValue(req.URL.Query()),
+		"post":      seetie.ValuesMapToValue(parseForm(req).PostForm),
+		"json_body": seetie.MapToValue(parseJSON(req)),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
@@ -104,31 +114,54 @@ func (rc readCloser) Close() error {
 	return rc.closer.Close()
 }
 
-// parseForm populates the request PostForm field.
-// As Proxy we should not consume the request body.
-// Create a copy, buffer and reset via GetBody method.
-func parseForm(r *http.Request) *http.Request {
-	if r.Body == nil {
-		return r
-	}
-
-	switch r.Method {
-	case http.MethodPut, http.MethodPatch, http.MethodPost:
-		if r.GetBody == nil {
-			bodyBytes, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				panic(err)
-			}
-			r.GetBody = func() (io.ReadCloser, error) {
-				return newReadCloser(bytes.NewBuffer(bodyBytes), r.Body), nil
-			}
+func setGetBody(r *http.Request) *http.Request {
+	if r.Body != nil && r.GetBody == nil {
+		bodyBytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
 		}
-
-		r.Body, _ = r.GetBody()
-		_ = r.ParseMultipartForm(defaultMaxMemory)
+		r.GetBody = func() (io.ReadCloser, error) {
+			return newReadCloser(bytes.NewBuffer(bodyBytes), r.Body), nil
+		}
+		// reset
 		r.Body, _ = r.GetBody()
 	}
 	return r
+}
+
+// parseForm populates the request PostForm field.
+// As Proxy we should not consume the request body.
+// Rewind body via GetBody method.
+func parseForm(r *http.Request) *http.Request {
+	if r.GetBody == nil {
+		return r
+	}
+	switch r.Method {
+	case http.MethodPut, http.MethodPatch, http.MethodPost:
+		_ = r.ParseMultipartForm(defaultMaxMemory)
+		r.Body, _ = r.GetBody() // reset
+	}
+	return r
+}
+
+func parseJSON(r *http.Request) map[string]interface{} {
+	if r.GetBody == nil {
+		return nil
+	}
+
+	m, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if m != "application/json" {
+		return nil
+	}
+
+	var result map[string]interface{}
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil
+	}
+	_ = json.Unmarshal(b, &result)
+	r.Body, _ = r.GetBody() // reset
+	return result
 }
 
 func newRawURL(u *url.URL) *url.URL {
