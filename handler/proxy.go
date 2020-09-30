@@ -487,7 +487,7 @@ func (p *Proxy) handleUpgradeResponse(rw http.ResponseWriter, req *http.Request,
 }
 
 func (p *Proxy) String() string {
-	return "Proxy"
+	return "api"
 }
 
 func setHeaderFields(header http.Header, options OptionsMap) {
