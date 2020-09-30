@@ -66,6 +66,10 @@ func TestHealth_ServeHTTP(t *testing.T) {
 			if res.StatusCode != tt.wantStatus {
 				t.Errorf("Expected statusCode: %d, got: %d", tt.wantStatus, res.StatusCode)
 			}
+
+			if res.Header.Get("Cache-Control") != "no-store" {
+				t.Error("Expected Cache-Control header with 'no-store' value")
+			}
 		})
 	}
 }

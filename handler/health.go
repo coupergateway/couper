@@ -33,6 +33,7 @@ func NewHealthCheck(path string, shutdownCh chan struct{}) *Health {
 }
 
 func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
+	rw.Header().Set("Cache-Control", "no-store")
 	select {
 	case <-h.shutdownCh:
 		errors.SetHeader(rw, errors.ServerShutdown)
