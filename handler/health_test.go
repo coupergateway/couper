@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -69,6 +70,27 @@ func TestHealth_ServeHTTP(t *testing.T) {
 
 			if res.Header.Get("Cache-Control") != "no-store" {
 				t.Error("Expected Cache-Control header with 'no-store' value")
+			}
+
+			if res.Header.Get("Content-Type") != "text/plain" {
+				t.Error("Expected Content-Type header with 'text/plain' value")
+			}
+
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Error(err)
+			}
+			err = res.Body.Close()
+			if err != nil {
+				t.Error(err)
+			}
+
+			if tt.wantStatus == http.StatusOK {
+				if string(body) != "healthy" {
+					t.Errorf("Expected 'healthy' body content, got %q", string(body))
+				}
+			} else if string(body) != "server shutting down" {
+				t.Errorf("Expected 'server shutting down' body content, got %q", string(body))
 			}
 		})
 	}

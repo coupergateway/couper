@@ -34,12 +34,15 @@ func NewHealthCheck(path string, shutdownCh chan struct{}) *Health {
 
 func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
 	rw.Header().Set("Cache-Control", "no-store")
+	rw.Header().Set("Content-Type", "text/plain")
+
 	select {
 	case <-h.shutdownCh:
 		errors.SetHeader(rw, errors.ServerShutdown)
 		rw.WriteHeader(http.StatusInternalServerError)
+		_, _ = rw.Write([]byte("server shutting down"))
 	default:
-		rw.WriteHeader(http.StatusOK)
+		_, _ = rw.Write([]byte("healthy"))
 	}
 }
 
