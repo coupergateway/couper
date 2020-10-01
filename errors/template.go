@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"fmt"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -65,7 +64,7 @@ func NewTemplate(mime string, src []byte) (*Template, error) {
 func (t *Template) ServeError(errCode Code) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
-		rw.Header().Set(HeaderErrorCode, fmt.Sprintf("%d - %q", errCode, errCode))
+		SetHeader(rw, errCode)
 
 		status := httpStatus(errCode)
 		rw.WriteHeader(status)

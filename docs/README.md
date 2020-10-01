@@ -22,7 +22,8 @@
   * [The `basic_auth` block](#basic_auth_block)
   * [The `jwt` block](#jwt_block)
   * [The `definitions` block](#definitions_block)
-  * [The `defaults` block](#defaults_block)     
+  * [The `defaults` block](#defaults_block)
+  * [The `settings` block](#settings_block)     
 * [Examples](#examples)
   * [Request routing](#request_routing_ex)
   * [Routing configuration](#routing_conf_ex)
@@ -80,6 +81,7 @@ definitions {...}
 * `backend`: configuration block for connection to local/remote backend service(s)
 * `definitions`: block for predefined configurations, that can be referenced
 * `defaults`: block for default configurations
+* `settings`: block for server configuration which applies to the running instance
 
 ### Variables <a name="variables_conf"></a>
 
@@ -322,6 +324,22 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 
 ### The `defaults` block <a name="defaults_block"></a>
 
+### The `settings` block <a name="settings_block"></a>
+The `settings` block let you configure the more basic and global behaviour of your gateway instance.
+
+| Name | Description                           | Default |
+|:-------------------|:---------------------------------------|:-----------|
+|`health_path`| The health path which is available for all configured server and ports. | `/healthz` |
+|`default_port`| The port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list. | `8080` |
+|`log_format`| Switch for tab/field based colored view or json log lines. | `common` |
+|`xfh`| Option to use the `X-Forwarded-Host` header as the request host | `false` |
+
+### Health-Check ###
+The health check will answer a status `200 OK` on every port with the configured `health_path`.
+As soon as the gateway instance will receive a `SIGINT` or `SIGTERM` the check will return a status `500 StatusInternalServerError`.
+A shutdown delay of `5s` allows the server to finish all running requests and gives a load-balancer time to pick another gateway instance.
+After this delay the server goes into shutdown mode with a deadline of `5s` and no new requests will be accepted.
+The shutdown timings cannot be configured at this moment. 
 
 ## Examples <a name="examples"></a>
 

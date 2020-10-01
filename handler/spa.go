@@ -45,5 +45,5 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Spa) String() string {
-	return "SPA"
+	return "spa"
 }

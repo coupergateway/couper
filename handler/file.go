@@ -142,5 +142,5 @@ func (f *File) Template() *errors.Template {
 }
 
 func (f *File) String() string {
-	return "File"
+	return "file"
 }

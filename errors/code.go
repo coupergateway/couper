@@ -2,6 +2,7 @@ package errors
 
 const (
 	Server Code = 1000 + iota
+	ServerShutdown
 	Configuration
 	InvalidRequest
 	RouteNotFound
@@ -32,6 +33,7 @@ const (
 var codes = map[Code]string{
 	// 1xxx
 	Server:         "Server error",
+	ServerShutdown: "Server is shutting down",
 	Configuration:  "Configuration failed",
 	InvalidRequest: "Invalid request",
 	RouteNotFound:  "Route not found",

@@ -49,7 +49,8 @@ var handlerFuncType = reflect.ValueOf(RoundtripHandlerFunc(nil)).Type()
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
 	startTime := time.Now()
 
-	isUpstreamRequest := reflect.ValueOf(nextHandler).Type() == handlerFuncType
+	handlerType := reflect.ValueOf(nextHandler).Type()
+	isUpstreamRequest := handlerType == handlerFuncType
 
 	timings := Fields{}
 	var timeTTFB, timeGotConn time.Time
@@ -131,6 +132,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		"request": requestFields,
 		"server":  serverName,
 		"uid":     uniqueID,
+	}
+
+	if h, ok := nextHandler.(fmt.Stringer); ok {
+		fields["handler"] = h.String()
 	}
 
 	if isUpstreamRequest {

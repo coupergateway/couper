@@ -14,30 +14,38 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/logging"
 )
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	accessLog  *logging.AccessLog
-	config     *runtime.HTTPConfig
-	commandCtx context.Context
-	log        logrus.FieldLogger
-	listener   net.Listener
-	muxes      runtime.HostHandlers
-	srv        *http.Server
-	uidFn      func() string
+	accessLog   *logging.AccessLog
+	commandCtx  context.Context
+	config      *runtime.HTTPConfig
+	healthCheck *handler.Health
+	listener    net.Listener
+	log         logrus.FieldLogger
+	muxes       runtime.HostHandlers
+	shutdownCh  chan struct{}
+	srv         *http.Server
+	uidFn       func() string
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) []*HTTPServer {
+func NewServerList(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
 	for port, hosts := range handlers {
 		list = append(list, New(cmdCtx, log, conf, port, hosts))
 	}
 
-	return list
+	handleShutdownFn := func() {
+		<-cmdCtx.Done()
+		time.Sleep(conf.Timings.ShutdownDelay + conf.Timings.ShutdownTimeout) // wait for max amount, TODO: feedback per server
+	}
+
+	return list, handleShutdownFn
 }
 
 // New creates a configured HTTP server.
@@ -51,13 +59,17 @@ func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p 
 	logConf.TypeFieldKey = "couper_access"
 	env.DecodeWithPrefix(&logConf, "ACCESS_")
 
+	shutdownCh := make(chan struct{})
+
 	httpSrv := &HTTPServer{
-		accessLog:  logging.NewAccessLog(&logConf, log.Logger),
-		config:     conf,
-		commandCtx: cmdCtx,
-		log:        log,
-		muxes:      hosts,
-		uidFn:      uidFn,
+		accessLog:   logging.NewAccessLog(&logConf, log.Logger),
+		commandCtx:  cmdCtx,
+		config:      conf,
+		healthCheck: handler.NewHealthCheck(conf.HealthPath, shutdownCh),
+		log:         log,
+		muxes:       hosts,
+		shutdownCh:  shutdownCh,
+		uidFn:       uidFn,
 	}
 
 	srv := &http.Server{
@@ -89,14 +101,15 @@ func (s *HTTPServer) Listen() {
 	if err != nil {
 		s.log.Fatal(err)
 	}
+
 	s.listener = ln
-	s.log.Infof("couper gateway is serving: %s", ln.Addr().String()) // TODO: server name
+	s.log.Infof("couper is serving: %s %s", s.name(), ln.Addr().String())
 
 	go s.listenForCtx()
 
 	go func() {
 		if err := s.srv.Serve(ln); err != nil {
-			s.log.Error(err)
+			s.log.Errorf("%s %s: %v", s.name(), ln.Addr().String(), err.Error())
 		}
 	}()
 }
@@ -109,17 +122,40 @@ func (s *HTTPServer) Close() error {
 func (s *HTTPServer) listenForCtx() {
 	select {
 	case <-s.commandCtx.Done():
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		logFields := logrus.Fields{
+			"delay":    s.config.Timings.ShutdownDelay.String(),
+			"deadline": s.config.Timings.ShutdownTimeout.String(),
+		}
+		if serverName := s.name(); serverName != "" {
+			logFields["server"] = serverName
+		}
+		s.log.WithFields(logFields).Warn("shutting down")
+		close(s.shutdownCh)
+		time.Sleep(s.config.Timings.ShutdownDelay)
+		ctx, cancel := context.WithTimeout(context.Background(), s.config.Timings.ShutdownTimeout)
 		defer cancel()
-		s.log.WithField("deadline", "10s").Warn("shutting down")
-		s.srv.Shutdown(ctx)
+		if err := s.srv.Shutdown(ctx); err != nil {
+			s.log.WithFields(logFields).Error(err)
+		}
 	}
+}
+
+func (s *HTTPServer) name() string {
+	if h, ok := s.muxes["*"]; ok && h != nil {
+		return h.Server.Name
+	}
+	return ""
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := s.uidFn()
 	ctx := context.WithValue(req.Context(), request.UID, uid)
 	*req = *req.WithContext(ctx)
+
+	if s.healthCheck.Match(req) {
+		s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, s.healthCheck)
+		return
+	}
 
 	h := s.getHandler(req)
 	if h == nil {
