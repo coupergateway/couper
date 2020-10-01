@@ -49,7 +49,7 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, buffer bool, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
 	if req == nil {
 		return baseCtx
 	}
@@ -66,7 +66,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, buffer bool, req, bereq *http.Requ
 		id = uid
 	}
 
-	if buffer {
+	if (bufOpt & BufferRequest) == BufferRequest {
 		switch req.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			setGetBody(req)
@@ -80,7 +80,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, buffer bool, req, bereq *http.Requ
 		"url":       cty.StringVal(newRawURL(req.URL).String()),
 		"query":     seetie.ValuesMapToValue(req.URL.Query()),
 		"post":      seetie.ValuesMapToValue(parseForm(req).PostForm),
-		"json_body": seetie.MapToValue(parseJSON(req)),
+		"json_body": seetie.MapToValue(parseReqJSON(req)),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
@@ -91,8 +91,14 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, buffer bool, req, bereq *http.Requ
 			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
 			"post":   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
+
+		var jsonBody map[string]interface{}
+		if (bufOpt & BufferResponse) == BufferResponse {
+			jsonBody = parseRespJSON(beresp)
+		}
 		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
-			"status": cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+			"status":    cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+			"json_body": seetie.MapToValue(jsonBody),
 		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -144,24 +150,48 @@ func parseForm(r *http.Request) *http.Request {
 	return r
 }
 
-func parseJSON(r *http.Request) map[string]interface{} {
-	if r.GetBody == nil {
+func isJSONMediaType(contentType string) bool {
+	m, _, _ := mime.ParseMediaType(contentType)
+	return m == "application/json"
+}
+
+func parseJSON(r io.Reader) map[string]interface{} {
+	if r == nil {
 		return nil
 	}
-
-	m, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if m != "application/json" {
-		return nil
-	}
-
 	var result map[string]interface{}
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil
 	}
 	_ = json.Unmarshal(b, &result)
-	r.Body, _ = r.GetBody() // reset
 	return result
+}
+
+func parseReqJSON(req *http.Request) map[string]interface{} {
+	if req.GetBody == nil {
+		return nil
+	}
+
+	if !isJSONMediaType(req.Header.Get("Content-Type")) {
+		return nil
+	}
+
+	result := parseJSON(req.Body)
+	req.Body, _ = req.GetBody() // reset
+	return result
+}
+
+func parseRespJSON(beresp *http.Response) map[string]interface{} {
+	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
+		return nil
+	}
+
+	buf := &bytes.Buffer{}
+	io.Copy(buf, beresp.Body) // TODO: err handling
+	// reset
+	beresp.Body = newReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
+	return parseJSON(buf)
 }
 
 func newRawURL(u *url.URL) *url.URL {
