@@ -129,8 +129,6 @@ func setGetBody(r *http.Request) *http.Request {
 		r.GetBody = func() (io.ReadCloser, error) {
 			return newReadCloser(bytes.NewBuffer(bodyBytes), r.Body), nil
 		}
-		// reset
-		r.Body, _ = r.GetBody()
 	}
 	return r
 }
@@ -144,6 +142,7 @@ func parseForm(r *http.Request) *http.Request {
 	}
 	switch r.Method {
 	case http.MethodPut, http.MethodPatch, http.MethodPost:
+		r.Body, _ = r.GetBody() // rewind
 		_ = r.ParseMultipartForm(defaultMaxMemory)
 		r.Body, _ = r.GetBody() // reset
 	}
@@ -177,6 +176,7 @@ func parseReqJSON(req *http.Request) map[string]interface{} {
 		return nil
 	}
 
+	req.Body, _ = req.GetBody() // rewind
 	result := parseJSON(req.Body)
 	req.Body, _ = req.GetBody() // reset
 	return result

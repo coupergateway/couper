@@ -98,6 +98,12 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		switch v.(type) {
 		case bool, float64, string:
 			ctyMap[k] = GoToValue(v)
+		case []string:
+			var list []interface{}
+			for _, s := range v.([]string) {
+				list = append(list, s)
+			}
+			ctyMap[k] = ListToValue(list)
 		case []interface{}:
 			ctyMap[k] = ListToValue(v.([]interface{}))
 		case map[string]interface{}:
