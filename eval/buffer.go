@@ -25,22 +25,22 @@ func MustBuffer(ctxBodies []hcl.Body) BufferOption {
 		for _, attr := range attrs {
 			for _, traversal := range attr.Expr.Variables() {
 				rootName := traversal.RootName()
-				if rootName != "req" && rootName != "beresp" {
+				if rootName != ClientRequest && rootName != BackendResponse {
 					continue
 				}
 				for _, step := range traversal[1:] {
 					nameField := reflect.ValueOf(step).FieldByName("Name")
 					name := nameField.String()
 					switch name {
-					case "json_body":
+					case JsonBody:
 						switch rootName {
-						case "req":
+						case ClientRequest:
 							result |= BufferRequest
-						case "beresp":
+						case BackendResponse:
 							result |= BufferResponse
 						}
-					case "post":
-						if rootName == "req" {
+					case Post:
+						if rootName == ClientRequest {
 							result |= BufferRequest
 						}
 					}

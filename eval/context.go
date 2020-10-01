@@ -41,7 +41,7 @@ func (m ContextMap) Merge(other ContextMap) ContextMap {
 func NewENVContext(src []byte) *hcl.EvalContext {
 	envKeys := decodeEnvironmentRefs(src)
 	variables := make(map[string]cty.Value)
-	variables["env"] = newCtyEnvMap(envKeys)
+	variables[Environment] = newCtyEnvMap(envKeys)
 
 	return &hcl.EvalContext{
 		Variables: variables,
@@ -58,7 +58,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 
 	reqCtxMap := ContextMap{}
 	if endpoint, ok := httpCtx.Value(request.Endpoint).(string); ok {
-		reqCtxMap["endpoint"] = cty.StringVal(endpoint)
+		reqCtxMap[Endpoint] = cty.StringVal(endpoint)
 	}
 
 	var id string
@@ -73,32 +73,32 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		}
 	}
 
-	evalCtx.Variables["req"] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
-		"id":        cty.StringVal(id),
-		"method":    cty.StringVal(req.Method),
-		"path":      cty.StringVal(req.URL.Path),
-		"url":       cty.StringVal(newRawURL(req.URL).String()),
-		"query":     seetie.ValuesMapToValue(req.URL.Query()),
-		"post":      seetie.ValuesMapToValue(parseForm(req).PostForm),
-		"json_body": seetie.MapToValue(parseReqJSON(req)),
+	evalCtx.Variables[ClientRequest] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
+		ID:       cty.StringVal(id),
+		Method:   cty.StringVal(req.Method),
+		Path:     cty.StringVal(req.URL.Path),
+		URL:      cty.StringVal(newRawURL(req.URL).String()),
+		Query:    seetie.ValuesMapToValue(req.URL.Query()),
+		Post:     seetie.ValuesMapToValue(parseForm(req).PostForm),
+		JsonBody: seetie.MapToValue(parseReqJSON(req)),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
-		evalCtx.Variables["bereq"] = cty.ObjectVal(ContextMap{
-			"method": cty.StringVal(bereq.Method),
-			"path":   cty.StringVal(bereq.URL.Path),
-			"url":    cty.StringVal(newRawURL(bereq.URL).String()),
-			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
-			"post":   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+		evalCtx.Variables[BackendRequest] = cty.ObjectVal(ContextMap{
+			Method: cty.StringVal(bereq.Method),
+			Path:   cty.StringVal(bereq.URL.Path),
+			URL:    cty.StringVal(newRawURL(bereq.URL).String()),
+			Query:  seetie.ValuesMapToValue(bereq.URL.Query()),
+			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
 
 		var jsonBody map[string]interface{}
 		if (bufOpt & BufferResponse) == BufferResponse {
 			jsonBody = parseRespJSON(beresp)
 		}
-		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
-			"status":    cty.StringVal(strconv.Itoa(beresp.StatusCode)),
-			"json_body": seetie.MapToValue(jsonBody),
+		evalCtx.Variables[BackendResponse] = cty.ObjectVal(ContextMap{
+			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+			JsonBody:   seetie.MapToValue(jsonBody),
 		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -235,9 +235,9 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 
 	return map[string]cty.Value{
-		"ctx":     ctxAcMapValue,
-		"cookies": seetie.CookiesToMapValue(cookies),
-		"headers": seetie.HeaderToMapValue(headers),
+		Context: ctxAcMapValue,
+		Cookies: seetie.CookiesToMapValue(cookies),
+		Headers: seetie.HeaderToMapValue(headers),
 	}
 }
 
