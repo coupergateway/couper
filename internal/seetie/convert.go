@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -56,22 +57,61 @@ func ValuesMapToValue(m url.Values) cty.Value {
 	return MapToValue(result)
 }
 
+func ListToValue(l []interface{}) cty.Value {
+	if len(l) == 0 {
+		return cty.NilVal
+	}
+	var list []cty.Value
+	for _, v := range l {
+		list = append(list, GoToValue(v))
+	}
+	return cty.TupleVal(list)
+}
+
+func GoToValue(v interface{}) cty.Value {
+	switch v.(type) {
+	case string:
+		return cty.StringVal(ToString(v))
+	case bool:
+		return cty.BoolVal(v.(bool))
+	case float64:
+		return cty.NumberFloatVal(v.(float64))
+	case []interface{}:
+		return ListToValue(v.([]interface{}))
+	case map[string]interface{}:
+		return MapToValue(v.(map[string]interface{}))
+	}
+	return cty.NilVal
+}
+
 func MapToValue(m map[string]interface{}) cty.Value {
 	if m == nil {
-		return cty.MapValEmpty(cty.String)
+		return cty.NilVal
 	}
 
 	ctyMap := make(map[string]cty.Value)
+
 	for k, v := range m {
-		if validKey.MatchString(k) {
-			ctyMap[k] = cty.StringVal(ToString(v))
+		if !validKey.MatchString(k) {
+			continue
+		}
+		switch v.(type) {
+		case bool, float64, string:
+			ctyMap[k] = GoToValue(v)
+		case []interface{}:
+			ctyMap[k] = ListToValue(v.([]interface{}))
+		case map[string]interface{}:
+			ctyMap[k] = MapToValue(v.(map[string]interface{}))
+		default:
+			panic(reflect.TypeOf(v).String() + " not implemented")
 		}
 	}
 
 	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
+		return cty.NilVal
 	}
-	return cty.MapVal(ctyMap)
+
+	return cty.ObjectVal(ctyMap)
 }
 
 func HeaderToMapValue(headers http.Header) cty.Value {
