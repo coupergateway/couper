@@ -417,11 +417,11 @@ func validateACName(accessControls ac.Map, name, acType string) (string, error) 
 	name = strings.TrimSpace(name)
 
 	if name == "" {
-		return name, fmt.Errorf("Missing a non-empty label for %q", acType)
+		return name, fmt.Errorf("missing a non-empty label for %q", acType)
 	}
 
 	if _, ok := accessControls[name]; ok {
-		return name, fmt.Errorf("Label %q already exists in the ACL", name)
+		return name, fmt.Errorf("label %q already exists in the ACL", name)
 	}
 
 	return name, nil
@@ -431,9 +431,13 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	var acList ac.List
 	for _, acName := range parentAC.
 		Merge(handlerAC).List() {
+		if acName == "" {
+			continue
+		}
 		m.MustExist(acName)
 		acList = append(acList, m[acName])
 	}
+
 	if len(acList) > 0 {
 		return handler.NewAccessControl(h, errTpl, acList...)
 	}
