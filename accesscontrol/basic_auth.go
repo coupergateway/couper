@@ -14,10 +14,12 @@ var _ AccessControl = &BasicAuth{}
 
 var (
 	ErrorBasicAuthMissingCredentials = errors.New("missing credentials")
-	ErrorBasicAuthNotConfigured      = errors.New("basic-auth handler not configured")
+	ErrorBasicAuthNotConfigured      = errors.New("handler not configured")
+	ErrorBasicAuthUnauthorized       = errors.New("unauthorized")
 )
 
-type BasicAuthUnauthorizedError struct {
+type BasicAuthError struct {
+	error
 	Realm string
 }
 
@@ -46,31 +48,27 @@ func (e *BasicAuthHTParseError) Error() string {
 	return fmt.Sprintf("basic auth ht parse error: %s: %s", basicAuthErrors[e.code], e.error)
 }
 
-func NewBasicAuthUnauthorizedError(realm string) *BasicAuthUnauthorizedError {
-	return &BasicAuthUnauthorizedError{Realm: realm}
-}
-
-func (e BasicAuthUnauthorizedError) Error() string {
-	return "Unauthorized"
+func (e BasicAuthError) Error() string {
+	return e.error.Error()
 }
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile          htData
-	name            string
-	user            string
-	pass            string
-	errUnauthorized *BasicAuthUnauthorizedError
+	htFile htData
+	name   string
+	user   string
+	pass   string
+	realm  string
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
 func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 	ba := &BasicAuth{
-		htFile:          make(htData),
-		name:            name,
-		user:            user,
-		pass:            pass,
-		errUnauthorized: NewBasicAuthUnauthorizedError(realm),
+		htFile: make(htData),
+		name:   name,
+		user:   user,
+		pass:   pass,
+		realm:  realm,
 	}
 
 	if file == "" {
@@ -150,20 +148,19 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 
 	user, pass, ok := req.BasicAuth()
 	if !ok {
-		return ErrorBasicAuthMissingCredentials
+		return &BasicAuthError{error: ErrorBasicAuthMissingCredentials, Realm: ba.realm}
 	}
 
 	if ba.user == user {
 		if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
 			return nil
 		}
-
-		return ba.errUnauthorized
+		return &BasicAuthError{error: ErrorBasicAuthUnauthorized, Realm: ba.realm}
 	}
 
 	if validateAccessData(user, pass, ba.htFile) {
 		return nil
 	}
 
-	return ba.errUnauthorized
+	return &BasicAuthError{error: ErrorBasicAuthUnauthorized, Realm: ba.realm}
 }

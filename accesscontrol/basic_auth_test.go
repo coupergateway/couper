@@ -55,7 +55,7 @@ func Test_Validate(t *testing.T) {
 		t.Fatal("Expected a basic auth object")
 	}
 
-	var ebau *ac.BasicAuthUnauthorizedError
+	var authError *ac.BasicAuthError
 
 	type testCase struct {
 		headerValue string
@@ -63,16 +63,16 @@ func Test_Validate(t *testing.T) {
 	}
 
 	for _, testcase := range []testCase{
-		{"", ebau},
-		{"Foo", ebau},
-		{"Basic X", ebau},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")), ebau},
+		{"", authError},
+		{"Foo", authError},
+		{"Basic X", authError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")), authError},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), nil},
 		{"bAsIc   " + b64.StdEncoding.EncodeToString([]byte("user:pass")), nil},
 		{"Asdfg " + b64.StdEncoding.EncodeToString([]byte("user:bass")), nil},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:bass")), ebau},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:bass")), authError},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-pass")), nil},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), ebau},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), authError},
 	} {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)
