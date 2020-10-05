@@ -26,7 +26,7 @@ Couper provides some key features:
 - Centralized **Access-Control** layer:
     - Basic-Auth
     - JWT
-        - RS/HM 256,386,512 algorithms
+        - RS/HS 256,386,512 algorithms
         - Custom claim validation
         - pass claim values to upstream services
 - Uniform **error handling** with custom templates across different backend services
