@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
@@ -210,14 +209,23 @@ func decodeEnvironmentRefs(src []byte) []string {
 	needle := []byte("env")
 	var keys []string
 	for i, token := range tokens {
-		if token.Type == hclsyntax.TokenIdent &&
-			bytes.Equal(token.Bytes, needle) &&
-			i+2 < len(tokens) {
-			value := string(tokens[i+2].Bytes)
-			if sort.SearchStrings(keys, value) == len(keys) {
+		if token.Type == hclsyntax.TokenDot && i > 0 &&
+			bytes.Equal(tokens[i-1].Bytes, needle) &&
+			i+1 < len(tokens) {
+			value := string(tokens[i+1].Bytes)
+			if !hasValue(keys, value) {
 				keys = append(keys, value)
 			}
 		}
 	}
 	return keys
+}
+
+func hasValue(list []string, needle string) bool {
+	for _, s := range list {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }
