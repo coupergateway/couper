@@ -63,7 +63,7 @@ With `-f /opt/couper/my_conf.hcl` couper changes the working directory to `/opt/
 ### Basic file structure <a name="basic_conf"></a>
 Couper's configuration file consists of nested configuration blocks that configure web serving and routing of the gateway. Access control is controlled by an `access_control` attribute that can be set for blocks. 
 
-For orientation compare the fallowing example and the information below:
+For orientation compare the following example and the information below:
 
 ```hcl
 server "my_project" {		
