@@ -16,31 +16,46 @@ import (
 	"github.com/avenga/couper/server"
 )
 
-var configFile = flag.String("f", "couper.hcl", "-f ./couper.conf")
-
 func main() {
-	httpConf := runtime.NewHTTPConfig()
-	logger := newLogger(httpConf)
-	logEntry := logger.WithField("type", "couper_daemon")
-	if err := runtime.SetWorkingDirectory(*configFile); err != nil {
-		logEntry.Fatal(err)
-	}
+	fields := logrus.Fields{"type": "couper_daemon"}
+	defaultLogger := newLogger(runtime.DefaultConfig).WithFields(fields)
 
-	wd, _ := os.Getwd()
-	logEntry.Infof("working directory: %s", wd)
+	args := command.NewArgs()
 
-	gatewayConf, err := config.LoadFile(path.Base(*configFile))
+	var configFile string
+	set := flag.NewFlagSet("global", flag.ContinueOnError)
+	set.StringVar(&configFile, "f", "couper.hcl", "-f ./couper.conf")
+	err := set.Parse(args.Filter(set))
 	if err != nil {
-		logEntry.Fatal(err)
+		defaultLogger.Fatal(err)
 	}
+
+	wd, err := runtime.SetWorkingDirectory(configFile)
+	if err != nil {
+		defaultLogger.Fatal(err)
+	}
+
+	gatewayConf, err := config.LoadFile(path.Base(configFile))
+	if err != nil {
+		defaultLogger.Fatal(err)
+	}
+
+	httpConf, err := runtime.NewHTTPConfig(gatewayConf, args)
+	if err != nil {
+		defaultLogger.Fatal(err)
+	}
+
+	logEntry := newLogger(httpConf).WithFields(fields)
+	logEntry.Infof("working directory: %s", wd)
 
 	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logEntry)
 
 	ctx := command.ContextWithSignal(context.Background())
-	for _, srv := range server.NewServerList(ctx, logEntry, httpConf, entrypointHandlers) {
+	serverList, listenCmdShutdown := server.NewServerList(ctx, logEntry, httpConf, entrypointHandlers)
+	for _, srv := range serverList {
 		srv.Listen()
 	}
-	<-ctx.Done() // TODO: shutdown deadline
+	listenCmdShutdown()
 }
 
 func newLogger(conf *runtime.HTTPConfig) logrus.FieldLogger {

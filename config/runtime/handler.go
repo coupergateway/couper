@@ -350,8 +350,28 @@ func configureHandlers(conf *HTTPConfig, server *config.Server, mux *Mux, handle
 
 func configureAccessControls(conf *config.Gateway) ac.Map {
 	accessControls := make(ac.Map)
+
 	if conf.Definitions != nil {
+		for _, ba := range conf.Definitions.BasicAuth {
+			name, err := validateACName(accessControls, ba.Name, "basic_auth")
+			if err != nil {
+				panic(err)
+			}
+
+			basicAuth, err := ac.NewBasicAuth(name, ba.User, ba.Pass, ba.File, ba.Realm)
+			if err != nil {
+				panic(err)
+			}
+
+			accessControls[name] = basicAuth
+		}
+
 		for _, jwt := range conf.Definitions.JWT {
+			name, err := validateACName(accessControls, jwt.Name, "jwt")
+			if err != nil {
+				panic(err)
+			}
+
 			var jwtSource ac.Source
 			var jwtKey string
 			if jwt.Cookie != "" {
@@ -381,14 +401,30 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 				}
 				claims = c
 			}
-			j, err := ac.NewJWT(jwt.SignatureAlgorithm, jwt.Name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
+			j, err := ac.NewJWT(jwt.SignatureAlgorithm, name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
 			if err != nil {
-				panic(fmt.Sprintf("loading jwt %q definition failed: %s", jwt.Name, err))
+				panic(fmt.Sprintf("loading jwt %q definition failed: %s", name, err))
 			}
-			accessControls[jwt.Name] = j
+
+			accessControls[name] = j
 		}
 	}
+
 	return accessControls
+}
+
+func validateACName(accessControls ac.Map, name, acType string) (string, error) {
+	name = strings.TrimSpace(name)
+
+	if name == "" {
+		return name, fmt.Errorf("Missing a non-empty label for %q", acType)
+	}
+
+	if _, ok := accessControls[name]; ok {
+		return name, fmt.Errorf("Label %q already exists in the ACL", name)
+	}
+
+	return name, nil
 }
 
 func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {

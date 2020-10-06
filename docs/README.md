@@ -1,11 +1,14 @@
-# Couper 2 Docs - Version 0.1
+# Couper Docs - Version 0.1
 
 ## Table of contents
 
 * [Introduction](#introduction)
   * [Core concepts](#core_concepts)
   * [Configuration file](#conf_file)
-     * [Basic file structure](#basic_conf)  
+     * [Basic file structure](#basic_conf)
+     * [Variables](#variables_conf)
+     * [Expressions](#expressions)
+     * [Functions](#functions)
 * [Reference](#reference) 
   * [The `server` block](#server_block)
   * [The `files` block](#files_block)
@@ -19,7 +22,8 @@
   * [The `basic_auth` block](#basic_auth_block)
   * [The `jwt` block](#jwt_block)
   * [The `definitions` block](#definitions_block)
-  * [The `defaults` block](#defaults_block)     
+  * [The `defaults` block](#defaults_block)
+  * [The `settings` block](#settings_block)     
 * [Examples](#examples)
   * [Request routing](#request_routing_ex)
   * [Routing configuration](#routing_conf_ex)
@@ -28,7 +32,7 @@
   * [`hosts` configuration](#hosts_conf_ex) 
    
 ## Introduction <a name="introduction"></a>
-Couper 2 is a lightweight API gateway especially designed to support building and running API-driven Web projects.
+Couper is a frontend gateway especially designed to support building and running API-driven Web projects.
 Acting as a proxy component it connects clients with (micro) services and adds access control and observability to the project. Couper does not need any special development skills and offers easy configuration and integration. 
 
 ## Core concepts <a name="core_concepts"></a>
@@ -55,7 +59,8 @@ Couper's configuration file consists of nested configuration blocks that configu
 
 For orientation compare the fallowing example and the information below:
 
-<pre><code>server "my_project" {		
+```hcl
+server "my_project" {		
 	files {...}
 	spa {...}
 	api {
@@ -65,7 +70,7 @@ For orientation compare the fallowing example and the information below:
 		}
 	}
 definitions {...}
-</code></pre>
+```
 
 * `server`: main configuration block
 * `files`: configuration block for file serving
@@ -76,7 +81,110 @@ definitions {...}
 * `backend`: configuration block for connection to local/remote backend service(s)
 * `definitions`: block for predefined configurations, that can be referenced
 * `defaults`: block for default configurations
+* `settings`: block for server configuration which applies to the running instance
 
+### Variables <a name="variables_conf"></a>
+
+The configuration file allows the use of some predefined variables. There are two phases when those variables get evaluated.
+The first phase is at config load which is currently related to `env` and **function** usage.
+The second evaluation will happen during the request/response handling.
+
+* `env` are the environment variables
+* `req` is the client request
+* `bereq` is the modified backend request
+* `beresp` is the original backend response
+
+Most fields are self-explanatory (compare tables below).
+
+#### `env` variables
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|tba|tba|
+|...|...|
+
+#### `req` (client request) variables
+
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|`id` | unique request id |
+| `method` | HTTP method|
+| `path` | URL path|
+| `endpoint` | matched endpoint pattern
+| `headers.<name>` | HTTP request header value for requested lower-case key|
+| `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
+| `query.<name>` | query parameter values (&#9888; last wins!)|
+| `post.<name>` | post form parameter|
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
+
+#### `bereq`(modified backend request) variables 
+
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+|`id` | unique request id |
+| `method` | HTTP method|
+| `path` | URL path|
+| `headers.<name>` | HTTP request header value for requested lower-case key|
+| `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
+| `query.<name>` | query parameter values (&#9888; last wins!)|
+| `post.<name>` | post form parameter|
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
+|`url`|backend origin URL|
+
+#### `beresp` (original backend response) variables
+| Variable | Description                           |
+|:-------------------|:-------------------------------|
+| `status` | HTTP status code |
+| `headers.<name>` | HTTP response header value for requested lower-case key |
+| `cookies.<name>` | value from `Set-Cookie` response header for requested key (&#9888; last wins!)|
+
+##### Variable Example
+
+An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
+
+```hcl
+server "variables-srv" {
+  api {
+    endpoint "/" {
+      backend "my_backend_definition" {
+        request_headers = {
+          x-env-user = env.USER
+          user-agent = "myproxyClient/${req.headers.app-version}"
+          x-uuid = req.id
+        }
+      }
+    }
+  }
+}
+```
+
+### Expressions <a name="expressions">
+Since we use HCL2 for our configuration, we are able to use attribute values as expression:
+
+```hcl
+# Arithmetic with literals and application-provided variables
+sum = 1 + addend
+
+# String interpolation and templates
+message = "Hello, ${name}!"
+
+# Application-provided functions
+shouty_message = upper(message)
+```
+
+### Functions <a name="functions">
+
+Functions are little helper methods which are registered for every hcl evaluation context.
+
+- `base64_decode`
+- `base64_encode`
+- `to_upper`
+- `to_lower`
+
+Example usage:
+
+```hcl
+my_attribute = base64_decode("aGVsbG8gd29ybGQK")
+```
 
 ## Reference <a name="reference"></a>
 
@@ -147,7 +255,7 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 |:-------------------|:--------------------------------------|
 |context|`api` block|
 |*label*|<ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" { `</li><li>incoming client request: `example.com/api/dashboard`</li></ul>|
-| `path`|<ul><li>changeable part of upstream url</li><li>changes the path suffix of the outgoing request</li></ul>|
+| `path`|<ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul>|
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
 
@@ -160,7 +268,7 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
 | `origin`||
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
-|`path`|changeable part of upstream url|
+|`path`|changeable part of upstream URL|
 |`timeout`||
 |`max_parallel_requests`||
 | `request_headers`||
@@ -182,13 +290,16 @@ Compare the `access_control` [example](#access_control_conf_ex) for details.
 #### <a name="ba"></a> The `basic_auth` block <a name="basic_auth_block"></a>
 The `basic_auth` block let you configure basic auth for your gateway. Like all `access_control` types, the `basic_auth` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
 
+If both `user`/`password` and `htpasswd_file` are configured, the incoming credentials from the `Authorization` request header are checked against `user`/`password` if the user matches, and against the data in the file referenced by `htpasswd_file` otherwise.
+
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`server` block</li><li>`files` block</li><li>`spa` block</li><li>`api` block</li><li>`endpoint` block</li></ul>|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
-|`user`||
-|`password`||
-|`htpasswd_file`||
+|`user`| The user name |
+|`password`| The corresponding password |
+|`htpasswd_file`| The htpasswd file |
+|`realm`| The realm to be sent in a `WWW-Authenticate` response header |
 
 
 #### <a name="jwt"></a> The `jwt` block <a name="jwt_block"></a>
@@ -213,6 +324,22 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 
 ### The `defaults` block <a name="defaults_block"></a>
 
+### The `settings` block <a name="settings_block"></a>
+The `settings` block let you configure the more basic and global behaviour of your gateway instance.
+
+| Name | Description                           | Default |
+|:-------------------|:---------------------------------------|:-----------|
+|`health_path`| The health path which is available for all configured server and ports. | `/healthz` |
+|`default_port`| The port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list. | `8080` |
+|`log_format`| Switch for tab/field based colored view or json log lines. | `common` |
+|`xfh`| Option to use the `X-Forwarded-Host` header as the request host | `false` |
+
+### Health-Check ###
+The health check will answer a status `200 OK` on every port with the configured `health_path`.
+As soon as the gateway instance will receive a `SIGINT` or `SIGTERM` the check will return a status `500 StatusInternalServerError`.
+A shutdown delay of `5s` allows the server to finish all running requests and gives a load-balancer time to pick another gateway instance.
+After this delay the server goes into shutdown mode with a deadline of `5s` and no new requests will be accepted.
+The shutdown timings cannot be configured at this moment. 
 
 ## Examples <a name="examples"></a>
 
@@ -230,7 +357,8 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 
 ### Routing configuration example <a name="routing_conf_ex"></a>
 
-<pre><code>api "my_api" {
+```hcl
+api "my_api" {
     base_path = "/api/novoconnect"
 
     endpoint "/login/**" {
@@ -258,10 +386,11 @@ Use the `definitions` block to define configurations you want to reuse. `access_
         origin = "http://accountservice:8080"
       }    
     }
-</code></pre>
+```
 
 ### Web serving configuration example <a name="web_serving_ex"></a> 
-<pre><code>server "my_project" {		
+```hcl
+server "my_project" {		
 	files {
 		document_root = "./htdocs"
 		error_file = "./404.html"
@@ -274,12 +403,12 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 		]
 	}
 ...
-</code></pre>
-
+```
 
 ### `access_control` configuration example <a name="access_control_conf_ex"></a> 
 
-<pre><code>server {
+```hcl
+server {
 	access\_control = ["ac1"]
 	files {
 		access\_control = ["ac2"]
@@ -308,7 +437,8 @@ definitions {
  	jwt "ac4" {
  	...
  	}
-}</pre></code>
+}
+```
 
 The following table shows which `access_control` is set for which context:
 

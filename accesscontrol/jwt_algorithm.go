@@ -30,6 +30,15 @@ func NewAlgorithm(a string) Algorithm {
 	}
 }
 
+func (a Algorithm) IsHMAC() bool {
+	switch a {
+	case AlgorithmHMAC256, AlgorithmHMAC384, AlgorithmHMAC512:
+		return true
+	default:
+		return false
+	}
+}
+
 func (a Algorithm) String() string {
 	switch a {
 	case AlgorithmRSA256:

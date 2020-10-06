@@ -1,8 +1,8 @@
-# Couper 2
+# Couper
 
 ![Go](https://github.com/avenga/couper/workflows/Go/badge.svg) | ![Docker](https://github.com/avenga/couper/workflows/Docker/badge.svg)
 
-Couper 2 is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a  lightweight API gateway component.
+Couper is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a frontend gateway component.
 
 * Tutorials: [couper examples](https://github.com/avenga/couper-examples)
 * Documentation: [docs](https://github.com/avenga/couper/tree/master/docs)
@@ -24,9 +24,9 @@ Couper provides some key features:
     - Metrics endpoint (soon)
     - Health probes for backends (soon)
 - Centralized **Access-Control** layer:
-    - Basic-Auth (soon)
+    - Basic-Auth
     - JWT
-        - RS/HM 256,386,512 algorithms
+        - RS/HS 256,386,512 algorithms
         - Custom claim validation
         - pass claim values to upstream services
 - Uniform **error handling** with custom templates across different backend services

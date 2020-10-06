@@ -16,30 +16,62 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		protected http.Handler
 	}
 
+	newReq := func(method, target string) func(headerKey string, headerValue string) *http.Request {
+		req := httptest.NewRequest(method, target, nil)
+		return func(key, value string) *http.Request {
+			req.Header.Set(key, value)
+			return req
+		}
+	}
+
+	newBasicAuth := func(user, pass, realm string) *accesscontrol.BasicAuth {
+		ba, err := accesscontrol.NewBasicAuth("ba-test", user, pass, "", realm)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ba
+	}
+
 	tests := []struct {
 		name           string
 		fields         fields
 		req            *http.Request
 		expectedStatus int
+		wwwAuth        string
 	}{
 		{"no access control", fields{nil, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
-		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusNoContent},
+		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusNoContent, ""},
+
 		{"with access control valid req", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return nil // valid
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
-		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusNoContent},
+		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusNoContent, ""},
+
 		{"with access control invalid req/empty token", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return accesscontrol.ErrorEmptyToken
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
-		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusUnauthorized},
+		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusUnauthorized, ""},
+
 		{"with access control invalid req", fields{accesscontrol.List{accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return fmt.Errorf("no! ")
 		})}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
-		})}, httptest.NewRequest("GET", "http://ac.test/", nil), http.StatusForbidden},
+		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusForbidden, ""},
+
+		{"basic_auth", fields{accesscontrol.List{newBasicAuth("hans", "", "")}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			rw.WriteHeader(http.StatusNoContent)
+		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized, "Basic"},
+
+		{"basic_auth /wo authorization header", fields{accesscontrol.List{newBasicAuth("hans", "", "")}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			rw.WriteHeader(http.StatusNoContent)
+		})}, newReq("GET", "http://ac.test/")("Authorization", ""), http.StatusUnauthorized, "Basic"},
+
+		{"basic_auth /w realm", fields{accesscontrol.List{newBasicAuth("hans", "", "My-Realm")}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			rw.WriteHeader(http.StatusNoContent)
+		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized, "Basic realm=My-Realm"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,6 +86,10 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 
 			if res.Code != tt.expectedStatus {
 				t.Errorf("Expected status code %d, got: %d", tt.expectedStatus, res.Code)
+			}
+
+			if res.Header().Get("WWW-Authenticate") != tt.wwwAuth {
+				t.Errorf("Expected WWW-Auth header %q, got: %q", tt.wwwAuth, res.Header().Get("WWW-Authenticate"))
 			}
 		})
 	}

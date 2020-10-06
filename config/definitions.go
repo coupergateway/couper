@@ -6,8 +6,9 @@ import (
 )
 
 type Definitions struct {
-	Backend []*Backend `hcl:"backend,block"`
-	JWT     []*JWT     `hcl:"jwt,block"`
+	Backend   []*Backend   `hcl:"backend,block"`
+	BasicAuth []*BasicAuth `hcl:"basic_auth,block"`
+	JWT       []*JWT       `hcl:"jwt,block"`
 }
 
 func (d Definitions) Schema(inline bool) *hcl.BodySchema {

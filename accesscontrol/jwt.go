@@ -82,6 +82,10 @@ func NewJWT(algorithm, name string, claims Claims, reqClaims []string, src Sourc
 		sourceKey:      srcKey,
 	}
 
+	if algo.IsHMAC() {
+		return jwtObj, nil
+	}
+
 	pubKey, err := parsePublicPEMKey(key)
 	if err != nil && (err != jwt.ErrKeyMustBePEMEncoded || err != jwt.ErrNotRSAPublicKey) {
 		cert, err := x509.ParseCertificate(key)

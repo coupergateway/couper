@@ -3,10 +3,11 @@ package eval
 import (
 	"bytes"
 	"context"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
@@ -69,7 +70,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 		"path":   cty.StringVal(req.URL.Path),
 		"url":    cty.StringVal(newRawURL(req.URL).String()),
 		"query":  seetie.ValuesMapToValue(req.URL.Query()),
-		"post":   seetie.ValuesMapToValue(req.PostForm),
+		"post":   seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
@@ -78,15 +79,56 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 			"path":   cty.StringVal(bereq.URL.Path),
 			"url":    cty.StringVal(newRawURL(bereq.URL).String()),
 			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
-			"post":   seetie.ValuesMapToValue(bereq.PostForm),
-		}.
-			Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
+			"post":   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
 		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
 			"status": cty.StringVal(strconv.Itoa(beresp.StatusCode)),
 		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
 	}
 
 	return evalCtx
+}
+
+const defaultMaxMemory = 32 << 20 // 32 MB
+
+type readCloser struct {
+	io.Reader
+	closer io.Closer
+}
+
+func newReadCloser(r io.Reader, c io.Closer) *readCloser {
+	return &readCloser{Reader: r, closer: c}
+}
+
+func (rc readCloser) Close() error {
+	return rc.closer.Close()
+}
+
+// parseForm populates the request PostForm field.
+// As Proxy we should not consume the request body.
+// Create a copy, buffer and reset via GetBody method.
+func parseForm(r *http.Request) *http.Request {
+	if r.Body == nil {
+		return r
+	}
+
+	switch r.Method {
+	case http.MethodPut, http.MethodPatch, http.MethodPost:
+		if r.GetBody == nil {
+			bodyBytes, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				panic(err)
+			}
+			r.GetBody = func() (io.ReadCloser, error) {
+				return newReadCloser(bytes.NewBuffer(bodyBytes), r.Body), nil
+			}
+		}
+
+		r.Body, _ = r.GetBody()
+		_ = r.ParseMultipartForm(defaultMaxMemory)
+		r.Body, _ = r.GetBody()
+	}
+	return r
 }
 
 func newRawURL(u *url.URL) *url.URL {
@@ -167,14 +209,23 @@ func decodeEnvironmentRefs(src []byte) []string {
 	needle := []byte("env")
 	var keys []string
 	for i, token := range tokens {
-		if token.Type == hclsyntax.TokenIdent &&
-			bytes.Equal(token.Bytes, needle) &&
-			i+2 < len(tokens) {
-			value := string(tokens[i+2].Bytes)
-			if sort.SearchStrings(keys, value) == len(keys) {
+		if token.Type == hclsyntax.TokenDot && i > 0 &&
+			bytes.Equal(tokens[i-1].Bytes, needle) &&
+			i+1 < len(tokens) {
+			value := string(tokens[i+1].Bytes)
+			if !hasValue(keys, value) {
 				keys = append(keys, value)
 			}
 		}
 	}
 	return keys
+}
+
+func hasValue(list []string, needle string) bool {
+	for _, s := range list {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }

@@ -2,6 +2,7 @@ package errors
 
 const (
 	Server Code = 1000 + iota
+	ServerShutdown
 	Configuration
 	InvalidRequest
 	RouteNotFound
@@ -26,11 +27,13 @@ const (
 const (
 	AuthorizationRequired Code = 5000 + iota
 	AuthorizationFailed
+	BasicAuthFailed
 )
 
 var codes = map[Code]string{
 	// 1xxx
 	Server:         "Server error",
+	ServerShutdown: "Server is shutting down",
 	Configuration:  "Configuration failed",
 	InvalidRequest: "Invalid request",
 	RouteNotFound:  "Route not found",
@@ -47,6 +50,7 @@ var codes = map[Code]string{
 	// 5xxx
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",
+	BasicAuthFailed:       "Unauthorized",
 }
 
 type Code int

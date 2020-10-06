@@ -49,7 +49,8 @@ var handlerFuncType = reflect.ValueOf(RoundtripHandlerFunc(nil)).Type()
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
 	startTime := time.Now()
 
-	isUpstreamRequest := reflect.ValueOf(nextHandler).Type() == handlerFuncType
+	handlerType := reflect.ValueOf(nextHandler).Type()
+	isUpstreamRequest := handlerType == handlerFuncType
 
 	timings := Fields{}
 	var timeTTFB, timeGotConn time.Time
@@ -133,6 +134,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		"uid":     uniqueID,
 	}
 
+	if h, ok := nextHandler.(fmt.Stringer); ok {
+		fields["handler"] = h.String()
+	}
+
 	if isUpstreamRequest {
 		backendName, _ := reqCtx.Context().Value(request.BackendName).(string)
 		if backendName == "" {
@@ -162,6 +167,8 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	if reqCtx.URL.User != nil && reqCtx.URL.User.Username() != "" {
 		fields["auth_user"] = reqCtx.URL.User.Username()
+	} else if user, _, ok := reqCtx.BasicAuth(); ok && user != "" {
+		fields["auth_user"] = user
 	}
 
 	fields["realtime"] = roundMS(serveDone.Sub(startTime))

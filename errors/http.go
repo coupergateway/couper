@@ -1,6 +1,9 @@
 package errors
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 func httpStatus(code Code) int {
 	switch code {
@@ -10,11 +13,19 @@ func httpStatus(code Code) int {
 		return http.StatusBadGateway
 	case InvalidRequest:
 		return http.StatusBadRequest
-	case AuthorizationRequired:
+	case AuthorizationRequired, BasicAuthFailed:
 		return http.StatusUnauthorized
 	case AuthorizationFailed:
 		return http.StatusForbidden
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+func formatHeader(code Code) string {
+	return fmt.Sprintf("%d - %q", code, code)
+}
+
+func SetHeader(rw http.ResponseWriter, code Code) {
+	rw.Header().Set(HeaderErrorCode, formatHeader(code))
 }

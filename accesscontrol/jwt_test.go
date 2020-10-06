@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -40,12 +39,14 @@ func TestJWT_Validate(t *testing.T) {
 		var token string
 		var tokenErr error
 
-		if strings.HasPrefix(signingMethod.Alg(), "HS") {
+		algo := ac.NewAlgorithm(signingMethod.Alg())
+
+		if algo.IsHMAC() {
+			pubKeyBytes = []byte("mySecretK3y")
 			token, tokenErr = tok.SignedString(pubKeyBytes)
-		} else if strings.HasPrefix(signingMethod.Alg(), "RS") {
+		} else {
 			token, tokenErr = tok.SignedString(privKey)
 		}
-		algo := ac.NewAlgorithm(signingMethod.Alg())
 
 		if tokenErr != nil {
 			t.Error(tokenErr)

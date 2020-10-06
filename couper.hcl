@@ -61,6 +61,7 @@ server "couperConnect" {
                     x-single-val = 12+14
                     user-agent = ""
                     x-uuid = req.id
+#                    authorization = "Bearer ${req.cookies.token}"
                 }
             }
         }
