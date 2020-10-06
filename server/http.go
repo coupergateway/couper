@@ -23,6 +23,7 @@ type HTTPServer struct {
 	accessLog   *logging.AccessLog
 	commandCtx  context.Context
 	config      *runtime.HTTPConfig
+	handler     *Handler
 	healthCheck *handler.Health
 	listener    net.Listener
 	log         logrus.FieldLogger
@@ -65,6 +66,7 @@ func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p 
 		accessLog:   logging.NewAccessLog(&logConf, log.Logger),
 		commandCtx:  cmdCtx,
 		config:      conf,
+		handler:     NewHandler(),
 		healthCheck: handler.NewHealthCheck(conf.HealthPath, shutdownCh),
 		log:         log,
 		muxes:       hosts,
@@ -178,7 +180,7 @@ func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
 
 	*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, s.muxes[host].Server.Name))
 
-	return NewMuxer(s.muxes[host].Mux).Match(req)
+	return s.handler.Match(s.muxes[host].Mux, req)
 }
 
 func (s *HTTPServer) getHost(req *http.Request) string {
