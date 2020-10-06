@@ -52,7 +52,13 @@ Acting as a proxy component it connects clients with (micro) services and adds a
 
 ## Configuration file <a name="conf_file"></a>
 
-The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp. 
+The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
+
+Therefore, the file-ending should be `.hcl` to have syntax highlighting within your IDE.
+
+The `filename` defaults to `couper.hcl` in your working directory. This can be changed with the `-f` command-line flag.
+With `-f /opt/couper/my_conf.hcl` couper changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
+ 
 
 ### Basic file structure <a name="basic_conf"></a>
 Couper's configuration file consists of nested configuration blocks that configure web serving and routing of the gateway. Access control is controlled by an `access_control` attribute that can be set for blocks. 
@@ -97,10 +103,8 @@ The second evaluation will happen during the request/response handling.
 Most fields are self-explanatory (compare tables below).
 
 #### `env` variables
-| Variable | Description                           |
-|:-------------------|:-------------------------------|
-|tba|tba|
-|...|...|
+
+Environment variables can be accessed everywhere within the configuration file since these references gets evaluated on start.
 
 #### `req` (client request) variables
 
@@ -204,7 +208,7 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 
 
 ### <a name="fi"></a> The `files` block <a name="files_block"></a>
-The `files` block configures your document root and the location of your error document. 
+The `files` block configures your document root, and the location of your error document. 
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
@@ -226,7 +230,7 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
 ### <a name="api"></a> The `api` block <a name="api_block"></a>
-The `api` block contains all information about endpoints and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
+The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
@@ -266,21 +270,12 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul>|
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
-| `origin`||
+| `origin`| url to connect to for backend requests which must start with `http://...` |
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
 |`path`|changeable part of upstream URL|
-|`timeout`||
-|`max_parallel_requests`||
-| `request_headers`||
-|[**`request`**](#request_block) block|<ul><li>configures` request` to backend service</li><li>optional, otherwise proxy mode</li></ul>|
-
-### <a name="rq"></a> The `request` block <a name="request_block"></a>
-| Name | Description                           |
-|:-------------------|:---------------------------------------|
-|context|`backend` block|
-| `url`||
-| `method`||
-| `headers`||
+|`timeout`| the total deadline duration a backend request has for write and read/pipe. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h". |
+| `request_headers` | header map to define additional or override header for the `origin` request. |
+| `response_headers` | same as `request_headers` for the client response. |
 
 ### <a name="ac"></a> The `access_control` attribute <a name="access_control_attribute"></a> 
 The `access_control` attribute let you set different `access_control` types for parts of your gateway. It is a list element that holds labels of predefined `access_control` types. You can set `access_control` for a certain block by putting `access_control = ["foo"]` in the corresponding block (where `foo` is an `access_control` type predefined in the `definitions` block). `access_control` is allowed in all blocks of Couper's configuration file. &#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
@@ -309,14 +304,12 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`server` block</li><li>`files` block</li><li>`spa` block</li><li>`api` block</li><li>`endpoint` block</li></ul>|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
-|`cookie = "AccessToken"`||
-|`header = "Authorization`|&#9888; impliziert Bearer|
-|`header = "API-Token`||
-|`post_param = "token"`||
-|`query_param = "token"`||
-|`key`||
-|`key_file`||
-|`signature_algorithm`||
+|`cookie = "AccessToken"`| read `AccessToken` key to gain the token value from a cookie |
+|`header = "Authorization`|&#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used. |
+|`header = "API-Token`| Alternative header source for our token. |
+|`key`| The public key for `RS*` variants or the secret for `HS*` algorithm. |
+|`key_file`| Optional file reference instead of `key` usage. |
+|`signature_algorithm`| Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
 |**`claims`**|equals/in comparison with JWT payload|
 
 ### The `definitions` block <a name="definitions_block"></a>
