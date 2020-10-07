@@ -7,7 +7,7 @@ _For additional information, tutorials and documentation please visit the [coupe
 ## Usage
 
 Couper requires a configuration file which have to be provided on start.
-See our [documentation](https://github.com/avenga/couper/trees/master/docs/) how to configure _couper_.
+See our [documentation](https://github.com/avenga/couper/tree/master/docs) how to configure _couper_.
 
 `docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper`
 
