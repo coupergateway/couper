@@ -5,6 +5,8 @@
 * [Introduction](#introduction)
   * [Core concepts](#core_concepts)
   * [Configuration file](#conf_file)
+     * [Syntax](#syntax)
+     * [File name](#file_name)
      * [Basic file structure](#basic_conf)
      * [Variables](#variables_conf)
      * [Expressions](#expressions)
@@ -52,7 +54,17 @@ Acting as a proxy component it connects clients with (micro) services and adds a
 
 ## Configuration file <a name="conf_file"></a>
 
-The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp. 
+### Syntax <a name="syntax"></a>
+
+The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
+
+### File name <a name="file_name"></a>
+
+The file-ending of your configuration file should be `.hcl` to have syntax highlighting within your IDE.
+
+The `filename` defaults to `couper.hcl` in your working directory. This can be changed with the `-f` command-line flag.
+With `-f /opt/couper/my_conf.hcl` couper changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
+ 
 
 ### Basic file structure <a name="basic_conf"></a>
 Couper's configuration file consists of nested configuration blocks that configure web serving and routing of the gateway. Access control is controlled by an `access_control` attribute that can be set for blocks. 
@@ -97,10 +109,8 @@ The second evaluation will happen during the request/response handling.
 Most fields are self-explanatory (compare tables below).
 
 #### `env` variables
-| Variable | Description                           |
-|:-------------------|:-------------------------------|
-|tba|tba|
-|...|...|
+
+Environment variables can be accessed everywhere within the configuration file since these references get evaluated at start.
 
 #### `req` (client request) variables
 
@@ -203,8 +213,8 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 |[**`api`**](#api) block|configures routing and backend connection(s)|
 
 
-### <a name="fi"></a> The `files` block <a name="files_block"></a>
-The `files` block configures your document root and the location of your error document. 
+### The `files` block <a name="files_block"></a>
+The `files` block configures your document root, and the location of your error document. 
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
@@ -214,7 +224,7 @@ The `files` block configures your document root and the location of your error d
 |`error_file`|<ul><li>location of the error file</li><li>*example:* `error_file = "./404.html" `</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
-### <a name="spa"></a>The `spa` block <a name="spa_block"></a>
+### The `spa` block <a name="spa_block"></a>
 The `spa` block configures the location of your bootstrap file and your SPA paths. 
 
 | Name | Description                           |
@@ -225,8 +235,8 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 |`paths`|<ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]"`</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
-### <a name="api"></a> The `api` block <a name="api_block"></a>
-The `api` block contains all information about endpoints and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
+### The `api` block <a name="api_block"></a>
+The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
@@ -236,19 +246,19 @@ The `api` block contains all information about endpoints and the connection to r
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`backend`**](#backend_block) block|<ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`endpoint`**](#endpoint_block) block|configures specific endpoint for `api` block context|
-|[**`cors`**](#cors_block) block|configures CORS behaviour for `api` block context|
+|[**`cors`**](#cors_block) block|configures CORS behavior for `api` block context|
 
-### <a name="cors"></a> The `cors` block <a name="cors_block"></a>
-The CORS block configures the CORS (Cross-Origin Resource Sharing) behaviour in Couper.
+### </a> The `cors` block <a name="cors_block"></a>
+The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`api`block|
-| `allowed_origins` | (list of) allowed origin(s), can be either a string with a single specific origin (e.g. `https://www.example.com`) or `*` (all origins allowed) or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`) |
+| `allowed_origins` | <ul><li>(list of) allowed origin(s)</li><li> can be either a string with a single specific origin (e.g. `https://www.example.com`)</li><li> or `*` (all origins allowed) </li><li>or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`)</li></ul> |
 | `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
-| `max_age` | indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers can be cached (string with time unit, e.g. `"1h"`) |
+| `max_age` |  <ul><li>indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers</li><li> can be cached (string with time unit, e.g. `"1h"`) </li></ul>|
 
-### <a name="ep"></a> The `endpoint` block <a name="endpoint_block"></a>
+### The `endpoint` block <a name="endpoint_block"></a>
 Endpoints define the entry points of Couper. The mandatory *label* defines the path suffix for the incoming client request. The `path` attribute changes the path for the outgoing request (compare [request routing example](#request_routing_ex)). Each `endpoint` must have at least one `backend` which can be declared in the `api` context above or inside an `endpoint`. 
 
 | Name | Description                           |
@@ -259,35 +269,26 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
 
-### <a name="be"></a> The `backend` block <a name="backend_block"></a>
+### The `backend` block <a name="backend_block"></a>
 A `backend` defines the connection to a local/remote backend service. Backends can be defined globally in the `api` block for all endpoints of an API or inside an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also define backends in the `definitions` block and use the mandatory *label* as reference. 
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul>|
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
-| `origin`||
+| `origin`| URL to connect to for backend requests </br> &#9888; must start with `http://...` |
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
 |`path`|changeable part of upstream URL|
-|`timeout`||
-|`max_parallel_requests`||
-| `request_headers`||
-|[**`request`**](#request_block) block|<ul><li>configures` request` to backend service</li><li>optional, otherwise proxy mode</li></ul>|
+|`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
+| `request_headers` | header map to define additional or override header for the `origin` request |
+| `response_headers` | same as `request_headers` for the client response |
 
-### <a name="rq"></a> The `request` block <a name="request_block"></a>
-| Name | Description                           |
-|:-------------------|:---------------------------------------|
-|context|`backend` block|
-| `url`||
-| `method`||
-| `headers`||
-
-### <a name="ac"></a> The `access_control` attribute <a name="access_control_attribute"></a> 
+### The `access_control` attribute <a name="access_control_attribute"></a> 
 The `access_control` attribute let you set different `access_control` types for parts of your gateway. It is a list element that holds labels of predefined `access_control` types. You can set `access_control` for a certain block by putting `access_control = ["foo"]` in the corresponding block (where `foo` is an `access_control` type predefined in the `definitions` block). `access_control` is allowed in all blocks of Couper's configuration file. &#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
 
 Compare the `access_control` [example](#access_control_conf_ex) for details. 
 
-#### <a name="ba"></a> The `basic_auth` block <a name="basic_auth_block"></a>
+#### The `basic_auth` block <a name="basic_auth_block"></a>
 The `basic_auth` block let you configure basic auth for your gateway. Like all `access_control` types, the `basic_auth` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming credentials from the `Authorization` request header are checked against `user`/`password` if the user matches, and against the data in the file referenced by `htpasswd_file` otherwise.
@@ -302,21 +303,19 @@ If both `user`/`password` and `htpasswd_file` are configured, the incoming crede
 |`realm`| The realm to be sent in a `WWW-Authenticate` response header |
 
 
-#### <a name="jwt"></a> The `jwt` block <a name="jwt_block"></a>
+#### The `jwt` block <a name="jwt_block"></a>
 The `jwt` block let you configure JSON Web Token access control for your gateway. Like all `access_control` types, the `jwt` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`server` block</li><li>`files` block</li><li>`spa` block</li><li>`api` block</li><li>`endpoint` block</li></ul>|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
-|`cookie = "AccessToken"`||
-|`header = "Authorization`|&#9888; impliziert Bearer|
-|`header = "API-Token`||
-|`post_param = "token"`||
-|`query_param = "token"`||
-|`key`||
-|`key_file`||
-|`signature_algorithm`||
+|`cookie = "AccessToken"`| read `AccessToken` key to gain the token value from a cookie |
+|`header = "Authorization`|&#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used |
+|`header = "API-Token`| alternative header source for our token |
+|`key`| public key for `RS*` variants or the secret for `HS*` algorithm |
+|`key_file`| optional file reference instead of `key` usage |
+|`signature_algorithm`| valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
 |**`claims`**|equals/in comparison with JWT payload|
 
 ### The `definitions` block <a name="definitions_block"></a>
@@ -325,14 +324,14 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 ### The `defaults` block <a name="defaults_block"></a>
 
 ### The `settings` block <a name="settings_block"></a>
-The `settings` block let you configure the more basic and global behaviour of your gateway instance.
+The `settings` block let you configure the more basic and global behavior of your gateway instance.
 
 | Name | Description                           | Default |
 |:-------------------|:---------------------------------------|:-----------|
-|`health_path`| The health path which is available for all configured server and ports. | `/healthz` |
-|`default_port`| The port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list. | `8080` |
-|`log_format`| Switch for tab/field based colored view or json log lines. | `common` |
-|`xfh`| Option to use the `X-Forwarded-Host` header as the request host | `false` |
+|`health_path`| health path which is available for all configured server and ports | `/healthz` |
+|`default_port`| port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list | `8080` |
+|`log_format`| switch for tab/field based colored view or json log lines | `common` |
+|`xfh`| option to use the `X-Forwarded-Host` header as the request host | `false` |
 
 ### Health-Check ###
 The health check will answer a status `200 OK` on every port with the configured `health_path`.
@@ -456,7 +455,7 @@ The example configuration above makes Couper listen to port `:9090`, `:8081`and 
   
 ![](./hosts_example.png)
 
-In a second step Couper compares the host-header information with the configuration. In case of mismatch a system error occures (HTML error, status 500).  
+In a second step Couper compares the host-header information with the configuration. In case of mismatch a system error occurs (HTML error, status 500).  
 
 ### Referencing and overwriting example
 
