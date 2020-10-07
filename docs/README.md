@@ -110,7 +110,7 @@ Most fields are self-explanatory (compare tables below).
 
 #### `env` variables
 
-Environment variables can be accessed everywhere within the configuration file since these references gets evaluated on start.
+Environment variables can be accessed everywhere within the configuration file since these references get evaluated at start.
 
 #### `req` (client request) variables
 
@@ -246,10 +246,10 @@ The `api` block contains all information about endpoints, and the connection to 
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`backend`**](#backend_block) block|<ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`endpoint`**](#endpoint_block) block|configures specific endpoint for `api` block context|
-|[**`cors`**](#cors_block) block|configures CORS behaviour for `api` block context|
+|[**`cors`**](#cors_block) block|configures CORS behavior for `api` block context|
 
 ### <a name="cors"></a> The `cors` block <a name="cors_block"></a>
-The CORS block configures the CORS (Cross-Origin Resource Sharing) behaviour in Couper.
+The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
@@ -324,7 +324,7 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 ### The `defaults` block <a name="defaults_block"></a>
 
 ### The `settings` block <a name="settings_block"></a>
-The `settings` block let you configure the more basic and global behaviour of your gateway instance.
+The `settings` block let you configure the more basic and global behavior of your gateway instance.
 
 | Name | Description                           | Default |
 |:-------------------|:---------------------------------------|:-----------|
@@ -455,7 +455,7 @@ The example configuration above makes Couper listen to port `:9090`, `:8081`and 
   
 ![](./hosts_example.png)
 
-In a second step Couper compares the host-header information with the configuration. In case of mismatch a system error occures (HTML error, status 500).  
+In a second step Couper compares the host-header information with the configuration. In case of mismatch a system error occurs (HTML error, status 500).  
 
 ### Referencing and overwriting example
 
