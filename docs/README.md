@@ -311,11 +311,11 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 |context|<ul><li>`server` block</li><li>`files` block</li><li>`spa` block</li><li>`api` block</li><li>`endpoint` block</li></ul>|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
 |`cookie = "AccessToken"`| read `AccessToken` key to gain the token value from a cookie |
-|`header = "Authorization`|&#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used. |
-|`header = "API-Token`| Alternative header source for our token. |
-|`key`| The public key for `RS*` variants or the secret for `HS*` algorithm. |
-|`key_file`| Optional file reference instead of `key` usage. |
-|`signature_algorithm`| Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
+|`header = "Authorization`|&#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used |
+|`header = "API-Token`| alternative header source for our token |
+|`key`| public key for `RS*` variants or the secret for `HS*` algorithm |
+|`key_file`| optional file reference instead of `key` usage |
+|`signature_algorithm`| valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
 |**`claims`**|equals/in comparison with JWT payload|
 
 ### The `definitions` block <a name="definitions_block"></a>
@@ -328,10 +328,10 @@ The `settings` block let you configure the more basic and global behavior of you
 
 | Name | Description                           | Default |
 |:-------------------|:---------------------------------------|:-----------|
-|`health_path`| The health path which is available for all configured server and ports. | `/healthz` |
-|`default_port`| The port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list. | `8080` |
-|`log_format`| Switch for tab/field based colored view or json log lines. | `common` |
-|`xfh`| Option to use the `X-Forwarded-Host` header as the request host | `false` |
+|`health_path`| health path which is available for all configured server and ports | `/healthz` |
+|`default_port`| port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list | `8080` |
+|`log_format`| switch for tab/field based colored view or json log lines | `common` |
+|`xfh`| option to use the `X-Forwarded-Host` header as the request host | `false` |
 
 ### Health-Check ###
 The health check will answer a status `200 OK` on every port with the configured `health_path`.
