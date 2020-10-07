@@ -254,9 +254,9 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`api`block|
-| `allowed_origins` | (list of) allowed origin(s), can be either a string with a single specific origin (e.g. `https://www.example.com`) or `*` (all origins allowed) or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`) |
+| `allowed_origins` | <ul><li>(list of) allowed origin(s)</li><li> can be either a string with a single specific origin (e.g. `https://www.example.com`)</li><li> or `*` (all origins allowed) </li><li>or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`)</li></ul> |
 | `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
-| `max_age` | indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers can be cached (string with time unit, e.g. `"1h"`) |
+| `max_age` |  <ul><li>indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers</li><li> can be cached (string with time unit, e.g. `"1h"`) </li></ul>|
 
 ### The `endpoint` block <a name="endpoint_block"></a>
 Endpoints define the entry points of Couper. The mandatory *label* defines the path suffix for the incoming client request. The `path` attribute changes the path for the outgoing request (compare [request routing example](#request_routing_ex)). Each `endpoint` must have at least one `backend` which can be declared in the `api` context above or inside an `endpoint`. 
@@ -276,12 +276,12 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 |:-------------------|:---------------------------------------|
 |context|<ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul>|
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
-| `origin`| url to connect to for backend requests which must start with `http://...` |
+| `origin`| URL to connect to for backend requests </br> &#9888; must start with `http://...` |
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
 |`path`|changeable part of upstream URL|
-|`timeout`| the total deadline duration a backend request has for write and read/pipe. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h". |
-| `request_headers` | header map to define additional or override header for the `origin` request. |
-| `response_headers` | same as `request_headers` for the client response. |
+|`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
+| `request_headers` | header map to define additional or override header for the `origin` request |
+| `response_headers` | same as `request_headers` for the client response |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
 The `access_control` attribute let you set different `access_control` types for parts of your gateway. It is a list element that holds labels of predefined `access_control` types. You can set `access_control` for a certain block by putting `access_control = ["foo"]` in the corresponding block (where `foo` is an `access_control` type predefined in the `definitions` block). `access_control` is allowed in all blocks of Couper's configuration file. &#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
