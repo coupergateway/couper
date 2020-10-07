@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +25,7 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/utils"
 )
 
 var (
@@ -284,7 +284,7 @@ func (p *Proxy) director(req *http.Request) {
 
 	if pathMatch, ok := req.Context().
 		Value(request.Wildcard).(string); ok && strings.HasSuffix(p.options.Path, "/**") {
-		req.URL.Path = path.Join(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
+		req.URL.Path = utils.JoinPath(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
 	} else if p.options.Path != "" {
 		req.URL.Path = p.options.Path
 	}
