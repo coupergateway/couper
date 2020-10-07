@@ -5,6 +5,8 @@
 * [Introduction](#introduction)
   * [Core concepts](#core_concepts)
   * [Configuration file](#conf_file)
+     * [Syntax](#syntax)
+     * [File name](#file_name)
      * [Basic file structure](#basic_conf)
      * [Variables](#variables_conf)
      * [Expressions](#expressions)
@@ -52,9 +54,13 @@ Acting as a proxy component it connects clients with (micro) services and adds a
 
 ## Configuration file <a name="conf_file"></a>
 
+### Syntax <a name="syntax"></a>
+
 The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
 
-Therefore, the file-ending should be `.hcl` to have syntax highlighting within your IDE.
+### File name <a name="file_name"></a>
+
+The file-ending of your configuration file should be `.hcl` to have syntax highlighting within your IDE.
 
 The `filename` defaults to `couper.hcl` in your working directory. This can be changed with the `-f` command-line flag.
 With `-f /opt/couper/my_conf.hcl` couper changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
