@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -17,7 +16,6 @@ import (
 )
 
 func TestNewHTTPContext(t *testing.T) {
-	t.Skip("TODO")
 	newBeresp := func(br *http.Request) *http.Response {
 		return &http.Response{
 			StatusCode: http.StatusOK,
@@ -29,12 +27,7 @@ func TestNewHTTPContext(t *testing.T) {
 		}
 	}
 
-	type EvalTestContext struct {
-		ReqHeader cty.Value `hcl:"headers,optional"`
-		Method    cty.Value `hcl:"method,optional"`
-		QueryVar  cty.Value `hcl:"query,optional"`
-		PostVar   cty.Value `hcl:"post,optional"`
-	}
+	type expMap map[string]string
 
 	baseCtx := NewENVContext(nil)
 
@@ -45,21 +38,21 @@ func TestNewHTTPContext(t *testing.T) {
 		query     string
 		baseCtx   *hcl.EvalContext
 		hcl       string
-		want      EvalTestContext
+		want      expMap
 	}{
 		{"Variables / POST", http.MethodPost, strings.NewReader(`user=hans`), "", baseCtx, `
-		post = req.post.user
-		method = req.method
-`, EvalTestContext{PostVar: cty.ListVal([]cty.Value{cty.StringVal("hans")}), Method: cty.ListVal([]cty.Value{cty.StringVal(http.MethodPost)})}},
+			post = req.post.user[0]
+			method = req.method
+`, expMap{"post": "hans", "method": http.MethodPost}},
 		{"Variables / Query", http.MethodGet, nil, "?name=peter", baseCtx, `
-				query = req.query.name
-				method = req.method
-				headers = req.headers.user-agent
-		`, EvalTestContext{QueryVar: cty.StringVal("peter"), Method: cty.StringVal(http.MethodGet), ReqHeader: cty.ListVal([]cty.Value{cty.StringVal("test/v1")})}},
+			query = req.query.name[0]
+			method = req.method
+			ua = req.headers.user-agent
+		`, expMap{"query": "peter", "method": http.MethodGet, "ua": "test/v1"}},
 		{"Variables / Headers", http.MethodGet, nil, "", baseCtx, `
-				headers = req.headers.user-agent
-				method = req.method
-		`, EvalTestContext{ReqHeader: cty.StringVal("test/v1"), Method: cty.StringVal(http.MethodGet)}},
+			ua = req.headers.user-agent
+			method = req.method
+		`, expMap{"ua": "test/v1", "method": http.MethodGet}},
 	}
 
 	for _, tt := range tests {
@@ -74,28 +67,28 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			got := NewHTTPContext(tt.baseCtx, BufferRequest, req, bereq, beresp)
-			got.Functions = nil // we are not interested in a functions test
+			ctx := NewHTTPContext(tt.baseCtx, BufferRequest, req, bereq, beresp)
+			ctx.Functions = nil // we are not interested in a functions test
 
-			var hclResult EvalTestContext
-			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), got, &hclResult)
+			var resultMap map[string]cty.Value
+			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), ctx, &resultMap)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			value := reflect.ValueOf(hclResult)
-			for i := 0; i < value.NumField(); i++ {
-				tag := reflect.TypeOf(hclResult).Field(i).Tag.Get("hcl")
-				name := strings.Split(tag, ",")[0]
-
-				want := reflect.ValueOf(tt.want).Field(i).Interface().(cty.Value)
-				if want.IsNull() {
-					continue
+			for k, v := range tt.want {
+				cv, ok := resultMap[k]
+				if !ok {
+					t.Errorf("Expected value for %q, got nothing", k)
 				}
 
-				gotVar := got.Variables["req"].GetAttr(name)
-				if !want.RawEquals(gotVar) {
-					t.Errorf("cty.Value equals()\ngot:\t%v\nwant:\t%v", gotVar, want)
+				cvt := cv.Type()
+				if cvt != cty.String {
+					t.Fatalf("Expected string value for %q, got %v", k, cvt)
+				}
+
+				if v != cv.AsString() {
+					t.Errorf("%q want: %v, got: %#v", k, v, cv)
 				}
 			}
 		})
