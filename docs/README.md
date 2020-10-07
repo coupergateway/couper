@@ -213,7 +213,7 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 |[**`api`**](#api) block|configures routing and backend connection(s)|
 
 
-### <a name="fi"></a> The `files` block <a name="files_block"></a>
+### The `files` block <a name="files_block"></a>
 The `files` block configures your document root, and the location of your error document. 
 
 | Name | Description                           |
@@ -224,7 +224,7 @@ The `files` block configures your document root, and the location of your error 
 |`error_file`|<ul><li>location of the error file</li><li>*example:* `error_file = "./404.html" `</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
-### <a name="spa"></a>The `spa` block <a name="spa_block"></a>
+### The `spa` block <a name="spa_block"></a>
 The `spa` block configures the location of your bootstrap file and your SPA paths. 
 
 | Name | Description                           |
@@ -235,7 +235,7 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 |`paths`|<ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]"`</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
-### <a name="api"></a> The `api` block <a name="api_block"></a>
+### The `api` block <a name="api_block"></a>
 The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
 
 | Name | Description                           |
@@ -248,7 +248,7 @@ The `api` block contains all information about endpoints, and the connection to 
 |[**`endpoint`**](#endpoint_block) block|configures specific endpoint for `api` block context|
 |[**`cors`**](#cors_block) block|configures CORS behavior for `api` block context|
 
-### <a name="cors"></a> The `cors` block <a name="cors_block"></a>
+### </a> The `cors` block <a name="cors_block"></a>
 The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
 | Name | Description                           |
@@ -258,7 +258,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
 | `max_age` | indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers can be cached (string with time unit, e.g. `"1h"`) |
 
-### <a name="ep"></a> The `endpoint` block <a name="endpoint_block"></a>
+### The `endpoint` block <a name="endpoint_block"></a>
 Endpoints define the entry points of Couper. The mandatory *label* defines the path suffix for the incoming client request. The `path` attribute changes the path for the outgoing request (compare [request routing example](#request_routing_ex)). Each `endpoint` must have at least one `backend` which can be declared in the `api` context above or inside an `endpoint`. 
 
 | Name | Description                           |
@@ -269,7 +269,7 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
 
-### <a name="be"></a> The `backend` block <a name="backend_block"></a>
+### The `backend` block <a name="backend_block"></a>
 A `backend` defines the connection to a local/remote backend service. Backends can be defined globally in the `api` block for all endpoints of an API or inside an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also define backends in the `definitions` block and use the mandatory *label* as reference. 
 
 | Name | Description                           |
@@ -283,12 +283,12 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | `request_headers` | header map to define additional or override header for the `origin` request. |
 | `response_headers` | same as `request_headers` for the client response. |
 
-### <a name="ac"></a> The `access_control` attribute <a name="access_control_attribute"></a> 
+### The `access_control` attribute <a name="access_control_attribute"></a> 
 The `access_control` attribute let you set different `access_control` types for parts of your gateway. It is a list element that holds labels of predefined `access_control` types. You can set `access_control` for a certain block by putting `access_control = ["foo"]` in the corresponding block (where `foo` is an `access_control` type predefined in the `definitions` block). `access_control` is allowed in all blocks of Couper's configuration file. &#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
 
 Compare the `access_control` [example](#access_control_conf_ex) for details. 
 
-#### <a name="ba"></a> The `basic_auth` block <a name="basic_auth_block"></a>
+#### The `basic_auth` block <a name="basic_auth_block"></a>
 The `basic_auth` block let you configure basic auth for your gateway. Like all `access_control` types, the `basic_auth` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming credentials from the `Authorization` request header are checked against `user`/`password` if the user matches, and against the data in the file referenced by `htpasswd_file` otherwise.
@@ -303,7 +303,7 @@ If both `user`/`password` and `htpasswd_file` are configured, the incoming crede
 |`realm`| The realm to be sent in a `WWW-Authenticate` response header |
 
 
-#### <a name="jwt"></a> The `jwt` block <a name="jwt_block"></a>
+#### The `jwt` block <a name="jwt_block"></a>
 The `jwt` block let you configure JSON Web Token access control for your gateway. Like all `access_control` types, the `jwt` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*. 
 
 | Name | Description                           |
