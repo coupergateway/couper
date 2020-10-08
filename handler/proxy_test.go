@@ -382,47 +382,52 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 }
 
 func TestProxy_director(t *testing.T) {
-	defaultReq := httptest.NewRequest("GET", "http://example.com", nil)
-
 	log, _ := logrustest.NewNullLogger()
+	nullLog := log.WithContext(nil)
 
 	type fields struct {
-		evalContext *hcl.EvalContext
-		log         *logrus.Entry
-		options     *ProxyOptions
+		log     *logrus.Entry
+		options *ProxyOptions
 	}
 
 	emptyOptions := []hcl.Body{hcl.EmptyBody()}
+	bgCtx := context.Background()
 
 	tests := []struct {
 		name   string
 		fields fields
-		req    *http.Request
+		path   string
+		ctx    context.Context
 		expReq *http.Request
 	}{
-		{"proxy url settings", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
-		{"proxy url settings w/hostname", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, defaultReq, httptest.NewRequest("GET", "http://couper.io", nil)},
-		{"proxy url settings w/wildcard ctx", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, defaultReq.WithContext(context.WithValue(defaultReq.Context(), request.Wildcard, "/hans")), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
-		{"proxy url settings w/wildcard ctx trailing slash", fields{eval.NewENVContext(nil), log.WithContext(nil), &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, defaultReq.WithContext(context.WithValue(defaultReq.Context(), request.Wildcard, "/docs/")), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
+		{"proxy url settings", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings w/hostname", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://couper.io", nil)},
+		{"proxy url settings w/wildcard ctx", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, "/peter", context.WithValue(bgCtx, request.Wildcard, "/hans"), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
+		{"proxy url settings w/wildcard ctx empty", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs", nil)},
+		{"proxy url settings w/wildcard ctx empty /w trailing path slash", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "/", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := NewProxy(tt.fields.options, tt.fields.log, tt.fields.evalContext)
+			p, err := NewProxy(tt.fields.options, tt.fields.log, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
+			*req = *req.Clone(tt.ctx)
+
 			proxy := p.(*Proxy)
-			proxy.director(tt.req)
+			proxy.director(req)
 
 			if tt.fields.options.Hostname != "" && tt.fields.options.Hostname != tt.expReq.Host {
 				t.Errorf("expected same host value, want: %q, got: %q", tt.fields.options.Hostname, tt.expReq.Host)
-			} else if tt.fields.options.Hostname == "" && tt.req.Host != tt.expReq.Host {
+			} else if tt.fields.options.Hostname == "" && req.Host != tt.expReq.Host {
 				t.Error("expected a configured request host")
 			}
 
-			if tt.req.URL.Path != tt.expReq.URL.Path {
-				t.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, tt.req.URL.Path)
+			if req.URL.Path != tt.expReq.URL.Path {
+				t.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
 			}
 		})
 	}

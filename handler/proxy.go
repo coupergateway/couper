@@ -284,6 +284,11 @@ func (p *Proxy) director(req *http.Request) {
 
 	if pathMatch, ok := req.Context().
 		Value(request.Wildcard).(string); ok && strings.HasSuffix(p.options.Path, "/**") {
+		if pathMatch == "" && req.URL.Path != "" { // wildcard "root" hit, take a look if the req has a trailing slash and apply
+			if req.URL.Path[len(req.URL.Path)-1] == '/' {
+				pathMatch = "/"
+			}
+		}
 		req.URL.Path = utils.JoinPath(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
 	} else if p.options.Path != "" {
 		req.URL.Path = p.options.Path
