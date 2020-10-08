@@ -205,7 +205,7 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 | Name | Description                           |
 |:-------------------|:-------------------------------|
 |context|none|
-| *label*|optional|
+| *label*|required|
 | `hosts`|<ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:*`hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul>|
 |[**`files`**](#fi) block|configures file serving|
@@ -219,7 +219,6 @@ The `files` block configures your document root, and the location of your error 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`server` block|
-| *label*|optional|
 | `document_root`|<ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul>|
 |`error_file`|<ul><li>location of the error file</li><li>*example:* `error_file = "./404.html" `</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
@@ -230,18 +229,16 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`server` block|
-| *label*|optional|
 |`bootstrap_file`|<ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html" "`</li></ul>|
 |`paths`|<ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]"`</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
 ### The `api` block <a name="api_block"></a>
-The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
+The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks).
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`server` block|
-|*label*|&#9888; mandatory, if there is more than one `api` block|
 | `base_path`|<ul><li>optional</li><li>*example:* `base_path = "/api" `</li></ul>|
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`backend`**](#backend_block) block|<ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
