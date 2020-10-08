@@ -61,9 +61,15 @@ func NewTemplate(mime string, src []byte) (*Template, error) {
 	}, nil
 }
 
-func (t *Template) ServeError(errCode Code) http.Handler {
+func (t *Template) ServeError(err error) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
+
+		errCode, ok := err.(Code)
+		if !ok {
+			errCode = Server
+		}
+
 		SetHeader(rw, errCode)
 
 		status := httpStatus(errCode)
@@ -79,7 +85,7 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 		}
 		data := map[string]interface{}{
 			"http_status": status,
-			"message":     errCode.Error(),
+			"message":     err.Error(),
 			"error_code":  int(errCode),
 			"path":        req.URL.EscapedPath(),
 			"request_id":  escapeValue(t.mime, reqID),

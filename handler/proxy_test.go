@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +17,7 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
 
@@ -469,7 +472,12 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	opts := &ProxyOptions{BackendName: "test-origin", Origin: "http://" + origin.Listener.Addr().String(), CORS: &CORSOptions{}}
+	opts := &ProxyOptions{
+		BackendName:      "test-origin",
+		Origin:           "http://" + origin.Listener.Addr().String(),
+		CORS:             &CORSOptions{},
+		RequestBodyLimit: 10,
+	}
 
 	tests := []testCase{
 		{"GET use req.Header", fields{baseCtx, opts}, `
@@ -528,6 +536,34 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestProxy_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
+	type testCase struct {
+		name    string
+		limit   int64
+		payload string
+		wantErr error
+	}
+
+	for _, testcase := range []testCase{
+		{"/w well sized limit", 12, "content", nil},
+		{"/w zero limit", 0, "01", errors.APIReqBodySizeExceeded},
+		{"/w limit /w oversize body", 4, "12345", errors.APIReqBodySizeExceeded},
+	} {
+		proxy := &Proxy{
+			options: &ProxyOptions{
+				RequestBodyLimit: testcase.limit,
+				CORS:             &CORSOptions{},
+			},
+			bufferOption: eval.BufferRequest,
+		}
+		req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
+		err := proxy.SetGetBody(req)
+		if !reflect.DeepEqual(err, testcase.wantErr) {
+			t.Errorf("Expected '%v', got: '%v'", testcase.wantErr, err)
+		}
 	}
 }
 

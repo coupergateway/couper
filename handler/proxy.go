@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -55,6 +56,7 @@ type ProxyOptions struct {
 	BackendName                          string
 	Hostname, Origin, Path               string
 	CORS                                 *CORSOptions
+	RequestBodyLimit                     int64
 }
 
 type CORSOptions struct {
@@ -175,7 +177,13 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
 
-	p.director(outreq)
+	err := p.director(outreq)
+	if err != nil {
+		// TODO: use error template from parent endpoint>api>server
+		couperErr.DefaultJSON.ServeError(err).ServeHTTP(rw, req)
+		return
+	}
+
 	outreq.Close = false
 
 	// Deal with req.post access on the way back
@@ -276,7 +284,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 }
 
 // director request modification before roundtrip
-func (p *Proxy) director(req *http.Request) {
+func (p *Proxy) director(req *http.Request) error {
 	req.URL.Host = p.originURL.Host
 	req.URL.Scheme = p.originURL.Scheme
 	req.Host = p.originURL.Host
@@ -296,7 +304,13 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Path = p.options.Path
 	}
 
+	if err := p.SetGetBody(req); err != nil {
+		return err
+	}
+
 	p.setRoundtripContext(req, nil)
+
+	return nil
 }
 
 func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
@@ -334,6 +348,35 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	if beresp != nil && isCorsRequest(req) {
 		p.setCorsRespHeaders(headerCtx, req)
 	}
+}
+
+func (p *Proxy) SetGetBody(req *http.Request) error {
+	if (p.bufferOption & eval.BufferRequest) != eval.BufferRequest {
+		return nil
+	}
+
+	switch req.Method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch:
+		if req.Body != nil && req.GetBody == nil {
+			buf := &bytes.Buffer{}
+			lr := io.LimitReader(req.Body, p.options.RequestBodyLimit+1)
+			n, err := buf.ReadFrom(lr)
+			if err != nil {
+				return err
+			}
+
+			if n > p.options.RequestBodyLimit {
+				return couperErr.APIReqBodySizeExceeded
+			}
+
+			bodyBytes := buf.Bytes()
+			req.GetBody = func() (io.ReadCloser, error) {
+				return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
+			}
+		}
+	}
+
+	return nil
 }
 
 func isCorsRequest(req *http.Request) bool {

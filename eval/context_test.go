@@ -1,4 +1,4 @@
-package eval
+package eval_test
 
 import (
 	"bytes"
@@ -6,14 +6,17 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -32,7 +35,7 @@ func TestNewHTTPContext(t *testing.T) {
 	type expMap map[string]string
 	type header map[string]string
 
-	baseCtx := NewENVContext(nil)
+	baseCtx := eval.NewENVContext(nil)
 
 	tests := []struct {
 		name      string
@@ -44,7 +47,7 @@ func TestNewHTTPContext(t *testing.T) {
 		hcl       string
 		want      expMap
 	}{
-		{"Variables / POST", http.MethodPost, header{"Content-Type": "application/x-www-form-urlencoded"}, strings.NewReader(`user=hans`), "", baseCtx, `
+		{"Variables / POST", http.MethodPost, header{"Content-Type": "application/x-www-form-urlencoded"}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
 					post = req.post.user[0]
 					method = req.method
 		`, expMap{"post": "hans", "method": http.MethodPost}},
@@ -72,6 +75,15 @@ func TestNewHTTPContext(t *testing.T) {
 		`, expMap{"title": "", "method": http.MethodPatch}},
 	}
 
+	log, _ := test.NewNullLogger()
+
+	// ensure proxy bufferOption for setBodyFunc
+	hclBody := hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			eval.ClientRequest: hcltest.MockExprTraversalSrc(eval.ClientRequest + "." + eval.JsonBody),
+		}),
+	})
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
@@ -84,11 +96,26 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			ctx := NewHTTPContext(tt.baseCtx, BufferRequest, req, bereq, beresp)
+			// since the proxy prepares the getBody rewind:
+			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				Context:          []hcl.Body{hclBody},
+				RequestBodyLimit: 256,
+				Origin:           req.URL.String(),
+				CORS:             &handler.CORSOptions{},
+			}, log.WithContext(nil), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			proxyType := proxy.(*handler.Proxy)
+			if err = proxyType.SetGetBody(req); err != nil {
+				t.Fatal(err)
+			}
+
+			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, bereq, beresp)
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), ctx, &resultMap)
+			err = hclsimple.Decode("test.hcl", []byte(tt.hcl), ctx, &resultMap)
 			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
 			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
 				t.Fatal(err)

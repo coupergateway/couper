@@ -11,6 +11,8 @@ func httpStatus(code Code) int {
 		return http.StatusNotFound
 	case APIConnect:
 		return http.StatusBadGateway
+	case APIReqBodySizeExceeded:
+		return http.StatusRequestEntityTooLarge
 	case InvalidRequest:
 		return http.StatusBadRequest
 	case AuthorizationRequired, BasicAuthFailed:

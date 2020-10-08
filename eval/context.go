@@ -66,13 +66,6 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		id = uid
 	}
 
-	if (bufOpt & BufferRequest) == BufferRequest {
-		switch req.Method {
-		case http.MethodPost, http.MethodPut, http.MethodPatch:
-			setGetBody(req)
-		}
-	}
-
 	evalCtx.Variables[ClientRequest] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
 		ID:       cty.StringVal(id),
 		Method:   cty.StringVal(req.Method),
@@ -107,30 +100,17 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 
 const defaultMaxMemory = 32 << 20 // 32 MB
 
-type readCloser struct {
+type ReadCloser struct {
 	io.Reader
 	closer io.Closer
 }
 
-func newReadCloser(r io.Reader, c io.Closer) *readCloser {
-	return &readCloser{Reader: r, closer: c}
+func NewReadCloser(r io.Reader, c io.Closer) *ReadCloser {
+	return &ReadCloser{Reader: r, closer: c}
 }
 
-func (rc readCloser) Close() error {
+func (rc ReadCloser) Close() error {
 	return rc.closer.Close()
-}
-
-func setGetBody(r *http.Request) *http.Request {
-	if r.Body != nil && r.GetBody == nil {
-		bodyBytes, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			panic(err)
-		}
-		r.GetBody = func() (io.ReadCloser, error) {
-			return newReadCloser(bytes.NewBuffer(bodyBytes), r.Body), nil
-		}
-	}
-	return r
 }
 
 // parseForm populates the request PostForm field.
@@ -190,7 +170,7 @@ func parseRespJSON(beresp *http.Response) map[string]interface{} {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, beresp.Body) // TODO: err handling
 	// reset
-	beresp.Body = newReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
+	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
 	return parseJSON(buf)
 }
 

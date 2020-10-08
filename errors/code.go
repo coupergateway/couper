@@ -22,6 +22,7 @@ const (
 	APIError Code = 4000 + iota
 	APIRouteNotFound
 	APIConnect
+	APIReqBodySizeExceeded
 )
 
 const (
@@ -44,9 +45,10 @@ var codes = map[Code]string{
 	FilesError:         "Files failed",
 	FilesRouteNotFound: "FilesRouteNotFound",
 	// 4xxx
-	APIError:         "API failed",
-	APIRouteNotFound: "API route not found",
-	APIConnect:       "API upstream connection error",
+	APIError:               "API failed",
+	APIRouteNotFound:       "API route not found",
+	APIConnect:             "API upstream connection error",
+	APIReqBodySizeExceeded: "Request body size exceeded",
 	// 5xxx
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
@@ -28,11 +29,12 @@ type entrypointHandler struct {
 	files, spa http.Handler
 }
 
-const (
-	backendDefaultConnectTimeout = "10s"
-	backendDefaultTimeout        = "300s"
-	backendDefaultTTFBTimeout    = "60s"
-)
+var defaultBackendConf = &config.Backend{
+	ConnectTimeout:   "10s",
+	RequestBodyLimit: "64MiB",
+	TTFBTimeout:      "60s",
+	Timeout:          "300s",
+}
 
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
@@ -61,25 +63,24 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				log.Fatalf("backend %q: origin attribute is required", beConf.Name)
 			}
 
-			if beConf.Timeout == "" {
-				beConf.Timeout = backendDefaultTimeout
+			beConf, _ = defaultBackendConf.Merge(beConf)
+
+			bodyLimit, err := units.FromHumanSize(beConf.RequestBodyLimit)
+			if err != nil {
+				log.Fatalf("backend bodyLimit: %v", err)
 			}
-			if beConf.TTFBTimeout == "" {
-				beConf.TTFBTimeout = backendDefaultTTFBTimeout
-			}
-			if beConf.ConnectTimeout == "" {
-				beConf.ConnectTimeout = backendDefaultConnectTimeout
-			}
+
 			t, ttfbt, ct := parseBackendTimings(beConf)
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				BackendName:    beConf.Name,
-				ConnectTimeout: ct,
-				Context:        []hcl.Body{beConf.Options},
-				Hostname:       beConf.Hostname,
-				Origin:         beConf.Origin,
-				Path:           beConf.Path,
-				Timeout:        t,
-				TTFBTimeout:    ttfbt,
+				RequestBodyLimit: bodyLimit,
+				BackendName:      beConf.Name,
+				ConnectTimeout:   ct,
+				Context:          []hcl.Body{beConf.Options},
+				Hostname:         beConf.Hostname,
+				Origin:           beConf.Origin,
+				Path:             beConf.Path,
+				Timeout:          t,
+				TTFBTimeout:      ttfbt,
 			}, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
@@ -178,21 +179,29 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
+
 					t, ttfbt, ct := parseBackendTimings(beConf)
+
+					bodyLimit, err := units.FromHumanSize(beConf.RequestBodyLimit)
+					if err != nil {
+						log.Fatalf("backend bodyLimit: %v", err)
+					}
+
 					corsOptions, err := handler.NewCORSOptions(server.API.CORS)
 					if err != nil {
 						log.Fatal(err)
 					}
 					proxy, err := handler.NewProxy(&handler.ProxyOptions{
-						BackendName:    beConf.Name,
-						ConnectTimeout: ct,
-						Context:        remainCtx,
-						CORS:           corsOptions,
-						Hostname:       beConf.Hostname,
-						Origin:         beConf.Origin,
-						Path:           beConf.Path,
-						Timeout:        t,
-						TTFBTimeout:    ttfbt,
+						BackendName:      beConf.Name,
+						CORS:             corsOptions,
+						ConnectTimeout:   ct,
+						Context:          remainCtx,
+						Hostname:         beConf.Hostname,
+						Origin:           beConf.Origin,
+						Path:             beConf.Path,
+						RequestBodyLimit: bodyLimit,
+						TTFBTimeout:      ttfbt,
+						Timeout:          t,
 					}, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
@@ -248,20 +257,27 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 				t, ttfbt, ct := parseBackendTimings(beConf)
+
+				bodyLimit, err := units.FromHumanSize(beConf.RequestBodyLimit)
+				if err != nil {
+					log.Fatalf("backend bodyLimit: %v", err)
+				}
+
 				corsOptions, err := handler.NewCORSOptions(server.API.CORS)
 				if err != nil {
 					log.Fatal(err)
 				}
 				proxy, err := handler.NewProxy(&handler.ProxyOptions{
-					BackendName:    beConf.Name,
-					ConnectTimeout: ct,
-					Context:        remainCtx,
-					CORS:           corsOptions,
-					Hostname:       beConf.Hostname,
-					Origin:         beConf.Origin,
-					Path:           beConf.Path,
-					Timeout:        t,
-					TTFBTimeout:    ttfbt,
+					BackendName:      beConf.Name,
+					CORS:             corsOptions,
+					ConnectTimeout:   ct,
+					Context:          remainCtx,
+					Hostname:         beConf.Hostname,
+					Origin:           beConf.Origin,
+					Path:             beConf.Path,
+					RequestBodyLimit: bodyLimit,
+					TTFBTimeout:      ttfbt,
+					Timeout:          t,
 				}, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
@@ -464,47 +480,47 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 		beConf.Name = content.Blocks[0].Labels[0]
 	}
 
+	beConf, _ = defaultBackendConf.Merge(beConf)
+
 	t, ttfbt, ct := parseBackendTimings(beConf)
+
+	bodyLimit, err := units.FromHumanSize(beConf.RequestBodyLimit)
+	if err != nil {
+		log.Fatalf("backend bodyLimit: %v", err)
+	}
+
 	corsOptions, err := handler.NewCORSOptions(cors)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	proxy, err := handler.NewProxy(&handler.ProxyOptions{
-		BackendName:    beConf.Name,
-		ConnectTimeout: ct,
-		Context:        []hcl.Body{beConf.Options},
-		CORS:           corsOptions,
-		Hostname:       beConf.Hostname,
-		Origin:         beConf.Origin,
-		Path:           beConf.Path,
-		Timeout:        t,
-		TTFBTimeout:    ttfbt,
+		BackendName:      beConf.Name,
+		CORS:             corsOptions,
+		ConnectTimeout:   ct,
+		Context:          []hcl.Body{beConf.Options},
+		Hostname:         beConf.Hostname,
+		Origin:           beConf.Origin,
+		Path:             beConf.Path,
+		RequestBodyLimit: bodyLimit,
+		TTFBTimeout:      ttfbt,
+		Timeout:          t,
 	}, log, evalCtx)
 	return proxy, beConf, err
 }
 
 func parseBackendTimings(conf *config.Backend) (time.Duration, time.Duration, time.Duration) {
-	t := conf.Timeout
-	ttfb := conf.TTFBTimeout
-	c := conf.ConnectTimeout
-	if t == "" {
-		t = backendDefaultTimeout
-	}
-	if ttfb == "" {
-		ttfb = backendDefaultTTFBTimeout
-	}
-	if c == "" {
-		c = backendDefaultConnectTimeout
-	}
-	totalD, err := time.ParseDuration(t)
+	c, _ := defaultBackendConf.Merge(conf)
+
+	totalD, err := time.ParseDuration(c.Timeout)
 	if err != nil {
 		panic(err)
 	}
-	ttfbD, err := time.ParseDuration(ttfb)
+	ttfbD, err := time.ParseDuration(c.TTFBTimeout)
 	if err != nil {
 		panic(err)
 	}
-	connectD, err := time.ParseDuration(c)
+	connectD, err := time.ParseDuration(c.ConnectTimeout)
 	if err != nil {
 		panic(err)
 	}
