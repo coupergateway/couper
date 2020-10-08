@@ -190,11 +190,12 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	var err error
 	if isUpstreamRequest && roundtripInfo != nil {
 		err = roundtripInfo.Err
+		fields["status"] = 0
 		if roundtripInfo.BeResp != nil {
 			fields["timings"] = timings
+			fields["status"] = roundtripInfo.BeResp.StatusCode
 			timings["ttlb"] = roundMS(serveDone.Sub(timeTTFB))
 		} else {
-			fields["status"] = 0
 			fields["scheme"] = reqCtx.URL.Scheme
 		}
 	} else if !isUpstreamRequest {
