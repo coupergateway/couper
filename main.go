@@ -61,10 +61,6 @@ func newLogger(format string) logrus.FieldLogger {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 
-	if envFormat := os.Getenv(env.PREFIX + "LOG_FORMAT"); envFormat != "" {
-		format = envFormat
-	}
-
 	if format == "json" {
 		logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
 			logrus.FieldKeyTime: "timestamp",
