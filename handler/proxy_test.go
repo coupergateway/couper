@@ -9,9 +9,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -387,6 +389,118 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 				if log.Level >= logrus.ErrorLevel {
 					subT.Error(log.Message)
 				}
+			}
+		})
+	}
+}
+
+func TestProxy_ServeHTTP_Validation(t *testing.T) {
+	helper := test.New(t)
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "text/plain")
+		switch req.URL.RawQuery {
+		case "404":
+			rw.WriteHeader(http.StatusNotFound)
+			break
+		default:
+			rw.WriteHeader(http.StatusOK)
+		}
+		rw.Write([]byte("from upstream"))
+	}))
+	defer origin.Close()
+
+	openapiYAMLTemplate := template.New("openapiYAML")
+	_, err := openapiYAMLTemplate.Parse(`openapi: 3.0.1
+info:
+  title: Test API
+  version: "1.0"
+servers:
+- url: {{.url}}
+paths:
+  /get:
+    get:
+      responses:
+        200:
+          description: OK
+`)
+	helper.Must(err)
+
+	openapiYAML := &bytes.Buffer{}
+	openapiYAMLTemplate.Execute(openapiYAML, map[string]string{"url": origin.URL})
+	helper.Must(ioutil.WriteFile("testdata/upstream.yaml", openapiYAML.Bytes(), 0644))
+	defer helper.Must(os.Remove("testdata/upstream.yaml"))
+
+	tests := []struct {
+		name               string
+		openapiOptions     *handler.OpenAPIOptions
+		requestMethod      string
+		requestPath        string
+		expectedStatusCode int
+		expectedLogMessage string
+	}{
+		{
+			"valid request / valid response",
+			&handler.OpenAPIOptions{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/get",
+			http.StatusOK,
+			"",
+		},
+		{
+			"invalid request",
+			&handler.OpenAPIOptions{File: "testdata/upstream.yaml"},
+			http.MethodPost,
+			"/get",
+			http.StatusBadRequest,
+			"invalid route",
+		},
+		{
+			"invalid request, IgnoreRequestViolations",
+			&handler.OpenAPIOptions{File: "testdata/upstream.yaml", IgnoreRequestViolations: true},
+			http.MethodPost,
+			"/get",
+			http.StatusOK,
+			"invalid route",
+		},
+		{
+			"invalid response",
+			&handler.OpenAPIOptions{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/get?404",
+			http.StatusBadGateway,
+			"status is not supported",
+		},
+		{
+			"invalid response, IgnoreResponseViolations",
+			&handler.OpenAPIOptions{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
+			http.MethodGet,
+			"/get?404",
+			http.StatusNotFound,
+			"status is not supported",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			logger, hook := logrustest.NewNullLogger()
+			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, OpenAPI: tt.openapiOptions}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
+			if err != nil {
+				subT.Fatal(err)
+			}
+
+			req := httptest.NewRequest(tt.requestMethod, "http://1.2.3.4"+tt.requestPath, nil)
+
+			hook.Reset()
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(rec, req)
+
+			if rec.Code != tt.expectedStatusCode {
+				subT.Errorf("Expected status %d, got: %d", tt.expectedStatusCode, rec.Code)
+			}
+
+			log := hook.LastEntry()
+			if log.Message != tt.expectedLogMessage {
+				subT.Errorf("Expected log message %q, got: %q", tt.expectedLogMessage, log.Message)
 			}
 		})
 	}
