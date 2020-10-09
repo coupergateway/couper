@@ -51,10 +51,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpConf, err := runtime.NewHTTPConfig(nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	httpConf := runtime.NewHTTPConfig(nil)
 
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	if err != nil {
@@ -153,10 +150,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpConf, err := runtime.NewHTTPConfig(nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	httpConf := runtime.NewHTTPConfig(nil)
 
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	if err != nil {

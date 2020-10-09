@@ -3,7 +3,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"path"
@@ -12,56 +11,59 @@ import (
 
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/server"
 )
 
 func main() {
 	fields := logrus.Fields{"type": "couper_daemon"}
-	defaultLogger := newLogger(runtime.DefaultConfig).WithFields(fields)
 
 	args := command.NewArgs()
+	if len(args) == 0 || command.NewCommand(args[0]) == nil {
+		command.Help()
+		os.Exit(1)
+	}
 
-	var configFile string
+	// TODO: 'global' conf obj in runtime package
+	var configFile, logFormat string
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
 	set.StringVar(&configFile, "f", "couper.hcl", "-f ./couper.conf")
+	set.StringVar(&logFormat, "log-format", "common", "-log-format=common")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
-		defaultLogger.Fatal(err)
+		logrus.WithFields(fields).Fatal(err)
 	}
+
+	logger := newLogger(logFormat).WithFields(fields)
 
 	wd, err := runtime.SetWorkingDirectory(configFile)
 	if err != nil {
-		defaultLogger.Fatal(err)
+		logger.Fatal(err)
 	}
+	logger.Infof("working directory: %s", wd)
 
 	gatewayConf, err := config.LoadFile(path.Base(configFile))
 	if err != nil {
-		defaultLogger.Fatal(err)
+		logger.Fatal(err)
 	}
 
-	httpConf, err := runtime.NewHTTPConfig(gatewayConf, args)
-	if err != nil {
-		defaultLogger.Fatal(err)
+	var exitCode int
+	if err = command.NewCommand(args[0]).Execute(args, gatewayConf, logger); err != nil {
+		logger.Error(err)
+		exitCode = 1
 	}
-
-	logEntry := newLogger(httpConf).WithFields(fields)
-	logEntry.Infof("working directory: %s", wd)
-
-	entrypointHandlers := runtime.BuildEntrypointHandlers(gatewayConf, httpConf, logEntry)
-
-	ctx := command.ContextWithSignal(context.Background())
-	serverList, listenCmdShutdown := server.NewServerList(ctx, logEntry, httpConf, entrypointHandlers)
-	for _, srv := range serverList {
-		srv.Listen()
-	}
-	listenCmdShutdown()
+	logrus.Exit(exitCode)
 }
 
-func newLogger(conf *runtime.HTTPConfig) logrus.FieldLogger {
+func newLogger(format string) logrus.FieldLogger {
 	logger := logrus.New()
 	logger.Out = os.Stdout
-	if conf.LogFormat == "json" {
+
+	if envFormat := os.Getenv(env.PREFIX + "LOG_FORMAT"); envFormat != "" {
+		format = envFormat
+	}
+
+	if format == "json" {
 		logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
 			logrus.FieldKeyTime: "timestamp",
 			logrus.FieldKeyMsg:  "message",

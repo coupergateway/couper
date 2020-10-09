@@ -34,7 +34,7 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) ([]*HTTPServer, func()) {
+func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
 	for port, hosts := range handlers {
@@ -50,7 +50,7 @@ func NewServerList(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTP
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
+func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
@@ -63,7 +63,7 @@ func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p 
 	shutdownCh := make(chan struct{})
 
 	httpSrv := &HTTPServer{
-		accessLog:   logging.NewAccessLog(&logConf, log.Logger),
+		accessLog:   logging.NewAccessLog(&logConf, log),
 		commandCtx:  cmdCtx,
 		config:      conf,
 		handler:     NewHandler(),
