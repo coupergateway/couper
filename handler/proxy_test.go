@@ -22,6 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -432,7 +433,7 @@ paths:
 
 	tests := []struct {
 		name               string
-		openapiOptions     *handler.OpenAPIOptions
+		openapi            *config.OpenAPI
 		requestMethod      string
 		requestPath        string
 		expectedStatusCode int
@@ -440,7 +441,7 @@ paths:
 	}{
 		{
 			"valid request / valid response",
-			&handler.OpenAPIOptions{File: "testdata/upstream.yaml"},
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/get",
 			http.StatusOK,
@@ -448,7 +449,7 @@ paths:
 		},
 		{
 			"invalid request",
-			&handler.OpenAPIOptions{File: "testdata/upstream.yaml"},
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodPost,
 			"/get",
 			http.StatusBadRequest,
@@ -456,7 +457,7 @@ paths:
 		},
 		{
 			"invalid request, IgnoreRequestViolations",
-			&handler.OpenAPIOptions{File: "testdata/upstream.yaml", IgnoreRequestViolations: true},
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true},
 			http.MethodPost,
 			"/get",
 			http.StatusOK,
@@ -464,7 +465,7 @@ paths:
 		},
 		{
 			"invalid response",
-			&handler.OpenAPIOptions{File: "testdata/upstream.yaml"},
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/get?404",
 			http.StatusBadGateway,
@@ -472,7 +473,7 @@ paths:
 		},
 		{
 			"invalid response, IgnoreResponseViolations",
-			&handler.OpenAPIOptions{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
 			http.MethodGet,
 			"/get?404",
 			http.StatusNotFound,
@@ -483,7 +484,11 @@ paths:
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, OpenAPI: tt.openapiOptions}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
+			openapiValidatorFactory, err := handler.NewOpenAPIValidatorFactory(tt.openapi)
+			if err != nil {
+				subT.Fatal(err)
+			}
+			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, OpenAPI: openapiValidatorFactory}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}

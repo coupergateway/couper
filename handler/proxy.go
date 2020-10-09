@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -19,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
@@ -110,23 +108,6 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-type OpenAPIOptions struct {
-	File                     string
-	IgnoreRequestViolations  bool
-	IgnoreResponseViolations bool
-}
-
-func NewOpenAPIOptions(openapi *config.OpenAPI) *OpenAPIOptions {
-	if openapi == nil {
-		return nil
-	}
-	return &OpenAPIOptions{
-		File:                     openapi.File,
-		IgnoreRequestViolations:  openapi.IgnoreRequestViolations,
-		IgnoreResponseViolations: openapi.IgnoreResponseViolations,
-	}
-}
-
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
@@ -190,44 +171,6 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip), startTime)
 }
 
-func (p *Proxy) prepareRequestValidation(outreq *http.Request) (context.Context, *openapi3filter.Route, *openapi3filter.RequestValidationInput, error) {
-	if p.options.OpenAPI != nil {
-		dir, err := os.Getwd()
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		router := openapi3filter.NewRouter().WithSwaggerFromFile(dir + "/" + p.options.OpenAPI.File)
-		validationCtx := context.Background()
-		route, pathParams, _ := router.FindRoute(outreq.Method, outreq.URL)
-
-		requestValidationInput := &openapi3filter.RequestValidationInput{
-			Request:    outreq,
-			PathParams: pathParams,
-			Route:      route,
-		}
-		return validationCtx, route, requestValidationInput, nil
-	}
-	return nil, nil, nil, nil
-}
-
-func (p *Proxy) prepareResponseValidation(requestValidationInput *openapi3filter.RequestValidationInput, res *http.Response) (*openapi3filter.ResponseValidationInput, []byte, error) {
-	if p.options.OpenAPI != nil {
-		responseValidationInput := &openapi3filter.ResponseValidationInput{
-			RequestValidationInput: requestValidationInput,
-			Status:                 res.StatusCode,
-			Header:                 res.Header,
-			Options:                &openapi3filter.Options{IncludeResponseStatus: true /* undefined response codes are invalid */},
-		}
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, nil, err
-		}
-		responseValidationInput.SetBodyBytes(body)
-		return responseValidationInput, body, nil
-	}
-	return nil, nil, nil
-}
-
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	if p.options.Timeout > 0 {
@@ -282,19 +225,14 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 
-	validationCtx, route, requestValidationInput, err := p.prepareRequestValidation(outreq)
-	if err != nil {
-		// this only happens if os.Getwd() fails
-		// TODO: use error template from parent endpoint>api>server
-		roundtripInfo.Err = err
-		couperErr.DefaultJSON.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
-		return
-	}
-	if requestValidationInput != nil {
-		if err := openapi3filter.ValidateRequest(validationCtx, requestValidationInput); err != nil {
-			// TODO: use error template from parent endpoint>api>server
+	var openapiValidator *OpenAPIValidator
+	if p.options.OpenAPI != nil {
+		openapiValidator = p.options.OpenAPI.NewOpenAPIValidator()
+		ignoreRequestViolations, err := openapiValidator.ValidateRequest(outreq)
+		if err != nil {
 			roundtripInfo.Err = err
-			if !p.options.OpenAPI.IgnoreRequestViolations {
+			if !ignoreRequestViolations {
+				// TODO: use error template from parent endpoint>api>server
 				couperErr.DefaultJSON.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
 				return
 			}
@@ -332,19 +270,12 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Body = eval.NewReadCloser(src, res.Body)
 	}
 
-	responseValidationInput, body, err := p.prepareResponseValidation(requestValidationInput, res)
-	if err != nil {
-		// this only happens if response body buffering fails
-		// TODO: use error template from parent endpoint>api>server
-		roundtripInfo.Err = err
-		couperErr.DefaultJSON.ServeError(couperErr.UpstreamResponseBufferingFailed).ServeHTTP(rw, req)
-		return
-	}
-	if responseValidationInput != nil && route != nil {
-		if err := openapi3filter.ValidateResponse(validationCtx, responseValidationInput); err != nil {
-			// TODO: use error template from parent endpoint>api>server
+	if openapiValidator != nil {
+		ignoreResponseViolations, err := openapiValidator.ValidateResponse(res)
+		if err != nil {
 			roundtripInfo.Err = err
-			if !p.options.OpenAPI.IgnoreResponseViolations {
+			if !ignoreResponseViolations {
+				// TODO: use error template from parent endpoint>api>server
 				couperErr.DefaultJSON.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
 				return
 			}
@@ -374,8 +305,8 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	rw.WriteHeader(res.StatusCode)
 
-	if body != nil {
-		rw.Write(body)
+	if openapiValidator != nil && openapiValidator.Body != nil {
+		rw.Write(openapiValidator.Body)
 	} else {
 		_, err = io.Copy(rw, res.Body)
 		if err != nil {
