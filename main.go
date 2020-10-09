@@ -24,25 +24,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: 'global' conf obj in runtime package
-	var configFile, logFormat string
+	runtimeConf := runtime.NewConfig(nil)
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
-	set.StringVar(&configFile, "f", "couper.hcl", "-f ./couper.conf")
-	set.StringVar(&logFormat, "log-format", "common", "-log-format=common")
+	set.StringVar(&runtimeConf.File, "f", runtimeConf.File, "-f ./couper.hcl")
+	set.StringVar(&runtimeConf.LogFormat, "log-format", runtimeConf.LogFormat, "-log-format=common")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
 		logrus.WithFields(fields).Fatal(err)
 	}
+	envConf := &runtime.Config{}
+	env.Decode(envConf)
+	runtimeConf = runtimeConf.Merge(envConf)
 
-	logger := newLogger(logFormat).WithFields(fields)
+	logger := newLogger(runtimeConf.LogFormat).WithFields(fields)
 
-	wd, err := runtime.SetWorkingDirectory(configFile)
+	wd, err := runtime.SetWorkingDirectory(runtimeConf.File)
 	if err != nil {
 		logger.Fatal(err)
 	}
 	logger.Infof("working directory: %s", wd)
 
-	gatewayConf, err := config.LoadFile(path.Base(configFile))
+	gatewayConf, err := config.LoadFile(path.Base(runtimeConf.File))
 	if err != nil {
 		logger.Fatal(err)
 	}

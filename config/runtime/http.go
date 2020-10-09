@@ -40,8 +40,14 @@ type HTTPTimings struct {
 	ShutdownTimeout time.Duration
 }
 
-// DefaultConfig sets some defaults for the ingress HTTP server.
-var DefaultConfig = &HTTPConfig{
+// DefaultConfig sets some defaults for runtime.
+var DefaultConfig = &Config{
+	File:      "couper.hcl",
+	LogFormat: "common",
+}
+
+// DefaultHTTP sets some defaults for the ingress HTTP server.
+var DefaultHTTP = &HTTPConfig{
 	HealthPath: "/healthz",
 	Timings: HTTPTimings{
 		IdleTimeout:       time.Second * 60,
@@ -55,7 +61,7 @@ var DefaultConfig = &HTTPConfig{
 // NewHTTPConfig creates the server config which could be overridden in order:
 // internal.defaults -> config.settings -> flag.args -> env.vars
 func NewHTTPConfig(c *config.Gateway) *HTTPConfig {
-	defaultConf := *DefaultConfig
+	defaultConf := *DefaultHTTP
 	conf := &defaultConf
 	if c != nil && c.Settings != nil {
 		conf.Merge(newHTTPConfigFrom(c.Settings))
@@ -69,7 +75,7 @@ func newHTTPConfigFrom(s *config.Settings) *HTTPConfig {
 		HealthPath: s.HealthPath,
 		ListenPort: s.DefaultPort,
 		UseXFH:     s.XForwardedHost,
-		Timings:    DefaultConfig.Timings,
+		Timings:    DefaultHTTP.Timings,
 	}
 }
 
