@@ -30,7 +30,7 @@ func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) 
 		return err
 	}
 	envConf := &runtime.HTTPConfig{}
-	env.Decode(&envConf)
+	env.Decode(envConf)
 	httpConf = httpConf.Merge(envConf)
 
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
