@@ -284,7 +284,8 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | `response_headers` | same as `request_headers` for the client response |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
-The `access_control` attribute let you set different `access_control` types for parts of your gateway. It is a list element that holds labels of predefined `access_control` types. You can set `access_control` for a certain block by putting `access_control = ["foo"]` in the corresponding block (where `foo` is an `access_control` type predefined in the `definitions` block). `access_control` is allowed in all blocks of Couper's configuration file. &#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
+The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
+&#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
 
 Compare the `access_control` [example](#access_control_conf_ex) for details. 
 
@@ -308,7 +309,7 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
-|context|<ul><li>`server` block</li><li>`files` block</li><li>`spa` block</li><li>`api` block</li><li>`endpoint` block</li></ul>|
+|context|`definitions` block|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
 |`cookie = "AccessToken"`| read `AccessToken` key to gain the token value from a cookie |
 |`header = "Authorization`|&#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used |
