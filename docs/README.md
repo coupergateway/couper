@@ -295,7 +295,7 @@ If both `user`/`password` and `htpasswd_file` are configured, the incoming crede
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
-|context|`api` block|
+|context|`definitions` block|
 |*label*|<ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul>|
 |`user`| The user name |
 |`password`| The corresponding password |
