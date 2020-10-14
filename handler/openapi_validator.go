@@ -24,8 +24,13 @@ func NewOpenAPIValidatorFactory(openapi *config.OpenAPI) (*OpenAPIValidatorFacto
 	if err != nil {
 		return nil, err
 	}
+	router := openapi3filter.NewRouter()
+	err = router.AddSwaggerFromFile(dir + "/" + openapi.File)
+	if err != nil {
+		return nil, err
+	}
 	return &OpenAPIValidatorFactory{
-		router:                   openapi3filter.NewRouter().WithSwaggerFromFile(dir + "/" + openapi.File),
+		router:                   router,
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,
 	}, nil
