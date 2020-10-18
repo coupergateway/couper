@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/logging"
+	uuid "github.com/satori/go.uuid"
 )
 
 // HTTPServer represents a configured HTTP server.
@@ -54,6 +55,11 @@ func New(cmdCtx context.Context, log *logrus.Entry, conf *runtime.HTTPConfig, p 
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
+	}
+	if conf != nil && conf.RequestIDFormat == "uuid4" {
+		uidFn = func() string {
+			return uuid.NewV4().String()
+		}
 	}
 
 	logConf := *logging.DefaultConfig

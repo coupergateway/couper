@@ -25,11 +25,12 @@ type ServerMux struct {
 
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {
-	HealthPath string `env:"health_path"`
-	ListenPort int    `env:"default_port"`
-	LogFormat  string `env:"log_format"`
-	UseXFH     bool   `env:"xfh"`
-	Timings    HTTPTimings
+	HealthPath      string `env:"health_path"`
+	ListenPort      int    `env:"default_port"`
+	LogFormat       string `env:"log_format"`
+	UseXFH          bool   `env:"xfh"`
+	RequestIDFormat string `env:"request_id_format"`
+	Timings         HTTPTimings
 }
 
 type HTTPTimings struct {
@@ -54,7 +55,8 @@ var DefaultConfig = &HTTPConfig{
 		ShutdownDelay:     time.Second * 5,
 		ShutdownTimeout:   time.Second * 5,
 	},
-	ListenPort: 8080,
+	ListenPort:      8080,
+	RequestIDFormat: "common",
 }
 
 // NewHTTPConfig creates the server config which could be overridden in order:
@@ -71,6 +73,7 @@ func NewHTTPConfig(c *config.Gateway, args command.Args) (*HTTPConfig, error) {
 	set.StringVar(&conf.LogFormat, "log-format", conf.LogFormat, "-log-format json")
 	set.IntVar(&conf.ListenPort, "p", conf.ListenPort, "-p 8080")
 	set.BoolVar(&conf.UseXFH, "xfh", conf.UseXFH, "-xfh")
+	set.StringVar(&conf.RequestIDFormat, "request-id-format", "common", "-request-id-format uuid4")
 	if err := set.Parse(args.Filter(set)); err != nil {
 		return nil, err
 	}
