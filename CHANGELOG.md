@@ -1,3 +1,23 @@
+# Couper Changelog
+
+<a name="v0.2"></a>
+## [v0.2](https://github.com/avenga/couper/compare/v0.1...v0.2)
+
+> 2020-10-08
+
+### Added
+
+* Add health check ([#29](https://github.com/avenga/couper/issues/29))
+* Add Basic-Auth support ([#19](https://github.com/avenga/couper/issues/19))
+* Add post (form) parsing for use in config variables ([#26](https://github.com/avenga/couper/issues/26))
+* Add more documentation
+
+### Fix
+
+* Fix wildcard path join with trailing slash and respect req path ([#45](https://github.com/avenga/couper/pull/45))
+* Fix env var mapping ([#35](https://github.com/avenga/couper/pull/35))
+* Fix JWT HMAC keys ([#32](https://github.com/avenga/couper/pull/32))
+
 
 <a name="0.1"></a>
 ## 0.1
