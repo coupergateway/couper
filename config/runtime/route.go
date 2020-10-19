@@ -51,6 +51,11 @@ func NewRoute(pattern string, handler http.Handler) (*Route, error) {
 		matchPattern = matchPattern + "$"
 	}
 
+	pathParams := strings.Split(pattern, "/{}")
+	if len(pathParams) > 1 {
+		// TODO: /{} => /[^/]+ & sortLen-=2
+	}
+
 	matchPattern = strings.ReplaceAll(matchPattern, wildcardSearch, wildcardReplacement)
 	matcher := regexp.MustCompile(matchPattern)
 	return &Route{

@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	e "errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -16,6 +17,7 @@ import (
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
@@ -152,11 +154,16 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.API.Endpoint {
-			conf.Server[idx].API.Endpoint[e].Server = server // assign parent
-			if endpoints[endpoint.Pattern] {
-				log.Fatal("Duplicate endpoint: ", endpoint.Pattern)
+			pattern, _, err := createPattern(utils.JoinPath(server.API.BasePath, endpoint.Pattern))
+			if err != nil {
+				log.Fatal(err)
 			}
-			endpoints[endpoint.Pattern] = true
+
+			conf.Server[idx].API.Endpoint[e].Server = server // assign parent
+			if endpoints[pattern] {
+				log.Fatal("Duplicate endpoint: ", pattern)
+			}
+			endpoints[pattern] = true
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedBackend backendDefinition) {
@@ -249,13 +256,8 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 			}
 
 			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
-		}
 
-		for _, endpoint := range server.API.Endpoint {
-			mux.API = mux.API.Add(
-				utils.JoinPath(server.API.BasePath, endpoint.Pattern),
-				entryHandler.api[endpoint],
-			)
+			mux.API = mux.API.Add(pattern, entryHandler.api[endpoint])
 		}
 
 		if err = configureHandlers(httpConf, server, mux, handlers); err != nil {
@@ -470,4 +472,40 @@ func getAbsPath(file string, log *logrus.Entry) string {
 	}
 
 	return path.Join(wd, file)
+}
+
+func createPattern(path string) (string, []*request.PathParam, error) {
+	var params []*request.PathParam
+	var pattern string
+
+	if !strings.HasPrefix(path, "/") {
+		return "", nil, e.New(fmt.Sprintf("Invalid path %q given", path))
+	}
+
+	for i, part := range strings.Split(path, "/") {
+		sub := part
+
+		if strings.HasPrefix(part, "{") || strings.HasSuffix(part, "}") {
+			if !strings.HasPrefix(part, "{") || !strings.HasSuffix(part, "}") || part == "{}" {
+				return "", nil, e.New(fmt.Sprintf("Invalid path sequence %q given", part))
+			}
+
+			sub = "{}"
+
+			name := part[1 : len(part)-1]
+			//if !seetie.validKey.MatchString(name) {
+			//	return "", nil, e.New(fmt.Sprintf("Invalid path param name %q given", name))
+			//}
+
+			params = append(params, &request.PathParam{Name: name, Position: i})
+		}
+
+		if !strings.HasSuffix(pattern, "/") {
+			pattern += "/"
+		}
+
+		pattern += sub
+	}
+
+	return pattern, params, nil
 }

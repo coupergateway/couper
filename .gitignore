@@ -1,3 +1,6 @@
 /*.coverage
 
 .vscode/settings.json
+
+#binary
+/couper

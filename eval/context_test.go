@@ -120,7 +120,7 @@ func TestNewHTTPContext(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, bereq, beresp)
+			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, bereq, beresp, nil)
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value

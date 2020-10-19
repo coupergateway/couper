@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -49,7 +50,7 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response, pathParams []*request.PathParam) *hcl.EvalContext {
 	if req == nil {
 		return baseCtx
 	}
@@ -66,23 +67,34 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		id = uid
 	}
 
+	pathFields := make(map[string]cty.Value)
+	if len(pathParams) > 0 {
+		pathParts := strings.Split(req.URL.Path, "/")
+
+		for _, param := range pathParams {
+			pathFields[param.Name] = cty.StringVal(pathParts[param.Position])
+		}
+	}
+
 	evalCtx.Variables[ClientRequest] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
-		ID:       cty.StringVal(id),
-		Method:   cty.StringVal(req.Method),
-		Path:     cty.StringVal(req.URL.Path),
-		URL:      cty.StringVal(newRawURL(req.URL).String()),
-		Query:    seetie.ValuesMapToValue(req.URL.Query()),
-		Post:     seetie.ValuesMapToValue(parseForm(req).PostForm),
-		JsonBody: seetie.MapToValue(parseReqJSON(req)),
+		ID:        cty.StringVal(id),
+		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
+		Method:    cty.StringVal(req.Method),
+		Path:      cty.StringVal(req.URL.Path),
+		PathParam: cty.ObjectVal(pathFields),
+		Post:      seetie.ValuesMapToValue(parseForm(req).PostForm),
+		Query:     seetie.ValuesMapToValue(req.URL.Query()),
+		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
 		evalCtx.Variables[BackendRequest] = cty.ObjectVal(ContextMap{
-			Method: cty.StringVal(bereq.Method),
-			Path:   cty.StringVal(bereq.URL.Path),
-			URL:    cty.StringVal(newRawURL(bereq.URL).String()),
-			Query:  seetie.ValuesMapToValue(bereq.URL.Query()),
-			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+			Method:    cty.StringVal(bereq.Method),
+			Path:      cty.StringVal(bereq.URL.Path),
+			PathParam: cty.ObjectVal(pathFields),
+			Post:      seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+			Query:     seetie.ValuesMapToValue(bereq.URL.Query()),
+			URL:       cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
 
 		var jsonBody map[string]interface{}
