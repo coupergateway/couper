@@ -73,7 +73,7 @@ func NewHTTPConfig(c *config.Gateway, args command.Args) (*HTTPConfig, error) {
 	set.StringVar(&conf.LogFormat, "log-format", conf.LogFormat, "-log-format json")
 	set.IntVar(&conf.ListenPort, "p", conf.ListenPort, "-p 8080")
 	set.BoolVar(&conf.UseXFH, "xfh", conf.UseXFH, "-xfh")
-	set.StringVar(&conf.RequestIDFormat, "request-id-format", "common", "-request-id-format uuid4")
+	set.StringVar(&conf.RequestIDFormat, "request-id-format", conf.RequestIDFormat, "-request-id-format uuid4")
 	if err := set.Parse(args.Filter(set)); err != nil {
 		return nil, err
 	}
@@ -85,11 +85,12 @@ func NewHTTPConfig(c *config.Gateway, args command.Args) (*HTTPConfig, error) {
 
 func newHTTPConfigFrom(s *config.Settings) *HTTPConfig {
 	return &HTTPConfig{
-		HealthPath: s.HealthPath,
-		ListenPort: s.DefaultPort,
-		LogFormat:  s.LogFormat,
-		UseXFH:     s.XForwardedHost,
-		Timings:    DefaultConfig.Timings,
+		HealthPath:      s.HealthPath,
+		ListenPort:      s.DefaultPort,
+		LogFormat:       s.LogFormat,
+		UseXFH:          s.XForwardedHost,
+		RequestIDFormat: s.RequestIDFormat,
+		Timings:         DefaultConfig.Timings,
 	}
 }
 
@@ -108,6 +109,10 @@ func (c *HTTPConfig) Merge(o *HTTPConfig) *HTTPConfig {
 
 	if o.UseXFH != c.UseXFH {
 		c.UseXFH = o.UseXFH
+	}
+
+	if o.RequestIDFormat != "" {
+		c.RequestIDFormat = o.RequestIDFormat
 	}
 
 	return c
