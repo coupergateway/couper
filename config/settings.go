@@ -5,5 +5,5 @@ type Settings struct {
 	HealthPath      string `hcl:"health_path,optional"`
 	LogFormat       string `hcl:"log_format,optional"`
 	XForwardedHost  bool   `hcl:"xfh,optional"`
-  RequestIDFormat string `hcl:"request_id_format,optional"`
+	RequestIDFormat string `hcl:"request_id_format,optional"`
 }

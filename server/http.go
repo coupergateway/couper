@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/xid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/env"
@@ -16,7 +17,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/logging"
-	uuid "github.com/satori/go.uuid"
 )
 
 // HTTPServer represents a configured HTTP server.
