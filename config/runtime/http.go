@@ -25,8 +25,8 @@ type HTTPConfig struct {
 	HealthPath      string `env:"health_path"`
 	ListenPort      int    `env:"default_port"`
 	UseXFH          bool   `env:"xfh"`
-  RequestIDFormat string `env:"request_id_format"`
-  Timings         HTTPTimings
+	RequestIDFormat string `env:"request_id_format"`
+	Timings         HTTPTimings
 }
 
 type HTTPTimings struct {
@@ -68,7 +68,7 @@ func NewHTTPConfig(c *config.Gateway) *HTTPConfig {
 	if c != nil && c.Settings != nil {
 		conf.Merge(newHTTPConfigFrom(c.Settings))
 	}
-  
+
 	return conf
 }
 
@@ -77,7 +77,7 @@ func newHTTPConfigFrom(s *config.Settings) *HTTPConfig {
 		HealthPath:      s.HealthPath,
 		ListenPort:      s.DefaultPort,
 		UseXFH:          s.XForwardedHost,
-    RequestIDFormat: s.RequestIDFormat,
+		RequestIDFormat: s.RequestIDFormat,
 		Timings:         DefaultHTTP.Timings,
 	}
 }
