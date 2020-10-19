@@ -26,6 +26,7 @@ func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) 
 	set.StringVar(&httpConf.HealthPath, "health-path", httpConf.HealthPath, "-health-path /healthz")
 	set.IntVar(&httpConf.ListenPort, "p", httpConf.ListenPort, "-p 8080")
 	set.BoolVar(&httpConf.UseXFH, "xfh", httpConf.UseXFH, "-xfh")
+	set.StringVar(&httpConf.RequestIDFormat, "request-id-format", httpConf.RequestIDFormat, "-request-id-format uuid4")
 	if err := set.Parse(args.Filter(set)); err != nil {
 		return err
 	}

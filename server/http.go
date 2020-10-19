@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/xid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/env"
@@ -54,6 +55,11 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
+	}
+	if conf != nil && conf.RequestIDFormat == "uuid4" {
+		uidFn = func() string {
+			return uuid.NewV4().String()
+		}
 	}
 
 	logConf := *logging.DefaultConfig

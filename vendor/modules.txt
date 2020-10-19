@@ -29,6 +29,9 @@ github.com/mitchellh/go-wordwrap
 # github.com/rs/xid v1.2.1
 ## explicit
 github.com/rs/xid
+# github.com/satori/go.uuid v1.2.0
+## explicit
+github.com/satori/go.uuid
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus

@@ -22,10 +22,11 @@ type ServerMux struct {
 
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {
-	HealthPath string `env:"health_path"`
-	ListenPort int    `env:"default_port"`
-	UseXFH     bool   `env:"xfh"`
-	Timings    HTTPTimings
+	HealthPath      string `env:"health_path"`
+	ListenPort      int    `env:"default_port"`
+	UseXFH          bool   `env:"xfh"`
+	RequestIDFormat string `env:"request_id_format"`
+	Timings         HTTPTimings
 }
 
 type HTTPTimings struct {
@@ -55,7 +56,8 @@ var DefaultHTTP = &HTTPConfig{
 		ShutdownDelay:     time.Second * 5,
 		ShutdownTimeout:   time.Second * 5,
 	},
-	ListenPort: 8080,
+	ListenPort:      8080,
+	RequestIDFormat: "common",
 }
 
 // NewHTTPConfig creates the server config which could be overridden in order:
@@ -72,10 +74,11 @@ func NewHTTPConfig(c *config.Gateway) *HTTPConfig {
 
 func newHTTPConfigFrom(s *config.Settings) *HTTPConfig {
 	return &HTTPConfig{
-		HealthPath: s.HealthPath,
-		ListenPort: s.DefaultPort,
-		UseXFH:     s.XForwardedHost,
-		Timings:    DefaultHTTP.Timings,
+		HealthPath:      s.HealthPath,
+		ListenPort:      s.DefaultPort,
+		UseXFH:          s.XForwardedHost,
+		RequestIDFormat: s.RequestIDFormat,
+		Timings:         DefaultHTTP.Timings,
 	}
 }
 
@@ -94,6 +97,10 @@ func (c *HTTPConfig) Merge(o *HTTPConfig) *HTTPConfig {
 
 	if o.UseXFH != c.UseXFH {
 		c.UseXFH = o.UseXFH
+	}
+
+	if o.RequestIDFormat != "" {
+		c.RequestIDFormat = o.RequestIDFormat
 	}
 
 	return c
