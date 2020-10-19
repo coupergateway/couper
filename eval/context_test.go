@@ -73,6 +73,10 @@ func TestNewHTTPContext(t *testing.T) {
 			method = req.method
 			title = req.json_body.obj_slice
 		`, expMap{"title": "", "method": http.MethodPatch}},
+		{"Variables / GET /w json body", http.MethodGet, header{"Content-Type": "application/json"}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.obj_slice
+		`, expMap{"title": "", "method": http.MethodGet}},
 	}
 
 	log, _ := test.NewNullLogger()
