@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -32,50 +33,51 @@ func TestNewHTTPContext(t *testing.T) {
 		}
 	}
 
-	type expMap map[string]string
-	type header map[string]string
-
 	baseCtx := eval.NewENVContext(nil)
 
 	tests := []struct {
 		name      string
 		reqMethod string
-		reqHeader header
+		reqHeader http.Header
 		body      io.Reader
 		query     string
 		baseCtx   *hcl.EvalContext
 		hcl       string
-		want      expMap
+		want      http.Header
 	}{
-		{"Variables / POST", http.MethodPost, header{"Content-Type": "application/x-www-form-urlencoded"}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
+		{"Variables / POST", http.MethodPost, http.Header{"Content-Type": {"application/x-www-form-urlencoded"}}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
 					post = req.post.user[0]
 					method = req.method
-		`, expMap{"post": "hans", "method": http.MethodPost}},
-		{"Variables / Query", http.MethodGet, header{"User-Agent": "test/v1"}, nil, "?name=peter", baseCtx, `
+		`, http.Header{"post": {"hans"}, "method": {http.MethodPost}}},
+		{"Variables / Query", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "?name=peter", baseCtx, `
 					query = req.query.name[0]
 					method = req.method
 					ua = req.headers.user-agent
-				`, expMap{"query": "peter", "method": http.MethodGet, "ua": "test/v1"}},
-		{"Variables / Headers", http.MethodGet, header{"User-Agent": "test/v1"}, nil, "", baseCtx, `
+				`, http.Header{"query": {"peter"}, "method": {http.MethodGet}, "ua": {"test/v1"}}},
+		{"Variables / Headers", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "", baseCtx, `
 					ua = req.headers.user-agent
 					method = req.method
-				`, expMap{"ua": "test/v1", "method": http.MethodGet}},
-		{"Variables / PATCH /w json body", http.MethodPatch, header{"Content-Type": "application/json;charset=utf-8"}, bytes.NewBufferString(`{
+				`, http.Header{"ua": {"test/v1"}, "method": {http.MethodGet}}},
+		{"Variables / PATCH /w json body", http.MethodPatch, http.Header{"Content-Type": {"application/json;charset=utf-8"}}, bytes.NewBufferString(`{
 			"obj_slice": [
 				{"no_title": 123},
 				{"title": "success"}
 			]}`), "", baseCtx, `
 			method = req.method
 			title = req.json_body.obj_slice[1].title
-		`, expMap{"title": "success", "method": http.MethodPatch}},
+		`, http.Header{"title": {"success"}, "method": {http.MethodPatch}}},
 		{"Variables / PATCH /w json body /wo CT header", http.MethodPatch, nil, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
 			method = req.method
 			title = req.json_body.obj_slice
-		`, expMap{"title": "", "method": http.MethodPatch}},
-		{"Variables / GET /w json body", http.MethodGet, header{"Content-Type": "application/json"}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
+		`, http.Header{"method": {http.MethodPatch}}},
+		{"Variables / GET /w json body", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
 			method = req.method
-			title = req.json_body.obj_slice
-		`, expMap{"title": "", "method": http.MethodGet}},
+			title = req.json_body.slice
+		`, http.Header{"title": {"1", "2", "3"}, "method": {http.MethodGet}}},
+		{"Variables / GET /w json body & missing attribute", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.slice.foo
+		`, http.Header{"method": {http.MethodGet}}},
 	}
 
 	log, _ := test.NewNullLogger()
@@ -93,7 +95,7 @@ func TestNewHTTPContext(t *testing.T) {
 			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
 
 			for k, v := range tt.reqHeader {
-				req.Header.Set(k, v)
+				req.Header[k] = v
 			}
 
 			bereq := req.Clone(context.Background())
@@ -118,7 +120,7 @@ func TestNewHTTPContext(t *testing.T) {
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			err = hclsimple.Decode("test.hcl", []byte(tt.hcl), ctx, &resultMap)
+			err = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
 			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
 			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
 				t.Fatal(err)
@@ -130,18 +132,9 @@ func TestNewHTTPContext(t *testing.T) {
 					t.Errorf("Expected value for %q, got nothing", k)
 				}
 
-				cvt := cv.Type()
-
-				if cvt != cty.String && v == "" { // expected nothing, go ahead
-					continue
-				}
-
-				if cvt != cty.String {
-					t.Fatalf("Expected string value for %q, got %v", k, cvt)
-				}
-
-				if v != cv.AsString() {
-					t.Errorf("%q want: %v, got: %#v", k, v, cv)
+				result := seetie.ValueToStringSlice(cv)
+				if !reflect.DeepEqual(v, result) {
+					t.Errorf("Expected %q, got: %v", v, cv)
 				}
 			}
 		})

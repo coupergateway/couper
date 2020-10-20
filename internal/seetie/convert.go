@@ -226,7 +226,8 @@ func isTuple(v cty.Value) bool {
 
 func SetSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
 	for _, d := range diags {
-		if d.Summary == "Missing map element" {
+		switch d.Summary {
+		case "Missing map element", "Unsupported attribute":
 			d.Severity = hcl.DiagWarning
 		}
 	}
