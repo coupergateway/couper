@@ -65,6 +65,46 @@ type CORSOptions struct {
 	MaxAge           string
 }
 
+func (po *ProxyOptions) Merge(o *ProxyOptions) *ProxyOptions {
+	if o.ConnectTimeout > 0 {
+		po.ConnectTimeout = o.ConnectTimeout
+	}
+
+	if o.Timeout > 0 {
+		po.Timeout = o.ConnectTimeout
+	}
+
+	if o.TTFBTimeout > 0 {
+		po.TTFBTimeout = o.TTFBTimeout
+	}
+
+	if len(o.Context) > 0 {
+		po.Context = append(po.Context, o.Context...)
+	}
+
+	if o.CORS != nil {
+		po.CORS = o.CORS
+	}
+
+	if o.Hostname != "" {
+		po.Hostname = o.Hostname
+	}
+
+	if o.Origin != "" {
+		po.Origin = o.Origin
+	}
+
+	if o.Path != "" {
+		po.Path = o.Path
+	}
+
+	if o.RequestBodyLimit != po.RequestBodyLimit {
+		po.RequestBodyLimit = o.RequestBodyLimit
+	}
+
+	return po
+}
+
 func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	if cors == nil {
 		return nil, nil
@@ -177,7 +217,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
 
-	err := p.director(outreq)
+	err := p.Director(outreq)
 	if err != nil {
 		// TODO: use error template from parent endpoint>api>server
 		couperErr.DefaultJSON.ServeError(err).ServeHTTP(rw, req)
@@ -224,7 +264,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
 	if res.StatusCode == http.StatusSwitchingProtocols {
-		p.setRoundtripContext(req, res)
+		p.SetRoundtripContext(req, res)
 		p.handleUpgradeResponse(rw, outreq, res)
 		return
 	}
@@ -235,7 +275,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Header.Del(h)
 	}
 
-	p.setRoundtripContext(req, res)
+	p.SetRoundtripContext(req, res)
 
 	copyHeader(rw.Header(), res.Header)
 
@@ -283,8 +323,8 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// director request modification before roundtrip
-func (p *Proxy) director(req *http.Request) error {
+// Director request modification before roundtrip
+func (p *Proxy) Director(req *http.Request) error {
 	req.URL.Host = p.originURL.Host
 	req.URL.Scheme = p.originURL.Scheme
 	req.Host = p.originURL.Host
@@ -308,12 +348,12 @@ func (p *Proxy) director(req *http.Request) error {
 		return err
 	}
 
-	p.setRoundtripContext(req, nil)
+	p.SetRoundtripContext(req, nil)
 
 	return nil
 }
 
-func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
+func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
 		attrCtx   = attrReqHeaders
 		bereq     *http.Request
@@ -350,29 +390,33 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	}
 }
 
+// SetGetBody determines if we have to buffer a request body for further processing.
+// First of all the user has a related reference within a config.Backend options declaration.
+// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
 func (p *Proxy) SetGetBody(req *http.Request) error {
+	if req.Method == http.MethodTrace {
+		return nil
+	}
+
 	if (p.bufferOption & eval.BufferRequest) != eval.BufferRequest {
 		return nil
 	}
 
-	switch req.Method {
-	case http.MethodPost, http.MethodPut, http.MethodPatch:
-		if req.Body != nil && req.GetBody == nil {
-			buf := &bytes.Buffer{}
-			lr := io.LimitReader(req.Body, p.options.RequestBodyLimit+1)
-			n, err := buf.ReadFrom(lr)
-			if err != nil {
-				return err
-			}
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		buf := &bytes.Buffer{}
+		lr := io.LimitReader(req.Body, p.options.RequestBodyLimit+1)
+		n, err := buf.ReadFrom(lr)
+		if err != nil {
+			return err
+		}
 
-			if n > p.options.RequestBodyLimit {
-				return couperErr.APIReqBodySizeExceeded
-			}
+		if n > p.options.RequestBodyLimit {
+			return couperErr.APIReqBodySizeExceeded
+		}
 
-			bodyBytes := buf.Bytes()
-			req.GetBody = func() (io.ReadCloser, error) {
-				return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
-			}
+		bodyBytes := buf.Bytes()
+		req.GetBody = func() (io.ReadCloser, error) {
+			return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
 		}
 	}
 
@@ -387,7 +431,7 @@ func isCorsPreflightRequest(req *http.Request) bool {
 	return isCorsRequest(req) && req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
 }
 
-func (p *Proxy) isCredentialed(headers http.Header) bool {
+func IsCredentialed(headers http.Header) bool {
 	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
 }
 
@@ -400,7 +444,7 @@ func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		return
 	}
 	// see https://fetch.spec.whatwg.org/#http-responses
-	if p.options.CORS.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
+	if p.options.CORS.AllowsOrigin("*") && !IsCredentialed(req.Header) {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)

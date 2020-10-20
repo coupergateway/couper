@@ -114,7 +114,7 @@ func MapToValue(m map[string]interface{}) cty.Value {
 	}
 
 	if len(ctyMap) == 0 {
-		return cty.NilVal
+		return cty.MapValEmpty(cty.NilType) // prevent attribute access on nil values
 	}
 
 	return cty.ObjectVal(ctyMap)

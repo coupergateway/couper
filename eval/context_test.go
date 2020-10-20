@@ -64,8 +64,7 @@ func TestNewHTTPContext(t *testing.T) {
 			"obj_slice": [
 				{"no_title": 123},
 				{"title": "success"}
-			]
-}`), "", baseCtx, `
+			]}`), "", baseCtx, `
 			method = req.method
 			title = req.json_body.obj_slice[1].title
 		`, expMap{"title": "success", "method": http.MethodPatch}},
