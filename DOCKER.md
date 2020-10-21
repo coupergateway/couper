@@ -6,8 +6,8 @@ _For additional information, tutorials and documentation please visit the [coupe
 
 ## Usage
 
-Couper requires a configuration file which have to be provided on start.
-See our [documentation](https://github.com/avenga/couper/tree/master/docs) how to configure _couper_.
+Couper requires a [configuration file](https://github.com/avenga/couper/tree/master/docs#conf_file) which have to be provided on start.
+See our [documentation](https://github.com/avenga/couper/tree/master/docs) how to configure _couper_. 
 
 `docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper`
 
@@ -20,6 +20,7 @@ See our [documentation](https://github.com/avenga/couper/tree/master/docs) how t
 | COUPER_DEFAULT_PORT   | `8080`    | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
 | COUPER_XFH    | `false`   | Global configurations which uses the `Forwarded-Host` header instead of the request host.   |
 | COUPER_HEALTH_PATH    | `/healthz`   | Path for health-check requests for all servers and ports.   |
+| COUPER_REQUEST_ID_FORMAT    | `common`   | If set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields.   |
 | COUPER_ACCESS_LOG_PARENT_FIELD | `""`  | An option for `json` log format to add all log fields as child properties. |
 | COUPER_ACCESS_LOG_TYPE_VALUE | `couper_access`  | Value for the log field `type`. |
 | COUPER_ACCESS_LOG_REQUEST_HEADERS | `User-Agent, Accept, Referer`  | A comma separated list of header names whose values should be logged. |

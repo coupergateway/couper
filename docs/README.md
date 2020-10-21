@@ -333,6 +333,7 @@ The `settings` block let you configure the more basic and global behavior of you
 |`default_port`| port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list | `8080` |
 |`log_format`| switch for tab/field based colored view or json log lines | `common` |
 |`xfh`| option to use the `X-Forwarded-Host` header as the request host | `false` |
+|`request_id_format`| if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
 
 ### Health-Check ###
 The health check will answer a status `200 OK` on every port with the configured `health_path`.
