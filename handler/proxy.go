@@ -50,59 +50,10 @@ type Proxy struct {
 	upstreamLog  *logging.AccessLog
 }
 
-type ProxyOptions struct {
-	ConnectTimeout, Timeout, TTFBTimeout time.Duration
-	Context                              []hcl.Body
-	BackendName                          string
-	Hostname, Origin, Path               string
-	CORS                                 *CORSOptions
-	RequestBodyLimit                     int64
-}
-
 type CORSOptions struct {
 	AllowedOrigins   []string
 	AllowCredentials bool
 	MaxAge           string
-}
-
-func (po *ProxyOptions) Merge(o *ProxyOptions) *ProxyOptions {
-	if o.ConnectTimeout > 0 {
-		po.ConnectTimeout = o.ConnectTimeout
-	}
-
-	if o.Timeout > 0 {
-		po.Timeout = o.ConnectTimeout
-	}
-
-	if o.TTFBTimeout > 0 {
-		po.TTFBTimeout = o.TTFBTimeout
-	}
-
-	if len(o.Context) > 0 {
-		po.Context = append(po.Context, o.Context...)
-	}
-
-	if o.CORS != nil {
-		po.CORS = o.CORS
-	}
-
-	if o.Hostname != "" {
-		po.Hostname = o.Hostname
-	}
-
-	if o.Origin != "" {
-		po.Origin = o.Origin
-	}
-
-	if o.Path != "" {
-		po.Path = o.Path
-	}
-
-	if o.RequestBodyLimit != po.RequestBodyLimit {
-		po.RequestBodyLimit = o.RequestBodyLimit
-	}
-
-	return po
 }
 
 func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
