@@ -29,6 +29,7 @@ type HTTPServer struct {
 	listener    net.Listener
 	log         logrus.FieldLogger
 	muxes       runtime.HostHandlers
+	mux         *Mux
 	shutdownCh  chan struct{}
 	srv         *http.Server
 	uidFn       func() string
@@ -67,6 +68,20 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 
 	shutdownCh := make(chan struct{})
 
+	var mux *Mux
+	for _, v := range hosts {
+		// TODO: Pass as config
+		mux = NewMux(v.Mux.APIPath, v.Mux.FS[0].GetHandler(), v.Mux.SPA[0].GetHandler())
+		for _, endpoint := range v.Mux.API {
+			h := endpoint.GetHandler()
+			path := endpoint.GetMatcher().String()
+			// TODO: wildcard
+			mux.MustAddRoute(path[1:len(path)-1], h)
+		}
+		break
+	}
+	mux.MustAddRoute(conf.HealthPath, handler.NewHealthCheck(conf.HealthPath, shutdownCh))
+
 	httpSrv := &HTTPServer{
 		accessLog:   logging.NewAccessLog(&logConf, log),
 		commandCtx:  cmdCtx,
@@ -75,6 +90,7 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 		healthCheck: handler.NewHealthCheck(conf.HealthPath, shutdownCh),
 		log:         log,
 		muxes:       hosts,
+		mux:         mux,
 		shutdownCh:  shutdownCh,
 		uidFn:       uidFn,
 	}
@@ -159,17 +175,15 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	ctx := context.WithValue(req.Context(), request.UID, uid)
 	*req = *req.WithContext(ctx)
 
-	if s.healthCheck.Match(req) {
-		s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, s.healthCheck)
-		return
-	}
+	writer := NewHeaderWriter(rw)
 
-	h := s.getHandler(req)
+	h := s.mux.FindHandler(req)
+	//h := s.getHandler(req)
 	if h == nil {
 		h = errors.DefaultHTML.ServeError(errors.Configuration)
 	}
 
-	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)
+	s.accessLog.ServeHTTP(writer, req, h)
 }
 
 func (s *HTTPServer) getHandler(req *http.Request) http.Handler {

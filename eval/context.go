@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -50,7 +49,7 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response, pathParams []*request.PathParam) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
 	if req == nil {
 		return baseCtx
 	}
@@ -67,13 +66,9 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		id = uid
 	}
 
-	pathFields := make(map[string]cty.Value)
-	if len(pathParams) > 0 {
-		pathParts := strings.Split(req.URL.Path, "/")
-
-		for _, param := range pathParams {
-			pathFields[param.Name] = cty.StringVal(pathParts[param.Position])
-		}
+	var pathParams request.PathParameter
+	if params, ok := req.Context().Value(request.PathParams).(request.PathParameter); ok {
+		pathParams = params
 	}
 
 	evalCtx.Variables[ClientRequest] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
@@ -81,7 +76,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
-		PathParam: cty.ObjectVal(pathFields),
+		PathParam: seetie.MapToValue(pathParams),
 		Post:      seetie.ValuesMapToValue(parseForm(req).PostForm),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
@@ -91,7 +86,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		evalCtx.Variables[BackendRequest] = cty.ObjectVal(ContextMap{
 			Method:    cty.StringVal(bereq.Method),
 			Path:      cty.StringVal(bereq.URL.Path),
-			PathParam: cty.ObjectVal(pathFields),
+			PathParam: seetie.MapToValue(pathParams),
 			Post:      seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 			Query:     seetie.ValuesMapToValue(bereq.URL.Query()),
 			URL:       cty.StringVal(newRawURL(bereq.URL).String()),

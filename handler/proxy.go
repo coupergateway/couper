@@ -319,7 +319,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = req.Header
 	}
 
-	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp, nil)
+	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
 	if attrCtx == attrReqHeaders {

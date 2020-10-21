@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	e "errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -154,7 +153,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for e, endpoint := range server.API.Endpoint {
-			pattern, _, err := createPattern(utils.JoinPath(server.API.BasePath, endpoint.Pattern))
+			pattern := utils.JoinPath(server.API.BasePath, endpoint.Pattern)
 			if err != nil {
 				log.Fatal(err)
 			}
