@@ -74,9 +74,7 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 		mux = NewMux(v.Mux.APIPath, v.Mux.FS[0].GetHandler(), v.Mux.SPA[0].GetHandler())
 		for _, endpoint := range v.Mux.API {
 			h := endpoint.GetHandler()
-			path := endpoint.GetMatcher().String()
-			// TODO: wildcard
-			mux.MustAddRoute(path[1:len(path)-1], h)
+			mux.MustAddRoute(endpoint.Name(), h)
 		}
 		break
 	}

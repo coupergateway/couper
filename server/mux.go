@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -44,17 +45,29 @@ var allowedMethods = []string{
 }
 
 func (m *Mux) MustAddRoute(path string, handler http.Handler) *Mux {
+	const wildcardReplacement = "/{_couper_wildcardMatch*}"
+	const wildcardSearch = "/**"
+
 	// TODO: handle method option per endpoint
 	// TODO: ensure uppercase method string if passed as argument
 	for _, method := range allowedMethods {
-		m.root.MustAdd(method+" "+path, &openapi3filter.Route{
+		pathOptions := &pathpattern.Options{}
+
+		if strings.HasSuffix(path, "/**") {
+			pathOptions.SupportRegExp = true
+			path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
+		}
+
+		node, err := m.root.CreateNode(method+" "+path, pathOptions)
+		if err != nil {
+			panic(fmt.Errorf("create path node failed: %s %q: %v", method, path, err))
+		}
+
+		node.Value = &openapi3filter.Route{
 			Method:  method,
 			Path:    path,
 			Handler: handler,
-		}, &pathpattern.Options{
-			SupportRegExp:   false,
-			SupportWildcard: false,
-		})
+		}
 	}
 	return m
 }
@@ -105,6 +118,13 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	}
 
 	ctx := req.Context()
+
+	const wcm = "_couper_wildcardMatch"
+	if wildcardMatch, ok := pathParams[wcm]; ok {
+		ctx = context.WithValue(ctx, request.Wildcard, wildcardMatch)
+		delete(pathParams, wcm)
+	}
+
 	ctx = context.WithValue(ctx, request.PathParams, pathParams)
 	*req = *req.Clone(ctx)
 
