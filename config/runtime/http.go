@@ -54,7 +54,7 @@ var DefaultHTTP = &HTTPConfig{
 		ShutdownDelay:     time.Second * 5,
 		ShutdownTimeout:   time.Second * 5,
 	},
-	ListenPort:      8080,
+	ListenPort:      config.DefaultListenPort,
 	RequestIDFormat: "common",
 }
 

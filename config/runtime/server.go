@@ -39,6 +39,12 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		log.Fatal("Missing server definitions")
 	}
 
+	// (arg && env) > conf
+	defaultPort := conf.Settings.DefaultPort
+	if httpConf.ListenPort != defaultPort {
+		defaultPort = httpConf.ListenPort
+	}
+
 	type backendDefinition struct {
 		conf    *config.Backend
 		handler http.Handler
@@ -91,7 +97,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				log.Fatal(err)
 			}
 			for _, spaPath := range srvConf.Spa.Paths {
-				for _, p := range getPathsFromHosts(srvConf.Hosts, spaPath) {
+				for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts, spaPath) {
 					muxOptions.SPARoutes[p] = spaHandler
 				}
 			}
@@ -110,7 +116,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		}
 
 		if srvConf.API == nil {
-			if err = configureHandlers(httpConf, srvConf, muxOptions, server); err != nil {
+			if err = configureHandlers(defaultPort, srvConf, muxOptions, server); err != nil {
 				log.Fatal(err)
 			}
 			continue
@@ -221,29 +227,31 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
 
-			for _, hostPath := range getPathsFromHosts(srvConf.Hosts, pattern) {
+			for _, hostPath := range getPathsFromHosts(defaultPort, srvConf.Hosts, pattern) {
 				muxOptions.EndpointRoutes[hostPath] = api[endpoint]
 			}
 		}
 
-		if err = configureHandlers(httpConf, srvConf, muxOptions, server); err != nil {
+		if err = configureHandlers(defaultPort, srvConf, muxOptions, server); err != nil {
 			log.Fatal(err)
 		}
 	}
 	return server
 }
 
-func configureHandlers(conf *HTTPConfig, server *config.Server, mux *MuxOptions, srvMux Server) error {
+func configureHandlers(configuredPort int, server *config.Server, mux *MuxOptions, srvMux Server) error {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
-		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
+		hosts = []string{fmt.Sprintf("*:%d", configuredPort)}
 	}
 
 	for _, hp := range hosts {
-		port := Port(strconv.Itoa(conf.ListenPort))
-		if _, p, err := net.SplitHostPort(hp); err != nil {
-			return err
-		} else if p != "" {
+		port := Port(strconv.Itoa(configuredPort))
+		if strings.IndexByte(hp, ':') > 0 {
+			_, p, err := net.SplitHostPort(hp)
+			if err != nil {
+				return err
+			}
 			port = Port(p)
 		}
 		srvMux[port] = &ServerMux{Server: server, Mux: mux}
@@ -383,12 +391,22 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	return proxy, beConf, err
 }
 
-func getPathsFromHosts(hosts []string, path string) []string {
+func getPathsFromHosts(defaultPort int, hosts []string, path string) []string {
 	var list []string
+	port := strconv.Itoa(defaultPort)
 	for _, host := range hosts {
 		if host != "" && host[0] == ':' {
 			continue
 		}
+
+		if strings.IndexByte(host, ':') < 0 {
+			host = host + ":" + port
+		}
+
+		if host != "" && host[0] == '*' {
+			host = ""
+		}
+
 		list = append(list, utils.JoinPath(pathpattern.PathFromHost(host, false), "/", path))
 	}
 	if len(list) == 0 {
