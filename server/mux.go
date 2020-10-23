@@ -89,7 +89,7 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 		pathOptions := &pathpattern.Options{}
 
 		if strings.HasSuffix(path, wildcardSearch) {
-			pathOptions.SupportRegExp = true
+			pathOptions.SupportWildcard = true
 			path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
 		}
 
