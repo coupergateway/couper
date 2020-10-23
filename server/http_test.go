@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -25,6 +24,8 @@ import (
 )
 
 func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
+	helper := test.New(t)
+
 	expectedAPIHost := "test.couper.io"
 	originBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Host != expectedAPIHost {
@@ -36,17 +37,14 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	defer originBackend.Close()
 
 	tpl, err := template.ParseFiles("testdata/file_serving/conf_test.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
+
 	confBytes := &bytes.Buffer{}
 	err = tpl.Execute(confBytes, map[string]string{
 		"origin":   "http://" + originBackend.Listener.Addr().String(),
 		"hostname": expectedAPIHost,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
 	// log.Out = os.Stdout
@@ -55,11 +53,10 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	defer cancel()
 
 	httpConf := runtime.NewHTTPConfig(nil)
+	httpConf.ListenPort = 0 // random
 
 	conf, err := config.LoadBytes(confBytes.Bytes())
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 
@@ -69,9 +66,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	}
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
 	gw := server.New(ctx, log.WithContext(ctx), httpConf, "test", port, ports[port].Mux)
@@ -84,7 +79,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		},
 	}}
 
-	for _, testCase := range []struct {
+	for i, testCase := range []struct {
 		path           string
 		expectedBody   []byte
 		expectedStatus int
@@ -99,26 +94,25 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
 	} {
 		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
-		if err != nil {
-			t.Fatal(err)
-		}
+		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("Expected status %d, got %d", testCase.expectedStatus, res.StatusCode)
+			t.Errorf("%.2d: expected status %d, got %d", i+1, testCase.expectedStatus, res.StatusCode)
 		}
 
-		result := &bytes.Buffer{}
-		_, err = io.Copy(result, res.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
-			t.Errorf("Expected body:\n%s\ngot:\n%s", string(testCase.expectedBody), result.String())
+		result, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+		helper.Must(res.Body.Close())
+
+		if !bytes.Contains(result, testCase.expectedBody) {
+			t.Errorf("%.2d: expected body:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
 		}
 	}
 }
 
 func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
+	helper := test.New(t)
+
 	expectedAPIHost := "test.couper.io"
 	originBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Host != expectedAPIHost {
@@ -131,40 +125,35 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	defer originBackend.Close()
 
 	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
-	os.Chdir("testdata/file_serving")
+	defer helper.Must(os.Chdir(cwd))
+
+	helper.Must(os.Chdir("testdata/file_serving"))
 
 	tpl, err := template.ParseFiles("conf_fileserving.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
+
 	confBytes := &bytes.Buffer{}
 	err = tpl.Execute(confBytes, map[string]string{
 		"origin":   "http://" + originBackend.Listener.Addr().String(),
 		"hostname": expectedAPIHost,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
-	// log.Out = os.Stdout
+	//log.Out = os.Stdout
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	httpConf := runtime.NewHTTPConfig(nil)
+	httpConf.ListenPort = 0 // random
 
 	conf, err := config.LoadBytes(confBytes.Bytes())
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	error404Content := []byte("<title>404 FilesRouteNotFound</title>")
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
@@ -184,7 +173,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range []struct {
+	for i, testCase := range []struct {
 		path           string
 		expectedBody   []byte
 		expectedStatus int
@@ -220,21 +209,18 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//{"/api", content500.Bytes(), 500},
 	} {
 		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
-		if err != nil {
-			t.Fatal(err)
-		}
+		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("Expected status for path %q %d, got %d", testCase.path, testCase.expectedStatus, res.StatusCode)
+			t.Fatalf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
 		}
 
-		result := &bytes.Buffer{}
-		_, err = io.Copy(result, res.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
-			t.Errorf("Expected body for path %q:\n%s\ngot:\n%s", testCase.path, string(testCase.expectedBody), result.String())
+		result, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+		helper.Must(res.Body.Close())
+
+		if !bytes.Contains(result, testCase.expectedBody) {
+			t.Errorf("%.2d: expected body for path %q:\n%s\ngot:\n%s", i+1, testCase.path, string(testCase.expectedBody), string(result))
 		}
 	}
 }

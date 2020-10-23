@@ -1,4 +1,5 @@
 server "fileserving-tests" {
+    hosts = ["example.com"]
     files {
         document_root = "./htdocs"
     }
