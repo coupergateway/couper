@@ -9,7 +9,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -28,11 +27,12 @@ type entrypointHandler struct {
 	files, spa http.Handler
 }
 
-const (
-	backendDefaultConnectTimeout = "10s"
-	backendDefaultTimeout        = "300s"
-	backendDefaultTTFBTimeout    = "60s"
-)
+var defaultBackendConf = &config.Backend{
+	ConnectTimeout:   "10s",
+	RequestBodyLimit: "64MiB",
+	TTFBTimeout:      "60s",
+	Timeout:          "300s",
+}
 
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
@@ -61,26 +61,13 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				log.Fatalf("backend %q: origin attribute is required", beConf.Name)
 			}
 
-			if beConf.Timeout == "" {
-				beConf.Timeout = backendDefaultTimeout
+			beConf, _ = defaultBackendConf.Merge(beConf)
+			proxyOptions, err := handler.NewProxyOptions(beConf, nil, []hcl.Body{beConf.Options})
+			if err != nil {
+				log.Fatal(err)
 			}
-			if beConf.TTFBTimeout == "" {
-				beConf.TTFBTimeout = backendDefaultTTFBTimeout
-			}
-			if beConf.ConnectTimeout == "" {
-				beConf.ConnectTimeout = backendDefaultConnectTimeout
-			}
-			t, ttfbt, ct := parseBackendTimings(beConf)
-			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				BackendName:    beConf.Name,
-				ConnectTimeout: ct,
-				Context:        []hcl.Body{beConf.Options},
-				Hostname:       beConf.Hostname,
-				Origin:         beConf.Origin,
-				Path:           beConf.Path,
-				Timeout:        t,
-				TTFBTimeout:    ttfbt,
-			}, log, conf.Context)
+
+			proxy, err := handler.NewProxy(proxyOptions, log, conf.Context)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -178,22 +165,18 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
-					t, ttfbt, ct := parseBackendTimings(beConf)
+
 					corsOptions, err := handler.NewCORSOptions(server.API.CORS)
 					if err != nil {
 						log.Fatal(err)
 					}
-					proxy, err := handler.NewProxy(&handler.ProxyOptions{
-						BackendName:    beConf.Name,
-						ConnectTimeout: ct,
-						Context:        remainCtx,
-						CORS:           corsOptions,
-						Hostname:       beConf.Hostname,
-						Origin:         beConf.Origin,
-						Path:           beConf.Path,
-						Timeout:        t,
-						TTFBTimeout:    ttfbt,
-					}, log, conf.Context)
+
+					proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					proxy, err := handler.NewProxy(proxyOptions, log, conf.Context)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -247,22 +230,18 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				}
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
-				t, ttfbt, ct := parseBackendTimings(beConf)
+
 				corsOptions, err := handler.NewCORSOptions(server.API.CORS)
 				if err != nil {
 					log.Fatal(err)
 				}
-				proxy, err := handler.NewProxy(&handler.ProxyOptions{
-					BackendName:    beConf.Name,
-					ConnectTimeout: ct,
-					Context:        remainCtx,
-					CORS:           corsOptions,
-					Hostname:       beConf.Hostname,
-					Origin:         beConf.Origin,
-					Path:           beConf.Path,
-					Timeout:        t,
-					TTFBTimeout:    ttfbt,
-				}, log, conf.Context)
+
+				proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				proxy, err := handler.NewProxy(proxyOptions, log, conf.Context)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -464,51 +443,20 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 		beConf.Name = content.Blocks[0].Labels[0]
 	}
 
-	t, ttfbt, ct := parseBackendTimings(beConf)
+	beConf, _ = defaultBackendConf.Merge(beConf)
+
 	corsOptions, err := handler.NewCORSOptions(cors)
 	if err != nil {
 		return nil, nil, err
 	}
-	proxy, err := handler.NewProxy(&handler.ProxyOptions{
-		BackendName:    beConf.Name,
-		ConnectTimeout: ct,
-		Context:        []hcl.Body{beConf.Options},
-		CORS:           corsOptions,
-		Hostname:       beConf.Hostname,
-		Origin:         beConf.Origin,
-		Path:           beConf.Path,
-		Timeout:        t,
-		TTFBTimeout:    ttfbt,
-	}, log, evalCtx)
-	return proxy, beConf, err
-}
 
-func parseBackendTimings(conf *config.Backend) (time.Duration, time.Duration, time.Duration) {
-	t := conf.Timeout
-	ttfb := conf.TTFBTimeout
-	c := conf.ConnectTimeout
-	if t == "" {
-		t = backendDefaultTimeout
-	}
-	if ttfb == "" {
-		ttfb = backendDefaultTTFBTimeout
-	}
-	if c == "" {
-		c = backendDefaultConnectTimeout
-	}
-	totalD, err := time.ParseDuration(t)
+	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, []hcl.Body{beConf.Options})
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
-	ttfbD, err := time.ParseDuration(ttfb)
-	if err != nil {
-		panic(err)
-	}
-	connectD, err := time.ParseDuration(c)
-	if err != nil {
-		panic(err)
-	}
-	return totalD, ttfbD, connectD
+
+	proxy, err := handler.NewProxy(proxyOptions, log, evalCtx)
+	return proxy, beConf, err
 }
 
 func getAbsPath(file string, log *logrus.Entry) string {
