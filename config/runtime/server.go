@@ -10,23 +10,18 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/getkin/kin-openapi/pathpattern"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
-
-type entrypointHandler struct {
-	api        map[*config.Endpoint]http.Handler
-	files, spa http.Handler
-}
 
 var defaultBackendConf = &config.Backend{
 	ConnectTimeout:   "10s",
@@ -37,9 +32,9 @@ var defaultBackendConf = &config.Backend{
 
 var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 
-// BuildEntrypointHandlers sets http handler specific defaults and validates the given gateway configuration.
-// Wire up all endpoints and maps them within the returned EntrypointHandlers.
-func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) EntrypointHandlers {
+// NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
+// Wire up all endpoints and maps them within the returned Server.
+func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Server {
 	if len(conf.Server) == 0 {
 		log.Fatal("Missing server definitions")
 	}
@@ -50,7 +45,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 	}
 
 	backends := make(map[string]backendDefinition)
-	entryHandler := &entrypointHandler{api: make(map[*config.Endpoint]http.Handler)}
+	api := make(map[*config.Endpoint]http.Handler)
 
 	if conf.Definitions != nil {
 		for _, beConf := range conf.Definitions.Backend {
@@ -81,84 +76,54 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 	accessControls := configureAccessControls(conf)
 
-	handlers := make(EntrypointHandlers, 0)
+	server := make(Server, 0)
 
-	var err error
-	for idx, server := range conf.Server {
-		configureBasePathes(server)
-
-		mux := &Mux{
-			APIErrTpl: errors.DefaultJSON,
-			FSErrTpl:  errors.DefaultHTML,
+	for _, srvConf := range conf.Server {
+		muxOptions, err := NewMuxOptions(srvConf)
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		if server.Files != nil {
-			if server.Files.ErrorFile != "" {
-				if mux.FSErrTpl, err = errors.NewTemplateFromFile(getAbsPath(server.Files.ErrorFile, log)); err != nil {
-					log.Fatal(err)
+		var spaHandler http.Handler
+		if srvConf.Spa != nil {
+			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, spaPath := range srvConf.Spa.Paths {
+				for _, p := range getPathsFromHosts(srvConf.Hosts, spaPath) {
+					muxOptions.SPARoutes[p] = spaHandler
 				}
 			}
-			entryHandler.files = handler.NewFile(server.Files.BasePath, getAbsPath(server.Files.DocumentRoot, log), mux.FSErrTpl)
-			entryHandler.files = configureProtectedHandler(accessControls, mux.FSErrTpl,
-				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
-				config.NewAccessControl(server.Files.AccessControl, server.Files.DisableAccessControl), entryHandler.files)
 		}
 
-		if server.Spa != nil {
-			entryHandler.spa = handler.NewSpa(getAbsPath(server.Spa.BootstrapFile, log))
-			entryHandler.spa = configureProtectedHandler(accessControls, errors.DefaultHTML,
-				config.NewAccessControl(server.AccessControl, server.DisableAccessControl),
-				config.NewAccessControl(server.Spa.AccessControl, server.Spa.DisableAccessControl), entryHandler.spa)
+		if muxOptions.FileHandler != nil { // TODO: protected handler uses template from child handler
+			muxOptions.FileHandler = configureProtectedHandler(accessControls, errors.DefaultHTML,
+				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
+				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), muxOptions.FileHandler)
 		}
 
-		if server.Files != nil {
-			mux.FS = make(Routes, 0)
-			mux.FSPath = server.Files.BasePath
-			mux.FS = mux.FS.Add(
-				utils.JoinPath(server.Files.BasePath, "/**"),
-				entryHandler.files,
-			)
+		if spaHandler != nil {
+			spaHandler = configureProtectedHandler(accessControls, errors.DefaultHTML,
+				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
+				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 		}
 
-		if server.Spa != nil {
-			mux.SPA = make(Routes, 0)
-			mux.SPAPath = server.Spa.BasePath
-
-			for _, spaPath := range server.Spa.Paths {
-				spaPath := utils.JoinPath(server.Spa.BasePath, spaPath)
-
-				mux.SPA = mux.SPA.Add(
-					spaPath,
-					entryHandler.spa,
-				)
-			}
-		}
-
-		if server.API == nil {
-			if err = configureHandlers(httpConf, server, mux, handlers); err != nil {
+		if srvConf.API == nil {
+			if err = configureHandlers(httpConf, srvConf, muxOptions, server); err != nil {
 				log.Fatal(err)
 			}
 			continue
 		}
 
-		mux.API = make(Routes, 0)
-		mux.APIPath = server.API.BasePath
-
-		if server.API.ErrorFile != "" {
-			if mux.APIErrTpl, err = errors.NewTemplateFromFile(getAbsPath(server.API.ErrorFile, log)); err != nil {
-				log.Fatal(err)
-			}
-		}
-
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
-		for e, endpoint := range server.API.Endpoint {
-			pattern := utils.JoinPath(server.API.BasePath, endpoint.Pattern)
+		for _, endpoint := range srvConf.API.Endpoint {
+			pattern := utils.JoinPath(srvConf.API.BasePath, endpoint.Pattern)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			conf.Server[idx].API.Endpoint[e].Server = server // assign parent
 			if endpoints[pattern] {
 				log.Fatal("Duplicate endpoint: ", pattern)
 			}
@@ -172,7 +137,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
 
-					corsOptions, err := handler.NewCORSOptions(server.API.CORS)
+					corsOptions, err := handler.NewCORSOptions(srvConf.API.CORS)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -189,9 +154,9 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 					protectedHandler = proxy
 				}
 
-				entryHandler.api[endpoint] = configureProtectedHandler(accessControls, mux.APIErrTpl,
-					config.NewAccessControl(server.AccessControl, server.DisableAccessControl).
-						Merge(config.NewAccessControl(server.API.AccessControl, server.API.DisableAccessControl)),
+				api[endpoint] = configureProtectedHandler(accessControls, muxOptions.APIErrTpl,
+					config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl).
+						Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl)),
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
 					protectedHandler)
 			}
@@ -206,16 +171,16 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, server.API.CORS, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, srvConf.API.CORS, log)
 			if err == errorMissingBackend {
-				if server.API.Backend != "" {
-					if _, ok := backends[server.API.Backend]; !ok {
-						log.Fatalf("backend %q is not defined", server.API.Backend)
+				if srvConf.API.Backend != "" {
+					if _, ok := backends[srvConf.API.Backend]; !ok {
+						log.Fatalf("backend %q is not defined", srvConf.API.Backend)
 					}
-					setACHandlerFn(backends[server.API.Backend])
+					setACHandlerFn(backends[srvConf.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, server.API.InlineDefinition, server.API.CORS, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, srvConf.API.InlineDefinition, srvConf.API.CORS, log)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -237,7 +202,7 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 
-				corsOptions, err := handler.NewCORSOptions(server.API.CORS)
+				corsOptions, err := handler.NewCORSOptions(srvConf.API.CORS)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -256,74 +221,32 @@ func BuildEntrypointHandlers(conf *config.Gateway, httpConf *HTTPConfig, log *lo
 
 			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
 
-			mux.API = mux.API.Add(pattern, entryHandler.api[endpoint])
+			for _, hostPath := range getPathsFromHosts(srvConf.Hosts, pattern) {
+				muxOptions.EndpointRoutes[hostPath] = api[endpoint]
+			}
 		}
 
-		if err = configureHandlers(httpConf, server, mux, handlers); err != nil {
+		if err = configureHandlers(httpConf, srvConf, muxOptions, server); err != nil {
 			log.Fatal(err)
 		}
 	}
-	return handlers
+	return server
 }
 
-func configureBasePathes(server *config.Server) {
-	if server.BasePath == "" {
-		server.BasePath = "/"
-	}
-	if !strings.HasSuffix(server.BasePath, "/") {
-		server.BasePath = server.BasePath + "/"
-	}
-	if server.Files != nil {
-		server.Files.BasePath = path.Join(server.BasePath, server.Files.BasePath)
-		if !strings.HasSuffix(server.Files.BasePath, "/") {
-			server.Files.BasePath = server.Files.BasePath + "/"
-		}
-	}
-	if server.Spa != nil {
-		server.Spa.BasePath = path.Join(server.BasePath, server.Spa.BasePath) + "/"
-		if !strings.HasSuffix(server.Spa.BasePath, "/") {
-			server.Spa.BasePath = server.Spa.BasePath + "/"
-		}
-	}
-	if server.API != nil {
-		server.API.BasePath = path.Join(server.BasePath, server.API.BasePath) + "/"
-		if !strings.HasSuffix(server.API.BasePath, "/") {
-			server.API.BasePath = server.API.BasePath + "/"
-		}
-	}
-}
-
-func configureHandlers(conf *HTTPConfig, server *config.Server, mux *Mux, handlers EntrypointHandlers) error {
+func configureHandlers(conf *HTTPConfig, server *config.Server, mux *MuxOptions, srvMux Server) error {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
 		hosts = []string{fmt.Sprintf("*:%d", conf.ListenPort)}
 	}
 
 	for _, hp := range hosts {
-		var host string
 		port := Port(strconv.Itoa(conf.ListenPort))
-
-		if strings.IndexByte(hp, ':') == -1 {
-			host = hp
-		} else {
-			h, p, err := net.SplitHostPort(hp)
-			if err != nil {
-				return err
-			} else if p != "" {
-				port = Port(p)
-			}
-			host = h
+		if _, p, err := net.SplitHostPort(hp); err != nil {
+			return err
+		} else if p != "" {
+			port = Port(p)
 		}
-
-		if _, ok := handlers[port]; !ok {
-			handlers[port] = make(HostHandlers, 0)
-		}
-
-		if _, ok := handlers[port][host]; ok {
-			return fmt.Errorf("multiple <host:port> combination found: '%s:%s'", host, port)
-		}
-
-		handlers[port][host] = &ServerMux{Server: server, Mux: mux}
+		srvMux[port] = &ServerMux{Server: server, Mux: mux}
 	}
 	return nil
 }
@@ -460,51 +383,16 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	return proxy, beConf, err
 }
 
-func getAbsPath(file string, log *logrus.Entry) string {
-	if strings.HasPrefix(file, "/") {
-		return file
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return path.Join(wd, file)
-}
-
-func createPattern(path string) (string, []*request.PathParam, error) {
-	var params []*request.PathParam
-	var pattern string
-
-	if !strings.HasPrefix(path, "/") {
-		return "", nil, e.New(fmt.Sprintf("Invalid path %q given", path))
-	}
-
-	for i, part := range strings.Split(path, "/") {
-		sub := part
-
-		if strings.HasPrefix(part, "{") || strings.HasSuffix(part, "}") {
-			if !strings.HasPrefix(part, "{") || !strings.HasSuffix(part, "}") || part == "{}" {
-				return "", nil, e.New(fmt.Sprintf("Invalid path sequence %q given", part))
-			}
-
-			sub = "{}"
-
-			name := part[1 : len(part)-1]
-			//if !seetie.validKey.MatchString(name) {
-			//	return "", nil, e.New(fmt.Sprintf("Invalid path param name %q given", name))
-			//}
-
-			params = append(params, &request.PathParam{Name: name, Position: i})
+func getPathsFromHosts(hosts []string, path string) []string {
+	var list []string
+	for _, host := range hosts {
+		if host != "" && host[0] == ':' {
+			continue
 		}
-
-		if !strings.HasSuffix(pattern, "/") {
-			pattern += "/"
-		}
-
-		pattern += sub
+		list = append(list, utils.JoinPath(pathpattern.PathFromHost(host, false), "/", path))
 	}
-
-	return pattern, params, nil
+	if len(list) == 0 {
+		list = []string{path}
+	}
+	return list
 }

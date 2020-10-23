@@ -28,7 +28,10 @@ func TestSpa_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := handler.NewSpa(path.Join(wd, tt.filePath))
+			s, err := handler.NewSpa(path.Join(wd, tt.filePath))
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			res := httptest.NewRecorder()
 			s.ServeHTTP(res, tt.req)

@@ -61,7 +61,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
+	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 
 	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	}
 
 	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
-	gw := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
+	gw := server.New(ctx, log.WithContext(ctx), httpConf, "test", port, ports[port].Mux)
 	gw.Listen()
 	defer gw.Close()
 
@@ -166,10 +166,10 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ports := runtime.BuildEntrypointHandlers(conf, httpConf, log.WithContext(nil))
+	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
 
-	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, ports[port])
+	couper := server.New(ctx, log.WithContext(ctx), httpConf, "test", port, ports[port].Mux)
 	couper.Listen()
 	defer couper.Close()
 

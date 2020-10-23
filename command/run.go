@@ -35,10 +35,10 @@ func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) 
 	httpConf = httpConf.Merge(envConf)
 
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	entrypointHandlers := runtime.BuildEntrypointHandlers(config, httpConf, logEntry)
+	srvMux := runtime.NewServerConfiguration(config, httpConf, logEntry)
 
 	ctx := ContextWithSignal(context.Background())
-	serverList, listenCmdShutdown := server.NewServerList(ctx, logEntry.Logger, httpConf, entrypointHandlers)
+	serverList, listenCmdShutdown := server.NewServerList(ctx, logEntry.Logger, httpConf, srvMux)
 	for _, srv := range serverList {
 		srv.Listen()
 	}

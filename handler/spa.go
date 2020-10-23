@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/avenga/couper/errors"
 )
@@ -13,8 +14,12 @@ type Spa struct {
 	file string
 }
 
-func NewSpa(bsFile string) *Spa {
-	return &Spa{file: bsFile}
+func NewSpa(bootstrapFile string) (*Spa, error) {
+	absPath, err := filepath.Abs(bootstrapFile)
+	if err != nil {
+		return nil, err
+	}
+	return &Spa{file: absPath}, nil
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

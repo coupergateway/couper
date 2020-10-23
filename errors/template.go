@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -41,11 +42,15 @@ type Template struct {
 }
 
 func NewTemplateFromFile(path string) (*Template, error) {
-	tplFile, err := ioutil.ReadFile(path)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
-	return NewTemplate(mime.TypeByExtension(path), tplFile)
+	tplFile, err := ioutil.ReadFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+	return NewTemplate(mime.TypeByExtension(absPath), tplFile)
 }
 
 func NewTemplate(mime string, src []byte) (*Template, error) {

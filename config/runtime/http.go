@@ -10,14 +10,12 @@ import (
 
 type Port string
 
-type HostHandlers map[string]*ServerMux
-
-type EntrypointHandlers map[Port]HostHandlers
+type Server map[Port]*ServerMux
 
 // ServerMux represents the ServerMux struct.
 type ServerMux struct {
 	Server *config.Server
-	Mux    *Mux
+	Mux    *MuxOptions
 }
 
 // HTTPConfig represents the configuration of the ingress HTTP server.
