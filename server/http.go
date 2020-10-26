@@ -52,7 +52,6 @@ func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime
 
 // New creates a configured HTTP server.
 func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
-	// TODO: uuid package switch with global option
 	uidFn := func() string {
 		return xid.New().String()
 	}

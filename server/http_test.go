@@ -10,14 +10,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strconv"
 	"testing"
 	"text/template"
+	"time"
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/server"
 )
 
@@ -233,5 +236,43 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		if !bytes.Contains(result.Bytes(), testCase.expectedBody) {
 			t.Errorf("Expected body for path %q:\n%s\ngot:\n%s", testCase.path, string(testCase.expectedBody), result.String())
 		}
+	}
+}
+
+func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
+	helper := test.New(t)
+
+	type testCase struct {
+		formatOption string
+		expRegex     *regexp.Regexp
+	}
+
+	for _, testcase := range []testCase{
+		{"common", regexp.MustCompile(`^[0123456789abcdefghijklmnopqrstuv]{20}$`)},
+		{"uuid4", regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)},
+	} {
+		t.Run(testcase.formatOption, func(subT *testing.T) {
+			log, hook := logrustest.NewNullLogger()
+			conf := *runtime.DefaultHTTP
+			conf.RequestIDFormat = testcase.formatOption
+			srv := server.New(context.Background(), log, &conf, "0", nil)
+			srv.Listen()
+			defer srv.Close()
+
+			req := httptest.NewRequest(http.MethodGet, "http://"+srv.Addr()+"/", nil)
+			req.RequestURI = ""
+
+			hook.Reset()
+
+			_, err := http.DefaultClient.Do(req)
+			helper.Must(err)
+			time.Sleep(time.Millisecond * 10) // log hook needs some time?
+
+			if entry := hook.LastEntry(); entry == nil {
+				t.Error("Expected a log entry")
+			} else if !testcase.expRegex.MatchString(entry.Data["uid"].(string)) {
+				t.Errorf("Expected a %q uid format, got %#v", testcase.formatOption, entry.Data["uid"])
+			}
+		})
 	}
 }
