@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -81,7 +80,7 @@ func GoToValue(v interface{}) cty.Value {
 	case map[string]interface{}:
 		return MapToValue(v.(map[string]interface{}))
 	}
-	return cty.NilVal
+	return cty.NullVal(cty.String)
 }
 
 func MapToValue(m map[string]interface{}) cty.Value {
@@ -96,8 +95,6 @@ func MapToValue(m map[string]interface{}) cty.Value {
 			continue
 		}
 		switch v.(type) {
-		case bool, float64, string:
-			ctyMap[k] = GoToValue(v)
 		case []string:
 			var list []interface{}
 			for _, s := range v.([]string) {
@@ -109,7 +106,7 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		case map[string]interface{}:
 			ctyMap[k] = MapToValue(v.(map[string]interface{}))
 		default:
-			panic(reflect.TypeOf(v).String() + " not implemented")
+			ctyMap[k] = GoToValue(v)
 		}
 	}
 
@@ -168,6 +165,10 @@ var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 // ValueToString explicitly drops all other (unknown) types and
 // converts non whitespace strings or numbers to its string representation.
 func ValueToString(v cty.Value) string {
+	if v.IsNull() {
+		return ""
+	}
+
 	switch v.Type() {
 	case cty.String:
 		str := v.AsString()
@@ -221,6 +222,9 @@ func ToString(s interface{}) string {
 
 // isTuple checks by type name since tuple is not comparable by type.
 func isTuple(v cty.Value) bool {
+	if v.IsNull() {
+		return false
+	}
 	return v.Type().FriendlyNameForConstraint() == "tuple"
 }
 
