@@ -23,6 +23,7 @@ type Mux struct {
 	apiPath        string
 	apiErrHandler  *errors.Template
 	endpointRoot   *pathpattern.Node
+	fileBasePath   string
 	fileHandler    http.Handler
 	fileErrHandler *errors.Template
 	router         *openapi3filter.Router
@@ -43,6 +44,7 @@ func NewMux(opts *runtime.MuxOptions) *Mux {
 	mux := &Mux{
 		apiPath:        opts.APIPath,
 		apiErrHandler:  opts.APIErrTpl,
+		fileBasePath:   opts.FileBasePath,
 		fileHandler:    opts.FileHandler,
 		fileErrHandler: opts.FileErrTpl,
 		endpointRoot:   &pathpattern.Node{},
@@ -124,8 +126,12 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 		node, paramValues = m.match(m.spaRoot, req)
 		if node == nil {
-			if m.fileHandler != nil {
+			if m.fileHandler != nil && strings.HasPrefix(req.URL.Path, m.fileBasePath) {
 				return m.fileErrHandler.ServeError(errors.FilesRouteNotFound)
+			}
+			// TODO: server err handler
+			if m.fileErrHandler != nil {
+				return m.fileErrHandler.ServeError(errors.Configuration)
 			}
 			return errors.DefaultHTML.ServeError(errors.Configuration)
 		}

@@ -47,7 +47,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
-	// log.Out = os.Stdout
+	//log.Out = os.Stdout
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -61,9 +61,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 
 	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	helper.Must(err)
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
@@ -84,8 +82,8 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<title>500 Configuration failed</title>"), http.StatusInternalServerError},
-		{"/apps/", []byte("<title>500 Configuration failed</title>"), http.StatusInternalServerError},
+		{"/", errorPageContent, http.StatusInternalServerError},
+		{"/apps/", errorPageContent, http.StatusInternalServerError},
 		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},

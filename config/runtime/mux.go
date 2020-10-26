@@ -15,6 +15,7 @@ type MuxOptions struct {
 	APIErrTpl      *errors.Template
 	APIPath        string
 	EndpointRoutes map[string]http.Handler
+	FileBasePath   string
 	FileHandler    http.Handler
 	FileErrTpl     *errors.Template
 	SPARoutes      map[string]http.Handler
@@ -56,7 +57,8 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 		if err != nil {
 			return nil, err
 		}
-		options.FileHandler = handler.NewFile(conf.Files.BasePath, absPath, options.FileErrTpl)
+		options.FileBasePath = utils.JoinPath("/", conf.BasePath, conf.Files.BasePath)
+		options.FileHandler = handler.NewFile(options.FileBasePath, absPath, options.FileErrTpl)
 	}
 
 	return options, nil
