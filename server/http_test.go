@@ -236,7 +236,7 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 			log, hook := logrustest.NewNullLogger()
 			conf := *runtime.DefaultHTTP
 			conf.RequestIDFormat = testcase.formatOption
-			srv := server.New(context.Background(), log, &conf, "0", nil)
+			srv := server.New(context.Background(), log, &conf, "test", "0", nil)
 			srv.Listen()
 			defer srv.Close()
 

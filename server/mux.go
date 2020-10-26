@@ -40,7 +40,15 @@ var allowedMethods = []string{
 	http.MethodOptions,
 }
 
-func NewMux(opts *runtime.MuxOptions) *Mux {
+func NewMux(options *runtime.MuxOptions) *Mux {
+	opts := options
+	if opts == nil {
+		opts = &runtime.MuxOptions{
+			APIErrTpl:  errors.DefaultJSON,
+			FileErrTpl: errors.DefaultHTML,
+		}
+	}
+
 	mux := &Mux{
 		apiPath:        opts.APIPath,
 		apiErrHandler:  opts.APIErrTpl,
