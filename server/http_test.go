@@ -60,9 +60,6 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 
 	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 
-	errorPageContent, err := ioutil.ReadFile(conf.Server[0].Files.ErrorFile)
-	helper.Must(err)
-
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
@@ -82,10 +79,10 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", errorPageContent, http.StatusInternalServerError},
-		{"/apps/", errorPageContent, http.StatusInternalServerError},
-		{"/apps/shiny-product/", errorPageContent, http.StatusNotFound},
-		{"/apps/shiny-product/assets/", errorPageContent, http.StatusNotFound},
+		{"/", []byte("<html><body><h1>1002: Configuration failed: My custom error template</h1></body></html>"), http.StatusInternalServerError},
+		{"/apps/", []byte("<html><body><h1>1002: Configuration failed: My custom error template</h1></body></html>"), http.StatusInternalServerError},
+		{"/apps/shiny-product/", []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>"), http.StatusNotFound},
+		{"/apps/shiny-product/assets/", []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>"), http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
@@ -149,7 +146,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	helper.Must(err)
 
-	error404Content := []byte("<title>404 FilesRouteNotFound</title>")
+	error404Content := []byte("<title>404 Files route not found</title>")
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
