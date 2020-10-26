@@ -12,9 +12,8 @@ RUN go generate && \
 RUN mkdir /conf
 
 FROM scratch
-# copy ssl certs
-COPY --from=builder /usr/share/ca-certificates/ /usr/share/ca-certificates/
-COPY --from=builder /etc/ssl /etc/ssl
+# copy debian tls ca certs (from golang image)
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /couper /couper
 COPY --from=builder /conf /conf
 EXPOSE 8080
