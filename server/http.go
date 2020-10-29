@@ -50,7 +50,7 @@ func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime
 // New creates a configured HTTP server.
 func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, name string, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
 	if conf == nil {
-		panic("missing httpConfig")
+		log.Fatal("missing httpConfig")
 	}
 
 	var uidFn func() string
