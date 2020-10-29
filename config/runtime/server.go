@@ -30,13 +30,21 @@ var defaultBackendConf = &config.Backend{
 	Timeout:          "300s",
 }
 
-var errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
+var (
+	errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
+	errorMissingServer  = fmt.Errorf("missing server definitions")
+)
+
+type backendDefinition struct {
+	conf    *config.Backend
+	handler http.Handler
+}
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
 func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Server {
 	if len(conf.Server) == 0 {
-		log.Fatal("Missing server definitions")
+		log.Fatal(errorMissingServer)
 	}
 
 	// (arg && env) > conf
@@ -45,39 +53,11 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		defaultPort = httpConf.ListenPort
 	}
 
-	type backendDefinition struct {
-		conf    *config.Backend
-		handler http.Handler
-	}
-
-	backends := make(map[string]backendDefinition)
 	api := make(map[*config.Endpoint]http.Handler)
 
-	if conf.Definitions != nil {
-		for _, beConf := range conf.Definitions.Backend {
-			if _, ok := backends[beConf.Name]; ok {
-				log.Fatalf("backend name must be unique: '%s'", beConf.Name)
-			}
-
-			if beConf.Origin == "" {
-				log.Fatalf("backend %q: origin attribute is required", beConf.Name)
-			}
-
-			beConf, _ = defaultBackendConf.Merge(beConf)
-			proxyOptions, err := handler.NewProxyOptions(beConf, nil, []hcl.Body{beConf.Options})
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			proxy, err := handler.NewProxy(proxyOptions, log, conf.Context)
-			if err != nil {
-				log.Fatal(err)
-			}
-			backends[beConf.Name] = backendDefinition{
-				conf:    beConf,
-				handler: proxy,
-			}
-		}
+	backends, err := newBackendsFromDefinitions(conf, log)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	accessControls := configureAccessControls(conf)
@@ -104,14 +84,14 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 		}
 
-		if muxOptions.FileHandler != nil { // TODO: protected handler uses template from child handler
-			muxOptions.FileHandler = configureProtectedHandler(accessControls, errors.DefaultHTML,
+		if muxOptions.FileHandler != nil {
+			muxOptions.FileHandler = configureProtectedHandler(accessControls, muxOptions.FileErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), muxOptions.FileHandler)
 		}
 
 		if spaHandler != nil {
-			spaHandler = configureProtectedHandler(accessControls, errors.DefaultHTML,
+			spaHandler = configureProtectedHandler(accessControls, errors.DefaultHTML, // TODO: server err tpl
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 		}
@@ -140,22 +120,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
-
-					corsOptions, err := handler.NewCORSOptions(srvConf.API.CORS)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					proxy, err := handler.NewProxy(proxyOptions, log, conf.Context)
-					if err != nil {
-						log.Fatal(err)
-					}
-					protectedHandler = proxy
+					protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log)
 				}
 
 				api[endpoint] = configureProtectedHandler(accessControls, muxOptions.APIErrTpl,
@@ -206,20 +171,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 
-				corsOptions, err := handler.NewCORSOptions(srvConf.API.CORS)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				proxy, err := handler.NewProxy(proxyOptions, log, conf.Context)
-				if err != nil {
-					log.Fatal(err)
-				}
+				proxy := newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log)
 				inlineBackend = proxy
 			}
 
@@ -235,6 +187,50 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		}
 	}
 	return server
+}
+
+func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry) http.Handler {
+	corsOptions, err := handler.NewCORSOptions(corsOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	proxy, err := handler.NewProxy(proxyOptions, log, ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return proxy
+}
+
+func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[string]backendDefinition, error) {
+	backends := make(map[string]backendDefinition)
+
+	if conf.Definitions == nil {
+		return backends, nil
+	}
+
+	for _, beConf := range conf.Definitions.Backend {
+		if _, ok := backends[beConf.Name]; ok {
+			return nil, fmt.Errorf("backend name must be unique: %q", beConf.Name)
+		}
+
+		if beConf.Origin == "" {
+			return nil, fmt.Errorf("backend %q: origin attribute is required", beConf.Name)
+		}
+
+		beConf, _ = defaultBackendConf.Merge(beConf)
+
+		backends[beConf.Name] = backendDefinition{
+			conf:    beConf,
+			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log),
+		}
+	}
+	return backends, nil
 }
 
 func configureHandlers(configuredPort int, server *config.Server, mux *MuxOptions, srvMux Server) error {
@@ -374,19 +370,8 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	}
 
 	beConf, _ = defaultBackendConf.Merge(beConf)
-
-	corsOptions, err := handler.NewCORSOptions(cors)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, []hcl.Body{beConf.Options})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	proxy, err := handler.NewProxy(proxyOptions, log, evalCtx)
-	return proxy, beConf, err
+	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log)
+	return proxy, beConf, nil
 }
 
 func getPathsFromHosts(defaultPort int, hosts []string, path string) []string {

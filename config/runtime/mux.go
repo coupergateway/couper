@@ -2,8 +2,8 @@ package runtime
 
 import (
 	"net/http"
+	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
@@ -30,10 +30,7 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 	}
 
 	if conf.API != nil {
-		options.APIPath = utils.JoinPath("/", conf.BasePath, conf.API.BasePath)
-		for strings.HasSuffix(options.APIPath, "/") {
-			options.APIPath = options.APIPath[:len(options.APIPath)-1]
-		}
+		options.APIPath = path.Join("/", conf.BasePath, conf.API.BasePath)
 
 		if conf.API.ErrorFile != "" {
 			tpl, err := errors.NewTemplateFromFile(conf.Files.ErrorFile)
