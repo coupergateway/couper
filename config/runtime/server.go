@@ -98,7 +98,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 			for _, spaPath := range srvConf.Spa.Paths {
 				for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts,
-					utils.JoinPath(srvConf.BasePath, srvConf.Spa.BasePath, spaPath)) {
+					utils.JoinPath("/", srvConf.BasePath, srvConf.Spa.BasePath, spaPath)) {
 					muxOptions.SPARoutes[p] = spaHandler
 				}
 			}
@@ -126,10 +126,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		// map backends to endpoint
 		endpoints := make(map[string]bool)
 		for _, endpoint := range srvConf.API.Endpoint {
-			pattern := utils.JoinPath(srvConf.BasePath, srvConf.API.BasePath, endpoint.Pattern)
-			if err != nil {
-				log.Fatal(err)
-			}
+			pattern := utils.JoinPath("/", srvConf.BasePath, srvConf.API.BasePath, endpoint.Pattern)
 
 			if endpoints[pattern] {
 				log.Fatal("Duplicate endpoint: ", pattern)
