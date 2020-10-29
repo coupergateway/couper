@@ -123,7 +123,8 @@ Environment variables can be accessed everywhere within the configuration file s
 | `headers.<name>` | HTTP request header value for requested lower-case key|
 | `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
 | `query.<name>` | query parameter values (&#9888; last wins!)|
-| `post.<name>` | post form parameter|
+| `post.<name>` | post form parameter |
+| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
 
 #### `bereq`(modified backend request) variables 
@@ -145,7 +146,8 @@ Environment variables can be accessed everywhere within the configuration file s
 |:-------------------|:-------------------------------|
 | `status` | HTTP status code |
 | `headers.<name>` | HTTP response header value for requested lower-case key |
-| `cookies.<name>` | value from `Set-Cookie` response header for requested key (&#9888; last wins!)|
+| `cookies.<name>` | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
+| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 
 ##### Variable Example
 
@@ -282,6 +284,7 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 |`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
 | `request_headers` | header map to define additional or override header for the `origin` request |
 | `response_headers` | same as `request_headers` for the client response |
+| `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
 The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
