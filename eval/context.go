@@ -84,12 +84,11 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 
 	if beresp != nil {
 		evalCtx.Variables[BackendRequest] = cty.ObjectVal(ContextMap{
-			Method:    cty.StringVal(bereq.Method),
-			Path:      cty.StringVal(bereq.URL.Path),
-			PathParam: seetie.MapToValue(pathParams),
-			Post:      seetie.ValuesMapToValue(parseForm(bereq).PostForm),
-			Query:     seetie.ValuesMapToValue(bereq.URL.Query()),
-			URL:       cty.StringVal(newRawURL(bereq.URL).String()),
+			Method: cty.StringVal(bereq.Method),
+			Path:   cty.StringVal(bereq.URL.Path),
+			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+			Query:  seetie.ValuesMapToValue(bereq.URL.Query()),
+			URL:    cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
 
 		var jsonBody map[string]interface{}
