@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -16,7 +17,7 @@ type Cmd interface {
 func NewCommand(cmd string) Cmd {
 	switch strings.ToLower(cmd) {
 	case "run":
-		return &Run{}
+		return &Run{context: ContextWithSignal(context.Background())}
 	default:
 		return nil
 	}
