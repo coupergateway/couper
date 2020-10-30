@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/avenga/couper/errors"
@@ -28,14 +29,18 @@ type File struct {
 	rootDir  http.Dir
 }
 
-func NewFile(basePath, docRoot string, errTpl *errors.Template) *File {
+func NewFile(basePath, docRoot string, errTpl *errors.Template) (*File, error) {
+	dir, err := filepath.Abs(docRoot)
+	if err != nil {
+		return nil, err
+	}
 	f := &File{
 		basePath: basePath,
 		errorTpl: errTpl,
-		rootDir:  http.Dir(docRoot),
+		rootDir:  http.Dir(dir),
 	}
 
-	return f
+	return f, nil
 }
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

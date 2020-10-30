@@ -39,7 +39,10 @@ func TestFile_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewFile(tt.fields.basePath, path.Join(wd, tt.fields.docRootDir), errors.DefaultHTML)
+			f, err := NewFile(tt.fields.basePath, path.Join(wd, tt.fields.docRootDir), errors.DefaultHTML)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			rec := httptest.NewRecorder()
 			f.ServeHTTP(rec, tt.req)

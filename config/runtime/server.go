@@ -79,6 +79,11 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			spaHandler = configureProtectedHandler(accessControls, errors.DefaultHTML, // TODO: server err tpl
+				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
+				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
+
 			for _, spaPath := range srvConf.Spa.Paths {
 				for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts,
 					utils.JoinPath("/", srvConf.BasePath, srvConf.Spa.BasePath, spaPath)) {
@@ -87,16 +92,19 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 		}
 
-		if muxOptions.FileHandler != nil {
-			muxOptions.FileHandler = configureProtectedHandler(accessControls, muxOptions.FileErrTpl,
-				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), muxOptions.FileHandler)
-		}
+		if srvConf.Files != nil {
+			fileHandler, err := handler.NewFile(muxOptions.FileBasePath, srvConf.Files.DocumentRoot, muxOptions.FileErrTpl)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		if spaHandler != nil {
-			spaHandler = configureProtectedHandler(accessControls, errors.DefaultHTML, // TODO: server err tpl
+			protectedFileHandler := configureProtectedHandler(accessControls, muxOptions.FileErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
+				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), fileHandler)
+
+			for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts, muxOptions.FileBasePath) {
+				muxOptions.FileRoutes[p] = protectedFileHandler
+			}
 		}
 
 		if srvConf.API == nil {

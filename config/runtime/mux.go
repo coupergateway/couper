@@ -3,11 +3,9 @@ package runtime
 import (
 	"net/http"
 	"path"
-	"path/filepath"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/utils"
 )
 
@@ -16,8 +14,8 @@ type MuxOptions struct {
 	APIPath        string
 	EndpointRoutes map[string]http.Handler
 	FileBasePath   string
-	FileHandler    http.Handler
 	FileErrTpl     *errors.Template
+	FileRoutes     map[string]http.Handler
 	SPARoutes      map[string]http.Handler
 }
 
@@ -26,6 +24,7 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 		APIErrTpl:      errors.DefaultJSON,
 		FileErrTpl:     errors.DefaultHTML,
 		EndpointRoutes: make(map[string]http.Handler),
+		FileRoutes:     make(map[string]http.Handler),
 		SPARoutes:      make(map[string]http.Handler),
 	}
 
@@ -50,12 +49,7 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 			options.FileErrTpl = tpl
 		}
 
-		absPath, err := filepath.Abs(conf.Files.DocumentRoot)
-		if err != nil {
-			return nil, err
-		}
 		options.FileBasePath = utils.JoinPath("/", conf.BasePath, conf.Files.BasePath)
-		options.FileHandler = handler.NewFile(options.FileBasePath, absPath, options.FileErrTpl)
 	}
 
 	return options, nil

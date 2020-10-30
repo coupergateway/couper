@@ -20,12 +20,12 @@ import (
 // Mux is a http request router and dispatches requests
 // to their corresponding http handlers.
 type Mux struct {
-	apiPath        string
 	apiErrHandler  *errors.Template
+	apiPath        string
 	endpointRoot   *pathpattern.Node
 	fileBasePath   string
-	fileHandler    http.Handler
 	fileErrHandler *errors.Template
+	fileRoot       *pathpattern.Node
 	router         *openapi3filter.Router
 	spaRoot        *pathpattern.Node
 }
@@ -50,18 +50,22 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	}
 
 	mux := &Mux{
-		apiPath:        opts.APIPath,
 		apiErrHandler:  opts.APIErrTpl,
-		fileBasePath:   opts.FileBasePath,
-		fileHandler:    opts.FileHandler,
-		fileErrHandler: opts.FileErrTpl,
+		apiPath:        opts.APIPath,
 		endpointRoot:   &pathpattern.Node{},
+		fileBasePath:   opts.FileBasePath,
+		fileErrHandler: opts.FileErrTpl,
+		fileRoot:       &pathpattern.Node{},
 		spaRoot:        &pathpattern.Node{},
 	}
 
 	for path, h := range opts.EndpointRoutes {
 		// TODO: handle method option per endpoint configuration
 		mux.mustAddRoute(mux.endpointRoot, allowedMethods, path, h)
+	}
+
+	for path, h := range opts.FileRoutes {
+		mux.mustAddRoute(mux.fileRoot, []string{http.MethodGet}, utils.JoinPath(path, "/**"), h)
 	}
 
 	for path, h := range opts.SPARoutes {
@@ -128,13 +132,14 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			return m.apiErrHandler.ServeError(errors.APIRouteNotFound)
 		}
 
-		if m.hasFileResponse(req) {
-			return m.fileHandler
+		fileHandler, exist := m.hasFileResponse(req)
+		if exist {
+			return fileHandler
 		}
 
 		node, paramValues = m.match(m.spaRoot, req)
 		if node == nil {
-			if m.fileHandler != nil && strings.HasPrefix(req.URL.Path, m.fileBasePath) {
+			if fileHandler != nil && strings.HasPrefix(req.URL.Path, m.fileBasePath) {
 				return m.fileErrHandler.ServeError(errors.FilesRouteNotFound)
 			}
 			// TODO: server err handler
@@ -183,18 +188,21 @@ func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Nod
 	return node, paramValues
 }
 
-func (m *Mux) hasFileResponse(req *http.Request) bool {
-	if m.fileHandler == nil {
-		return false
+func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
+	node, _ := m.match(m.fileRoot, req)
+	if node == nil {
+		return nil, false
 	}
 
-	fileHandler := m.fileHandler
-	if p, isProtected := m.fileHandler.(ac.ProtectedHandler); isProtected {
+	route := node.Value.(*openapi3filter.Route)
+	fileHandler := route.Handler
+	if p, isProtected := fileHandler.(ac.ProtectedHandler); isProtected {
 		fileHandler = p.Child()
 	}
-	if fh, ok := fileHandler.(handler.HasResponse); ok && fh.HasResponse(req) {
-		return true
+
+	if fh, ok := fileHandler.(handler.HasResponse); ok {
+		return fileHandler, fh.HasResponse(req)
 	}
 
-	return false
+	return fileHandler, false
 }
