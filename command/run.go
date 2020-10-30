@@ -16,8 +16,12 @@ var _ Cmd = &Run{}
 
 // Run starts the frontend gateway server and listen
 // for requests on the configured hosts and ports.
-type Run struct{
+type Run struct {
 	context context.Context
+}
+
+func NewRun(ctx context.Context) *Run {
+	return &Run{context: ctx}
 }
 
 func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) error {

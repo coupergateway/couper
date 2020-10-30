@@ -17,7 +17,7 @@ type Cmd interface {
 func NewCommand(cmd string) Cmd {
 	switch strings.ToLower(cmd) {
 	case "run":
-		return &Run{context: ContextWithSignal(context.Background())}
+		return NewRun(ContextWithSignal(context.Background()))
 	default:
 		return nil
 	}

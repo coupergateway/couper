@@ -70,7 +70,6 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 		mux.mustAddRoute(mux.endpointRoot, allowedMethods, path, h)
 	}
 
-	fileMethods := []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 	for path, h := range opts.FileRoutes {
 		mux.mustAddRoute(mux.fileRoot, fileMethods, utils.JoinPath(path, "/**"), h)
 	}

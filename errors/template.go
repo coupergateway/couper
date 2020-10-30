@@ -107,7 +107,7 @@ func (t *Template) ServeError(err error) http.Handler {
 				DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
 				return
 			}
-			DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
+			DefaultHTML.ServeError(errCode).ServeHTTP(rw, req)
 		} else if err != nil {
 			panic(err)
 		}
