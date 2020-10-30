@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -34,6 +35,8 @@ var (
 	errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 	errorMissingServer  = fmt.Errorf("missing server definitions")
 )
+
+var reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
 
 type backendDefinition struct {
 	conf    *config.Backend
@@ -108,10 +111,11 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		for _, endpoint := range srvConf.API.Endpoint {
 			pattern := utils.JoinPath("/", srvConf.BasePath, srvConf.API.BasePath, endpoint.Pattern)
 
-			if endpoints[pattern] {
+			unique, cleanPattern := isUnique(endpoints, pattern)
+			if !unique {
 				log.Fatal("Duplicate endpoint: ", pattern)
 			}
-			endpoints[pattern] = true
+			endpoints[cleanPattern] = true
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedBackend backendDefinition) {
@@ -396,4 +400,10 @@ func getPathsFromHosts(defaultPort int, hosts []string, path string) []string {
 		list = []string{path}
 	}
 	return list
+}
+
+func isUnique(endpoints map[string]bool, pattern string) (bool, string) {
+	pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
+
+	return !endpoints[pattern], pattern
 }
