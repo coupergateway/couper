@@ -40,6 +40,12 @@ var allowedMethods = []string{
 	http.MethodOptions,
 }
 
+var fileMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodOptions,
+}
+
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
@@ -64,12 +70,13 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 		mux.mustAddRoute(mux.endpointRoot, allowedMethods, path, h)
 	}
 
+	fileMethods := []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, []string{http.MethodGet}, utils.JoinPath(path, "/**"), h)
+		mux.mustAddRoute(mux.fileRoot, fileMethods, utils.JoinPath(path, "/**"), h)
 	}
 
 	for path, h := range opts.SPARoutes {
-		mux.mustAddRoute(mux.spaRoot, []string{http.MethodGet}, path, h)
+		mux.mustAddRoute(mux.spaRoot, fileMethods, path, h)
 	}
 
 	return mux
