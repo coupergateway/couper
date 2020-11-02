@@ -58,7 +58,7 @@ func setup() {
 	testTpl, _ := errors.NewTemplate("text/html", defaultErrorTpl)
 	errors.DefaultHTML = testTpl
 
-	testApiTpl, _ := errors.NewTemplate("text/html", defaultJSONErrorTpl)
+	testApiTpl, _ := errors.NewTemplate("application/json", defaultJSONErrorTpl)
 	errors.DefaultJSON = testApiTpl
 }
 
@@ -154,14 +154,26 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), nil, "file"},
 			},
 		}},
+		{"files_spa_api/01_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusOK, []byte(`<html><body><title>FS</title></body></html>`), nil, "file"},
+			},
+		}},
+		{"files_spa_api/01_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/foo"},
+				expectation{http.StatusOK, []byte(`<html><body><title>SPA</title></body></html>`), nil, "spa"},
+			},
+		}},
 		{"api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusOK, []byte(`<html>1002</html>`), nil, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
 			},
 			{
-				testRequest{http.MethodGet, "http://anyserver:8080/v1/anything"},
-				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), http.Header{"Content-Type": {"application/json"}}, "api"},
+				testRequest{http.MethodGet, "http://anyserver:8080/v1"},
+				expectation{http.StatusBadGateway, []byte(`{"code": 4002}`), http.Header{"Content-Type": {"application/json"}}, "api"},
 			},
 		}},
 	} {
