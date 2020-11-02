@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/command"
@@ -85,11 +87,17 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 
 	log, hook := logrustest.NewNullLogger()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(test.NewContext(context.Background()))
 	go func() {
-		helper.Must(command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(context.Background())))
+		helper.Must(command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)))
 	}()
 	time.Sleep(time.Second / 2)
+
+	entry := hook.LastEntry()
+	if entry.Level < logrus.InfoLevel {
+		helper.Must(fmt.Errorf(entry.String()))
+	}
+
 	hook.Reset() // no startup logs
 	return cancel, hook
 }
@@ -116,19 +124,20 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		requests []requestCase
 	}
 
+	dialer := &net.Dialer{}
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				_, port, _ := net.SplitHostPort(addr)
 				if port != "" {
-					return net.Dial("tcp4", "127.0.0.1:"+port)
+					return dialer.DialContext(ctx, "tcp4", "127.0.0.1:"+port)
 				}
-				return net.Dial("tcp4", "127.0.0.1")
+				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
 			},
 		},
 	}
 
-	for _, testcase := range []testCase{
+	for i, testcase := range []testCase{
 		{"spa/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
@@ -145,8 +154,20 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), nil, "file"},
 			},
 		}},
+		{"api/01_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusOK, []byte(`<html>1002</html>`), nil, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v1/anything"},
+				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+		}},
 	} {
-		cancelFn, logHook := newCouper(path.Join("testdata/integration", testcase.fileName), test.New(t))
+		confPath := path.Join("testdata/integration", testcase.fileName)
+		t.Logf("#%.2d: Create Couper: %q", i+1, confPath)
+		shutdown, logHook := newCouper(confPath, test.New(t))
 
 		for _, rc := range testcase.requests {
 			t.Run(testcase.fileName+" "+rc.req.method+"|"+rc.req.url, func(subT *testing.T) {
@@ -179,6 +200,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				}
 
 				entry := logHook.LastEntry()
+
 				if entry == nil || entry.Data["type"] != "couper_access" {
 					t.Error("Expected a log entry, got nothing")
 					return
@@ -188,7 +210,6 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				}
 			})
 		}
-
-		cancelFn()
+		shutdown()
 	}
 }

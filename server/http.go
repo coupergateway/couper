@@ -14,6 +14,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
 
@@ -143,6 +144,13 @@ func (s *HTTPServer) listenForCtx() {
 		}
 		s.log.WithFields(logFields).Warn("shutting down")
 		close(s.shutdownCh)
+
+		// testHook - skip shutdownDelay
+		if _, ok := s.commandCtx.Value(test.Key).(bool); ok {
+			_ = s.srv.Shutdown(context.TODO())
+			return
+		}
+
 		time.Sleep(s.config.Timings.ShutdownDelay)
 		ctx, cancel := context.WithTimeout(context.Background(), s.config.Timings.ShutdownTimeout)
 		defer cancel()
