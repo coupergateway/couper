@@ -95,8 +95,6 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 }
 
 func TestHTTPServer_ServeHTTP(t *testing.T) {
-	helper := test.New(t)
-
 	type testRequest struct {
 		method, url string
 	}
@@ -138,40 +136,31 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/app"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, "spa"},
+				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
 			},
 		}},
 		{"files/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), nil, "files"},
+				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), nil, "file"},
 			},
 		}},
 	} {
-		cancelFn, logHook := newCouper(path.Join("testdata/integration", testcase.fileName), helper)
+		cancelFn, logHook := newCouper(path.Join("testdata/integration", testcase.fileName), test.New(t))
 
 		for _, rc := range testcase.requests {
-
-			logHook.Reset()
-
 			t.Run(testcase.fileName+" "+rc.req.method+"|"+rc.req.url, func(subT *testing.T) {
+				helper := test.New(subT)
+				logHook.Reset()
+
 				req, err := http.NewRequest(rc.req.method, rc.req.url, nil)
-				if err != nil {
-					cancelFn()
-					subT.Fatal(err)
-				}
+				helper.Must(err)
 
 				res, err := client.Do(req)
-				if err != nil {
-					cancelFn()
-					subT.Fatal(err)
-				}
+				helper.Must(err)
 
 				resBytes, err := ioutil.ReadAll(res.Body)
-				if err != nil {
-					cancelFn()
-					subT.Fatal(err)
-				}
+				helper.Must(err)
 
 				_ = res.Body.Close()
 
