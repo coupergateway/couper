@@ -107,9 +107,9 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 	const wildcardReplacement = "/{_couper_wildcardMatch*}"
 	const wildcardSearch = "/**"
 
-	for _, method := range methods {
-		pathOptions := &pathpattern.Options{}
+	pathOptions := &pathpattern.Options{}
 
+	for _, method := range methods {
 		if strings.HasSuffix(path, wildcardSearch) {
 			pathOptions.SupportWildcard = true
 			path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
