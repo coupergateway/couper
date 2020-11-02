@@ -84,9 +84,8 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 
-			for _, spaPath := range srvConf.Spa.Paths {
-				for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts,
-					utils.JoinPath("/", srvConf.BasePath, srvConf.Spa.BasePath, spaPath)) {
+			for range srvConf.Spa.Paths {
+				for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts, muxOptions.SPABasePath) {
 					muxOptions.SPARoutes[p] = spaHandler
 				}
 			}

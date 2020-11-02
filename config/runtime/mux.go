@@ -11,11 +11,12 @@ import (
 
 type MuxOptions struct {
 	APIErrTpl      *errors.Template
-	APIPath        string
+	APIBasePath    string
 	EndpointRoutes map[string]http.Handler
 	FileBasePath   string
 	FileErrTpl     *errors.Template
 	FileRoutes     map[string]http.Handler
+	SPABasePath    string
 	SPARoutes      map[string]http.Handler
 }
 
@@ -29,7 +30,7 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 	}
 
 	if conf.API != nil {
-		options.APIPath = path.Join("/", conf.BasePath, conf.API.BasePath)
+		options.APIBasePath = path.Join("/", conf.BasePath, conf.API.BasePath)
 
 		if conf.API.ErrorFile != "" {
 			tpl, err := errors.NewTemplateFromFile(conf.Files.ErrorFile)
@@ -50,6 +51,10 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 		}
 
 		options.FileBasePath = utils.JoinPath("/", conf.BasePath, conf.Files.BasePath)
+	}
+
+	if conf.Spa != nil {
+		options.SPABasePath = utils.JoinPath("/", conf.BasePath, conf.Spa.BasePath)
 	}
 
 	return options, nil

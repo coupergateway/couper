@@ -21,12 +21,13 @@ import (
 // to their corresponding http handlers.
 type Mux struct {
 	apiErrHandler  *errors.Template
-	apiPath        string
+	apiBasePath    string
 	endpointRoot   *pathpattern.Node
 	fileBasePath   string
 	fileErrHandler *errors.Template
 	fileRoot       *pathpattern.Node
 	router         *openapi3filter.Router
+	spaBasePath    string
 	spaRoot        *pathpattern.Node
 }
 
@@ -57,11 +58,12 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	mux := &Mux{
 		apiErrHandler:  opts.APIErrTpl,
-		apiPath:        opts.APIPath,
+		apiBasePath:    opts.APIBasePath,
 		endpointRoot:   &pathpattern.Node{},
 		fileBasePath:   opts.FileBasePath,
 		fileErrHandler: opts.FileErrTpl,
 		fileRoot:       &pathpattern.Node{},
+		spaBasePath:    opts.SPABasePath,
 		spaRoot:        &pathpattern.Node{},
 	}
 
@@ -129,12 +131,13 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	var route *openapi3filter.Route
+
 	node, paramValues := m.match(m.endpointRoot, req)
 	if node == nil {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
 		// Otherwise look for existing files or spa fallback.
-		if strings.HasPrefix(req.URL.Path, m.apiPath) {
+		if isConfigured(m.apiBasePath) && m.isAPIError(req.URL.Path) {
 			return m.apiErrHandler.ServeError(errors.APIRouteNotFound)
 		}
 
@@ -145,11 +148,11 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 		node, paramValues = m.match(m.spaRoot, req)
 		if node == nil {
-			if fileHandler != nil && strings.HasPrefix(req.URL.Path, m.fileBasePath) {
+			if isConfigured(m.fileBasePath) && m.isFileError(req.URL.Path) {
 				return m.fileErrHandler.ServeError(errors.FilesRouteNotFound)
 			}
 			// TODO: server err handler
-			if m.fileErrHandler != nil {
+			if isConfigured(m.fileBasePath) {
 				return m.fileErrHandler.ServeError(errors.Configuration)
 			}
 			return errors.DefaultHTML.ServeError(errors.Configuration)
@@ -211,4 +214,45 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 	}
 
 	return fileHandler, false
+}
+
+func (m *Mux) isAPIError(reqPath string) bool {
+	p1 := m.apiBasePath
+	p2 := m.apiBasePath
+
+	if p2 != "/" && strings.HasSuffix(p2, "/") {
+		p2 = p2[:len(p2)-len("/")]
+	}
+
+	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
+		if isConfigured(m.fileBasePath) && m.apiBasePath == m.fileBasePath {
+			return false
+		}
+		if isConfigured(m.spaBasePath) && m.apiBasePath == m.spaBasePath {
+			return false
+		}
+
+		return true
+	}
+
+	return false
+}
+
+func (m *Mux) isFileError(reqPath string) bool {
+	p1 := m.fileBasePath
+	p2 := m.fileBasePath
+
+	if p2 != "/" && strings.HasSuffix(p2, "/") {
+		p2 = p2[:len(p2)-len("/")]
+	}
+
+	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
+		return true
+	}
+
+	return false
+}
+
+func isConfigured(basePath string) bool {
+	return basePath != ""
 }
