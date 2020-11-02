@@ -118,6 +118,18 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		requests []requestCase
 	}
 
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				_, port, _ := net.SplitHostPort(addr)
+				if port != "" {
+					return net.Dial("tcp4", "127.0.0.1:"+port)
+				}
+				return net.Dial("tcp4", "127.0.0.1")
+			},
+		},
+	}
+
 	for _, testcase := range []testCase{
 		{"spa/01_couper.hcl", []requestCase{
 			{
@@ -138,18 +150,6 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 	} {
 		cancelFn, logHook := newCouper(path.Join("testdata/integration", testcase.fileName), helper)
 
-		client := &http.Client{
-			Transport: &http.Transport{
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					_, port, _ := net.SplitHostPort(addr)
-					if port != "" {
-						return net.Dial("tcp4", "127.0.0.1:"+port)
-					}
-					return net.Dial("tcp4", "127.0.0.1")
-				},
-			},
-		}
-
 		for _, rc := range testcase.requests {
 
 			logHook.Reset()
@@ -158,7 +158,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				req, err := http.NewRequest(rc.req.method, rc.req.url, nil)
 				if err != nil {
 					cancelFn()
-					subT.Fatal()
+					subT.Fatal(err)
 				}
 
 				res, err := client.Do(req)
