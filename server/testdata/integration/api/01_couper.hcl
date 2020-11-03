@@ -1,15 +1,26 @@
 server "api" {
   error_file = "./../server_error.html"
+
   api {
     base_path = "/v1"
 
     error_file = "./../api_error.json"
 
     endpoint "/" {
+      backend = "anything"
+    }
+
+    endpoint "/connect-error" {
       backend {
-        path = "/anything"
-        origin = "http://anyserver/"
+        origin = "http://1.2.3.4"
       }
     }
+  }
+}
+
+definitions {
+  backend "anything" {
+    path = "/anything"
+    origin = "http://anyserver/"
   }
 }

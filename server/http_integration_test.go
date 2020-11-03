@@ -159,7 +159,15 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
 			},
 			{
-				testRequest{http.MethodGet, "http://anyserver:8080/v1"},
+				testRequest{http.MethodGet, "http://anyserver:8080/v1/"},
+				expectation{http.StatusOK, nil, http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v1/not-found"},
+				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"},
 				expectation{http.StatusBadGateway, []byte(`{"code": 4002}`), http.Header{"Content-Type": {"application/json"}}, "api"},
 			},
 		}},
@@ -194,7 +202,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 					}
 				}
 
-				if bytes.Compare(resBytes, rc.exp.body) != 0 {
+				if rc.exp.body != nil && bytes.Compare(resBytes, rc.exp.body) != 0 {
 					t.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
 				}
 

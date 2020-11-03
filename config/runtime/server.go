@@ -150,6 +150,9 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 					return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
 				}
 				setACHandlerFn(backends[endpoint.Backend])
+				for _, hostPath := range getPathsFromHosts(defaultPort, srvConf.Hosts, pattern) {
+					muxOptions.EndpointRoutes[hostPath] = api[endpoint]
+				}
 				continue
 			}
 
