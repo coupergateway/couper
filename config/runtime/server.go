@@ -63,7 +63,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		return nil, err
 	}
 
-	accessControls := configureAccessControls(conf)
+	accessControls, err := configureAccessControls(conf)
+	if err != nil {
+		return nil, err
+	}
 
 	server := make(Server, 0)
 
@@ -131,7 +134,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				// prefer endpoint 'path' definition over 'backend.Path'
 				if endpoint.Path != "" {
 					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
-					protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log)
+					protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, muxOptions.APIErrTpl)
 				}
 
 				api[endpoint] = configureProtectedHandler(accessControls, muxOptions.APIErrTpl,
@@ -151,7 +154,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, srvConf.API.CORS, log)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
 			if err == errorMissingBackend {
 				if srvConf.API.Backend != "" {
 					if _, ok := backends[srvConf.API.Backend]; !ok {
@@ -160,7 +163,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 					setACHandlerFn(backends[srvConf.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, srvConf.API.InlineDefinition, srvConf.API.CORS, log)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, srvConf.API.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
 				if err != nil {
 					return nil, err
 				}
@@ -182,7 +185,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
 
-				proxy := newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log)
+				proxy := newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, muxOptions.APIErrTpl)
 				inlineBackend = proxy
 			}
 
@@ -200,7 +203,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 	return server, nil
 }
 
-func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry) http.Handler {
+func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, errHandler *errors.Template) http.Handler {
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
 		log.Fatal(err)
@@ -211,7 +214,7 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 		log.Fatal(err)
 	}
 
-	proxy, err := handler.NewProxy(proxyOptions, log, ctx)
+	proxy, err := handler.NewProxy(proxyOptions, log, errHandler, ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -238,7 +241,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 
 		backends[beConf.Name] = backendDefinition{
 			conf:    beConf,
-			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log),
+			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log, errors.DefaultJSON),
 		}
 	}
 	return backends, nil
@@ -264,19 +267,19 @@ func configureHandlers(configuredPort int, server *config.Server, mux *MuxOption
 	return nil
 }
 
-func configureAccessControls(conf *config.Gateway) ac.Map {
+func configureAccessControls(conf *config.Gateway) (ac.Map, error) {
 	accessControls := make(ac.Map)
 
 	if conf.Definitions != nil {
 		for _, ba := range conf.Definitions.BasicAuth {
 			name, err := validateACName(accessControls, ba.Name, "basic_auth")
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			basicAuth, err := ac.NewBasicAuth(name, ba.User, ba.Pass, ba.File, ba.Realm)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			accessControls[name] = basicAuth
@@ -285,7 +288,7 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 		for _, jwt := range conf.Definitions.JWT {
 			name, err := validateACName(accessControls, jwt.Name, "jwt")
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			var jwtSource ac.Source
@@ -299,10 +302,13 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 			}
 			var key []byte
 			if jwt.KeyFile != "" {
-				wd, _ := os.Getwd()
+				wd, err := os.Getwd()
+				if err != nil {
+					return nil, err
+				}
 				content, err := ioutil.ReadFile(path.Join(wd, jwt.KeyFile))
 				if err != nil {
-					panic(err)
+					return nil, err
 				}
 				key = content
 			} else if jwt.Key != "" {
@@ -313,20 +319,20 @@ func configureAccessControls(conf *config.Gateway) ac.Map {
 			if jwt.Claims != nil {
 				c, diags := seetie.ExpToMap(conf.Context, jwt.Claims)
 				if diags.HasErrors() {
-					panic(diags.Error())
+					return nil, diags
 				}
 				claims = c
 			}
 			j, err := ac.NewJWT(jwt.SignatureAlgorithm, name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
 			if err != nil {
-				panic(fmt.Sprintf("loading jwt %q definition failed: %s", name, err))
+				return nil, fmt.Errorf("loading jwt %q definition failed: %s", name, err)
 			}
 
 			accessControls[name] = j
 		}
 	}
 
-	return accessControls
+	return accessControls, nil
 }
 
 func validateACName(accessControls ac.Map, name, acType string) (string, error) {
@@ -356,7 +362,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry) (http.Handler, *config.Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, errHandler *errors.Template) (http.Handler, *config.Backend, error) {
 	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
@@ -381,7 +387,7 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	}
 
 	beConf, _ = defaultBackendConf.Merge(beConf)
-	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log)
+	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, errHandler)
 	return proxy, beConf, nil
 }
 

@@ -22,12 +22,10 @@ type MuxOptions struct {
 }
 
 func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
-	serverErrTpl := errors.DefaultHTML
-
 	options := &MuxOptions{
 		APIErrTpl:      errors.DefaultJSON,
-		FileErrTpl:     serverErrTpl,
-		ServerErrTpl:   serverErrTpl,
+		FileErrTpl:     errors.DefaultHTML,
+		ServerErrTpl:   errors.DefaultHTML,
 		EndpointRoutes: make(map[string]http.Handler),
 		FileRoutes:     make(map[string]http.Handler),
 		SPARoutes:      make(map[string]http.Handler),
@@ -38,7 +36,8 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 		if err != nil {
 			return nil, err
 		}
-		*serverErrTpl = *tpl
+		options.ServerErrTpl = tpl
+		options.FileErrTpl = tpl
 	}
 
 	if conf.API != nil {

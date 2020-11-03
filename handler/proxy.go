@@ -41,6 +41,7 @@ var (
 )
 
 type Proxy struct {
+	errorHandler *couperErr.Template
 	evalContext  *hcl.EvalContext
 	log          *logrus.Entry
 	bufferOption eval.BufferOption
@@ -92,7 +93,11 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+func NewProxy(options *ProxyOptions, log *logrus.Entry, errHandler *couperErr.Template, evalCtx *hcl.EvalContext) (http.Handler, error) {
+	if errHandler == nil {
+		errHandler = couperErr.DefaultJSON
+	}
+
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -110,6 +115,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 
 	proxy := &Proxy{
 		bufferOption: eval.MustBuffer(options.Context),
+		errorHandler: errHandler,
 		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
@@ -170,8 +176,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	err := p.Director(outreq)
 	if err != nil {
-		// TODO: use error template from parent endpoint>api>server
-		couperErr.DefaultJSON.ServeError(err).ServeHTTP(rw, req)
+		p.errorHandler.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
@@ -208,8 +213,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		// TODO: use error template from parent endpoint>api>server
-		couperErr.DefaultJSON.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
+		p.errorHandler.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
 

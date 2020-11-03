@@ -16,6 +16,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
@@ -111,7 +112,7 @@ func TestNewHTTPContext(t *testing.T) {
 				RequestBodyLimit: 256,
 				Origin:           req.URL.String(),
 				CORS:             &handler.CORSOptions{},
-			}, log.WithContext(nil), nil)
+			}, log.WithContext(nil), errors.DefaultJSON, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

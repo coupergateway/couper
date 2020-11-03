@@ -2,7 +2,6 @@ package errors
 
 import (
 	"io/ioutil"
-	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -51,7 +50,12 @@ func NewTemplateFromFile(path string) (*Template, error) {
 		return nil, err
 	}
 
-	return NewTemplate(mime.TypeByExtension(path), tplFile)
+	mime := "text/html"
+	if strings.HasSuffix(path, ".json") {
+		mime = "application/json"
+	}
+
+	return NewTemplate(mime, tplFile)
 }
 
 func NewTemplate(mime string, src []byte) (*Template, error) {
