@@ -179,6 +179,36 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusInternalServerError, []byte(`<html>1002</html>`), http.Header{"Content-Type": {"text/html"}}, ""},
 			},
 		}},
+		{"api/02_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v2/"},
+				expectation{http.StatusOK, nil, http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+			{
+				testRequest{http.MethodGet, "http://couper.io:9898/v2/"},
+				expectation{http.StatusOK, nil, http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.com:9898/v3/"},
+				expectation{http.StatusOK, nil, http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v2/not-found"},
+				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://couper.io:9898/v2/not-found"},
+				expectation{http.StatusBadGateway, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
+				expectation{http.StatusBadGateway, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+			},
+		}},
 	} {
 		confPath := path.Join("testdata/integration", testcase.fileName)
 		t.Logf("#%.2d: Create Couper: %q", i+1, confPath)
