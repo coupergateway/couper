@@ -41,7 +41,10 @@ func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) 
 	httpConf = httpConf.Merge(envConf)
 
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvMux := runtime.NewServerConfiguration(config, httpConf, logEntry)
+	srvMux, err := runtime.NewServerConfiguration(config, httpConf, logEntry)
+	if err != nil {
+		return err
+	}
 
 	serverList, listenCmdShutdown := server.NewServerList(r.context, logEntry.Logger, httpConf, srvMux)
 	for _, srv := range serverList {

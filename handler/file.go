@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -34,6 +35,23 @@ func NewFile(basePath, docRoot string, errTpl *errors.Template) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	file, err := os.Open(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if !fileInfo.IsDir() {
+		return nil, fmt.Errorf("document root must be a directory: %q", docRoot)
+	}
+
 	f := &File{
 		basePath: basePath,
 		errorTpl: errTpl,

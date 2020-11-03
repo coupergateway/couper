@@ -45,9 +45,9 @@ type backendDefinition struct {
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) Server {
+func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) (Server, error) {
 	if len(conf.Server) == 0 {
-		log.Fatal(errorMissingServer)
+		return nil, errorMissingServer
 	}
 
 	// (arg && env) > conf
@@ -60,7 +60,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 	backends, err := newBackendsFromDefinitions(conf, log)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	accessControls := configureAccessControls(conf)
@@ -70,14 +70,14 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 	for _, srvConf := range conf.Server {
 		muxOptions, err := NewMuxOptions(srvConf)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
 			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 
 			spaHandler = configureProtectedHandler(accessControls, muxOptions.ServerErrTpl,
@@ -94,7 +94,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		if srvConf.Files != nil {
 			fileHandler, err := handler.NewFile(muxOptions.FileBasePath, srvConf.Files.DocumentRoot, muxOptions.FileErrTpl)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 
 			protectedFileHandler := configureProtectedHandler(accessControls, muxOptions.FileErrTpl,
@@ -108,7 +108,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 		if srvConf.API == nil {
 			if err = configureHandlers(defaultPort, srvConf, muxOptions, server); err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 			continue
 		}
@@ -120,7 +120,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 			unique, cleanPattern := isUnique(endpoints, pattern)
 			if !unique {
-				log.Fatal("Duplicate endpoint: ", pattern)
+				return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
 			}
 			endpoints[cleanPattern] = true
 
@@ -144,7 +144,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			// lookup for backend reference, prefer endpoint definition over api one
 			if endpoint.Backend != "" {
 				if _, ok := backends[endpoint.Backend]; !ok {
-					log.Fatalf("backend %q is not defined", endpoint.Backend)
+					return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
 				}
 				setACHandlerFn(backends[endpoint.Backend])
 				continue
@@ -155,29 +155,29 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			if err == errorMissingBackend {
 				if srvConf.API.Backend != "" {
 					if _, ok := backends[srvConf.API.Backend]; !ok {
-						log.Fatalf("backend %q is not defined", srvConf.API.Backend)
+						return nil, fmt.Errorf("backend %q is not defined", srvConf.API.Backend)
 					}
 					setACHandlerFn(backends[srvConf.API.Backend])
 					continue
 				}
 				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, srvConf.API.InlineDefinition, srvConf.API.CORS, log)
 				if err != nil {
-					log.Fatal(err)
+					return nil, err
 				}
 
 				if inlineConf.Name == "" && inlineConf.Origin == "" {
-					log.Fatal("api inline backend requires an origin attribute")
+					return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
 				}
 
 			} else if err != nil {
 				if err == handler.OriginRequiredError && inlineConf.Name == "" || err != handler.OriginRequiredError {
-					log.Fatalf("Range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err) // TODO diags error
+					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err) // TODO diags error
 				}
 			}
 
 			if inlineConf.Name != "" { // inline backends have no label, assume a reference and override settings
 				if _, ok := backends[inlineConf.Name]; !ok {
-					log.Fatalf("override backend %q is not defined", inlineConf.Name)
+					return nil, fmt.Errorf("override backend %q is not defined", inlineConf.Name)
 				}
 
 				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
@@ -194,10 +194,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		}
 
 		if err = configureHandlers(defaultPort, srvConf, muxOptions, server); err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
-	return server
+	return server, nil
 }
 
 func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry) http.Handler {

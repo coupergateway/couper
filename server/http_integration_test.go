@@ -138,7 +138,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		{"files/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusOK, []byte(`<html><body><title>1.0</title></body></html>`), nil, "file"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index</html>`), nil, "file"},
 			},
 		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{

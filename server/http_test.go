@@ -58,7 +58,8 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	helper.Must(err)
 
-	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	ports, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	helper.Must(err)
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
@@ -150,7 +151,8 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	ports := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	ports, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	helper.Must(err)
 	port := runtime.Port(strconv.Itoa(httpConf.ListenPort))
 
 	couper := server.New(ctx, log.WithContext(ctx), httpConf, "test", port, ports[port].Mux)

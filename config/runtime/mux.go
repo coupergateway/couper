@@ -45,7 +45,7 @@ func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
 		options.APIBasePath = path.Join("/", conf.BasePath, conf.API.BasePath)
 
 		if conf.API.ErrorFile != "" {
-			tpl, err := errors.NewTemplateFromFile(conf.Files.ErrorFile)
+			tpl, err := errors.NewTemplateFromFile(conf.API.ErrorFile)
 			if err != nil {
 				return nil, err
 			}
