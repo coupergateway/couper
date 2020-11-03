@@ -159,6 +159,10 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
 			},
 			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v1"},
+				expectation{http.StatusOK, nil, http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/"},
 				expectation{http.StatusOK, nil, http.Header{"Content-Type": {"application/json"}}, "api"},
 			},
@@ -169,6 +173,10 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"},
 				expectation{http.StatusBadGateway, []byte(`{"code": 4002}`), http.Header{"Content-Type": {"application/json"}}, "api"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/v1x"},
+				expectation{http.StatusInternalServerError, []byte(`<html>1002</html>`), http.Header{"Content-Type": {"text/html"}}, ""},
 			},
 		}},
 	} {

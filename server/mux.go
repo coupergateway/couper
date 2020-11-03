@@ -207,10 +207,15 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 	return fileHandler, false
 }
 
+// isAPIError checks the path w/ and w/o the
+// trailing slash against the request path.
 func (m *Mux) isAPIError(reqPath string) bool {
 	p1 := m.opts.APIBasePath
 	p2 := m.opts.APIBasePath
 
+	if p1 != "/" && !strings.HasSuffix(p1, "/") {
+		p1 += "/"
+	}
 	if p2 != "/" && strings.HasSuffix(p2, "/") {
 		p2 = p2[:len(p2)-len("/")]
 	}
@@ -229,10 +234,15 @@ func (m *Mux) isAPIError(reqPath string) bool {
 	return false
 }
 
+// isFileError checks the path w/ and w/o the
+// trailing slash against the request path.
 func (m *Mux) isFileError(reqPath string) bool {
 	p1 := m.opts.FileBasePath
 	p2 := m.opts.FileBasePath
 
+	if p1 != "/" && !strings.HasSuffix(p1, "/") {
+		p1 += "/"
+	}
 	if p2 != "/" && strings.HasSuffix(p2, "/") {
 		p2 = p2[:len(p2)-len("/")]
 	}
