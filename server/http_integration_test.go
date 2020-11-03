@@ -223,5 +223,9 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			})
 		}
 		shutdown()
+		err := os.Chdir(testWorkingDir)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
