@@ -1,5 +1,8 @@
 server "fileserving-tests" {
     hosts = ["example.com"]
+
+    error_file = "./error.html"
+
     files {
         document_root = "./htdocs"
     }
@@ -19,6 +22,7 @@ server "fileserving-tests" {
 
     api {
         base_path = "/api"
+        error_file = "./error.json"
         endpoint "/foo/**" {
             backend {
                 path = "/**"

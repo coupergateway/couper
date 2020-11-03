@@ -26,6 +26,10 @@ import (
 func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	helper := test.New(t)
 
+	currentDir, err := os.Getwd()
+	helper.Must(err)
+	defer helper.Must(os.Chdir(currentDir))
+
 	expectedAPIHost := "test.couper.io"
 	originBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Host != expectedAPIHost {
@@ -36,7 +40,9 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	}))
 	defer originBackend.Close()
 
-	tpl, err := template.ParseFiles("testdata/file_serving/conf_test.hcl")
+	helper.Must(os.Chdir("testdata/file_serving"))
+
+	tpl, err := template.ParseFiles("conf_test.hcl")
 	helper.Must(err)
 
 	confBytes := &bytes.Buffer{}
@@ -87,7 +93,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
-		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`"/apps/shiny-product/api/foo%20bar:%22baz%22"`), 404},
+		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"code": 4001}`), 404},
 	} {
 		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
 		helper.Must(err)
@@ -104,10 +110,16 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 			t.Errorf("%.2d: expected body should contain:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
 		}
 	}
+
+	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
 }
 
 func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	helper := test.New(t)
+
+	currentDir, err := os.Getwd()
+	helper.Must(err)
+	defer helper.Must(os.Chdir(currentDir))
 
 	expectedAPIHost := "test.couper.io"
 	originBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -119,9 +131,6 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		rw.Write([]byte(req.URL.Path))
 	}))
 	defer originBackend.Close()
-
-	cwd, _ := os.Getwd()
-	defer helper.Must(os.Chdir(cwd))
 
 	helper.Must(os.Chdir("testdata/file_serving"))
 
@@ -147,7 +156,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	helper.Must(err)
 
-	error404Content := []byte("<title>404 Files route not found</title>")
+	error404Content := []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>")
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
@@ -220,6 +229,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 			t.Errorf("%.2d: expected body for path %q:\n%s\ngot:\n%s", i+1, testCase.path, string(testCase.expectedBody), string(result))
 		}
 	}
+	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
 }
 
 func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {

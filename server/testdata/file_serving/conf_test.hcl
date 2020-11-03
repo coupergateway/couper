@@ -1,15 +1,16 @@
 server "TestFileServing" {
   hosts = ["example.com"]
 
-  files {
-    document_root = "testdata/file_serving/htdocs"
-    error_file = "testdata/file_serving/error.html"
-  }
-
   base_path = "/apps/shiny-product"
+  error_file = "./error.html"
+
+  files {
+    document_root = "./htdocs"
+  }
 
   api {
     base_path = "/api"
+    error_file = "./error.json"
 
     endpoint "/" {
       backend {
@@ -21,7 +22,7 @@ server "TestFileServing" {
 
   spa {
     base_path = "/app"
-    bootstrap_file = "testdata/file_serving/htdocs/spa.html"
+    bootstrap_file = "./htdocs/spa.html"
     paths = ["/**"]
   }
 }
