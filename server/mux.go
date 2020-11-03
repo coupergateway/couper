@@ -20,15 +20,11 @@ import (
 // Mux is a http request router and dispatches requests
 // to their corresponding http handlers.
 type Mux struct {
-	apiErrHandler  *errors.Template
-	apiBasePath    string
-	endpointRoot   *pathpattern.Node
-	fileBasePath   string
-	fileErrHandler *errors.Template
-	fileRoot       *pathpattern.Node
-	router         *openapi3filter.Router
-	spaBasePath    string
-	spaRoot        *pathpattern.Node
+	endpointRoot *pathpattern.Node
+	fileRoot     *pathpattern.Node
+	opts         *runtime.MuxOptions
+	router       *openapi3filter.Router
+	spaRoot      *pathpattern.Node
 }
 
 var allowedMethods = []string{
@@ -51,20 +47,17 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
 		opts = &runtime.MuxOptions{
-			APIErrTpl:  errors.DefaultJSON,
-			FileErrTpl: errors.DefaultHTML,
+			APIErrTpl:    errors.DefaultJSON,
+			FileErrTpl:   errors.DefaultHTML,
+			ServerErrTpl: errors.DefaultHTML,
 		}
 	}
 
 	mux := &Mux{
-		apiErrHandler:  opts.APIErrTpl,
-		apiBasePath:    opts.APIBasePath,
-		endpointRoot:   &pathpattern.Node{},
-		fileBasePath:   opts.FileBasePath,
-		fileErrHandler: opts.FileErrTpl,
-		fileRoot:       &pathpattern.Node{},
-		spaBasePath:    opts.SPABasePath,
-		spaRoot:        &pathpattern.Node{},
+		opts:         opts,
+		endpointRoot: &pathpattern.Node{},
+		fileRoot:     &pathpattern.Node{},
+		spaRoot:      &pathpattern.Node{},
 	}
 
 	for path, h := range opts.EndpointRoutes {
@@ -107,6 +100,7 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 	const wildcardReplacement = "/{_couper_wildcardMatch*}"
 	const wildcardSearch = "/**"
 
+	// TODO: Unique Options per method if configurable later on
 	pathOptions := &pathpattern.Options{}
 
 	for _, method := range methods {
@@ -137,8 +131,8 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
 		// Otherwise look for existing files or spa fallback.
-		if isConfigured(m.apiBasePath) && m.isAPIError(req.URL.Path) {
-			return m.apiErrHandler.ServeError(errors.APIRouteNotFound)
+		if isConfigured(m.opts.APIBasePath) && m.isAPIError(req.URL.Path) {
+			return m.opts.APIErrTpl.ServeError(errors.APIRouteNotFound)
 		}
 
 		fileHandler, exist := m.hasFileResponse(req)
@@ -148,14 +142,11 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 		node, paramValues = m.match(m.spaRoot, req)
 		if node == nil {
-			if isConfigured(m.fileBasePath) && m.isFileError(req.URL.Path) {
-				return m.fileErrHandler.ServeError(errors.FilesRouteNotFound)
+			if isConfigured(m.opts.FileBasePath) && m.isFileError(req.URL.Path) {
+				return m.opts.FileErrTpl.ServeError(errors.FilesRouteNotFound)
 			}
-			// TODO: server err handler
-			if isConfigured(m.fileBasePath) {
-				return m.fileErrHandler.ServeError(errors.Configuration)
-			}
-			return errors.DefaultHTML.ServeError(errors.Configuration)
+
+			return m.opts.ServerErrTpl.ServeError(errors.Configuration)
 		}
 	}
 
@@ -217,18 +208,18 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 }
 
 func (m *Mux) isAPIError(reqPath string) bool {
-	p1 := m.apiBasePath
-	p2 := m.apiBasePath
+	p1 := m.opts.APIBasePath
+	p2 := m.opts.APIBasePath
 
 	if p2 != "/" && strings.HasSuffix(p2, "/") {
 		p2 = p2[:len(p2)-len("/")]
 	}
 
 	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
-		if isConfigured(m.fileBasePath) && m.apiBasePath == m.fileBasePath {
+		if isConfigured(m.opts.FileBasePath) && m.opts.APIBasePath == m.opts.FileBasePath {
 			return false
 		}
-		if isConfigured(m.spaBasePath) && m.apiBasePath == m.spaBasePath {
+		if isConfigured(m.opts.SPABasePath) && m.opts.APIBasePath == m.opts.SPABasePath {
 			return false
 		}
 
@@ -239,8 +230,8 @@ func (m *Mux) isAPIError(reqPath string) bool {
 }
 
 func (m *Mux) isFileError(reqPath string) bool {
-	p1 := m.fileBasePath
-	p2 := m.fileBasePath
+	p1 := m.opts.FileBasePath
+	p2 := m.opts.FileBasePath
 
 	if p2 != "/" && strings.HasSuffix(p2, "/") {
 		p2 = p2[:len(p2)-len("/")]

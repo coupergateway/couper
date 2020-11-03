@@ -80,7 +80,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				log.Fatal(err)
 			}
 
-			spaHandler = configureProtectedHandler(accessControls, errors.DefaultHTML, // TODO: server err tpl
+			spaHandler = configureProtectedHandler(accessControls, muxOptions.ServerErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 

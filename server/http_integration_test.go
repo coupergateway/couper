@@ -20,18 +20,12 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 )
 
 var (
 	testBackend    *test.Backend
 	testWorkingDir string
-
-	defaultErrorTpl     = []byte("<html>{{.error_code}}</html>")
-	defaultJSONErrorTpl = []byte(`{"code": {{.error_code}}}`)
-	tmpErrTpl           errors.Template
-	tmpJSONErrTpl       errors.Template
 )
 
 func TestMain(m *testing.M) {
@@ -50,24 +44,11 @@ func setup() {
 		panic(err)
 	}
 	testWorkingDir = wd
-	println("working directory: ", testWorkingDir)
-
-	tmpErrTpl = *errors.DefaultHTML
-	tmpJSONErrTpl = *errors.DefaultHTML
-
-	testTpl, _ := errors.NewTemplate("text/html", defaultErrorTpl)
-	errors.DefaultHTML = testTpl
-
-	testApiTpl, _ := errors.NewTemplate("application/json", defaultJSONErrorTpl)
-	errors.DefaultJSON = testApiTpl
 }
 
 func teardown() {
 	println("close test backend...")
 	testBackend.Close()
-
-	errors.DefaultHTML = &tmpErrTpl
-	errors.DefaultJSON = &tmpJSONErrTpl
 }
 
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
@@ -88,18 +69,24 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	log, hook := logrustest.NewNullLogger()
 
 	ctx, cancel := context.WithCancel(test.NewContext(context.Background()))
+	cancelFn := func() {
+		cancel()
+		time.Sleep(time.Second / 2)
+	}
+	//log.Out = os.Stdout
 	go func() {
 		helper.Must(command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)))
 	}()
 	time.Sleep(time.Second / 2)
 
-	entry := hook.LastEntry()
-	if entry.Level < logrus.InfoLevel {
-		helper.Must(fmt.Errorf(entry.String()))
+	for _, entry := range hook.AllEntries() {
+		if entry.Level < logrus.InfoLevel {
+			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
+		}
 	}
 
 	hook.Reset() // no startup logs
-	return cancel, hook
+	return cancelFn, hook
 }
 
 func TestHTTPServer_ServeHTTP(t *testing.T) {

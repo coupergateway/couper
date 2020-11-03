@@ -1,4 +1,5 @@
 server "spa" {
+  error_file = "./../server_error.html"
   files {
     document_root = "./"
   }
@@ -7,6 +8,7 @@ server "spa" {
     paths = ["/**"]
   }
   api {
+    error_file = "./../api_error.json"
     endpoint "/api" {
       path = "/"
       backend {

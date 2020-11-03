@@ -50,7 +50,8 @@ func NewTemplateFromFile(path string) (*Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewTemplate(mime.TypeByExtension(absPath), tplFile)
+
+	return NewTemplate(mime.TypeByExtension(path), tplFile)
 }
 
 func NewTemplate(mime string, src []byte) (*Template, error) {

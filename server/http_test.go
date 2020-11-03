@@ -100,7 +100,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		helper.Must(res.Body.Close())
 
 		if !bytes.Contains(result, testCase.expectedBody) {
-			t.Errorf("%.2d: expected body:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
+			t.Errorf("%.2d: expected body should contain:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
 		}
 	}
 }

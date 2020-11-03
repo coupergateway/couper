@@ -16,17 +16,29 @@ type MuxOptions struct {
 	FileBasePath   string
 	FileErrTpl     *errors.Template
 	FileRoutes     map[string]http.Handler
+	ServerErrTpl   *errors.Template
 	SPABasePath    string
 	SPARoutes      map[string]http.Handler
 }
 
 func NewMuxOptions(conf *config.Server) (*MuxOptions, error) {
+	serverErrTpl := errors.DefaultHTML
+
 	options := &MuxOptions{
 		APIErrTpl:      errors.DefaultJSON,
-		FileErrTpl:     errors.DefaultHTML,
+		FileErrTpl:     serverErrTpl,
+		ServerErrTpl:   serverErrTpl,
 		EndpointRoutes: make(map[string]http.Handler),
 		FileRoutes:     make(map[string]http.Handler),
 		SPARoutes:      make(map[string]http.Handler),
+	}
+
+	if conf.ErrorFile != "" {
+		tpl, err := errors.NewTemplateFromFile(conf.ErrorFile)
+		if err != nil {
+			return nil, err
+		}
+		*serverErrTpl = *tpl
 	}
 
 	if conf.API != nil {
