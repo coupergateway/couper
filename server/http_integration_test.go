@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-	println("create test backend...")
+	println("INTEGRATION: create test backend...")
 	testBackend = test.NewBackend()
 
 	wd, err := os.Getwd()
@@ -47,7 +47,7 @@ func setup() {
 }
 
 func teardown() {
-	println("close test backend...")
+	println("INTEGRATION: close test backend...")
 	testBackend.Close()
 }
 
@@ -141,6 +141,28 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusOK, []byte(`<html lang="en">index</html>`), nil, "file"},
 			},
 		}},
+		{"files/02_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/a"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index A</html>`), nil, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://couper.io:9898/a"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index A</html>`), nil, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://couper.io:9898/"},
+				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), nil, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.com:9898/b"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index B</html>`), nil, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.com:9898/"},
+				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), nil, ""},
+			},
+		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
@@ -202,12 +224,12 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/v2/not-found"},
-				expectation{http.StatusBadGateway, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
-			{
-				testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
-				expectation{http.StatusBadGateway, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
-			},
+			//{ // TODO: Fix multi-api server/host behaviour - this would lead to multi apiBasePaths
+			//	testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
+			//	expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+			//},
 		}},
 	} {
 		confPath := path.Join("testdata/integration", testcase.fileName)

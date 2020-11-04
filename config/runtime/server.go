@@ -110,7 +110,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		}
 
 		if srvConf.API == nil {
-			if err = configureHandlers(defaultPort, srvConf, muxOptions, server); err != nil {
+			if err = mapPortRoutes(defaultPort, srvConf, muxOptions, server); err != nil {
 				return nil, err
 			}
 			continue
@@ -199,7 +199,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 		}
 
-		if err = configureHandlers(defaultPort, srvConf, muxOptions, server); err != nil {
+		if err = mapPortRoutes(defaultPort, srvConf, muxOptions, server); err != nil {
 			return nil, err
 		}
 	}
@@ -250,7 +250,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 	return backends, nil
 }
 
-func configureHandlers(configuredPort int, server *config.Server, mux *MuxOptions, srvMux Server) error {
+func mapPortRoutes(configuredPort int, server *config.Server, mux *MuxOptions, srvMux Server) error {
 	hosts := server.Hosts
 	if len(hosts) == 0 {
 		hosts = []string{fmt.Sprintf("*:%d", configuredPort)}
@@ -263,9 +263,37 @@ func configureHandlers(configuredPort int, server *config.Server, mux *MuxOption
 			if err != nil {
 				return err
 			}
-			port = Port(p)
+			if p != "*" {
+				port = Port(p)
+			}
 		}
-		srvMux[port] = &ServerMux{Server: server, Mux: mux}
+
+		if _, ok := srvMux[port]; !ok {
+			srvMux[port] = &ServerMux{Server: server, Mux: mux}
+		} else {
+			for i, routes := range []map[string]http.Handler{mux.EndpointRoutes, mux.FileRoutes, mux.SPARoutes} {
+				for route, handler := range routes {
+					idx := strings.IndexByte(route, '/')
+					if idx < 0 || (hp != "*" && !strings.HasSuffix(route[:idx], ":"+string(port))) {
+						continue
+					}
+
+					var routesMap map[string]http.Handler
+					switch i {
+					case 0:
+						routesMap = srvMux[port].Mux.EndpointRoutes
+					case 1:
+						routesMap = srvMux[port].Mux.FileRoutes
+					case 2:
+						routesMap = srvMux[port].Mux.SPARoutes
+					}
+					if _, ok := routesMap[route]; ok {
+						return fmt.Errorf("duplicate route on port: %v: %q", port, route)
+					}
+					routesMap[route] = handler
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -413,7 +441,7 @@ func getPathsFromHosts(defaultPort int, hosts []string, path string) []string {
 		list = append(list, utils.JoinPath(pathpattern.PathFromHost(host, false), "/", path))
 	}
 	if len(list) == 0 {
-		list = []string{path}
+		list = []string{utils.JoinPath("/", path)}
 	}
 	return list
 }
