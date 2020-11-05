@@ -89,6 +89,30 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	return cancelFn, hook
 }
 
+func newClient() *http.Client {
+	dialer := &net.Dialer{}
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				_, port, _ := net.SplitHostPort(addr)
+				if port != "" {
+					return dialer.DialContext(ctx, "tcp4", "127.0.0.1:"+port)
+				}
+				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
+			},
+		},
+	}
+}
+
+func cleanup(shutdown func(), t *testing.T) {
+	shutdown()
+
+	err := os.Chdir(testWorkingDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestHTTPServer_ServeHTTP(t *testing.T) {
 	type testRequest struct {
 		method, url string
@@ -111,18 +135,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		requests []requestCase
 	}
 
-	dialer := &net.Dialer{}
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				_, port, _ := net.SplitHostPort(addr)
-				if port != "" {
-					return dialer.DialContext(ctx, "tcp4", "127.0.0.1:"+port)
-				}
-				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
-			},
-		},
-	}
+	client := newClient()
 
 	for i, testcase := range []testCase{
 		{"spa/01_couper.hcl", []requestCase{
@@ -277,10 +290,70 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				}
 			})
 		}
-		shutdown()
-		err := os.Chdir(testWorkingDir)
-		if err != nil {
-			t.Fatal(err)
-		}
+
+		cleanup(shutdown, t)
 	}
+}
+
+func TestHTTPServer_HostHeader(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
+	shutdown, logHook := newCouper(confPath, test.New(t))
+
+	t.Run("Test", func(subT *testing.T) {
+		helper := test.New(subT)
+		logHook.Reset()
+
+		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
+		helper.Must(err)
+
+		req.Host = "example.com."
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		resBytes, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+
+		_ = res.Body.Close()
+
+		if `<html lang="en">index B</html>` != string(resBytes) {
+			t.Errorf("%s", resBytes)
+		}
+	})
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_XFHHeader(t *testing.T) {
+	client := newClient()
+
+	os.Setenv("COUPER_XFH", "true")
+	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	os.Setenv("COUPER_XFH", "")
+
+	t.Run("Test", func(subT *testing.T) {
+		helper := test.New(subT)
+		logHook.Reset()
+
+		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
+		helper.Must(err)
+
+		req.Host = "example.com"
+		req.Header.Set("X-Forwarded-Host", "example.com.")
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		resBytes, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+
+		_ = res.Body.Close()
+
+		if `<html lang="en">index B</html>` != string(resBytes) {
+			t.Errorf("%s", resBytes)
+		}
+	})
+
+	cleanup(shutdown, t)
 }

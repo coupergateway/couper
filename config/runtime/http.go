@@ -10,6 +10,10 @@ import (
 
 type Port string
 
+func (p Port) String() string {
+	return string(p)
+}
+
 type Server map[Port]*ServerMux
 
 // ServerMux represents the ServerMux struct.

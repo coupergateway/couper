@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rs/xid"
@@ -27,6 +28,7 @@ type HTTPServer struct {
 	log        logrus.FieldLogger
 	mux        *Mux
 	name       string
+	port       string
 	shutdownCh chan struct{}
 	srv        *http.Server
 	uidFn      func() string
@@ -81,12 +83,13 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 		log:        log,
 		mux:        mux,
 		name:       name,
+		port:       p.String(),
 		shutdownCh: shutdownCh,
 		uidFn:      uidFn,
 	}
 
 	srv := &http.Server{
-		Addr:              ":" + string(p),
+		Addr:              ":" + p.String(),
 		Handler:           httpSrv,
 		IdleTimeout:       conf.Timings.IdleTimeout,
 		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
@@ -166,9 +169,32 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	ctx = context.WithValue(ctx, request.ServerName, s.name)
 	*req = *req.WithContext(ctx)
 
-	if s.config.UseXFH {
-		req.Host = req.Header.Get("X-Forwarded-Host")
-	}
+	req.Host = s.getHost(req)
+
 	h := s.mux.FindHandler(req)
 	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)
+}
+
+// getHost configures the host from the incoming request host based on
+// the xfh setting and listener port to be prepared for the http multiplexer.
+func (s *HTTPServer) getHost(req *http.Request) string {
+	host := req.Host
+	if s.config.UseXFH {
+		host = req.Header.Get("X-Forwarded-Host")
+	}
+
+	if !strings.Contains(host, ":") {
+		return s.cleanHostAppendPort(host)
+	}
+
+	h, _, err := net.SplitHostPort(host)
+	if err != nil {
+		return s.cleanHostAppendPort(host)
+	}
+
+	return s.cleanHostAppendPort(h)
+}
+
+func (s *HTTPServer) cleanHostAppendPort(host string) string {
+	return strings.TrimSuffix(host, ".") + ":" + s.port
 }
