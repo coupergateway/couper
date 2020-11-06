@@ -1,6 +1,10 @@
 package runtime
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/avenga/couper/config"
+)
 
 func TestServer_isUnique(t *testing.T) {
 	endpoints := make(map[string]bool)
@@ -29,5 +33,27 @@ func TestServer_isUnique(t *testing.T) {
 		if cleanPattern != tc.clean {
 			t.Errorf("%d: Unexpected cleanPattern given: %s, want %s", i+1, cleanPattern, tc.clean)
 		}
+	}
+}
+
+func TestServer_validatePortHosts(t *testing.T) {
+	t.Skip("TODO")
+	type args struct {
+		conf           *config.Gateway
+		configuredPort int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validatePortHosts(tt.args.conf, tt.args.configuredPort); (err != nil) != tt.wantErr {
+				t.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

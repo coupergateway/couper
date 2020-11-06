@@ -56,6 +56,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		defaultPort = httpConf.ListenPort
 	}
 
+	if err := validatePortHosts(conf, defaultPort); err != nil {
+		return nil, err
+	}
+
 	api := make(map[*config.Endpoint]http.Handler)
 
 	backends, err := newBackendsFromDefinitions(conf, log)
@@ -257,24 +261,19 @@ func mapPortRoutes(configuredPort int, server *config.Server, mux *MuxOptions, s
 	}
 
 	for _, hp := range hosts {
-		port := Port(strconv.Itoa(configuredPort))
-		if strings.IndexByte(hp, ':') > 0 {
-			_, p, err := net.SplitHostPort(hp)
-			if err != nil {
-				return err
-			}
-			if p != "*" {
-				port = Port(p)
-			}
+		host, po, err := splitWildcardHostPort(hp, configuredPort)
+		if err != nil {
+			return err
 		}
+		port := Port(po)
 
 		if _, ok := srvMux[port]; !ok {
 			srvMux[port] = &ServerMux{Server: server, Mux: mux}
 		} else {
 			for i, routes := range []map[string]http.Handler{mux.EndpointRoutes, mux.FileRoutes, mux.SPARoutes} {
-				for route, handler := range routes {
+				for route, routeHandler := range routes {
 					idx := strings.IndexByte(route, '/')
-					if idx < 0 || (hp != "*" && !strings.HasSuffix(route[:idx], ":"+string(port))) {
+					if idx < 0 || (host != "*" && !strings.HasSuffix(route[:idx], ":"+port.String())) {
 						continue
 					}
 
@@ -286,16 +285,78 @@ func mapPortRoutes(configuredPort int, server *config.Server, mux *MuxOptions, s
 						routesMap = srvMux[port].Mux.FileRoutes
 					case 2:
 						routesMap = srvMux[port].Mux.SPARoutes
+					default:
+						return fmt.Errorf("configuration error: could not read port related routes")
 					}
 					if _, ok := routesMap[route]; ok {
 						return fmt.Errorf("duplicate route on port: %v: %q", port, route)
 					}
-					routesMap[route] = handler
+					routesMap[route] = routeHandler
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// validatePortHosts ensures expected host:port formats and unique hosts per port.
+// Host options:
+//	"*:<port>"					listen for all hosts on given port
+//	"*:<port(configuredPort)>	given port equals configured default port, listen for all hosts
+//	"*"							equals to "*:configuredPort"
+//	"host:*"					equals to "host:configuredPort"
+//	"host"						listen on configured default port for given host
+func validatePortHosts(conf *config.Gateway, configuredPort int) error {
+	// validate the format, validating for a valid host or port is out of scope.
+	validFormat := regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
+
+	portMap := map[int]string{configuredPort: "*"}
+	for _, srv := range conf.Server {
+		for _, host := range srv.Hosts {
+			if !validFormat.MatchString(host) {
+				return fmt.Errorf("host format is invalid: %q", host)
+			}
+
+			ho, po, err := splitWildcardHostPort(host, configuredPort)
+			if err != nil {
+				return err
+			}
+
+			if ho == "*" && po == configuredPort {
+				continue
+			}
+
+			if h, ok := portMap[po]; ok && h == ho {
+				return fmt.Errorf("conflict: host %q already defined for port: %d", ho, po)
+			}
+
+			portMap[po] = ho
+		}
+	}
+
+	return nil
+}
+
+func splitWildcardHostPort(host string, configuredPort int) (string, int, error) {
+	if !strings.Contains(host, ":") {
+		return host, configuredPort, nil
+	}
+
+	ho := host
+	po := configuredPort
+	h, p, err := net.SplitHostPort(host)
+	if err != nil {
+		return "", -1, err
+	}
+	ho = h
+	if p != "*" {
+		po, err = strconv.Atoi(p)
+		if err != nil {
+			return "", -1, err
+		}
+	}
+
+	return ho, po, nil
 }
 
 func configureAccessControls(conf *config.Gateway) (ac.Map, error) {

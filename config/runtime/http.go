@@ -3,15 +3,16 @@ package runtime
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/avenga/couper/config"
 )
 
-type Port string
+type Port int
 
 func (p Port) String() string {
-	return string(p)
+	return strconv.Itoa(int(p))
 }
 
 type Server map[Port]*ServerMux
