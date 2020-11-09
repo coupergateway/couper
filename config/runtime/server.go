@@ -161,7 +161,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 
 			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, endpoint.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
 			if err == errorMissingBackend {
 				if srvConf.API.Backend != "" {
 					if _, ok := backends[srvConf.API.Backend]; !ok {
@@ -170,7 +170,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 					setACHandlerFn(backends[srvConf.API.Backend])
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, srvConf.API.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
 				if err != nil {
 					return nil, err
 				}
@@ -178,22 +178,8 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				if inlineConf.Name == "" && inlineConf.Origin == "" {
 					return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
 				}
-
-			} else if err != nil {
-				if err == handler.OriginRequiredError && inlineConf.Name == "" || err != handler.OriginRequiredError {
-					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err) // TODO diags error
-				}
-			}
-
-			if inlineConf.Name != "" { // inline backends have no label, assume a reference and override settings
-				if _, ok := backends[inlineConf.Name]; !ok {
-					return nil, fmt.Errorf("override backend %q is not defined", inlineConf.Name)
-				}
-
-				beConf, remainCtx := backends[inlineConf.Name].conf.Merge(inlineConf)
-
-				proxy := newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, muxOptions.APIErrTpl)
-				inlineBackend = proxy
+			} else if err != nil { // TODO hcl.diagnostics error
+				return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
 			}
 
 			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
@@ -454,7 +440,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, errHandler *errors.Template) (http.Handler, *config.Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefinition, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, errHandler *errors.Template) (http.Handler, *config.Backend, error) {
 	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
@@ -474,11 +460,17 @@ func newInlineBackend(evalCtx *hcl.EvalContext, inlineDef hcl.Body, cors *config
 	if diags.HasErrors() {
 		return nil, nil, diags
 	}
-	if len(content.Blocks[0].Labels) > 0 {
-		beConf.Name = content.Blocks[0].Labels[0]
-	}
 
 	beConf, _ = defaultBackendConf.Merge(beConf)
+	if len(content.Blocks[0].Labels) > 0 {
+		beConf.Name = content.Blocks[0].Labels[0]
+		if beRef, ok := backends[beConf.Name]; ok {
+			beConf, _ = beRef.conf.Merge(beConf)
+		} else {
+			return nil, nil, fmt.Errorf("override backend %q is not defined", beConf.Name)
+		}
+	}
+
 	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, errHandler)
 	return proxy, beConf, nil
 }
