@@ -37,7 +37,6 @@ func TestServer_isUnique(t *testing.T) {
 }
 
 func TestServer_validatePortHosts(t *testing.T) {
-	t.Skip("TODO")
 	type args struct {
 		conf           *config.Gateway
 		configuredPort int
@@ -47,7 +46,65 @@ func TestServer_validatePortHosts(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			"Same host/port in one server",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"*", "*", "*:9090", "*:9090", "*:8080"}},
+					},
+				}, 8080,
+			},
+			false,
+		},
+		{
+			"Same host/port in two servers with *",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"*"}},
+						{Hosts: []string{"*"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same host/port in two servers with *:<port>",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"*:8080"}},
+						{Hosts: []string{"*:8080"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same host/port in two servers with example.com",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"example.com"}},
+						{Hosts: []string{"example.com"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same host/port in two servers with example.com:<port>",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"example.com:9090"}},
+						{Hosts: []string{"example.com:9090"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
