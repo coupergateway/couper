@@ -105,6 +105,18 @@ func TestServer_validatePortHosts(t *testing.T) {
 			},
 			true,
 		},
+		{
+			"Host is mandatory for multiple servers",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"*"}},
+						{},
+					},
+				}, 8080,
+			},
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
