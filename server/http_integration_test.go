@@ -282,7 +282,8 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				entry := logHook.LastEntry()
 
 				if entry == nil || entry.Data["type"] != "couper_access" {
-					t.Fatal("Expected a log entry, got nothing")
+					t.Error("Expected a log entry, got nothing")
+					return
 				}
 				if handler, ok := entry.Data["handler"]; rc.exp.handlerName != "" && (!ok || handler != rc.exp.handlerName) {
 					t.Errorf("Expected handler %q within logs, got:\n%#v", rc.exp.handlerName, entry.Data)
@@ -354,7 +355,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 
 		entry := logHook.LastEntry()
 		if entry == nil {
-			t.Errorf("Expected a log entry, got nothing")
+			t.Error("Expected a log entry, got nothing")
 		} else if entry.Data["server"] != "multi-files-host2" {
 			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
 		}
