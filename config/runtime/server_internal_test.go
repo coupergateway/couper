@@ -55,7 +55,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 					},
 				}, 8080,
 			},
-			false,
+			true,
 		},
 		{
 			"Same host/port in two servers with *",

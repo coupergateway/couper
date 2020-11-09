@@ -296,7 +296,7 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 	// validate the format, validating for a valid host or port is out of scope.
 	validFormat := regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
 
-	portMap := map[int]string{configuredPort: "*"}
+	portMap := map[int]string{}
 	for _, srv := range conf.Server {
 		for _, host := range srv.Hosts {
 			if !validFormat.MatchString(host) {
@@ -306,10 +306,6 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 			ho, po, err := splitWildcardHostPort(host, configuredPort)
 			if err != nil {
 				return err
-			}
-
-			if ho == "*" && po == configuredPort {
-				continue
 			}
 
 			if h, ok := portMap[po]; ok && h == ho {
