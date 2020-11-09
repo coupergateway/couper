@@ -178,7 +178,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
 	matchPath := req.Method + " " + req.URL.Path
-	// no hosts are configured, lookup /wo hostPath first
+	// no hosts are configured, lookup w/o hostPath first
 	node, paramValues := root.Match(matchPath)
 	if node == nil {
 		hostPath := pathpattern.PathFromHost(req.Host, false)

@@ -296,8 +296,18 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 	// validate the format, validating for a valid host or port is out of scope.
 	validFormat := regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
 
-	portMap := map[int]string{}
+	type hosts map[string]bool
+	type ports map[int]hosts
+
+	portMap := make(ports)
+	isHostsMandatory := len(conf.Server) > 1
+
 	for _, srv := range conf.Server {
+		if isHostsMandatory && len(srv.Hosts) == 0 {
+			return fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
+		}
+
+		srvPortMap := make(ports)
 		for _, host := range srv.Hosts {
 			if !validFormat.MatchString(host) {
 				return fmt.Errorf("host format is invalid: %q", host)
@@ -308,11 +318,27 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 				return err
 			}
 
-			if h, ok := portMap[po]; ok && h == ho {
-				return fmt.Errorf("conflict: host %q already defined for port: %d", ho, po)
+			if _, ok := srvPortMap[po]; !ok {
+				srvPortMap[po] = make(hosts)
 			}
 
-			portMap[po] = ho
+			srvPortMap[po][ho] = true
+		}
+
+		// srvPortsMap contains all unique host port combinations
+		// of current server and should not exist multiple.
+		for po, ho := range srvPortMap {
+			if _, ok := portMap[po]; !ok {
+				portMap[po] = make(hosts)
+			}
+
+			for h := range ho {
+				if _, ok := portMap[po][h]; ok {
+					return fmt.Errorf("conflict: host %q already defined for port: %d", h, po)
+				}
+
+				portMap[po][h] = true
+			}
 		}
 	}
 

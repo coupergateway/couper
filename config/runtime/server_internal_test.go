@@ -55,7 +55,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 					},
 				}, 8080,
 			},
-			true,
+			false,
 		},
 		{
 			"Same host/port in two servers with *",
@@ -86,8 +86,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 			args{
 				&config.Gateway{
 					Server: []*config.Server{
-						{Hosts: []string{"example.com"}},
-						{Hosts: []string{"example.com"}},
+						{Hosts: []string{"example.com", "couper.io"}},
+						{Hosts: []string{"example.com", "couper.io"}},
 					},
 				}, 8080,
 			},
@@ -104,6 +104,18 @@ func TestServer_validatePortHosts(t *testing.T) {
 				}, 8080,
 			},
 			true,
+		},
+		{
+			"Same port /w different host in two servers",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{Hosts: []string{"*", "example.com:9090"}},
+						{Hosts: []string{"couper.io:9090"}},
+					},
+				}, 8080,
+			},
+			false,
 		},
 		{
 			"Host is mandatory for multiple servers",
