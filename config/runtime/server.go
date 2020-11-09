@@ -335,7 +335,7 @@ func splitWildcardHostPort(host string, configuredPort int) (string, int, error)
 		return "", -1, err
 	}
 	ho = h
-	if p != "*" {
+	if p != "" && p != "*" {
 		po, err = strconv.Atoi(p)
 		if err != nil {
 			return "", -1, err
