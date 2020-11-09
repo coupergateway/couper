@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/avenga/couper/config"
@@ -106,7 +107,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 			true,
 		},
 		{
-			"Same port /w different host in two servers",
+			"Same port w/ different host in two servers",
 			args{
 				&config.Gateway{
 					Server: []*config.Server{
@@ -147,5 +148,15 @@ func TestServer_validatePortHosts(t *testing.T) {
 				t.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestServer_splitWildcardHostPort(t *testing.T) {
+	for _, port := range []string{"01234", "00", "123456"} {
+		host := fmt.Sprintf("foo.de:%s", port)
+		_, _, err := splitWildcardHostPort(host, 8080)
+		if err == nil {
+			t.Errorf("Expected en error for %q, NIL given.", host)
+		}
 	}
 }

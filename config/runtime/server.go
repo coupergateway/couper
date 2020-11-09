@@ -36,7 +36,12 @@ var (
 	errorMissingServer  = fmt.Errorf("missing server definitions")
 )
 
-var reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
+var (
+	// reValidFormat validates the format only, validating for a valid host or port is out of scope.
+	reValidFormat  = regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
+	reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
+	rePortCheck    = regexp.MustCompile(`^(0|[1-9][0-9]{1,4})$`)
+)
 
 type backendDefinition struct {
 	conf    *config.Backend
@@ -293,9 +298,6 @@ func mapPortRoutes(configuredPort int, server *config.Server, mux *MuxOptions, s
 //	"host:*"					equals to "host:configuredPort"
 //	"host"						listen on configured default port for given host
 func validatePortHosts(conf *config.Gateway, configuredPort int) error {
-	// validate the format, validating for a valid host or port is out of scope.
-	validFormat := regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
-
 	type hosts map[string]bool
 	type ports map[int]hosts
 
@@ -309,7 +311,7 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 
 		srvPortMap := make(ports)
 		for _, host := range srv.Hosts {
-			if !validFormat.MatchString(host) {
+			if !reValidFormat.MatchString(host) {
 				return fmt.Errorf("host format is invalid: %q", host)
 			}
 
@@ -325,8 +327,8 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 			srvPortMap[po][ho] = true
 		}
 
-		// srvPortsMap contains all unique host port combinations
-		// of current server and should not exist multiple.
+		// srvPortMap contains all unique host port combinations for
+		// the current server and should not exist multiple times.
 		for po, ho := range srvPortMap {
 			if _, ok := portMap[po]; !ok {
 				portMap[po] = make(hosts)
@@ -358,6 +360,9 @@ func splitWildcardHostPort(host string, configuredPort int) (string, int, error)
 	}
 	ho = h
 	if p != "" && p != "*" {
+		if !rePortCheck.MatchString(p) {
+			return "", -1, fmt.Errorf("invalid port given: %s", p)
+		}
 		po, err = strconv.Atoi(p)
 		if err != nil {
 			return "", -1, err
