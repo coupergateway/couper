@@ -117,6 +117,17 @@ func TestServer_validatePortHosts(t *testing.T) {
 			},
 			true,
 		},
+		{
+			"Host is optional for single server",
+			args{
+				&config.Gateway{
+					Server: []*config.Server{
+						{},
+					},
+				}, 8080,
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
