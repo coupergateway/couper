@@ -282,8 +282,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				entry := logHook.LastEntry()
 
 				if entry == nil || entry.Data["type"] != "couper_access" {
-					t.Error("Expected a log entry, got nothing")
-					return
+					t.Fatal("Expected a log entry, got nothing")
 				}
 				if handler, ok := entry.Data["handler"]; rc.exp.handlerName != "" && (!ok || handler != rc.exp.handlerName) {
 					t.Errorf("Expected handler %q within logs, got:\n%#v", rc.exp.handlerName, entry.Data)
@@ -299,11 +298,10 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 	client := newClient()
 
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
-	shutdown, logHook := newCouper(confPath, test.New(t))
+	shutdown, _ := newCouper(confPath, test.New(t))
 
 	t.Run("Test", func(subT *testing.T) {
 		helper := test.New(subT)
-		logHook.Reset()
 
 		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
 		helper.Must(err)
@@ -352,6 +350,13 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 
 		if `<html lang="en">index B</html>` != string(resBytes) {
 			t.Errorf("%s", resBytes)
+		}
+
+		entry := logHook.LastEntry()
+		if entry == nil {
+			t.Errorf("Expected a log entry, got nothing")
+		} else if entry.Data["server"] != "multi-files-host2" {
+			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
 		}
 	})
 
