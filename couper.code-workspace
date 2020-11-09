@@ -1,0 +1,29 @@
+{
+	"extensions": {
+		// See http://go.microsoft.com/fwlink/?LinkId=827846
+  		// for the documentation about the extensions.json format
+		"recommendations": [
+			// Couper specific hcl auto-completion.
+			"AvengaGermanyGmbH.couper",
+		  ]
+	},
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Debug couper",
+				"type": "go",
+				"request": "launch",
+				"mode": "debug",
+				"program": "${workspaceFolder}/main.go",
+				"args": ["run"]
+			},
+		]
+	}
+}
