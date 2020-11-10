@@ -22,6 +22,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime/server"
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -30,7 +31,8 @@ import (
 )
 
 var (
-	_ http.Handler = &Proxy{}
+	_ http.Handler   = &Proxy{}
+	_ server.Context = &Proxy{}
 
 	OriginRequiredError = errors.New("origin is required")
 	SchemeRequiredError = errors.New("backend origin must define a scheme")
@@ -41,12 +43,12 @@ var (
 )
 
 type Proxy struct {
-	errorHandler *couperErr.Template
+	bufferOption eval.BufferOption
 	evalContext  *hcl.EvalContext
 	log          *logrus.Entry
-	bufferOption eval.BufferOption
 	options      *ProxyOptions
 	originURL    *url.URL
+	srvOptions   *server.Options
 	transport    *http.Transport
 	upstreamLog  *logging.AccessLog
 }
@@ -93,11 +95,7 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewProxy(options *ProxyOptions, log *logrus.Entry, errHandler *couperErr.Template, evalCtx *hcl.EvalContext) (http.Handler, error) {
-	if errHandler == nil {
-		errHandler = couperErr.DefaultJSON
-	}
-
+func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -115,11 +113,11 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, errHandler *couperErr.Te
 
 	proxy := &Proxy{
 		bufferOption: eval.MustBuffer(options.Context),
-		errorHandler: errHandler,
 		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
 		originURL:    originURL,
+		srvOptions:   srvOpts,
 		upstreamLog:  logging.NewAccessLog(&logConf, log.Logger),
 	}
 
@@ -176,7 +174,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	err := p.Director(outreq)
 	if err != nil {
-		p.errorHandler.ServeError(err).ServeHTTP(rw, req)
+		p.srvOptions.APIErrTpl.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
@@ -213,7 +211,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		p.errorHandler.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
+		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
 
@@ -533,6 +531,10 @@ func (p *Proxy) handleUpgradeResponse(rw http.ResponseWriter, req *http.Request,
 	go spc.copyFromBackend(errc)
 	<-errc
 	return
+}
+
+func (p *Proxy) Options() *server.Options {
+	return p.srvOptions
 }
 
 func (p *Proxy) String() string {

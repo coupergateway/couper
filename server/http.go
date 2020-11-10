@@ -27,7 +27,6 @@ type HTTPServer struct {
 	listener   net.Listener
 	log        logrus.FieldLogger
 	mux        *Mux
-	name       string
 	port       string
 	shutdownCh chan struct{}
 	srv        *http.Server
@@ -35,11 +34,11 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, server runtime.Server) ([]*HTTPServer, func()) {
+func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, srvConf *runtime.ServerConfiguration) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
-	for port, srvMux := range server {
-		list = append(list, New(cmdCtx, log, conf, srvMux.Server.Name, port, srvMux.Mux))
+	for port, srvMux := range srvConf.PortOptions {
+		list = append(list, New(cmdCtx, log, conf, port, srvMux))
 	}
 
 	handleShutdownFn := func() {
@@ -51,7 +50,7 @@ func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, name string, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
+func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
 	if conf == nil {
 		log.Fatal("missing httpConfig")
 	}
@@ -82,7 +81,6 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 		config:     conf,
 		log:        log,
 		mux:        mux,
-		name:       name,
 		port:       p.String(),
 		shutdownCh: shutdownCh,
 		uidFn:      uidFn,
@@ -119,13 +117,13 @@ func (s *HTTPServer) Listen() {
 	}
 
 	s.listener = ln
-	s.log.Infof("couper is serving: %s %s", s.name, ln.Addr().String())
+	s.log.Infof("couper is serving: %s", ln.Addr().String())
 
 	go s.listenForCtx()
 
 	go func() {
 		if err := s.srv.Serve(ln); err != nil {
-			s.log.Errorf("%s %s: %v", s.name, ln.Addr().String(), err.Error())
+			s.log.Errorf("%s: %v", ln.Addr().String(), err.Error())
 		}
 	}()
 }
@@ -142,9 +140,7 @@ func (s *HTTPServer) listenForCtx() {
 			"delay":    s.config.Timings.ShutdownDelay.String(),
 			"deadline": s.config.Timings.ShutdownTimeout.String(),
 		}
-		if s.name != "" {
-			logFields["server"] = s.name
-		}
+
 		s.log.WithFields(logFields).Warn("shutting down")
 		close(s.shutdownCh)
 
@@ -166,7 +162,6 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := s.uidFn()
 	ctx := context.WithValue(req.Context(), request.UID, uid)
-	ctx = context.WithValue(ctx, request.ServerName, s.name)
 	*req = *req.WithContext(ctx)
 
 	req.Host = s.getHost(req)

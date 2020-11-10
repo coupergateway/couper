@@ -63,14 +63,14 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	conf, err := config.LoadBytes(confBytes.Bytes())
 	helper.Must(err)
 
-	ports, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	srvConf, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 	helper.Must(err)
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
 	port := runtime.Port(httpConf.ListenPort)
-	gw := server.New(ctx, log.WithContext(ctx), httpConf, "test", port, ports[port].Mux)
+	gw := server.New(ctx, log.WithContext(ctx), httpConf, port, srvConf.PortOptions[port])
 	gw.Listen()
 	defer gw.Close()
 
@@ -159,11 +159,11 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	ports, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	srvConf, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
 	helper.Must(err)
 	port := runtime.Port(httpConf.ListenPort)
 
-	couper := server.New(ctx, log.WithContext(ctx), httpConf, "test", port, ports[port].Mux)
+	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, srvConf.PortOptions[port])
 	couper.Listen()
 	defer couper.Close()
 
@@ -247,7 +247,7 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 			log, hook := logrustest.NewNullLogger()
 			conf := *runtime.DefaultHTTP
 			conf.RequestIDFormat = testcase.formatOption
-			srv := server.New(context.Background(), log, &conf, "test", 0, nil)
+			srv := server.New(context.Background(), log, &conf, 0, nil)
 			srv.Listen()
 			defer srv.Close()
 

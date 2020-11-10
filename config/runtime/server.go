@@ -18,6 +18,7 @@ import (
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
@@ -48,9 +49,30 @@ type backendDefinition struct {
 	handler http.Handler
 }
 
+type Port int
+
+func (p Port) String() string {
+	return strconv.Itoa(int(p))
+}
+
+type ServerConfiguration struct {
+	PortOptions map[Port]*MuxOptions
+}
+
+type hosts map[string]bool
+type ports map[Port]hosts
+
+type HandlerKind uint8
+
+const (
+	KindAPI HandlerKind = iota
+	KindFiles
+	KindSPA
+)
+
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) (Server, error) {
+func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) (*ServerConfiguration, error) {
 	if len(conf.Server) == 0 {
 		return nil, errorMissingServer
 	}
@@ -61,11 +83,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		defaultPort = httpConf.ListenPort
 	}
 
-	if err := validatePortHosts(conf, defaultPort); err != nil {
+	validPortMap, err := validatePortHosts(conf, defaultPort)
+	if err != nil {
 		return nil, err
 	}
-
-	api := make(map[*config.Endpoint]http.Handler)
 
 	backends, err := newBackendsFromDefinitions(conf, log)
 	if err != nil {
@@ -77,131 +98,145 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		return nil, err
 	}
 
-	server := make(Server, 0)
+	serverConfiguration := &ServerConfiguration{PortOptions: map[Port]*MuxOptions{
+		Port(defaultPort): NewMuxOptions()},
+	}
+	for p := range validPortMap {
+		serverConfiguration.PortOptions[p] = NewMuxOptions()
+	}
+
+	api := make(map[*config.Endpoint]http.Handler)
 
 	for _, srvConf := range conf.Server {
-		muxOptions, err := NewMuxOptions(srvConf)
+		serverOptions, err := server.NewServerOptions(srvConf)
 		if err != nil {
 			return nil, err
 		}
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
-			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile)
+			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions)
 			if err != nil {
 				return nil, err
 			}
 
-			spaHandler = configureProtectedHandler(accessControls, muxOptions.ServerErrTpl,
+			spaHandler = configureProtectedHandler(accessControls, serverOptions.ServerErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 
 			for _, spaPath := range srvConf.Spa.Paths {
-				for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts, path.Join(muxOptions.SPABasePath, spaPath)) {
-					muxOptions.SPARoutes[p] = spaHandler
+				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, KindSPA)
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, err := handler.NewFile(muxOptions.FileBasePath, srvConf.Files.DocumentRoot, muxOptions.FileErrTpl)
+			fileHandler, err := handler.NewFile(serverOptions.FileBasePath, srvConf.Files.DocumentRoot, serverOptions)
 			if err != nil {
 				return nil, err
 			}
 
-			protectedFileHandler := configureProtectedHandler(accessControls, muxOptions.FileErrTpl,
+			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FileErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), fileHandler)
 
-			for _, p := range getPathsFromHosts(defaultPort, srvConf.Hosts, muxOptions.FileBasePath) {
-				muxOptions.FileRoutes[p] = protectedFileHandler
-			}
-		}
-
-		if srvConf.API == nil {
-			if err = mapPortRoutes(defaultPort, srvConf, muxOptions, server); err != nil {
+			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, KindFiles)
+			if err != nil {
 				return nil, err
 			}
-			continue
 		}
 
-		// map backends to endpoint
-		endpoints := make(map[string]bool)
-		for _, endpoint := range srvConf.API.Endpoint {
-			pattern := utils.JoinPath("/", srvConf.BasePath, srvConf.API.BasePath, endpoint.Pattern)
+		if srvConf.API != nil {
+			// map backends to endpoint
+			endpoints := make(map[string]bool)
+			for _, endpoint := range srvConf.API.Endpoint {
+				pattern := utils.JoinPath("/", serverOptions.APIBasePath, endpoint.Pattern)
 
-			unique, cleanPattern := isUnique(endpoints, pattern)
-			if !unique {
-				return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
-			}
-			endpoints[cleanPattern] = true
-
-			// setACHandlerFn individual wrap for access_control configuration per endpoint
-			setACHandlerFn := func(protectedBackend backendDefinition) {
-				protectedHandler := protectedBackend.handler
-
-				// prefer endpoint 'path' definition over 'backend.Path'
-				if endpoint.Path != "" {
-					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
-					protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, muxOptions.APIErrTpl)
+				unique, cleanPattern := isUnique(endpoints, pattern)
+				if !unique {
+					return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
 				}
+				endpoints[cleanPattern] = true
 
-				api[endpoint] = configureProtectedHandler(accessControls, muxOptions.APIErrTpl,
-					config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl).
-						Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl)),
-					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
-					protectedHandler)
-			}
+				// setACHandlerFn individual wrap for access_control configuration per endpoint
+				setACHandlerFn := func(protectedBackend backendDefinition) {
+					protectedHandler := protectedBackend.handler
 
-			// lookup for backend reference, prefer endpoint definition over api one
-			if endpoint.Backend != "" {
-				if _, ok := backends[endpoint.Backend]; !ok {
-					return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
-				}
-				setACHandlerFn(backends[endpoint.Backend])
-				for _, hostPath := range getPathsFromHosts(defaultPort, srvConf.Hosts, pattern) {
-					muxOptions.EndpointRoutes[hostPath] = api[endpoint]
-				}
-				continue
-			}
-
-			// otherwise try to parse an inline block and fallback for api reference or inline block
-			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
-			if err == errorMissingBackend {
-				if srvConf.API.Backend != "" {
-					if _, ok := backends[srvConf.API.Backend]; !ok {
-						return nil, fmt.Errorf("backend %q is not defined", srvConf.API.Backend)
+					// prefer endpoint 'path' definition over 'backend.Path'
+					if endpoint.Path != "" {
+						beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
+						protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, serverOptions)
 					}
-					setACHandlerFn(backends[srvConf.API.Backend])
+
+					api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
+						config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl).
+							Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl)),
+						config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
+						protectedHandler)
+				}
+
+				// lookup for backend reference, prefer endpoint definition over api one
+				if endpoint.Backend != "" {
+					if _, ok := backends[endpoint.Backend]; !ok {
+						return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
+					}
+
+					// set server context for defined backends
+					be := backends[endpoint.Backend]
+					beConf, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
+					refBackend := newProxy(conf.Context, be.conf, srvConf.API.CORS, remain, log, serverOptions)
+
+					setACHandlerFn(backendDefinition{
+						conf:    beConf,
+						handler: refBackend,
+					})
+					err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
+					if err != nil {
+						return nil, err
+					}
 					continue
 				}
-				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, muxOptions.APIErrTpl)
+
+				// otherwise try to parse an inline block and fallback for api reference or inline block
+				inlineBackend, inlineConf, err := newInlineBackend(conf.Context, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+				if err == errorMissingBackend {
+					if srvConf.API.Backend != "" {
+						if _, ok := backends[srvConf.API.Backend]; !ok {
+							return nil, fmt.Errorf("backend %q is not defined", srvConf.API.Backend)
+						}
+						setACHandlerFn(backends[srvConf.API.Backend])
+						err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
+						if err != nil {
+							return nil, err
+						}
+						continue
+					}
+					inlineBackend, inlineConf, err = newInlineBackend(conf.Context, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+					if err != nil {
+						return nil, err
+					}
+
+					if inlineConf.Name == "" && inlineConf.Origin == "" {
+						return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
+					}
+				} else if err != nil { // TODO hcl.diagnostics error
+					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
+				}
+
+				setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
+				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
 				if err != nil {
 					return nil, err
 				}
-
-				if inlineConf.Name == "" && inlineConf.Origin == "" {
-					return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
-				}
-			} else if err != nil { // TODO hcl.diagnostics error
-				return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
 			}
-
-			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
-
-			for _, hostPath := range getPathsFromHosts(defaultPort, srvConf.Hosts, pattern) {
-				muxOptions.EndpointRoutes[hostPath] = api[endpoint]
-			}
-		}
-
-		if err = mapPortRoutes(defaultPort, srvConf, muxOptions, server); err != nil {
-			return nil, err
 		}
 	}
-	return server, nil
+	return serverConfiguration, nil
 }
 
-func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, errHandler *errors.Template) http.Handler {
+func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, srvOpts *server.Options) http.Handler {
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
 		log.Fatal(err)
@@ -212,7 +247,7 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 		log.Fatal(err)
 	}
 
-	proxy, err := handler.NewProxy(proxyOptions, log, errHandler, ctx)
+	proxy, err := handler.NewProxy(proxyOptions, log, srvOpts, ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -237,57 +272,13 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 
 		beConf, _ = defaultBackendConf.Merge(beConf)
 
+		srvOpts, _ := server.NewServerOptions(&config.Server{})
 		backends[beConf.Name] = backendDefinition{
 			conf:    beConf,
-			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log, errors.DefaultJSON),
+			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log, srvOpts),
 		}
 	}
 	return backends, nil
-}
-
-func mapPortRoutes(configuredPort int, server *config.Server, mux *MuxOptions, srvMux Server) error {
-	hosts := server.Hosts
-	if len(hosts) == 0 {
-		hosts = []string{fmt.Sprintf("*:%d", configuredPort)}
-	}
-
-	for _, hp := range hosts {
-		host, po, err := splitWildcardHostPort(hp, configuredPort)
-		if err != nil {
-			return err
-		}
-		port := Port(po)
-
-		if _, ok := srvMux[port]; !ok {
-			srvMux[port] = &ServerMux{Server: server, Mux: mux}
-		} else {
-			for i, routes := range []map[string]http.Handler{mux.EndpointRoutes, mux.FileRoutes, mux.SPARoutes} {
-				for route, routeHandler := range routes {
-					idx := strings.IndexByte(route, '/')
-					if idx < 0 || (host != "*" && !strings.HasSuffix(route[:idx], ":"+port.String())) {
-						continue
-					}
-
-					var routesMap map[string]http.Handler
-					switch i {
-					case 0:
-						routesMap = srvMux[port].Mux.EndpointRoutes
-					case 1:
-						routesMap = srvMux[port].Mux.FileRoutes
-					case 2:
-						routesMap = srvMux[port].Mux.SPARoutes
-					default:
-						return fmt.Errorf("configuration error: could not read port related routes")
-					}
-					if _, ok := routesMap[route]; ok {
-						return fmt.Errorf("duplicate route on port: %v: %q", port, route)
-					}
-					routesMap[route] = routeHandler
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // validatePortHosts ensures expected host:port formats and unique hosts per port.
@@ -297,27 +288,24 @@ func mapPortRoutes(configuredPort int, server *config.Server, mux *MuxOptions, s
 //	"*"							equals to "*:configuredPort"
 //	"host:*"					equals to "host:configuredPort"
 //	"host"						listen on configured default port for given host
-func validatePortHosts(conf *config.Gateway, configuredPort int) error {
-	type hosts map[string]bool
-	type ports map[int]hosts
-
+func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, error) {
 	portMap := make(ports)
 	isHostsMandatory := len(conf.Server) > 1
 
 	for _, srv := range conf.Server {
 		if isHostsMandatory && len(srv.Hosts) == 0 {
-			return fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
+			return nil, fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
 		}
 
 		srvPortMap := make(ports)
 		for _, host := range srv.Hosts {
 			if !reValidFormat.MatchString(host) {
-				return fmt.Errorf("host format is invalid: %q", host)
+				return nil, fmt.Errorf("host format is invalid: %q", host)
 			}
 
 			ho, po, err := splitWildcardHostPort(host, configuredPort)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if _, ok := srvPortMap[po]; !ok {
@@ -336,7 +324,7 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 
 			for h := range ho {
 				if _, ok := portMap[po][h]; ok {
-					return fmt.Errorf("conflict: host %q already defined for port: %d", h, po)
+					return nil, fmt.Errorf("conflict: host %q already defined for port: %d", h, po)
 				}
 
 				portMap[po][h] = true
@@ -344,12 +332,12 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) error {
 		}
 	}
 
-	return nil
+	return portMap, nil
 }
 
-func splitWildcardHostPort(host string, configuredPort int) (string, int, error) {
+func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {
 	if !strings.Contains(host, ":") {
-		return host, configuredPort, nil
+		return host, Port(configuredPort), nil
 	}
 
 	ho := host
@@ -369,7 +357,7 @@ func splitWildcardHostPort(host string, configuredPort int) (string, int, error)
 		}
 	}
 
-	return ho, po, nil
+	return ho, Port(po), nil
 }
 
 func configureAccessControls(conf *config.Gateway) (ac.Map, error) {
@@ -467,7 +455,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefinition, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, errHandler *errors.Template) (http.Handler, *config.Backend, error) {
+func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefinition, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, srvOpts *server.Options) (http.Handler, *config.Backend, error) {
 	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
 	// ignore diag errors here, would fail anyway with our retry
 	if content == nil || len(content.Blocks) == 0 {
@@ -498,32 +486,48 @@ func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefin
 		}
 	}
 
-	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, errHandler)
+	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, srvOpts)
 	return proxy, beConf, nil
 }
 
-func getPathsFromHosts(defaultPort int, hosts []string, path string) []string {
-	var list []string
-	port := strconv.Itoa(defaultPort)
-	for _, host := range hosts {
-		if host != "" && host[0] == ':' {
-			continue
-		}
-
-		if strings.IndexByte(host, ':') < 0 {
-			host = host + ":" + port
-		}
-
-		if host != "" && host[0] == '*' {
-			host = ""
-		}
-
-		list = append(list, utils.JoinPath(pathpattern.PathFromHost(host, false), "/", path))
+func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
+	hostList := hosts
+	if len(hostList) == 0 {
+		hostList = []string{"*"}
 	}
-	if len(list) == 0 {
-		list = []string{utils.JoinPath("/", path)}
+
+	for _, h := range hostList {
+		joinedPath := utils.JoinPath("/", path)
+		host, listenPort, err := splitWildcardHostPort(h, confPort)
+		if err != nil {
+			return err
+		}
+
+		if host != "*" {
+			joinedPath = utils.JoinPath(
+				pathpattern.PathFromHost(
+					net.JoinHostPort(host, listenPort.String()), false), "/", path)
+		}
+
+		var routes map[string]http.Handler
+
+		switch kind {
+		case KindAPI:
+			routes = srvConf.PortOptions[listenPort].EndpointRoutes
+		case KindFiles:
+			routes = srvConf.PortOptions[listenPort].FileRoutes
+		case KindSPA:
+			routes = srvConf.PortOptions[listenPort].SPARoutes
+		default:
+			return fmt.Errorf("unknown route kind")
+		}
+
+		if _, exist := routes[joinedPath]; exist {
+			return fmt.Errorf("duplicate route found on port %q: %q", listenPort.String(), path)
+		}
+		routes[joinedPath] = handler
 	}
-	return list
+	return nil
 }
 
 func isUnique(endpoints map[string]bool, pattern string) (bool, string) {

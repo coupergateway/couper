@@ -20,8 +20,6 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 	})
 
 	testOptions := &runtime.MuxOptions{
-		APIErrTpl:  errors.DefaultJSON,
-		FileErrTpl: errors.DefaultHTML,
 		EndpointRoutes: map[string]http.Handler{
 			"/without":              http.NotFoundHandler(),
 			"/with/{my}/parameter":  noContent,

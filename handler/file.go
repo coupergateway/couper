@@ -8,16 +8,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
-
 	"github.com/avenga/couper/utils"
 )
 
 const dirIndexFile = "index.html"
 
 var (
-	_ http.Handler = &File{}
-	_ HasResponse  = &File{}
+	_ HasResponse    = &File{}
+	_ http.Handler   = &File{}
+	_ server.Context = &File{}
 )
 
 type HasResponse interface {
@@ -25,12 +26,12 @@ type HasResponse interface {
 }
 
 type File struct {
-	basePath string
-	errorTpl *errors.Template
-	rootDir  http.Dir
+	basePath   string
+	rootDir    http.Dir
+	srvOptions *server.Options
 }
 
-func NewFile(basePath, docRoot string, errTpl *errors.Template) (*File, error) {
+func NewFile(basePath, docRoot string, srvOpts *server.Options) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -53,9 +54,9 @@ func NewFile(basePath, docRoot string, errTpl *errors.Template) (*File, error) {
 	}
 
 	f := &File{
-		basePath: basePath,
-		errorTpl: errTpl,
-		rootDir:  http.Dir(dir),
+		basePath:   basePath,
+		srvOptions: srvOpts,
+		rootDir:    http.Dir(dir),
 	}
 
 	return f, nil
@@ -71,7 +72,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil {
-		f.errorTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FileErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -96,7 +97,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil || info.IsDir() {
-		f.errorTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FileErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -161,7 +162,11 @@ func (f *File) removeBasePath(reqPath string) string {
 }
 
 func (f *File) Template() *errors.Template {
-	return f.errorTpl
+	return f.srvOptions.FileErrTpl
+}
+
+func (f *File) Options() *server.Options {
+	return f.srvOptions
 }
 
 func (f *File) String() string {

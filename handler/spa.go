@@ -5,21 +5,29 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 )
 
-var _ http.Handler = &Spa{}
+var (
+	_ http.Handler   = &Spa{}
+	_ server.Context = &Spa{}
+)
 
 type Spa struct {
-	file string
+	file       string
+	srvOptions *server.Options
 }
 
-func NewSpa(bootstrapFile string) (*Spa, error) {
+func NewSpa(bootstrapFile string, srvOpts *server.Options) (*Spa, error) {
 	absPath, err := filepath.Abs(bootstrapFile)
 	if err != nil {
 		return nil, err
 	}
-	return &Spa{file: absPath}, nil
+	return &Spa{
+		file:       absPath,
+		srvOptions: srvOpts,
+	}, nil
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -31,22 +39,26 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(s.file)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
-			errors.DefaultHTML.ServeError(errors.SPARouteNotFound).ServeHTTP(rw, req)
+			s.srvOptions.ServerErrTpl.ServeError(errors.SPARouteNotFound).ServeHTTP(rw, req)
 			return
 		}
 
-		errors.DefaultHTML.ServeError(errors.SPAError).ServeHTTP(rw, req)
+		s.srvOptions.ServerErrTpl.ServeError(errors.SPAError).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
 	if err != nil || fileInfo.IsDir() {
-		errors.DefaultHTML.ServeError(errors.SPAError).ServeHTTP(rw, req)
+		s.srvOptions.ServerErrTpl.ServeError(errors.SPAError).ServeHTTP(rw, req)
 		return
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
+}
+
+func (s *Spa) Options() *server.Options {
+	return s.srvOptions
 }
 
 func (s *Spa) String() string {

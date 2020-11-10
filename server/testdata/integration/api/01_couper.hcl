@@ -19,6 +19,7 @@ server "api" {
 }
 
 definitions {
+  # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "anything" {
     path = "/anything"
     origin = "http://anyserver/"

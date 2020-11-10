@@ -144,7 +144,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validatePortHosts(tt.args.conf, tt.args.configuredPort); (err != nil) != tt.wantErr {
+			if _, err := validatePortHosts(tt.args.conf, tt.args.configuredPort); (err != nil) != tt.wantErr {
 				t.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

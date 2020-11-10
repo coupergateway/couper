@@ -181,11 +181,9 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
 				expectation{http.StatusOK, []byte(`<html><body><title>FS</title></body></html>`), nil, "file"},
 			},
-		}},
-		{"files_spa_api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/foo"},
-				expectation{http.StatusOK, []byte(`<html><body><title>SPA</title></body></html>`), nil, "spa"},
+				expectation{http.StatusOK, []byte("<html><body><title>SPA_01</title></body></html>\n"), nil, "spa"},
 			},
 		}},
 		{"api/01_couper.hcl", []requestCase{
@@ -239,10 +237,52 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				testRequest{http.MethodGet, "http://couper.io:9898/v2/not-found"},
 				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
-			//{ // TODO: Fix multi-api server/host behaviour - this would lead to multi apiBasePaths
-			//	testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
-			//	expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
-			//},
+			{
+				testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
+				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+			},
+		}},
+		{"vhosts/01_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/notfound"},
+				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusOK, []byte("<html><body><title>FS_01</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/spa1"},
+				expectation{http.StatusOK, []byte("<html><body><title>SPA_01</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "spa"},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.com:8080/"},
+				expectation{http.StatusOK, []byte("<html><body><title>FS_01</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.org:9876/"},
+				expectation{http.StatusOK, []byte("<html><body><title>FS_01</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://couper.io:8080/"},
+				expectation{http.StatusOK, []byte("<html><body><title>FS_02</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://couper.io:8080/spa2"},
+				expectation{http.StatusOK, []byte("<html><body><title>SPA_02</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "spa"},
+			},
+			{
+				testRequest{http.MethodGet, "http://example.net:9876/"},
+				expectation{http.StatusOK, []byte("<html><body><title>FS_02</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://v-server3.com:8080/"},
+				expectation{http.StatusOK, []byte("<html><body><title>FS_03</title></body></html>\n"), http.Header{"Content-Type": {"text/html; charset=utf-8"}}, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://v-server3.com:8080/spa2"},
+				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
+			},
 		}},
 	} {
 		confPath := path.Join("testdata/integration", testcase.fileName)

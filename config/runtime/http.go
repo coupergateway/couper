@@ -3,25 +3,10 @@ package runtime
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/avenga/couper/config"
 )
-
-type Port int
-
-func (p Port) String() string {
-	return strconv.Itoa(int(p))
-}
-
-type Server map[Port]*ServerMux
-
-// ServerMux represents the ServerMux struct.
-type ServerMux struct {
-	Server *config.Server
-	Mux    *MuxOptions
-}
 
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {

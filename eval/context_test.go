@@ -15,8 +15,9 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
@@ -106,13 +107,15 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
+			srvOpts, _ := server.NewServerOptions(&config.Server{})
+
 			// since the proxy prepares the getBody rewind:
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
 				Context:          []hcl.Body{hclBody},
 				RequestBodyLimit: 256,
 				Origin:           req.URL.String(),
 				CORS:             &handler.CORSOptions{},
-			}, log.WithContext(nil), errors.DefaultJSON, nil)
+			}, log.WithContext(nil), srvOpts, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
