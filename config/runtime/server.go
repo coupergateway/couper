@@ -41,7 +41,7 @@ var (
 	// reValidFormat validates the format only, validating for a valid host or port is out of scope.
 	reValidFormat  = regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
 	reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
-	rePortCheck    = regexp.MustCompile(`^(0|[1-9][0-9]{1,4})$`)
+	rePortCheck    = regexp.MustCompile(`^(0|[1-9][0-9]{0,4})$`)
 )
 
 type backendDefinition struct {

@@ -159,4 +159,9 @@ func TestServer_splitWildcardHostPort(t *testing.T) {
 			t.Errorf("Expected en error for %q, NIL given.", host)
 		}
 	}
+
+	_, _, err := splitWildcardHostPort("1", 8080)
+	if err != nil {
+		t.Errorf("Expected NIL, given %s", err)
+	}
 }
