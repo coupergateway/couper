@@ -83,7 +83,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		defaultPort = httpConf.ListenPort
 	}
 
-	validPortMap, err := validatePortHosts(conf, defaultPort)
+	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +99,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 	}
 
 	serverConfiguration := &ServerConfiguration{PortOptions: map[Port]*MuxOptions{
-		Port(defaultPort): NewMuxOptions()},
+		Port(defaultPort): NewMuxOptions(hostsMap)},
 	}
 	for p := range validPortMap {
-		serverConfiguration.PortOptions[p] = NewMuxOptions()
+		serverConfiguration.PortOptions[p] = NewMuxOptions(hostsMap)
 	}
 
 	api := make(map[*config.Endpoint]http.Handler)
@@ -288,24 +288,25 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 //	"*"							equals to "*:configuredPort"
 //	"host:*"					equals to "host:configuredPort"
 //	"host"						listen on configured default port for given host
-func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, error) {
+func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, hosts, error) {
 	portMap := make(ports)
+	hostMap := make(hosts)
 	isHostsMandatory := len(conf.Server) > 1
 
 	for _, srv := range conf.Server {
 		if isHostsMandatory && len(srv.Hosts) == 0 {
-			return nil, fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
+			return nil, nil, fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
 		}
 
 		srvPortMap := make(ports)
 		for _, host := range srv.Hosts {
 			if !reValidFormat.MatchString(host) {
-				return nil, fmt.Errorf("host format is invalid: %q", host)
+				return nil, nil, fmt.Errorf("host format is invalid: %q", host)
 			}
 
 			ho, po, err := splitWildcardHostPort(host, configuredPort)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			if _, ok := srvPortMap[po]; !ok {
@@ -313,6 +314,8 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, error) 
 			}
 
 			srvPortMap[po][ho] = true
+
+			hostMap[fmt.Sprintf("%s:%d", ho, po)] = true
 		}
 
 		// srvPortMap contains all unique host port combinations for
@@ -324,7 +327,7 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, error) 
 
 			for h := range ho {
 				if _, ok := portMap[po][h]; ok {
-					return nil, fmt.Errorf("conflict: host %q already defined for port: %d", h, po)
+					return nil, nil, fmt.Errorf("conflict: host %q already defined for port: %d", h, po)
 				}
 
 				portMap[po][h] = true
@@ -332,7 +335,7 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, error) 
 		}
 	}
 
-	return portMap, nil
+	return portMap, hostMap, nil
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {

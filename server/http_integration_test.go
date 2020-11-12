@@ -364,6 +364,42 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 	cleanup(shutdown, t)
 }
 
+func TestHTTPServer_HostHeader2(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration", "api/03_couper.hcl")
+	shutdown, logHook := newCouper(confPath, test.New(t))
+
+	t.Run("Test", func(subT *testing.T) {
+		helper := test.New(subT)
+
+		req, err := http.NewRequest(http.MethodGet, "http://couper.io:9898/v3/def", nil)
+		helper.Must(err)
+
+		req.Host = "couper.io"
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		resBytes, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+
+		_ = res.Body.Close()
+
+		if `<html>1002</html>` != string(resBytes) {
+			t.Errorf("%s", resBytes)
+		}
+
+		entry := logHook.LastEntry()
+		if entry == nil {
+			t.Error("Expected a log entry, got nothing")
+		} else if entry.Data["server"] != "multi-api-host1" {
+			t.Errorf("Expected 'multi-api-host1', got: %s", entry.Data["server"])
+		}
+	})
+
+	cleanup(shutdown, t)
+}
+
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 

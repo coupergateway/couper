@@ -50,7 +50,7 @@ const serverOptionsKey = "serverContextOptions"
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
-		opts = runtime.NewMuxOptions()
+		opts = runtime.NewMuxOptions(nil)
 	}
 
 	mux := &Mux{
@@ -201,7 +201,7 @@ func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Nod
 	hostPath := pathpattern.PathFromHost(req.Host, false)
 	matchHostPath := req.Method + " " + utils.JoinPath(hostPath, req.URL.Path)
 	node, paramValues := root.Match(matchHostPath)
-	if node == nil { // no specific hosts found, lookup for general path matches
+	if _, ok := m.opts.Hosts[req.Host]; !ok && node == nil { // no specific hosts found, lookup for general path matches
 		matchPath := req.Method + " " + req.URL.Path
 		node, paramValues = root.Match(matchPath)
 	}
