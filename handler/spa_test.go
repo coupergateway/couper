@@ -7,6 +7,9 @@ import (
 	"path"
 	"testing"
 
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime/server"
+
 	"github.com/avenga/couper/handler"
 )
 
@@ -28,7 +31,11 @@ func TestSpa_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := handler.NewSpa(path.Join(wd, tt.filePath))
+			opts, _ := server.NewServerOptions(&config.Server{})
+			s, err := handler.NewSpa(path.Join(wd, tt.filePath), opts)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			res := httptest.NewRecorder()
 			s.ServeHTTP(res, tt.req)

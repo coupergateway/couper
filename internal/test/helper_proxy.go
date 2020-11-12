@@ -28,7 +28,7 @@ func (h *Helper) NewProxy(opts *handler.ProxyOptions) (*handler.Proxy, *http.Cli
 	}
 	proxyOptions = proxyOptions.Merge(opts)
 
-	proxy, err := handler.NewProxy(proxyOptions, logger.WithContext(context.Background()), eval.NewENVContext(nil))
+	proxy, err := handler.NewProxy(proxyOptions, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 	h.Must(err)
 
 	return proxy.(*handler.Proxy), server.Client(), upstream, server.Close

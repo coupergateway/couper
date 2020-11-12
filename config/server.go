@@ -5,6 +5,7 @@ type Server struct {
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
 	API                  *Api     `hcl:"api,block"`
 	BasePath             string   `hcl:"base_path,optional"`
+	ErrorFile            string   `hcl:"error_file,optional"`
 	Files                *Files   `hcl:"files,block"`
 	Hosts                []string `hcl:"hosts,optional"`
 	Name                 string   `hcl:"name,label"`

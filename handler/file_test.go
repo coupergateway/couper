@@ -7,7 +7,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime/server"
 )
 
 func TestFile_ServeHTTP(t *testing.T) {
@@ -37,9 +38,15 @@ func TestFile_ServeHTTP(t *testing.T) {
 		{"not found /w errorFile", fields{errFile: "testdata/file_err_doc.html"}, httptest.NewRequest(http.MethodGet, "http://domain.test/", nil), http.StatusNotFound},
 		{"not found /w errorFile HEAD", fields{errFile: "testdata/file_err_doc.html"}, httptest.NewRequest(http.MethodHead, "http://domain.test/", nil), http.StatusNotFound},
 	}
+
+	srvOpts, _ := server.NewServerOptions(&config.Server{})
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewFile(tt.fields.basePath, path.Join(wd, tt.fields.docRootDir), errors.DefaultHTML)
+			f, err := NewFile(tt.fields.basePath, path.Join(wd, tt.fields.docRootDir), srvOpts)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			rec := httptest.NewRecorder()
 			f.ServeHTTP(rec, tt.req)

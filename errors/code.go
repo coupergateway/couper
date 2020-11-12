@@ -43,7 +43,7 @@ var codes = map[Code]string{
 	SPARouteNotFound: "SPA route not found",
 	// 3xxx
 	FilesError:         "Files failed",
-	FilesRouteNotFound: "FilesRouteNotFound",
+	FilesRouteNotFound: "Files route not found",
 	// 4xxx
 	APIError:               "API failed",
 	APIRouteNotFound:       "API route not found",

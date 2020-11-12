@@ -2,8 +2,8 @@ package errors
 
 import (
 	"io/ioutil"
-	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -41,11 +41,21 @@ type Template struct {
 }
 
 func NewTemplateFromFile(path string) (*Template, error) {
-	tplFile, err := ioutil.ReadFile(path)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
-	return NewTemplate(mime.TypeByExtension(path), tplFile)
+	tplFile, err := ioutil.ReadFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	mime := "text/html"
+	if strings.HasSuffix(path, ".json") {
+		mime = "application/json"
+	}
+
+	return NewTemplate(mime, tplFile)
 }
 
 func NewTemplate(mime string, src []byte) (*Template, error) {
@@ -102,7 +112,7 @@ func (t *Template) ServeError(err error) http.Handler {
 				DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
 				return
 			}
-			DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
+			DefaultHTML.ServeError(errCode).ServeHTTP(rw, req)
 		} else if err != nil {
 			panic(err)
 		}

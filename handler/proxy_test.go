@@ -47,7 +47,7 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := handler.NewProxy(tt.options, logger.WithContext(nil), nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -180,7 +180,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -350,7 +350,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -414,7 +414,7 @@ func TestProxy_director(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := handler.NewProxy(tt.fields.options, tt.fields.log, eval.NewENVContext(nil))
+			p, err := handler.NewProxy(tt.fields.options, tt.fields.log, nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -508,7 +508,7 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 				t.Fatal(err)
 			}
 			tt.fields.options.Context = append(tt.fields.options.Context, remain.Inline)
-			p, err := handler.NewProxy(tt.fields.options, log.WithContext(context.Background()), tt.fields.evalContext)
+			p, err := handler.NewProxy(tt.fields.options, log.WithContext(context.Background()), nil, tt.fields.evalContext)
 			if err != nil {
 				t.Fatal(err)
 			}

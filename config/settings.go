@@ -1,5 +1,7 @@
 package config
 
+const DefaultListenPort = 8080
+
 type Settings struct {
 	DefaultPort     int    `hcl:"default_port,optional"`
 	HealthPath      string `hcl:"health_path,optional"`

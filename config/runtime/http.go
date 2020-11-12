@@ -8,18 +8,6 @@ import (
 	"github.com/avenga/couper/config"
 )
 
-type Port string
-
-type HostHandlers map[string]*ServerMux
-
-type EntrypointHandlers map[Port]HostHandlers
-
-// ServerMux represents the ServerMux struct.
-type ServerMux struct {
-	Server *config.Server
-	Mux    *Mux
-}
-
 // HTTPConfig represents the configuration of the ingress HTTP server.
 type HTTPConfig struct {
 	HealthPath      string `env:"health_path"`
@@ -56,7 +44,7 @@ var DefaultHTTP = &HTTPConfig{
 		ShutdownDelay:     time.Second * 5,
 		ShutdownTimeout:   time.Second * 5,
 	},
-	ListenPort:      8080,
+	ListenPort:      config.DefaultListenPort,
 	RequestIDFormat: "common",
 }
 

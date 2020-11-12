@@ -11,9 +11,4 @@ type Endpoint struct {
 	InlineDefinition     hcl.Body `hcl:",remain" json:"-"`
 	Path                 string   `hcl:"path,optional"`
 	Pattern              string   `hcl:"path,label"`
-	Server               *Server  `hcl:"-"` // parent
-}
-
-func (e *Endpoint) String() string {
-	return e.Server.Name + ": " + e.Pattern
 }

@@ -11,6 +11,7 @@ func New(tb testing.TB) *Helper {
 }
 
 func (h *Helper) Must(err error) {
+	h.tb.Helper()
 	if err != nil {
 		h.tb.Fatal(err)
 	}
