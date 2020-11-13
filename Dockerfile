@@ -10,6 +10,7 @@ RUN go generate && \
 	ls -lh /couper
 
 RUN mkdir /conf
+COPY ./public/couper.hcl /conf/couper.hcl
 
 FROM scratch
 # copy debian tls ca certs (from golang image)
