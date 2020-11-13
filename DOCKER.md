@@ -9,7 +9,7 @@ _For additional information, tutorials and documentation please visit the [coupe
 Couper requires a [configuration file](https://github.com/avenga/couper/tree/master/docs#conf_file) which have to be provided on start.
 See our [documentation](https://github.com/avenga/couper/tree/master/docs) how to configure _couper_. 
 
-`docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper`
+`docker run --rm -p 8080:8080 -v "$(pwd)/public":/htdocs avenga/couper`
 
 ### Environment options
 
