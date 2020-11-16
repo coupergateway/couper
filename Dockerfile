@@ -9,14 +9,12 @@ RUN go generate && \
 	CGO_ENABLED=0 go build -v -o /couper main.go && \
 	ls -lh /couper
 
-RUN mkdir /conf
-COPY ./public/couper.hcl /conf/couper.hcl
-
 FROM scratch
 # copy debian tls ca certs (from golang image)
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /couper /couper
-COPY --from=builder /conf /conf
+
+COPY public/couper.hcl /conf/
 COPY public/index.html /htdocs/
 WORKDIR /conf
 ENV COUPER_LOG_FORMAT=json
