@@ -1,3 +1,5 @@
+image:
+	docker build -t avenga/couper:latest .
 
 test:
 	go test -v -short -race -timeout 30s ./...
