@@ -180,6 +180,8 @@ func (s *HTTPServer) getHost(req *http.Request) string {
 		host = req.Header.Get("X-Forwarded-Host")
 	}
 
+	host = strings.ToLower(host)
+
 	if !strings.Contains(host, ":") {
 		return s.cleanHostAppendPort(host)
 	}

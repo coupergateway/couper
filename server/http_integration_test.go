@@ -347,7 +347,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
 		helper.Must(err)
 
-		req.Host = "example.com."
+		req.Host = "Example.com."
 		res, err := client.Do(req)
 		helper.Must(err)
 
