@@ -294,6 +294,7 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
 | `origin`| URL to connect to for backend requests </br> &#9888; must start with `http://...` |
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
+|`hostname`| value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. |
 |`path`|changeable part of upstream URL|
 |`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
 | `request_headers` | header map to define additional or override header for the `origin` request |
