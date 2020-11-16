@@ -17,8 +17,9 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /couper /couper
 COPY --from=builder /conf /conf
-EXPOSE 8080
+COPY public/index.html /htdocs/
 WORKDIR /conf
 ENV COUPER_LOG_FORMAT=json
+EXPOSE 8080
 USER 1000:1000
 ENTRYPOINT ["/couper", "run"]
