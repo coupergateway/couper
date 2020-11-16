@@ -46,9 +46,7 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 
 var handlerFuncType = reflect.ValueOf(RoundtripHandlerFunc(nil)).Type()
 
-func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
-	startTime := time.Now()
-
+func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler, startTime time.Time) {
 	handlerType := reflect.ValueOf(nextHandler).Type()
 	isUpstreamRequest := handlerType == handlerFuncType
 
