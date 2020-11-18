@@ -6,7 +6,8 @@ import (
 
 var _ http.ResponseWriter = &HeaderWriter{}
 
-// ServerHeaderWriter ensures the server header value to be couper.io.
+// HeaderWriter ensures the "Server" HTTP header field value to be
+// "couper.io" and deletes the "Content-Length" HTTP header field.
 type HeaderWriter struct {
 	rw http.ResponseWriter
 }
@@ -28,6 +29,7 @@ func (sr *HeaderWriter) Write(p []byte) (int, error) {
 
 // WriteHeader wraps the WriteHeader method of the ResponseWriter.
 func (sr *HeaderWriter) WriteHeader(statusCode int) {
+	sr.rw.Header().Del("Content-Length")
 	sr.rw.Header().Set("Server", "couper.io")
 	sr.rw.WriteHeader(statusCode)
 }

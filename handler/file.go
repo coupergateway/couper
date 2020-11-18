@@ -82,7 +82,6 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// TODO: gzip, br?
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
 }
 
@@ -102,7 +101,6 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 	}
 	defer file.Close()
 
-	// TODO: gzip, br?
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
 }
 

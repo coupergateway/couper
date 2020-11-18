@@ -94,7 +94,11 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"code": 4001}`), 404},
 	} {
-		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+		helper.Must(err)
+
+		req.Header.Set("Accept-Encoding", "br")
+		res, err := connectClient.Do(req)
 		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
@@ -213,7 +217,11 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//FIXME:
 		//{"/api", content500.Bytes(), 500},
 	} {
-		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+		helper.Must(err)
+
+		req.Header.Set("Accept-Encoding", "br")
+		res, err := connectClient.Do(req)
 		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
@@ -253,6 +261,7 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "http://"+srv.Addr()+"/", nil)
 			req.RequestURI = ""
+			req.Header.Set("Accept-Encoding", "br")
 
 			hook.Reset()
 

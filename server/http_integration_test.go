@@ -297,6 +297,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				req, err := http.NewRequest(rc.req.method, rc.req.url, nil)
 				helper.Must(err)
 
+				req.Header.Set("Accept-Encoding", "br")
 				res, err := client.Do(req)
 				helper.Must(err)
 
@@ -347,6 +348,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
 		helper.Must(err)
 
+		req.Header.Set("Accept-Encoding", "br")
 		req.Host = "Example.com."
 		res, err := client.Do(req)
 		helper.Must(err)
@@ -376,6 +378,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://couper.io:9898/v3/def", nil)
 		helper.Must(err)
 
+		req.Header.Set("Accept-Encoding", "br")
 		req.Host = "couper.io"
 		res, err := client.Do(req)
 		helper.Must(err)
@@ -415,6 +418,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
 		helper.Must(err)
 
+		req.Header.Set("Accept-Encoding", "br")
 		req.Host = "example.com"
 		req.Header.Set("X-Forwarded-Host", "example.com.")
 		res, err := client.Do(req)
