@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +32,12 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
+const (
+	GzipName = "gzip"
+	AEHeader = "Accept-Encoding"
+	CEHeader = "Content-Encoding"
+)
+
 var (
 	_ http.Handler   = &Proxy{}
 	_ server.Context = &Proxy{}
@@ -40,6 +48,8 @@ var (
 	// headerBlacklist lists all header keys which will be removed after
 	// context variable evaluation to ensure to not pass them upstream.
 	headerBlacklist = []string{"Authorization", "Cookie"}
+
+	ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 )
 
 type Proxy struct {
@@ -209,6 +219,12 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
+	if ReClientSupportsGZ.MatchString(req.Header.Get(AEHeader)) {
+		req.Header.Set(AEHeader, GzipName)
+	} else {
+		req.Header.Del(AEHeader)
+	}
+
 	res, err := p.transport.RoundTrip(outreq)
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
@@ -222,6 +238,20 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		p.SetRoundtripContext(req, res)
 		p.handleUpgradeResponse(rw, outreq, res)
 		return
+	}
+
+	if strings.ToLower(res.Header.Get(CEHeader)) == GzipName {
+		var src io.Reader
+		var err error
+
+		res.Header.Del(CEHeader)
+
+		src, err = gzip.NewReader(res.Body)
+		if err != nil {
+			src = res.Body
+		}
+
+		res.Body = eval.NewReadCloser(src, res.Body)
 	}
 
 	removeConnectionHeaders(res.Header)
