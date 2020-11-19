@@ -169,9 +169,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.Host = s.getHost(req)
 
 	h := s.mux.FindHandler(req)
-	rw = NewHeaderWriter(
-		NewBodyZipper(rw,
-			handler.ReClientSupportsGZ.MatchString(req.Header.Get(handler.AEHeader))),
+	rw = NewRWWrapper(rw,
+		handler.ReClientSupportsGZ.MatchString(req.Header.Get(handler.AEHeader)),
 	)
 	s.accessLog.ServeHTTP(rw, req, h, startTime)
 }

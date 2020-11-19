@@ -36,6 +36,7 @@ const (
 	GzipName = "gzip"
 	AEHeader = "Accept-Encoding"
 	CEHeader = "Content-Encoding"
+	CLHeader = "Content-Length"
 )
 
 var (
