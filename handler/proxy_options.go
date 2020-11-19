@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 )
 
 type ProxyOptions struct {
@@ -16,10 +17,12 @@ type ProxyOptions struct {
 	BackendName                          string
 	Hostname, Origin, Path               string
 	CORS                                 *CORSOptions
+	ErrorTemplate                        *errors.Template
+	Kind                                 string
 	RequestBodyLimit                     int64
 }
 
-func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hcl.Body) (*ProxyOptions, error) {
+func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hcl.Body, errTpl *errors.Template, kind string) (*ProxyOptions, error) {
 	totalD, err := time.ParseDuration(conf.Timeout)
 	if err != nil {
 		panic(err)
@@ -48,7 +51,9 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hc
 		CORS:             cors,
 		ConnectTimeout:   connectD,
 		Context:          remainCtx,
+		ErrorTemplate:    errTpl,
 		Hostname:         conf.Hostname,
+		Kind:             kind,
 		Origin:           conf.Origin,
 		Path:             conf.Path,
 		RequestBodyLimit: bodyLimit,

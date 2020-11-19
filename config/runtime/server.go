@@ -66,9 +66,12 @@ type HandlerKind uint8
 
 const (
 	KindAPI HandlerKind = iota
+	KindEndpoint
 	KindFiles
 	KindSPA
 )
+
+type endpointList map[*config.Endpoint]HandlerKind
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
@@ -148,101 +151,134 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			}
 		}
 
-		if srvConf.API != nil {
-			// map backends to endpoint
-			endpoints := make(map[string]bool)
-			for _, endpoint := range srvConf.API.Endpoint {
-				pattern := utils.JoinPath("/", serverOptions.APIBasePath, endpoint.Pattern)
+		endpointsPatterns := make(map[string]bool)
+		endpointsList := getEndpointsList(srvConf)
 
-				unique, cleanPattern := isUnique(endpoints, pattern)
-				if !unique {
-					return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
+		for endpoint, epType := range endpointsList {
+			var basePath string
+			var cors *config.CORS
+			var errTpl *errors.Template
+
+			switch epType {
+			case KindAPI:
+				basePath = serverOptions.APIBasePath
+				cors = srvConf.API.CORS
+				errTpl = serverOptions.APIErrTpl
+			case KindEndpoint:
+				basePath = serverOptions.SrvBasePath
+				errTpl = serverOptions.ServerErrTpl
+			}
+
+			pattern := utils.JoinPath(basePath, endpoint.Pattern)
+
+			unique, cleanPattern := isUnique(endpointsPatterns, pattern)
+			if !unique {
+				return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
+			}
+			endpointsPatterns[cleanPattern] = true
+
+			// setACHandlerFn individual wrap for access_control configuration per endpoint
+			setACHandlerFn := func(protectedBackend backendDefinition) {
+				protectedHandler := protectedBackend.handler
+
+				// prefer endpoint 'path' definition over 'backend.Path'
+				if endpoint.Path != "" {
+					beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
+					protectedHandler = newProxy(conf.Context, beConf, cors, remainCtx, log, serverOptions, errTpl, epType)
 				}
-				endpoints[cleanPattern] = true
 
-				// setACHandlerFn individual wrap for access_control configuration per endpoint
-				setACHandlerFn := func(protectedBackend backendDefinition) {
-					protectedHandler := protectedBackend.handler
-
-					// prefer endpoint 'path' definition over 'backend.Path'
-					if endpoint.Path != "" {
-						beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
-						protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, serverOptions)
-					}
-
-					api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
-						config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl).
-							Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl)),
-						config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
-						protectedHandler)
+				parentAC := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
+				if epType == KindAPI {
+					parentAC = parentAC.Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl))
 				}
 
-				// lookup for backend reference, prefer endpoint definition over api one
-				if endpoint.Backend != "" {
-					if _, ok := backends[endpoint.Backend]; !ok {
-						return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
+				api[endpoint] = configureProtectedHandler(
+					accessControls,
+					errTpl,
+					parentAC,
+					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
+					protectedHandler,
+				)
+			}
+
+			// lookup for backend reference, prefer endpoint definition over api one
+			if endpoint.Backend != "" {
+				if _, ok := backends[endpoint.Backend]; !ok {
+					return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
+				}
+
+				// set server context for defined backends
+				be := backends[endpoint.Backend]
+				beConf, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
+				refBackend := newProxy(conf.Context, be.conf, cors, remain, log, serverOptions, errTpl, epType)
+
+				setACHandlerFn(backendDefinition{
+					conf:    beConf,
+					handler: refBackend,
+				})
+				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], epType)
+				if err != nil {
+					return nil, err
+				}
+				continue
+			}
+
+			// otherwise try to parse an inline block and fallback for api reference or inline block
+			inlineBackend, inlineConf, err := newInlineBackend(conf.Context, backends, endpoint.InlineDefinition, cors, log, serverOptions)
+			if err == errorMissingBackend && epType == KindAPI {
+				if srvConf.API.Backend != "" {
+					if _, ok := backends[srvConf.API.Backend]; !ok {
+						return nil, fmt.Errorf("backend %q is not defined", srvConf.API.Backend)
 					}
-
-					// set server context for defined backends
-					be := backends[endpoint.Backend]
-					beConf, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
-					refBackend := newProxy(conf.Context, be.conf, srvConf.API.CORS, remain, log, serverOptions)
-
-					setACHandlerFn(backendDefinition{
-						conf:    beConf,
-						handler: refBackend,
-					})
-					err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
+					setACHandlerFn(backends[srvConf.API.Backend])
+					err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], epType)
 					if err != nil {
 						return nil, err
 					}
 					continue
 				}
-
-				// otherwise try to parse an inline block and fallback for api reference or inline block
-				inlineBackend, inlineConf, err := newInlineBackend(conf.Context, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
-				if err == errorMissingBackend {
-					if srvConf.API.Backend != "" {
-						if _, ok := backends[srvConf.API.Backend]; !ok {
-							return nil, fmt.Errorf("backend %q is not defined", srvConf.API.Backend)
-						}
-						setACHandlerFn(backends[srvConf.API.Backend])
-						err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
-						if err != nil {
-							return nil, err
-						}
-						continue
-					}
-					inlineBackend, inlineConf, err = newInlineBackend(conf.Context, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
-					if err != nil {
-						return nil, err
-					}
-
-					if inlineConf.Name == "" && inlineConf.Origin == "" {
-						return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
-					}
-				} else if err != nil { // TODO hcl.diagnostics error
-					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
-				}
-
-				setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
-				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
+				inlineBackend, inlineConf, err = newInlineBackend(conf.Context, backends, srvConf.API.InlineDefinition, cors, log, serverOptions)
 				if err != nil {
 					return nil, err
 				}
+
+				if inlineConf.Name == "" && inlineConf.Origin == "" {
+					return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
+				}
+			} else if err != nil { // TODO hcl.diagnostics error
+				return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
+			}
+
+			setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
+			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], epType)
+			if err != nil {
+				return nil, err
 			}
 		}
+
 	}
 	return serverConfiguration, nil
 }
 
-func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, srvOpts *server.Options) http.Handler {
+func newProxy(
+	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS,
+	remainCtx []hcl.Body, log *logrus.Entry, srvOpts *server.Options,
+	errTpl *errors.Template, epType HandlerKind,
+) http.Handler {
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
+	var kind string
+	switch epType {
+	case KindAPI:
+		kind = "api"
+	case KindEndpoint:
+		kind = "endpoint"
+	}
+
+	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx, errTpl, kind)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -272,10 +308,11 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 
 		beConf, _ = defaultBackendConf.Merge(beConf)
 
+		// TODO: Select the right KIND
 		srvOpts, _ := server.NewServerOptions(&config.Server{})
 		backends[beConf.Name] = backendDefinition{
 			conf:    beConf,
-			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log, srvOpts),
+			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log, srvOpts, srvOpts.APIErrTpl, KindAPI),
 		}
 	}
 	return backends, nil
@@ -489,7 +526,8 @@ func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefin
 		}
 	}
 
-	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, srvOpts)
+	// TODO: Select the right KIND
+	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, srvOpts, srvOpts.APIErrTpl, KindAPI)
 	return proxy, beConf, nil
 }
 
@@ -516,6 +554,8 @@ func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []stri
 
 		switch kind {
 		case KindAPI:
+			fallthrough
+		case KindEndpoint:
 			routes = srvConf.PortOptions[listenPort].EndpointRoutes
 		case KindFiles:
 			routes = srvConf.PortOptions[listenPort].FileRoutes
@@ -537,4 +577,20 @@ func isUnique(endpoints map[string]bool, pattern string) (bool, string) {
 	pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
 
 	return !endpoints[pattern], pattern
+}
+
+func getEndpointsList(srvConf *config.Server) endpointList {
+	endpoints := make(endpointList)
+
+	if srvConf.API != nil {
+		for _, endpoint := range srvConf.API.Endpoint {
+			endpoints[endpoint] = KindAPI
+		}
+	}
+
+	for _, endpoint := range srvConf.Endpoint {
+		endpoints[endpoint] = KindEndpoint
+	}
+
+	return endpoints
 }

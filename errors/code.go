@@ -31,6 +31,12 @@ const (
 	BasicAuthFailed
 )
 
+const (
+	EndpointError Code = 6000 + iota
+	EndpointConnect
+	EndpointReqBodySizeExceeded
+)
+
 var codes = map[Code]string{
 	// 1xxx
 	Server:         "Server error",

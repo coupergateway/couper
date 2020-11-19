@@ -176,7 +176,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	err := p.Director(outreq)
 	if err != nil {
-		p.srvOptions.APIErrTpl.ServeError(err).ServeHTTP(rw, req)
+		p.options.ErrorTemplate.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
+		p.options.ErrorTemplate.ServeError(p.getErrorCode(couperErr.APIConnect)).ServeHTTP(rw, req)
 		return
 	}
 
@@ -366,7 +366,7 @@ func (p *Proxy) SetGetBody(req *http.Request) error {
 		}
 
 		if n > p.options.RequestBodyLimit {
-			return couperErr.APIReqBodySizeExceeded
+			return p.getErrorCode(couperErr.APIReqBodySizeExceeded)
 		}
 
 		bodyBytes := buf.Bytes()
@@ -540,7 +540,22 @@ func (p *Proxy) Options() *server.Options {
 }
 
 func (p *Proxy) String() string {
-	return "api"
+	return p.options.Kind
+}
+
+func (p *Proxy) getErrorCode(code couperErr.Code) couperErr.Code {
+	if p.options.Kind == "endpoint" {
+		switch code {
+		case couperErr.APIConnect:
+			return couperErr.EndpointConnect
+		case couperErr.APIReqBodySizeExceeded:
+			return couperErr.EndpointReqBodySizeExceeded
+		}
+
+		return couperErr.EndpointError
+	}
+
+	return code
 }
 
 func setHeaderFields(header http.Header, options OptionsMap) {
