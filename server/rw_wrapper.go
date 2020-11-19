@@ -41,6 +41,8 @@ func (w *RWWrapper) Write(p []byte) (int, error) {
 			return n, err
 		}
 
+		gz.Close()
+
 		p = buf.Bytes()
 	}
 

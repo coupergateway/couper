@@ -78,6 +78,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return net.Dial("tcp4", gw.Addr())
 		},
+		DisableCompression: true,
 	}}
 
 	for i, testCase := range []struct {
@@ -97,7 +98,6 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
 		helper.Must(err)
 
-		req.Header.Set("Accept-Encoding", "br")
 		res, err := connectClient.Do(req)
 		helper.Must(err)
 
@@ -176,6 +176,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return net.Dial("tcp4", couper.Addr())
 			},
+			DisableCompression: true,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -220,7 +221,6 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
 		helper.Must(err)
 
-		req.Header.Set("Accept-Encoding", "br")
 		res, err := connectClient.Do(req)
 		helper.Must(err)
 
@@ -261,11 +261,10 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "http://"+srv.Addr()+"/", nil)
 			req.RequestURI = ""
-			req.Header.Set("Accept-Encoding", "br")
 
 			hook.Reset()
 
-			_, err := http.DefaultClient.Do(req)
+			_, err := test.NewHTTPClient().Do(req)
 			helper.Must(err)
 			time.Sleep(time.Millisecond * 10) // log hook needs some time?
 

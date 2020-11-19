@@ -2,8 +2,10 @@ package server_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -100,6 +102,7 @@ func newClient() *http.Client {
 				}
 				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
 			},
+			DisableCompression: true,
 		},
 	}
 }
@@ -297,7 +300,6 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				req, err := http.NewRequest(rc.req.method, rc.req.url, nil)
 				helper.Must(err)
 
-				req.Header.Set("Accept-Encoding", "br")
 				res, err := client.Do(req)
 				helper.Must(err)
 
@@ -348,7 +350,6 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
 		helper.Must(err)
 
-		req.Header.Set("Accept-Encoding", "br")
 		req.Host = "Example.com."
 		res, err := client.Do(req)
 		helper.Must(err)
@@ -378,7 +379,6 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://couper.io:9898/v3/def", nil)
 		helper.Must(err)
 
-		req.Header.Set("Accept-Encoding", "br")
 		req.Host = "couper.io"
 		res, err := client.Do(req)
 		helper.Must(err)
@@ -418,7 +418,6 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
 		helper.Must(err)
 
-		req.Header.Set("Accept-Encoding", "br")
 		req.Host = "example.com"
 		req.Header.Set("X-Forwarded-Host", "example.com.")
 		res, err := client.Do(req)
@@ -438,6 +437,49 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 			t.Error("Expected a log entry, got nothing")
 		} else if entry.Data["server"] != "multi-files-host2" {
 			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
+		}
+	})
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_Gzip(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	t.Run("Test", func(subT *testing.T) {
+		helper := test.New(subT)
+
+		req, err := http.NewRequest(http.MethodGet, "http://example.org:9898/c", nil)
+		helper.Must(err)
+
+		req.Header.Set("Accept-Encoding", "br, gzip")
+		req.Host = "example.org"
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
+			t.Errorf("Expected CE <gzip>, given: %s", ce)
+		}
+		if cl := res.Header.Get("Content-Length"); cl != "70" {
+			t.Errorf("Expected CL <70>, given: %s", cl)
+		}
+
+		var src io.Reader
+
+		src, err = gzip.NewReader(res.Body)
+		helper.Must(err)
+
+		resBytes, err := ioutil.ReadAll(src)
+		helper.Must(err)
+
+		srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c/index.html"))
+		helper.Must(err)
+
+		if !bytes.Equal(resBytes, srcBytes) {
+			t.Errorf("Expected \n%s\ngiven\n%s", srcBytes, resBytes)
 		}
 	})
 
