@@ -170,7 +170,9 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	h := s.mux.FindHandler(req)
 	rw = NewRWWrapper(rw,
-		handler.ReClientSupportsGZ.MatchString(req.Header.Get(handler.AEHeader)),
+		handler.ReClientSupportsGZ.MatchString(
+			req.Header.Get(handler.AcceptEncodingHeader),
+		),
 	)
 	s.accessLog.ServeHTTP(rw, req, h, startTime)
 }

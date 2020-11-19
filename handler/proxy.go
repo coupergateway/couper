@@ -33,10 +33,10 @@ import (
 )
 
 const (
-	GzipName = "gzip"
-	AEHeader = "Accept-Encoding"
-	CEHeader = "Content-Encoding"
-	CLHeader = "Content-Length"
+	GzipName              = "gzip"
+	AcceptEncodingHeader  = "Accept-Encoding"
+	ContentEncodingHeader = "Content-Encoding"
+	ContentLengthHeader   = "Content-Length"
 )
 
 var (
@@ -220,10 +220,10 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
-	if ReClientSupportsGZ.MatchString(req.Header.Get(AEHeader)) {
-		req.Header.Set(AEHeader, GzipName)
+	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
+		req.Header.Set(AcceptEncodingHeader, GzipName)
 	} else {
-		req.Header.Del(AEHeader)
+		req.Header.Del(AcceptEncodingHeader)
 	}
 
 	res, err := p.transport.RoundTrip(outreq)
@@ -241,11 +241,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.ToLower(res.Header.Get(CEHeader)) == GzipName {
+	if strings.ToLower(res.Header.Get(ContentEncodingHeader)) == GzipName {
 		var src io.Reader
 		var err error
 
-		res.Header.Del(CEHeader)
+		res.Header.Del(ContentEncodingHeader)
 
 		src, err = gzip.NewReader(res.Body)
 		if err != nil {

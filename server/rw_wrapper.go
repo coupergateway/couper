@@ -52,8 +52,8 @@ func (w *RWWrapper) WriteHeader(statusCode int) {
 	w.rw.Header().Set("Server", "couper.io")
 
 	if w.useGZ {
-		w.rw.Header().Del(handler.CLHeader)
-		w.rw.Header().Set(handler.CEHeader, handler.GzipName)
+		w.rw.Header().Del(handler.ContentLengthHeader)
+		w.rw.Header().Set(handler.ContentEncodingHeader, handler.GzipName)
 	}
 
 	w.rw.WriteHeader(statusCode)
