@@ -161,15 +161,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				endpoints[cleanPattern] = true
 
 				// setACHandlerFn individual wrap for access_control configuration per endpoint
-				setACHandlerFn := func(protectedBackend backendDefinition) {
-					protectedHandler := protectedBackend.handler
-
-					// prefer endpoint 'path' definition over 'backend.Path'
-					if endpoint.Path != "" {
-						beConf, remainCtx := protectedBackend.conf.Merge(&config.Backend{Path: endpoint.Path})
-						protectedHandler = newProxy(conf.Context, beConf, srvConf.API.CORS, remainCtx, log, serverOptions)
-					}
-
+				setACHandlerFn := func(protectedHandler http.Handler) {
 					api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
 						config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl).
 							Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl)),
@@ -185,13 +177,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 					// set server context for defined backends
 					be := backends[endpoint.Backend]
-					beConf, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
+					_, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
 					refBackend := newProxy(conf.Context, be.conf, srvConf.API.CORS, remain, log, serverOptions)
 
-					setACHandlerFn(backendDefinition{
-						conf:    beConf,
-						handler: refBackend,
-					})
+					setACHandlerFn(refBackend)
 					err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
 					if err != nil {
 						return nil, err
@@ -206,7 +195,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						if _, ok := backends[srvConf.API.Backend]; !ok {
 							return nil, fmt.Errorf("backend %q is not defined", srvConf.API.Backend)
 						}
-						setACHandlerFn(backends[srvConf.API.Backend])
+						setACHandlerFn(backends[srvConf.API.Backend].handler)
 						err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
 						if err != nil {
 							return nil, err
@@ -218,14 +207,14 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						return nil, err
 					}
 
-					if inlineConf.Name == "" && inlineConf.Origin == "" {
+					if inlineConf.Name == "" && !hasAttribute(conf.Context, "origin", inlineConf.Options) {
 						return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
 					}
 				} else if err != nil { // TODO hcl.diagnostics error
 					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
 				}
 
-				setACHandlerFn(backendDefinition{conf: inlineConf, handler: inlineBackend})
+				setACHandlerFn(inlineBackend)
 				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
 				if err != nil {
 					return nil, err
@@ -266,7 +255,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 			return nil, fmt.Errorf("backend name must be unique: %q", beConf.Name)
 		}
 
-		if beConf.Origin == "" {
+		if !hasAttribute(conf.Context, "origin", beConf.Options) {
 			return nil, fmt.Errorf("backend %q: origin attribute is required", beConf.Name)
 		}
 
@@ -279,6 +268,18 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 		}
 	}
 	return backends, nil
+}
+
+// hasAttribute checks for a configured string value and ignores unrelated errors.
+func hasAttribute(ctx *hcl.EvalContext, name string, body hcl.Body) bool {
+	attr, _ := body.JustAttributes()
+
+	if _, ok := attr[name]; !ok {
+		return false
+	}
+
+	val, _ := attr[name].Expr.Value(ctx)
+	return seetie.ValueToString(val) != ""
 }
 
 // validatePortHosts ensures expected host:port formats and unique hosts per port.

@@ -165,7 +165,7 @@ var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 // ValueToString explicitly drops all other (unknown) types and
 // converts non whitespace strings or numbers to its string representation.
 func ValueToString(v cty.Value) string {
-	if v.IsNull() {
+	if v.IsNull() || !v.IsKnown() {
 		return ""
 	}
 
@@ -230,8 +230,8 @@ func isTuple(v cty.Value) bool {
 
 func SetSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
 	for _, d := range diags {
-		switch d.Summary {
-		case "Missing map element", "Unsupported attribute":
+		switch d.Summary { // TODO: Fixup unsupported argument, define explicit inline schema
+		case "Missing map element", "Unsupported attribute", "Unsupported argument":
 			d.Severity = hcl.DiagWarning
 		}
 	}

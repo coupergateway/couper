@@ -22,8 +22,6 @@ func (h *Helper) NewProxy(opts *handler.ProxyOptions) (*handler.Proxy, *http.Cli
 	proxyOptions := &handler.ProxyOptions{
 		Context:     h.NewProxyContext(""),
 		BackendName: "HelperUpstream",
-		Hostname:    "upstream.helper",
-		Origin:      server.URL,
 		CORS:        &handler.CORSOptions{},
 	}
 	proxyOptions = proxyOptions.Merge(opts)

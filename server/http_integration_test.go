@@ -14,6 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -62,7 +65,20 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	// TODO: limitation: no support for inline origin changes
 	if gatewayConf.Definitions != nil {
 		for _, backend := range gatewayConf.Definitions.Backend {
-			backend.Origin = testBackend.Addr()
+			backendSchema := config.Backend{}.Schema(false)
+			inlineSchema := config.Backend{}.Schema(true)
+			backendSchema.Attributes = append(backendSchema.Attributes, inlineSchema.Attributes...)
+			content, diags := backend.Options.Content(backendSchema)
+			if diags != nil && diags.HasErrors() {
+				helper.Must(diags)
+			}
+
+			if _, ok := content.Attributes["origin"]; !ok {
+				helper.Must(fmt.Errorf("backend requires an origin value"))
+			}
+
+			content.Attributes["origin"].Expr = hcltest.MockExprLiteral(cty.StringVal(testBackend.Addr()))
+			backend.Options = hcltest.MockBody(content)
 		}
 	}
 

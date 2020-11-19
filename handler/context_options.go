@@ -13,14 +13,14 @@ func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (Op
 	var options OptionsMap
 
 	content, d := body.Content(headersAttributeSchema)
-	diags = append(diags, d...)
+	diags = append(diags, seetie.SetSeverityLevel(d)...)
 
 	for _, attr := range content.Attributes {
 		if attr.Name != attrName {
 			continue
 		}
 		o, d := NewOptionsMap(evalCtx, attr)
-		diags = append(diags, d...)
+		diags = append(diags, seetie.SetSeverityLevel(d)...)
 		options = o
 		break
 	}

@@ -14,7 +14,6 @@ type ProxyOptions struct {
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              []hcl.Body
 	BackendName                          string
-	Hostname, Origin, Path               string
 	CORS                                 *CORSOptions
 	RequestBodyLimit                     int64
 }
@@ -48,9 +47,6 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hc
 		CORS:             cors,
 		ConnectTimeout:   connectD,
 		Context:          remainCtx,
-		Hostname:         conf.Hostname,
-		Origin:           conf.Origin,
-		Path:             conf.Path,
 		RequestBodyLimit: bodyLimit,
 		TTFBTimeout:      ttfbD,
 		Timeout:          totalD,
@@ -76,18 +72,6 @@ func (po *ProxyOptions) Merge(o *ProxyOptions) *ProxyOptions {
 
 	if o.CORS != nil {
 		po.CORS = o.CORS
-	}
-
-	if o.Hostname != "" {
-		po.Hostname = o.Hostname
-	}
-
-	if o.Origin != "" {
-		po.Origin = o.Origin
-	}
-
-	if o.Path != "" {
-		po.Path = o.Path
 	}
 
 	if o.RequestBodyLimit != po.RequestBodyLimit {
