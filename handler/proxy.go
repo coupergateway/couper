@@ -94,11 +94,6 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
-	// TODO: validate at config level
-	//if originURL.Scheme != "http" && originURL.Scheme != "https" {
-	//	return nil, SchemeRequiredError
-	//}
-
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
 	env.DecodeWithPrefix(&logConf, "BACKEND_")

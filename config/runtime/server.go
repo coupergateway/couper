@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	url2 "net/url"
 	"os"
 	"path"
 	"regexp"
@@ -207,11 +208,17 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						return nil, err
 					}
 
-					if inlineConf.Name == "" && !hasAttribute(conf.Context, "origin", inlineConf.Options) {
+					if inlineConf.Name == "" && getAttribute(conf.Context, "origin", inlineConf.Options) == "" {
 						return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
 					}
 				} else if err != nil { // TODO hcl.diagnostics error
 					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
+				}
+
+				if e := validateOrigin(
+					getAttribute(conf.Context, "origin", inlineConf.Options),
+					inlineConf.Options.MissingItemRange()); e != nil {
+					return nil, e
 				}
 
 				setACHandlerFn(inlineBackend)
@@ -255,8 +262,9 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 			return nil, fmt.Errorf("backend name must be unique: %q", beConf.Name)
 		}
 
-		if !hasAttribute(conf.Context, "origin", beConf.Options) {
-			return nil, fmt.Errorf("backend %q: origin attribute is required", beConf.Name)
+		origin := getAttribute(conf.Context, "origin", beConf.Options)
+		if e := validateOrigin(origin, beConf.Options.MissingItemRange()); e != nil {
+			return nil, e
 		}
 
 		beConf, _ = defaultBackendConf.Merge(beConf)
@@ -270,16 +278,37 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 	return backends, nil
 }
 
+func validateOrigin(origin string, ctxRange hcl.Range) error {
+	diagErr := &hcl.Diagnostic{
+		Subject: &ctxRange,
+		Summary: "invalid backend.origin value",
+	}
+	if origin == "" {
+		diagErr.Detail = "origin attribute is required"
+		return hcl.Diagnostics{diagErr}
+	}
+	url, err := url2.Parse(origin)
+	if err != nil {
+		diagErr.Detail = fmt.Sprintf("url parse error: %v", err)
+		return hcl.Diagnostics{diagErr}
+	}
+	if url.Scheme != "http" && url.Scheme != "https" {
+		diagErr.Detail = fmt.Sprintf("valid http scheme required for origin: %q", origin)
+		return hcl.Diagnostics{diagErr}
+	}
+	return nil
+}
+
 // hasAttribute checks for a configured string value and ignores unrelated errors.
-func hasAttribute(ctx *hcl.EvalContext, name string, body hcl.Body) bool {
+func getAttribute(ctx *hcl.EvalContext, name string, body hcl.Body) string {
 	attr, _ := body.JustAttributes()
 
 	if _, ok := attr[name]; !ok {
-		return false
+		return ""
 	}
 
 	val, _ := attr[name].Expr.Value(ctx)
-	return seetie.ValueToString(val) != ""
+	return seetie.ValueToString(val)
 }
 
 // validatePortHosts ensures expected host:port formats and unique hosts per port.
