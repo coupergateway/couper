@@ -60,7 +60,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	httpConf := runtime.NewHTTPConfig(nil)
 	httpConf.ListenPort = 0 // random
 
-	conf, err := config.LoadBytes(confBytes.Bytes())
+	conf, err := config.LoadBytes(confBytes.Bytes(), "conf_test.hcl")
 	helper.Must(err)
 
 	srvConf, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
@@ -152,7 +152,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	httpConf := runtime.NewHTTPConfig(nil)
 	httpConf.ListenPort = 0 // random
 
-	conf, err := config.LoadBytes(confBytes.Bytes())
+	conf, err := config.LoadBytes(confBytes.Bytes(), "conf_fileserving")
 	helper.Must(err)
 
 	error404Content := []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>")
