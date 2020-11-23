@@ -52,6 +52,7 @@ func (w *RWWrapper) Write(p []byte) (int, error) {
 // WriteHeader wraps the WriteHeader method of the <http.ResponseWriter>.
 func (w *RWWrapper) WriteHeader(statusCode int) {
 	w.rw.Header().Set("Server", "couper.io")
+	w.rw.Header().Add(handler.VaryHeader, handler.AcceptEncodingHeader)
 
 	if w.useGZ {
 		w.rw.Header().Del(handler.ContentLengthHeader)

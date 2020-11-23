@@ -37,6 +37,7 @@ const (
 	AcceptEncodingHeader  = "Accept-Encoding"
 	ContentEncodingHeader = "Content-Encoding"
 	ContentLengthHeader   = "Content-Length"
+	VaryHeader            = "Vary"
 )
 
 var (

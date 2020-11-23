@@ -466,6 +466,9 @@ func TestHTTPServer_Gzip(t *testing.T) {
 		if cl := res.Header.Get("Content-Length"); cl != "70" {
 			t.Errorf("Expected CL <70>, given: %s", cl)
 		}
+		if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
+			t.Errorf("Expected Vary <Accept-Encoding>, given: %s", vr)
+		}
 
 		var src io.Reader
 
