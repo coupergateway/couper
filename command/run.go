@@ -16,7 +16,13 @@ var _ Cmd = &Run{}
 
 // Run starts the frontend gateway server and listen
 // for requests on the configured hosts and ports.
-type Run struct{}
+type Run struct {
+	context context.Context
+}
+
+func NewRun(ctx context.Context) *Run {
+	return &Run{context: ctx}
+}
 
 func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) error {
 	httpConf := runtime.NewHTTPConfig(config)
@@ -35,10 +41,12 @@ func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) 
 	httpConf = httpConf.Merge(envConf)
 
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	entrypointHandlers := runtime.BuildEntrypointHandlers(config, httpConf, logEntry)
+	srvMux, err := runtime.NewServerConfiguration(config, httpConf, logEntry)
+	if err != nil {
+		return err
+	}
 
-	ctx := ContextWithSignal(context.Background())
-	serverList, listenCmdShutdown := server.NewServerList(ctx, logEntry.Logger, httpConf, entrypointHandlers)
+	serverList, listenCmdShutdown := server.NewServerList(r.context, logEntry.Logger, httpConf, srvMux)
 	for _, srv := range serverList {
 		srv.Listen()
 	}

@@ -2,8 +2,8 @@ package errors
 
 import (
 	"io/ioutil"
-	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -41,11 +41,21 @@ type Template struct {
 }
 
 func NewTemplateFromFile(path string) (*Template, error) {
-	tplFile, err := ioutil.ReadFile(path)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
-	return NewTemplate(mime.TypeByExtension(path), tplFile)
+	tplFile, err := ioutil.ReadFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	mime := "text/html"
+	if strings.HasSuffix(path, ".json") {
+		mime = "application/json"
+	}
+
+	return NewTemplate(mime, tplFile)
 }
 
 func NewTemplate(mime string, src []byte) (*Template, error) {
@@ -61,9 +71,15 @@ func NewTemplate(mime string, src []byte) (*Template, error) {
 	}, nil
 }
 
-func (t *Template) ServeError(errCode Code) http.Handler {
+func (t *Template) ServeError(err error) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
+
+		errCode, ok := err.(Code)
+		if !ok {
+			errCode = Server
+		}
+
 		SetHeader(rw, errCode)
 
 		status := httpStatus(errCode)
@@ -79,7 +95,7 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 		}
 		data := map[string]interface{}{
 			"http_status": status,
-			"message":     errCode.Error(),
+			"message":     err.Error(),
 			"error_code":  int(errCode),
 			"path":        req.URL.EscapedPath(),
 			"request_id":  escapeValue(t.mime, reqID),
@@ -96,7 +112,7 @@ func (t *Template) ServeError(errCode Code) http.Handler {
 				DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
 				return
 			}
-			DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
+			DefaultHTML.ServeError(errCode).ServeHTTP(rw, req)
 		} else if err != nil {
 			panic(err)
 		}

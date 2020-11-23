@@ -6,7 +6,8 @@ const (
 	UID ContextKey = iota
 	BackendName
 	Endpoint
-	ServerName
+	PathParams
 	RoundtripInfo
+	ServerName
 	Wildcard
 )

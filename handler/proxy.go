@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -21,6 +22,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime/server"
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -29,7 +31,8 @@ import (
 )
 
 var (
-	_ http.Handler = &Proxy{}
+	_ http.Handler   = &Proxy{}
+	_ server.Context = &Proxy{}
 
 	OriginRequiredError = errors.New("origin is required")
 	SchemeRequiredError = errors.New("backend origin must define a scheme")
@@ -40,20 +43,14 @@ var (
 )
 
 type Proxy struct {
-	evalContext *hcl.EvalContext
-	log         *logrus.Entry
-	options     *ProxyOptions
-	originURL   *url.URL
-	transport   *http.Transport
-	upstreamLog *logging.AccessLog
-}
-
-type ProxyOptions struct {
-	ConnectTimeout, Timeout, TTFBTimeout time.Duration
-	Context                              []hcl.Body
-	BackendName                          string
-	Hostname, Origin, Path               string
-	CORS                                 *CORSOptions
+	bufferOption eval.BufferOption
+	evalContext  *hcl.EvalContext
+	log          *logrus.Entry
+	options      *ProxyOptions
+	originURL    *url.URL
+	srvOptions   *server.Options
+	transport    *http.Transport
+	upstreamLog  *logging.AccessLog
 }
 
 type CORSOptions struct {
@@ -98,7 +95,7 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext) (http.Handler, error) {
+func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Origin == "" {
 		return nil, OriginRequiredError
 	}
@@ -115,11 +112,13 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
 	proxy := &Proxy{
-		evalContext: evalCtx,
-		log:         log,
-		options:     options,
-		originURL:   originURL,
-		upstreamLog: logging.NewAccessLog(&logConf, log.Logger),
+		bufferOption: eval.MustBuffer(options.Context),
+		evalContext:  evalCtx,
+		log:          log,
+		options:      options,
+		originURL:    originURL,
+		srvOptions:   srvOpts,
+		upstreamLog:  logging.NewAccessLog(&logConf, log.Logger),
 	}
 
 	var tlsConf *tls.Config
@@ -146,6 +145,8 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, evalCtx *hcl.EvalContext
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	startTime := time.Now()
+
 	if p.options.CORS != nil && isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
@@ -153,7 +154,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
-	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip))
+	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip), startTime)
 }
 
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
@@ -173,7 +174,12 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
 
-	p.director(outreq)
+	err := p.Director(outreq)
+	if err != nil {
+		p.srvOptions.APIErrTpl.ServeError(err).ServeHTTP(rw, req)
+		return
+	}
+
 	outreq.Close = false
 
 	// Deal with req.post access on the way back
@@ -207,14 +213,13 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
-		// TODO: use error template from parent endpoint>api>server
-		couperErr.DefaultJSON.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
+		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
 
 	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
 	if res.StatusCode == http.StatusSwitchingProtocols {
-		p.setRoundtripContext(req, res)
+		p.SetRoundtripContext(req, res)
 		p.handleUpgradeResponse(rw, outreq, res)
 		return
 	}
@@ -225,7 +230,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Header.Del(h)
 	}
 
-	p.setRoundtripContext(req, res)
+	p.SetRoundtripContext(req, res)
 
 	copyHeader(rw.Header(), res.Header)
 
@@ -273,8 +278,8 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// director request modification before roundtrip
-func (p *Proxy) director(req *http.Request) {
+// Director request modification before roundtrip
+func (p *Proxy) Director(req *http.Request) error {
 	req.URL.Host = p.originURL.Host
 	req.URL.Scheme = p.originURL.Scheme
 	req.Host = p.originURL.Host
@@ -294,10 +299,16 @@ func (p *Proxy) director(req *http.Request) {
 		req.URL.Path = p.options.Path
 	}
 
-	p.setRoundtripContext(req, nil)
+	if err := p.SetGetBody(req); err != nil {
+		return err
+	}
+
+	p.SetRoundtripContext(req, nil)
+
+	return nil
 }
 
-func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
+func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
 		attrCtx   = attrReqHeaders
 		bereq     *http.Request
@@ -312,7 +323,7 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = req.Header
 	}
 
-	evalCtx := eval.NewHTTPContext(p.evalContext, req, bereq, beresp)
+	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
 	if attrCtx == attrReqHeaders {
@@ -334,6 +345,39 @@ func (p *Proxy) setRoundtripContext(req *http.Request, beresp *http.Response) {
 	}
 }
 
+// SetGetBody determines if we have to buffer a request body for further processing.
+// First of all the user has a related reference within a config.Backend options declaration.
+// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
+func (p *Proxy) SetGetBody(req *http.Request) error {
+	if req.Method == http.MethodTrace {
+		return nil
+	}
+
+	if (p.bufferOption & eval.BufferRequest) != eval.BufferRequest {
+		return nil
+	}
+
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		buf := &bytes.Buffer{}
+		lr := io.LimitReader(req.Body, p.options.RequestBodyLimit+1)
+		n, err := buf.ReadFrom(lr)
+		if err != nil {
+			return err
+		}
+
+		if n > p.options.RequestBodyLimit {
+			return couperErr.APIReqBodySizeExceeded
+		}
+
+		bodyBytes := buf.Bytes()
+		req.GetBody = func() (io.ReadCloser, error) {
+			return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
+		}
+	}
+
+	return nil
+}
+
 func isCorsRequest(req *http.Request) bool {
 	return req.Header.Get("Origin") != ""
 }
@@ -342,7 +386,7 @@ func isCorsPreflightRequest(req *http.Request) bool {
 	return isCorsRequest(req) && req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
 }
 
-func (p *Proxy) isCredentialed(headers http.Header) bool {
+func IsCredentialed(headers http.Header) bool {
 	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
 }
 
@@ -355,7 +399,7 @@ func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		return
 	}
 	// see https://fetch.spec.whatwg.org/#http-responses
-	if p.options.CORS.AllowsOrigin("*") && !p.isCredentialed(req.Header) {
+	if p.options.CORS.AllowsOrigin("*") && !IsCredentialed(req.Header) {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
@@ -489,6 +533,10 @@ func (p *Proxy) handleUpgradeResponse(rw http.ResponseWriter, req *http.Request,
 	go spc.copyFromBackend(errc)
 	<-errc
 	return
+}
+
+func (p *Proxy) Options() *server.Options {
+	return p.srvOptions
 }
 
 func (p *Proxy) String() string {

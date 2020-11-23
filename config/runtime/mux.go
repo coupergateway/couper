@@ -1,15 +1,25 @@
 package runtime
 
-import "github.com/avenga/couper/errors"
+import (
+	"net/http"
+)
 
-// Mux represents a Mux object.
-type Mux struct {
-	API       Routes
-	APIPath   string
-	APIErrTpl *errors.Template
-	FS        Routes
-	FSPath    string
-	FSErrTpl  *errors.Template
-	SPA       Routes
-	SPAPath   string
+type MuxOptions struct {
+	Hosts          hosts
+	EndpointRoutes map[string]http.Handler
+	FileRoutes     map[string]http.Handler
+	SPARoutes      map[string]http.Handler
+}
+
+func NewMuxOptions(hostsMap hosts) *MuxOptions {
+	if hostsMap == nil {
+		hostsMap = make(hosts)
+	}
+
+	return &MuxOptions{
+		Hosts:          hostsMap,
+		EndpointRoutes: make(map[string]http.Handler),
+		FileRoutes:     make(map[string]http.Handler),
+		SPARoutes:      make(map[string]http.Handler),
+	}
 }

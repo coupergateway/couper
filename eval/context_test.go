@@ -1,18 +1,26 @@
-package eval
+package eval_test
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 func TestNewHTTPContext(t *testing.T) {
@@ -27,61 +35,115 @@ func TestNewHTTPContext(t *testing.T) {
 		}
 	}
 
-	type EvalTestContext struct {
-		ReqHeader string `hcl:"header,optional"`
-		Method    string `hcl:"method,optional"`
-		QueryVar  string `hcl:"query_var,optional"`
-		PostVar   string `hcl:"post_var,optional"`
-	}
-
-	baseCtx := NewENVContext(nil)
+	baseCtx := eval.NewENVContext(nil)
 
 	tests := []struct {
 		name      string
 		reqMethod string
+		reqHeader http.Header
 		body      io.Reader
 		query     string
 		baseCtx   *hcl.EvalContext
 		hcl       string
-		want      EvalTestContext
+		want      http.Header
 	}{
-		{"Variables / POST", http.MethodPost, strings.NewReader(`user=hans`), "", baseCtx, `
-		post_var = req.post.user
-		method = req.method
-`, EvalTestContext{PostVar: "hans", Method: http.MethodPost}},
-		{"Variables / Query", http.MethodGet, nil, "?name=peter", baseCtx, `
-		query_var = req.query.name
-		method = req.method
-		header = req.headers.user-agent
-`, EvalTestContext{QueryVar: "peter", Method: http.MethodGet, ReqHeader: "test/v1"}},
-		{"Variables / Headers", http.MethodGet, nil, "", baseCtx, `
-		header = req.headers.user-agent
-`, EvalTestContext{ReqHeader: "test/v1"}},
+		{"Variables / POST", http.MethodPost, http.Header{"Content-Type": {"application/x-www-form-urlencoded"}}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
+					post = req.post.user[0]
+					method = req.method
+		`, http.Header{"post": {"hans"}, "method": {http.MethodPost}}},
+		{"Variables / Query", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "?name=peter", baseCtx, `
+					query = req.query.name[0]
+					method = req.method
+					ua = req.headers.user-agent
+				`, http.Header{"query": {"peter"}, "method": {http.MethodGet}, "ua": {"test/v1"}}},
+		{"Variables / Headers", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "", baseCtx, `
+					ua = req.headers.user-agent
+					method = req.method
+				`, http.Header{"ua": {"test/v1"}, "method": {http.MethodGet}}},
+		{"Variables / PATCH /w json body", http.MethodPatch, http.Header{"Content-Type": {"application/json;charset=utf-8"}}, bytes.NewBufferString(`{
+			"obj_slice": [
+				{"no_title": 123},
+				{"title": "success"}
+			]}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.obj_slice[1].title
+		`, http.Header{"title": {"success"}, "method": {http.MethodPatch}}},
+		{"Variables / PATCH /w json body /wo CT header", http.MethodPatch, nil, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.obj_slice
+		`, http.Header{"method": {http.MethodPatch}}},
+		{"Variables / GET /w json body", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.slice
+		`, http.Header{"title": {"1", "2", "3"}, "method": {http.MethodGet}}},
+		{"Variables / GET /w json body & missing attribute", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.slice.foo
+		`, http.Header{"method": {http.MethodGet}}},
+		{"Variables / GET /w json body & null value", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"json": null}`), "", baseCtx, `
+			method = req.method
+			title = req.json_body.json
+		`, http.Header{"method": {http.MethodGet}, "title": {""}}},
 	}
+
+	log, _ := test.NewNullLogger()
+
+	// ensure proxy bufferOption for setBodyFunc
+	hclBody := hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			eval.ClientRequest: hcltest.MockExprTraversalSrc(eval.ClientRequest + "." + eval.JsonBody),
+		}),
+	})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
 			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
-			if tt.body != nil {
-				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			for k, v := range tt.reqHeader {
+				req.Header[k] = v
 			}
-			req.Header.Set("User-Agent", "test/v1")
 
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			got := NewHTTPContext(tt.baseCtx, req, bereq, beresp)
-			got.Functions = nil // we are not interested in a functions test
+			srvOpts, _ := server.NewServerOptions(&config.Server{})
 
-			var hclResult EvalTestContext
-			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), got, &hclResult)
+			// since the proxy prepares the getBody rewind:
+			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				Context:          []hcl.Body{hclBody},
+				RequestBodyLimit: 256,
+				Origin:           req.URL.String(),
+				CORS:             &handler.CORSOptions{},
+			}, log.WithContext(nil), srvOpts, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
+			proxyType := proxy.(*handler.Proxy)
+			if err = proxyType.SetGetBody(req); err != nil {
+				t.Fatal(err)
+			}
 
-			if !reflect.DeepEqual(hclResult, tt.want) {
-				t.Errorf("NewHTTPContext()\ngot:\t%v\nwant:\t%v", hclResult, tt.want)
+			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, bereq, beresp)
+			ctx.Functions = nil // we are not interested in a functions test
+
+			var resultMap map[string]cty.Value
+			err = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
+			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
+			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
+				t.Fatal(err)
+			}
+
+			for k, v := range tt.want {
+				cv, ok := resultMap[k]
+				if !ok {
+					t.Errorf("Expected value for %q, got nothing", k)
+				}
+
+				result := seetie.ValueToStringSlice(cv)
+				if !reflect.DeepEqual(v, result) {
+					t.Errorf("Expected %q, got: %#v", v, cv)
+				}
 			}
 		})
 	}

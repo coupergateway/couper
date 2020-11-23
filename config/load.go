@@ -18,13 +18,16 @@ func LoadFile(filename string) (*Gateway, error) {
 	}
 	src, err := ioutil.ReadFile(path.Join(wd, filename))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load configuration: %w", err)
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 	return LoadBytes(src)
 }
 
 func LoadBytes(src []byte) (*Gateway, error) {
-	config := &Gateway{Context: eval.NewENVContext(src)}
+	config := &Gateway{
+		Context:  eval.NewENVContext(src),
+		Settings: &Settings{DefaultPort: DefaultListenPort},
+	}
 	// filename must match .hcl ending for further []byte processing
 	if err := hclsimple.Decode("loadBytes.hcl", src, config.Context, config); err != nil {
 		return nil, fmt.Errorf("Failed to load configuration bytes: %w", err)

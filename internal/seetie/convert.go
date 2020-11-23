@@ -17,7 +17,7 @@ var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
 
 func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{}, hcl.Diagnostics) {
 	val, diags := exp.Value(ctx)
-	if setSeverityLevel(diags).HasErrors() {
+	if SetSeverityLevel(diags).HasErrors() {
 		return nil, filterErrors(diags)
 	}
 	result := make(map[string]interface{})
@@ -56,22 +56,65 @@ func ValuesMapToValue(m url.Values) cty.Value {
 	return MapToValue(result)
 }
 
+func ListToValue(l []interface{}) cty.Value {
+	if len(l) == 0 {
+		return cty.NilVal
+	}
+	var list []cty.Value
+	for _, v := range l {
+		list = append(list, GoToValue(v))
+	}
+	return cty.TupleVal(list)
+}
+
+func GoToValue(v interface{}) cty.Value {
+	switch v.(type) {
+	case string:
+		return cty.StringVal(ToString(v))
+	case bool:
+		return cty.BoolVal(v.(bool))
+	case float64:
+		return cty.NumberFloatVal(v.(float64))
+	case []interface{}:
+		return ListToValue(v.([]interface{}))
+	case map[string]interface{}:
+		return MapToValue(v.(map[string]interface{}))
+	}
+	return cty.NullVal(cty.String)
+}
+
 func MapToValue(m map[string]interface{}) cty.Value {
 	if m == nil {
-		return cty.MapValEmpty(cty.String)
+		return cty.MapValEmpty(cty.NilType)
 	}
 
 	ctyMap := make(map[string]cty.Value)
+
 	for k, v := range m {
-		if validKey.MatchString(k) {
-			ctyMap[k] = cty.StringVal(ToString(v))
+		if !validKey.MatchString(k) {
+			continue
+		}
+		switch v.(type) {
+		case []string:
+			var list []interface{}
+			for _, s := range v.([]string) {
+				list = append(list, s)
+			}
+			ctyMap[k] = ListToValue(list)
+		case []interface{}:
+			ctyMap[k] = ListToValue(v.([]interface{}))
+		case map[string]interface{}:
+			ctyMap[k] = MapToValue(v.(map[string]interface{}))
+		default:
+			ctyMap[k] = GoToValue(v)
 		}
 	}
 
 	if len(ctyMap) == 0 {
-		return cty.MapValEmpty(cty.String)
+		return cty.MapValEmpty(cty.NilType) // prevent attribute access on nil values
 	}
-	return cty.MapVal(ctyMap)
+
+	return cty.ObjectVal(ctyMap)
 }
 
 func HeaderToMapValue(headers http.Header) cty.Value {
@@ -122,6 +165,10 @@ var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 // ValueToString explicitly drops all other (unknown) types and
 // converts non whitespace strings or numbers to its string representation.
 func ValueToString(v cty.Value) string {
+	if v.IsNull() {
+		return ""
+	}
+
 	switch v.Type() {
 	case cty.String:
 		str := v.AsString()
@@ -175,12 +222,16 @@ func ToString(s interface{}) string {
 
 // isTuple checks by type name since tuple is not comparable by type.
 func isTuple(v cty.Value) bool {
+	if v.IsNull() {
+		return false
+	}
 	return v.Type().FriendlyNameForConstraint() == "tuple"
 }
 
-func setSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
+func SetSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
 	for _, d := range diags {
-		if d.Summary == "Missing map element" {
+		switch d.Summary {
+		case "Missing map element", "Unsupported attribute":
 			d.Severity = hcl.DiagWarning
 		}
 	}

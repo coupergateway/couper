@@ -1,10 +1,12 @@
-package handler
+package handler_test
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +17,10 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestProxy_ServeHTTP_Timings(t *testing.T) {
@@ -30,19 +35,19 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		options        *ProxyOptions
+		options        *handler.ProxyOptions
 		req            *http.Request
 		expectedStatus int
 	}{
-		{"with zero timings", &ProxyOptions{Origin: origin.URL}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
-		{"with overall timeout", &ProxyOptions{Origin: "http://1.2.3.4/", Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
-		{"with connect timeout", &ProxyOptions{Origin: "http://blackhole.webpagetest.org/", ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
-		{"with ttfb timeout", &ProxyOptions{Origin: origin.URL, TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with zero timings", &handler.ProxyOptions{Origin: origin.URL}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
+		{"with overall timeout", &handler.ProxyOptions{Origin: "http://1.2.3.4/", Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with connect timeout", &handler.ProxyOptions{Origin: "http://blackhole.webpagetest.org/", ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with ttfb timeout", &handler.ProxyOptions{Origin: origin.URL, TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := NewProxy(tt.options, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := handler.NewProxy(tt.options, logger.WithContext(nil), nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -76,13 +81,13 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 
 	tests := []struct {
 		name                    string
-		corsOptions             *CORSOptions
+		corsOptions             *handler.CORSOptions
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
 	}{
 		{
 			"with ACRM",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -97,7 +102,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"with ACRH",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin":                         "https://www.example.com",
 				"Access-Control-Request-Headers": "X-Foo, X-Bar",
@@ -112,7 +117,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"with ACRM, ACRH",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin":                         "https://www.example.com",
 				"Access-Control-Request-Method":  "POST",
@@ -128,7 +133,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"with ACRM, credentials",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -143,7 +148,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"with ACRM, max-age",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, MaxAge: "3600"},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, MaxAge: "3600"},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -158,7 +163,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"origin mismatch",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin":                        "https://www.example.org",
 				"Access-Control-Request-Method": "POST",
@@ -175,7 +180,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := NewProxy(&ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -224,13 +229,13 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 
 	tests := []struct {
 		name                    string
-		corsOptions             *CORSOptions
+		corsOptions             *handler.CORSOptions
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
 	}{
 		{
 			"specific origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -242,7 +247,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"specific origins",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "https://example.com"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com", "https://example.com"}},
 			map[string]string{
 				"Origin": "https://example.com",
 			},
@@ -254,7 +259,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"any origin",
-			&CORSOptions{AllowedOrigins: []string{"*"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"*"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -266,7 +271,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"any and specific origin",
-			&CORSOptions{AllowedOrigins: []string{"https://example.com", "https://www.example.com", "*"}},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://example.com", "https://www.example.com", "*"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
 			},
@@ -278,7 +283,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"specific origin, cookie credentials",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Cookie": "a=b",
@@ -291,7 +296,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"specific origin, auth credentials",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			&handler.CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin":        "https://www.example.com",
 				"Authorization": "Basic oertnbin",
@@ -304,7 +309,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"any origin, cookie credentials",
-			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			&handler.CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
 				"Cookie": "a=b",
@@ -317,7 +322,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"any origin, auth credentials",
-			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			&handler.CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
 				"Origin":        "https://www.example.com",
 				"Authorization": "Basic oertnbin",
@@ -330,7 +335,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 		},
 		{
 			"any origin, proxy auth credentials",
-			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			&handler.CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
 				"Origin":              "https://www.example.com",
 				"Proxy-Authorization": "Basic oertnbin",
@@ -345,7 +350,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := NewProxy(&ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -387,7 +392,7 @@ func TestProxy_director(t *testing.T) {
 
 	type fields struct {
 		log     *logrus.Entry
-		options *ProxyOptions
+		options *handler.ProxyOptions
 	}
 
 	emptyOptions := []hcl.Body{hcl.EmptyBody()}
@@ -400,16 +405,16 @@ func TestProxy_director(t *testing.T) {
 		ctx    context.Context
 		expReq *http.Request
 	}{
-		{"proxy url settings", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
-		{"proxy url settings w/hostname", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://couper.io", nil)},
-		{"proxy url settings w/wildcard ctx", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, "/peter", context.WithValue(bgCtx, request.Wildcard, "/hans"), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
-		{"proxy url settings w/wildcard ctx empty", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs", nil)},
-		{"proxy url settings w/wildcard ctx empty /w trailing path slash", fields{nullLog, &ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "/", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
+		{"proxy url settings", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings w/hostname", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://couper.io", nil)},
+		{"proxy url settings w/wildcard ctx", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, "/peter", context.WithValue(bgCtx, request.Wildcard, "/hans"), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
+		{"proxy url settings w/wildcard ctx empty", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs", nil)},
+		{"proxy url settings w/wildcard ctx empty /w trailing path slash", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "/", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := NewProxy(tt.fields.options, tt.fields.log, eval.NewENVContext(nil))
+			p, err := handler.NewProxy(tt.fields.options, tt.fields.log, nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -417,8 +422,11 @@ func TestProxy_director(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.Clone(tt.ctx)
 
-			proxy := p.(*Proxy)
-			proxy.director(req)
+			proxy := p.(*handler.Proxy)
+			err = proxy.Director(req)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if tt.fields.options.Hostname != "" && tt.fields.options.Hostname != tt.expReq.Host {
 				t.Errorf("expected same host value, want: %q, got: %q", tt.fields.options.Hostname, tt.expReq.Host)
@@ -436,7 +444,7 @@ func TestProxy_director(t *testing.T) {
 func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	type fields struct {
 		evalContext *hcl.EvalContext
-		options     *ProxyOptions
+		options     *handler.ProxyOptions
 	}
 
 	type header map[string]string
@@ -469,7 +477,12 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	opts := &ProxyOptions{BackendName: "test-origin", Origin: "http://" + origin.Listener.Addr().String(), CORS: &CORSOptions{}}
+	opts := &handler.ProxyOptions{
+		BackendName:      "test-origin",
+		Origin:           "http://" + origin.Listener.Addr().String(),
+		CORS:             &handler.CORSOptions{},
+		RequestBodyLimit: 10,
+	}
 
 	tests := []testCase{
 		{"GET use req.Header", fields{baseCtx, opts}, `
@@ -495,7 +508,7 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 				t.Fatal(err)
 			}
 			tt.fields.options.Context = append(tt.fields.options.Context, remain.Inline)
-			p, err := NewProxy(tt.fields.options, log.WithContext(context.Background()), tt.fields.evalContext)
+			p, err := handler.NewProxy(tt.fields.options, log.WithContext(context.Background()), nil, tt.fields.evalContext)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -531,7 +544,38 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	}
 }
 
-func TestProxy_isCredentialed(t *testing.T) {
+func TestProxy_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
+	helper := test.New(t)
+
+	type testCase struct {
+		name    string
+		limit   int64
+		payload string
+		wantErr error
+	}
+
+	for _, testcase := range []testCase{
+		{"/w well sized limit", 12, "content", nil},
+		{"/w zero limit", 0, "01", errors.APIReqBodySizeExceeded},
+		{"/w limit /w oversize body", 4, "12345", errors.APIReqBodySizeExceeded},
+	} {
+		t.Run(testcase.name, func(subT *testing.T) {
+			proxy, _, _, closeFn := helper.NewProxy(&handler.ProxyOptions{
+				Context:          helper.NewProxyContext("request_headers = { x = req.post }"), // ensure buffering is enabled
+				RequestBodyLimit: testcase.limit,
+			})
+			closeFn() // unused
+
+			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
+			err := proxy.SetGetBody(req)
+			if !reflect.DeepEqual(err, testcase.wantErr) {
+				subT.Errorf("Expected '%v', got: '%v'", testcase.wantErr, err)
+			}
+		})
+	}
+}
+
+func Test_IsCredentialed(t *testing.T) {
 	type testCase struct {
 		name           string
 		requestHeaders map[string]string
@@ -567,11 +611,88 @@ func TestProxy_isCredentialed(t *testing.T) {
 				req.Header.Set(name, value)
 			}
 
-			p := &Proxy{}
-			credentialed := p.isCredentialed(req.Header)
+			credentialed := handler.IsCredentialed(req.Header)
 			if credentialed != tt.exp {
 				t.Errorf("expected: %t, got: %t", tt.exp, credentialed)
 			}
 		})
+	}
+}
+
+func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
+	type want struct {
+		req test.Header
+	}
+
+	tests := []struct {
+		name      string
+		inlineCtx string
+		methods   []string
+		header    test.Header
+		body      string
+		want      want
+	}{
+		{"method /w body", `
+		request_headers = {
+			x-test = req.json_body.foo
+		}`, []string{
+			http.MethodGet,
+			http.MethodHead,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodConnect,
+			http.MethodOptions,
+		}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
+		{"method /w body", `
+		request_headers = {
+			x-test = req.json_body.foo
+		}`, []string{http.MethodTrace}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
+		{"method /wo body", `
+		request_headers = {
+			x-test = req.json_body.foo
+		}`, []string{
+			http.MethodGet,
+			http.MethodHead,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodConnect,
+			http.MethodOptions,
+			http.MethodTrace,
+		}, test.Header{"Content-Type": "application/json"}, "", want{req: test.Header{"x-test": ""}}},
+	}
+
+	for _, tt := range tests {
+		for _, method := range tt.methods {
+			t.Run(method+" "+tt.name, func(subT *testing.T) {
+				helper := test.New(subT)
+				proxy, _, _, closeFn := helper.NewProxy(&handler.ProxyOptions{
+					Context:          helper.NewProxyContext(tt.inlineCtx),
+					CORS:             &handler.CORSOptions{},
+					Origin:           "http://1.2.3.4/",
+					RequestBodyLimit: 64,
+				})
+
+				closeFn() // unused
+
+				var body io.Reader
+				if tt.body != "" {
+					body = bytes.NewBufferString(tt.body)
+				}
+				req := httptest.NewRequest(method, "/", body)
+				tt.header.Set(req)
+				helper.Must(proxy.SetGetBody(req))
+				proxy.SetRoundtripContext(req, nil)
+
+				for k, v := range tt.want.req {
+					if req.Header.Get(k) != v {
+						subT.Errorf("want: %q for key %q, got: %q", v, k, req.Header.Get(k))
+					}
+				}
+			})
+		}
 	}
 }

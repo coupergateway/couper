@@ -123,7 +123,9 @@ Environment variables can be accessed everywhere within the configuration file s
 | `headers.<name>` | HTTP request header value for requested lower-case key|
 | `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
 | `query.<name>` | query parameter values (&#9888; last wins!)|
-| `post.<name>` | post form parameter|
+| `path_param.<name>` | value from a named path parameter defined within an endpoint path label |
+| `post.<name>` | post form parameter |
+| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
 
 #### `bereq`(modified backend request) variables 
@@ -145,7 +147,8 @@ Environment variables can be accessed everywhere within the configuration file s
 |:-------------------|:-------------------------------|
 | `status` | HTTP status code |
 | `headers.<name>` | HTTP response header value for requested lower-case key |
-| `cookies.<name>` | value from `Set-Cookie` response header for requested key (&#9888; last wins!)|
+| `cookies.<name>` | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
+| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 
 ##### Variable Example
 
@@ -207,6 +210,7 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 |context|none|
 | *label*|optional|
 | `hosts`|<ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:*`hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul>|
+| `error_file` | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html" `</li></ul> |
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul>|
 |[**`files`**](#fi) block|configures file serving|
 |[**`spa`**](#spa) block|configures web serving for spa assets|
@@ -220,9 +224,9 @@ The `files` block configures your document root, and the location of your error 
 |:-------------------|:---------------------------------------|
 |context|`server` block|
 | *label*|optional|
-| `document_root`|<ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul>|
-|`error_file`|<ul><li>location of the error file</li><li>*example:* `error_file = "./404.html" `</li></ul>|
-|[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
+| `document_root`| <ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul>|
+| `error_file` | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html" `</li></ul>|
+| [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul>|
 
 ### The `spa` block <a name="spa_block"></a>
 The `spa` block configures the location of your bootstrap file and your SPA paths. 
@@ -237,12 +241,14 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 
 ### The `api` block <a name="api_block"></a>
 The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
+If an error occurred for api endpoints the response gets processed as json error with an error body payload. This can be customized via `error_file`.
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`server` block|
 |*label*|&#9888; mandatory, if there is more than one `api` block|
-| `base_path`|<ul><li>optional</li><li>*example:* `base_path = "/api" `</li></ul>|
+| `base_path`|<ul><li>optional</li><li>*example:* `base_path = "/api" `</li></ul> |
+| `error_file` | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json" `</li></ul> |
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`backend`**](#backend_block) block|<ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul>|
 |[**`endpoint`**](#endpoint_block) block|configures specific endpoint for `api` block context|
@@ -269,6 +275,16 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
 
+#### Path parameter
+
+An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }` to access the named path parameter `section` and `project` via `req.path_param.*`.
+The values would map as following for the request path: `/app/nature/plant-a-tree/view`:
+
+| Variable                 | Value          |
+|:-------------------------|:---------------|
+| `req.path_param.section` | `nature` |
+| `req.path_param.project` | `plant-a-tree` |
+
 ### The `backend` block <a name="backend_block"></a>
 A `backend` defines the connection to a local/remote backend service. Backends can be defined globally in the `api` block for all endpoints of an API or inside an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also define backends in the `definitions` block and use the mandatory *label* as reference. 
 
@@ -278,10 +294,12 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
 | `origin`| URL to connect to for backend requests </br> &#9888; must start with `http://...` |
 |`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
+|`hostname`| value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. |
 |`path`|changeable part of upstream URL|
 |`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
 | `request_headers` | header map to define additional or override header for the `origin` request |
 | `response_headers` | same as `request_headers` for the client response |
+| `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
 The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
@@ -333,6 +351,7 @@ The `settings` block let you configure the more basic and global behavior of you
 |`default_port`| port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list | `8080` |
 |`log_format`| switch for tab/field based colored view or json log lines | `common` |
 |`xfh`| option to use the `X-Forwarded-Host` header as the request host | `false` |
+|`request_id_format`| if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
 
 ### Health-Check ###
 The health check will answer a status `200 OK` on every port with the configured `health_path`.
@@ -393,7 +412,7 @@ api "my_api" {
 server "my_project" {		
 	files {
 		document_root = "./htdocs"
-		error_file = "./404.html"
+		error_file = "./my_custom_error_page.html"
 	}
 	spa {
 		bootstrap_file = "./htdocs/index.html"

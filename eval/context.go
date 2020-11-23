@@ -3,8 +3,10 @@ package eval
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -39,7 +41,7 @@ func (m ContextMap) Merge(other ContextMap) ContextMap {
 func NewENVContext(src []byte) *hcl.EvalContext {
 	envKeys := decodeEnvironmentRefs(src)
 	variables := make(map[string]cty.Value)
-	variables["env"] = newCtyEnvMap(envKeys)
+	variables[Environment] = newCtyEnvMap(envKeys)
 
 	return &hcl.EvalContext{
 		Variables: variables,
@@ -47,7 +49,7 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
 	if req == nil {
 		return baseCtx
 	}
@@ -56,7 +58,7 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 
 	reqCtxMap := ContextMap{}
 	if endpoint, ok := httpCtx.Value(request.Endpoint).(string); ok {
-		reqCtxMap["endpoint"] = cty.StringVal(endpoint)
+		reqCtxMap[Endpoint] = cty.StringVal(endpoint)
 	}
 
 	var id string
@@ -64,25 +66,38 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 		id = uid
 	}
 
-	evalCtx.Variables["req"] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
-		"id":     cty.StringVal(id),
-		"method": cty.StringVal(req.Method),
-		"path":   cty.StringVal(req.URL.Path),
-		"url":    cty.StringVal(newRawURL(req.URL).String()),
-		"query":  seetie.ValuesMapToValue(req.URL.Query()),
-		"post":   seetie.ValuesMapToValue(parseForm(req).PostForm),
+	var pathParams request.PathParameter
+	if params, ok := req.Context().Value(request.PathParams).(request.PathParameter); ok {
+		pathParams = params
+	}
+
+	evalCtx.Variables[ClientRequest] = cty.ObjectVal(reqCtxMap.Merge(ContextMap{
+		ID:        cty.StringVal(id),
+		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
+		Method:    cty.StringVal(req.Method),
+		Path:      cty.StringVal(req.URL.Path),
+		PathParam: seetie.MapToValue(pathParams),
+		Post:      seetie.ValuesMapToValue(parseForm(req).PostForm),
+		Query:     seetie.ValuesMapToValue(req.URL.Query()),
+		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
 	if beresp != nil {
-		evalCtx.Variables["bereq"] = cty.ObjectVal(ContextMap{
-			"method": cty.StringVal(bereq.Method),
-			"path":   cty.StringVal(bereq.URL.Path),
-			"url":    cty.StringVal(newRawURL(bereq.URL).String()),
-			"query":  seetie.ValuesMapToValue(bereq.URL.Query()),
-			"post":   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+		evalCtx.Variables[BackendRequest] = cty.ObjectVal(ContextMap{
+			Method: cty.StringVal(bereq.Method),
+			Path:   cty.StringVal(bereq.URL.Path),
+			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+			Query:  seetie.ValuesMapToValue(bereq.URL.Query()),
+			URL:    cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(httpCtx, bereq.Cookies(), bereq.Header)))
-		evalCtx.Variables["beresp"] = cty.ObjectVal(ContextMap{
-			"status": cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+
+		var jsonBody map[string]interface{}
+		if (bufOpt & BufferResponse) == BufferResponse {
+			jsonBody = parseRespJSON(beresp)
+		}
+		evalCtx.Variables[BackendResponse] = cty.ObjectVal(ContextMap{
+			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+			JsonBody:   seetie.MapToValue(jsonBody),
 		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -91,44 +106,78 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, req, bereq *http.Request, beresp *
 
 const defaultMaxMemory = 32 << 20 // 32 MB
 
-type readCloser struct {
+type ReadCloser struct {
 	io.Reader
 	closer io.Closer
 }
 
-func newReadCloser(r io.Reader, c io.Closer) *readCloser {
-	return &readCloser{Reader: r, closer: c}
+func NewReadCloser(r io.Reader, c io.Closer) *ReadCloser {
+	return &ReadCloser{Reader: r, closer: c}
 }
 
-func (rc readCloser) Close() error {
+func (rc ReadCloser) Close() error {
 	return rc.closer.Close()
 }
 
 // parseForm populates the request PostForm field.
 // As Proxy we should not consume the request body.
-// Create a copy, buffer and reset via GetBody method.
+// Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
-	if r.Body == nil {
+	if r.GetBody == nil {
 		return r
 	}
-
 	switch r.Method {
 	case http.MethodPut, http.MethodPatch, http.MethodPost:
-		if r.GetBody == nil {
-			bodyBytes, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				panic(err)
-			}
-			r.GetBody = func() (io.ReadCloser, error) {
-				return newReadCloser(bytes.NewBuffer(bodyBytes), r.Body), nil
-			}
-		}
-
-		r.Body, _ = r.GetBody()
+		r.Body, _ = r.GetBody() // rewind
 		_ = r.ParseMultipartForm(defaultMaxMemory)
-		r.Body, _ = r.GetBody()
+		r.Body, _ = r.GetBody() // reset
 	}
 	return r
+}
+
+func isJSONMediaType(contentType string) bool {
+	m, _, _ := mime.ParseMediaType(contentType)
+	return m == "application/json"
+}
+
+func parseJSON(r io.Reader) map[string]interface{} {
+	if r == nil {
+		return nil
+	}
+	var result map[string]interface{}
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil
+	}
+	_ = json.Unmarshal(b, &result)
+	return result
+}
+
+func parseReqJSON(req *http.Request) map[string]interface{} {
+	if req.GetBody == nil {
+		return nil
+	}
+
+	if !isJSONMediaType(req.Header.Get("Content-Type")) {
+		return nil
+	}
+
+	req.Body, _ = req.GetBody() // rewind
+	result := parseJSON(req.Body)
+	req.Body, _ = req.GetBody() // reset
+	return result
+}
+
+func parseRespJSON(beresp *http.Response) map[string]interface{} {
+	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
+		return nil
+	}
+
+	buf := &bytes.Buffer{}
+	io.Copy(buf, beresp.Body) // TODO: err handling
+	// reset
+	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
+	return parseJSON(buf)
 }
 
 func newRawURL(u *url.URL) *url.URL {
@@ -172,9 +221,9 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 
 	return map[string]cty.Value{
-		"ctx":     ctxAcMapValue,
-		"cookies": seetie.CookiesToMapValue(cookies),
-		"headers": seetie.HeaderToMapValue(headers),
+		Context: ctxAcMapValue,
+		Cookies: seetie.CookiesToMapValue(cookies),
+		Headers: seetie.HeaderToMapValue(headers),
 	}
 }
 

@@ -14,32 +14,31 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	accessLog   *logging.AccessLog
-	commandCtx  context.Context
-	config      *runtime.HTTPConfig
-	handler     *Handler
-	healthCheck *handler.Health
-	listener    net.Listener
-	log         logrus.FieldLogger
-	muxes       runtime.HostHandlers
-	shutdownCh  chan struct{}
-	srv         *http.Server
-	uidFn       func() string
+	accessLog  *logging.AccessLog
+	commandCtx context.Context
+	config     *runtime.HTTPConfig
+	listener   net.Listener
+	log        logrus.FieldLogger
+	mux        *Mux
+	port       string
+	shutdownCh chan struct{}
+	srv        *http.Server
+	uidFn      func() string
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, handlers runtime.EntrypointHandlers) ([]*HTTPServer, func()) {
+func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, srvConf *runtime.ServerConfiguration) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
-	for port, hosts := range handlers {
-		list = append(list, New(cmdCtx, log, conf, port, hosts))
+	for port, srvMux := range srvConf.PortOptions {
+		list = append(list, New(cmdCtx, log, conf, port, srvMux))
 	}
 
 	handleShutdownFn := func() {
@@ -51,14 +50,19 @@ func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, hosts runtime.HostHandlers) *HTTPServer {
-	// TODO: uuid package switch with global option
-	uidFn := func() string {
-		return xid.New().String()
+func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
+	if conf == nil {
+		log.Fatal("missing httpConfig")
 	}
-	if conf != nil && conf.RequestIDFormat == "uuid4" {
+
+	var uidFn func() string
+	if conf.RequestIDFormat == "uuid4" {
 		uidFn = func() string {
 			return uuid.NewV4().String()
+		}
+	} else {
+		uidFn = func() string {
+			return xid.New().String()
 		}
 	}
 
@@ -68,20 +72,22 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 
 	shutdownCh := make(chan struct{})
 
+	mux := NewMux(muxOpts)
+	mux.MustAddRoute(http.MethodGet, conf.HealthPath, handler.NewHealthCheck(conf.HealthPath, shutdownCh))
+
 	httpSrv := &HTTPServer{
-		accessLog:   logging.NewAccessLog(&logConf, log),
-		commandCtx:  cmdCtx,
-		config:      conf,
-		handler:     NewHandler(),
-		healthCheck: handler.NewHealthCheck(conf.HealthPath, shutdownCh),
-		log:         log,
-		muxes:       hosts,
-		shutdownCh:  shutdownCh,
-		uidFn:       uidFn,
+		accessLog:  logging.NewAccessLog(&logConf, log),
+		commandCtx: cmdCtx,
+		config:     conf,
+		log:        log,
+		mux:        mux,
+		port:       p.String(),
+		shutdownCh: shutdownCh,
+		uidFn:      uidFn,
 	}
 
 	srv := &http.Server{
-		Addr:              ":" + string(p),
+		Addr:              ":" + p.String(),
 		Handler:           httpSrv,
 		IdleTimeout:       conf.Timings.IdleTimeout,
 		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
@@ -111,13 +117,13 @@ func (s *HTTPServer) Listen() {
 	}
 
 	s.listener = ln
-	s.log.Infof("couper is serving: %s %s", s.name(), ln.Addr().String())
+	s.log.Infof("couper is serving: %s", ln.Addr().String())
 
 	go s.listenForCtx()
 
 	go func() {
 		if err := s.srv.Serve(ln); err != nil {
-			s.log.Errorf("%s %s: %v", s.name(), ln.Addr().String(), err.Error())
+			s.log.Errorf("%s: %v", ln.Addr().String(), err.Error())
 		}
 	}()
 }
@@ -134,11 +140,16 @@ func (s *HTTPServer) listenForCtx() {
 			"delay":    s.config.Timings.ShutdownDelay.String(),
 			"deadline": s.config.Timings.ShutdownTimeout.String(),
 		}
-		if serverName := s.name(); serverName != "" {
-			logFields["server"] = serverName
-		}
+
 		s.log.WithFields(logFields).Warn("shutting down")
 		close(s.shutdownCh)
+
+		// testHook - skip shutdownDelay
+		if _, ok := s.commandCtx.Value(test.Key).(bool); ok {
+			_ = s.srv.Shutdown(context.TODO())
+			return
+		}
+
 		time.Sleep(s.config.Timings.ShutdownDelay)
 		ctx, cancel := context.WithTimeout(context.Background(), s.config.Timings.ShutdownTimeout)
 		defer cancel()
@@ -148,65 +159,41 @@ func (s *HTTPServer) listenForCtx() {
 	}
 }
 
-func (s *HTTPServer) name() string {
-	if h, ok := s.muxes["*"]; ok && h != nil {
-		return h.Server.Name
-	}
-	return ""
-}
-
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	startTime := time.Now()
+
 	uid := s.uidFn()
 	ctx := context.WithValue(req.Context(), request.UID, uid)
 	*req = *req.WithContext(ctx)
 
-	if s.healthCheck.Match(req) {
-		s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, s.healthCheck)
-		return
-	}
+	req.Host = s.getHost(req)
 
-	h := s.getHandler(req)
-	if h == nil {
-		h = errors.DefaultHTML.ServeError(errors.Configuration)
-	}
-
-	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h)
+	h := s.mux.FindHandler(req)
+	s.accessLog.ServeHTTP(NewHeaderWriter(rw), req, h, startTime)
 }
 
-func (s *HTTPServer) getHandler(req *http.Request) http.Handler {
-	host := s.getHost(req)
-
-	if _, ok := s.muxes[host]; !ok {
-		if _, ok := s.muxes["*"]; !ok {
-			*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, "-"))
-			return nil
-		}
-		host = "*"
-	}
-
-	*req = *req.Clone(context.WithValue(req.Context(), request.ServerName, s.muxes[host].Server.Name))
-
-	return s.handler.Match(s.muxes[host].Mux, req)
-}
-
+// getHost configures the host from the incoming request host based on
+// the xfh setting and listener port to be prepared for the http multiplexer.
 func (s *HTTPServer) getHost(req *http.Request) string {
 	host := req.Host
 	if s.config.UseXFH {
 		host = req.Header.Get("X-Forwarded-Host")
 	}
 
-	if strings.IndexByte(host, ':') == -1 {
-		return cleanHost(host)
+	host = strings.ToLower(host)
+
+	if !strings.Contains(host, ":") {
+		return s.cleanHostAppendPort(host)
 	}
 
 	h, _, err := net.SplitHostPort(host)
 	if err != nil {
-		return cleanHost(host)
+		return s.cleanHostAppendPort(host)
 	}
 
-	return cleanHost(h)
+	return s.cleanHostAppendPort(h)
 }
 
-func cleanHost(host string) string {
-	return strings.TrimRight(host, ".")
+func (s *HTTPServer) cleanHostAppendPort(host string) string {
+	return strings.TrimSuffix(host, ".") + ":" + s.port
 }
