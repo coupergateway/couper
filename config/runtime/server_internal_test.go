@@ -165,3 +165,42 @@ func TestServer_splitWildcardHostPort(t *testing.T) {
 		t.Errorf("Expected NIL, given %s", err)
 	}
 }
+
+func TestServer_getEndpointsList(t *testing.T) {
+	srvConf := &config.Server{
+		API: &config.Api{
+			Endpoint: []*config.Endpoint{
+				{Path: "/api/1"},
+				{Path: "/api/2"},
+			},
+		},
+		Endpoint: []*config.Endpoint{
+			{Path: "/free/1"},
+			{Path: "/free/2"},
+		},
+	}
+
+	endpoints := getEndpointsList(srvConf)
+	if l := len(endpoints); l != 4 {
+		t.Fatalf("Expected 4 endpointes, given %d", l)
+	}
+
+	checks := map[string]HandlerKind{
+		"/api/1":  KindAPI,
+		"/api/2":  KindAPI,
+		"/free/1": KindEndpoint,
+		"/free/2": KindEndpoint,
+	}
+
+	for e, kind := range endpoints {
+		if v, ok := checks[e.Path]; !ok || v != kind {
+			t.Fatalf("Missing an endpoint for %s", e.Path)
+		}
+
+		delete(checks, e.Path)
+	}
+
+	if l := len(checks); l != 0 {
+		t.Fatalf("Expected 0 checks, given %d", l)
+	}
+}
