@@ -21,10 +21,13 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Origin   string `hcl:"origin,optional"`
-		Hostname string `hcl:"hostname,optional"`
-		Path     string `hcl:"path,optional"`
+		Origin          string            `hcl:"origin,optional"`
+		Hostname        string            `hcl:"hostname,optional"`
+		Path            string            `hcl:"path,optional"`
+		RequestHeaders  map[string]string `hcl:"request_headers,optional"`
+		ResponseHeaders map[string]string `hcl:"response_headers,optional"`
 	}
+
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
 	return schema
 }

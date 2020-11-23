@@ -20,10 +20,21 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Path    string   `hcl:"path,optional"`
 		Backend *Backend `hcl:"backend,block"`
+		Path    string   `hcl:"path,optional"`
+	}
+	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	for i, block := range schema.Blocks {
+		// inline backend block MAY have no label
+		if block.Type == "backend" && len(block.LabelNames) > 0 {
+			schema.Blocks[i].LabelNames = nil
+		}
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	// The endpoint contains a backend reference, backend block is not allowed.
+	if e.Backend != "" {
+		schema.Blocks = nil
+	}
+
 	return schema
 }

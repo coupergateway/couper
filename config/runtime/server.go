@@ -5,10 +5,8 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	url2 "net/url"
 	"os"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -36,13 +34,6 @@ var defaultBackendConf = &config.Backend{
 var (
 	errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
 	errorMissingServer  = fmt.Errorf("missing server definitions")
-)
-
-var (
-	// reValidFormat validates the format only, validating for a valid host or port is out of scope.
-	reValidFormat  = regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
-	reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
-	rePortCheck    = regexp.MustCompile(`^(0|[1-9][0-9]{0,4})$`)
 )
 
 type backendDefinition struct {
@@ -161,6 +152,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 				endpoints[cleanPattern] = true
 
+				if err := validateInlineScheme(conf.Context, endpoint.InlineDefinition, endpoint); err != nil {
+					return nil, err
+				}
+
 				// setACHandlerFn individual wrap for access_control configuration per endpoint
 				setACHandlerFn := func(protectedHandler http.Handler) {
 					api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
@@ -278,27 +273,6 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 	return backends, nil
 }
 
-func validateOrigin(origin string, ctxRange hcl.Range) error {
-	diagErr := &hcl.Diagnostic{
-		Subject: &ctxRange,
-		Summary: "invalid backend.origin value",
-	}
-	if origin == "" {
-		diagErr.Detail = "origin attribute is required"
-		return hcl.Diagnostics{diagErr}
-	}
-	url, err := url2.Parse(origin)
-	if err != nil {
-		diagErr.Detail = fmt.Sprintf("url parse error: %v", err)
-		return hcl.Diagnostics{diagErr}
-	}
-	if url.Scheme != "http" && url.Scheme != "https" {
-		diagErr.Detail = fmt.Sprintf("valid http scheme required for origin: %q", origin)
-		return hcl.Diagnostics{diagErr}
-	}
-	return nil
-}
-
 // hasAttribute checks for a configured string value and ignores unrelated errors.
 func getAttribute(ctx *hcl.EvalContext, name string, body hcl.Body) string {
 	attr, _ := body.JustAttributes()
@@ -309,63 +283,6 @@ func getAttribute(ctx *hcl.EvalContext, name string, body hcl.Body) string {
 
 	val, _ := attr[name].Expr.Value(ctx)
 	return seetie.ValueToString(val)
-}
-
-// validatePortHosts ensures expected host:port formats and unique hosts per port.
-// Host options:
-//	"*:<port>"					listen for all hosts on given port
-//	"*:<port(configuredPort)>	given port equals configured default port, listen for all hosts
-//	"*"							equals to "*:configuredPort"
-//	"host:*"					equals to "host:configuredPort"
-//	"host"						listen on configured default port for given host
-func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, hosts, error) {
-	portMap := make(ports)
-	hostMap := make(hosts)
-	isHostsMandatory := len(conf.Server) > 1
-
-	for _, srv := range conf.Server {
-		if isHostsMandatory && len(srv.Hosts) == 0 {
-			return nil, nil, fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
-		}
-
-		srvPortMap := make(ports)
-		for _, host := range srv.Hosts {
-			if !reValidFormat.MatchString(host) {
-				return nil, nil, fmt.Errorf("host format is invalid: %q", host)
-			}
-
-			ho, po, err := splitWildcardHostPort(host, configuredPort)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			if _, ok := srvPortMap[po]; !ok {
-				srvPortMap[po] = make(hosts)
-			}
-
-			srvPortMap[po][ho] = true
-
-			hostMap[fmt.Sprintf("%s:%d", ho, po)] = true
-		}
-
-		// srvPortMap contains all unique host port combinations for
-		// the current server and should not exist multiple times.
-		for po, ho := range srvPortMap {
-			if _, ok := portMap[po]; !ok {
-				portMap[po] = make(hosts)
-			}
-
-			for h := range ho {
-				if _, ok := portMap[po][h]; ok {
-					return nil, nil, fmt.Errorf("conflict: host %q already defined for port: %d", h, po)
-				}
-
-				portMap[po][h] = true
-			}
-		}
-	}
-
-	return portMap, hostMap, nil
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {
@@ -461,20 +378,6 @@ func configureAccessControls(conf *config.Gateway) (ac.Map, error) {
 	return accessControls, nil
 }
 
-func validateACName(accessControls ac.Map, name, acType string) (string, error) {
-	name = strings.TrimSpace(name)
-
-	if name == "" {
-		return name, fmt.Errorf("Missing a non-empty label for %q", acType)
-	}
-
-	if _, ok := accessControls[name]; ok {
-		return name, fmt.Errorf("Label %q already exists in the ACL", name)
-	}
-
-	return name, nil
-}
-
 func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {
 	var acList ac.List
 	for _, acName := range parentAC.
@@ -489,22 +392,31 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 }
 
 func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefinition, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, srvOpts *server.Options) (http.Handler, *config.Backend, error) {
-	content, _, diags := inlineDef.PartialContent(config.Definitions{}.Schema(true))
-	// ignore diag errors here, would fail anyway with our retry
-	if content == nil || len(content.Blocks) == 0 {
-		// no inline conf, retry for override definitions with label
-		content, _, diags = inlineDef.PartialContent(config.Definitions{}.Schema(false))
-		if diags.HasErrors() {
-			return nil, nil, diags
-		}
+	content, _, diags := inlineDef.PartialContent(config.Endpoint{}.Schema(true))
+	if diags.HasErrors() {
+		return nil, nil, diags
+	}
 
-		if content == nil || len(content.Blocks) == 0 {
-			return nil, nil, errorMissingBackend
+	if content == nil || len(content.Blocks) == 0 {
+		return nil, nil, errorMissingBackend
+	}
+
+	var inlineBlock *hcl.Block
+	for _, block := range content.Blocks {
+		if block.Type == "backend" {
+			inlineBlock = block
 		}
+	}
+	if inlineBlock == nil {
+		return nil, nil, errorMissingBackend
+	}
+
+	if err := validateInlineScheme(evalCtx, inlineBlock.Body, config.Backend{}); err != nil {
+		return nil, nil, err
 	}
 
 	beConf := &config.Backend{}
-	diags = gohcl.DecodeBody(content.Blocks[0].Body, evalCtx, beConf)
+	diags = gohcl.DecodeBody(inlineBlock.Body, evalCtx, beConf)
 	if diags.HasErrors() {
 		return nil, nil, diags
 	}
@@ -561,10 +473,4 @@ func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []stri
 		routes[joinedPath] = handler
 	}
 	return nil
-}
-
-func isUnique(endpoints map[string]bool, pattern string) (bool, string) {
-	pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
-
-	return !endpoints[pattern], pattern
 }
