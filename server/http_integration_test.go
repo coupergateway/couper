@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,6 +23,8 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -487,4 +490,28 @@ func TestHTTPServer_Gzip(t *testing.T) {
 	})
 
 	cleanup(shutdown, t)
+}
+
+func TestServer_DisableCompression(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Accept-Encoding") != "" {
+			t.Error("Unexpected Accept-Encoding header")
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	logger, _ := logrustest.NewNullLogger()
+
+	p, err := handler.NewProxy(
+		&handler.ProxyOptions{Origin: origin.URL},
+		logger.WithContext(nil),
+		nil, eval.NewENVContext(nil),
+	)
+	helper.Must(err)
+
+	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	p.ServeHTTP(httptest.NewRecorder(), req)
 }

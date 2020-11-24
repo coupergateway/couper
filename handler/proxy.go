@@ -150,6 +150,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 			}
 			return conn, nil
 		},
+		DisableCompression:    true,
 		ResponseHeaderTimeout: proxy.options.TTFBTimeout,
 		TLSClientConfig:       tlsConf,
 	}
