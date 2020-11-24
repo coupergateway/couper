@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"strconv"
@@ -19,6 +20,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
@@ -75,17 +77,23 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		defaultPort = httpConf.ListenPort
 	}
 
+	// confCtx is created to evaluate request / response related configuration errors on start.
+	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
+	noopResp := httptest.NewRecorder().Result()
+	noopResp.Request = noopReq
+	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopReq, noopResp)
+
 	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
 	if err != nil {
 		return nil, err
 	}
 
-	backends, err := newBackendsFromDefinitions(conf, log)
+	backends, err := newBackendsFromDefinitions(conf, confCtx, log)
 	if err != nil {
 		return nil, err
 	}
 
-	accessControls, err := configureAccessControls(conf)
+	accessControls, err := configureAccessControls(conf, confCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +160,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 				endpoints[cleanPattern] = true
 
-				if err := validateInlineScheme(conf.Context, endpoint.InlineDefinition, endpoint); err != nil {
+				if err := validateInlineScheme(confCtx, endpoint.InlineDefinition, endpoint); err != nil {
 					return nil, err
 				}
 
@@ -174,7 +182,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 					// set server context for defined backends
 					be := backends[endpoint.Backend]
 					_, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
-					refBackend := newProxy(conf.Context, be.conf, srvConf.API.CORS, remain, log, serverOptions)
+					refBackend := newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
 
 					setACHandlerFn(refBackend)
 					err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
@@ -185,7 +193,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 
 				// otherwise try to parse an inline block and fallback for api reference or inline block
-				inlineBackend, inlineConf, err := newInlineBackend(conf.Context, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+				inlineBackend, inlineConf, err := newInlineBackend(confCtx, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
 				if err == errorMissingBackend {
 					if srvConf.API.Backend != "" {
 						if _, ok := backends[srvConf.API.Backend]; !ok {
@@ -198,12 +206,12 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						}
 						continue
 					}
-					inlineBackend, inlineConf, err = newInlineBackend(conf.Context, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+					inlineBackend, inlineConf, err = newInlineBackend(confCtx, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
 					if err != nil {
 						return nil, err
 					}
 
-					if inlineConf.Name == "" && getAttribute(conf.Context, "origin", inlineConf.Options) == "" {
+					if inlineConf.Name == "" && getAttribute(confCtx, "origin", inlineConf.Options, conf.Bytes) == "" {
 						return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
 					}
 				} else if err != nil { // TODO hcl.diagnostics error
@@ -211,7 +219,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 
 				if e := validateOrigin(
-					getAttribute(conf.Context, "origin", inlineConf.Options),
+					getAttribute(confCtx, "origin", inlineConf.Options, conf.Bytes),
 					inlineConf.Options.MissingItemRange()); e != nil {
 					return nil, e
 				}
@@ -245,7 +253,7 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 	return proxy
 }
 
-func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[string]backendDefinition, error) {
+func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, log *logrus.Entry) (map[string]backendDefinition, error) {
 	backends := make(map[string]backendDefinition)
 
 	if conf.Definitions == nil {
@@ -257,7 +265,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 			return nil, fmt.Errorf("backend name must be unique: %q", beConf.Name)
 		}
 
-		origin := getAttribute(conf.Context, "origin", beConf.Options)
+		origin := getAttribute(confCtx, "origin", beConf.Options, conf.Bytes)
 		if e := validateOrigin(origin, beConf.Options.MissingItemRange()); e != nil {
 			return nil, e
 		}
@@ -267,21 +275,27 @@ func newBackendsFromDefinitions(conf *config.Gateway, log *logrus.Entry) (map[st
 		srvOpts, _ := server.NewServerOptions(&config.Server{})
 		backends[beConf.Name] = backendDefinition{
 			conf:    beConf,
-			handler: newProxy(conf.Context, beConf, nil, []hcl.Body{beConf.Options}, log, srvOpts),
+			handler: newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Options}, log, srvOpts),
 		}
 	}
 	return backends, nil
 }
 
 // hasAttribute checks for a configured string value and ignores unrelated errors.
-func getAttribute(ctx *hcl.EvalContext, name string, body hcl.Body) string {
+func getAttribute(ctx *hcl.EvalContext, name string, body hcl.Body, configBytes []byte) string {
 	attr, _ := body.JustAttributes()
 
 	if _, ok := attr[name]; !ok {
 		return ""
 	}
 
-	val, _ := attr[name].Expr.Value(ctx)
+	val, diags := attr[name].Expr.Value(ctx)
+	if diags.HasErrors() && attr[name].Expr.Range().CanSliceBytes(configBytes) { // fallback to origin string
+		rawString := attr[name].Expr.Range().SliceBytes(configBytes)
+		if len(rawString) > 2 { // more then quotes
+			return string(attr[name].Expr.Range().SliceBytes(configBytes)[1 : len(rawString)-1]) //unquote
+		}
+	}
 	return seetie.ValueToString(val)
 }
 
@@ -310,7 +324,7 @@ func splitWildcardHostPort(host string, configuredPort int) (string, Port, error
 	return ho, Port(po), nil
 }
 
-func configureAccessControls(conf *config.Gateway) (ac.Map, error) {
+func configureAccessControls(conf *config.Gateway, confCtx *hcl.EvalContext) (ac.Map, error) {
 	accessControls := make(ac.Map)
 
 	if conf.Definitions != nil {
@@ -360,7 +374,7 @@ func configureAccessControls(conf *config.Gateway) (ac.Map, error) {
 
 			var claims ac.Claims
 			if jwt.Claims != nil {
-				c, diags := seetie.ExpToMap(conf.Context, jwt.Claims)
+				c, diags := seetie.ExpToMap(confCtx, jwt.Claims)
 				if diags.HasErrors() {
 					return nil, diags
 				}

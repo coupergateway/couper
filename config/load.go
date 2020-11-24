@@ -26,6 +26,7 @@ func LoadFile(filePath string) (*Gateway, error) {
 
 func LoadBytes(src []byte, filePath string) (*Gateway, error) {
 	config := &Gateway{
+		Bytes:    src[:],
 		Context:  eval.NewENVContext(src),
 		Settings: &Settings{DefaultPort: DefaultListenPort},
 	}

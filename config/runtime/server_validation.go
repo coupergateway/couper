@@ -83,10 +83,15 @@ func validateOrigin(origin string, ctxRange hcl.Range) error {
 		Subject: &ctxRange,
 		Summary: "invalid backend.origin value",
 	}
+
 	if origin == "" {
 		diagErr.Detail = "origin attribute is required"
 		return hcl.Diagnostics{diagErr}
 	}
+
+	// if origin contains fallback content with variables
+	origin = strings.ReplaceAll(strings.ReplaceAll(origin, "}", ""), "${", "")
+
 	u, err := url.Parse(origin)
 	if err != nil {
 		diagErr.Detail = fmt.Sprintf("url parse error: %v", err)

@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/seetie"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus"
@@ -22,6 +20,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
 
