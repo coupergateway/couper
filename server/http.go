@@ -169,12 +169,16 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.Host = s.getHost(req)
 
 	h := s.mux.FindHandler(req)
-	rw = NewRWWrapper(rw,
+	w := NewRWWrapper(rw,
 		handler.ReClientSupportsGZ.MatchString(
 			req.Header.Get(handler.AcceptEncodingHeader),
 		),
 	)
+	rw = w
+
 	s.accessLog.ServeHTTP(rw, req, h, startTime)
+
+	w.Close() // Closes the GZ writer.
 }
 
 // getHost configures the host from the incoming request host based on
