@@ -222,12 +222,6 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
-	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
-		req.Header.Set(AcceptEncodingHeader, GzipName)
-	} else {
-		req.Header.Del(AcceptEncodingHeader)
-	}
-
 	res, err := p.transport.RoundTrip(outreq)
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
@@ -318,6 +312,12 @@ func (p *Proxy) Director(req *http.Request) error {
 	req.Host = p.originURL.Host
 	if p.options.Hostname != "" {
 		req.Host = p.options.Hostname
+	}
+
+	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
+		req.Header.Set(AcceptEncodingHeader, GzipName)
+	} else {
+		req.Header.Del(AcceptEncodingHeader)
 	}
 
 	if pathMatch, ok := req.Context().

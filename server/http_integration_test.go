@@ -515,3 +515,28 @@ func TestServer_DisableCompression(t *testing.T) {
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 	p.ServeHTTP(httptest.NewRecorder(), req)
 }
+
+func TestServer_ModifyAcceptEncoding(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if ae := req.Header.Get("Accept-Encoding"); ae != "gzip" {
+			t.Errorf("Unexpected Accept-Encoding header: %s", ae)
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	logger, _ := logrustest.NewNullLogger()
+
+	p, err := handler.NewProxy(
+		&handler.ProxyOptions{Origin: origin.URL},
+		logger.WithContext(nil),
+		nil, eval.NewENVContext(nil),
+	)
+	helper.Must(err)
+
+	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	req.Header.Set("Accept-Encoding", "br, gzip")
+	p.ServeHTTP(httptest.NewRecorder(), req)
+}
