@@ -2,18 +2,34 @@ package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
 type Backend struct {
 	ConnectTimeout   string   `hcl:"connect_timeout,optional"`
-	Hostname         string   `hcl:"hostname,optional"`
 	Name             string   `hcl:"name,label"`
 	Options          hcl.Body `hcl:",remain"`
-	Origin           string   `hcl:"origin,optional"` // mixed, not required for overrides
-	Path             string   `hcl:"path,optional"`
 	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
+}
+
+func (b Backend) Schema(inline bool) *hcl.BodySchema {
+	schema, _ := gohcl.ImpliedBodySchema(b)
+	if !inline {
+		return schema
+	}
+
+	type Inline struct {
+		Origin          string            `hcl:"origin,optional"`
+		Hostname        string            `hcl:"hostname,optional"`
+		Path            string            `hcl:"path,optional"`
+		RequestHeaders  map[string]string `hcl:"request_headers,optional"`
+		ResponseHeaders map[string]string `hcl:"response_headers,optional"`
+	}
+
+	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
+	return schema
 }
 
 // Merge overrides the left backend configuration and returns a new instance.
@@ -26,10 +42,6 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 
 	result := *b
 
-	if other.Hostname != "" {
-		result.Hostname = other.Hostname
-	}
-
 	if other.Name != "" {
 		result.Name = other.Name
 	}
@@ -41,14 +53,6 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 	if other.Options != nil {
 		bodies = append(bodies, other.Options)
 		result.Options = other.Options
-	}
-
-	if other.Origin != "" {
-		result.Origin = other.Origin
-	}
-
-	if other.Path != "" {
-		result.Path = other.Path
 	}
 
 	if other.ConnectTimeout != "" {

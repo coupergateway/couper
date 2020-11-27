@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -13,6 +14,9 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -62,7 +66,20 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	// TODO: limitation: no support for inline origin changes
 	if gatewayConf.Definitions != nil {
 		for _, backend := range gatewayConf.Definitions.Backend {
-			backend.Origin = testBackend.Addr()
+			backendSchema := config.Backend{}.Schema(false)
+			inlineSchema := config.Backend{}.Schema(true)
+			backendSchema.Attributes = append(backendSchema.Attributes, inlineSchema.Attributes...)
+			content, diags := backend.Options.Content(backendSchema)
+			if diags != nil && diags.HasErrors() {
+				helper.Must(diags)
+			}
+
+			if _, ok := content.Attributes["origin"]; !ok {
+				helper.Must(fmt.Errorf("backend requires an origin value"))
+			}
+
+			content.Attributes["origin"].Expr = hcltest.MockExprLiteral(cty.StringVal(testBackend.Addr()))
+			backend.Options = hcltest.MockBody(content)
 		}
 	}
 
@@ -93,6 +110,7 @@ func newClient() *http.Client {
 	dialer := &net.Dialer{}
 	return &http.Client{
 		Transport: &http.Transport{
+			DisableCompression: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				_, port, _ := net.SplitHostPort(addr)
 				if port != "" {
@@ -436,6 +454,64 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
 		}
 	})
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/01_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	type expectation struct {
+		Host, Origin, Path string
+	}
+
+	type testCase struct {
+		reqPath string
+		exp     expectation
+	}
+
+	for _, tc := range []testCase{
+		{"/my-waffik/my.host.de/" + testBackend.Addr()[7:], expectation{
+			Host:   "my.host.de",
+			Origin: testBackend.Addr()[7:],
+			Path:   "/anything",
+		}},
+		{"/my-respo/my.host.com/" + testBackend.Addr()[7:], expectation{
+			Host:   "my.host.com",
+			Origin: testBackend.Addr()[7:],
+			Path:   "/anything",
+		}},
+	} {
+		t.Run("_"+tc.reqPath, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			jsonResult.Origin = res.Header.Get("X-Origin")
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+	}
 
 	cleanup(shutdown, t)
 }

@@ -3,7 +3,13 @@ package handler
 import (
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/seetie"
+)
+
+const (
+	attrReqHeaders = "request_headers"
+	attrResHeaders = "response_headers"
 )
 
 type OptionsMap map[string][]string
@@ -12,15 +18,15 @@ func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (Op
 	var diags hcl.Diagnostics
 	var options OptionsMap
 
-	content, d := body.Content(headersAttributeSchema)
-	diags = append(diags, d...)
+	content, d := body.Content(config.Backend{}.Schema(true))
+	diags = append(diags, seetie.SetSeverityLevel(d)...)
 
 	for _, attr := range content.Attributes {
 		if attr.Name != attrName {
 			continue
 		}
 		o, d := NewOptionsMap(evalCtx, attr)
-		diags = append(diags, d...)
+		diags = append(diags, seetie.SetSeverityLevel(d)...)
 		options = o
 		break
 	}
@@ -48,20 +54,4 @@ func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, h
 		}
 	}
 	return options, nil
-}
-
-const (
-	attrReqHeaders = "request_headers"
-	attrResHeaders = "response_headers"
-)
-
-var headersAttributeSchema = &hcl.BodySchema{
-	Attributes: []hcl.AttributeSchema{
-		{
-			Name: attrReqHeaders,
-		},
-		{
-			Name: attrResHeaders,
-		},
-	},
 }

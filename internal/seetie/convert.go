@@ -165,7 +165,7 @@ var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 // ValueToString explicitly drops all other (unknown) types and
 // converts non whitespace strings or numbers to its string representation.
 func ValueToString(v cty.Value) string {
-	if v.IsNull() {
+	if v.IsNull() || !v.IsKnown() {
 		return ""
 	}
 
