@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +18,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -25,6 +30,7 @@ import (
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -67,7 +73,20 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	// TODO: limitation: no support for inline origin changes
 	if gatewayConf.Definitions != nil {
 		for _, backend := range gatewayConf.Definitions.Backend {
-			backend.Origin = testBackend.Addr()
+			backendSchema := config.Backend{}.Schema(false)
+			inlineSchema := config.Backend{}.Schema(true)
+			backendSchema.Attributes = append(backendSchema.Attributes, inlineSchema.Attributes...)
+			content, diags := backend.Options.Content(backendSchema)
+			if diags != nil && diags.HasErrors() {
+				helper.Must(diags)
+			}
+
+			if _, ok := content.Attributes["origin"]; !ok {
+				helper.Must(fmt.Errorf("backend requires an origin value"))
+			}
+
+			content.Attributes["origin"].Expr = hcltest.MockExprLiteral(cty.StringVal(testBackend.Addr()))
+			backend.Options = hcltest.MockBody(content)
 		}
 	}
 
@@ -505,8 +524,16 @@ func TestServer_DisableCompression(t *testing.T) {
 
 	logger, _ := logrustest.NewNullLogger()
 
+	var hclBody []hcl.Body
+	u := seetie.GoToValue(origin.URL)
+	hclBody = append(hclBody, hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			"origin": hcltest.MockExprLiteral(u),
+		}),
+	}))
+
 	p, err := handler.NewProxy(
-		&handler.ProxyOptions{Origin: origin.URL},
+		&handler.ProxyOptions{Context: hclBody},
 		logger.WithContext(nil),
 		nil, eval.NewENVContext(nil),
 	)
@@ -529,8 +556,16 @@ func TestServer_ModifyAcceptEncoding(t *testing.T) {
 
 	logger, _ := logrustest.NewNullLogger()
 
+	var hclBody []hcl.Body
+	u := seetie.GoToValue(origin.URL)
+	hclBody = append(hclBody, hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			"origin": hcltest.MockExprLiteral(u),
+		}),
+	}))
+
 	p, err := handler.NewProxy(
-		&handler.ProxyOptions{Origin: origin.URL},
+		&handler.ProxyOptions{Context: hclBody},
 		logger.WithContext(nil),
 		nil, eval.NewENVContext(nil),
 	)
@@ -539,4 +574,62 @@ func TestServer_ModifyAcceptEncoding(t *testing.T) {
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 	req.Header.Set("Accept-Encoding", "br, gzip")
 	p.ServeHTTP(httptest.NewRecorder(), req)
+}
+
+func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/01_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	type expectation struct {
+		Host, Origin, Path string
+	}
+
+	type testCase struct {
+		reqPath string
+		exp     expectation
+	}
+
+	for _, tc := range []testCase{
+		{"/my-waffik/my.host.de/" + testBackend.Addr()[7:], expectation{
+			Host:   "my.host.de",
+			Origin: testBackend.Addr()[7:],
+			Path:   "/anything",
+		}},
+		{"/my-respo/my.host.com/" + testBackend.Addr()[7:], expectation{
+			Host:   "my.host.com",
+			Origin: testBackend.Addr()[7:],
+			Path:   "/anything",
+		}},
+	} {
+		t.Run("_"+tc.reqPath, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			jsonResult.Origin = res.Header.Get("X-Origin")
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+	}
+
+	cleanup(shutdown, t)
 }

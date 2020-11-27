@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -15,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -44,8 +44,7 @@ var (
 	_ http.Handler   = &Proxy{}
 	_ server.Context = &Proxy{}
 
-	OriginRequiredError = errors.New("origin is required")
-	SchemeRequiredError = errors.New("backend origin must define a scheme")
+	transports sync.Map
 
 	// headerBlacklist lists all header keys which will be removed after
 	// context variable evaluation to ensure to not pass them upstream.
@@ -59,7 +58,6 @@ type Proxy struct {
 	evalContext  *hcl.EvalContext
 	log          *logrus.Entry
 	options      *ProxyOptions
-	originURL    *url.URL
 	srvOptions   *server.Options
 	transport    *http.Transport
 	upstreamLog  *logging.AccessLog
@@ -108,17 +106,6 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
-	if options.Origin == "" {
-		return nil, OriginRequiredError
-	}
-	originURL, err := url.Parse(options.Origin)
-	if err != nil {
-		return nil, fmt.Errorf("err parsing origin url: %w", err)
-	}
-	if originURL.Scheme != "http" && originURL.Scheme != "https" {
-		return nil, SchemeRequiredError
-	}
-
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
@@ -128,33 +115,44 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
-		originURL:    originURL,
 		srvOptions:   srvOpts,
 		upstreamLog:  logging.NewAccessLog(&logConf, log.Logger),
 	}
 
-	var tlsConf *tls.Config
-	if options.Hostname != "" {
-		tlsConf = &tls.Config{
-			ServerName: options.Hostname,
-		}
-	}
-
-	d := &net.Dialer{Timeout: options.ConnectTimeout}
-	proxy.transport = &http.Transport{
-		// DisableCompression: true,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			conn, err := d.DialContext(ctx, network, addr)
-			if err != nil {
-				return nil, fmt.Errorf("connecting to %s failed: %w", originURL.String(), err)
-			}
-			return conn, nil
-		},
-		DisableCompression:    true,
-		ResponseHeaderTimeout: proxy.options.TTFBTimeout,
-		TLSClientConfig:       tlsConf,
-	}
 	return proxy, nil
+}
+
+func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
+	key := scheme + "|" + origin + "|" + hostname
+	transport, ok := transports.Load(key)
+	if !ok {
+		var tlsConf *tls.Config
+		if origin != hostname {
+			tlsConf = &tls.Config{
+				ServerName: hostname,
+			}
+		}
+
+		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
+
+		transport = &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				conn, err := d.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, fmt.Errorf("connecting to %s %q failed: %w", p.options.BackendName, addr, err)
+				}
+				return conn, nil
+			},
+			DisableCompression:    true,
+			ResponseHeaderTimeout: p.options.TTFBTimeout,
+			TLSClientConfig:       tlsConf,
+		}
+		transports.Store(key, transport)
+	}
+	if t, ok := transport.(*http.Transport); ok {
+		return t
+	}
+	return nil
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -222,7 +220,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
-	res, err := p.transport.RoundTrip(outreq)
+	res, err := p.getTransport(outreq.URL.Scheme, outreq.URL.Host, outreq.Host).RoundTrip(outreq)
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
 	if err != nil {
@@ -307,11 +305,33 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 // Director request modification before roundtrip
 func (p *Proxy) Director(req *http.Request) error {
-	req.URL.Host = p.originURL.Host
-	req.URL.Scheme = p.originURL.Scheme
-	req.Host = p.originURL.Host
-	if p.options.Hostname != "" {
-		req.Host = p.options.Hostname
+	var origin, hostname, path string
+	schema := config.Backend{}.Schema(true)
+	evalContext := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, nil, nil)
+	for _, hclContext := range p.options.Context { // context gets configured in order, last wins
+		content, _, _ := hclContext.PartialContent(schema)
+		if o := getAttribute(evalContext, "origin", content); o != "" {
+			origin = o
+		}
+		if h := getAttribute(evalContext, "hostname", content); h != "" {
+			hostname = h
+		}
+		if p := getAttribute(evalContext, "path", content); p != "" {
+			path = p
+		}
+	}
+
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		return err
+	}
+
+	req.URL.Host = originURL.Host
+	req.URL.Scheme = originURL.Scheme
+	req.Host = originURL.Host
+
+	if hostname != "" {
+		req.Host = hostname
 	}
 
 	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
@@ -321,15 +341,15 @@ func (p *Proxy) Director(req *http.Request) error {
 	}
 
 	if pathMatch, ok := req.Context().
-		Value(request.Wildcard).(string); ok && strings.HasSuffix(p.options.Path, "/**") {
+		Value(request.Wildcard).(string); ok && strings.HasSuffix(path, "/**") {
 		if pathMatch == "" && req.URL.Path != "" { // wildcard "root" hit, take a look if the req has a trailing slash and apply
 			if req.URL.Path[len(req.URL.Path)-1] == '/' {
 				pathMatch = "/"
 			}
 		}
-		req.URL.Path = utils.JoinPath(strings.ReplaceAll(p.options.Path, "/**", "/"), pathMatch)
-	} else if p.options.Path != "" {
-		req.URL.Path = p.options.Path
+		req.URL.Path = utils.JoinPath("/", strings.ReplaceAll(path, "/**", "/"), pathMatch)
+	} else if path != "" {
+		req.URL.Path = utils.JoinPath("/", path)
 	}
 
 	if err := p.SetGetBody(req); err != nil {
@@ -589,6 +609,18 @@ func setHeaderFields(header http.Header, options OptionsMap) {
 		}
 		header[k] = value
 	}
+}
+
+func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {
+	attr := body.Attributes
+	if _, ok := attr[name]; !ok {
+		return ""
+	}
+	originValue, diags := attr[name].Expr.Value(ctx)
+	if diags != nil && diags.HasErrors() {
+		panic(diags.Error())
+	}
+	return seetie.ValueToString(originValue)
 }
 
 // switchProtocolCopier exists so goroutines proxying data back and
