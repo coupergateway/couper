@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -719,5 +721,87 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestServer_DisableCompression(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Accept-Encoding") != "" {
+			t.Error("Unexpected Accept-Encoding header")
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	logger, _ := logrustest.NewNullLogger()
+
+	var hclBody []hcl.Body
+	u := seetie.GoToValue(origin.URL)
+	hclBody = append(hclBody, hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			"origin": hcltest.MockExprLiteral(u),
+		}),
+	}))
+
+	p, err := handler.NewProxy(
+		&handler.ProxyOptions{Context: hclBody},
+		logger.WithContext(nil),
+		nil, eval.NewENVContext(nil),
+	)
+	helper.Must(err)
+
+	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	p.ServeHTTP(httptest.NewRecorder(), req)
+}
+
+func TestServer_ModifyAcceptEncoding(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if ae := req.Header.Get("Accept-Encoding"); ae != "gzip" {
+			t.Errorf("Unexpected Accept-Encoding header: %s", ae)
+		}
+
+		var b bytes.Buffer
+		w := gzip.NewWriter(&b)
+		for i := 1; i < 1000; i++ {
+			w.Write([]byte("<html/>"))
+		}
+		w.Close()
+
+		rw.Header().Set("Content-Encoding", "gzip")
+		rw.Write(b.Bytes())
+	}))
+	defer origin.Close()
+
+	logger, _ := logrustest.NewNullLogger()
+
+	var hclBody []hcl.Body
+	u := seetie.GoToValue(origin.URL)
+	hclBody = append(hclBody, hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			"origin": hcltest.MockExprLiteral(u),
+		}),
+	}))
+
+	p, err := handler.NewProxy(
+		&handler.ProxyOptions{Context: hclBody},
+		logger.WithContext(nil),
+		nil, eval.NewENVContext(nil),
+	)
+	helper.Must(err)
+
+	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	req.Header.Set("Accept-Encoding", "br, gzip")
+	res := httptest.NewRecorder()
+	p.ServeHTTP(res, req)
+
+	if l := res.Header().Get("Content-Length"); l != "60" {
+		t.Errorf("Unexpected C/L: %s", l)
+	}
+	if l := len(res.Body.Bytes()); l != 6993 {
+		t.Errorf("Unexpected body length: %d", l)
 	}
 }
