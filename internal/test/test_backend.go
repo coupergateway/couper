@@ -43,6 +43,8 @@ func anything(rw http.ResponseWriter, req *http.Request) {
 	type anything struct {
 		Args                               url.Values
 		Headers                            http.Header
+		Host                               string
+		Path                               string
 		Method, RemoteAddr, Url, UserAgent string
 	}
 
@@ -51,7 +53,9 @@ func anything(rw http.ResponseWriter, req *http.Request) {
 	resp := &anything{
 		Args:       req.Form,
 		Headers:    req.Header.Clone(),
+		Host:       req.Host,
 		Method:     req.Method,
+		Path:       req.URL.Path,
 		RemoteAddr: req.RemoteAddr,
 		Url:        req.URL.String(),
 		UserAgent:  req.UserAgent(),

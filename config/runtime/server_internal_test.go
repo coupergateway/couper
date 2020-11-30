@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/internal/seetie"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hcltest"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -167,16 +170,24 @@ func TestServer_splitWildcardHostPort(t *testing.T) {
 }
 
 func TestServer_getEndpointsList(t *testing.T) {
+	getHCLBody := func(in string) hcl.Body {
+		return hcltest.MockBody(&hcl.BodyContent{
+			Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+				"path": hcltest.MockExprLiteral(seetie.GoToValue(in)),
+			}),
+		})
+	}
+
 	srvConf := &config.Server{
 		API: &config.Api{
 			Endpoint: []*config.Endpoint{
-				{Path: "/api/1"},
-				{Path: "/api/2"},
+				{InlineDefinition: getHCLBody("/api/1")},
+				{InlineDefinition: getHCLBody("/api/2")},
 			},
 		},
 		Endpoint: []*config.Endpoint{
-			{Path: "/free/1"},
-			{Path: "/free/2"},
+			{InlineDefinition: getHCLBody("/free/1")},
+			{InlineDefinition: getHCLBody("/free/2")},
 		},
 	}
 
@@ -193,11 +204,15 @@ func TestServer_getEndpointsList(t *testing.T) {
 	}
 
 	for e, kind := range endpoints {
-		if v, ok := checks[e.Path]; !ok || v != kind {
-			t.Fatalf("Missing an endpoint for %s", e.Path)
+		a, _ := e.InlineDefinition.JustAttributes()
+		v, _ := a["path"].Expr.Value(nil)
+		path := seetie.ValueToString(v)
+
+		if v, ok := checks[path]; !ok || v != kind {
+			t.Fatalf("Missing an endpoint for %s", path)
 		}
 
-		delete(checks, e.Path)
+		delete(checks, path)
 	}
 
 	if l := len(checks); l != 0 {
