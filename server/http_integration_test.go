@@ -463,45 +463,66 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 func TestHTTPServer_Gzip(t *testing.T) {
 	client := newClient()
 
-	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
+	confPath := path.Join("testdata/integration", "files/03_gzip.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
 
-	t.Run("Test", func(subT *testing.T) {
-		helper := test.New(subT)
+	type testCase struct {
+		name                 string
+		headerAcceptEncoding string
+		path                 string
+		expectGzipResponse   bool
+	}
 
-		req, err := http.NewRequest(http.MethodGet, "http://example.org:9898/c", nil)
-		helper.Must(err)
+	for _, tc := range []testCase{
+		{"with mixed header AE gzip", "br, gzip", "/index.html", true},
+		{"with header AE gzip", "gzip", "/index.html", true},
+		{"with header AE and without gzip", "deflate", "/index.html", false},
+		{"with header AE and space", " ", "/index.html", false},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
-		req.Header.Set("Accept-Encoding", "br, gzip")
-		req.Host = "example.org"
-		res, err := client.Do(req)
-		helper.Must(err)
+			req, err := http.NewRequest(http.MethodGet, "http://example.org:9898"+tc.path, nil)
+			helper.Must(err)
 
-		if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
-			t.Errorf("Expected CE <gzip>, given: %s", ce)
-		}
-		if cl := res.Header.Get("Content-Length"); cl != "70" {
-			t.Errorf("Expected CL <70>, given: %s", cl)
-		}
-		if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
-			t.Errorf("Expected Vary <Accept-Encoding>, given: %s", vr)
-		}
+			if tc.headerAcceptEncoding != "" {
+				req.Header.Set("Accept-Encoding", tc.headerAcceptEncoding)
+			}
 
-		var src io.Reader
+			res, err := client.Do(req)
+			helper.Must(err)
 
-		src, err = gzip.NewReader(res.Body)
-		helper.Must(err)
+			var body io.Reader
+			body = res.Body
 
-		resBytes, err := ioutil.ReadAll(src)
-		helper.Must(err)
+			if !tc.expectGzipResponse {
+				if val := res.Header.Get("Content-Encoding"); val != "" {
+					t.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
+				}
+			} else {
+				if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
+					t.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
+				}
 
-		srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c/index.html"))
-		helper.Must(err)
+				body, err = gzip.NewReader(res.Body)
+				helper.Must(err)
+			}
 
-		if !bytes.Equal(resBytes, srcBytes) {
-			t.Errorf("Expected \n%s\ngiven\n%s", srcBytes, resBytes)
-		}
-	})
+			if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
+				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
+			}
+
+			resBytes, err := ioutil.ReadAll(body)
+			helper.Must(err)
+
+			srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
+			helper.Must(err)
+
+			if !bytes.Equal(resBytes, srcBytes) {
+				t.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
+			}
+		})
+	}
 
 	cleanup(shutdown, t)
 }

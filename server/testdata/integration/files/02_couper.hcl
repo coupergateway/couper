@@ -17,13 +17,3 @@ server "multi-files-host2" {
     document_root = "./htdocs_b"
   }
 }
-
-server "multi-files-host3" {
-  hosts = ["example.org:9898"]
-  error_file = "./../server_error.html"
-
-  base_path = "/c"
-  files {
-    document_root = "./htdocs_c"
-  }
-}
