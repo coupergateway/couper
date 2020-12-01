@@ -2,9 +2,11 @@ package server_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -110,7 +112,6 @@ func newClient() *http.Client {
 	dialer := &net.Dialer{}
 	return &http.Client{
 		Transport: &http.Transport{
-			DisableCompression: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				_, port, _ := net.SplitHostPort(addr)
 				if port != "" {
@@ -118,6 +119,7 @@ func newClient() *http.Client {
 				}
 				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
 			},
+			DisableCompression: true,
 		},
 	}
 }
@@ -454,6 +456,73 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
 		}
 	})
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_Gzip(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration", "files/03_gzip.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	type testCase struct {
+		name                 string
+		headerAcceptEncoding string
+		path                 string
+		expectGzipResponse   bool
+	}
+
+	for _, tc := range []testCase{
+		{"with mixed header AE gzip", "br, gzip", "/index.html", true},
+		{"with header AE gzip", "gzip", "/index.html", true},
+		{"with header AE and without gzip", "deflate", "/index.html", false},
+		{"with header AE and space", " ", "/index.html", false},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.org:9898"+tc.path, nil)
+			helper.Must(err)
+
+			if tc.headerAcceptEncoding != "" {
+				req.Header.Set("Accept-Encoding", tc.headerAcceptEncoding)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			var body io.Reader
+			body = res.Body
+
+			if !tc.expectGzipResponse {
+				if val := res.Header.Get("Content-Encoding"); val != "" {
+					t.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
+				}
+			} else {
+				if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
+					t.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
+				}
+
+				body, err = gzip.NewReader(res.Body)
+				helper.Must(err)
+			}
+
+			if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
+				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
+			}
+
+			resBytes, err := ioutil.ReadAll(body)
+			helper.Must(err)
+
+			srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
+			helper.Must(err)
+
+			if !bytes.Equal(resBytes, srcBytes) {
+				t.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
+			}
+		})
+	}
 
 	cleanup(shutdown, t)
 }

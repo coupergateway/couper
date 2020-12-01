@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +32,14 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
+const (
+	GzipName              = "gzip"
+	AcceptEncodingHeader  = "Accept-Encoding"
+	ContentEncodingHeader = "Content-Encoding"
+	ContentLengthHeader   = "Content-Length"
+	VaryHeader            = "Vary"
+)
+
 var (
 	_ http.Handler   = &Proxy{}
 	_ server.Context = &Proxy{}
@@ -39,6 +49,8 @@ var (
 	// headerBlacklist lists all header keys which will be removed after
 	// context variable evaluation to ensure to not pass them upstream.
 	headerBlacklist = []string{"Authorization", "Cookie"}
+
+	ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 )
 
 type Proxy struct {
@@ -131,6 +143,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				}
 				return conn, nil
 			},
+			DisableCompression:    true,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
 			TLSClientConfig:       tlsConf,
 		}
@@ -222,6 +235,20 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if strings.ToLower(res.Header.Get(ContentEncodingHeader)) == GzipName {
+		var src io.Reader
+		var err error
+
+		res.Header.Del(ContentEncodingHeader)
+
+		src, err = gzip.NewReader(res.Body)
+		if err != nil {
+			src = res.Body
+		}
+
+		res.Body = eval.NewReadCloser(src, res.Body)
+	}
+
 	removeConnectionHeaders(res.Header)
 
 	for _, h := range hopHeaders {
@@ -305,6 +332,12 @@ func (p *Proxy) Director(req *http.Request) error {
 
 	if hostname != "" {
 		req.Host = hostname
+	}
+
+	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
+		req.Header.Set(AcceptEncodingHeader, GzipName)
+	} else {
+		req.Header.Del(AcceptEncodingHeader)
 	}
 
 	if pathMatch, ok := req.Context().

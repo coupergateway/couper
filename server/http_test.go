@@ -78,6 +78,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return net.Dial("tcp4", gw.Addr())
 		},
+		DisableCompression: true,
 	}}
 
 	for i, testCase := range []struct {
@@ -94,7 +95,10 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"code": 4001}`), 404},
 	} {
-		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+		helper.Must(err)
+
+		res, err := connectClient.Do(req)
 		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
@@ -172,6 +176,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return net.Dial("tcp4", couper.Addr())
 			},
+			DisableCompression: true,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -213,7 +218,10 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//FIXME:
 		//{"/api", content500.Bytes(), 500},
 	} {
-		res, err := connectClient.Get(fmt.Sprintf("http://example.com:%s%s", port, testCase.path))
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+		helper.Must(err)
+
+		res, err := connectClient.Do(req)
 		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
@@ -256,7 +264,7 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 
 			hook.Reset()
 
-			_, err := http.DefaultClient.Do(req)
+			_, err := test.NewHTTPClient().Do(req)
 			helper.Must(err)
 			time.Sleep(time.Millisecond * 10) // log hook needs some time?
 
