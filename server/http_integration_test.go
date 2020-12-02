@@ -44,7 +44,10 @@ func TestMain(m *testing.M) {
 func setup() {
 	println("INTEGRATION: create test backend...")
 	testBackend = test.NewBackend()
-	os.Setenv("TESTBACKEND_ORIGIN", testBackend.Addr())
+	err := os.Setenv("COUPER_TEST_BACKEND_ADDR", testBackend.Addr())
+	if err != nil {
+		panic(err)
+	}
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -55,6 +58,9 @@ func setup() {
 
 func teardown() {
 	println("INTEGRATION: close test backend...")
+	if err := os.Unsetenv("COUPER_TEST_BACKEND_ADDR"); err != nil {
+		panic(err)
+	}
 	testBackend.Close()
 }
 
@@ -94,9 +100,13 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 		time.Sleep(time.Second / 2)
 	}
 	//log.Out = os.Stdout
+
 	go func() {
-		helper.Must(command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)))
+		if err := command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)); err != nil {
+			panic(err)
+		}
 	}()
+
 	time.Sleep(time.Second / 2)
 
 	for _, entry := range hook.AllEntries() {

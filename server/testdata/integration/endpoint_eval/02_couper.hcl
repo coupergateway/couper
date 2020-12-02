@@ -20,7 +20,7 @@ server "api" {
     endpoint "/endpoint4" {
       path = "/anything"
       backend {
-		origin = env.TESTBACKEND_ORIGIN != "" ? env.TESTBACKEND_ORIGIN : "http://127.0.0.1:1"
+		origin = env.COUPER_TEST_BACKEND_ADDR != "" ? env.COUPER_TEST_BACKEND_ADDR : "http://127.0.0.1:1"
       }
     }
 
