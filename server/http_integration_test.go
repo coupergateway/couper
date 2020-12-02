@@ -2,8 +2,11 @@ package server_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -13,6 +16,9 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -62,7 +68,20 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	// TODO: limitation: no support for inline origin changes
 	if gatewayConf.Definitions != nil {
 		for _, backend := range gatewayConf.Definitions.Backend {
-			backend.Origin = testBackend.Addr()
+			backendSchema := config.Backend{}.Schema(false)
+			inlineSchema := config.Backend{}.Schema(true)
+			backendSchema.Attributes = append(backendSchema.Attributes, inlineSchema.Attributes...)
+			content, diags := backend.Options.Content(backendSchema)
+			if diags != nil && diags.HasErrors() {
+				helper.Must(diags)
+			}
+
+			if _, ok := content.Attributes["origin"]; !ok {
+				helper.Must(fmt.Errorf("backend requires an origin value"))
+			}
+
+			content.Attributes["origin"].Expr = hcltest.MockExprLiteral(cty.StringVal(testBackend.Addr()))
+			backend.Options = hcltest.MockBody(content)
 		}
 	}
 
@@ -100,6 +119,7 @@ func newClient() *http.Client {
 				}
 				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
 			},
+			DisableCompression: true,
 		},
 	}
 }
@@ -436,6 +456,131 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
 		}
 	})
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_Gzip(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration", "files/03_gzip.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	type testCase struct {
+		name                 string
+		headerAcceptEncoding string
+		path                 string
+		expectGzipResponse   bool
+	}
+
+	for _, tc := range []testCase{
+		{"with mixed header AE gzip", "br, gzip", "/index.html", true},
+		{"with header AE gzip", "gzip", "/index.html", true},
+		{"with header AE and without gzip", "deflate", "/index.html", false},
+		{"with header AE and space", " ", "/index.html", false},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.org:9898"+tc.path, nil)
+			helper.Must(err)
+
+			if tc.headerAcceptEncoding != "" {
+				req.Header.Set("Accept-Encoding", tc.headerAcceptEncoding)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			var body io.Reader
+			body = res.Body
+
+			if !tc.expectGzipResponse {
+				if val := res.Header.Get("Content-Encoding"); val != "" {
+					t.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
+				}
+			} else {
+				if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
+					t.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
+				}
+
+				body, err = gzip.NewReader(res.Body)
+				helper.Must(err)
+			}
+
+			if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
+				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
+			}
+
+			resBytes, err := ioutil.ReadAll(body)
+			helper.Must(err)
+
+			srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
+			helper.Must(err)
+
+			if !bytes.Equal(resBytes, srcBytes) {
+				t.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
+			}
+		})
+	}
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/01_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	type expectation struct {
+		Host, Origin, Path string
+	}
+
+	type testCase struct {
+		reqPath string
+		exp     expectation
+	}
+
+	for _, tc := range []testCase{
+		{"/my-waffik/my.host.de/" + testBackend.Addr()[7:], expectation{
+			Host:   "my.host.de",
+			Origin: testBackend.Addr()[7:],
+			Path:   "/anything",
+		}},
+		{"/my-respo/my.host.com/" + testBackend.Addr()[7:], expectation{
+			Host:   "my.host.com",
+			Origin: testBackend.Addr()[7:],
+			Path:   "/anything",
+		}},
+	} {
+		t.Run("_"+tc.reqPath, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			jsonResult.Origin = res.Header.Get("X-Origin")
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+	}
 
 	cleanup(shutdown, t)
 }

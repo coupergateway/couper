@@ -113,7 +113,6 @@ func TestNewHTTPContext(t *testing.T) {
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
 				Context:          []hcl.Body{hclBody},
 				RequestBodyLimit: 256,
-				Origin:           req.URL.String(),
 				CORS:             &handler.CORSOptions{},
 			}, log.WithContext(nil), srvOpts, nil)
 			if err != nil {

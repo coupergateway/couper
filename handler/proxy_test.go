@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -39,10 +42,10 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 		req            *http.Request
 		expectedStatus int
 	}{
-		{"with zero timings", &handler.ProxyOptions{Origin: origin.URL}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
-		{"with overall timeout", &handler.ProxyOptions{Origin: "http://1.2.3.4/", Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
-		{"with connect timeout", &handler.ProxyOptions{Origin: "http://blackhole.webpagetest.org/", ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
-		{"with ttfb timeout", &handler.ProxyOptions{Origin: origin.URL, TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with zero timings", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL)}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
+		{"with overall timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://1.2.3.4/"), Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with connect timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with ttfb timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -180,7 +183,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(nil), nil, eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), CORS: tt.corsOptions}, logger.WithContext(nil), nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -350,7 +353,7 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, CORS: tt.corsOptions}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), CORS: tt.corsOptions}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -387,34 +390,50 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 }
 
 func TestProxy_director(t *testing.T) {
+	helper := test.New(t)
+
 	log, _ := logrustest.NewNullLogger()
 	nullLog := log.WithContext(nil)
 
-	type fields struct {
-		log     *logrus.Entry
-		options *handler.ProxyOptions
-	}
-
-	emptyOptions := []hcl.Body{hcl.EmptyBody()}
 	bgCtx := context.Background()
 
 	tests := []struct {
-		name   string
-		fields fields
-		path   string
-		ctx    context.Context
-		expReq *http.Request
+		name      string
+		inlineCtx string
+		path      string
+		ctx       context.Context
+		expReq    *http.Request
 	}{
-		{"proxy url settings", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
-		{"proxy url settings w/hostname", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Context: emptyOptions}}, "", bgCtx, httptest.NewRequest("GET", "http://couper.io", nil)},
-		{"proxy url settings w/wildcard ctx", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/**", Context: emptyOptions}}, "/peter", context.WithValue(bgCtx, request.Wildcard, "/hans"), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
-		{"proxy url settings w/wildcard ctx empty", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs", nil)},
-		{"proxy url settings w/wildcard ctx empty /w trailing path slash", fields{nullLog, &handler.ProxyOptions{Origin: "http://1.2.3.4", Hostname: "couper.io", Path: "/docs/**", Context: emptyOptions}}, "/", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
+		{"proxy url settings", `origin = "http://1.2.3.4"`, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings w/hostname", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+		`, "", bgCtx, httptest.NewRequest("GET", "http://couper.io", nil)},
+		{"proxy url settings w/wildcard ctx", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+			path = "/**"
+		`, "/peter", context.WithValue(bgCtx, request.Wildcard, "/hans"), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
+		{"proxy url settings w/wildcard ctx empty", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+			path = "/docs/**"
+		`, "", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs", nil)},
+		{"proxy url settings w/wildcard ctx empty /w trailing path slash", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+			path = "/docs/**"
+		`, "/", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := handler.NewProxy(tt.fields.options, tt.fields.log, nil, eval.NewENVContext(nil))
+			hclContext := helper.NewProxyContext(tt.inlineCtx)
+
+			p, err := handler.NewProxy(&handler.ProxyOptions{
+				Context: hclContext,
+				CORS:    &handler.CORSOptions{},
+			}, nullLog, nil, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -428,10 +447,17 @@ func TestProxy_director(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if tt.fields.options.Hostname != "" && tt.fields.options.Hostname != tt.expReq.Host {
-				t.Errorf("expected same host value, want: %q, got: %q", tt.fields.options.Hostname, tt.expReq.Host)
-			} else if tt.fields.options.Hostname == "" && req.Host != tt.expReq.Host {
-				t.Error("expected a configured request host")
+			attr, _ := hclContext[0].JustAttributes()
+			hostnameExp, ok := attr["hostname"]
+
+			if !ok && tt.expReq.Host != req.Host {
+				t.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
+			} else if ok {
+				hostVal, _ := hostnameExp.Expr.Value(eval.NewENVContext(nil))
+				hostname := seetie.ValueToString(hostVal)
+				if hostname != tt.expReq.Host {
+					t.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)
+				}
 			}
 
 			if req.URL.Path != tt.expReq.URL.Path {
@@ -479,7 +505,7 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 
 	opts := &handler.ProxyOptions{
 		BackendName:      "test-origin",
-		Origin:           "http://" + origin.Listener.Addr().String(),
+		Context:          test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 		CORS:             &handler.CORSOptions{},
 		RequestBodyLimit: 10,
 	}
@@ -633,6 +659,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		want      want
 	}{
 		{"method /w body", `
+		origin = "http://1.2.3.4/"
 		request_headers = {
 			x-test = req.json_body.foo
 		}`, []string{
@@ -646,10 +673,12 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 			http.MethodOptions,
 		}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
 		{"method /w body", `
+		origin = "http://1.2.3.4/"
 		request_headers = {
 			x-test = req.json_body.foo
 		}`, []string{http.MethodTrace}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
 		{"method /wo body", `
+		origin = "http://1.2.3.4/"
 		request_headers = {
 			x-test = req.json_body.foo
 		}`, []string{
@@ -672,7 +701,6 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 				proxy, _, _, closeFn := helper.NewProxy(&handler.ProxyOptions{
 					Context:          helper.NewProxyContext(tt.inlineCtx),
 					CORS:             &handler.CORSOptions{},
-					Origin:           "http://1.2.3.4/",
 					RequestBodyLimit: 64,
 				})
 
@@ -684,8 +712,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 				}
 				req := httptest.NewRequest(method, "/", body)
 				tt.header.Set(req)
-				helper.Must(proxy.SetGetBody(req))
-				proxy.SetRoundtripContext(req, nil)
+				helper.Must(proxy.Director(req))
 
 				for k, v := range tt.want.req {
 					if req.Header.Get(k) != v {
@@ -694,5 +721,87 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestServer_DisableCompression(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Accept-Encoding") != "" {
+			t.Error("Unexpected Accept-Encoding header")
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	logger, _ := logrustest.NewNullLogger()
+
+	var hclBody []hcl.Body
+	u := seetie.GoToValue(origin.URL)
+	hclBody = append(hclBody, hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			"origin": hcltest.MockExprLiteral(u),
+		}),
+	}))
+
+	p, err := handler.NewProxy(
+		&handler.ProxyOptions{Context: hclBody},
+		logger.WithContext(nil),
+		nil, eval.NewENVContext(nil),
+	)
+	helper.Must(err)
+
+	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	p.ServeHTTP(httptest.NewRecorder(), req)
+}
+
+func TestServer_ModifyAcceptEncoding(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if ae := req.Header.Get("Accept-Encoding"); ae != "gzip" {
+			t.Errorf("Unexpected Accept-Encoding header: %s", ae)
+		}
+
+		var b bytes.Buffer
+		w := gzip.NewWriter(&b)
+		for i := 1; i < 1000; i++ {
+			w.Write([]byte("<html/>"))
+		}
+		w.Close()
+
+		rw.Header().Set("Content-Encoding", "gzip")
+		rw.Write(b.Bytes())
+	}))
+	defer origin.Close()
+
+	logger, _ := logrustest.NewNullLogger()
+
+	var hclBody []hcl.Body
+	u := seetie.GoToValue(origin.URL)
+	hclBody = append(hclBody, hcltest.MockBody(&hcl.BodyContent{
+		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
+			"origin": hcltest.MockExprLiteral(u),
+		}),
+	}))
+
+	p, err := handler.NewProxy(
+		&handler.ProxyOptions{Context: hclBody},
+		logger.WithContext(nil),
+		nil, eval.NewENVContext(nil),
+	)
+	helper.Must(err)
+
+	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	req.Header.Set("Accept-Encoding", "br, gzip")
+	res := httptest.NewRecorder()
+	p.ServeHTTP(res, req)
+
+	if l := res.Header().Get("Content-Length"); l != "60" {
+		t.Errorf("Unexpected C/L: %s", l)
+	}
+	if l := len(res.Body.Bytes()); l != 6993 {
+		t.Errorf("Unexpected body length: %d", l)
 	}
 }
