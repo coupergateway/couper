@@ -44,6 +44,7 @@ func TestMain(m *testing.M) {
 func setup() {
 	println("INTEGRATION: create test backend...")
 	testBackend = test.NewBackend()
+	os.Setenv("TESTBACKEND_ORIGIN", testBackend.Addr())
 
 	wd, err := os.Getwd()
 	if err != nil {
