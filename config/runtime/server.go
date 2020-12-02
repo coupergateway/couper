@@ -193,7 +193,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 
 				// otherwise try to parse an inline block and fallback for api reference or inline block
-				inlineBackend, inlineConf, origin, err := newInlineBackend(confCtx, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+				inlineBackend, inlineConf, origin, err := newInlineBackend(confCtx, backends, endpoint, srvConf.API.CORS, log, serverOptions)
 				if err == errorMissingBackend {
 					if srvConf.API.Backend != "" {
 						if _, ok := backends[srvConf.API.Backend]; !ok {
@@ -206,7 +206,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						}
 						continue
 					}
-					inlineBackend, inlineConf, origin, err = newInlineBackend(confCtx, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+					inlineBackend, inlineConf, origin, err = newInlineBackend(confCtx, backends, srvConf.API, srvConf.API.CORS, log, serverOptions)
 					if err != nil {
 						return nil, err
 					}
@@ -407,10 +407,10 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 
 func newInlineBackend(
 	evalCtx *hcl.EvalContext, backends map[string]backendDefinition,
-	inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry,
+	inlineDef config.Inline, cors *config.CORS, log *logrus.Entry,
 	srvOpts *server.Options,
 ) (http.Handler, *config.Backend, string, error) {
-	content, _, diags := inlineDef.PartialContent(config.Endpoint{}.Schema(true))
+	content, _, diags := inlineDef.Body().PartialContent(inlineDef.Schema(true))
 	if diags.HasErrors() {
 		return nil, nil, "", diags
 	}
@@ -456,7 +456,7 @@ func newInlineBackend(
 		bodies = append(bodies, beConf.Options)
 	}
 
-	bodies = append(bodies, inlineDef)
+	bodies = append(bodies, inlineDef.Body())
 	bodies = append(bodies, inlineBlock.Body)
 
 	for _, body := range bodies {

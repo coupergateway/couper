@@ -5,6 +5,8 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
+var _ Inline = &Backend{}
+
 type Backend struct {
 	ConnectTimeout   string   `hcl:"connect_timeout,optional"`
 	Name             string   `hcl:"name,label"`
@@ -12,6 +14,10 @@ type Backend struct {
 	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
+}
+
+func (b Backend) Body() hcl.Body {
+	return b.Options
 }
 
 func (b Backend) Schema(inline bool) *hcl.BodySchema {
@@ -72,4 +78,18 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 	}
 
 	return &result, bodies
+}
+
+func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
+	for i, block := range schema.Blocks {
+		// inline backend block MAY have no label
+		if block.Type == "backend" && len(block.LabelNames) > 0 {
+			// check if a backend block could be parsed with label, otherwise its an inline one without label.
+			content, _, _ := body.PartialContent(schema)
+			if content == nil || len(content.Blocks) == 0 {
+				schema.Blocks[i].LabelNames = nil
+			}
+		}
+	}
+	return schema
 }
