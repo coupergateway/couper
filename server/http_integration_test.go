@@ -607,10 +607,10 @@ func TestHTTPServer_Endpoint_Evaluation2(t *testing.T) {
 			Path:           "/anything",
 			ResponseStatus: http.StatusOK,
 		}},
-		//{"/endpoint2", expectation{
-		//	Path:           "/anything",
-		//	ResponseStatus: http.StatusOK,
-		//}},
+		{"/endpoint2", expectation{
+			Path:           "/anything",
+			ResponseStatus: http.StatusOK,
+		}},
 		{"/endpoint3", expectation{
 			Path:           "/unset/by/endpoint",
 			ResponseStatus: http.StatusNotFound,

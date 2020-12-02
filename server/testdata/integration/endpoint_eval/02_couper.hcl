@@ -5,12 +5,12 @@ server "api" {
       backend  = "anything"
     }
 
-    #endpoint "/endpoint2" {
-    #  path = "/unset/by/local-backend"
-    #  backend "anything" {
-    #    path = "/anything"
-    #  }
-    #}
+    endpoint "/endpoint2" {
+     path = "/unset/by/local-backend"
+     backend "anything" {
+       path = "/anything"
+     }
+    }
 
     # don't override path
     endpoint "/endpoint3" {
@@ -20,7 +20,7 @@ server "api" {
     endpoint "/endpoint4" {
       path = "/anything"
       backend {
-        origin = env.TESTBACKEND_ORIGIN
+		origin = env.TESTBACKEND_ORIGIN != "" ? env.TESTBACKEND_ORIGIN : "http://127.0.0.1:1"
       }
     }
 

@@ -193,7 +193,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 
 				// otherwise try to parse an inline block and fallback for api reference or inline block
-				inlineBackend, inlineConf, err := newInlineBackend(confCtx, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+				inlineBackend, inlineConf, origin, err := newInlineBackend(confCtx, backends, endpoint.InlineDefinition, srvConf.API.CORS, log, serverOptions)
 				if err == errorMissingBackend {
 					if srvConf.API.Backend != "" {
 						if _, ok := backends[srvConf.API.Backend]; !ok {
@@ -206,12 +206,12 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						}
 						continue
 					}
-					inlineBackend, inlineConf, err = newInlineBackend(confCtx, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
+					inlineBackend, inlineConf, origin, err = newInlineBackend(confCtx, backends, srvConf.API.InlineDefinition, srvConf.API.CORS, log, serverOptions)
 					if err != nil {
 						return nil, err
 					}
 
-					if inlineConf.Name == "" && getAttribute(confCtx, "origin", inlineConf.Options, conf.Bytes) == "" {
+					if inlineConf.Name == "" && origin == "" {
 						return nil, fmt.Errorf("api inline backend requires an origin attribute: %q", pattern)
 					}
 				} else if err != nil { // TODO hcl.diagnostics error
@@ -219,7 +219,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 
 				if e := validateOrigin(
-					getAttribute(confCtx, "origin", inlineConf.Options, conf.Bytes),
+					origin,
 					inlineConf.Options.MissingItemRange()); e != nil {
 					return nil, e
 				}
@@ -405,14 +405,18 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefinition, inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry, srvOpts *server.Options) (http.Handler, *config.Backend, error) {
+func newInlineBackend(
+	evalCtx *hcl.EvalContext, backends map[string]backendDefinition,
+	inlineDef hcl.Body, cors *config.CORS, log *logrus.Entry,
+	srvOpts *server.Options,
+) (http.Handler, *config.Backend, string, error) {
 	content, _, diags := inlineDef.PartialContent(config.Endpoint{}.Schema(true))
 	if diags.HasErrors() {
-		return nil, nil, diags
+		return nil, nil, "", diags
 	}
 
 	if content == nil || len(content.Blocks) == 0 {
-		return nil, nil, errorMissingBackend
+		return nil, nil, "", errorMissingBackend
 	}
 
 	var inlineBlock *hcl.Block
@@ -422,31 +426,48 @@ func newInlineBackend(evalCtx *hcl.EvalContext, backends map[string]backendDefin
 		}
 	}
 	if inlineBlock == nil {
-		return nil, nil, errorMissingBackend
+		return nil, nil, "", errorMissingBackend
 	}
 
 	if err := validateInlineScheme(evalCtx, inlineBlock.Body, config.Backend{}); err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	beConf := &config.Backend{}
 	diags = gohcl.DecodeBody(inlineBlock.Body, evalCtx, beConf)
 	if diags.HasErrors() {
-		return nil, nil, diags
+		return nil, nil, "", diags
 	}
+
+	var bodies []hcl.Body
+	var origin string
 
 	beConf, _ = defaultBackendConf.Merge(beConf)
 	if len(content.Blocks[0].Labels) > 0 {
 		beConf.Name = content.Blocks[0].Labels[0]
 		if beRef, ok := backends[beConf.Name]; ok {
-			beConf, _ = beRef.conf.Merge(beConf)
+			beConf, bodies = beRef.conf.Merge(beConf)
 		} else {
-			return nil, nil, fmt.Errorf("override backend %q is not defined", beConf.Name)
+			return nil, nil, "", fmt.Errorf("override backend %q is not defined", beConf.Name)
 		}
 	}
 
-	proxy := newProxy(evalCtx, beConf, cors, []hcl.Body{beConf.Options}, log, srvOpts)
-	return proxy, beConf, nil
+	if bodies == nil {
+		bodies = append(bodies, beConf.Options)
+	}
+
+	bodies = append(bodies, inlineDef)
+	bodies = append(bodies, inlineBlock.Body)
+
+	for _, body := range bodies {
+		var b []byte
+		if o := getAttribute(evalCtx, "origin", body, b); o != "" {
+			origin = o
+		}
+	}
+
+	proxy := newProxy(evalCtx, beConf, cors, bodies, log, srvOpts)
+	return proxy, beConf, origin, nil
 }
 
 func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
