@@ -5,9 +5,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 
 	"github.com/avenga/couper/config"
-	"github.com/getkin/kin-openapi/openapi3filter"
 )
 
 type OpenAPIValidatorFactory struct {
@@ -24,11 +27,29 @@ func NewOpenAPIValidatorFactory(openapi *config.OpenAPI) (*OpenAPIValidatorFacto
 	if err != nil {
 		return nil, err
 	}
-	router := openapi3filter.NewRouter()
-	err = router.AddSwaggerFromFile(dir + "/" + openapi.File)
+
+	bytes, err := ioutil.ReadFile(filepath.Join(dir, openapi.File))
 	if err != nil {
 		return nil, err
 	}
+	return NewOpenAPIValidatorFactoryFromBytes(openapi, bytes)
+}
+
+func NewOpenAPIValidatorFactoryFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIValidatorFactory, error) {
+	if openapi == nil || bytes == nil {
+		return nil, nil
+	}
+
+	swagger, err := openapi3.NewSwaggerLoader().LoadSwaggerFromData(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	router := openapi3filter.NewRouter()
+	if err = router.AddSwagger(swagger); err != nil {
+		return nil, err
+	}
+
 	return &OpenAPIValidatorFactory{
 		router:                   router,
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,

@@ -6,10 +6,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -427,9 +425,7 @@ paths:
 	helper.Must(err)
 
 	openapiYAML := &bytes.Buffer{}
-	openapiYAMLTemplate.Execute(openapiYAML, map[string]string{"url": origin.URL})
-	helper.Must(ioutil.WriteFile("testdata/upstream.yaml", openapiYAML.Bytes(), 0644))
-	defer helper.Must(os.Remove("testdata/upstream.yaml"))
+	helper.Must(openapiYAMLTemplate.Execute(openapiYAML, map[string]string{"url": origin.URL}))
 
 	tests := []struct {
 		name               string
@@ -484,11 +480,14 @@ paths:
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			openapiValidatorFactory, err := handler.NewOpenAPIValidatorFactory(tt.openapi)
+			openapiValidatorFactory, err := handler.NewOpenAPIValidatorFactoryFromBytes(tt.openapi, openapiYAML.Bytes())
 			if err != nil {
 				subT.Fatal(err)
 			}
-			p, err := handler.NewProxy(&handler.ProxyOptions{Origin: origin.URL, OpenAPI: openapiValidatorFactory}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
+			content := helper.NewProxyContext(`
+				origin = "` + origin.URL + `"
+			`)
+			p, err := handler.NewProxy(&handler.ProxyOptions{Context: content, OpenAPI: openapiValidatorFactory}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}
