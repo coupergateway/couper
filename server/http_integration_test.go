@@ -607,13 +607,18 @@ func TestHTTPServer_Endpoint_Evaluation2(t *testing.T) {
 			Path:           "/anything",
 			ResponseStatus: http.StatusOK,
 		}},
+		//{"/endpoint2", expectation{
+		//	Path:           "/anything",
+		//	ResponseStatus: http.StatusOK,
+		//}},
 		{"/endpoint3", expectation{
 			Path:           "/unset/by/endpoint",
 			ResponseStatus: http.StatusNotFound,
 		}},
-		//{"/endpoint2", expectation{
-		//	Path: "/anything",
-		//}},
+		{"/endpoint4", expectation{
+			Path:           "/anything",
+			ResponseStatus: http.StatusOK,
+		}},
 	} {
 		t.Run("_"+tc.reqPath, func(subT *testing.T) {
 			helper := test.New(subT)

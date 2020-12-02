@@ -16,6 +16,14 @@ server "api" {
     endpoint "/endpoint3" {
       backend  = "anything"
     }
+
+    endpoint "/endpoint4" {
+      path = "/anything"
+      backend {
+        origin = env.TESTBACKEND_ORIGIN
+      }
+    }
+
   }
 }
 
