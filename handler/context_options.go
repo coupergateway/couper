@@ -18,7 +18,7 @@ func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (Op
 	var diags hcl.Diagnostics
 	var options OptionsMap
 
-	content, d := body.Content(config.Backend{}.Schema(true))
+	content, _, d := body.PartialContent(config.Backend{}.Schema(true))
 	diags = append(diags, seetie.SetSeverityLevel(d)...)
 
 	for _, attr := range content.Attributes {
