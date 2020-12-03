@@ -11,12 +11,12 @@ type Endpoint struct {
 	AccessControl        []string `hcl:"access_control,optional"`
 	Backend              string   `hcl:"backend,optional"`
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
-	InlineDefinition     hcl.Body `hcl:",remain" json:"-"`
 	Pattern              string   `hcl:"path,label"`
+	Remain               hcl.Body `hcl:",remain" json:"-"`
 }
 
 func (e Endpoint) Body() hcl.Body {
-	return e.InlineDefinition
+	return e.Remain
 }
 
 func (e Endpoint) Schema(inline bool) *hcl.BodySchema {

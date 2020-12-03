@@ -161,7 +161,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 				endpoints[cleanPattern] = true
 
-				if err := validateInlineScheme(confCtx, endpoint.InlineDefinition, endpoint); err != nil {
+				if err := validateInlineScheme(confCtx, endpoint.Remain, endpoint); err != nil {
 					return nil, err
 				}
 
@@ -182,7 +182,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 
 					// set server context for defined backends
 					be := backends[endpoint.Backend]
-					_, remain := be.conf.Merge(&config.Backend{Options: endpoint.InlineDefinition})
+					_, remain := be.conf.Merge(&config.Backend{Remain: endpoint.Remain})
 					refBackend := newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
 
 					setACHandlerFn(refBackend)
@@ -196,7 +196,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				// otherwise try to parse an inline block and fallback for api reference or inline block
 				inlineBackend, err := newInlineBackend(confCtx, conf.Bytes, backends, srvConf.API, endpoint, log, serverOptions)
 				if err != nil { // TODO hcl.diagnostics error
-					return nil, fmt.Errorf("range: %s: %v", endpoint.InlineDefinition.MissingItemRange().String(), err)
+					return nil, fmt.Errorf("range: %s: %v", endpoint.Remain.MissingItemRange().String(), err)
 				}
 
 				setACHandlerFn(inlineBackend)
@@ -240,8 +240,8 @@ func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, 
 			return nil, fmt.Errorf("backend name must be unique: %q", beConf.Name)
 		}
 
-		origin := getAttribute(confCtx, "origin", beConf.Options, conf.Bytes)
-		if e := validateOrigin(origin, beConf.Options.MissingItemRange()); e != nil {
+		origin := getAttribute(confCtx, "origin", beConf.Remain, conf.Bytes)
+		if e := validateOrigin(origin, beConf.Remain.MissingItemRange()); e != nil {
 			return nil, e
 		}
 
@@ -250,7 +250,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, 
 		srvOpts, _ := server.NewServerOptions(&config.Server{})
 		backends[beConf.Name] = backendDefinition{
 			conf:    beConf,
-			handler: newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Options}, log, srvOpts),
+			handler: newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Remain}, log, srvOpts),
 		}
 	}
 	return backends, nil
@@ -396,7 +396,7 @@ func newInlineBackend(
 			return nil, fmt.Errorf("referenced backend does not exist: %q", parentAPI.Backend)
 		}
 		parentBackend = be.conf
-		bodies = append(bodies, be.conf.Options)
+		bodies = append(bodies, be.conf.Remain)
 	} else {
 		inlineBlock, err := getBackendInlineBlock(parentAPI, evalCtx)
 		if err != nil && err != errorMissingBackend {
@@ -407,7 +407,7 @@ func newInlineBackend(
 			if diags.HasErrors() {
 				return nil, diags
 			}
-			bodies = append(bodies, parentBackend.Options)
+			bodies = append(bodies, parentBackend.Remain)
 		}
 	}
 
@@ -437,7 +437,7 @@ func newInlineBackend(
 		if beRef, ok := backends[backendConf.Name]; ok {
 			// consider existing parents, rebuild hierarchy
 			mergedBackendConf, _ := beRef.conf.Merge(backendConf)
-			bodies = append([]hcl.Body{beRef.conf.Options}, append(bodies, mergedBackendConf.Options)...)
+			bodies = append([]hcl.Body{beRef.conf.Remain}, append(bodies, mergedBackendConf.Remain)...)
 			backendConf = mergedBackendConf
 		} else {
 			return nil, fmt.Errorf("override backend %q is not defined", backendConf.Name)
@@ -474,7 +474,7 @@ func newInlineBackend(
 		}
 	}
 
-	if err = validateOrigin(origin, backendConf.Options.MissingItemRange()); err != nil {
+	if err = validateOrigin(origin, backendConf.Remain.MissingItemRange()); err != nil {
 		return nil, err
 	}
 

@@ -78,7 +78,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 			backendSchema := config.Backend{}.Schema(false)
 			inlineSchema := config.Backend{}.Schema(true)
 			backendSchema.Attributes = append(backendSchema.Attributes, inlineSchema.Attributes...)
-			content, diags := backend.Options.Content(backendSchema)
+			content, diags := backend.Remain.Content(backendSchema)
 			if diags != nil && diags.HasErrors() {
 				helper.Must(diags)
 			}
@@ -88,7 +88,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 			}
 
 			content.Attributes["origin"].Expr = hcltest.MockExprLiteral(cty.StringVal(testBackend.Addr()))
-			backend.Options = hcltest.MockBody(content)
+			backend.Remain = hcltest.MockBody(content)
 		}
 	}
 

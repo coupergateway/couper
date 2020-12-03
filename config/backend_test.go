@@ -20,28 +20,28 @@ func TestBackend_Merge(t *testing.T) {
 		{"nil", Backend{}, args{nil}, nil},
 		{"empty", Backend{}, args{&Backend{}}, &Backend{}},
 		{"left", Backend{
-			Timeout: "s", ConnectTimeout: "s", Options: hcl.EmptyBody(),
+			Timeout: "s", ConnectTimeout: "s", Remain: hcl.EmptyBody(),
 		}, args{&Backend{}}, &Backend{
-			Timeout: "s", ConnectTimeout: "s", Options: hcl.EmptyBody(),
+			Timeout: "s", ConnectTimeout: "s", Remain: hcl.EmptyBody(),
 		}},
 		{"right", Backend{}, args{&Backend{
-			Timeout: "s", ConnectTimeout: "s", Options: hcl.EmptyBody(),
+			Timeout: "s", ConnectTimeout: "s", Remain: hcl.EmptyBody(),
 		}}, &Backend{
-			Timeout: "s", ConnectTimeout: "s", Options: hcl.EmptyBody(),
+			Timeout: "s", ConnectTimeout: "s", Remain: hcl.EmptyBody(),
 		}},
 		{"override", Backend{
-			Timeout: "s", ConnectTimeout: "s", RequestBodyLimit: "2M", TTFBTimeout: "t", Options: hcl.EmptyBody(),
+			Timeout: "s", ConnectTimeout: "s", RequestBodyLimit: "2M", TTFBTimeout: "t", Remain: hcl.EmptyBody(),
 		}, args{&Backend{
-			Timeout: "m", ConnectTimeout: "h", RequestBodyLimit: "20M", TTFBTimeout: "o", Options: hcl.EmptyBody(),
+			Timeout: "m", ConnectTimeout: "h", RequestBodyLimit: "20M", TTFBTimeout: "o", Remain: hcl.EmptyBody(),
 		}}, &Backend{
-			Timeout: "m", ConnectTimeout: "h", RequestBodyLimit: "20M", TTFBTimeout: "o", Options: hcl.EmptyBody(),
+			Timeout: "m", ConnectTimeout: "h", RequestBodyLimit: "20M", TTFBTimeout: "o", Remain: hcl.EmptyBody(),
 		}},
 		{"partial override", Backend{
-			Timeout: "e", ConnectTimeout: "f", TTFBTimeout: "t", Options: hcl.EmptyBody(),
+			Timeout: "e", ConnectTimeout: "f", TTFBTimeout: "t", Remain: hcl.EmptyBody(),
 		}, args{&Backend{
 			ConnectTimeout: "d",
 		}}, &Backend{
-			Timeout: "e", ConnectTimeout: "d", TTFBTimeout: "t", Options: hcl.EmptyBody(),
+			Timeout: "e", ConnectTimeout: "d", TTFBTimeout: "t", Remain: hcl.EmptyBody(),
 		}},
 	}
 	for _, tt := range tests {
@@ -49,7 +49,7 @@ func TestBackend_Merge(t *testing.T) {
 			b := &Backend{
 				ConnectTimeout:   tt.fields.ConnectTimeout,
 				Name:             tt.fields.Name,
-				Options:          tt.fields.Options,
+				Remain:           tt.fields.Remain,
 				RequestBodyLimit: tt.fields.RequestBodyLimit,
 				Timeout:          tt.fields.Timeout,
 				TTFBTimeout:      tt.fields.TTFBTimeout,

@@ -15,11 +15,11 @@ type Api struct {
 	DisableAccessControl []string    `hcl:"disable_access_control,optional"`
 	Endpoint             []*Endpoint `hcl:"endpoint,block"`
 	ErrorFile            string      `hcl:"error_file,optional"`
-	InlineDefinition     hcl.Body    `hcl:",remain" json:"-"`
+	Remain               hcl.Body    `hcl:",remain" json:"-"`
 }
 
 func (a Api) Body() hcl.Body {
-	return a.InlineDefinition
+	return a.Remain
 }
 
 func (a Api) Schema(inline bool) *hcl.BodySchema {
