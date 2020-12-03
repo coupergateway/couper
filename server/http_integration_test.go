@@ -596,65 +596,66 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 	cleanup(shutdown, t)
 }
 
-func TestHTTPServer_Endpoint_Evaluation2(t *testing.T) {
+func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 	client := newClient()
 
-	confPath := path.Join("testdata/integration/endpoint_eval/02_couper.hcl")
-	shutdown, _ := newCouper(confPath, test.New(t))
+	for _, confFile := range []string{"02_couper.hcl", "03_couper.hcl"} {
+		confPath := path.Join("testdata/integration/endpoint_eval", confFile)
+		shutdown, _ := newCouper(confPath, test.New(t))
 
-	type expectation struct {
-		Path           string
-		ResponseStatus int
+		type expectation struct {
+			Path           string
+			ResponseStatus int
+		}
+
+		type testCase struct {
+			reqPath string
+			exp     expectation
+		}
+
+		for _, tc := range []testCase{
+			{"/endpoint1", expectation{
+				Path:           "/anything",
+				ResponseStatus: http.StatusOK,
+			}},
+			{"/endpoint2", expectation{
+				Path:           "/anything",
+				ResponseStatus: http.StatusOK,
+			}},
+			{"/endpoint3", expectation{
+				Path:           "/unset/by/endpoint",
+				ResponseStatus: http.StatusNotFound,
+			}},
+			{"/endpoint4", expectation{
+				Path:           "/anything",
+				ResponseStatus: http.StatusOK,
+			}},
+		} {
+			t.Run(confFile+"_"+tc.reqPath, func(subT *testing.T) {
+				helper := test.New(subT)
+
+				req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
+				helper.Must(err)
+
+				res, err := client.Do(req)
+				helper.Must(err)
+
+				resBytes, err := ioutil.ReadAll(res.Body)
+				helper.Must(err)
+
+				_ = res.Body.Close()
+
+				var jsonResult expectation
+				err = json.Unmarshal(resBytes, &jsonResult)
+				if err != nil {
+					t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				}
+
+				if !reflect.DeepEqual(jsonResult, tc.exp) {
+					t.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
+				}
+			})
+		}
+		cleanup(shutdown, t)
 	}
-
-	type testCase struct {
-		reqPath string
-		exp     expectation
-	}
-
-	for _, tc := range []testCase{
-		{"/endpoint1", expectation{
-			Path:           "/anything",
-			ResponseStatus: http.StatusOK,
-		}},
-		{"/endpoint2", expectation{
-			Path:           "/anything",
-			ResponseStatus: http.StatusOK,
-		}},
-		{"/endpoint3", expectation{
-			Path:           "/unset/by/endpoint",
-			ResponseStatus: http.StatusNotFound,
-		}},
-		{"/endpoint4", expectation{
-			Path:           "/anything",
-			ResponseStatus: http.StatusOK,
-		}},
-	} {
-		t.Run("_"+tc.reqPath, func(subT *testing.T) {
-			helper := test.New(subT)
-
-			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
-			helper.Must(err)
-
-			res, err := client.Do(req)
-			helper.Must(err)
-
-			resBytes, err := ioutil.ReadAll(res.Body)
-			helper.Must(err)
-
-			_ = res.Body.Close()
-
-			var jsonResult expectation
-			err = json.Unmarshal(resBytes, &jsonResult)
-			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-			}
-
-			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
-			}
-		})
-	}
-
-	cleanup(shutdown, t)
 }
