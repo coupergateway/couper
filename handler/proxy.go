@@ -361,6 +361,28 @@ func (p *Proxy) Director(req *http.Request) error {
 	return nil
 }
 
+func modifyQuery(url *url.URL, del []string, set, add map[string][]string) {
+	query := url.Query()
+
+	for _, del := range del {
+		query.Del(del)
+	}
+	for k, values := range set {
+		query.Del(k)
+
+		for _, v := range values {
+			query.Add(k, v)
+		}
+	}
+	for k, values := range add {
+		for _, v := range values {
+			query.Add(k, v)
+		}
+	}
+
+	url.RawQuery = query.Encode()
+}
+
 func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
 		attrCtx   = []string{attrReqHeaders, attrSetReqHeaders}
@@ -376,6 +398,11 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = req.Header
 	}
 
+	var delQuery []string
+	addQuery := make(map[string][]string)
+	setQuery := make(map[string][]string)
+
+	schema := config.Backend{}.Schema(true)
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
@@ -387,13 +414,32 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 
 	for _, ctx := range attrCtx {
 		for _, ctxBody := range p.options.Context {
+			// headers
 			options, err := NewCtxOptions(ctx, evalCtx, ctxBody)
 			if err != nil {
 				p.log.WithField("parse config", p.String()).Error(err)
 			}
 			setHeaderFields(headerCtx, options)
+
+			// query params
+			content, _, _ := ctxBody.PartialContent(schema)
+			if del, ok := content.Attributes["remove_query_params"]; ok {
+				originValue, diags := del.Expr.Value(evalCtx)
+				if diags != nil && diags.HasErrors() {
+					panic(diags.Error())
+				}
+				delQuery = append(delQuery, seetie.ValueToStringSlice(originValue)...)
+			}
+			if add, ok := content.Attributes["add_query_params"]; ok {
+				collectQueryParams(evalCtx, add, addQuery)
+			}
+			if set, ok := content.Attributes["set_query_params"]; ok {
+				collectQueryParams(evalCtx, set, setQuery)
+			}
 		}
 	}
+
+	modifyQuery(req.URL, delQuery, setQuery, addQuery)
 
 	if beresp != nil && isCorsRequest(req) {
 		p.setCorsRespHeaders(headerCtx, req)
@@ -610,6 +656,23 @@ func setHeaderFields(header http.Header, options OptionsMap) {
 			continue
 		}
 		header[k] = value
+	}
+}
+
+func collectQueryParams(ctx *hcl.EvalContext, attr *hcl.Attribute, dest map[string][]string) {
+	originValues, _ := seetie.ExpToMap(ctx, attr.Expr)
+
+	for k, v := range originValues {
+		values := dest[k]
+
+		switch v.(type) {
+		case []string:
+			values = append(values, v.([]string)...)
+		case string:
+			values = append(values, v.(string))
+		}
+
+		dest[k] = values
 	}
 }
 

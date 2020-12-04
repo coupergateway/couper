@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/zclconf/go-cty/cty"
 )
 
 var _ Inline = &Backend{}
@@ -27,13 +28,16 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Origin             string            `hcl:"origin,optional"`
-		Hostname           string            `hcl:"hostname,optional"`
-		Path               string            `hcl:"path,optional"`
-		RequestHeaders     map[string]string `hcl:"request_headers,optional"`
-		ResponseHeaders    map[string]string `hcl:"response_headers,optional"`
-		SetRequestHeaders  map[string]string `hcl:"set_request_headers,optional"`
-		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
+		Origin             string               `hcl:"origin,optional"`
+		Hostname           string               `hcl:"hostname,optional"`
+		Path               string               `hcl:"path,optional"`
+		RequestHeaders     map[string]string    `hcl:"request_headers,optional"`
+		ResponseHeaders    map[string]string    `hcl:"response_headers,optional"`
+		SetRequestHeaders  map[string]string    `hcl:"set_request_headers,optional"`
+		SetResponseHeaders map[string]string    `hcl:"set_response_headers,optional"`
+		AddQueryParams     map[string]cty.Value `hcl:"add_query_params,optional"`
+		DelQueryParams     []string             `hcl:"remove_query_params,optional"`
+		SetQueryParams     map[string]cty.Value `hcl:"set_query_params,optional"`
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
