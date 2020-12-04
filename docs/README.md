@@ -274,6 +274,51 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 | `path`|<ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul>|
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
 |[**`backend`**](#backend_block) block |configures connection to a local/remote backend service for `endpoint`|
+|[**`remove_query_params`**](#query_params)|<ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
+|[**`set_query_params`**](#query_params)|<ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
+|[**`add_query_params`**](#query_params)|<ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
+
+#### Query parameter <a name="query_params"></a>
+
+Couper offers three methods to manipulate the query parameter. The methods are
+executed in the following order unrelated to the order within the configuration file:
+
+* `remove_query_params`: a list of query parameters to be removed from the upstream request URL.
+* `set_query_params`: key/value(s) pairs to set query parameters in the upstream request URL.
+* `add_query_params`: key/value(s) pairs to add query parameters to the upstream request URL.
+
+All `*_query_params` are collected and executed from: `definitions.backend`, `endpoint`,
+`endpoint.backend` (if refined).
+
+```hcl
+server "my_project" {
+  api {
+    endpoint "/" {
+      backend "example"
+    }
+  }
+}
+
+definitions {
+  backend "example" {
+    origin = "http://example.com"
+
+    remove_query_params = ["a", "b"]
+
+    set_query_params = {
+      string = "string"
+      multi = ["foo", "bar"]
+      "${req.headers.example}" = "yes"
+    }
+
+    add_query_params = {
+      noop = req.headers.noop
+      null = null
+      empty = ""
+    }
+  }
+}
+```
 
 #### Path parameter
 
@@ -300,6 +345,9 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | `set_request_headers` | header map to define additional or override header for the `origin` request |
 | `set_response_headers` | same as `set_request_headers` for the client response |
 | `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
+|[**`remove_query_params`**](#query_params)|<ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
+|[**`set_query_params`**](#query_params)|<ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
+|[**`add_query_params`**](#query_params)|<ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
 The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
