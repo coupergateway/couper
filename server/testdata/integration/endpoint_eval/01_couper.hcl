@@ -4,9 +4,13 @@ server "api" {
   api {
     error_file = "./../api_error.json"
 
+    backend "anything" { # overrides definitions: backend "anything"
+      path = "/set/by/api/unset/by/endpoint"
+    }
+
     endpoint "/{path}/{hostname}/{origin}" {
-      path = "/unset/by/backend"
-      backend {
+      path = "/set/by/endpoint/unset/by/backend"
+      backend "anything" {
         path = "/anything"
         origin = "http://${req.path_param.origin}"
         hostname = req.path_param.hostname
@@ -21,7 +25,7 @@ server "api" {
 definitions {
   # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "anything" {
-    path = "/anything"
+    path = "/not-found-anything"
     origin = "http://anyserver/"
   }
 }

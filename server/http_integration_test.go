@@ -44,6 +44,10 @@ func TestMain(m *testing.M) {
 func setup() {
 	println("INTEGRATION: create test backend...")
 	testBackend = test.NewBackend()
+	err := os.Setenv("COUPER_TEST_BACKEND_ADDR", testBackend.Addr())
+	if err != nil {
+		panic(err)
+	}
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -54,6 +58,9 @@ func setup() {
 
 func teardown() {
 	println("INTEGRATION: close test backend...")
+	if err := os.Unsetenv("COUPER_TEST_BACKEND_ADDR"); err != nil {
+		panic(err)
+	}
 	testBackend.Close()
 }
 
@@ -71,7 +78,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 			backendSchema := config.Backend{}.Schema(false)
 			inlineSchema := config.Backend{}.Schema(true)
 			backendSchema.Attributes = append(backendSchema.Attributes, inlineSchema.Attributes...)
-			content, diags := backend.Options.Content(backendSchema)
+			content, diags := backend.Remain.Content(backendSchema)
 			if diags != nil && diags.HasErrors() {
 				helper.Must(diags)
 			}
@@ -81,7 +88,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 			}
 
 			content.Attributes["origin"].Expr = hcltest.MockExprLiteral(cty.StringVal(testBackend.Addr()))
-			backend.Options = hcltest.MockBody(content)
+			backend.Remain = hcltest.MockBody(content)
 		}
 	}
 
@@ -93,9 +100,13 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 		time.Sleep(time.Second / 2)
 	}
 	//log.Out = os.Stdout
+
 	go func() {
-		helper.Must(command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)))
+		if err := command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)); err != nil {
+			panic(err)
+		}
 	}()
+
 	time.Sleep(time.Second / 2)
 
 	for _, entry := range hook.AllEntries() {
@@ -583,4 +594,68 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 	}
 
 	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
+	client := newClient()
+
+	for _, confFile := range []string{"02_couper.hcl", "03_couper.hcl"} {
+		confPath := path.Join("testdata/integration/endpoint_eval", confFile)
+		shutdown, _ := newCouper(confPath, test.New(t))
+
+		type expectation struct {
+			Path           string
+			ResponseStatus int
+		}
+
+		type testCase struct {
+			reqPath string
+			exp     expectation
+		}
+
+		for _, tc := range []testCase{
+			{"/endpoint1", expectation{
+				Path:           "/anything",
+				ResponseStatus: http.StatusOK,
+			}},
+			{"/endpoint2", expectation{
+				Path:           "/anything",
+				ResponseStatus: http.StatusOK,
+			}},
+			{"/endpoint3", expectation{
+				Path:           "/unset/by/endpoint",
+				ResponseStatus: http.StatusNotFound,
+			}},
+			{"/endpoint4", expectation{
+				Path:           "/anything",
+				ResponseStatus: http.StatusOK,
+			}},
+		} {
+			t.Run(confFile+"_"+tc.reqPath, func(subT *testing.T) {
+				helper := test.New(subT)
+
+				req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
+				helper.Must(err)
+
+				res, err := client.Do(req)
+				helper.Must(err)
+
+				resBytes, err := ioutil.ReadAll(res.Body)
+				helper.Must(err)
+
+				_ = res.Body.Close()
+
+				var jsonResult expectation
+				err = json.Unmarshal(resBytes, &jsonResult)
+				if err != nil {
+					t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				}
+
+				if !reflect.DeepEqual(jsonResult, tc.exp) {
+					t.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
+				}
+			})
+		}
+		cleanup(shutdown, t)
+	}
 }

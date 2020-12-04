@@ -5,13 +5,19 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
+var _ Inline = &Backend{}
+
 type Backend struct {
 	ConnectTimeout   string   `hcl:"connect_timeout,optional"`
 	Name             string   `hcl:"name,label"`
-	Options          hcl.Body `hcl:",remain"`
+	Remain           hcl.Body `hcl:",remain"`
 	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
+}
+
+func (b Backend) Body() hcl.Body {
+	return b.Remain
 }
 
 func (b Backend) Schema(inline bool) *hcl.BodySchema {
@@ -46,13 +52,13 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 		result.Name = other.Name
 	}
 
-	if result.Options != nil {
-		bodies = append(bodies, result.Options)
+	if result.Remain != nil {
+		bodies = append(bodies, result.Remain)
 	}
 
-	if other.Options != nil {
-		bodies = append(bodies, other.Options)
-		result.Options = other.Options
+	if other.Remain != nil {
+		bodies = append(bodies, other.Remain)
+		result.Remain = other.Remain
 	}
 
 	if other.ConnectTimeout != "" {
@@ -72,4 +78,18 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 	}
 
 	return &result, bodies
+}
+
+func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
+	for i, block := range schema.Blocks {
+		// inline backend block MAY have no label
+		if block.Type == "backend" && len(block.LabelNames) > 0 {
+			// check if a backend block could be parsed with label, otherwise its an inline one without label.
+			content, _, _ := body.PartialContent(schema)
+			if content == nil || len(content.Blocks) == 0 {
+				schema.Blocks[i].LabelNames = nil
+			}
+		}
+	}
+	return schema
 }
