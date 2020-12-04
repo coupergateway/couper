@@ -15,7 +15,7 @@ type ProxyOptions struct {
 	Context                              []hcl.Body
 	BackendName                          string
 	CORS                                 *CORSOptions
-	OpenAPI                              *OpenAPIValidatorFactory
+	OpenAPI                              *OpenAPIValidatorOptions
 	RequestBodyLimit                     int64
 }
 
@@ -43,7 +43,7 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hc
 		cors = &CORSOptions{}
 	}
 
-	openapiValidatorFactory, err := NewOpenAPIValidatorFactory(conf.OpenAPI)
+	openAPIValidatorOptions, err := NewOpenAPIValidatorOptions(conf.OpenAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, remainCtx []hc
 		CORS:             cors,
 		ConnectTimeout:   connectD,
 		Context:          remainCtx,
-		OpenAPI:          openapiValidatorFactory,
+		OpenAPI:          openAPIValidatorOptions,
 		RequestBodyLimit: bodyLimit,
 		TTFBTimeout:      ttfbD,
 		Timeout:          totalD,

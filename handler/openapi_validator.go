@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -11,15 +14,18 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/logging"
 )
 
-type OpenAPIValidatorFactory struct {
+type OpenAPIValidatorOptions struct {
 	router                   *openapi3filter.Router
+	buffer                   eval.BufferOption
 	ignoreRequestViolations  bool
 	ignoreResponseViolations bool
 }
 
-func NewOpenAPIValidatorFactory(openapi *config.OpenAPI) (*OpenAPIValidatorFactory, error) {
+func NewOpenAPIValidatorOptions(openapi *config.OpenAPI) (*OpenAPIValidatorOptions, error) {
 	if openapi == nil {
 		return nil, nil
 	}
@@ -28,14 +34,14 @@ func NewOpenAPIValidatorFactory(openapi *config.OpenAPI) (*OpenAPIValidatorFacto
 		return nil, err
 	}
 
-	bytes, err := ioutil.ReadFile(filepath.Join(dir, openapi.File))
+	b, err := ioutil.ReadFile(filepath.Join(dir, openapi.File))
 	if err != nil {
 		return nil, err
 	}
-	return NewOpenAPIValidatorFactoryFromBytes(openapi, bytes)
+	return NewOpenAPIValidatorOptionsFromBytes(openapi, b)
 }
 
-func NewOpenAPIValidatorFactoryFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIValidatorFactory, error) {
+func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIValidatorOptions, error) {
 	if openapi == nil || bytes == nil {
 		return nil, nil
 	}
@@ -50,30 +56,38 @@ func NewOpenAPIValidatorFactoryFromBytes(openapi *config.OpenAPI, bytes []byte) 
 		return nil, err
 	}
 
-	return &OpenAPIValidatorFactory{
+	apiValidation := eval.BufferRequest | eval.BufferResponse
+	if openapi.IgnoreRequestViolations {
+		apiValidation ^= eval.BufferRequest
+	}
+	if openapi.IgnoreResponseViolations {
+		apiValidation ^= eval.BufferResponse
+	}
+
+	return &OpenAPIValidatorOptions{
+		buffer:                   apiValidation,
 		router:                   router,
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,
 	}, nil
 }
 
-func (f *OpenAPIValidatorFactory) NewOpenAPIValidator() *OpenAPIValidator {
+func (o *OpenAPIValidatorOptions) NewOpenAPIValidator() *OpenAPIValidator {
 	return &OpenAPIValidator{
-		factory:       f,
+		options:       o,
 		validationCtx: context.Background(),
 	}
 }
 
 type OpenAPIValidator struct {
-	factory                *OpenAPIValidatorFactory
+	options                *OpenAPIValidatorOptions
 	route                  *openapi3filter.Route
 	requestValidationInput *openapi3filter.RequestValidationInput
 	validationCtx          context.Context
-	Body                   []byte
 }
 
-func (v *OpenAPIValidator) ValidateRequest(req *http.Request) (bool, error) {
-	route, pathParams, _ := v.factory.router.FindRoute(req.Method, req.URL)
+func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.RoundtripInfo) error {
+	route, pathParams, _ := v.options.router.FindRoute(req.Method, req.URL)
 	v.route = route
 
 	v.requestValidationInput = &openapi3filter.RequestValidationInput{
@@ -82,29 +96,50 @@ func (v *OpenAPIValidator) ValidateRequest(req *http.Request) (bool, error) {
 		Route:      route,
 	}
 
-	return v.factory.ignoreRequestViolations, openapi3filter.ValidateRequest(v.validationCtx, v.requestValidationInput)
+	err := openapi3filter.ValidateRequest(v.validationCtx, v.requestValidationInput)
+
+	if req.GetBody != nil {
+		req.Body, _ = req.GetBody() // rewind
+	}
+
+	if err != nil {
+		err = fmt.Errorf("request validation: %w", err)
+		if !v.options.ignoreRequestViolations {
+			return err
+		}
+		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
+	}
+
+	return nil
 }
 
-func (v *OpenAPIValidator) ValidateResponse(res *http.Response) (bool, error) {
+func (v *OpenAPIValidator) ValidateResponse(beresp *http.Response, tripInfo *logging.RoundtripInfo) error {
 	if v.route == nil {
-		return v.factory.ignoreResponseViolations, nil
+		return nil
 	}
 	responseValidationInput := &openapi3filter.ResponseValidationInput{
 		RequestValidationInput: v.requestValidationInput,
-		Status:                 res.StatusCode,
-		Header:                 res.Header,
+		Status:                 beresp.StatusCode,
+		Header:                 beresp.Header.Clone(),
 		Options:                &openapi3filter.Options{IncludeResponseStatus: true /* undefined response codes are invalid */},
 	}
-	body, err := ioutil.ReadAll(res.Body)
+
+	buf := &bytes.Buffer{}
+	_, err := io.Copy(buf, beresp.Body)
 	if err != nil {
-		return v.factory.ignoreResponseViolations, err
+		return err
 	}
-	responseValidationInput.SetBodyBytes(body)
-	v.Body = body
+	// reset
+	beresp.Body = eval.NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
+	responseValidationInput.SetBodyBytes(buf.Bytes())
 
 	err = openapi3filter.ValidateResponse(v.validationCtx, responseValidationInput)
 	if err != nil {
-		return v.factory.ignoreResponseViolations, err
+		err = fmt.Errorf("response validation: %w", err)
+		if !v.options.ignoreResponseViolations {
+			return err
+		}
+		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
 	}
-	return v.factory.ignoreResponseViolations, nil
+	return nil
 }

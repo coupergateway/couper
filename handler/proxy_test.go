@@ -14,6 +14,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/avenga/couper/config/runtime/server"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hcltest"
@@ -449,7 +451,7 @@ paths:
 			http.MethodPost,
 			"/get",
 			http.StatusBadRequest,
-			"invalid route",
+			"request validation: invalid route",
 		},
 		{
 			"invalid request, IgnoreRequestViolations",
@@ -457,7 +459,7 @@ paths:
 			http.MethodPost,
 			"/get",
 			http.StatusOK,
-			"invalid route",
+			"request validation: invalid route",
 		},
 		{
 			"invalid response",
@@ -465,7 +467,7 @@ paths:
 			http.MethodGet,
 			"/get?404",
 			http.StatusBadGateway,
-			"status is not supported",
+			"response validation: status is not supported",
 		},
 		{
 			"invalid response, IgnoreResponseViolations",
@@ -473,21 +475,25 @@ paths:
 			http.MethodGet,
 			"/get?404",
 			http.StatusNotFound,
-			"status is not supported",
+			"response validation: status is not supported",
 		},
 	}
 
+	srvOpts := &server.Options{APIErrTpl: errors.DefaultJSON}
+
+	logger, hook := logrustest.NewNullLogger()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			logger, hook := logrustest.NewNullLogger()
-			openapiValidatorFactory, err := handler.NewOpenAPIValidatorFactoryFromBytes(tt.openapi, openapiYAML.Bytes())
+
+			openapiValidatorOptions, err := handler.NewOpenAPIValidatorOptionsFromBytes(tt.openapi, openapiYAML.Bytes())
 			if err != nil {
 				subT.Fatal(err)
 			}
 			content := helper.NewProxyContext(`
 				origin = "` + origin.URL + `"
 			`)
-			p, err := handler.NewProxy(&handler.ProxyOptions{Context: content, OpenAPI: openapiValidatorFactory}, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Context: content, OpenAPI: openapiValidatorOptions}, logger.WithContext(context.Background()), srvOpts, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -500,12 +506,25 @@ paths:
 
 			if rec.Code != tt.expectedStatusCode {
 				subT.Errorf("Expected status %d, got: %d", tt.expectedStatusCode, rec.Code)
+				subT.Log(hook.LastEntry().Message)
 			}
 
 			log := hook.LastEntry()
-			if log.Message != tt.expectedLogMessage {
-				subT.Errorf("Expected log message %q, got: %q", tt.expectedLogMessage, log.Message)
+			if tt.expectedLogMessage != "" {
+				if !tt.openapi.IgnoreRequestViolations && !tt.openapi.IgnoreResponseViolations {
+					if log.Message != tt.expectedLogMessage {
+						subT.Errorf("Expected log message %q, got: %q", tt.expectedLogMessage, log.Message)
+					}
+					return
+				}
+				for _, err := range log.Data["validation"].([]string) {
+					if err == tt.expectedLogMessage {
+						return
+					}
+				}
+				subT.Error("expected validation error logs")
 			}
+
 		})
 	}
 }

@@ -81,13 +81,13 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	}
 	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 
-	allowed_origins := seetie.ValueToStringSlice(cors.AllowedOrigins)
-	for i, a := range allowed_origins {
-		allowed_origins[i] = strings.ToLower(a)
+	allowedOrigins := seetie.ValueToStringSlice(cors.AllowedOrigins)
+	for i, a := range allowedOrigins {
+		allowedOrigins[i] = strings.ToLower(a)
 	}
 
 	return &CORSOptions{
-		AllowedOrigins:   allowed_origins,
+		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: cors.AllowCredentials,
 		MaxAge:           corsMaxAge,
 	}, nil
@@ -99,11 +99,16 @@ func (c *CORSOptions) NeedsVary() bool {
 }
 
 func (c *CORSOptions) AllowsOrigin(origin string) bool {
+	if c == nil {
+		return false
+	}
+
 	for _, a := range c.AllowedOrigins {
 		if a == strings.ToLower(origin) || a == "*" {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -112,8 +117,13 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 	logConf.TypeFieldKey = "couper_backend"
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
+	var apiValidation eval.BufferOption
+	if options.OpenAPI != nil {
+		apiValidation = options.OpenAPI.buffer
+	}
+
 	proxy := &Proxy{
-		bufferOption: eval.MustBuffer(options.Context),
+		bufferOption: apiValidation | eval.MustBuffer(options.Context),
 		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
@@ -227,14 +237,9 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	var openapiValidator *OpenAPIValidator
 	if p.options.OpenAPI != nil {
 		openapiValidator = p.options.OpenAPI.NewOpenAPIValidator()
-		ignoreRequestViolations, err := openapiValidator.ValidateRequest(outreq)
-		if err != nil {
-			roundtripInfo.Err = err
-			if !ignoreRequestViolations {
-				// TODO: use error template from parent endpoint>api>server
-				couperErr.DefaultJSON.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
-				return
-			}
+		if roundtripInfo.Err = openapiValidator.ValidateRequest(outreq, roundtripInfo); roundtripInfo.Err != nil {
+			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+			return
 		}
 	}
 
@@ -242,8 +247,6 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo.BeReq, roundtripInfo.BeResp = outreq, res
 	if err != nil {
 		roundtripInfo.Err = err
-	}
-	if err != nil {
 		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
@@ -269,22 +272,18 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Body = eval.NewReadCloser(src, res.Body)
 	}
 
-	if openapiValidator != nil {
-		ignoreResponseViolations, err := openapiValidator.ValidateResponse(res)
-		if err != nil {
-			roundtripInfo.Err = err
-			if !ignoreResponseViolations {
-				// TODO: use error template from parent endpoint>api>server
-				couperErr.DefaultJSON.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
-				return
-			}
-		}
-	}
-
 	removeConnectionHeaders(res.Header)
 
 	for _, h := range hopHeaders {
 		res.Header.Del(h)
+	}
+
+	if openapiValidator != nil {
+		roundtripInfo.Err = openapiValidator.ValidateResponse(res, roundtripInfo)
+		if roundtripInfo.Err != nil {
+			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
+			return
+		}
 	}
 
 	p.SetRoundtripContext(req, res)
@@ -304,18 +303,13 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	rw.WriteHeader(res.StatusCode)
 
-	if openapiValidator != nil && openapiValidator.Body != nil {
-		rw.Write(openapiValidator.Body)
-	} else {
-		_, err = io.Copy(rw, res.Body)
-		if err != nil {
-			defer res.Body.Close()
-			roundtripInfo.Err = err
-			return
-		}
-	}
+	_, roundtripInfo.Err = io.Copy(rw, res.Body)
 
 	res.Body.Close() // close now, instead of defer, to populate res.Trailer
+
+	if roundtripInfo.Err != nil {
+		return
+	}
 
 	if len(res.Trailer) > 0 {
 		// Force chunking if we saw a response trailer.

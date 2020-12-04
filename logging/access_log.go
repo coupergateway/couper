@@ -21,9 +21,10 @@ import (
 )
 
 type RoundtripInfo struct {
-	BeReq  *http.Request
-	BeResp *http.Response
-	Err    error
+	BeReq           *http.Request
+	BeResp          *http.Response
+	Err             error
+	ValidationError []error
 }
 
 type RoundtripHandlerFunc http.HandlerFunc
@@ -204,6 +205,16 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 			i, _ := strconv.Atoi(couperErr[:4])
 			err = errors.Code(i)
 			fields["code"] = i
+		}
+	}
+
+	if isUpstreamRequest && roundtripInfo != nil { // log all validation errors on access for now
+		var validationErr []string
+		for _, err := range roundtripInfo.ValidationError {
+			validationErr = append(validationErr, err.Error())
+		}
+		if len(validationErr) > 0 {
+			fields["validation"] = validationErr
 		}
 	}
 

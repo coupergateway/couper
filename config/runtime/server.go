@@ -152,6 +152,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		if srvConf.API != nil {
 			// map backends to endpoint
 			endpoints := make(map[string]bool)
+
 			for _, endpoint := range srvConf.API.Endpoint {
 				pattern := utils.JoinPath("/", serverOptions.APIBasePath, endpoint.Pattern)
 
