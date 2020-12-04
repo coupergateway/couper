@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -531,6 +532,84 @@ func TestHTTPServer_Gzip(t *testing.T) {
 
 			if !bytes.Equal(resBytes, srcBytes) {
 				t.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
+			}
+		})
+	}
+
+	cleanup(shutdown, t)
+}
+
+func TestHTTPServer_QueryParams(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/04_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	type expectation struct {
+		Query url.Values
+	}
+
+	type testCase struct {
+		query string
+		exp   expectation
+	}
+
+	for _, tc := range []testCase{
+		{"a=b%20c&aeb_del=1&ae_del=1&CaseIns=1&caseIns=1&def_del=1", expectation{
+			Query: url.Values{
+				"a":           []string{"b c"},
+				"ae_a_and_b":  []string{"A&B", "A&B"},
+				"ae_empty":    []string{"", ""},
+				"ae_multi":    []string{"str1", "str2", "str3", "str4"},
+				"ae_noop":     []string{"", ""},
+				"ae_null":     []string{"", ""},
+				"ae_string":   []string{"str", "str"},
+				"ae":          []string{"ae", "ae"},
+				"aeb_a_and_b": []string{"A&B", "A&B"},
+				"aeb_empty":   []string{"", ""},
+				"aeb_multi":   []string{"str1", "str2", "str3", "str4"},
+				"aeb_noop":    []string{"", ""},
+				"aeb_null":    []string{"", ""},
+				"aeb_string":  []string{"str", "str"},
+				"aeb":         []string{"aeb", "aeb"},
+				"caseIns":     []string{"1"},
+				"def_a_and_b": []string{"A&B", "A&B"},
+				"def_empty":   []string{"", ""},
+				"def_multi":   []string{"str1", "str2", "str3", "str4"},
+				"def_noop":    []string{"", ""},
+				"def_null":    []string{"", ""},
+				"def_string":  []string{"str", "str"},
+				"def":         []string{"def", "def"},
+				"xxx":         []string{"ddd", "zzz", "aaa", "bbb", "eee", "ccc"},
+			},
+		}},
+	} {
+		t.Run("_"+tc.query, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?"+tc.query, nil)
+			helper.Must(err)
+
+			req.Header.Set("ae", "ae")
+			req.Header.Set("aeb", "aeb")
+			req.Header.Set("def", "def")
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
