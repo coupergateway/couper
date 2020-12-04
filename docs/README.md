@@ -123,7 +123,7 @@ Environment variables can be accessed everywhere within the configuration file s
 | `headers.<name>` | HTTP request header value for requested lower-case key|
 | `cookies.<name>` | value from `Cookie` request header for requested key (&#9888; last wins!)|
 | `query.<name>` | query parameter values (&#9888; last wins!)|
-| `path_param.<name>` | value from a named path parameter defined within an endpoint path label |
+| `path_params.<name>` | value from a named path parameter defined within an endpoint path label |
 | `post.<name>` | post form parameter |
 | `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name|
@@ -282,8 +282,8 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 
 | Variable                 | Value          |
 |:-------------------------|:---------------|
-| `req.path_param.section` | `nature` |
-| `req.path_param.project` | `plant-a-tree` |
+| `req.path_params.section` | `nature` |
+| `req.path_params.project` | `plant-a-tree` |
 
 ### The `backend` block <a name="backend_block"></a>
 A `backend` defines the connection to a local/remote backend service. Backends can be defined globally in the `api` block for all endpoints of an API or inside an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also define backends in the `definitions` block and use the mandatory *label* as reference. 
