@@ -175,31 +175,25 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 				}
 
 				// lookup for backend reference, prefer endpoint definition over api one
+				var backend http.Handler
 				if endpoint.Backend != "" {
 					if _, ok := backends[endpoint.Backend]; !ok {
 						return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
 					}
-
 					// set server context for defined backends
 					be := backends[endpoint.Backend]
 					_, remain := be.conf.Merge(&config.Backend{Remain: endpoint.Remain})
-					refBackend := newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
-
-					setACHandlerFn(refBackend)
-					err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
-					if err != nil {
-						return nil, err
+					backend = newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
+				} else {
+					// otherwise try to parse an inline block and fallback for api reference or inline block
+					inlineBackend, err := newInlineBackend(confCtx, conf.Bytes, backends, srvConf.API, endpoint, log, serverOptions)
+					if err != nil { // TODO hcl.diagnostics error
+						return nil, fmt.Errorf("range: %s: %v", endpoint.Remain.MissingItemRange().String(), err)
 					}
-					continue
+					backend = inlineBackend
 				}
 
-				// otherwise try to parse an inline block and fallback for api reference or inline block
-				inlineBackend, err := newInlineBackend(confCtx, conf.Bytes, backends, srvConf.API, endpoint, log, serverOptions)
-				if err != nil { // TODO hcl.diagnostics error
-					return nil, fmt.Errorf("range: %s: %v", endpoint.Remain.MissingItemRange().String(), err)
-				}
-
-				setACHandlerFn(inlineBackend)
+				setACHandlerFn(backend)
 				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
 				if err != nil {
 					return nil, err
@@ -437,7 +431,7 @@ func newInlineBackend(
 		if beRef, ok := backends[backendConf.Name]; ok {
 			// consider existing parents, rebuild hierarchy
 			mergedBackendConf, _ := beRef.conf.Merge(backendConf)
-			bodies = append([]hcl.Body{beRef.conf.Remain}, append(bodies, mergedBackendConf.Remain)...)
+			bodies = append([]hcl.Body{beRef.conf.Remain}, bodies...)
 			backendConf = mergedBackendConf
 		} else {
 			return nil, fmt.Errorf("override backend %q is not defined", backendConf.Name)
@@ -448,10 +442,12 @@ func newInlineBackend(
 	// to handle possible overrides like 'path' for endpoints. Only if the most recent definition
 	// has no own path attribute defined, use the parents one.
 	if len(bodies) > 0 && reflect.TypeOf(inlineDef) == reflect.TypeOf(&config.Endpoint{}) {
+		// The 'path' attribute is currently the only one, this section should be refined if more attributes are required.
+		const inheritableAttr = "path"
 		recentBody := bodies[len(bodies)-1]
 		attr, _ := recentBody.JustAttributes()
 		var recentPath string
-		pathAttr, ok := attr["path"]
+		pathAttr, ok := attr[inheritableAttr]
 		if ok {
 			pathVal, _ := pathAttr.Expr.Value(evalCtx)
 			recentPath = seetie.ValueToString(pathVal)
@@ -459,9 +455,13 @@ func newInlineBackend(
 		if recentPath == "" || (parentBackend != nil && recentBody == parentBackend.Body()) {
 			// and if the endpoint has defined a path attribute
 			attr, _ = inlineDef.Body().JustAttributes()
-			_, ok = attr["path"]
+			pathAttr, ok = attr[inheritableAttr]
 			if ok {
-				bodies = append(bodies, inlineDef.Body())
+				content := &hcl.BodyContent{
+					Attributes:       hcl.Attributes{inheritableAttr: pathAttr},
+					MissingItemRange: inlineDef.Body().MissingItemRange(),
+				}
+				bodies = append(bodies, NewBody(content))
 			}
 		}
 	}
