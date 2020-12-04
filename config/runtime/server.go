@@ -432,6 +432,7 @@ func newInlineBackend(
 		if diags.HasErrors() {
 			return nil, diags
 		}
+		bodies = append(bodies, inlineDef.Body())
 		bodies = append(bodies, backendConf.Body())
 	}
 
