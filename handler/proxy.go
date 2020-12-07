@@ -335,6 +335,10 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 // Director request modification before roundtrip
 func (p *Proxy) Director(req *http.Request) error {
+	if err := p.SetGetBody(req); err != nil {
+		return err
+	}
+
 	var origin, hostname, path string
 	evalContext := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, nil, nil)
 	for _, hclContext := range p.options.Context { // context gets configured in order, last wins
@@ -379,10 +383,6 @@ func (p *Proxy) Director(req *http.Request) error {
 		req.URL.Path = utils.JoinPath("/", strings.ReplaceAll(path, "/**", "/"), pathMatch)
 	} else if path != "" {
 		req.URL.Path = utils.JoinPath("/", path)
-	}
-
-	if err := p.SetGetBody(req); err != nil {
-		return err
 	}
 
 	p.SetRoundtripContext(req, nil)
