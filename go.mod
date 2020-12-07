@@ -12,5 +12,6 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/zclconf/go-cty v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20200822124328-c89045814202
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/tools v0.0.0-20201206230334-368bee879bfd // indirect
 )

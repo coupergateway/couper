@@ -1,3 +1,5 @@
+//go:generate stringer -type=BufferOption -output=./buffer_string.go
+
 package eval
 
 import (
@@ -13,6 +15,10 @@ const (
 	BufferRequest
 	BufferResponse
 )
+
+func (b BufferOption) Has(other BufferOption) bool {
+	return (b & 1 << other) > 0
+}
 
 // MustBuffer determines if any of the hcl.bodies makes use of 'post' or 'json_body'.
 func MustBuffer(ctxBodies []hcl.Body) BufferOption {
