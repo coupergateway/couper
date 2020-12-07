@@ -8,8 +8,10 @@ import (
 )
 
 const (
-	attrReqHeaders = "request_headers"
-	attrResHeaders = "response_headers"
+	attrReqHeaders    = "request_headers"
+	attrResHeaders    = "response_headers"
+	attrSetReqHeaders = "set_request_headers"
+	attrSetResHeaders = "set_response_headers"
 )
 
 type OptionsMap map[string][]string
