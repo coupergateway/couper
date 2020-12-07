@@ -14,7 +14,7 @@ server "api" {
         path = "/anything"
         origin = "http://${req.path_params.origin}"
         hostname = req.path_params.hostname
-        response_headers = {
+        set_response_headers = {
           x-origin = req.path_params.origin
         }
       }

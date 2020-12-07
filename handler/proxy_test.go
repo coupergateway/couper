@@ -512,11 +512,11 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 
 	tests := []testCase{
 		{"GET use req.Header", fields{baseCtx, opts}, `
-		response_headers = {
+		set_response_headers = {
 			X-Method = req.method
 		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}, false},
 		{"POST use req.post", fields{baseCtx, opts}, `
-		response_headers = {
+		set_response_headers = {
 			X-Method = req.method
 			X-Post = req.post.foo
 		}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
@@ -587,7 +587,7 @@ func TestProxy_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
 	} {
 		t.Run(testcase.name, func(subT *testing.T) {
 			proxy, _, _, closeFn := helper.NewProxy(&handler.ProxyOptions{
-				Context:          helper.NewProxyContext("request_headers = { x = req.post }"), // ensure buffering is enabled
+				Context:          helper.NewProxyContext("set_request_headers = { x = req.post }"), // ensure buffering is enabled
 				RequestBodyLimit: testcase.limit,
 			})
 			closeFn() // unused
@@ -660,7 +660,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 	}{
 		{"method /w body", `
 		origin = "http://1.2.3.4/"
-		request_headers = {
+		set_request_headers = {
 			x-test = req.json_body.foo
 		}`, []string{
 			http.MethodGet,
@@ -674,12 +674,12 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
 		{"method /w body", `
 		origin = "http://1.2.3.4/"
-		request_headers = {
+		set_request_headers = {
 			x-test = req.json_body.foo
 		}`, []string{http.MethodTrace}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
 		{"method /wo body", `
 		origin = "http://1.2.3.4/"
-		request_headers = {
+		set_request_headers = {
 			x-test = req.json_body.foo
 		}`, []string{
 			http.MethodGet,
