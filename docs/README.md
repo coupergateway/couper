@@ -73,15 +73,19 @@ For orientation compare the following example and the information below:
 
 ```hcl
 server "my_project" {		
-	files {...}
-	spa {...}
-	api {
-		access_control = "foo"
-		endpoint "/bar" {
-			backend {...}
-		}
-	}
-definitions {...}
+  files { ... }
+  
+  spa { ... }
+  
+  api {
+    access_control = "foo"
+    endpoint "/bar" {
+      backend { ... }
+    }
+  }
+}
+
+definitions { ... }
 ```
 
 * `server`: main configuration block
@@ -425,84 +429,84 @@ The shutdown timings cannot be configured at this moment.
 
 ```hcl
 api "my_api" {
-    base_path = "/api/novoconnect"
+  base_path = "/api/novoconnect"
 
-    endpoint "/login/**" {
-      # incoming request: .../login/foo
-      # implicit proxy
-      # outgoing request: http://identityprovider:8080/login/foo 
-      backend {
-        origin = "http://identityprovider:8080"
-      }
+  endpoint "/login/**" {
+    # incoming request: .../login/foo
+    # implicit proxy
+    # outgoing request: http://identityprovider:8080/login/foo 
+    backend {
+      origin = "http://identityprovider:8080"
     }
-  
-    endpoint "/cart/**" {
+  }
+
+  endpoint "/cart/**" {
       # incoming request: .../cart/items
       # outgoing request: http://cartservice:8080/api/v1/items
       path = "/api/v1/**"
       backend {
         origin = "http://cartservice:8080"
       }
-      
-    endpoint "/account/{id}" {
-      # incoming request: .../account/brenda 
-      # outgoing request: http://accountservice:8080/user/brenda/info
-      backend {
-        path = "/user/${req.param.id}/info"
-        origin = "http://accountservice:8080"
-      }    
+
+      endpoint "/account/{id}" {
+        # incoming request: .../account/brenda 
+        # outgoing request: http://accountservice:8080/user/brenda/info
+        backend {
+          path = "/user/${req.param.id}/info"
+          origin = "http://accountservice:8080"
+        }
+      }
     }
+  }
 ```
 
 ### Web serving configuration example <a name="web_serving_ex"></a> 
 ```hcl
 server "my_project" {		
-	files {
-		document_root = "./htdocs"
-		error_file = "./my_custom_error_page.html"
-	}
-	spa {
-		bootstrap_file = "./htdocs/index.html"
-		paths = [
-			"/app/**",
-			"/profile/**"
-		]
-	}
-...
+  files {
+    document_root = "./htdocs"
+    error_file = "./my_custom_error_page.html"
+  }
+
+  spa {
+    bootstrap_file = "./htdocs/index.html"
+    paths = [
+      "/app/**",
+      "/profile/**"
+    ]
+  }
+}
 ```
 
 ### `access_control` configuration example <a name="access_control_conf_ex"></a> 
 
 ```hcl
 server {
-	access\_control = ["ac1"]
-	files {
-		access\_control = ["ac2"]
-	}
-	spa {}
-	api {
-		access\_control = ["ac3"]
-		endpoint "/foo" {
-			disable\_access_control = "ac3"
-		}
-		endpoint "/bar" {
-		access\_control = ["ac4"]
-		}
-	}
+  access_control = ["ac1"]
+  files {
+    access_control = ["ac2"]
+  }
+
+  spa {
+    bootstrap_file = "myapp.html"
+  }
+
+  api {
+    access_control = ["ac3"]
+    endpoint "/foo" {
+      disable_access_control = "ac3"
+    }
+    endpoint "/bar" {
+      access_control = ["ac4"]
+    }
+  }
 }
+
 definitions {
- 	basic\_auth "ac1" {
- 	...
- 	}	
- 	jwt "ac2" {
- 	...
- 	}
- 	jwt "ac3" {
- 	...
- 	}
- 	jwt "ac4" {
- 	...
- 	}
+  basic_auth "ac1" { ... }	
+  jwt "ac2" { ... }
+  jwt "ac3" { ... }
+  jwt "ac4" { ... }
 }
 ```
 
