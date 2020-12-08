@@ -297,7 +297,11 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 |`hostname`| value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. |
 |`path`|changeable part of upstream URL|
 |`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
-| `set_request_headers` | header map to define additional or override header for the `origin` request |
+| `add_request_headers` | header map to define additional header values for the `origin` request |
+| `add_response_headers` | same as `add_request_headers` for the client response |
+| `remove_request_headers` | header list to define header to be removed from the `origin` request |
+| `remove_response_headers` | same as `remove_request_headers` for the client response |
+| `set_request_headers` | header map to override header for the `origin` request |
 | `set_response_headers` | same as `set_request_headers` for the client response |
 | `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
 
