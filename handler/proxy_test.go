@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -19,6 +21,7 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -803,5 +806,91 @@ func TestServer_ModifyAcceptEncoding(t *testing.T) {
 	}
 	if l := len(res.Body.Bytes()); l != 6993 {
 		t.Errorf("Unexpected body length: %d", l)
+	}
+}
+
+// TestProxy_SetRoundtripContext_Null_Eval tests the handling with non existing references or cty.Null evaluations.
+func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
+	helper := test.New(t)
+
+	type testCase struct {
+		name       string
+		remain     string
+		expHeaders test.Header
+	}
+
+	clientPayload := []byte(`{ "client": true, "origin": false, "nil": null }`)
+	originPayload := []byte(`{ "client": false, "origin": true, "nil": null }`)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		clientData, err := ioutil.ReadAll(r.Body)
+		helper.Must(err)
+		if !bytes.Equal(clientData, clientPayload) {
+			t.Errorf("Expected a request with client payload, got %q", string(clientData))
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		_, err = rw.Write(originPayload)
+		helper.Must(err)
+	}))
+
+	for i, tc := range []testCase{
+		{"no eval", `path = "/"`, test.Header{}},
+		{"json_body client field", `response_headers = { "x-client" = "my-val-x-${req.json_body.client}" }`,
+			test.Header{
+				"x-client": "my-val-x-true",
+			}},
+		{"json_body non existing field", `response_headers = {
+"${beresp.json_body.not-there}" = "my-val-0-${beresp.json_body.origin}"
+"${req.json_body.client}-my-val-a" = "my-val-b-${beresp.json_body.client}"
+}`,
+			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
+		{"json_body null value", `response_headers = { "x-null" = "${beresp.json_body.nil}" }`, test.Header{"x-null": ""}},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+			log, hook := logrustest.NewNullLogger()
+			evalCtx := eval.NewENVContext(nil)
+
+			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				Context: append(test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+					helper.NewProxyContext(tc.remain)...),
+				RequestBodyLimit: 64,
+			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
+			h.Must(err)
+
+			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
+			req.Header.Set("Content-Type", "application/json")
+			*req = *req.WithContext(context.WithValue(req.Context(), request.UID, fmt.Sprintf("#%.2d: %s", i+1, tc.name)))
+			rec := httptest.NewRecorder()
+
+			proxy.ServeHTTP(rec, req)
+			rec.Flush()
+
+			res := rec.Result()
+
+			if res.StatusCode != http.StatusOK {
+				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+			}
+
+			originData, err := ioutil.ReadAll(res.Body)
+			h.Must(err)
+
+			if !bytes.Equal(originPayload, originData) {
+				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
+				for _, entry := range hook.AllEntries() {
+					st.Log(entry.Message)
+				}
+			}
+
+			for k, v := range tc.expHeaders {
+				if res.Header.Get(k) != v {
+					t.Errorf("Expected header %q value: %q, got: %q", k, v, res.Header.Get(k))
+				}
+			}
+		})
+
 	}
 }
