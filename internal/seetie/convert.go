@@ -21,11 +21,15 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 		return nil, filterErrors(diags)
 	}
 	result := make(map[string]interface{})
-	if val.IsNull() {
+	if val.IsNull() || !val.IsKnown() {
 		return result, nil
 	}
 
 	for k, v := range val.AsValueMap() {
+		if v.IsNull() || !v.IsKnown() {
+			result[k] = ""
+			continue
+		}
 		switch v.Type() {
 		case cty.Bool:
 			result[k] = v.True()
