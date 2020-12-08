@@ -91,7 +91,7 @@ server "api" {
 #       fe_null = null
 #       fe_empty = ""
 #     }
-#   }
+#   } 
 }
 
 definitions {
@@ -109,6 +109,7 @@ definitions {
       def_empty = ""
       xxx = "ddd"
       "${req.headers.def}" = "def"
+      foo = req.headers.foo
     }
     add_query_params = {
       def_string = "str"
