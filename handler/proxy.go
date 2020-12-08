@@ -363,13 +363,17 @@ func (p *Proxy) Director(req *http.Request) error {
 
 func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
-		attrCtx   = []string{attrReqHeaders, attrSetReqHeaders}
-		bereq     *http.Request
-		headerCtx http.Header
+		attrCtxAdd = attrDelReqHeaders
+		attrCtxDel = attrAddReqHeaders
+		attrCtxSet = []string{attrReqHeaders, attrSetReqHeaders}
+		bereq      *http.Request
+		headerCtx  http.Header
 	)
 
 	if beresp != nil {
-		attrCtx = []string{attrResHeaders, attrSetResHeaders}
+		attrCtxAdd = attrDelResHeaders
+		attrCtxDel = attrAddResHeaders
+		attrCtxSet = []string{attrResHeaders, attrSetResHeaders}
 		bereq = beresp.Request
 		headerCtx = beresp.Header
 	} else if req != nil {
@@ -379,21 +383,13 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
-	if attrCtx[0] == attrReqHeaders {
+	if attrCtxSet[0] == attrReqHeaders {
 		for _, key := range headerBlacklist {
 			headerCtx.Del(key)
 		}
 	}
 
-	for _, ctx := range attrCtx {
-		for _, ctxBody := range p.options.Context {
-			options, err := NewCtxOptions(ctx, evalCtx, ctxBody)
-			if err != nil {
-				p.log.WithField("parse config", p.String()).Error(err)
-			}
-			setHeaderFields(headerCtx, options)
-		}
-	}
+	p.modifyHeaders(evalCtx, headerCtx, attrCtxAdd, attrCtxSet, attrCtxDel)
 
 	if beresp != nil && isCorsRequest(req) {
 		p.setCorsRespHeaders(headerCtx, req)
@@ -596,6 +592,64 @@ func (p *Proxy) Options() *server.Options {
 
 func (p *Proxy) String() string {
 	return "api"
+}
+
+func (p *Proxy) modifyHeaders(
+	ctx *hcl.EvalContext, header http.Header,
+	del string, set []string, add string,
+) {
+	addHeaders := make(map[string]string)
+	setHeaders := make(map[string]string)
+
+	schema := config.Backend{}.Schema(true)
+	for _, body := range p.options.Context {
+		content, _, _ := body.PartialContent(schema)
+
+		if del, ok := content.Attributes["remove_request_headers"]; ok {
+			originValue, diags := del.Expr.Value(ctx)
+			if diags != nil && diags.HasErrors() {
+				panic(diags.Error())
+			}
+
+			for _, h := range seetie.ValueToStringSlice(originValue) {
+				header.Del(h)
+			}
+		}
+		if add, ok := content.Attributes["add_request_headers"]; ok {
+			collectHeaderParams(ctx, add, addHeaders)
+		}
+
+		for _, key := range set {
+			if s, ok := content.Attributes[key]; ok {
+				collectHeaderParams(ctx, s, setHeaders)
+			}
+		}
+	}
+
+	for k, value := range setHeaders {
+		n := http.CanonicalHeaderKey(k)
+		if len(value) == 0 && n != "User-Agent" {
+			header.Del(n)
+			continue
+		}
+		header[n] = []string{value}
+	}
+	for k, value := range addHeaders {
+		header.Add(k, value)
+	}
+}
+
+func collectHeaderParams(ctx *hcl.EvalContext, attr *hcl.Attribute, dest map[string]string) {
+	originValues, _ := seetie.ExpToMap(ctx, attr.Expr)
+
+	for k, v := range originValues {
+		switch v.(type) {
+		case []string:
+			dest[k] = strings.Join(v.([]string), ", ")
+		case string:
+			dest[k] = v.(string)
+		}
+	}
 }
 
 func setHeaderFields(header http.Header, options OptionsMap) {

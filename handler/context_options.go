@@ -10,6 +10,10 @@ import (
 const (
 	attrReqHeaders    = "request_headers"
 	attrResHeaders    = "response_headers"
+	attrAddReqHeaders = "add_request_headers"
+	attrAddResHeaders = "add_response_headers"
+	attrDelReqHeaders = "remove_request_headers"
+	attrDelResHeaders = "remove_response_headers"
 	attrSetReqHeaders = "set_request_headers"
 	attrSetResHeaders = "set_response_headers"
 )

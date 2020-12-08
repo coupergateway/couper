@@ -32,6 +32,10 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 		Path               string            `hcl:"path,optional"`
 		RequestHeaders     map[string]string `hcl:"request_headers,optional"`
 		ResponseHeaders    map[string]string `hcl:"response_headers,optional"`
+		AddRequestHeaders  map[string]string `hcl:"add_request_headers,optional"`
+		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
+		DelRequestHeaders  []string          `hcl:"remove_request_headers,optional"`
+		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
 		SetRequestHeaders  map[string]string `hcl:"set_request_headers,optional"`
 		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
 	}
