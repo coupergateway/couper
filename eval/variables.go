@@ -14,7 +14,7 @@ const (
 	JsonBody        = "json_body"
 	Method          = "method"
 	Path            = "path"
-	PathParam       = "path_param"
+	PathParam       = "path_params"
 	Post            = "post"
 	Query           = "query"
 	URL             = "url"
