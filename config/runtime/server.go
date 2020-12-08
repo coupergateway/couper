@@ -210,6 +210,15 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 		log.Fatal(err)
 	}
 
+	for _, name := range []string{"request_headers", "response_headers"} {
+		for _, body := range remainCtx {
+			options, _ := handler.NewCtxOptions(name, ctx, body)
+			if len(options) > 0 {
+				log.Warningf("'%s' is deprecated, use 'set_%s' instead", name, name)
+			}
+		}
+	}
+
 	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
 	if err != nil {
 		log.Fatal(err)
