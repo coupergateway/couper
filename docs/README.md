@@ -1,4 +1,4 @@
-# Couper Docs - Version 0.1
+# Couper Docs - Version 0.2
 
 ## Table of contents
 
@@ -88,16 +88,16 @@ server "my_project" {
 definitions { ... }
 ```
 
-* `server`: main configuration block
-* `files`: configuration block for file serving
-* `spa`: configuration block for web serving (spa assets) 
-* `api`: configuration block that bundles endpoints under a certain base path
-* `access_control`: attribute that sets access control for a block context
-* `endpoint`: configuration block for Couper's entry points
-* `backend`: configuration block for connection to local/remote backend service(s)
-* `definitions`: block for predefined configurations, that can be referenced
-* `defaults`: block for default configurations
-* `settings`: block for server configuration which applies to the running instance
+* `server` main configuration block
+* `files` configuration block for file serving
+* `spa` configuration block for web serving (spa assets) 
+* `api` configuration block that bundles endpoints under a certain base path
+* `access_control` attribute that sets access control for a block context
+* `endpoint` configuration block for Couper's entry points
+* `backend` configuration block for connection to local/remote backend service(s)
+* `definitions` block for predefined configurations, that can be referenced
+* `defaults` block for default configurations
+* `settings` block for server configuration which applies to the running instance
 
 ### Variables <a name="variables_conf"></a>
 
