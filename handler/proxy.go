@@ -412,30 +412,30 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		}
 	}
 
-	for _, ctx := range attrCtx {
-		for _, ctxBody := range p.options.Context {
+	for _, ctxBody := range p.options.Context {
+		for _, ctx := range attrCtx {
 			// headers
 			options, err := NewCtxOptions(ctx, evalCtx, ctxBody)
 			if err != nil {
 				p.log.WithField("parse config", p.String()).Error(err)
 			}
 			setHeaderFields(headerCtx, options)
+		}
 
-			// query params
-			content, _, _ := ctxBody.PartialContent(schema)
-			if del, ok := content.Attributes["remove_query_params"]; ok {
-				originValue, diags := del.Expr.Value(evalCtx)
-				if diags != nil && diags.HasErrors() {
-					panic(diags.Error())
-				}
-				delQuery = append(delQuery, seetie.ValueToStringSlice(originValue)...)
+		// query params
+		content, _, _ := ctxBody.PartialContent(schema)
+		if del, ok := content.Attributes["remove_query_params"]; ok {
+			originValue, diags := del.Expr.Value(evalCtx)
+			if diags != nil && diags.HasErrors() {
+				panic(diags.Error())
 			}
-			if add, ok := content.Attributes["add_query_params"]; ok {
-				collectQueryParams(evalCtx, add, addQuery)
-			}
-			if set, ok := content.Attributes["set_query_params"]; ok {
-				collectQueryParams(evalCtx, set, setQuery)
-			}
+			delQuery = append(delQuery, seetie.ValueToStringSlice(originValue)...)
+		}
+		if add, ok := content.Attributes["add_query_params"]; ok {
+			collectQueryParams(evalCtx, add, addQuery)
+		}
+		if set, ok := content.Attributes["set_query_params"]; ok {
+			collectQueryParams(evalCtx, set, setQuery)
 		}
 	}
 
