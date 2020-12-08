@@ -3,35 +3,36 @@
 ## Table of contents
 
 * [Introduction](#introduction)
-  * [Core concepts](#core_concepts)
-  * [Configuration file](#conf_file)
-     * [Syntax](#syntax)
-     * [File name](#file_name)
-     * [Basic file structure](#basic_conf)
-     * [Variables](#variables_conf)
-     * [Expressions](#expressions)
-     * [Functions](#functions)
+    * [Core concepts](#core_concepts)
+    * [Configuration file](#conf_file)
+        * [Syntax](#syntax)
+        * [File name](#file_name)
+        * [Basic file structure](#basic_conf)
+        * [Variables](#variables_conf)
+        * [Expressions](#expressions)
+        * [Functions](#functions)
 * [Reference](#reference) 
-  * [The `server` block](#server_block)
-  * [The `files` block](#files_block)
-  * [The `spa` block](#spa_block) 
-  * [The `api` block](#api_block) 	
-  * [The `endpoint` block](#endpoint_block)
-  * [The `backend` block](#backend_block)
-  * [The `request` block](#request_block) 
-  * [The `cors` block](#cors_block)
-  * [The `access_control` attribute](#access_control_attribute)   
-  * [The `basic_auth` block](#basic_auth_block)
-  * [The `jwt` block](#jwt_block)
-  * [The `definitions` block](#definitions_block)
-  * [The `defaults` block](#defaults_block)
-  * [The `settings` block](#settings_block)     
+    * [The `server` block](#server_block)
+        * [The `files` block](#files_block)
+        * [The `spa` block](#spa_block) 
+        * [The `api` block](#api_block) 	
+        * [The `endpoint` block](#endpoint_block)
+        * [The `backend` block](#backend_block)
+            * [The `openapi` block](#openapi_block)
+        * [The `cors` block](#cors_block)
+        * [The `request` block](#request_block) 
+        * [The `access_control` attribute](#access_control_attribute)   
+    * [The `definitions` block](#definitions_block)
+        * [The `basic_auth` block](#basic_auth_block)
+        * [The `jwt` block](#jwt_block)
+    * [The `defaults` block](#defaults_block)
+    * [The `settings` block](#settings_block)     
 * [Examples](#examples)
-  * [Request routing](#request_routing_ex)
-  * [Routing configuration](#routing_conf_ex)
-  * [Web serving configuration](#web_serving_ex)
-  * [`access_control`configuration](#access_control_conf_ex)
-  * [`hosts` configuration](#hosts_conf_ex) 
+    * [Request routing](#request_routing_ex)
+    * [Routing configuration](#routing_conf_ex)
+    * [Web serving configuration](#web_serving_ex)
+    * [`access_control`configuration](#access_control_conf_ex)
+    * [`hosts` configuration](#hosts_conf_ex) 
    
 ## Introduction <a name="introduction"></a>
 Couper is a frontend gateway especially designed to support building and running API-driven Web projects.
@@ -89,12 +90,12 @@ definitions { ... }
 ```
 
 * `server` main configuration block
-* `files` configuration block for file serving
-* `spa` configuration block for web serving (spa assets) 
-* `api` configuration block that bundles endpoints under a certain base path
-* `access_control` attribute that sets access control for a block context
-* `endpoint` configuration block for Couper's entry points
-* `backend` configuration block for connection to local/remote backend service(s)
+    * `files` configuration block for file serving
+    * `spa` configuration block for web serving (spa assets) 
+    * `api` configuration block that bundles endpoints under a certain base path
+    * `access_control` attribute that sets access control for a block context
+    * `endpoint` configuration block for Couper's entry points
+    * `backend` configuration block for connection to local/remote backend service(s)
 * `definitions` block for predefined configurations, that can be referenced
 * `defaults` block for default configurations
 * `settings` block for server configuration which applies to the running instance
@@ -348,6 +349,7 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | `set_request_headers` | header map to define additional or override header for the `origin` request |
 | `set_response_headers` | same as `set_request_headers` for the client response |
 | `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
+| `openapi` | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. |
 |[**`remove_query_params`**](#query_params)|<ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
 |[**`set_query_params`**](#query_params)|<ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
 |[**`add_query_params`**](#query_params)|<ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
@@ -387,6 +389,18 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 |`key_file`| optional file reference instead of `key` usage |
 |`signature_algorithm`| valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
 |**`claims`**|equals/in comparison with JWT payload|
+
+#### The `openapi` block <a name="openapi_block"></a>
+The `openapi` block configures the backends proxy behaviour to validate outgoing and incoming requests to and from the origin.
+Preventing the origin from invalid requests, and the Couper client from invalid answers. An example can be found [here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+
+| Name                         | Description                      | Default  |
+|:---------------------------  |:---------------------------------|:---------|
+| context                      | `backend` block                  |          |
+| `file`                       | OpenAPI yaml definition file     | required |
+| `ignore_request_violations`  | Skip request validation          | `false`  |
+| `ignore_response_violations` | Skip response validation         | `false`  |
+
 
 ### The `definitions` block <a name="definitions_block"></a>
 Use the `definitions` block to define configurations you want to reuse. `access_control` is **always** defined in the `definitions` block.
