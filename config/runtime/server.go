@@ -183,7 +183,10 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 					// set server context for defined backends
 					be := backends[endpoint.Backend]
 					_, remain := be.conf.Merge(&config.Backend{Remain: endpoint.Remain})
-					backend = newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
+					backend, err = newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
+					if err != nil {
+						return nil, err
+					}
 				} else {
 					// otherwise try to parse an inline block and fallback for api reference or inline block
 					inlineBackend, err := newInlineBackend(confCtx, conf.Bytes, backends, srvConf.API, endpoint, log, serverOptions)
@@ -204,17 +207,17 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 	return serverConfiguration, nil
 }
 
-func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, srvOpts *server.Options) http.Handler {
+func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, srvOpts *server.Options) (http.Handler, error) {
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	for _, name := range []string{"request_headers", "response_headers"} {
 		for _, body := range remainCtx {
 			attr, err := body.JustAttributes()
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 			if _, ok := attr[name]; ok {
 				log.Warningf("'%s' is deprecated, use 'set_%s' instead", name, name)
@@ -224,14 +227,10 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 
 	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	proxy, err := handler.NewProxy(proxyOptions, log, srvOpts, ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return proxy
+	return handler.NewProxy(proxyOptions, log, srvOpts, ctx)
 }
 
 func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, log *logrus.Entry) (map[string]backendDefinition, error) {
@@ -254,9 +253,13 @@ func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, 
 		beConf, _ = defaultBackendConf.Merge(beConf)
 
 		srvOpts, _ := server.NewServerOptions(&config.Server{})
+		proxy, err := newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Remain}, log, srvOpts)
+		if err != nil {
+			return nil, err
+		}
 		backends[beConf.Name] = backendDefinition{
 			conf:    beConf,
-			handler: newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Remain}, log, srvOpts),
+			handler: proxy,
 		}
 	}
 	return backends, nil
@@ -491,8 +494,7 @@ func newInlineBackend(
 		return nil, err
 	}
 
-	proxy := newProxy(evalCtx, backendConf, parentAPI.CORS, bodies, log, srvOpts)
-	return proxy, nil
+	return newProxy(evalCtx, backendConf, parentAPI.CORS, bodies, log, srvOpts)
 }
 
 func getBackendInlineBlock(inline config.Inline, evalCtx *hcl.EvalContext) (*hcl.Block, error) {
