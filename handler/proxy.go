@@ -363,13 +363,13 @@ func (p *Proxy) Director(req *http.Request) error {
 
 func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
-		attrCtx   = attrReqHeaders
+		attrCtx   = []string{attrReqHeaders, attrSetReqHeaders}
 		bereq     *http.Request
 		headerCtx http.Header
 	)
 
 	if beresp != nil {
-		attrCtx = attrResHeaders
+		attrCtx = []string{attrResHeaders, attrSetResHeaders}
 		bereq = beresp.Request
 		headerCtx = beresp.Header
 	} else if req != nil {
@@ -379,18 +379,20 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
 	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
-	if attrCtx == attrReqHeaders {
+	if attrCtx[0] == attrReqHeaders {
 		for _, key := range headerBlacklist {
 			headerCtx.Del(key)
 		}
 	}
 
-	for _, ctxBody := range p.options.Context {
-		options, err := NewCtxOptions(attrCtx, evalCtx, ctxBody)
-		if err != nil {
-			p.log.WithField("parse config", p.String()).Error(err)
+	for _, ctx := range attrCtx {
+		for _, ctxBody := range p.options.Context {
+			options, err := NewCtxOptions(ctx, evalCtx, ctxBody)
+			if err != nil {
+				p.log.WithField("parse config", p.String()).Error(err)
+			}
+			setHeaderFields(headerCtx, options)
 		}
-		setHeaderFields(headerCtx, options)
 	}
 
 	if beresp != nil && isCorsRequest(req) {
