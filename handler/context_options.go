@@ -3,19 +3,21 @@ package handler
 import (
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
-	attrReqHeaders    = "request_headers"
-	attrResHeaders    = "response_headers"
-	attrAddReqHeaders = "add_request_headers"
-	attrAddResHeaders = "add_response_headers"
-	attrDelReqHeaders = "remove_request_headers"
-	attrDelResHeaders = "remove_response_headers"
-	attrSetReqHeaders = "set_request_headers"
-	attrSetResHeaders = "set_response_headers"
+	attrReqHeaders     = "request_headers"
+	attrResHeaders     = "response_headers"
+	attrAddReqHeaders  = "add_request_headers"
+	attrAddResHeaders  = "add_response_headers"
+	attrDelReqHeaders  = "remove_request_headers"
+	attrDelResHeaders  = "remove_response_headers"
+	attrSetReqHeaders  = "set_request_headers"
+	attrSetResHeaders  = "set_response_headers"
+	attrAddQueryParams = "add_query_params"
+	attrDelQueryParams = "remove_query_params"
+	attrSetQueryParams = "set_query_params"
 )
 
 type OptionsMap map[string][]string
@@ -24,7 +26,7 @@ func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (Op
 	var diags hcl.Diagnostics
 	var options OptionsMap
 
-	content, _, d := body.PartialContent(config.Backend{}.Schema(true))
+	content, _, d := body.PartialContent(backendInlineSchema)
 	diags = append(diags, seetie.SetSeverityLevel(d)...)
 
 	for _, attr := range content.Attributes {

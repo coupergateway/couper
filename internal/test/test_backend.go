@@ -43,7 +43,7 @@ func (b *Backend) Addr() string {
 func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		type anything struct {
-			Args                               url.Values
+			Args, Query                        url.Values
 			Headers                            http.Header
 			Host                               string
 			Path                               string
@@ -60,6 +60,7 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 			Method:         req.Method,
 			Path:           req.URL.Path,
 			RemoteAddr:     req.RemoteAddr,
+			Query:          req.URL.Query(),
 			Url:            req.URL.String(),
 			UserAgent:      req.UserAgent(),
 			ResponseStatus: status,
