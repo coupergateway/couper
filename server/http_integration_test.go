@@ -542,20 +542,21 @@ func TestHTTPServer_Gzip(t *testing.T) {
 func TestHTTPServer_QueryParams(t *testing.T) {
 	client := newClient()
 
-	confPath := path.Join("testdata/integration/endpoint_eval/04_couper.hcl")
-	shutdown, _ := newCouper(confPath, test.New(t))
+	const confPath = "testdata/integration/endpoint_eval/"
 
 	type expectation struct {
 		Query url.Values
+		Path  string
 	}
 
 	type testCase struct {
+		file  string
 		query string
 		exp   expectation
 	}
 
 	for _, tc := range []testCase{
-		{"a=b%20c&aeb_del=1&ae_del=1&CaseIns=1&caseIns=1&def_del=1", expectation{
+		{"04_couper.hcl", "a=b%20c&aeb_del=1&ae_del=1&CaseIns=1&caseIns=1&def_del=1", expectation{
 			Query: url.Values{
 				"a":           []string{"b c"},
 				"ae_a_and_b":  []string{"A&B", "A&B"},
@@ -583,8 +584,32 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 				"foo":         []string{""},
 				"xxx":         []string{"ddd", "zzz", "aaa", "bbb", "eee", "ccc"},
 			},
+			Path: "/",
+		}},
+		{"05_couper.hcl", "", expectation{
+			Query: url.Values{
+				"ae":  []string{"ae"},
+				"def": []string{"def"},
+			},
+			Path: "/yyy",
+		}},
+		{"06_couper.hcl", "", expectation{
+			Query: url.Values{
+				"ae":  []string{"ae"},
+				"def": []string{"def"},
+			},
+			Path: "/zzz",
+		}},
+		{"07_couper.hcl", "", expectation{
+			Query: url.Values{
+				"ae":  []string{"ae"},
+				"def": []string{"def"},
+			},
+			Path: "/xxx",
 		}},
 	} {
+		shutdown, _ := newCouper(path.Join(confPath, tc.file), test.New(t))
+
 		t.Run("_"+tc.query, func(subT *testing.T) {
 			helper := test.New(subT)
 
@@ -613,9 +638,9 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
-	}
 
-	cleanup(shutdown, t)
+		cleanup(shutdown, t)
+	}
 }
 
 func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {

@@ -435,7 +435,7 @@ func newInlineBackend(
 		if diags.HasErrors() {
 			return nil, diags
 		}
-		// TODO: affects path / endpoint inheritance below?
+
 		parentAttr, _ := inlineDef.Body().JustAttributes()
 		content := &hcl.BodyContent{
 			Attributes:       parentAttr,
@@ -464,8 +464,7 @@ func newInlineBackend(
 	// to handle possible overrides like 'path' for endpoints. Only if the most recent definition
 	// has no own attribute defined, use the parents one.
 	if len(bodies) > 0 && reflect.TypeOf(inlineDef) == reflect.TypeOf(&config.Endpoint{}) {
-		// TODO: working code with prepending inlineDef attr Body above ?
-		inheritableAttributes := []string{"path"} //, "add_query_params", "remove_query_params", "set_query_params"}
+		inheritableAttributes := []string{"path"}
 		inheritAttributes := make(hcl.Attributes)
 
 		recentBody := bodies[len(bodies)-1]
