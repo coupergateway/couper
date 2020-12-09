@@ -8,10 +8,13 @@ import (
 )
 
 const (
-	attrReqHeaders    = "request_headers"
-	attrResHeaders    = "response_headers"
-	attrSetReqHeaders = "set_request_headers"
-	attrSetResHeaders = "set_response_headers"
+	attrReqHeaders     = "request_headers"
+	attrResHeaders     = "response_headers"
+	attrSetReqHeaders  = "set_request_headers"
+	attrSetResHeaders  = "set_response_headers"
+	attrAddQueryParams = "add_query_params"
+	attrDelQueryParams = "remove_query_params"
+	attrSetQueryParams = "set_query_params"
 )
 
 type OptionsMap map[string][]string
