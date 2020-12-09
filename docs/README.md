@@ -280,12 +280,11 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 
 #### Query parameter <a name="query_params"></a>
 
-Couper offers three methods to manipulate the query parameter. The methods are
-executed in the following order unrelated to the order within the configuration file:
+Couper offers three attributes to manipulate the query parameter. The query attributes can be defined unordered within the configuration file but will be executed ordered as follows:
 
-* `remove_query_params`: a list of query parameters to be removed from the upstream request URL.
-* `set_query_params`: key/value(s) pairs to set query parameters in the upstream request URL.
-* `add_query_params`: key/value(s) pairs to add query parameters to the upstream request URL.
+* `remove_query_params` a list of query parameters to be removed from the upstream request URL.
+* `set_query_params` key/value(s) pairs to set query parameters in the upstream request URL.
+* `add_query_params` key/value(s) pairs to add query parameters to the upstream request URL.
 
 All `*_query_params` are collected and executed from: `definitions.backend`, `endpoint`,
 `endpoint.backend` (if refined).
@@ -294,7 +293,7 @@ All `*_query_params` are collected and executed from: `definitions.backend`, `en
 server "my_project" {
   api {
     endpoint "/" {
-      backend "example"
+      backend = "example"
     }
   }
 }
