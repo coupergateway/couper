@@ -435,7 +435,13 @@ func newInlineBackend(
 		if diags.HasErrors() {
 			return nil, diags
 		}
-		bodies = append(bodies, inlineDef.Body())
+		// TODO: affects path / endpoint inheritance below?
+		parentAttr, _ := inlineDef.Body().JustAttributes()
+		content := &hcl.BodyContent{
+			Attributes:       parentAttr,
+			MissingItemRange: inlineDef.Body().MissingItemRange(),
+		}
+		bodies = append(bodies, NewBody(content))
 		bodies = append(bodies, backendConf.Body())
 	}
 
@@ -456,29 +462,37 @@ func newInlineBackend(
 
 	// since we reference a backend we must append the current context inline definition
 	// to handle possible overrides like 'path' for endpoints. Only if the most recent definition
-	// has no own path attribute defined, use the parents one.
+	// has no own attribute defined, use the parents one.
 	if len(bodies) > 0 && reflect.TypeOf(inlineDef) == reflect.TypeOf(&config.Endpoint{}) {
-		// The 'path' attribute is currently the only one, this section should be refined if more attributes are required.
-		const inheritableAttr = "path"
+		// TODO: working code with prepending inlineDef attr Body above ?
+		inheritableAttributes := []string{"path"} //, "add_query_params", "remove_query_params", "set_query_params"}
+		inheritAttributes := make(hcl.Attributes)
+
 		recentBody := bodies[len(bodies)-1]
 		attr, _ := recentBody.JustAttributes()
-		var recentPath string
-		pathAttr, ok := attr[inheritableAttr]
-		if ok {
-			pathVal, _ := pathAttr.Expr.Value(evalCtx)
-			recentPath = seetie.ValueToString(pathVal)
-		}
-		if recentPath == "" || (parentBackend != nil && recentBody == parentBackend.Body()) {
-			// and if the endpoint has defined a path attribute
-			attr, _ = inlineDef.Body().JustAttributes()
-			pathAttr, ok = attr[inheritableAttr]
+
+		for _, inheritableAttr := range inheritableAttributes {
+			var recentAttrStr string
+			recentAttr, ok := attr[inheritableAttr]
 			if ok {
-				content := &hcl.BodyContent{
-					Attributes:       hcl.Attributes{inheritableAttr: pathAttr},
-					MissingItemRange: inlineDef.Body().MissingItemRange(),
-				}
-				bodies = append(bodies, NewBody(content))
+				attrVal, _ := recentAttr.Expr.Value(evalCtx)
+				recentAttrStr = seetie.ValueToString(attrVal)
 			}
+			if recentAttrStr == "" || (parentBackend != nil && recentBody == parentBackend.Body()) {
+				// and if the endpoint has defined a attribute
+				attr, _ = inlineDef.Body().JustAttributes()
+				if recentAttr, ok = attr[inheritableAttr]; ok {
+					inheritAttributes[inheritableAttr] = recentAttr
+				}
+			}
+		}
+
+		if len(inheritAttributes) > 0 {
+			content := &hcl.BodyContent{
+				Attributes:       inheritAttributes,
+				MissingItemRange: inlineDef.Body().MissingItemRange(),
+			}
+			bodies = append(bodies, NewBody(content))
 		}
 	}
 
