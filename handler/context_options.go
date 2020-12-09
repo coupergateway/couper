@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -23,7 +22,7 @@ func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (Op
 	var diags hcl.Diagnostics
 	var options OptionsMap
 
-	content, _, d := body.PartialContent(config.Backend{}.Schema(true))
+	content, _, d := body.PartialContent(backendInlineSchema)
 	diags = append(diags, seetie.SetSeverityLevel(d)...)
 
 	for _, attr := range content.Attributes {

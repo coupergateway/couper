@@ -51,6 +51,8 @@ var (
 	headerBlacklist = []string{"Authorization", "Cookie"}
 
 	ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
+
+	backendInlineSchema = config.Backend{}.Schema(true)
 )
 
 type Proxy struct {
@@ -306,10 +308,9 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 // Director request modification before roundtrip
 func (p *Proxy) Director(req *http.Request) error {
 	var origin, hostname, path string
-	schema := config.Backend{}.Schema(true)
 	evalContext := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, nil, nil)
 	for _, hclContext := range p.options.Context { // context gets configured in order, last wins
-		content, _, _ := hclContext.PartialContent(schema)
+		content, _, _ := hclContext.PartialContent(backendInlineSchema)
 		if o := getAttribute(evalContext, "origin", content); o != "" {
 			origin = o
 		}
@@ -426,7 +427,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		}
 
 		// query params
-		content, _, d := ctxBody.PartialContent(config.Backend{}.Schema(true))
+		content, _, d := ctxBody.PartialContent(backendInlineSchema)
 		if diags := seetie.SetSeverityLevel(d); diags.HasErrors() {
 			p.log.WithField("parse config", p.String()).Error(diags)
 			continue
