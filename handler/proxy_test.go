@@ -498,9 +498,12 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 					}
 					return
 				}
-				for _, err := range log.Data["validation"].([]string) {
-					if err == tt.expectedLogMessage {
-						return
+
+				if data, ok := log.Data["validation"]; ok {
+					for _, err := range data.([]string) {
+						if err == tt.expectedLogMessage {
+							return
+						}
 					}
 				}
 				subT.Error("expected validation error logs")
@@ -1048,19 +1051,19 @@ func TestProxy_BufferingOptions(t *testing.T) {
 		{"beresp buffer json.body", nil, `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
 		{"bereq/beresp validation", newOptions(config.OpenAPI{}), `path = "/"`, eval.BufferRequest | eval.BufferResponse},
 		{"beresp validation", newOptions(config.OpenAPI{
-			IgnoreRequestViolations: true,
+			ExcludeRequestBody: true,
 		}), `path = "/"`, eval.BufferResponse},
 		{"bereq validation", newOptions(config.OpenAPI{
-			IgnoreResponseViolations: true,
+			ExcludeResponseBody: true,
 		}), `path = "/"`, eval.BufferRequest},
 		{"no validation", newOptions(config.OpenAPI{
-			IgnoreRequestViolations:  true,
-			IgnoreResponseViolations: true,
+			ExcludeRequestBody:  true,
+			ExcludeResponseBody: true,
 		}), `path = "/"`, eval.BufferNone},
-		{"req buffer json.body & beresp validation", newOptions(config.OpenAPI{IgnoreRequestViolations: true}), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"beresp buffer json.body & bereq validation", newOptions(config.OpenAPI{IgnoreResponseViolations: true}), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"req buffer json.body & bereq validation", newOptions(config.OpenAPI{IgnoreResponseViolations: true}), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
-		{"beresp buffer json.body & beresp validation", newOptions(config.OpenAPI{IgnoreRequestViolations: true}), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+		{"req buffer json.body & beresp validation", newOptions(config.OpenAPI{ExcludeRequestBody: true}), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp buffer json.body & bereq validation", newOptions(config.OpenAPI{ExcludeResponseBody: true}), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"req buffer json.body & bereq validation", newOptions(config.OpenAPI{ExcludeResponseBody: true}), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
+		{"beresp buffer json.body & beresp validation", newOptions(config.OpenAPI{ExcludeRequestBody: true}), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)

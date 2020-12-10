@@ -19,10 +19,11 @@ import (
 )
 
 type OpenAPIValidatorOptions struct {
-	router                   *openapi3filter.Router
 	buffer                   eval.BufferOption
 	ignoreRequestViolations  bool
 	ignoreResponseViolations bool
+	filterOptions            *openapi3filter.Options
+	router                   *openapi3filter.Router
 }
 
 func NewOpenAPIValidatorOptions(openapi *config.OpenAPI) (*OpenAPIValidatorOptions, error) {
@@ -56,19 +57,24 @@ func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) 
 		return nil, err
 	}
 
-	apiValidation := eval.BufferRequest | eval.BufferResponse
-	if openapi.IgnoreRequestViolations {
-		apiValidation ^= eval.BufferRequest
+	bufferBodies := eval.BufferRequest | eval.BufferResponse
+	if openapi.ExcludeRequestBody {
+		bufferBodies ^= eval.BufferRequest
 	}
-	if openapi.IgnoreResponseViolations {
-		apiValidation ^= eval.BufferResponse
+	if openapi.ExcludeResponseBody {
+		bufferBodies ^= eval.BufferResponse
 	}
 
 	return &OpenAPIValidatorOptions{
-		buffer:                   apiValidation,
-		router:                   router,
+		buffer: bufferBodies,
+		filterOptions: &openapi3filter.Options{
+			ExcludeRequestBody:    openapi.ExcludeRequestBody,
+			ExcludeResponseBody:   openapi.ExcludeResponseBody,
+			IncludeResponseStatus: !openapi.ExcludeStatusCode,
+		},
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,
+		router:                   router,
 	}, nil
 }
 
@@ -81,24 +87,32 @@ func (o *OpenAPIValidatorOptions) NewOpenAPIValidator() *OpenAPIValidator {
 
 type OpenAPIValidator struct {
 	options                *OpenAPIValidatorOptions
-	route                  *openapi3filter.Route
 	requestValidationInput *openapi3filter.RequestValidationInput
 	validationCtx          context.Context
 }
 
 func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.RoundtripInfo) error {
-	route, pathParams, _ := v.options.router.FindRoute(req.Method, req.URL)
-	v.route = route
-
-	v.requestValidationInput = &openapi3filter.RequestValidationInput{
-		Request:    req,
-		PathParams: pathParams,
-		Route:      route,
+	route, pathParams, err := v.options.router.FindRoute(req.Method, req.URL)
+	if err != nil {
+		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
+		if !v.options.ignoreRequestViolations {
+			return err
+		}
+		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
+		return nil
 	}
 
-	err := openapi3filter.ValidateRequest(v.validationCtx, v.requestValidationInput)
+	v.requestValidationInput = &openapi3filter.RequestValidationInput{
+		Options:     v.options.filterOptions,
+		PathParams:  pathParams,
+		QueryParams: req.URL.Query(),
+		Request:     req,
+		Route:       route,
+	}
 
-	if req.GetBody != nil {
+	err = openapi3filter.ValidateRequest(v.validationCtx, v.requestValidationInput)
+
+	if !v.options.filterOptions.ExcludeRequestBody && req.GetBody != nil {
 		req.Body, _ = req.GetBody() // rewind
 	}
 
@@ -114,32 +128,45 @@ func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.
 }
 
 func (v *OpenAPIValidator) ValidateResponse(beresp *http.Response, tripInfo *logging.RoundtripInfo) error {
-	if v.route == nil {
-		return nil
-	}
-	responseValidationInput := &openapi3filter.ResponseValidationInput{
-		RequestValidationInput: v.requestValidationInput,
-		Status:                 beresp.StatusCode,
-		Header:                 beresp.Header.Clone(),
-		Options:                &openapi3filter.Options{IncludeResponseStatus: true /* undefined response codes are invalid */},
-	}
-
-	buf := &bytes.Buffer{}
-	_, err := io.Copy(buf, beresp.Body)
-	if err != nil {
+	// since a request validation could fail and ignored due to user options, the input route MAY be nil
+	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
+		err := fmt.Errorf("response validation: '%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
+		if v.options.ignoreResponseViolations {
+			tripInfo.ValidationError = append(tripInfo.ValidationError, err)
+			return nil
+		}
+		// Since a matching route is required; we are done here.
 		return err
 	}
-	// reset
-	beresp.Body = eval.NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
-	responseValidationInput.SetBodyBytes(buf.Bytes())
 
-	err = openapi3filter.ValidateResponse(v.validationCtx, responseValidationInput)
-	if err != nil {
+	responseValidationInput := &openapi3filter.ResponseValidationInput{
+		Body:                   ioutil.NopCloser(&bytes.Buffer{}),
+		Header:                 beresp.Header.Clone(),
+		Options:                v.options.filterOptions,
+		RequestValidationInput: v.requestValidationInput,
+		Status:                 beresp.StatusCode,
+	}
+
+	if !v.options.filterOptions.ExcludeResponseBody {
+		// buffer beresp body
+		buf := &bytes.Buffer{}
+		_, err := io.Copy(buf, beresp.Body)
+		if err != nil {
+			return err
+		}
+		// reset and provide the buffer
+		beresp.Body = eval.NewReadCloser(buf, beresp.Body)
+		// provide a copy for validation purposes
+		responseValidationInput.SetBodyBytes(buf.Bytes())
+	}
+
+	if err := openapi3filter.ValidateResponse(v.validationCtx, responseValidationInput); err != nil {
 		err = fmt.Errorf("response validation: %w", err)
 		if !v.options.ignoreResponseViolations {
 			return err
 		}
 		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
 	}
+
 	return nil
 }
