@@ -234,10 +234,10 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 
-	var openapiValidator *OpenAPIValidator
+	var apiValidator *OpenAPIValidator
 	if p.options.OpenAPI != nil {
-		openapiValidator = p.options.OpenAPI.NewOpenAPIValidator()
-		if roundtripInfo.Err = openapiValidator.ValidateRequest(outreq, roundtripInfo); roundtripInfo.Err != nil {
+		apiValidator = NewOpenAPIValidator(p.options.OpenAPI)
+		if roundtripInfo.Err = apiValidator.ValidateRequest(outreq, roundtripInfo); roundtripInfo.Err != nil {
 			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
 			return
 		}
@@ -278,8 +278,8 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Header.Del(h)
 	}
 
-	if openapiValidator != nil {
-		roundtripInfo.Err = openapiValidator.ValidateResponse(res, roundtripInfo)
+	if apiValidator != nil {
+		roundtripInfo.Err = apiValidator.ValidateResponse(res, roundtripInfo)
 		if roundtripInfo.Err != nil {
 			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
 			return

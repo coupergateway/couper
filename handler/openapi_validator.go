@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -78,17 +77,15 @@ func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) 
 	}, nil
 }
 
-func (o *OpenAPIValidatorOptions) NewOpenAPIValidator() *OpenAPIValidator {
+func NewOpenAPIValidator(opts *OpenAPIValidatorOptions) *OpenAPIValidator {
 	return &OpenAPIValidator{
-		options:       o,
-		validationCtx: context.Background(),
+		options:       opts,
 	}
 }
 
 type OpenAPIValidator struct {
 	options                *OpenAPIValidatorOptions
 	requestValidationInput *openapi3filter.RequestValidationInput
-	validationCtx          context.Context
 }
 
 func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.RoundtripInfo) error {
@@ -110,7 +107,7 @@ func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.
 		Route:       route,
 	}
 
-	err = openapi3filter.ValidateRequest(v.validationCtx, v.requestValidationInput)
+	err = openapi3filter.ValidateRequest(req.Context(), v.requestValidationInput)
 
 	if !v.options.filterOptions.ExcludeRequestBody && req.GetBody != nil {
 		req.Body, _ = req.GetBody() // rewind
@@ -160,7 +157,7 @@ func (v *OpenAPIValidator) ValidateResponse(beresp *http.Response, tripInfo *log
 		responseValidationInput.SetBodyBytes(buf.Bytes())
 	}
 
-	if err := openapi3filter.ValidateResponse(v.validationCtx, responseValidationInput); err != nil {
+	if err := openapi3filter.ValidateResponse(beresp.Request.Context(), responseValidationInput); err != nil {
 		err = fmt.Errorf("response validation: %w", err)
 		if !v.options.ignoreResponseViolations {
 			return err
