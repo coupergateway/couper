@@ -85,11 +85,7 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 	}
 
 	if other.OpenAPI != nil {
-		if other.OpenAPI.File != "" {
-			result.OpenAPI.File = other.OpenAPI.File
-		}
-		result.OpenAPI.IgnoreRequestViolations = other.OpenAPI.IgnoreRequestViolations
-		result.OpenAPI.IgnoreResponseViolations = other.OpenAPI.IgnoreResponseViolations
+		result.OpenAPI = other.OpenAPI
 	}
 
 	return &result, bodies

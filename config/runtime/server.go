@@ -216,11 +216,11 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 
 	for _, name := range []string{"request_headers", "response_headers"} {
 		for _, body := range remainCtx {
-			attr, err := body.JustAttributes()
+			content, _, err := body.PartialContent(config.Backend{}.Schema(true))
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := attr[name]; ok {
+			if _, ok := content.Attributes[name]; ok {
 				log.Warningf("'%s' is deprecated, use 'set_%s' instead", name, name)
 			}
 		}
