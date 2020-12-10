@@ -398,7 +398,7 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
 		switch req.URL.RawQuery {
-		case "404":
+		case "404=":
 			rw.WriteHeader(http.StatusNotFound)
 			break
 		default:
@@ -420,7 +420,7 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 	}{
 		{
 			"valid request / valid response",
-			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			&config.OpenAPI{File: "testdata/upstream.yaml", ExcludeRequestBody: true, ExcludeResponseBody: true},
 			http.MethodGet,
 			"/get",
 			http.StatusOK,
@@ -428,19 +428,19 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 		},
 		{
 			"invalid request",
-			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			&config.OpenAPI{File: "testdata/upstream.yaml", ExcludeRequestBody: true},
 			http.MethodPost,
 			"/get",
 			http.StatusBadRequest,
-			"request validation: invalid route",
+			"request validation: 'POST /get': Path doesn't support the HTTP method",
 		},
 		{
 			"invalid request, IgnoreRequestViolations",
-			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true},
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true, IgnoreResponseViolations: true},
 			http.MethodPost,
 			"/get",
 			http.StatusOK,
-			"request validation: invalid route",
+			"request validation: 'POST /get': Path doesn't support the HTTP method",
 		},
 		{
 			"invalid response",
@@ -505,8 +505,11 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 							return
 						}
 					}
+					for _, err := range data.([]string) {
+						subT.Log(err)
+					}
 				}
-				subT.Error("expected validation error logs")
+				subT.Error("expected matching validation error logs")
 			}
 
 		})
