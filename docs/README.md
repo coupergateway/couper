@@ -394,13 +394,18 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 The `openapi` block configures the backends proxy behaviour to validate outgoing and incoming requests to and from the origin.
 Preventing the origin from invalid requests, and the Couper client from invalid answers. An example can be found [here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
 
-| Name                         | Description                      | Default  |
-|:---------------------------  |:---------------------------------|:---------|
-| context                      | `backend` block                  |          |
-| `file`                       | OpenAPI yaml definition file     | required |
-| `ignore_request_violations`  | Skip request validation          | `false`  |
-| `ignore_response_violations` | Skip response validation         | `false`  |
+| Name                         | Description                                        | Default  |
+|:-----------------------------|:---------------------------------------------------|:---------|
+| context                      | `backend` block                                    |          |
+| `file`                       | OpenAPI yaml definition file                       | required |
+| `ignore_request_violations`  | log request validation results, skip err handling  | `false`  |
+| `ignore_response_violations` | log response validation results, skip err handling | `false`  |
+| `exclude_request_body`       | Skip request body validation                       | `false`  |
+| `exclude_response_body`      | Skip response body validation                      | `false`  |
+| `exclude_status_code`        | Skip status code validation                        | `false`  |
 
+**Caveats**: While ignoring request violations an invalid method or path would lead to a non-matching *route* which is still required
+for response validations. In this case the response validation will fail if not ignored too.
 
 ### The `definitions` block <a name="definitions_block"></a>
 Use the `definitions` block to define configurations you want to reuse. `access_control` is **always** defined in the `definitions` block.
