@@ -27,7 +27,7 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-var defaultBackendConf = &config.Backend{
+var DefaultBackendConf = &config.Backend{
 	ConnectTimeout:   "10s",
 	RequestBodyLimit: "64MiB",
 	TTFBTimeout:      "60s",
@@ -251,7 +251,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, 
 			return nil, e
 		}
 
-		beConf, _ = defaultBackendConf.Merge(beConf)
+		beConf, _ = DefaultBackendConf.Merge(beConf)
 
 		srvOpts, _ := server.NewServerOptions(&config.Server{})
 		proxy, err := newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Remain}, log, srvOpts)
@@ -446,7 +446,7 @@ func newInlineBackend(
 		bodies = append(bodies, backendConf.Body())
 	}
 
-	backendConf, _ = defaultBackendConf.Merge(backendConf)
+	backendConf, _ = DefaultBackendConf.Merge(backendConf)
 
 	// obtain the backend reference and merge with the current override
 	if inlineBlock != nil && len(inlineBlock.Labels) > 0 {

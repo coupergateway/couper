@@ -197,8 +197,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
 
+	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
+
 	err := p.Director(outreq)
 	if err != nil {
+		roundtripInfo.Err = err
 		p.srvOptions.APIErrTpl.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
@@ -231,8 +234,6 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		}
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
-
-	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
 
 	var apiValidator *OpenAPIValidator
 	if p.options.OpenAPI != nil {
@@ -390,7 +391,7 @@ func (p *Proxy) Director(req *http.Request) error {
 	return nil
 }
 
-func modifyQuery(url *url.URL, del []string, set, add map[string][]string) {
+func modifyQuery(url *url.URL, del []string, set, add url.Values) {
 	query := url.Query()
 
 	for _, del := range del {

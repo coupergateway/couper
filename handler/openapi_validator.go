@@ -48,7 +48,7 @@ func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) 
 
 	swagger, err := openapi3.NewSwaggerLoader().LoadSwaggerFromData(bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error loading openapi file: %w", err)
 	}
 
 	router := openapi3filter.NewRouter()
@@ -79,7 +79,7 @@ func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) 
 
 func NewOpenAPIValidator(opts *OpenAPIValidatorOptions) *OpenAPIValidator {
 	return &OpenAPIValidator{
-		options:       opts,
+		options: opts,
 	}
 }
 
@@ -107,11 +107,8 @@ func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.
 		Route:       route,
 	}
 
+	// openapi3filter.ValidateRequestBody also handles resetting the req body after reading until EOF.
 	err = openapi3filter.ValidateRequest(req.Context(), v.requestValidationInput)
-
-	if !v.options.filterOptions.ExcludeRequestBody && req.GetBody != nil {
-		req.Body, _ = req.GetBody() // rewind
-	}
 
 	if err != nil {
 		err = fmt.Errorf("request validation: %w", err)
