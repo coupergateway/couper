@@ -41,7 +41,10 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 		SetQueryParams     map[string]cty.Value `hcl:"set_query_params,optional"`
 	}
 
+	// TODO: handle block parsing on config load first
+	blocks := schema.Blocks
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
+	schema.Blocks = blocks
 	return schema
 }
 
