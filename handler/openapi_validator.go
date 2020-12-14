@@ -56,20 +56,16 @@ func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) 
 		return nil, err
 	}
 
+	// Always buffer if openAPI is active. Request buffering is handled by openapifilter too.
+	// Anyway adding request buffer option to let Couper check the body limits.
 	bufferBodies := eval.BufferRequest | eval.BufferResponse
-	if openapi.ExcludeRequestBody {
-		bufferBodies ^= eval.BufferRequest
-	}
-	if openapi.ExcludeResponseBody {
-		bufferBodies ^= eval.BufferResponse
-	}
 
 	return &OpenAPIValidatorOptions{
 		buffer: bufferBodies,
 		filterOptions: &openapi3filter.Options{
-			ExcludeRequestBody:    openapi.ExcludeRequestBody,
-			ExcludeResponseBody:   openapi.ExcludeResponseBody,
-			IncludeResponseStatus: !openapi.ExcludeStatusCode,
+			ExcludeRequestBody:    false,
+			ExcludeResponseBody:   false,
+			IncludeResponseStatus: true,
 		},
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,

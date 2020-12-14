@@ -402,9 +402,6 @@ defined with the `file` attribute.
 | `file`                       | OpenAPI yaml definition file                       | mandatory |
 | `ignore_request_violations`  | log request validation results, skip err handling  | `false`   |
 | `ignore_response_violations` | log response validation results, skip err handling | `false`   |
-| `exclude_request_body`       | Skip request body validation                       | `false`   |
-| `exclude_response_body`      | Skip response body validation                      | `false`   |
-| `exclude_status_code`        | Skip status code validation                        | `false`   |
 
 **Caveats**: While ignoring request violations an invalid method or path would lead to a non-matching *route* which is still required
 for response validations. In this case the response validation will fail if not ignored too.
