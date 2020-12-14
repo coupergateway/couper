@@ -339,20 +339,20 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
-|context|<ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul>|
+| context|<ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul>|
 | *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
 | `origin`| URL to connect to for backend requests </br> &#9888; must start with `http://...` |
-|`base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
-|`hostname`| value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. |
-|`path`|changeable part of upstream URL|
-|`timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
+| `base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
+| `hostname`| value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. |
+| `path`|changeable part of upstream URL|
+| `timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
 | `set_request_headers` | header map to define additional or override header for the `origin` request |
 | `set_response_headers` | same as `set_request_headers` for the client response |
 | `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
-| `openapi` | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. |
-|[**`remove_query_params`**](#query_params)|<ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
-|[**`set_query_params`**](#query_params)|<ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
-|[**`add_query_params`**](#query_params)|<ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
+| [`openapi`](#openapi_block) | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. |
+| [`remove_query_params`](#query_params)|<ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
+| [`set_query_params`](#query_params)|<ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
+| [`add_query_params`](#query_params)|<ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
 The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
