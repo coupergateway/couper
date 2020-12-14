@@ -20,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -392,6 +393,126 @@ func TestProxy_ServeHTTP_CORS(t *testing.T) {
 	}
 }
 
+func TestProxy_ServeHTTP_Validation(t *testing.T) {
+	helper := test.New(t)
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "text/plain")
+		if req.URL.RawQuery == "404=" {
+			rw.WriteHeader(http.StatusNotFound)
+		}
+		_, err := rw.Write([]byte("from upstream"))
+		helper.Must(err)
+	}))
+	defer origin.Close()
+
+	openAPIYAML := helper.NewOpenAPIConf("/get")
+
+	tests := []struct {
+		name               string
+		openapi            *config.OpenAPI
+		requestMethod      string
+		requestPath        string
+		expectedStatusCode int
+		expectedLogMessage string
+	}{
+		{
+			"valid request / valid response",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/get",
+			http.StatusOK,
+			"",
+		},
+		{
+			"invalid request",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodPost,
+			"/get",
+			http.StatusBadRequest,
+			"request validation: 'POST /get': Path doesn't support the HTTP method",
+		},
+		{
+			"invalid request, IgnoreRequestViolations",
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true, IgnoreResponseViolations: true},
+			http.MethodPost,
+			"/get",
+			http.StatusOK,
+			"request validation: 'POST /get': Path doesn't support the HTTP method",
+		},
+		{
+			"invalid response",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/get?404",
+			http.StatusBadGateway,
+			"response validation: status is not supported",
+		},
+		{
+			"invalid response, IgnoreResponseViolations",
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
+			http.MethodGet,
+			"/get?404",
+			http.StatusNotFound,
+			"response validation: status is not supported",
+		},
+	}
+
+	srvOpts := &server.Options{APIErrTpl: errors.DefaultJSON}
+
+	logger, hook := logrustest.NewNullLogger()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+
+			openapiValidatorOptions, err := handler.NewOpenAPIValidatorOptionsFromBytes(tt.openapi, openAPIYAML)
+			if err != nil {
+				subT.Fatal(err)
+			}
+			content := helper.NewProxyContext(`
+				origin = "` + origin.URL + `"
+			`)
+			p, err := handler.NewProxy(&handler.ProxyOptions{Context: content, OpenAPI: openapiValidatorOptions}, logger.WithContext(context.Background()), srvOpts, eval.NewENVContext(nil))
+			if err != nil {
+				subT.Fatal(err)
+			}
+
+			req := httptest.NewRequest(tt.requestMethod, "http://1.2.3.4"+tt.requestPath, nil)
+
+			hook.Reset()
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(rec, req)
+
+			if rec.Code != tt.expectedStatusCode {
+				subT.Errorf("Expected status %d, got: %d", tt.expectedStatusCode, rec.Code)
+				subT.Log(hook.LastEntry().Message)
+			}
+
+			log := hook.LastEntry()
+			if tt.expectedLogMessage != "" {
+				if !tt.openapi.IgnoreRequestViolations && !tt.openapi.IgnoreResponseViolations {
+					if log.Message != tt.expectedLogMessage {
+						subT.Errorf("Expected log message %q, got: %q", tt.expectedLogMessage, log.Message)
+					}
+					return
+				}
+
+				if data, ok := log.Data["validation"]; ok {
+					for _, err := range data.([]string) {
+						if err == tt.expectedLogMessage {
+							return
+						}
+					}
+					for _, err := range data.([]string) {
+						subT.Log(err)
+					}
+				}
+				subT.Error("expected matching validation error logs")
+			}
+
+		})
+	}
+}
+
 func TestProxy_director(t *testing.T) {
 	helper := test.New(t)
 
@@ -653,6 +774,17 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		req test.Header
 	}
 
+	defaultMethods := []string{
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodConnect,
+		http.MethodOptions,
+	}
+
 	tests := []struct {
 		name      string
 		inlineCtx string
@@ -665,16 +797,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		origin = "http://1.2.3.4/"
 		set_request_headers = {
 			x-test = req.json_body.foo
-		}`, []string{
-			http.MethodGet,
-			http.MethodHead,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-			http.MethodConnect,
-			http.MethodOptions,
-		}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
+		}`, defaultMethods, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
 		{"method /w body", `
 		origin = "http://1.2.3.4/"
 		set_request_headers = {
@@ -684,17 +807,8 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		origin = "http://1.2.3.4/"
 		set_request_headers = {
 			x-test = req.json_body.foo
-		}`, []string{
-			http.MethodGet,
-			http.MethodHead,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-			http.MethodConnect,
-			http.MethodOptions,
-			http.MethodTrace,
-		}, test.Header{"Content-Type": "application/json"}, "", want{req: test.Header{"x-test": ""}}},
+		}`, append(defaultMethods, http.MethodTrace),
+			test.Header{"Content-Type": "application/json"}, "", want{req: test.Header{"x-test": ""}}},
 	}
 
 	for _, tt := range tests {
@@ -727,7 +841,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 	}
 }
 
-func TestServer_DisableCompression(t *testing.T) {
+func TestProxy_DisableCompression(t *testing.T) {
 	helper := test.New(t)
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -759,7 +873,7 @@ func TestServer_DisableCompression(t *testing.T) {
 	p.ServeHTTP(httptest.NewRecorder(), req)
 }
 
-func TestServer_ModifyAcceptEncoding(t *testing.T) {
+func TestProxy_ModifyAcceptEncoding(t *testing.T) {
 	helper := test.New(t)
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -888,6 +1002,102 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 			for k, v := range tc.expHeaders {
 				if res.Header.Get(k) != v {
 					t.Errorf("Expected header %q value: %q, got: %q", k, v, res.Header.Get(k))
+				}
+			}
+		})
+
+	}
+}
+
+// TestProxy_BufferingOptions tests the option interaction with enabled/disabled validation and
+// the requirement for buffering to read the post or json body.
+func TestProxy_BufferingOptions(t *testing.T) {
+	helper := test.New(t)
+
+	type testCase struct {
+		name           string
+		apiOptions     *handler.OpenAPIValidatorOptions
+		remain         string
+		expectedOption eval.BufferOption
+	}
+
+	clientPayload := []byte(`{ "client": true, "origin": false }`)
+	originPayload := []byte(`{ "client": false, "origin": true }`)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		clientData, err := ioutil.ReadAll(r.Body)
+		helper.Must(err)
+		if !bytes.Equal(clientData, clientPayload) {
+			t.Errorf("Expected a request with client payload, got %q", string(clientData))
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		_, err = rw.Write(originPayload)
+		helper.Must(err)
+	}))
+
+	newOptions := func() *handler.OpenAPIValidatorOptions {
+		c := config.OpenAPI{}
+		conf, err := handler.NewOpenAPIValidatorOptionsFromBytes(&c, helper.NewOpenAPIConf("/"))
+		helper.Must(err)
+		return conf
+	}
+
+	for i, tc := range []testCase{
+		{"no buffering", nil, `path = "/"`, eval.BufferNone},
+		{"req buffer json.body", nil, `path = "/${req.json_body.client}"`, eval.BufferRequest},
+		{"beresp buffer json.body", nil, `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+		{"bereq/beresp validation", newOptions(), `path = "/"`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp validation", newOptions(), `path = "/"`, eval.BufferResponse},
+		{"bereq validation", newOptions(), `path = "/"`, eval.BufferRequest},
+		{"no validation", newOptions(), `path = "/"`, eval.BufferNone},
+		{"req buffer json.body & beresp validation", newOptions(), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp buffer json.body & bereq validation", newOptions(), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"req buffer json.body & bereq validation", newOptions(), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
+		{"beresp buffer json.body & beresp validation", newOptions(), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+			log, hook := logrustest.NewNullLogger()
+			evalCtx := eval.NewENVContext(nil)
+
+			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				OpenAPI: tc.apiOptions,
+				Context: append(test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+					helper.NewProxyContext(tc.remain)...),
+				RequestBodyLimit: 64,
+			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
+			h.Must(err)
+
+			configuredOption := reflect.ValueOf(proxy).Elem().FieldByName("bufferOption") // private field: ro
+			opt := eval.BufferOption(configuredOption.Uint())
+			if (opt & tc.expectedOption) != tc.expectedOption {
+				st.Errorf("Expected option: %#v, got: %#v", tc.expectedOption, opt)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
+			req.Header.Set("Content-Type", "application/json")
+			*req = *req.WithContext(context.WithValue(req.Context(), request.UID, fmt.Sprintf("#%.2d: %s", i+1, tc.name)))
+			rec := httptest.NewRecorder()
+
+			proxy.ServeHTTP(rec, req)
+			rec.Flush()
+
+			res := rec.Result()
+
+			if res.StatusCode != http.StatusOK {
+				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+			}
+
+			originData, err := ioutil.ReadAll(res.Body)
+			h.Must(err)
+
+			if !bytes.Equal(originPayload, originData) {
+				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
+				for _, entry := range hook.AllEntries() {
+					st.Log(entry.Message)
 				}
 			}
 		})

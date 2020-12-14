@@ -31,6 +31,12 @@ const (
 	BasicAuthFailed
 )
 
+const (
+	UpstreamRequestValidationFailed Code = 6000 + iota
+	UpstreamResponseValidationFailed
+	UpstreamResponseBufferingFailed
+)
+
 var codes = map[Code]string{
 	// 1xxx
 	Server:         "Server error",
@@ -53,6 +59,10 @@ var codes = map[Code]string{
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",
 	BasicAuthFailed:       "Unauthorized",
+	// 6xxx
+	UpstreamRequestValidationFailed:  "Upstream request validation failed",
+	UpstreamResponseValidationFailed: "Upstream response validation failed",
+	UpstreamResponseBufferingFailed:  "Upstream response buffering failed",
 }
 
 type Code int

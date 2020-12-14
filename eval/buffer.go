@@ -1,7 +1,10 @@
+//go:generate stringer -type=BufferOption -output=./buffer_string.go
+
 package eval
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 )
@@ -13,6 +16,19 @@ const (
 	BufferRequest
 	BufferResponse
 )
+
+func (i BufferOption) GoString() string {
+	var result []string
+	for _, o := range []BufferOption{BufferRequest, BufferResponse} {
+		if (i & o) == o {
+			result = append(result, o.String())
+		}
+	}
+	if len(result) == 0 {
+		return BufferNone.String()
+	}
+	return strings.Join(result, "|")
+}
 
 // MustBuffer determines if any of the hcl.bodies makes use of 'post' or 'json_body'.
 func MustBuffer(ctxBodies []hcl.Body) BufferOption {

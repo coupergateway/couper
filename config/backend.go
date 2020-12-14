@@ -15,6 +15,7 @@ type Backend struct {
 	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
+	OpenAPI          *OpenAPI `hcl:"openapi,block"`
 }
 
 func (b Backend) Body() hcl.Body {
@@ -81,6 +82,10 @@ func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
 
 	if other.Timeout != "" {
 		result.Timeout = other.Timeout
+	}
+
+	if other.OpenAPI != nil {
+		result.OpenAPI = other.OpenAPI
 	}
 
 	return &result, bodies

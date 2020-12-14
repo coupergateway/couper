@@ -27,7 +27,7 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-var defaultBackendConf = &config.Backend{
+var DefaultBackendConf = &config.Backend{
 	ConnectTimeout:   "10s",
 	RequestBodyLimit: "64MiB",
 	TTFBTimeout:      "60s",
@@ -152,6 +152,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 		if srvConf.API != nil {
 			// map backends to endpoint
 			endpoints := make(map[string]bool)
+
 			for _, endpoint := range srvConf.API.Endpoint {
 				pattern := utils.JoinPath("/", serverOptions.APIBasePath, endpoint.Pattern)
 
@@ -215,11 +216,11 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 
 	for _, name := range []string{"request_headers", "response_headers"} {
 		for _, body := range remainCtx {
-			attr, err := body.JustAttributes()
+			content, _, err := body.PartialContent(config.Backend{}.Schema(true))
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := attr[name]; ok {
+			if _, ok := content.Attributes[name]; ok {
 				log.Warningf("'%s' is deprecated, use 'set_%s' instead", name, name)
 			}
 		}
@@ -250,7 +251,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, 
 			return nil, e
 		}
 
-		beConf, _ = defaultBackendConf.Merge(beConf)
+		beConf, _ = DefaultBackendConf.Merge(beConf)
 
 		srvOpts, _ := server.NewServerOptions(&config.Server{})
 		proxy, err := newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Remain}, log, srvOpts)
@@ -445,7 +446,7 @@ func newInlineBackend(
 		bodies = append(bodies, backendConf.Body())
 	}
 
-	backendConf, _ = defaultBackendConf.Merge(backendConf)
+	backendConf, _ = DefaultBackendConf.Merge(backendConf)
 
 	// obtain the backend reference and merge with the current override
 	if inlineBlock != nil && len(inlineBlock.Labels) > 0 {

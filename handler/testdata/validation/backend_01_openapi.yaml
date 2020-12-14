@@ -1,0 +1,73 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test'
+  version: 'v1.2.3'
+paths:
+  /a:
+    get:
+      parameters:
+        - in: query
+          name: b
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+  /a/{b}:
+    get:
+      parameters:
+        - in: path
+          name: b
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+  /b:
+    get:
+      parameters:
+        - in: query
+          name: a
+          schema:
+            type: string
+          required: false
+      responses:
+        200:
+          description: OK
+  /b/{a}:
+    get:
+      parameters:
+        - in: path
+          name: a
+          schema:
+            type: string
+          required: false
+      responses:
+        200:
+          description: OK
+  /json:
+    get:
+      requestBody:
+        description: user to add to the system
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: 'user id'
+                required:
+                  - id

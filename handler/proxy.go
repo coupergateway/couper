@@ -81,13 +81,13 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	}
 	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 
-	allowed_origins := seetie.ValueToStringSlice(cors.AllowedOrigins)
-	for i, a := range allowed_origins {
-		allowed_origins[i] = strings.ToLower(a)
+	allowedOrigins := seetie.ValueToStringSlice(cors.AllowedOrigins)
+	for i, a := range allowedOrigins {
+		allowedOrigins[i] = strings.ToLower(a)
 	}
 
 	return &CORSOptions{
-		AllowedOrigins:   allowed_origins,
+		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: cors.AllowCredentials,
 		MaxAge:           corsMaxAge,
 	}, nil
@@ -99,11 +99,16 @@ func (c *CORSOptions) NeedsVary() bool {
 }
 
 func (c *CORSOptions) AllowsOrigin(origin string) bool {
+	if c == nil {
+		return false
+	}
+
 	for _, a := range c.AllowedOrigins {
 		if a == strings.ToLower(origin) || a == "*" {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -112,8 +117,13 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 	logConf.TypeFieldKey = "couper_backend"
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
+	var apiValidation eval.BufferOption
+	if options.OpenAPI != nil {
+		apiValidation = options.OpenAPI.buffer
+	}
+
 	proxy := &Proxy{
-		bufferOption: eval.MustBuffer(options.Context),
+		bufferOption: apiValidation | eval.MustBuffer(options.Context),
 		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
@@ -187,8 +197,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header = make(http.Header) // Issue 33142: historical behavior was to always allocate
 	}
 
+	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
+
 	err := p.Director(outreq)
 	if err != nil {
+		roundtripInfo.Err = err
 		p.srvOptions.APIErrTpl.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
@@ -222,10 +235,19 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		outreq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
+	var apiValidator *OpenAPIValidator
+	if p.options.OpenAPI != nil {
+		apiValidator = NewOpenAPIValidator(p.options.OpenAPI)
+		if roundtripInfo.Err = apiValidator.ValidateRequest(outreq, roundtripInfo); roundtripInfo.Err != nil {
+			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+			return
+		}
+	}
+
 	res, err := p.getTransport(outreq.URL.Scheme, outreq.URL.Host, outreq.Host).RoundTrip(outreq)
-	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
-	roundtripInfo.BeReq, roundtripInfo.BeResp, roundtripInfo.Err = outreq, res, err
+	roundtripInfo.BeReq, roundtripInfo.BeResp = outreq, res
 	if err != nil {
+		roundtripInfo.Err = err
 		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
 		return
 	}
@@ -257,6 +279,14 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		res.Header.Del(h)
 	}
 
+	if apiValidator != nil {
+		roundtripInfo.Err = apiValidator.ValidateResponse(res, roundtripInfo)
+		if roundtripInfo.Err != nil {
+			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
+			return
+		}
+	}
+
 	p.SetRoundtripContext(req, res)
 
 	copyHeader(rw.Header(), res.Header)
@@ -274,14 +304,13 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	rw.WriteHeader(res.StatusCode)
 
-	_, err = io.Copy(rw, res.Body)
-	if err != nil {
-		defer res.Body.Close()
-		roundtripInfo.Err = err
-		return
-	}
+	_, roundtripInfo.Err = io.Copy(rw, res.Body)
 
 	res.Body.Close() // close now, instead of defer, to populate res.Trailer
+
+	if roundtripInfo.Err != nil {
+		return
+	}
 
 	if len(res.Trailer) > 0 {
 		// Force chunking if we saw a response trailer.
@@ -307,6 +336,10 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 // Director request modification before roundtrip
 func (p *Proxy) Director(req *http.Request) error {
+	if err := p.SetGetBody(req); err != nil {
+		return err
+	}
+
 	var origin, hostname, path string
 	evalContext := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, nil, nil)
 	for _, hclContext := range p.options.Context { // context gets configured in order, last wins
@@ -353,16 +386,12 @@ func (p *Proxy) Director(req *http.Request) error {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
 
-	if err := p.SetGetBody(req); err != nil {
-		return err
-	}
-
 	p.SetRoundtripContext(req, nil)
 
 	return nil
 }
 
-func modifyQuery(url *url.URL, del []string, set, add map[string][]string) {
+func modifyQuery(url *url.URL, del []string, set, add url.Values) {
 	query := url.Query()
 
 	for _, del := range del {
