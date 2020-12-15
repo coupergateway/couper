@@ -1,0 +1,16 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test'
+  version: 'v1.2.3'
+paths:
+  /anything:
+    get:
+      parameters:
+        - in: query
+          name: myparam
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
