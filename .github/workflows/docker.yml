@@ -26,7 +26,7 @@ jobs:
       run: go test -v -timeout 30s -race ./...
 
     - name: Build and push edge docker image
-      if: github.event_name == push
+      if: github.event_name == 'push'
       # Recommended to refer to an explicit sha in combination with secrets
       uses: docker/build-push-action@92e71463491f2d026a477188b8ad3a0fdd9d672c #v1
       with:
@@ -36,7 +36,7 @@ jobs:
         add_git_labels: true
         tags: edge
     - name: Build and push docker image with specific tag
-      if: github.event_name == release
+      if: github.event_name == 'release'
       # Recommended to refer to an explicit sha in combination with secrets
       uses: docker/build-push-action@92e71463491f2d026a477188b8ad3a0fdd9d672c #v1
       with:
