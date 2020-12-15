@@ -16,7 +16,11 @@ import (
 )
 
 func main() {
-	fields := logrus.Fields{"type": "couper_daemon"}
+	fields := logrus.Fields{
+		"type":    "couper_daemon",
+		"build":   runtime.BuildName,
+		"version": runtime.VersionName,
+	}
 
 	args := command.NewArgs()
 	if len(args) == 0 || command.NewCommand(args[0]) == nil {

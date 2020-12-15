@@ -3,10 +3,13 @@ FROM golang:1.14 AS builder
 WORKDIR /go/src/app
 COPY . .
 
-ENV GOFLAGS="-mod=vendor"
+ENV GOFLAGS="-mod=vendor" \
+    VERSION_PACKAGE="github.com/avenga/couper/config/runtime"
 
 RUN go generate && \
-	CGO_ENABLED=0 go build -v -o /couper main.go && \
+	CGO_ENABLED=0 go build -v \
+	-ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD`" \
+	-o /couper main.go && \
 	ls -lh /couper
 
 FROM scratch
