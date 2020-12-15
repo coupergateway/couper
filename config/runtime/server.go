@@ -182,9 +182,9 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
 					}
 					// set server context for defined backends
-					be := backends[endpoint.Backend]
-					_, remain := be.conf.Merge(&config.Backend{Remain: endpoint.Remain})
-					backend, err = newProxy(confCtx, be.conf, srvConf.API.CORS, remain, log, serverOptions)
+					beConf := backends[endpoint.Backend]
+					_, remain := beConf.Merge(&config.Backend{Remain: endpoint.Remain})
+					backend, err = newProxy(confCtx, beConf, srvConf.API.CORS, remain, log, serverOptions)
 					if err != nil {
 						return nil, err
 					}
@@ -234,8 +234,8 @@ func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.COR
 	return handler.NewProxy(proxyOptions, log, srvOpts, ctx)
 }
 
-func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, log *logrus.Entry) (map[string]backendDefinition, error) {
-	backends := make(map[string]backendDefinition)
+func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, log *logrus.Entry) (map[string]*config.Backend, error) {
+	backends := make(map[string]*config.Backend)
 
 	if conf.Definitions == nil {
 		return backends, nil
@@ -252,16 +252,7 @@ func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, 
 		}
 
 		beConf, _ = DefaultBackendConf.Merge(beConf)
-
-		srvOpts, _ := server.NewServerOptions(&config.Server{})
-		proxy, err := newProxy(confCtx, beConf, nil, []hcl.Body{beConf.Remain}, log, srvOpts)
-		if err != nil {
-			return nil, err
-		}
-		backends[beConf.Name] = backendDefinition{
-			conf:    beConf,
-			handler: proxy,
-		}
+		backends[beConf.Name] = beConf
 	}
 	return backends, nil
 }
@@ -395,7 +386,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 // for timing etc. first and then with a possible reference via label, if any. Backend lookups from 'definitions'
 // must consider parents path overrides.
 func newInlineBackend(
-	evalCtx *hcl.EvalContext, confBytes []byte, backends map[string]backendDefinition,
+	evalCtx *hcl.EvalContext, confBytes []byte, backends map[string]*config.Backend,
 	parentAPI *config.Api, inlineDef config.Inline, log *logrus.Entry, srvOpts *server.Options,
 ) (http.Handler, error) {
 	var parentBackend *config.Backend
@@ -405,8 +396,8 @@ func newInlineBackend(
 		if !ok {
 			return nil, fmt.Errorf("referenced backend does not exist: %q", parentAPI.Backend)
 		}
-		parentBackend = be.conf
-		bodies = append(bodies, be.conf.Remain)
+		parentBackend = be
+		bodies = append(bodies, be.Remain)
 	} else {
 		inlineBlock, err := getBackendInlineBlock(parentAPI, evalCtx)
 		if err != nil && err != errorMissingBackend {
@@ -453,8 +444,8 @@ func newInlineBackend(
 		backendConf.Name = inlineBlock.Labels[0]
 		if beRef, ok := backends[backendConf.Name]; ok {
 			// consider existing parents, rebuild hierarchy
-			mergedBackendConf, _ := beRef.conf.Merge(backendConf)
-			bodies = append([]hcl.Body{beRef.conf.Remain}, bodies...)
+			mergedBackendConf, _ := beRef.Merge(backendConf)
+			bodies = append([]hcl.Body{beRef.Remain}, bodies...)
 			backendConf = mergedBackendConf
 		} else {
 			return nil, fmt.Errorf("override backend %q is not defined", backendConf.Name)
