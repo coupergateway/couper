@@ -712,10 +712,7 @@ func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) stri
 	if _, ok := attr[name]; !ok {
 		return ""
 	}
-	originValue, diags := attr[name].Expr.Value(ctx)
-	if diags != nil && diags.HasErrors() {
-		panic(diags.Error())
-	}
+	originValue, _ := attr[name].Expr.Value(ctx)
 	return seetie.ValueToString(originValue)
 }
 

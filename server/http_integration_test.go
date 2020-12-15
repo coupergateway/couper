@@ -764,3 +764,21 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 		cleanup(shutdown, t)
 	}
 }
+
+func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/endpoint_eval/08_couper.hcl", test.New(t))
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Error("Expected a bad request without required query param")
+	}
+	cleanup(shutdown, t)
+}
