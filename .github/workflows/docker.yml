@@ -45,5 +45,5 @@ jobs:
         repository: avenga/couper
         tag_with_ref: true
         add_git_labels: true
-        tags: ${{ github.ref }},latest
+        tags: latest
         push: ${{ startsWith(github.ref, 'refs/tags/') }}
