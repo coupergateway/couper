@@ -16,8 +16,14 @@ type Endpoint struct {
 	Remain               hcl.Body `hcl:",remain" json:"-"`
 }
 
+type Endpoints []*Endpoint
+
 func (e Endpoint) Body() hcl.Body {
 	return e.Remain
+}
+
+func (e Endpoint) Reference() string {
+	return e.Backend
 }
 
 func (e Endpoint) Schema(inline bool) *hcl.BodySchema {

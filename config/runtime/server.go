@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -34,16 +33,6 @@ var DefaultBackendConf = &config.Backend{
 	Timeout:          "300s",
 }
 
-var (
-	errorMissingBackend = fmt.Errorf("no backend attribute reference or block")
-	errorMissingServer  = fmt.Errorf("missing server definitions")
-)
-
-type backendDefinition struct {
-	conf    *config.Backend
-	handler http.Handler
-}
-
 type Port int
 
 func (p Port) String() string {
@@ -67,16 +56,8 @@ const (
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *logrus.Entry) (*ServerConfiguration, error) {
-	if len(conf.Server) == 0 {
-		return nil, errorMissingServer
-	}
-
-	// (arg && env) > conf
+func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (*ServerConfiguration, error) {
 	defaultPort := conf.Settings.DefaultPort
-	if httpConf.ListenPort != defaultPort {
-		defaultPort = httpConf.ListenPort
-	}
 
 	// confCtx is created to evaluate request / response related configuration errors on start.
 	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
@@ -85,11 +66,6 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopReq, noopResp)
 
 	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
-	if err != nil {
-		return nil, err
-	}
-
-	backends, err := newBackendsFromDefinitions(conf, confCtx, log)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +129,7 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 			// map backends to endpoint
 			endpoints := make(map[string]bool)
 
-			for _, endpoint := range srvConf.API.Endpoint {
+			for _, endpoint := range srvConf.API.Endpoints {
 				pattern := utils.JoinPath("/", serverOptions.APIBasePath, endpoint.Pattern)
 
 				unique, cleanPattern := isUnique(endpoints, pattern)
@@ -161,10 +137,6 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 					return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
 				}
 				endpoints[cleanPattern] = true
-
-				if err := validateInlineScheme(confCtx, endpoint.Remain, endpoint); err != nil {
-					return nil, err
-				}
 
 				// setACHandlerFn individual wrap for access_control configuration per endpoint
 				setACHandlerFn := func(protectedHandler http.Handler) {
@@ -175,29 +147,18 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 						protectedHandler)
 				}
 
-				// lookup for backend reference, prefer endpoint definition over api one
-				var backend http.Handler
-				if endpoint.Backend != "" {
-					if _, ok := backends[endpoint.Backend]; !ok {
-						return nil, fmt.Errorf("backend %q is not defined", endpoint.Backend)
-					}
-					// set server context for defined backends
-					beConf := backends[endpoint.Backend]
-					_, remain := beConf.Merge(&config.Backend{Remain: endpoint.Remain})
-					backend, err = newProxy(confCtx, beConf, srvConf.API.CORS, remain, log, serverOptions)
-					if err != nil {
-						return nil, err
-					}
-				} else {
-					// otherwise try to parse an inline block and fallback for api reference or inline block
-					inlineBackend, err := newInlineBackend(confCtx, conf.Bytes, backends, srvConf.API, endpoint, log, serverOptions)
-					if err != nil { // TODO hcl.diagnostics error
-						return nil, fmt.Errorf("range: %s: %v", endpoint.Remain.MissingItemRange().String(), err)
-					}
-					backend = inlineBackend
+				backendConf := *DefaultBackendConf
+				if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
+					return nil, diags
+				}
+
+				backend, err := newProxy(confCtx, &backendConf, srvConf.API.CORS, log, serverOptions)
+				if err != nil {
+					return nil, err
 				}
 
 				setACHandlerFn(backend)
+
 				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
 				if err != nil {
 					return nil, err
@@ -208,71 +169,22 @@ func NewServerConfiguration(conf *config.Gateway, httpConf *HTTPConfig, log *log
 	return serverConfiguration, nil
 }
 
-func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, remainCtx []hcl.Body, log *logrus.Entry, srvOpts *server.Options) (http.Handler, error) {
+func newProxy(ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, log *logrus.Entry, srvOpts *server.Options) (http.Handler, error) {
+	if err := validateOrigin(ctx, beConf); err != nil {
+		return nil, err
+	}
+
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, name := range []string{"request_headers", "response_headers"} {
-		for _, body := range remainCtx {
-			content, _, err := body.PartialContent(config.Backend{}.Schema(true))
-			if err != nil {
-				return nil, err
-			}
-			if _, ok := content.Attributes[name]; ok {
-				log.Warningf("'%s' is deprecated, use 'set_%s' instead", name, name)
-			}
-		}
-	}
-
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, remainCtx)
+	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	return handler.NewProxy(proxyOptions, log, srvOpts, ctx)
-}
-
-func newBackendsFromDefinitions(conf *config.Gateway, confCtx *hcl.EvalContext, log *logrus.Entry) (map[string]*config.Backend, error) {
-	backends := make(map[string]*config.Backend)
-
-	if conf.Definitions == nil {
-		return backends, nil
-	}
-
-	for _, beConf := range conf.Definitions.Backend {
-		if _, ok := backends[beConf.Name]; ok {
-			return nil, fmt.Errorf("backend name must be unique: %q", beConf.Name)
-		}
-
-		origin := getAttribute(confCtx, "origin", beConf.Remain, conf.Bytes)
-		if e := validateOrigin(origin, beConf.Remain.MissingItemRange()); e != nil {
-			return nil, e
-		}
-
-		beConf, _ = DefaultBackendConf.Merge(beConf)
-		backends[beConf.Name] = beConf
-	}
-	return backends, nil
-}
-
-// hasAttribute checks for a configured string value and ignores unrelated errors.
-func getAttribute(ctx *hcl.EvalContext, name string, body hcl.Body, configBytes []byte) string {
-	attr, _ := body.JustAttributes()
-
-	if _, ok := attr[name]; !ok {
-		return ""
-	}
-
-	val, diags := attr[name].Expr.Value(ctx)
-	if diags.HasErrors() && attr[name].Expr.Range().CanSliceBytes(configBytes) { // fallback to origin string
-		rawString := attr[name].Expr.Range().SliceBytes(configBytes)
-		if len(rawString) > 2 { // more then quotes
-			return string(attr[name].Expr.Range().SliceBytes(configBytes)[1 : len(rawString)-1]) //unquote
-		}
-	}
-	return seetie.ValueToString(val)
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {
@@ -300,7 +212,7 @@ func splitWildcardHostPort(host string, configuredPort int) (string, Port, error
 	return ho, Port(po), nil
 }
 
-func configureAccessControls(conf *config.Gateway, confCtx *hcl.EvalContext) (ac.Map, error) {
+func configureAccessControls(conf *config.CouperFile, confCtx *hcl.EvalContext) (ac.Map, error) {
 	accessControls := make(ac.Map)
 
 	if conf.Definitions != nil {
@@ -379,154 +291,6 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 		return handler.NewAccessControl(h, errTpl, acList...)
 	}
 	return h
-}
-
-// newInlineBackend reads partial content of block type 'backend' which could be defined within the
-// 'api' and 'endpoint' block as inline or reference one. The result gets merged with our internal defaults
-// for timing etc. first and then with a possible reference via label, if any. Backend lookups from 'definitions'
-// must consider parents path overrides.
-func newInlineBackend(
-	evalCtx *hcl.EvalContext, confBytes []byte, backends map[string]*config.Backend,
-	parentAPI *config.Api, inlineDef config.Inline, log *logrus.Entry, srvOpts *server.Options,
-) (http.Handler, error) {
-	var parentBackend *config.Backend
-	var bodies []hcl.Body
-	if parentAPI.Backend != "" {
-		be, ok := backends[parentAPI.Backend]
-		if !ok {
-			return nil, fmt.Errorf("referenced backend does not exist: %q", parentAPI.Backend)
-		}
-		parentBackend = be
-		bodies = append(bodies, be.Remain)
-	} else {
-		inlineBlock, err := getBackendInlineBlock(parentAPI, evalCtx)
-		if err != nil && err != errorMissingBackend {
-			return nil, err
-		} else if err == nil {
-			parentBackend = &config.Backend{}
-			diags := gohcl.DecodeBody(inlineBlock.Body, evalCtx, parentBackend)
-			if diags.HasErrors() {
-				return nil, diags
-			}
-			bodies = append(bodies, parentBackend.Remain)
-		}
-	}
-
-	var backendConf *config.Backend
-	inlineBlock, err := getBackendInlineBlock(inlineDef, evalCtx)
-	if err != nil {
-		if err == errorMissingBackend && parentBackend != nil {
-			backendConf = parentBackend
-
-		} else {
-			return nil, err
-		}
-	} else {
-		backendConf = &config.Backend{}
-		diags := gohcl.DecodeBody(inlineBlock.Body, evalCtx, backendConf)
-		if diags.HasErrors() {
-			return nil, diags
-		}
-
-		parentAttr, _ := inlineDef.Body().JustAttributes()
-		content := &hcl.BodyContent{
-			Attributes:       parentAttr,
-			MissingItemRange: inlineDef.Body().MissingItemRange(),
-		}
-		bodies = append(bodies, NewBody(content))
-		bodies = append(bodies, backendConf.Body())
-	}
-
-	backendConf, _ = DefaultBackendConf.Merge(backendConf)
-
-	// obtain the backend reference and merge with the current override
-	if inlineBlock != nil && len(inlineBlock.Labels) > 0 {
-		backendConf.Name = inlineBlock.Labels[0]
-		if beRef, ok := backends[backendConf.Name]; ok {
-			// consider existing parents, rebuild hierarchy
-			mergedBackendConf, _ := beRef.Merge(backendConf)
-			bodies = append([]hcl.Body{beRef.Remain}, bodies...)
-			backendConf = mergedBackendConf
-		} else {
-			return nil, fmt.Errorf("override backend %q is not defined", backendConf.Name)
-		}
-	}
-
-	// since we reference a backend we must append the current context inline definition
-	// to handle possible overrides like 'path' for endpoints. Only if the most recent definition
-	// has no own attribute defined, use the parents one.
-	if len(bodies) > 0 && reflect.TypeOf(inlineDef) == reflect.TypeOf(&config.Endpoint{}) {
-		inheritableAttributes := []string{"path"}
-		inheritAttributes := make(hcl.Attributes)
-
-		recentBody := bodies[len(bodies)-1]
-		attr, _ := recentBody.JustAttributes()
-
-		for _, inheritableAttr := range inheritableAttributes {
-			var recentAttrStr string
-			recentAttr, ok := attr[inheritableAttr]
-			if ok {
-				attrVal, _ := recentAttr.Expr.Value(evalCtx)
-				recentAttrStr = seetie.ValueToString(attrVal)
-			}
-			if recentAttrStr == "" || (parentBackend != nil && recentBody == parentBackend.Body()) {
-				// and if the endpoint has defined a attribute
-				attr, _ = inlineDef.Body().JustAttributes()
-				if recentAttr, ok = attr[inheritableAttr]; ok {
-					inheritAttributes[inheritableAttr] = recentAttr
-				}
-			}
-		}
-
-		if len(inheritAttributes) > 0 {
-			content := &hcl.BodyContent{
-				Attributes:       inheritAttributes,
-				MissingItemRange: inlineDef.Body().MissingItemRange(),
-			}
-			bodies = append(bodies, NewBody(content))
-		}
-	}
-
-	var origin string
-	for i := len(bodies); i > 0; i-- {
-		if o := getAttribute(evalCtx, "origin", bodies[i-1], confBytes); o != "" {
-			origin = o
-			break
-		}
-	}
-
-	if err = validateOrigin(origin, backendConf.Remain.MissingItemRange()); err != nil {
-		return nil, err
-	}
-
-	return newProxy(evalCtx, backendConf, parentAPI.CORS, bodies, log, srvOpts)
-}
-
-func getBackendInlineBlock(inline config.Inline, evalCtx *hcl.EvalContext) (*hcl.Block, error) {
-	content, _, diags := inline.Body().PartialContent(inline.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	if content == nil || len(content.Blocks) == 0 {
-		return nil, errorMissingBackend
-	}
-
-	var inlineBlock *hcl.Block
-	for _, block := range content.Blocks {
-		if block.Type == "backend" {
-			if err := validateInlineScheme(evalCtx, block.Body, config.Backend{}); err != nil {
-				return nil, err
-			}
-			inlineBlock = block
-			break
-		}
-	}
-
-	if inlineBlock == nil {
-		return nil, errorMissingBackend
-	}
-	return inlineBlock, nil
 }
 
 func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {

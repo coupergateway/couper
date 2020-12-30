@@ -14,9 +14,11 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload"
+
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/server"
@@ -57,20 +59,18 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpConf := runtime.NewHTTPConfig(nil)
-	httpConf.ListenPort = 0 // random
-
-	conf, err := config.LoadBytes(confBytes.Bytes(), "conf_test.hcl")
+	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_test.hcl")
 	helper.Must(err)
+	conf.Settings.DefaultPort = 0
 
-	srvConf, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil))
 	helper.Must(err)
 
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	port := runtime.Port(httpConf.ListenPort)
-	gw := server.New(ctx, log.WithContext(ctx), httpConf, port, srvConf.PortOptions[port])
+	port := runtime.Port(conf.Settings.DefaultPort)
+	gw := server.New(ctx, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, port, srvConf.PortOptions[port])
 	gw.Listen()
 	defer gw.Close()
 
@@ -153,21 +153,18 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpConf := runtime.NewHTTPConfig(nil)
-	httpConf.ListenPort = 0 // random
-
-	conf, err := config.LoadBytes(confBytes.Bytes(), "conf_fileserving.hcl")
+	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_fileserving.hcl")
 	helper.Must(err)
 
 	error404Content := []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>")
 	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	srvConf, err := runtime.NewServerConfiguration(conf, httpConf, log.WithContext(nil))
+	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil))
 	helper.Must(err)
-	port := runtime.Port(httpConf.ListenPort)
+	port := runtime.Port(0)
 
-	couper := server.New(ctx, log.WithContext(ctx), httpConf, port, srvConf.PortOptions[port])
+	couper := server.New(ctx, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, port, srvConf.PortOptions[port])
 	couper.Listen()
 	defer couper.Close()
 
@@ -253,9 +250,9 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 	} {
 		t.Run(testcase.formatOption, func(subT *testing.T) {
 			log, hook := logrustest.NewNullLogger()
-			conf := *runtime.DefaultHTTP
-			conf.RequestIDFormat = testcase.formatOption
-			srv := server.New(context.Background(), log, &conf, 0, nil)
+			settings := config.DefaultSettings
+			settings.RequestIDFormat = testcase.formatOption
+			srv := server.New(context.Background(), log, &settings, &runtime.DefaultTimings, 0, nil)
 			srv.Listen()
 			defer srv.Close()
 

@@ -6,7 +6,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var _ Inline = &Backend{}
+var (
+	_ Inline = &Backend{}
+)
 
 type Backend struct {
 	ConnectTimeout   string   `hcl:"connect_timeout,optional"`
@@ -15,11 +17,15 @@ type Backend struct {
 	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
-	OpenAPI          *OpenAPI `hcl:"openapi,block"`
+	OpenAPI          []*OpenAPI `hcl:"openapi,block"`
 }
 
 func (b Backend) Body() hcl.Body {
 	return b.Remain
+}
+
+func (b Backend) Reference() string {
+	return b.Name
 }
 
 func (b Backend) Schema(inline bool) *hcl.BodySchema {
@@ -41,57 +47,8 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 		SetQueryParams     map[string]cty.Value `hcl:"set_query_params,optional"`
 	}
 
-	// TODO: handle block parsing on config load first
-	blocks := schema.Blocks
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
-	schema.Blocks = blocks
 	return schema
-}
-
-// Merge overrides the left backend configuration and returns a new instance.
-func (b *Backend) Merge(other *Backend) (*Backend, []hcl.Body) {
-	if b == nil || other == nil {
-		return nil, nil
-	}
-
-	var bodies []hcl.Body
-
-	result := *b
-
-	if other.Name != "" {
-		result.Name = other.Name
-	}
-
-	if result.Remain != nil {
-		bodies = append(bodies, result.Remain)
-	}
-
-	if other.Remain != nil {
-		bodies = append(bodies, other.Remain)
-		result.Remain = other.Remain
-	}
-
-	if other.ConnectTimeout != "" {
-		result.ConnectTimeout = other.ConnectTimeout
-	}
-
-	if other.RequestBodyLimit != "" {
-		result.RequestBodyLimit = other.RequestBodyLimit
-	}
-
-	if other.TTFBTimeout != "" {
-		result.TTFBTimeout = other.TTFBTimeout
-	}
-
-	if other.Timeout != "" {
-		result.Timeout = other.Timeout
-	}
-
-	if other.OpenAPI != nil {
-		result.OpenAPI = other.OpenAPI
-	}
-
-	return &result, bodies
 }
 
 func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
@@ -102,6 +59,7 @@ func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
 			content, _, _ := body.PartialContent(schema)
 			if content == nil || len(content.Blocks) == 0 {
 				schema.Blocks[i].LabelNames = nil
+				break
 			}
 		}
 	}

@@ -6,9 +6,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func NewRemainContext(name, value string) []hcl.Body {
+func NewRemainContext(name, value string) hcl.Body {
 	expr := hcltest.MockExprLiteral(cty.StringVal(value))
-	return []hcl.Body{hcltest.MockBody(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+	return hcltest.MockBody(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
 		name: {Name: name, Expr: expr},
-	}})}
+	}})
 }

@@ -25,20 +25,25 @@ type OpenAPIValidatorOptions struct {
 	router                   *openapi3filter.Router
 }
 
-func NewOpenAPIValidatorOptions(openapi *config.OpenAPI) (*OpenAPIValidatorOptions, error) {
-	if openapi == nil {
+// NewOpenAPIValidatorOptions takes a list of openAPI configuration due to merging configurations.
+// The last item will be set and no attributes gets merged.
+func NewOpenAPIValidatorOptions(openapi []*config.OpenAPI) (*OpenAPIValidatorOptions, error) {
+	if len(openapi) == 0 {
 		return nil, nil
 	}
+
+	openapiBlock := openapi[len(openapi)-1]
+
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(dir, openapi.File))
+	b, err := ioutil.ReadFile(filepath.Join(dir, openapiBlock.File))
 	if err != nil {
 		return nil, err
 	}
-	return NewOpenAPIValidatorOptionsFromBytes(openapi, b)
+	return NewOpenAPIValidatorOptionsFromBytes(openapiBlock, b)
 }
 
 func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIValidatorOptions, error) {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
 )
 
@@ -28,33 +28,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	runtimeConf := runtime.NewConfig(nil)
+	var filename, logFormat string
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
-	set.StringVar(&runtimeConf.File, "f", runtimeConf.File, "-f ./couper.hcl")
-	set.StringVar(&runtimeConf.LogFormat, "log-format", runtimeConf.LogFormat, "-log-format=common")
+	set.StringVar(&filename, "f", config.DefaultFileName, "-f ./couper.hcl")
+	set.StringVar(&logFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
 		logrus.WithFields(fields).Fatal(err)
 	}
-	envConf := &runtime.Config{}
-	env.Decode(envConf)
-	runtimeConf = runtimeConf.Merge(envConf)
 
-	logger := newLogger(runtimeConf.LogFormat).WithFields(fields)
+	logger := newLogger(logFormat).WithFields(fields)
 
-	wd, err := runtime.SetWorkingDirectory(runtimeConf.File)
+	wd, err := config.SetWorkingDirectory(filename)
 	if err != nil {
 		logger.Fatal(err)
 	}
 	logger.Infof("working directory: %s", wd)
 
-	gatewayConf, err := config.LoadFile(path.Base(runtimeConf.File))
+	confFile, err := configload.LoadFile(path.Base(filename))
 	if err != nil {
 		logger.Fatal(err)
 	}
 
 	var exitCode int
-	if err = command.NewCommand(args[0]).Execute(args, gatewayConf, logger); err != nil {
+	if err = command.NewCommand(args[0]).Execute(args, confFile, logger); err != nil {
 		logger.Error(err)
 		exitCode = 1
 	}

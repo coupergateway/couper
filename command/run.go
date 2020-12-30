@@ -24,29 +24,29 @@ func NewRun(ctx context.Context) *Run {
 	return &Run{context: ctx}
 }
 
-func (r Run) Execute(args Args, config *config.Gateway, logEntry *logrus.Entry) error {
-	httpConf := runtime.NewHTTPConfig(config)
-
+func (r Run) Execute(args Args, config *config.CouperFile, logEntry *logrus.Entry) error {
 	// TODO: Extract and execute flagSet & env handling in a more generic way for future commands.
 	set := flag.NewFlagSet("settings", flag.ContinueOnError)
-	set.StringVar(&httpConf.HealthPath, "health-path", httpConf.HealthPath, "-health-path /healthz")
-	set.IntVar(&httpConf.ListenPort, "p", httpConf.ListenPort, "-p 8080")
-	set.BoolVar(&httpConf.UseXFH, "xfh", httpConf.UseXFH, "-xfh")
-	set.StringVar(&httpConf.RequestIDFormat, "request-id-format", httpConf.RequestIDFormat, "-request-id-format uuid4")
+	set.StringVar(&config.Settings.HealthPath, "health-path", config.Settings.HealthPath, "-health-path /healthz")
+	set.IntVar(&config.Settings.DefaultPort, "p", config.Settings.DefaultPort, "-p 8080")
+	set.BoolVar(&config.Settings.XForwardedHost, "xfh", config.Settings.XForwardedHost, "-xfh")
+	set.StringVar(&config.Settings.RequestIDFormat, "request-id-format", config.Settings.RequestIDFormat, "-request-id-format uuid4")
 	if err := set.Parse(args.Filter(set)); err != nil {
 		return err
 	}
-	envConf := &runtime.HTTPConfig{}
-	env.Decode(envConf)
-	httpConf = httpConf.Merge(envConf)
+
+	env.Decode(config.Settings)
+
+	timings := runtime.DefaultTimings
+	env.Decode(&timings)
 
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvMux, err := runtime.NewServerConfiguration(config, httpConf, logEntry)
+	srvMux, err := runtime.NewServerConfiguration(config, logEntry)
 	if err != nil {
 		return err
 	}
 
-	serverList, listenCmdShutdown := server.NewServerList(r.context, logEntry.Logger, httpConf, srvMux)
+	serverList, listenCmdShutdown := server.NewServerList(r.context, logEntry.Logger, config.Settings, &timings, srvMux)
 	for _, srv := range serverList {
 		srv.Listen()
 	}

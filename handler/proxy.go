@@ -342,17 +342,16 @@ func (p *Proxy) Director(req *http.Request) error {
 
 	var origin, hostname, path string
 	evalContext := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, nil, nil)
-	for _, hclContext := range p.options.Context { // context gets configured in order, last wins
-		content, _, _ := hclContext.PartialContent(backendInlineSchema)
-		if o := getAttribute(evalContext, "origin", content); o != "" {
-			origin = o
-		}
-		if h := getAttribute(evalContext, "hostname", content); h != "" {
-			hostname = h
-		}
-		if p := getAttribute(evalContext, "path", content); p != "" {
-			path = p
-		}
+
+	content, _, _ := p.options.Context.PartialContent(backendInlineSchema)
+	if o := getAttribute(evalContext, "origin", content); o != "" {
+		origin = o
+	}
+	if h := getAttribute(evalContext, "hostname", content); h != "" {
+		hostname = h
+	}
+	if pathVal := getAttribute(evalContext, "path", content); pathVal != "" {
+		path = pathVal
 	}
 
 	originURL, err := url.Parse(origin)
@@ -442,37 +441,31 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		}
 	}
 
-	for _, ctxBody := range p.options.Context {
-		for _, ctx := range attrCtx { // headers
-			options, err := NewCtxOptions(ctx, evalCtx, ctxBody)
-			if err != nil {
-				p.log.WithField("parse config", p.String()).Error(err)
-			}
-			setHeaderFields(headerCtx, options)
+	for _, ctx := range attrCtx { // headers
+		options, err := NewCtxOptions(ctx, evalCtx, p.options.Context)
+		if err != nil {
+			p.log.WithField("parse config", p.String()).Error(err)
 		}
+		setHeaderFields(headerCtx, options)
+	}
 
-		if beresp != nil { // Do not proceed (outreq) query params if we have the answer already.
-			continue
-		}
-
-		// query params
-		content, _, d := ctxBody.PartialContent(backendInlineSchema)
+	// query params
+	if beresp == nil {
+		content, _, d := p.options.Context.PartialContent(backendInlineSchema)
 		if diags := seetie.SetSeverityLevel(d); diags.HasErrors() {
 			p.log.WithField("parse config", p.String()).Error(diags)
-			continue
 		}
 
 		if del, ok := content.Attributes[attrDelQueryParams]; ok {
 			originValue, d := del.Expr.Value(evalCtx)
 			if diags := seetie.SetSeverityLevel(d); diags.HasErrors() {
 				p.log.WithField("parse config", p.String()).Error(diags)
-				continue
 			}
 			delQuery = append(delQuery, seetie.ValueToStringSlice(originValue)...)
 		}
 
-		p.collectQueryParams(attrAddQueryParams, evalCtx, ctxBody, addQuery)
-		p.collectQueryParams(attrSetQueryParams, evalCtx, ctxBody, setQuery)
+		p.collectQueryParams(attrAddQueryParams, evalCtx, p.options.Context, addQuery)
+		p.collectQueryParams(attrSetQueryParams, evalCtx, p.options.Context, setQuery)
 	}
 
 	if req != nil && beresp == nil { // just one way -> origin

@@ -8,18 +8,22 @@ import (
 var _ Inline = &Api{}
 
 type Api struct {
-	AccessControl        []string    `hcl:"access_control,optional"`
-	CORS                 *CORS       `hcl:"cors,block"`
-	Backend              string      `hcl:"backend,optional"`
-	BasePath             string      `hcl:"base_path,optional"`
-	DisableAccessControl []string    `hcl:"disable_access_control,optional"`
-	Endpoint             []*Endpoint `hcl:"endpoint,block"`
-	ErrorFile            string      `hcl:"error_file,optional"`
-	Remain               hcl.Body    `hcl:",remain" json:"-"`
+	AccessControl        []string  `hcl:"access_control,optional"`
+	CORS                 *CORS     `hcl:"cors,block"`
+	Backend              string    `hcl:"backend,optional"`
+	BasePath             string    `hcl:"base_path,optional"`
+	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
+	Endpoints            Endpoints `hcl:"endpoint,block"`
+	ErrorFile            string    `hcl:"error_file,optional"`
+	Remain               hcl.Body  `hcl:",remain" json:"-"`
 }
 
 func (a Api) Body() hcl.Body {
 	return a.Remain
+}
+
+func (a Api) Reference() string {
+	return a.Backend
 }
 
 func (a Api) Schema(inline bool) *hcl.BodySchema {

@@ -19,25 +19,19 @@ func (h *Helper) NewProxy(opts *handler.ProxyOptions) (*handler.Proxy, *http.Cli
 	var upstream http.HandlerFunc
 	server := httptest.NewServer(upstream)
 
-	proxyOptions := &handler.ProxyOptions{
-		Context:     h.NewProxyContext(""),
-		BackendName: "HelperUpstream",
-		CORS:        &handler.CORSOptions{},
-	}
-	proxyOptions = proxyOptions.Merge(opts)
-
-	proxy, err := handler.NewProxy(proxyOptions, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
+	opts.BackendName = "HelperUpstream"
+	proxy, err := handler.NewProxy(opts, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 	h.Must(err)
 
 	return proxy.(*handler.Proxy), server.Client(), upstream, server.Close
 }
 
-func (h *Helper) NewProxyContext(inlineHCL string) []hcl.Body {
+func (h *Helper) NewProxyContext(inlineHCL string) hcl.Body {
 	type hclBody struct {
 		Inline hcl.Body `hcl:",remain"`
 	}
 
 	var remain hclBody
 	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewENVContext(nil), &remain))
-	return []hcl.Body{remain.Inline}
+	return remain.Inline
 }

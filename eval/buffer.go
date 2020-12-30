@@ -31,38 +31,37 @@ func (i BufferOption) GoString() string {
 }
 
 // MustBuffer determines if any of the hcl.bodies makes use of 'post' or 'json_body'.
-func MustBuffer(ctxBodies []hcl.Body) BufferOption {
+func MustBuffer(body hcl.Body) BufferOption {
 	result := BufferNone
-	for _, body := range ctxBodies {
-		attrs, err := body.JustAttributes()
-		if err != nil {
-			return result
-		}
-		for _, attr := range attrs {
-			for _, traversal := range attr.Expr.Variables() {
-				if len(traversal) < 2 {
-					continue
-				}
 
-				rootName := traversal.RootName()
-				if rootName != ClientRequest && rootName != BackendResponse {
-					continue
-				}
+	attrs, err := body.JustAttributes()
+	if err != nil {
+		return result
+	}
+	for _, attr := range attrs {
+		for _, traversal := range attr.Expr.Variables() {
+			if len(traversal) < 2 {
+				continue
+			}
 
-				nameField := reflect.ValueOf(traversal[1]).FieldByName("Name")
-				name := nameField.String()
-				switch name {
-				case JsonBody:
-					switch rootName {
-					case ClientRequest:
-						result |= BufferRequest
-					case BackendResponse:
-						result |= BufferResponse
-					}
-				case Post:
-					if rootName == ClientRequest {
-						result |= BufferRequest
-					}
+			rootName := traversal.RootName()
+			if rootName != ClientRequest && rootName != BackendResponse {
+				continue
+			}
+
+			nameField := reflect.ValueOf(traversal[1]).FieldByName("Name")
+			name := nameField.String()
+			switch name {
+			case JsonBody:
+				switch rootName {
+				case ClientRequest:
+					result |= BufferRequest
+				case BackendResponse:
+					result |= BufferResponse
+				}
+			case Post:
+				if rootName == ClientRequest {
+					result |= BufferRequest
 				}
 			}
 		}
