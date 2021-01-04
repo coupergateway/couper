@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/eval"
 )
@@ -18,6 +19,7 @@ import (
 const (
 	backend     = "backend"
 	definitions = "definitions"
+	pathAttr    = "path"
 	server      = "server"
 	settings    = "settings"
 )
@@ -85,13 +87,12 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 			if apiBlock == nil {
 				continue
 			}
-			merged, err := mergeBackendBodies(file.Definitions, apiBlock)
+			bodies, err := mergeBackendBodies(file.Definitions, apiBlock)
 			if err != nil {
 				return nil, err
 			}
 
 			// empty bodies would be removed with a hcl.Merge.. later on.
-			bodies := []hcl.Body{merged}
 			if err = refineEndpoints(file.Definitions, bodies, apiBlock.Endpoints); err != nil {
 				return nil, err
 			}
@@ -113,7 +114,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 	return file, nil
 }
 
-func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.Inline) (hcl.Body, error) {
+func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.Inline) ([]hcl.Body, error) {
 	reference, err := definitions.BackendWithName(inlineBackend.Reference())
 	if err != nil {
 		return nil, err
@@ -134,7 +135,14 @@ func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.In
 		if content != nil && len(backends) > 0 {
 			return nil, fmt.Errorf("configuration error: inlineBackend reference and inline definition")
 		}
+		// we have a reference, append to list and additionally add the inline overrides.
 		bodies = append(bodies, reference.Remain)
+		if content != nil && len(content.Attributes) > 0 {
+			bodies = append(bodies, body.New(&hcl.BodyContent{
+				Attributes:       content.Attributes,
+				MissingItemRange: content.MissingItemRange,
+			}))
+		}
 	}
 
 	if len(backends) > 0 {
@@ -145,21 +153,65 @@ func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.In
 			}
 			bodies = append(bodies, reference.Remain)
 		}
-		// TODO: ep path
 
 		bodies = append(bodies, backends[0].Body)
 	}
 
-	return MergeBodies(bodies), nil
+	return bodies, nil
 }
 
 func refineEndpoints(definitions *config.Definitions, parents []hcl.Body, endpoints config.Endpoints) error {
-	for _, endpoint := range endpoints {
+	for e, endpoint := range endpoints {
 		merged, err := mergeBackendBodies(definitions, endpoint)
 		if err != nil {
 			return err
 		}
-		endpoint.Remain = MergeBodies(append(parents, merged))
+
+		merged, err = appendPathAttribute(append(parents, merged...), endpoint)
+		if err != nil {
+			return err
+		}
+
+		endpoints[e].Remain = MergeBodies(merged)
 	}
 	return nil
+}
+
+// appendPathAttribute determines if the given endpoint has child definitions which relies on references
+// which 'path' attribute should be refined with the endpoints inline value.
+func appendPathAttribute(bodies []hcl.Body, endpoint *config.Endpoint) ([]hcl.Body, error) {
+	if len(bodies) == 0 || endpoint == nil {
+		return bodies, nil
+	}
+
+	ctnt, _, diags := endpoint.Body().PartialContent(endpoint.Schema(true))
+	if diags.HasErrors() {
+		return nil, diags
+	} else if ctnt == nil {
+		return bodies, nil
+	}
+
+	// do not override path with an endpoint one if a reference override or
+	// an inline definition contains an explicit path attribute value.
+	blocks := ctnt.Blocks.OfType(backend)
+	if len(blocks) > 0 {
+		bodyAttrs, _ := blocks[0].Body.JustAttributes()
+		for name := range bodyAttrs {
+			if name == pathAttr {
+				return bodies, nil
+			}
+		}
+	}
+
+	for name, attr := range ctnt.Attributes {
+		if name == pathAttr {
+			return append(bodies, body.New(&hcl.BodyContent{
+				Attributes: hcl.Attributes{
+					pathAttr: attr,
+				},
+			})), nil
+		}
+	}
+
+	return bodies, nil
 }

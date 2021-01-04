@@ -6,21 +6,21 @@ server "api" {
       path = "/unset/by/endpoint"
     }
 
-//    endpoint "/endpoint1" {
-//      path = "/anything"
-//    }
-//
-//    endpoint "/endpoint2" {
-//     path = "/unset/by/local-backend"
-//     backend "anything" {
-//       path = "/anything"
-//     }
-//    }
-//
-//    # don't override path
-//    endpoint "/endpoint3" {
-//      backend  = "anything"
-//    }
+    endpoint "/endpoint1" {
+      path = "/anything"
+    }
+
+    endpoint "/endpoint2" {
+     path = "/unset/by/local-backend"
+     backend "anything" {
+       path = "/anything"
+     }
+    }
+
+    # don't override path
+    endpoint "/endpoint3" {
+      backend  = "anything"
+    }
 
     endpoint "/endpoint4" {
       path = "/anything"
