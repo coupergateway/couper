@@ -105,11 +105,17 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
+	proxy := ""
 	reqCtx := req
 	if isUpstreamRequest && roundtripInfo != nil && roundtripInfo.BeReq != nil {
 		reqCtx = roundtripInfo.BeReq
 		if roundtripInfo.BeResp != nil {
 			reqCtx.TLS = roundtripInfo.BeResp.TLS
+		}
+
+		u, err := http.ProxyFromEnvironment(roundtripInfo.BeReq)
+		if err == nil && u != nil {
+			proxy = u.Host
 		}
 	}
 
@@ -128,6 +134,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	fields := Fields{
 		"method":  reqCtx.Method,
 		"proto":   reqCtx.Proto,
+		"proxy":   proxy,
 		"request": requestFields,
 		"server":  serverName,
 		"uid":     uniqueID,
