@@ -30,6 +30,7 @@ func (r Run) Execute(args Args, config *config.CouperFile, logEntry *logrus.Entr
 	set.StringVar(&config.Settings.HealthPath, "health-path", config.Settings.HealthPath, "-health-path /healthz")
 	set.IntVar(&config.Settings.DefaultPort, "p", config.Settings.DefaultPort, "-p 8080")
 	set.BoolVar(&config.Settings.XForwardedHost, "xfh", config.Settings.XForwardedHost, "-xfh")
+	set.BoolVar(&config.Settings.NoProxyFromEnv, "no-proxy-from-env", config.Settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&config.Settings.RequestIDFormat, "request-id-format", config.Settings.RequestIDFormat, "-request-id-format uuid4")
 	if err := set.Parse(args.Filter(set)); err != nil {
 		return err

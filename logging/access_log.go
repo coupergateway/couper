@@ -113,9 +113,11 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 			reqCtx.TLS = roundtripInfo.BeResp.TLS
 		}
 
-		u, err := http.ProxyFromEnvironment(roundtripInfo.BeReq)
-		if err == nil && u != nil {
-			proxy = u.Host
+		if !log.conf.NoProxyFromEnv {
+			u, err := http.ProxyFromEnvironment(roundtripInfo.BeReq)
+			if err == nil && u != nil {
+				proxy = u.Host
+			}
 		}
 	}
 
