@@ -2,6 +2,7 @@ package command
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -25,7 +26,12 @@ func (a Args) Filter(set *flag.FlagSet) Args {
 		}
 		if f := set.Lookup(name); f != nil {
 			if name == arg[1:] {
-				args = append(args, a[i:i+2]...)
+				if strings.HasSuffix(fmt.Sprintf("%T", f.Value), "boolValue") {
+					args = append(args, a[i:i+1]...)
+				} else {
+					args = append(args, a[i:i+2]...)
+				}
+
 				continue
 			}
 			args = append(args, a[i])
