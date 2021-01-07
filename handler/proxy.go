@@ -22,6 +22,7 @@ import (
 	"golang.org/x/net/http/httpguts"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
@@ -390,36 +391,11 @@ func (p *Proxy) Director(req *http.Request) error {
 	return nil
 }
 
-func modifyQuery(url *url.URL, del []string, set, add url.Values) {
-	query := url.Query()
-
-	for _, del := range del {
-		query.Del(del)
-	}
-	for k, values := range set {
-		query.Del(k)
-
-		for _, v := range values {
-			query.Add(k, v)
-		}
-	}
-	for k, values := range add {
-		for _, v := range values {
-			query.Add(k, v)
-		}
-	}
-
-	url.RawQuery = query.Encode()
-}
-
 func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
 		attrCtx   = []string{attrReqHeaders, attrSetReqHeaders}
 		bereq     *http.Request
 		headerCtx http.Header
-
-		delQuery           []string
-		addQuery, setQuery url.Values
 	)
 
 	if beresp != nil {
@@ -428,8 +404,6 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = beresp.Header
 	} else if req != nil {
 		headerCtx = req.Header
-		addQuery = make(url.Values)
-		setQuery = make(url.Values)
 	}
 
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
@@ -441,35 +415,71 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		}
 	}
 
-	for _, ctx := range attrCtx { // headers
-		options, err := NewCtxOptions(ctx, evalCtx, p.options.Context)
-		if err != nil {
-			p.log.WithField("parse config", p.String()).Error(err)
+	allAttributes, attrOk := p.options.Context.(body.Attributes)
+
+	// apply header values
+	for _, ctxName := range attrCtx { // headers
+		if !attrOk {
+			break
 		}
-		setHeaderFields(headerCtx, options)
+
+		for _, attrs := range allAttributes.JustAllAttributesWithName(ctxName) {
+			attr, ok := attrs[ctxName]
+			if !ok {
+				continue
+			}
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags.HasErrors() {
+				p.log.WithField("parse config", p.String()).Error(diags)
+				continue
+			}
+			setHeaderFields(headerCtx, options)
+		}
 	}
 
-	// query params
-	if beresp == nil {
-		content, _, d := p.options.Context.PartialContent(backendInlineSchema)
-		if diags := seetie.SetSeverityLevel(d); diags.HasErrors() {
-			p.log.WithField("parse config", p.String()).Error(diags)
-		}
+	// apply query params in hierarchical and logical order: delete, set, add
+	if attrOk && req != nil && beresp == nil { // just one way -> origin
+		values := req.URL.Query()
 
-		if del, ok := content.Attributes[attrDelQueryParams]; ok {
-			originValue, d := del.Expr.Value(evalCtx)
-			if diags := seetie.SetSeverityLevel(d); diags.HasErrors() {
+		for _, attrs := range allAttributes.JustAllAttributesWithName(attrDelQueryParams) {
+			attr, ok := attrs[attrDelQueryParams]
+			if !ok {
+				continue
+			}
+			val, diags := attr.Expr.Value(evalCtx)
+			if seetie.SetSeverityLevel(diags).HasErrors() {
 				p.log.WithField("parse config", p.String()).Error(diags)
 			}
-			delQuery = append(delQuery, seetie.ValueToStringSlice(originValue)...)
+			for _, key := range seetie.ValueToStringSlice(val) {
+				values.Del(key)
+			}
 		}
 
-		p.collectQueryParams(attrAddQueryParams, evalCtx, p.options.Context, addQuery)
-		p.collectQueryParams(attrSetQueryParams, evalCtx, p.options.Context, setQuery)
-	}
-
-	if req != nil && beresp == nil { // just one way -> origin
-		modifyQuery(req.URL, delQuery, setQuery, addQuery)
+		for _, name := range []string{attrSetQueryParams, attrAddQueryParams} {
+			for _, attrs := range allAttributes.JustAllAttributesWithName(name) {
+				attr, ok := attrs[name]
+				if !ok {
+					continue
+				}
+				options, diags := NewOptionsMap(evalCtx, attr)
+				if diags != nil {
+					p.log.WithField("parse config", p.String()).Error(diags)
+				}
+				for k, v := range options {
+					if name == attrSetQueryParams {
+						values[k] = v
+						continue
+					}
+					// add
+					if _, ok = values[k]; !ok {
+						values[k] = v
+					} else {
+						values[k] = append(values[k], v...)
+					}
+				}
+			}
+		}
+		req.URL.RawQuery = values.Encode()
 	}
 
 	if beresp != nil && isCorsRequest(req) {
@@ -665,16 +675,6 @@ func (p *Proxy) handleUpgradeResponse(rw http.ResponseWriter, req *http.Request,
 	go spc.copyFromBackend(errc)
 	<-errc
 	return
-}
-
-func (p *Proxy) collectQueryParams(attrName string, evalCtx *hcl.EvalContext, ctxBody hcl.Body, dest url.Values) {
-	options, err := NewCtxOptions(attrName, evalCtx, ctxBody)
-	if err != nil {
-		p.log.WithField("parse config", p.String()).Error(err)
-	}
-	for k, v := range options {
-		dest[k] = append(dest[k], v...)
-	}
 }
 
 func (p *Proxy) Options() *server.Options {

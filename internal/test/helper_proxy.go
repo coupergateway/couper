@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 )
@@ -33,5 +34,5 @@ func (h *Helper) NewProxyContext(inlineHCL string) hcl.Body {
 
 	var remain hclBody
 	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewENVContext(nil), &remain))
-	return remain.Inline
+	return configload.MergeBodies([]hcl.Body{remain.Inline})
 }

@@ -21,6 +21,7 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -592,16 +593,10 @@ func TestProxy_director(t *testing.T) {
 }
 
 func TestProxy_ServeHTTP_Eval(t *testing.T) {
-	type fields struct {
-		evalContext *hcl.EvalContext
-		options     *handler.ProxyOptions
-	}
-
 	type header map[string]string
 
 	type testCase struct {
 		name       string
-		fields     fields
 		hcl        string
 		method     string
 		body       io.Reader
@@ -627,19 +622,12 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	opts := &handler.ProxyOptions{
-		BackendName:      "test-origin",
-		Context:          test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-		CORS:             &handler.CORSOptions{},
-		RequestBodyLimit: 10,
-	}
-
 	tests := []testCase{
-		{"GET use req.Header", fields{baseCtx, opts}, `
+		{"GET use req.Header", `
 		set_response_headers = {
 			X-Method = req.method
 		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}, false},
-		{"POST use req.post", fields{baseCtx, opts}, `
+		{"POST use req.post", `
 		set_response_headers = {
 			X-Method = req.method
 			X-Post = req.post.foo
@@ -657,13 +645,19 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			caseOpts := *tt.fields.options
-			caseOpts.Context = hcl.MergeBodies([]hcl.Body{caseOpts.Context, remain.Inline})
-			p, err := handler.NewProxy(&caseOpts, log.WithContext(context.Background()),
+
+			p, err := handler.NewProxy(&handler.ProxyOptions{
+				RequestBodyLimit: 10,
+				Context: configload.MergeBodies([]hcl.Body{
+					test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+					remain.Inline,
+				}),
+			}, log.WithContext(context.Background()),
 				&server.Options{
 					APIErrTpl: errors.DefaultJSON,
 				},
-				tt.fields.evalContext)
+				baseCtx)
+
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -977,7 +971,7 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 			evalCtx := eval.NewENVContext(nil)
 
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				Context: hcl.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					helper.NewProxyContext(tc.remain)}),
 				RequestBodyLimit: 64,
 			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
@@ -1073,7 +1067,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
 				OpenAPI: tc.apiOptions,
-				Context: hcl.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					helper.NewProxyContext(tc.remain)}),
 				RequestBodyLimit: 64,
 			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)

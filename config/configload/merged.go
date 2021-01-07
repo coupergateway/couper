@@ -216,3 +216,25 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 	leftoverBody := MergeBodies(mergedLeftovers)
 	return content, leftoverBody, diags
 }
+
+// JustAllAttributes returns a list of attributes in order. Since these bodies got added as partialContent
+// we do not have to supply a scheme or handle the underlying diagnostics.
+func (mb mergedBodies) JustAllAttributes() []hcl.Attributes {
+	return mb.JustAllAttributesWithName("")
+}
+
+// JustAllAttributesWithName behaviour is the same as JustAllAttributes with a filtered slice.
+func (mb mergedBodies) JustAllAttributesWithName(name string) []hcl.Attributes {
+	var result []hcl.Attributes
+
+	for _, body := range mb {
+		attrs, _ := body.JustAttributes()
+		for attrName := range attrs {
+			if name != "" && attrName != name {
+				delete(attrs, attrName)
+			}
+		}
+		result = append(result, attrs)
+	}
+	return result
+}
