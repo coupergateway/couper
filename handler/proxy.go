@@ -441,36 +441,37 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	if attrOk && req != nil && beresp == nil { // just one way -> origin
 		values := req.URL.Query()
 
-		for _, attrs := range allAttributes.JustAllAttributesWithName(attrDelQueryParams) {
+		// not by name to ensure the order for all params
+		for _, attrs := range allAttributes.JustAllAttributes() {
 			attr, ok := attrs[attrDelQueryParams]
-			if !ok {
-				continue
-			}
-			val, diags := attr.Expr.Value(evalCtx)
-			if seetie.SetSeverityLevel(diags).HasErrors() {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-			for _, key := range seetie.ValueToStringSlice(val) {
-				values.Del(key)
-			}
-		}
-
-		for _, name := range []string{attrSetQueryParams, attrAddQueryParams} {
-			for _, attrs := range allAttributes.JustAllAttributesWithName(name) {
-				attr, ok := attrs[name]
-				if !ok {
-					continue
+			if ok {
+				val, diags := attr.Expr.Value(evalCtx)
+				if seetie.SetSeverityLevel(diags).HasErrors() {
+					p.log.WithField("parse config", p.String()).Error(diags)
 				}
+				for _, key := range seetie.ValueToStringSlice(val) {
+					values.Del(key)
+				}
+			}
+
+			attr, ok = attrs[attrSetQueryParams]
+			if ok {
 				options, diags := NewOptionsMap(evalCtx, attr)
 				if diags != nil {
 					p.log.WithField("parse config", p.String()).Error(diags)
 				}
 				for k, v := range options {
-					if name == attrSetQueryParams {
-						values[k] = v
-						continue
-					}
-					// add
+					values[k] = v
+				}
+			}
+
+			attr, ok = attrs[attrAddQueryParams]
+			if ok {
+				options, diags := NewOptionsMap(evalCtx, attr)
+				if diags != nil {
+					p.log.WithField("parse config", p.String()).Error(diags)
+				}
+				for k, v := range options {
 					if _, ok = values[k]; !ok {
 						values[k] = v
 					} else {
@@ -479,6 +480,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 				}
 			}
 		}
+
 		req.URL.RawQuery = values.Encode()
 	}
 
