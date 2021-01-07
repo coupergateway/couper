@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path"
@@ -448,6 +449,40 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 	})
 
 	shutdown()
+}
+
+func TestHTTPServer_ProxyFromEnv(t *testing.T) {
+	client := newClient()
+
+	seenProxyRequest := false
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		seenProxyRequest = true
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	os.Setenv("http_proxy", origin.URL)
+	defer os.Setenv("http_proxy", "")
+
+	confPath := path.Join("testdata/integration", "api/01_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+
+	t.Run("Test", func(subT *testing.T) {
+		helper := test.New(subT)
+
+		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/v1/proxy", nil)
+		helper.Must(err)
+
+		_, err = client.Do(req)
+		helper.Must(err)
+
+		if !seenProxyRequest {
+			t.Error("Proxy call failed")
+		}
+	})
+
+	cleanup(shutdown, t)
 }
 
 func TestHTTPServer_Gzip(t *testing.T) {
