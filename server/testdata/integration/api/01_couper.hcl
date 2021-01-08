@@ -12,6 +12,7 @@ server "api" {
 
     endpoint "/connect-error" {
       backend {
+        connect_timeout = "2s"
         origin = "http://1.2.3.4"
       }
     }
