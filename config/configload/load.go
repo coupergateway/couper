@@ -3,8 +3,6 @@ package configload
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
@@ -25,25 +23,25 @@ const (
 )
 
 func LoadFile(filePath string) (*config.CouperFile, error) {
-	wd, err := os.Getwd()
+	_, err := config.SetWorkingDirectory(filePath)
 	if err != nil {
 		return nil, err
 	}
-	src, err := ioutil.ReadFile(path.Join(wd, filePath))
+	filename := filepath.Base(filePath)
+	src, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
-	return LoadBytes(src, filePath)
+	return LoadBytes(src, filename)
 }
 
-func LoadBytes(src []byte, filePath string) (*config.CouperFile, error) {
-	filename := filepath.Base(filePath)
-	body, diags := parser.Load(src, filename)
+func LoadBytes(src []byte, filename string) (*config.CouperFile, error) {
+	hclBody, diags := parser.Load(src, filename)
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
-	return LoadConfig(body, src)
+	return LoadConfig(hclBody, src)
 }
 
 func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {

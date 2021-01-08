@@ -5,7 +5,6 @@ package main
 import (
 	"flag"
 	"os"
-	"path"
 
 	"github.com/sirupsen/logrus"
 
@@ -28,9 +27,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	var filename, logFormat string
+	var filePath, logFormat string
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
-	set.StringVar(&filename, "f", config.DefaultFileName, "-f ./couper.hcl")
+	set.StringVar(&filePath, "f", config.DefaultFileName, "-f ./couper.hcl")
 	set.StringVar(&logFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
@@ -39,16 +38,16 @@ func main() {
 
 	logger := newLogger(logFormat).WithFields(fields)
 
-	wd, err := config.SetWorkingDirectory(filename)
+	confFile, err := configload.LoadFile(filePath)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	wd, err := os.Getwd()
 	if err != nil {
 		logger.Fatal(err)
 	}
 	logger.Infof("working directory: %s", wd)
-
-	confFile, err := configload.LoadFile(path.Base(filename))
-	if err != nil {
-		logger.Fatal(err)
-	}
 
 	var exitCode int
 	if err = command.NewCommand(args[0]).Execute(args, confFile, logger); err != nil {

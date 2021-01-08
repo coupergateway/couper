@@ -24,7 +24,6 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -64,10 +63,7 @@ func teardown() {
 }
 
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	_, err := config.SetWorkingDirectory(filepath.Join(testWorkingDir, file))
-	helper.Must(err)
-
-	gatewayConf, err := configload.LoadFile(path.Base(file))
+	gatewayConf, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
 	helper.Must(err)
 
 	log, hook := logrustest.NewNullLogger()
@@ -77,10 +73,15 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 		cancel()
 		time.Sleep(time.Second / 2)
 	}
+	shutdownFn := func() {
+		cleanup(cancelFn, helper)
+	}
+
 	//log.Out = os.Stdout
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)); err != nil {
+			shutdownFn()
 			panic(err)
 		}
 	}()
@@ -94,7 +95,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	}
 
 	hook.Reset() // no startup logs
-	return cancelFn, hook
+	return shutdownFn, hook
 }
 
 func newClient() *http.Client {
@@ -113,12 +114,12 @@ func newClient() *http.Client {
 	}
 }
 
-func cleanup(shutdown func(), t *testing.T) {
+func cleanup(shutdown func(), helper *test.Helper) {
 	shutdown()
 
 	err := os.Chdir(testWorkingDir)
 	if err != nil {
-		t.Fatal(err)
+		helper.Must(err)
 	}
 }
 
@@ -340,7 +341,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			})
 		}
 
-		cleanup(shutdown, t)
+		shutdown()
 	}
 }
 
@@ -370,7 +371,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 		}
 	})
 
-	cleanup(shutdown, t)
+	shutdown()
 }
 
 func TestHTTPServer_HostHeader2(t *testing.T) {
@@ -406,7 +407,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 		}
 	})
 
-	cleanup(shutdown, t)
+	shutdown()
 }
 
 func TestHTTPServer_XFHHeader(t *testing.T) {
@@ -446,7 +447,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 		}
 	})
 
-	cleanup(shutdown, t)
+	shutdown()
 }
 
 func TestHTTPServer_Gzip(t *testing.T) {
@@ -513,7 +514,7 @@ func TestHTTPServer_Gzip(t *testing.T) {
 		})
 	}
 
-	cleanup(shutdown, t)
+	shutdown()
 }
 
 func TestHTTPServer_QueryParams(t *testing.T) {
@@ -616,7 +617,7 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			}
 		})
 
-		cleanup(shutdown, t)
+		shutdown()
 	}
 }
 
@@ -675,7 +676,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 		})
 	}
 
-	cleanup(shutdown, t)
+	shutdown()
 }
 
 func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
@@ -738,7 +739,7 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				}
 			})
 		}
-		cleanup(shutdown, t)
+		shutdown()
 	}
 }
 
@@ -757,5 +758,5 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Error("Expected a bad request without required query param")
 	}
-	cleanup(shutdown, t)
+	shutdown()
 }
