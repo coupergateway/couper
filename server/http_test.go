@@ -142,8 +142,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 
 	confBytes := &bytes.Buffer{}
 	err = tpl.Execute(confBytes, map[string]string{
-		"origin":   "http://" + originBackend.Listener.Addr().String(),
-		"hostname": expectedAPIHost,
+		"origin": "http://" + originBackend.Listener.Addr().String(),
 	})
 	helper.Must(err)
 
@@ -162,9 +161,8 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 
 	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil))
 	helper.Must(err)
-	port := runtime.Port(0)
 
-	couper := server.New(ctx, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, port, srvConf.PortOptions[port])
+	couper := server.New(ctx, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf.PortOptions[0])
 	couper.Listen()
 	defer couper.Close()
 
@@ -215,8 +213,9 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		//FIXME:
 		//{"/api", content500.Bytes(), 500},
 	} {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
 		helper.Must(err)
+		req.Host = "example.com"
 
 		res, err := connectClient.Do(req)
 		helper.Must(err)
