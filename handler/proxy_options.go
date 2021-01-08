@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -56,6 +57,12 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions) (*ProxyOptions
 		TTFBTimeout:      ttfbTimeout,
 		Timeout:          timeout,
 	}, nil
+}
+
+func (po *ProxyOptions) Hash() string {
+	h := sha256.New()
+	h.Write([]byte(fmt.Sprintf("%v", po)))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // parseDuration sets the target value if the given duration string is not empty.

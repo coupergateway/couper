@@ -27,8 +27,12 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 		APIErrTpl:    errors.DefaultJSON,
 		FileErrTpl:   errors.DefaultHTML,
 		ServerErrTpl: errors.DefaultHTML,
-		ServerName:   conf.Name,
 	}
+
+	if conf == nil {
+		return options, nil
+	}
+	options.ServerName = conf.Name
 
 	if conf.ErrorFile != "" {
 		tpl, err := errors.NewTemplateFromFile(conf.ErrorFile)

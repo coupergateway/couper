@@ -61,6 +61,7 @@ type Proxy struct {
 	evalContext  *hcl.EvalContext
 	log          *logrus.Entry
 	options      *ProxyOptions
+	optionsHash  string
 	srvOptions   *server.Options
 	transport    *http.Transport
 	upstreamLog  *logging.AccessLog
@@ -128,6 +129,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
+		optionsHash:  options.Hash(),
 		srvOptions:   srvOpts,
 		upstreamLog:  logging.NewAccessLog(&logConf, log.Logger),
 	}
@@ -136,7 +138,7 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 }
 
 func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
-	key := scheme + "|" + origin + "|" + hostname
+	key := scheme + "|" + origin + "|" + hostname + "|" + p.optionsHash
 	transport, ok := transports.Load(key)
 	if !ok {
 		var tlsConf *tls.Config

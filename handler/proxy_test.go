@@ -32,7 +32,6 @@ import (
 )
 
 func TestProxy_ServeHTTP_Timings(t *testing.T) {
-	t.Skip("todo: fixme")
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Method == http.MethodHead {
 			time.Sleep(time.Second * 2) // > ttfb proxy settings
@@ -48,14 +47,15 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 		expectedStatus int
 	}{
 		{"with zero timings", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL)}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
-		{"with overall timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://1.2.3.4/"), Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
-		{"with connect timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusBadGateway},
-		{"with ttfb timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.4/", nil), http.StatusBadGateway},
+		{"with overall timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://1.2.3.4/"), Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), http.StatusBadGateway},
+		{"with connect timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), http.StatusBadGateway},
+		{"with ttfb timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), http.StatusBadGateway},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			p, err := handler.NewProxy(tt.options, logger.WithContext(nil), nil, eval.NewENVContext(nil))
+			srvOpts, _ := server.NewServerOptions(nil)
+			p, err := handler.NewProxy(tt.options, logger.WithContext(nil), srvOpts, eval.NewENVContext(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
