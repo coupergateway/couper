@@ -71,6 +71,6 @@ func parseDuration(src string, target *time.Duration) error {
 	if src != "" && err != nil {
 		return err
 	}
-	target = &d
+	*target = d
 	return nil
 }
