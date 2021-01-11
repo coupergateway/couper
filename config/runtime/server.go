@@ -73,11 +73,13 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 		return nil, err
 	}
 
-	serverConfiguration := ServerConfiguration{
-		Port(defaultPort): NewMuxOptions(hostsMap),
-	}
-	for p := range validPortMap {
-		serverConfiguration[p] = NewMuxOptions(hostsMap)
+	serverConfiguration := make(ServerConfiguration)
+	if len(validPortMap) == 0 {
+		serverConfiguration[Port(defaultPort)] = NewMuxOptions(hostsMap)
+	} else {
+		for p := range validPortMap {
+			serverConfiguration[p] = NewMuxOptions(hostsMap)
+		}
 	}
 
 	api := make(map[*config.Endpoint]http.Handler)
