@@ -39,9 +39,7 @@ func (p Port) String() string {
 	return strconv.Itoa(int(p))
 }
 
-type ServerConfiguration struct {
-	PortOptions map[Port]*MuxOptions
-}
+type ServerConfiguration map[Port]*MuxOptions
 
 type hosts map[string]bool
 type ports map[Port]hosts
@@ -56,7 +54,7 @@ const (
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (*ServerConfiguration, error) {
+func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerConfiguration, error) {
 	defaultPort := conf.Settings.DefaultPort
 
 	// confCtx is created to evaluate request / response related configuration errors on start.
@@ -75,11 +73,11 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (*Server
 		return nil, err
 	}
 
-	serverConfiguration := &ServerConfiguration{PortOptions: map[Port]*MuxOptions{
-		Port(defaultPort): NewMuxOptions(hostsMap)},
+	serverConfiguration := ServerConfiguration{
+		Port(defaultPort): NewMuxOptions(hostsMap),
 	}
 	for p := range validPortMap {
-		serverConfiguration.PortOptions[p] = NewMuxOptions(hostsMap)
+		serverConfiguration[p] = NewMuxOptions(hostsMap)
 	}
 
 	api := make(map[*config.Endpoint]http.Handler)
@@ -293,7 +291,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
+func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
 	hostList := hosts
 	if len(hostList) == 0 {
 		hostList = []string{"*"}
@@ -301,7 +299,7 @@ func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []stri
 
 	for _, h := range hostList {
 		joinedPath := utils.JoinPath("/", path)
-		host, listenPort, err := splitWildcardHostPort(h, confPort)
+		host, listenPort, err := splitWildcardHostPort(h, defaultPort)
 		if err != nil {
 			return err
 		}
@@ -316,11 +314,11 @@ func setRoutesFromHosts(srvConf *ServerConfiguration, confPort int, hosts []stri
 
 		switch kind {
 		case KindAPI:
-			routes = srvConf.PortOptions[listenPort].EndpointRoutes
+			routes = srvConf[listenPort].EndpointRoutes
 		case KindFiles:
-			routes = srvConf.PortOptions[listenPort].FileRoutes
+			routes = srvConf[listenPort].FileRoutes
 		case KindSPA:
-			routes = srvConf.PortOptions[listenPort].SPARoutes
+			routes = srvConf[listenPort].SPARoutes
 		default:
 			return fmt.Errorf("unknown route kind")
 		}

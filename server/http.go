@@ -36,10 +36,10 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, srvConf *runtime.ServerConfiguration) ([]*HTTPServer, func()) {
+func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
-	for port, srvMux := range srvConf.PortOptions {
+	for port, srvMux := range srvConf {
 		list = append(list, New(cmdCtx, log, settings, timings, port, srvMux))
 	}
 
