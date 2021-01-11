@@ -11,12 +11,12 @@ var (
 )
 
 type Backend struct {
-	ConnectTimeout   string   `hcl:"connect_timeout,optional"`
-	Name             string   `hcl:"name,label"`
-	Remain           hcl.Body `hcl:",remain"`
-	RequestBodyLimit string   `hcl:"request_body_limit,optional"`
-	TTFBTimeout      string   `hcl:"ttfb_timeout,optional"`
-	Timeout          string   `hcl:"timeout,optional"`
+	ConnectTimeout   string     `hcl:"connect_timeout,optional"`
+	Name             string     `hcl:"name,label"`
+	Remain           hcl.Body   `hcl:",remain"`
+	RequestBodyLimit string     `hcl:"request_body_limit,optional"`
+	TTFBTimeout      string     `hcl:"ttfb_timeout,optional"`
+	Timeout          string     `hcl:"timeout,optional"`
 	OpenAPI          []*OpenAPI `hcl:"openapi,block"`
 }
 

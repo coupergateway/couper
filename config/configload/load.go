@@ -80,6 +80,10 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 			return nil, diags
 		}
 
+		if len(serverBlock.Labels) > 0 {
+			srv.Name = serverBlock.Labels[0]
+		}
+
 		file.Server = append(file.Server, srv)
 
 		// api block(s)
