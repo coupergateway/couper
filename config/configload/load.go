@@ -134,14 +134,15 @@ func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.In
 		if content != nil && len(backends) > 0 {
 			return nil, fmt.Errorf("configuration error: inlineBackend reference and inline definition")
 		}
-		// we have a reference, append to list and additionally add the inline overrides.
+		// we have a reference, append to list and...
 		bodies = append(bodies, reference.Remain)
-		if content != nil && len(content.Attributes) > 0 {
-			bodies = append(bodies, body.New(&hcl.BodyContent{
-				Attributes:       content.Attributes,
-				MissingItemRange: content.MissingItemRange,
-			}))
-		}
+	}
+	// ...additionally add the inline overrides.
+	if content != nil && len(content.Attributes) > 0 {
+		bodies = append(bodies, body.New(&hcl.BodyContent{
+			Attributes:       content.Attributes,
+			MissingItemRange: content.MissingItemRange,
+		}))
 	}
 
 	if len(backends) > 0 {

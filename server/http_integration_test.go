@@ -560,7 +560,7 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 				"def_string":  []string{"str", "str"},
 				"def":         []string{"def", "def"},
 				"foo":         []string{""},
-				"xxx":         []string{"ddd", "zzz", "aaa", "bbb", "eee", "ccc"},
+				"xxx":         []string{"aaa", "bbb"},
 			},
 			Path: "/",
 		}},

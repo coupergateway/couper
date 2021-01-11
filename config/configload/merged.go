@@ -234,7 +234,9 @@ func (mb mergedBodies) JustAllAttributesWithName(name string) []hcl.Attributes {
 				delete(attrs, attrName)
 			}
 		}
-		result = append(result, attrs)
+		if len(attrs) > 0 {
+			result = append(result, attrs)
+		}
 	}
 	return result
 }
