@@ -80,11 +80,14 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 			return nil, diags
 		}
 
+		file.Server = append(file.Server, srv)
+
 		// api block(s)
 		for _, apiBlock := range []*config.Api{srv.API} {
 			if apiBlock == nil {
 				continue
 			}
+
 			bodies, err := mergeBackendBodies(file.Definitions, apiBlock)
 			if err != nil {
 				return nil, err
@@ -101,12 +104,6 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 		//if err := refineEndpoints(file.Definitions, nil, srv.Endpoints); err != nil {
 		//	return nil, err
 		//}
-
-		file.Server = append(file.Server, srv)
-	}
-
-	if len(file.Server) == 0 {
-		return nil, fmt.Errorf("missing server definition")
 	}
 
 	return file, nil
