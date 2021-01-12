@@ -25,6 +25,12 @@ func (a Args) Filter(set *flag.FlagSet) Args {
 		}
 		if f := set.Lookup(name); f != nil {
 			if name == arg[1:] {
+				if iFn, ok := f.Value.(interface{ IsBoolFlag() bool }); ok {
+					if iFn.IsBoolFlag() {
+						args = append(args, a[i:i+1]...)
+						continue
+					}
+				}
 				args = append(args, a[i:i+2]...)
 				continue
 			}
