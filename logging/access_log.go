@@ -105,52 +105,45 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
+	fields := Fields{}
+
 	reqCtx := req
 	if isUpstreamRequest && roundtripInfo != nil && roundtripInfo.BeReq != nil {
 		reqCtx = roundtripInfo.BeReq
 		if roundtripInfo.BeResp != nil {
 			reqCtx.TLS = roundtripInfo.BeResp.TLS
 		}
-	}
 
-	uniqueID := reqCtx.Context().Value(request.UID)
-
-	requestFields := Fields{
-		"headers": filterHeader(log.conf.RequestHeaders, reqCtx.Header),
-	}
-
-	if req.ContentLength > 0 {
-		requestFields["bytes"] = reqCtx.ContentLength
-	}
-
-	serverName, _ := reqCtx.Context().Value(request.ServerName).(string)
-
-	fields := Fields{
-		"method":  reqCtx.Method,
-		"proto":   reqCtx.Proto,
-		"request": requestFields,
-		"server":  serverName,
-		"uid":     uniqueID,
-	}
-
-	if h, ok := nextHandler.(fmt.Stringer); ok {
-		fields["handler"] = h.String()
-	}
-
-	if isUpstreamRequest {
 		backendName, _ := reqCtx.Context().Value(request.BackendName).(string)
 		if backendName == "" {
 			endpointName, _ := reqCtx.Context().Value(request.Endpoint).(string)
-			backendName = serverName + ":" + endpointName
+			fields["endpoint"] = endpointName
 		}
-		fields["backend"] = backendName
 
-		if !log.conf.NoProxyFromEnv && roundtripInfo != nil && roundtripInfo.BeReq != nil {
+		if !log.conf.NoProxyFromEnv {
 			u, err := http.ProxyFromEnvironment(roundtripInfo.BeReq)
 			if err == nil && u != nil {
 				fields["proxy"] = u.Host
 			}
 		}
+	}
+
+	fields["method"] = reqCtx.Method
+	fields["proto"] = reqCtx.Proto
+	fields["server"] = reqCtx.Context().Value(request.ServerName)
+	fields["uid"] = reqCtx.Context().Value(request.UID)
+
+	requestFields := Fields{
+		"headers": filterHeader(log.conf.RequestHeaders, reqCtx.Header),
+	}
+	fields["request"] = requestFields
+
+	if req.ContentLength > 0 {
+		requestFields["bytes"] = reqCtx.ContentLength
+	}
+
+	if h, ok := nextHandler.(fmt.Stringer); ok {
+		fields["handler"] = h.String()
 	}
 
 	if log.conf.TypeFieldKey != "" {
