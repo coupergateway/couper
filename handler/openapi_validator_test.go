@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -11,10 +10,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/avenga/couper/config/body"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/zclconf/go-cty/cty"
+
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -45,11 +48,20 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 
 	log, hook := logrustest.NewNullLogger()
 
-	beConf, _ := runtime.DefaultBackendConf.Merge(&config.Backend{OpenAPI: &config.OpenAPI{
-		File: filepath.Join("testdata/validation/backend_01_openapi.yaml"),
-	}})
+	beConf := &config.Backend{
+		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
+			"origin": &hcl.Attribute{
+				Name: "origin",
+				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.URL)),
+			},
+		}}),
+		OpenAPI: []*config.OpenAPI{&config.OpenAPI{
+			File: filepath.Join("testdata/validation/backend_01_openapi.yaml"),
+		}},
+		RequestBodyLimit: "64MiB",
+	}
 
-	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, helper.NewProxyContext(fmt.Sprintf(`origin = "http://%s"`, origin.Listener.Addr())))
+	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{})
 	helper.Must(err)
 
 	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, eval.NewENVContext(nil))

@@ -45,8 +45,12 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 		}
 
 		envVal, ok := field.Tag.Lookup("env")
-		if !ok {
-			continue
+		if !ok { // fallback to hcl struct tag
+			envVal, ok = field.Tag.Lookup("hcl")
+			if !ok {
+				continue
+			}
+			envVal = strings.Split(envVal, ",")[0]
 		}
 
 		mapVal, exist := envMap[envVal]

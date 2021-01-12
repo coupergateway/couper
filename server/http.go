@@ -11,6 +11,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
@@ -23,7 +24,8 @@ import (
 type HTTPServer struct {
 	accessLog  *logging.AccessLog
 	commandCtx context.Context
-	config     *runtime.HTTPConfig
+	settings   *config.Settings
+	timings    *runtime.HTTPTimings
 	listener   net.Listener
 	log        logrus.FieldLogger
 	mux        *Mux
@@ -34,29 +36,25 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, srvConf *runtime.ServerConfiguration) ([]*HTTPServer, func()) {
+func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
-	for port, srvMux := range srvConf.PortOptions {
-		list = append(list, New(cmdCtx, log, conf, port, srvMux))
+	for port, srvMux := range srvConf {
+		list = append(list, New(cmdCtx, log, settings, timings, port, srvMux))
 	}
 
 	handleShutdownFn := func() {
 		<-cmdCtx.Done()
-		time.Sleep(conf.Timings.ShutdownDelay + conf.Timings.ShutdownTimeout) // wait for max amount, TODO: feedback per server
+		time.Sleep(timings.ShutdownDelay + timings.ShutdownTimeout) // wait for max amount, TODO: feedback per server
 	}
 
 	return list, handleShutdownFn
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfig, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
-	if conf == nil {
-		log.Fatal("missing httpConfig")
-	}
-
+func New(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
 	var uidFn func() string
-	if conf.RequestIDFormat == "uuid4" {
+	if settings.RequestIDFormat == "uuid4" {
 		uidFn = func() string {
 			return uuid.NewV4().String()
 		}
@@ -73,24 +71,25 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, conf *runtime.HTTPConfi
 	shutdownCh := make(chan struct{})
 
 	mux := NewMux(muxOpts)
-	mux.MustAddRoute(http.MethodGet, conf.HealthPath, handler.NewHealthCheck(conf.HealthPath, shutdownCh))
+	mux.MustAddRoute(http.MethodGet, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
 
 	httpSrv := &HTTPServer{
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
-		config:     conf,
 		log:        log,
 		mux:        mux,
 		port:       p.String(),
+		settings:   settings,
 		shutdownCh: shutdownCh,
+		timings:    timings,
 		uidFn:      uidFn,
 	}
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
 		Handler:           httpSrv,
-		IdleTimeout:       conf.Timings.IdleTimeout,
-		ReadHeaderTimeout: conf.Timings.ReadHeaderTimeout,
+		IdleTimeout:       timings.IdleTimeout,
+		ReadHeaderTimeout: timings.ReadHeaderTimeout,
 	}
 
 	httpSrv.srv = srv
@@ -137,8 +136,8 @@ func (s *HTTPServer) listenForCtx() {
 	select {
 	case <-s.commandCtx.Done():
 		logFields := logrus.Fields{
-			"delay":    s.config.Timings.ShutdownDelay.String(),
-			"deadline": s.config.Timings.ShutdownTimeout.String(),
+			"delay":    s.timings.ShutdownDelay.String(),
+			"deadline": s.timings.ShutdownTimeout.String(),
 		}
 
 		s.log.WithFields(logFields).Warn("shutting down")
@@ -150,8 +149,8 @@ func (s *HTTPServer) listenForCtx() {
 			return
 		}
 
-		time.Sleep(s.config.Timings.ShutdownDelay)
-		ctx, cancel := context.WithTimeout(context.Background(), s.config.Timings.ShutdownTimeout)
+		time.Sleep(s.timings.ShutdownDelay)
+		ctx, cancel := context.WithTimeout(context.Background(), s.timings.ShutdownTimeout)
 		defer cancel()
 		if err := s.srv.Shutdown(ctx); err != nil {
 			s.log.WithFields(logFields).Error(err)
@@ -185,7 +184,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 // the xfh setting and listener port to be prepared for the http multiplexer.
 func (s *HTTPServer) getHost(req *http.Request) string {
 	host := req.Host
-	if s.config.UseXFH {
+	if s.settings.XForwardedHost {
 		host = req.Header.Get("X-Forwarded-Host")
 	}
 

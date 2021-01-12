@@ -18,29 +18,6 @@ const (
 
 type OptionsMap map[string][]string
 
-func NewCtxOptions(attrName string, evalCtx *hcl.EvalContext, body hcl.Body) (OptionsMap, error) {
-	var diags hcl.Diagnostics
-	var options OptionsMap
-
-	content, _, d := body.PartialContent(backendInlineSchema)
-	diags = append(diags, seetie.SetSeverityLevel(d)...)
-
-	for _, attr := range content.Attributes {
-		if attr.Name != attrName {
-			continue
-		}
-		o, d := NewOptionsMap(evalCtx, attr)
-		diags = append(diags, seetie.SetSeverityLevel(d)...)
-		options = o
-		break
-	}
-
-	if diags.HasErrors() {
-		return nil, diags
-	}
-	return options, nil
-}
-
 func NewOptionsMap(evalCtx *hcl.EvalContext, attr *hcl.Attribute) (OptionsMap, hcl.Diagnostics) {
 	options := make(OptionsMap)
 	expMap, diags := seetie.ExpToMap(evalCtx, attr.Expr)

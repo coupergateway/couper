@@ -3,15 +3,14 @@ package runtime
 import (
 	"fmt"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/avenga/couper/internal/seetie"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
+	"github.com/hashicorp/hcl/v2"
 )
 
 var (
@@ -28,7 +27,7 @@ var (
 //	"*"							equals to "*:configuredPort"
 //	"host:*"					equals to "host:configuredPort"
 //	"host"						listen on configured default port for given host
-func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, hosts, error) {
+func validatePortHosts(conf *config.CouperFile, configuredPort int) (ports, hosts, error) {
 	portMap := make(ports)
 	hostMap := make(hosts)
 	isHostsMandatory := len(conf.Server) > 1
@@ -78,7 +77,30 @@ func validatePortHosts(conf *config.Gateway, configuredPort int) (ports, hosts, 
 	return portMap, hostMap, nil
 }
 
-func validateOrigin(origin string, ctxRange hcl.Range) error {
+func validateOrigin(ctx *hcl.EvalContext, inline config.Inline) error {
+	content, _, diags := inline.Body().PartialContent(inline.Schema(true))
+	if seetie.SetSeverityLevel(diags).HasErrors() {
+		return diags
+	}
+
+	ctxRange := inline.Body().MissingItemRange()
+
+	originAttr, ok := content.Attributes["origin"]
+	if !ok {
+		return hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &ctxRange,
+			Summary: "missing backend.origin attribute",
+		}}
+	}
+	return nil // TODO: read byte range
+
+	originValue, diags := originAttr.Expr.Value(ctx)
+	if seetie.SetSeverityLevel(diags).HasErrors() {
+		return diags
+	}
+
+	origin := seetie.ValueToString(originValue)
+
 	diagErr := &hcl.Diagnostic{
 		Subject: &ctxRange,
 		Summary: "invalid backend.origin value",
@@ -116,16 +138,6 @@ func validateACName(accessControls ac.Map, name, acType string) (string, error) 
 	}
 
 	return name, nil
-}
-
-func validateInlineScheme(ctx *hcl.EvalContext, body hcl.Body, inlineType config.Inline) error {
-	_, partialBody, diags := body.PartialContent(inlineType.Schema(true))
-	result := reflect.New(reflect.TypeOf(inlineType))
-	diags = append(diags, gohcl.DecodeBody(partialBody, ctx, &result)...)
-	if diags.HasErrors() {
-		return diags
-	}
-	return nil
 }
 
 func isUnique(endpoints map[string]bool, pattern string) (bool, string) {

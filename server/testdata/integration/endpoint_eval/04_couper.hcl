@@ -91,13 +91,13 @@ server "api" {
 #       fe_null = null
 #       fe_empty = ""
 #     }
-#   } 
+#   }
 }
 
 definitions {
   # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "anything" {
-    origin = "http://anyserver/"
+    origin = env.COUPER_TEST_BACKEND_ADDR
 
     remove_query_params = [ "def_del" ]
     set_query_params = {

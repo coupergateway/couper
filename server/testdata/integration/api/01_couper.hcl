@@ -12,6 +12,7 @@ server "api" {
 
     endpoint "/connect-error" {
       backend {
+        connect_timeout = "2s"
         origin = "http://1.2.3.4"
       }
     }
@@ -22,6 +23,6 @@ definitions {
   # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "anything" {
     path = "/anything"
-    origin = "http://anyserver/"
+    origin = env.COUPER_TEST_BACKEND_ADDR
   }
 }

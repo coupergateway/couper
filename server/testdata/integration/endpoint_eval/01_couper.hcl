@@ -26,6 +26,6 @@ definitions {
   # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "anything" {
     path = "/not-found-anything"
-    origin = "http://anyserver/"
+    origin = env.COUPER_TEST_BACKEND_ADDR
   }
 }

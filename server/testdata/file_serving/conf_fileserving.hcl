@@ -1,5 +1,5 @@
 server "fileserving-tests" {
-    hosts = ["example.com"]
+    hosts = ["example.com:0"]
 
     error_file = "./error.html"
 
@@ -27,7 +27,7 @@ server "fileserving-tests" {
             backend {
                 path = "/**"
                 origin = "{{.origin}}"
-                hostname = "{{.hostname}}"
+                hostname = "test.couper.io"
             }
         }
     }
