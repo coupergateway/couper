@@ -188,6 +188,8 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 	fields["scheme"] = scheme
 
+	fields["url"] = scheme + "://" + reqCtx.Host + path.String()
+
 	var err error
 	if isUpstreamRequest && roundtripInfo != nil {
 		err = roundtripInfo.Err
