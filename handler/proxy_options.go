@@ -16,13 +16,14 @@ type ProxyOptions struct {
 	Context                              hcl.Body
 	BackendName                          string
 	CORS                                 *CORSOptions
+	NoProxyFromEnv                       bool
 	DisableCertValidation                bool
 	MaxConnections                       int
 	OpenAPI                              *OpenAPIValidatorOptions
 	RequestBodyLimit                     int64
 }
 
-func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions) (*ProxyOptions, error) {
+func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv bool) (*ProxyOptions, error) {
 	var timeout, connTimeout, ttfbTimeout time.Duration
 	if err := parseDuration(conf.Timeout, &timeout); err != nil {
 		return nil, err
@@ -56,6 +57,7 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions) (*ProxyOptions
 		ConnectTimeout:        connTimeout,
 		DisableCertValidation: conf.DisableCertValidation,
 		MaxConnections:        conf.MaxConnections,
+		NoProxyFromEnv:        noProxyFromEnv,
 		OpenAPI:               openAPIValidatorOptions,
 		RequestBodyLimit:      bodyLimit,
 		TTFBTimeout:           ttfbTimeout,

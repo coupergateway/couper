@@ -26,6 +26,8 @@ func main() {
 		command.Help()
 		os.Exit(1)
 	}
+	cmd := args[0]
+	args = args[1:]
 
 	var filePath, logFormat string
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
@@ -50,7 +52,7 @@ func main() {
 	logger.Infof("working directory: %s", wd)
 
 	var exitCode int
-	if err = command.NewCommand(args[0]).Execute(args, confFile, logger); err != nil {
+	if err = command.NewCommand(cmd).Execute(args, confFile, logger); err != nil {
 		logger.Error(err)
 		exitCode = 1
 	}

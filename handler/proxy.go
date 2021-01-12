@@ -117,6 +117,7 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
+	logConf.NoProxyFromEnv = options.NoProxyFromEnv
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
 	var apiValidation eval.BufferOption
@@ -150,6 +151,11 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 
 		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
 
+		var proxyFunc func(req *http.Request) (*url.URL, error)
+		if !p.options.NoProxyFromEnv {
+			proxyFunc = http.ProxyFromEnvironment
+		}
+
 		transport = &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				conn, err := d.DialContext(ctx, network, addr)
@@ -160,6 +166,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 			},
 			DisableCompression:    true,
 			MaxConnsPerHost:       p.options.MaxConnections,
+			Proxy:                 proxyFunc,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
 			TLSClientConfig:       tlsConf,
 		}
@@ -252,7 +259,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo.BeReq, roundtripInfo.BeResp = outreq, res
 	if err != nil {
 		roundtripInfo.Err = err
-		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
+		errCode := couperErr.APIConnect
+		if strings.HasPrefix(err.Error(), "proxyconnect") {
+			errCode = couperErr.APIProxyConnect
+		}
+		p.srvOptions.APIErrTpl.ServeError(errCode).ServeHTTP(rw, req)
 		return
 	}
 
