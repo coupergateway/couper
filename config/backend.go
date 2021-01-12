@@ -13,6 +13,7 @@ var (
 type Backend struct {
 	ConnectTimeout        string     `hcl:"connect_timeout,optional"`
 	DisableCertValidation bool       `hcl:"disable_certificate_validation,optional"`
+	MaxConnections        int        `hcl:"max_connections,optional"`
 	Name                  string     `hcl:"name,label"`
 	Remain                hcl.Body   `hcl:",remain"`
 	RequestBodyLimit      string     `hcl:"request_body_limit,optional"`

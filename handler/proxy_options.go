@@ -17,6 +17,7 @@ type ProxyOptions struct {
 	BackendName                          string
 	CORS                                 *CORSOptions
 	DisableCertValidation                bool
+	MaxConnections                       int
 	OpenAPI                              *OpenAPIValidatorOptions
 	RequestBodyLimit                     int64
 }
@@ -54,6 +55,7 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions) (*ProxyOptions
 		Context:               conf.Remain,
 		ConnectTimeout:        connTimeout,
 		DisableCertValidation: conf.DisableCertValidation,
+		MaxConnections:        conf.MaxConnections,
 		OpenAPI:               openAPIValidatorOptions,
 		RequestBodyLimit:      bodyLimit,
 		TTFBTimeout:           ttfbTimeout,

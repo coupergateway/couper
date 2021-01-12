@@ -160,6 +160,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				return conn, nil
 			},
 			DisableCompression:    true,
+			MaxConnsPerHost:       p.options.MaxConnections,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
 			TLSClientConfig:       tlsConf,
 		}
