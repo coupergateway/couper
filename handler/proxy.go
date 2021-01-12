@@ -258,7 +258,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	roundtripInfo.BeReq, roundtripInfo.BeResp = outreq, res
 	if err != nil {
 		roundtripInfo.Err = err
-		p.srvOptions.APIErrTpl.ServeError(couperErr.APIConnect).ServeHTTP(rw, req)
+		errCode := couperErr.APIConnect
+		if strings.HasPrefix(err.Error(), "proxyconnect") {
+			errCode = couperErr.APIProxyConnect
+		}
+		p.srvOptions.APIErrTpl.ServeError(errCode).ServeHTTP(rw, req)
 		return
 	}
 

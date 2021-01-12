@@ -223,8 +223,8 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
-				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"},
-				expectation{http.StatusBadGateway, []byte(`{"code": 4002}`), http.Header{"Content-Type": {"application/json"}}, "api"},
+				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"}, // in this case proxyconnect fails
+				expectation{http.StatusBadGateway, []byte(`{"code": 4003}`), http.Header{"Content-Type": {"application/json"}}, "api"},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1x"},
