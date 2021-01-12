@@ -141,11 +141,11 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 	key := scheme + "|" + origin + "|" + hostname + "|" + p.optionsHash
 	transport, ok := transports.Load(key)
 	if !ok {
-		var tlsConf *tls.Config
+		tlsConf := &tls.Config{
+			InsecureSkipVerify: p.options.DisableCertValidation,
+		}
 		if origin != hostname {
-			tlsConf = &tls.Config{
-				ServerName: hostname,
-			}
+			tlsConf.ServerName = hostname
 		}
 
 		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
@@ -159,6 +159,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				return conn, nil
 			},
 			DisableCompression:    true,
+			MaxConnsPerHost:       p.options.MaxConnections,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
 			TLSClientConfig:       tlsConf,
 		}
