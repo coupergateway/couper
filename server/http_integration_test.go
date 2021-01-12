@@ -444,6 +444,8 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 			t.Error("Expected a log entry, got nothing")
 		} else if entry.Data["server"] != "multi-files-host2" {
 			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
+		} else if entry.Data["url"] != "http://example.com:9898/b" {
+			t.Errorf("Expected 'http://example.com:9898/b', got: %s", entry.Data["url"])
 		}
 	})
 
