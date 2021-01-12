@@ -10,6 +10,12 @@ server "api" {
       backend = "anything"
     }
 
+    endpoint "/proxy" {
+      backend {
+        origin = "http://example.com"
+      }
+    }
+
     endpoint "/connect-error" {
       backend {
         connect_timeout = "2s"

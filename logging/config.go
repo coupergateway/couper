@@ -1,10 +1,11 @@
 package logging
 
 type Config struct {
+	NoProxyFromEnv  bool
 	ParentFieldKey  string   `env:"log_parent_field"`
-	TypeFieldKey    string   `env:"log_type_value"`
 	RequestHeaders  []string `env:"log_request_headers"`
 	ResponseHeaders []string `env:"log_response_headers"`
+	TypeFieldKey    string   `env:"log_type_value"`
 }
 
 var DefaultConfig = &Config{
