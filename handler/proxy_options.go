@@ -57,7 +57,7 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv
 		ConnectTimeout:        connTimeout,
 		DisableCertValidation: conf.DisableCertValidation,
 		MaxConnections:        conf.MaxConnections,
-		NoProxyFromEnv:   noProxyFromEnv,
+		NoProxyFromEnv:        noProxyFromEnv,
 		OpenAPI:               openAPIValidatorOptions,
 		RequestBodyLimit:      bodyLimit,
 		TTFBTimeout:           ttfbTimeout,
