@@ -31,6 +31,7 @@ import (
 var (
 	testBackend    *test.Backend
 	testWorkingDir string
+	testProxyAddr  = "http://127.0.0.1:9999"
 )
 
 func TestMain(m *testing.M) {
@@ -48,6 +49,11 @@ func setup() {
 		panic(err)
 	}
 
+	err = os.Setenv("HTTP_PROXY", testProxyAddr)
+	if err != nil {
+		panic(err)
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -57,14 +63,16 @@ func setup() {
 
 func teardown() {
 	println("INTEGRATION: close test backend...")
-	if err := os.Unsetenv("COUPER_TEST_BACKEND_ADDR"); err != nil {
-		panic(err)
+	for _, key := range []string{"COUPER_TEST_BACKEND_ADDR", "HTTP_PROXY"} {
+		if err := os.Unsetenv(key); err != nil {
+			panic(err)
+		}
 	}
 	testBackend.Close()
 }
 
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	gatewayConf, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperFile, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
 	helper.Must(err)
 
 	log, hook := logrustest.NewNullLogger()
@@ -81,7 +89,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	//log.Out = os.Stdout
 
 	go func() {
-		if err := command.NewRun(ctx).Execute([]string{file}, gatewayConf, log.WithContext(ctx)); err != nil {
+		if err := command.NewRun(ctx).Execute([]string{file}, couperFile, log.WithContext(ctx)); err != nil {
 			shutdownFn()
 			panic(err)
 		}
@@ -452,37 +460,37 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 }
 
 func TestHTTPServer_ProxyFromEnv(t *testing.T) {
-	client := newClient()
+	helper := test.New(t)
 
-	seenProxyRequest := false
-
-	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		seenProxyRequest = true
+	seen := make(chan struct{})
+	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusNoContent)
+		go func() {
+			seen <- struct{}{}
+		}()
 	}))
+	ln, err := net.Listen("tcp4", testProxyAddr[7:])
+	helper.Must(err)
+	origin.Listener = ln
+	origin.Start()
 	defer origin.Close()
-
-	os.Setenv("http_proxy", origin.URL)
-	defer os.Setenv("http_proxy", "")
 
 	confPath := path.Join("testdata/integration", "api/01_couper.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
 
-	t.Run("Test", func(subT *testing.T) {
-		helper := test.New(subT)
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/v1/proxy", nil)
+	helper.Must(err)
 
-		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/v1/proxy", nil)
-		helper.Must(err)
+	_, err = newClient().Do(req)
+	helper.Must(err)
 
-		_, err = client.Do(req)
-		helper.Must(err)
-
-		if !seenProxyRequest {
-			t.Error("Proxy call failed")
-		}
-	})
-
-	cleanup(shutdown, t)
+	timer := time.NewTimer(time.Second)
+	select {
+	case <-timer.C:
+		t.Error("Missing proxy call")
+	case <-seen:
+	}
 }
 
 func TestHTTPServer_Gzip(t *testing.T) {

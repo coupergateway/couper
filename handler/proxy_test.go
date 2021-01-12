@@ -712,7 +712,7 @@ func TestProxy_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
 			proxyOpts, err := handler.NewProxyOptions(&config.Backend{
 				Remain:           helper.NewProxyContext("set_request_headers = { x = req.post }"), // ensure buffering is enabled
 				RequestBodyLimit: testcase.limit,
-			}, nil)
+			}, nil, config.DefaultSettings.NoProxyFromEnv)
 			if err != nil {
 				subT.Error(err)
 				return

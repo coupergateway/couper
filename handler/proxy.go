@@ -17,10 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/net/http/httpguts"
-
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/env"
@@ -31,6 +27,9 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/utils"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/net/http/httpguts"
 )
 
 const (
