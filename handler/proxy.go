@@ -141,11 +141,12 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 	key := scheme + "|" + origin + "|" + hostname + "|" + p.optionsHash
 	transport, ok := transports.Load(key)
 	if !ok {
-		var tlsConf *tls.Config
+		tlsConf := &tls.Config{}
 		if origin != hostname {
-			tlsConf = &tls.Config{
-				ServerName: hostname,
-			}
+			tlsConf.ServerName = hostname
+		}
+		if p.options.DisableCertValidation {
+			tlsConf.InsecureSkipVerify = true
 		}
 
 		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
