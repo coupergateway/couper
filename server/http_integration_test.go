@@ -628,6 +628,12 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			},
 			Path: "/xxx",
 		}},
+		{"09_couper.hcl", "", expectation{
+			Query: url.Values{
+				"test": []string{"pest"},
+			},
+			Path: "/",
+		}},
 	} {
 		shutdown, _ := newCouper(path.Join(confPath, tc.file), test.New(t))
 
