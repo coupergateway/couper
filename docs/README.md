@@ -337,22 +337,27 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 ### The `backend` block <a name="backend_block"></a>
 A `backend` defines the connection to a local/remote backend service. Backends can be defined globally in the `api` block for all endpoints of an API or inside an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also define backends in the `definitions` block and use the mandatory *label* as reference. 
 
-| Name | Description                           |
-|:-------------------|:---------------------------------------|
-| context|<ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul>|
-| *label*|<ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul>|
-| `origin`| URL to connect to for backend requests </br> &#9888; must start with `http://...` |
-| `base_path`|<ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> |
-| `hostname`| value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. |
-| `path`|changeable part of upstream URL|
-| `timeout`| <ul><li>the total deadline duration a backend request has for write and read/pipe</li><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul> |
-| `set_request_headers` | header map to define additional or override header for the `origin` request |
-| `set_response_headers` | same as `set_request_headers` for the client response |
-| `request_body_limit` | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. Default: `64MiB`. |
-| [`openapi`](#openapi_block) | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. |
-| [`remove_query_params`](#query_params)|<ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
-| [`set_query_params`](#query_params)|<ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
-| [`add_query_params`](#query_params)|<ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
+| Name                                   | Description                                                                        | Default |
+|:---------------------------------------|:-----------------------------------------------------------------------------------|:--------|
+| context                                | <ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul> ||
+| *label*                                | <ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul> ||
+| `base_path`                            | <ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul>     ||
+| `disable_certificate_validation`       | Disables the peer certificate validation. | `false` |
+| `hostname`                             | value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. ||
+| `max_connections`                      | Describes the maximum number of concurrent connections in any state (*active* or *idle*) to the `origin`. | `0` (no limit) |
+| `origin`                               | URL to connect to for backend requests </br> &#9888; must start with the scheme `http://...`  ||
+| `path`                                 | changeable part of upstream URL ||
+| `request_body_limit`                   | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. | `64MiB` |
+| `set_request_headers`                  | header map to define additional or override header for the `origin` request        ||
+| `set_response_headers`                 | same as `set_request_headers` for the client response                              ||
+| [`openapi`](#openapi_block)            | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. ||
+| [`remove_query_params`](#query_params) | a list of query parameters to be removed from the upstream request URL ||
+| [`set_query_params`](#query_params)    | key/value(s) pairs to set query parameters in the upstream request URL ||
+| [`add_query_params`](#query_params)    | key/value(s) pairs to add query parameters to the upstream request URL ||
+| **Timings** | <ul><li>valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"</li></ul>                              | Default |
+| `connect_timeout`                      | The total timeout for dialing and connect to the origins network address. | `10s` |
+| `timeout`                              | the total deadline duration a backend request has for write and read/pipe | `300s` |
+| `ttfb_timeout`                         | Time to first byte timeout describes the duration from writing the full request to the `origin` to receiving the answer. | `60s` |
 
 ### The `access_control` attribute <a name="access_control_attribute"></a> 
 The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
@@ -414,20 +419,21 @@ Use the `definitions` block to define configurations you want to reuse. `access_
 ### The `settings` block <a name="settings_block"></a>
 The `settings` block let you configure the more basic and global behavior of your gateway instance.
 
-| Name | Description                           | Default |
-|:-------------------|:---------------------------------------|:-----------|
-|`health_path`| health path which is available for all configured server and ports | `/healthz` |
-|`default_port`| port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list | `8080` |
-|`log_format`| switch for tab/field based colored view or json log lines | `common` |
-|`xfh`| option to use the `X-Forwarded-Host` header as the request host | `false` |
-|`request_id_format`| if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
+| Name                | Description                                                        | Default    |
+|:--------------------|:---------------------------------------------------------------    |:-----------|
+| `health_path`       | health path which is available for all configured server and ports | `/healthz` |
+| `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy).      | `false`    |
+| `default_port`      | port which will be used if not explicitly specified per host within the [`hosts`](#server_block) list | `8080` |
+| `log_format`        | switch for tab/field based colored view or json log lines          | `common`   |
+| `xfh`               | option to use the `X-Forwarded-Host` header as the request host    | `false`    |
+| `request_id_format` | if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
 
 ### Health-Check ###
 The health check will answer a status `200 OK` on every port with the configured `health_path`.
 As soon as the gateway instance will receive a `SIGINT` or `SIGTERM` the check will return a status `500 StatusInternalServerError`.
 A shutdown delay of `5s` allows the server to finish all running requests and gives a load-balancer time to pick another gateway instance.
 After this delay the server goes into shutdown mode with a deadline of `5s` and no new requests will be accepted.
-The shutdown timings cannot be configured at this moment. 
+The shutdown timings cannot be configured at this moment.
 
 ## Examples <a name="examples"></a>
 
