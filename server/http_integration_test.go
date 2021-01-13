@@ -579,7 +579,7 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"04_couper.hcl", "a=b%20c&aeb_del=1&ae_del=1&CaseIns=1&caseIns=1&def_del=1", expectation{
+		{"04_couper.hcl", "a=b%20c&aeb_del=1&ae_del=1&CaseIns=1&caseIns=1&def_del=1&xyz=123", expectation{
 			Query: url.Values{
 				"a":           []string{"b c"},
 				"ae_a_and_b":  []string{"A&B", "A&B"},
@@ -642,6 +642,7 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			req.Header.Set("ae", "ae")
 			req.Header.Set("aeb", "aeb")
 			req.Header.Set("def", "def")
+			req.Header.Set("xyz", "xyz")
 
 			res, err := client.Do(req)
 			helper.Must(err)

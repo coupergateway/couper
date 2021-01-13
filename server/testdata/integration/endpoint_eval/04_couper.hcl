@@ -2,7 +2,7 @@ server "api" {
   api {
     endpoint "/" {
       backend "anything" {
-        remove_query_params = [ "aeb_del", "CaseIns" ]
+        remove_query_params = [ "aeb_del", "CaseIns", req.headers.xyz ]
         set_query_params = {
           aeb_string = "str"
           aeb_multi = ["str1", "str2"]
