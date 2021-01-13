@@ -1,5 +1,25 @@
 # Couper Changelog
 
+<a name="0.4"></a>
+## [0.4](https://github.com/avenga/couper/compare/v0.3...0.4)
+
+> 2021-01-13
+
+### Add
+
+* url log field ([#87](https://github.com/avenga/couper/issues/87))
+* Add proxy from env settings option ([#84](https://github.com/avenga/couper/issues/84))
+* Add backend settings:  `disable_certificate_validation`, `max_connections` ([#86](https://github.com/avenga/couper/issues/86))
+
+### Fix
+
+* command flag filter for bool values ([#85](https://github.com/avenga/couper/issues/85))
+* different proxy options for same origin should be part of the origin transport key
+
+### Refactor
+
+* configuration load and prepare related body merges on hcl level
+
 <a name="v0.3"></a>
 ## [v0.3](https://github.com/avenga/couper/compare/v0.2...v0.3)
 
