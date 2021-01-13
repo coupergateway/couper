@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 )
 
 type ProxyOptions struct {
@@ -20,10 +21,15 @@ type ProxyOptions struct {
 	DisableCertValidation                bool
 	MaxConnections                       int
 	OpenAPI                              *OpenAPIValidatorOptions
+	ErrorTemplate                        *errors.Template
+	Kind                                 string
 	RequestBodyLimit                     int64
 }
 
-func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv bool) (*ProxyOptions, error) {
+func NewProxyOptions(
+	conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv bool,
+	errTpl *errors.Template, kind string,
+) (*ProxyOptions, error) {
 	var timeout, connTimeout, ttfbTimeout time.Duration
 	if err := parseDuration(conf.Timeout, &timeout); err != nil {
 		return nil, err
@@ -59,6 +65,8 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv
 		MaxConnections:        conf.MaxConnections,
 		NoProxyFromEnv:        noProxyFromEnv,
 		OpenAPI:               openAPIValidatorOptions,
+		ErrorTemplate:         errTpl,
+		Kind:                  kind,
 		RequestBodyLimit:      bodyLimit,
 		TTFBTimeout:           ttfbTimeout,
 		Timeout:               timeout,

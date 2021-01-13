@@ -136,10 +136,9 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 		}
 
 		// standalone endpoints
-		// TODO: free endpoints
-		//if err := refineEndpoints(file.Definitions, nil, srv.Endpoints); err != nil {
-		//	return nil, err
-		//}
+		if err := refineEndpoints(backends, nil, srv.Endpoints); err != nil {
+			return nil, err
+		}
 	}
 
 	if len(file.Server) == 0 {
