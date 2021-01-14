@@ -667,6 +667,46 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_QueryEncoding(t *testing.T) {
+	client := newClient()
+
+	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+
+	type expectation struct {
+		RawQuery string
+	}
+
+	shutdown, _ := newCouper(config, test.New(t))
+
+	t.Run("Query-Encoding", func(subT *testing.T) {
+		helper := test.New(subT)
+
+		req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?a=a%20a&x=x+x", nil)
+		helper.Must(err)
+
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		resBytes, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+
+		_ = res.Body.Close()
+
+		var jsonResult expectation
+		err = json.Unmarshal(resBytes, &jsonResult)
+		if err != nil {
+			t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+		}
+
+		exp := expectation{RawQuery: "a=a%20a&space=a%20b%2Bc&x=x%2Bx"}
+		if !reflect.DeepEqual(jsonResult, exp) {
+			t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, jsonResult)
+		}
+	})
+
+	shutdown()
+}
+
 func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 	client := newClient()
 
