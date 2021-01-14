@@ -400,7 +400,11 @@ func (p *Proxy) Director(req *http.Request) error {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
 
+	req.URL.RawQuery = strings.ReplaceAll(req.URL.RawQuery, "+", "%2B")
+
 	p.SetRoundtripContext(req, nil)
+
+	req.URL.RawQuery = strings.ReplaceAll(req.URL.RawQuery, "+", "%20")
 
 	return nil
 }
