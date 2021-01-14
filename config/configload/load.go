@@ -110,6 +110,9 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 		//}
 	}
 
+	if len(file.Server) == 0 {
+		return nil, fmt.Errorf("configuration error: missing server definition")
+	}
 	return file, nil
 }
 
