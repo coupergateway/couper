@@ -181,7 +181,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 
-	if p.options.CORS != nil && isCorsPreflightRequest(req) {
+	if isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
 		return
@@ -430,12 +430,16 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 
 	allAttributes, attrOk := p.options.Context.(body.Attributes)
 
+	if beresp != nil {
+		defer p.setCorsRespHeaders(headerCtx, req)
+	}
+
+	if !attrOk {
+		return
+	}
+
 	// apply header values
 	for _, ctxName := range attrCtx { // headers
-		if !attrOk {
-			break
-		}
-
 		for _, attrs := range allAttributes.JustAllAttributesWithName(ctxName) {
 			attr, ok := attrs[ctxName]
 			if !ok {
@@ -451,7 +455,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	}
 
 	// apply query params in hierarchical and logical order: delete, set, add
-	if attrOk && req != nil && beresp == nil { // just one way -> origin
+	if req != nil && beresp == nil { // just one way -> origin
 		var modify bool
 
 		u := *req.URL
@@ -505,10 +509,6 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 			req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 		}
 	}
-
-	if beresp != nil && isCorsRequest(req) {
-		p.setCorsRespHeaders(headerCtx, req)
-	}
 }
 
 // SetGetBody determines if we have to buffer a request body for further processing.
@@ -549,7 +549,7 @@ func isCorsRequest(req *http.Request) bool {
 }
 
 func isCorsPreflightRequest(req *http.Request) bool {
-	return isCorsRequest(req) && req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
+	return req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
 }
 
 func IsCredentialed(headers http.Header) bool {
@@ -557,7 +557,7 @@ func IsCredentialed(headers http.Header) bool {
 }
 
 func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
-	if p.options.CORS == nil {
+	if p.options.CORS == nil || !isCorsRequest(req) {
 		return
 	}
 	requestOrigin := req.Header.Get("Origin")
