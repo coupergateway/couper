@@ -2,14 +2,13 @@ package command
 
 import (
 	"flag"
-	"os"
 	"strings"
 )
 
 type Args []string
 
-func NewArgs() Args {
-	return os.Args[1:]
+func NewArgs(args []string) Args {
+	return args[1:]
 }
 
 // Filter returns all command line arguments which will match the given flag.FlagSet.

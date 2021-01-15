@@ -10,6 +10,8 @@ import (
 
 const PREFIX = "COUPER_"
 
+var OsEnviron func() []string = os.Environ
+
 func Decode(conf interface{}) {
 	DecodeWithPrefix(conf, "")
 }
@@ -17,7 +19,7 @@ func Decode(conf interface{}) {
 func DecodeWithPrefix(conf interface{}, prefix string) {
 	ctxPrefix := PREFIX + prefix
 	envMap := make(map[string]string)
-	for _, v := range os.Environ() {
+	for _, v := range OsEnviron() {
 		key := strings.Split(v, "=")
 		if !strings.HasPrefix(key[0], ctxPrefix) {
 			continue
@@ -50,8 +52,8 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 			if !ok {
 				continue
 			}
-			envVal = strings.Split(envVal, ",")[0]
 		}
+		envVal = strings.Split(envVal, ",")[0]
 
 		mapVal, exist := envMap[envVal]
 		if !exist || mapVal == "" {
