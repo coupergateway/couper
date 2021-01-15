@@ -400,11 +400,7 @@ func (p *Proxy) Director(req *http.Request) error {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
 
-	req.URL.RawQuery = strings.ReplaceAll(req.URL.RawQuery, "+", "%2B")
-
 	p.SetRoundtripContext(req, nil)
-
-	req.URL.RawQuery = strings.ReplaceAll(req.URL.RawQuery, "+", "%20")
 
 	return nil
 }
@@ -457,7 +453,11 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 
 	// apply query params in hierarchical and logical order: delete, set, add
 	if attrOk && req != nil && beresp == nil { // just one way -> origin
-		values := req.URL.Query()
+		var modify bool
+
+		u := *req.URL
+		u.RawQuery = strings.ReplaceAll(u.RawQuery, "+", "%2B")
+		values := u.Query()
 
 		// not by name to ensure the order for all params
 		for _, attrs := range allAttributes.JustAllAttributes() {
@@ -470,6 +470,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 				for _, key := range seetie.ValueToStringSlice(val) {
 					values.Del(key)
 				}
+				modify = true
 			}
 
 			attr, ok = attrs[attrSetQueryParams]
@@ -481,6 +482,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 				for k, v := range options {
 					values[k] = v
 				}
+				modify = true
 			}
 
 			attr, ok = attrs[attrAddQueryParams]
@@ -496,10 +498,13 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 						values[k] = append(values[k], v...)
 					}
 				}
+				modify = true
 			}
 		}
 
-		req.URL.RawQuery = values.Encode()
+		if modify {
+			req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
+		}
 	}
 
 	if beresp != nil && isCorsRequest(req) {
