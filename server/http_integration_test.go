@@ -716,35 +716,48 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 		Path string
 	}
 
-	shutdown, _ := newCouper(config, test.New(t))
+	type testCase struct {
+		path string
+		exp  expectation
+	}
 
-	t.Run("Query-Encoding", func(subT *testing.T) {
-		helper := test.New(subT)
+	for _, tc := range []testCase{
+		{"/path", expectation{
+			Path: "/path",
+		}},
+		{"/path/", expectation{
+			Path: "/path/",
+		}},
+	} {
+		shutdown, _ := newCouper(config, test.New(t))
 
-		req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/path/", nil)
-		helper.Must(err)
+		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
-		res, err := client.Do(req)
-		helper.Must(err)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
 
-		resBytes, err := ioutil.ReadAll(res.Body)
-		helper.Must(err)
+			res, err := client.Do(req)
+			helper.Must(err)
 
-		_ = res.Body.Close()
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
-		var jsonResult expectation
-		err = json.Unmarshal(resBytes, &jsonResult)
-		if err != nil {
-			t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-		}
+			_ = res.Body.Close()
 
-		exp := expectation{Path: "/path/"}
-		if !reflect.DeepEqual(jsonResult, exp) {
-			t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, jsonResult)
-		}
-	})
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
 
-	shutdown()
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+			}
+		})
+
+		shutdown()
+	}
 }
 
 func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
