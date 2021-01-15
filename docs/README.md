@@ -348,7 +348,11 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 | `origin`                               | URL to connect to for backend requests </br> &#9888; must start with the scheme `http://...`  ||
 | `path`                                 | changeable part of upstream URL ||
 | `request_body_limit`                   | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. | `64MiB` |
-| `set_request_headers`                  | header map to define additional or override header for the `origin` request        ||
+| `add_request_headers` | header map to define additional header values for the `origin` request ||
+| `add_response_headers` | same as `add_request_headers` for the client response ||
+| `remove_request_headers` | header list to define header to be removed from the `origin` request ||
+| `remove_response_headers` | same as `remove_request_headers` for the client response ||
+| `set_request_headers` | header map to override header for the `origin` request ||
 | `set_response_headers`                 | same as `set_request_headers` for the client response                              ||
 | [`openapi`](#openapi_block)            | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. ||
 | [`remove_query_params`](#query_params) | a list of query parameters to be removed from the upstream request URL ||
