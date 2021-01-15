@@ -46,6 +46,7 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 			Args, Query                        url.Values
 			Headers                            http.Header
 			Host                               string
+			RawQuery                           string
 			Path                               string
 			Method, RemoteAddr, Url, UserAgent string
 			ResponseStatus                     int
@@ -61,6 +62,7 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 			Path:           req.URL.Path,
 			RemoteAddr:     req.RemoteAddr,
 			Query:          req.URL.Query(),
+			RawQuery:       req.URL.RawQuery,
 			Url:            req.URL.String(),
 			UserAgent:      req.UserAgent(),
 			ResponseStatus: status,

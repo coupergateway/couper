@@ -398,7 +398,7 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 	helper := test.New(t)
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
-		if req.URL.RawQuery == "404=" {
+		if req.URL.RawQuery == "404" {
 			rw.WriteHeader(http.StatusNotFound)
 		}
 		_, err := rw.Write([]byte("from upstream"))
