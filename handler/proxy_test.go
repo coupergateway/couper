@@ -954,16 +954,16 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 
 	for i, tc := range []testCase{
 		{"no eval", `path = "/"`, test.Header{}},
-		{"json_body client field", `response_headers = { "x-client" = "my-val-x-${req.json_body.client}" }`,
+		{"json_body client field", `set_response_headers = { "x-client" = "my-val-x-${req.json_body.client}" }`,
 			test.Header{
 				"x-client": "my-val-x-true",
 			}},
-		{"json_body non existing field", `response_headers = {
+		{"json_body non existing field", `set_response_headers = {
 "${beresp.json_body.not-there}" = "my-val-0-${beresp.json_body.origin}"
 "${req.json_body.client}-my-val-a" = "my-val-b-${beresp.json_body.client}"
 }`,
 			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
-		{"json_body null value", `response_headers = { "x-null" = "${beresp.json_body.nil}" }`, test.Header{"x-null": ""}},
+		{"json_body null value", `set_response_headers = { "x-null" = "${beresp.json_body.nil}" }`, test.Header{"x-null": ""}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
@@ -1055,10 +1055,10 @@ func TestProxy_BufferingOptions(t *testing.T) {
 		{"beresp validation", newOptions(), `path = "/"`, eval.BufferResponse},
 		{"bereq validation", newOptions(), `path = "/"`, eval.BufferRequest},
 		{"no validation", newOptions(), `path = "/"`, eval.BufferNone},
-		{"req buffer json.body & beresp validation", newOptions(), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"beresp buffer json.body & bereq validation", newOptions(), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"req buffer json.body & bereq validation", newOptions(), `response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
-		{"beresp buffer json.body & beresp validation", newOptions(), `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+		{"req buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"req buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
+		{"beresp buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)

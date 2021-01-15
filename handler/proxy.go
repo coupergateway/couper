@@ -406,51 +406,84 @@ func (p *Proxy) Director(req *http.Request) error {
 
 func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
-		attrCtx   = []string{attrReqHeaders, attrSetReqHeaders}
-		bereq     *http.Request
-		headerCtx http.Header
+		attrCtxAdd = attrAddReqHeaders
+		attrCtxDel = attrDelReqHeaders
+		attrCtxSet = attrSetReqHeaders
+		bereq      *http.Request
+		headerCtx  http.Header
 	)
 
 	if beresp != nil {
-		attrCtx = []string{attrResHeaders, attrSetResHeaders}
+		attrCtxAdd = attrAddResHeaders
+		attrCtxDel = attrDelResHeaders
+		attrCtxSet = attrSetResHeaders
 		bereq = beresp.Request
 		headerCtx = beresp.Header
+
+		defer p.setCorsRespHeaders(headerCtx, req)
 	} else if req != nil {
 		headerCtx = req.Header
-	}
 
-	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
-
-	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
-	if attrCtx[0] == attrReqHeaders {
-		for _, key := range headerBlacklist {
-			headerCtx.Del(key)
+		// Remove blacklisted headers after evaluation to
+		// be accessible within our context configuration.
+		if attrCtxSet == attrSetReqHeaders {
+			for _, key := range headerBlacklist {
+				headerCtx.Del(key)
+			}
 		}
 	}
 
 	allAttributes, attrOk := p.options.Context.(body.Attributes)
-
-	if beresp != nil {
-		defer p.setCorsRespHeaders(headerCtx, req)
-	}
-
 	if !attrOk {
 		return
 	}
 
-	// apply header values
-	for _, ctxName := range attrCtx { // headers
-		for _, attrs := range allAttributes.JustAllAttributesWithName(ctxName) {
-			attr, ok := attrs[ctxName]
-			if !ok {
-				continue
-			}
-			options, diags := NewOptionsMap(evalCtx, attr)
-			if diags.HasErrors() {
+	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
+
+	// apply header values in hierarchical and logical order: delete, set, add
+	for _, attrs := range allAttributes.JustAllAttributes() {
+		attr, ok := attrs[attrCtxDel]
+		if ok {
+			val, diags := attr.Expr.Value(evalCtx)
+			if seetie.SetSeverityLevel(diags).HasErrors() {
 				p.log.WithField("parse config", p.String()).Error(diags)
-				continue
 			}
-			setHeaderFields(headerCtx, options)
+
+			for _, key := range seetie.ValueToStringSlice(val) {
+				k := http.CanonicalHeaderKey(key)
+				if k == "User-Agent" {
+					headerCtx[k] = []string{}
+					continue
+				}
+
+				headerCtx.Del(k)
+			}
+		}
+
+		attr, ok = attrs[attrCtxSet]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for key, values := range options {
+				k := http.CanonicalHeaderKey(key)
+				headerCtx[k] = values
+			}
+		}
+
+		attr, ok = attrs[attrCtxAdd]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for key, values := range options {
+				k := http.CanonicalHeaderKey(key)
+				headerCtx[k] = append(headerCtx[k], values...)
+			}
 		}
 	}
 
