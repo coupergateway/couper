@@ -707,6 +707,46 @@ func TestHTTPServer_QueryEncoding(t *testing.T) {
 	shutdown()
 }
 
+func TestHTTPServer_TrailingSlash(t *testing.T) {
+	client := newClient()
+
+	config := "testdata/integration/endpoint_eval/11_couper.hcl"
+
+	type expectation struct {
+		Path string
+	}
+
+	shutdown, _ := newCouper(config, test.New(t))
+
+	t.Run("Query-Encoding", func(subT *testing.T) {
+		helper := test.New(subT)
+
+		req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/path/", nil)
+		helper.Must(err)
+
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		resBytes, err := ioutil.ReadAll(res.Body)
+		helper.Must(err)
+
+		_ = res.Body.Close()
+
+		var jsonResult expectation
+		err = json.Unmarshal(resBytes, &jsonResult)
+		if err != nil {
+			t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+		}
+
+		exp := expectation{Path: "/path/"}
+		if !reflect.DeepEqual(jsonResult, exp) {
+			t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, jsonResult)
+		}
+	})
+
+	shutdown()
+}
+
 func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 	client := newClient()
 
