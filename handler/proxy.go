@@ -390,11 +390,10 @@ func (p *Proxy) Director(req *http.Request) error {
 
 	if pathMatch, ok := req.Context().
 		Value(request.Wildcard).(string); ok && strings.HasSuffix(path, "/**") {
-		if pathMatch == "" && req.URL.Path != "" { // wildcard "root" hit, take a look if the req has a trailing slash and apply
-			if req.URL.Path[len(req.URL.Path)-1] == '/' {
-				pathMatch = "/"
-			}
+		if strings.HasSuffix(req.URL.Path, "/") && !strings.HasSuffix(pathMatch, "/") {
+			pathMatch += "/"
 		}
+
 		req.URL.Path = utils.JoinPath("/", strings.ReplaceAll(path, "/**", "/"), pathMatch)
 	} else if path != "" {
 		req.URL.Path = utils.JoinPath("/", path)
