@@ -1,5 +1,16 @@
 # Couper Changelog
 
+<a name="0.4.1"></a>
+## [0.4.1](https://github.com/avenga/couper/compare/0.4...0.4.1)
+
+> 2021-01-18
+
+### Fix
+
+* Fix path trailing slash ([#94](https://github.com/avenga/couper/issues/94))
+* Fix query encoding ([#93](https://github.com/avenga/couper/issues/93))
+* Fix log_format (settings) configuration ([#61](https://github.com/avenga/couper/issues/61))
+
 <a name="0.4"></a>
 ## [0.4](https://github.com/avenga/couper/compare/v0.3...0.4)
 
