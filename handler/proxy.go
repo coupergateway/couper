@@ -440,8 +440,14 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
-	// apply header values in hierarchical and logical order: delete, set, add
+	var modifyQuery bool
+
+	u := *req.URL
+	u.RawQuery = strings.ReplaceAll(u.RawQuery, "+", "%2B")
+	values := u.Query()
+
 	for _, attrs := range allAttributes.JustAllAttributes() {
+		// apply header values in hierarchical and logical order: delete, set, add
 		attr, ok := attrs[attrCtxDel]
 		if ok {
 			val, diags := attr.Expr.Value(evalCtx)
@@ -485,62 +491,61 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 				headerCtx[k] = append(headerCtx[k], values...)
 			}
 		}
+
+		if req == nil || beresp != nil { // just one way -> origin
+			continue
+		}
+
+		// apply query params in hierarchical and logical order: delete, set, add
+		attr, ok = attrs[attrDelQueryParams]
+		if ok {
+			val, diags := attr.Expr.Value(evalCtx)
+			if seetie.SetSeverityLevel(diags).HasErrors() {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for _, key := range seetie.ValueToStringSlice(val) {
+				values.Del(key)
+			}
+
+			modifyQuery = true
+		}
+
+		attr, ok = attrs[attrSetQueryParams]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for k, v := range options {
+				values[k] = v
+			}
+
+			modifyQuery = true
+		}
+
+		attr, ok = attrs[attrAddQueryParams]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for k, v := range options {
+				if _, ok = values[k]; !ok {
+					values[k] = v
+				} else {
+					values[k] = append(values[k], v...)
+				}
+			}
+
+			modifyQuery = true
+		}
 	}
 
-	// apply query params in hierarchical and logical order: delete, set, add
-	if req != nil && beresp == nil { // just one way -> origin
-		var modify bool
-
-		u := *req.URL
-		u.RawQuery = strings.ReplaceAll(u.RawQuery, "+", "%2B")
-		values := u.Query()
-
-		// not by name to ensure the order for all params
-		for _, attrs := range allAttributes.JustAllAttributes() {
-			attr, ok := attrs[attrDelQueryParams]
-			if ok {
-				val, diags := attr.Expr.Value(evalCtx)
-				if seetie.SetSeverityLevel(diags).HasErrors() {
-					p.log.WithField("parse config", p.String()).Error(diags)
-				}
-				for _, key := range seetie.ValueToStringSlice(val) {
-					values.Del(key)
-				}
-				modify = true
-			}
-
-			attr, ok = attrs[attrSetQueryParams]
-			if ok {
-				options, diags := NewOptionsMap(evalCtx, attr)
-				if diags != nil {
-					p.log.WithField("parse config", p.String()).Error(diags)
-				}
-				for k, v := range options {
-					values[k] = v
-				}
-				modify = true
-			}
-
-			attr, ok = attrs[attrAddQueryParams]
-			if ok {
-				options, diags := NewOptionsMap(evalCtx, attr)
-				if diags != nil {
-					p.log.WithField("parse config", p.String()).Error(diags)
-				}
-				for k, v := range options {
-					if _, ok = values[k]; !ok {
-						values[k] = v
-					} else {
-						values[k] = append(values[k], v...)
-					}
-				}
-				modify = true
-			}
-		}
-
-		if modify {
-			req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
-		}
+	if modifyQuery {
+		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 	}
 }
 
