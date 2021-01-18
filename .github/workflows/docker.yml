@@ -47,3 +47,11 @@ jobs:
         add_git_labels: true
         tags: latest
         push: ${{ startsWith(github.ref, 'refs/tags/') }}
+    - name: Docker Hub Description
+      if: github.event_name == 'release'
+      uses: peter-evans/dockerhub-description@v2
+      with:
+        readme-filepath: './DOCKER.md'
+        username: '${{ secrets.DOCKER_USERNAME }}'
+        password: '${{ secrets.DOCKER_PASSWORD }}'
+        repository: avenga/couper
