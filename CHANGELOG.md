@@ -1,5 +1,16 @@
 # Couper Changelog
 
+<a name="0.4.2"></a>
+## [0.4.2](https://github.com/avenga/couper/compare/0.4.1...0.4.2)
+
+> 2021-01-19
+
+### Fix
+
+* Fix used backend hash not dependent on (hcl) config hierarchy (transport key)
+* Fix logging http scheme even without a successful tls handshake ([#99](https://github.com/avenga/couper/pull/99))
+* Fix hcl.Body content for reference backends ([#96](https://github.com/avenga/couper/issues/96))
+
 <a name="0.4.1"></a>
 ## [0.4.1](https://github.com/avenga/couper/compare/0.4...0.4.1)
 
