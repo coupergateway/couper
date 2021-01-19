@@ -74,10 +74,23 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
-					// TODO: without label -> err
-					// TODO: duplicate
+					if len(be.Labels) == 0 {
+						return nil, hcl.Diagnostics{&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "Missing backend name",
+							Subject:  &be.DefRange,
+						}}
+					}
+					name := be.Labels[0]
+					if backends.WithName(name) != nil {
+						return nil, hcl.Diagnostics{&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  fmt.Sprintf("Duplicate backend name: %q", name),
+							Subject:  &be.LabelRanges[0],
+						}}
+					}
 					backends = append(backends, &Backend{
-						Name:   be.Labels[0],
+						Name:   name,
 						Config: be.Body,
 					})
 				}
