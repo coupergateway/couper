@@ -665,6 +665,77 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_RequestHeaders(t *testing.T) {
+	client := newClient()
+
+	const confPath = "testdata/integration/endpoint_eval/"
+
+	type expectation struct {
+		Headers http.Header
+	}
+
+	type testCase struct {
+		file  string
+		query string
+		exp   expectation
+	}
+
+	for _, tc := range []testCase{
+		{"12_couper.hcl", "ae=ae&aeb=aeb&def=def&xyz=xyz", expectation{
+			Headers: http.Header{
+				"Aeb":         []string{"aeb", "aeb"},
+				"Aeb_a_and_b": []string{"A&B", "A&B"},
+				"Aeb_empty":   []string{"", ""},
+				"Aeb_multi":   []string{"str1", "str2", "str3", "str4"},
+				"Aeb_noop":    []string{"", ""},
+				"Aeb_null":    []string{"", ""},
+				"Aeb_string":  []string{"str", "str"},
+				"Def_a_and_b": []string{"A&B", "A&B"},
+				"Def_empty":   []string{"", ""},
+				"Def_multi":   []string{"str1", "str2", "str3", "str4"},
+				"Def_noop":    []string{"", ""},
+				"Def_null":    []string{"", ""},
+				"Def_string":  []string{"str", "str"},
+				"Def":         []string{"def", "def"},
+				"Foo":         []string{""},
+				"Xxx":         []string{"aaa", "bbb"},
+			},
+		}},
+	} {
+		shutdown, _ := newCouper(path.Join(confPath, tc.file), test.New(t))
+
+		t.Run("_"+tc.query, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?"+tc.query, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			jsonResult.Headers.Del("User-Agent")
+			jsonResult.Headers.Del("X-Forwarded-For")
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+
+		shutdown()
+	}
+}
+
 func TestHTTPServer_QueryEncoding(t *testing.T) {
 	client := newClient()
 
