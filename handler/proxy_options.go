@@ -67,7 +67,10 @@ func NewProxyOptions(conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv
 
 func (po *ProxyOptions) Hash() string {
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%v", po)))
+	// exclude hcl list
+	opts := *po
+	opts.Context = nil
+	h.Write([]byte(fmt.Sprintf("%v", opts)))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
