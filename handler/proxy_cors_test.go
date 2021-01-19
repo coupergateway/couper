@@ -156,18 +156,6 @@ func TestCORSOptions_isCorsPreflightRequest(t *testing.T) {
 			false,
 		},
 		{
-			"OPTIONS, without Origin, with ACRM",
-			http.MethodOptions,
-			map[string]string{"Access-Control-Request-Method": "POST"},
-			false,
-		},
-		{
-			"OPTIONS, without Origin, with ACRH",
-			http.MethodOptions,
-			map[string]string{"Access-Control-Request-Headers": "Content-Type"},
-			false,
-		},
-		{
 			"POST, with Origin, with ACRM",
 			http.MethodPost,
 			map[string]string{"Origin": "https://www.example.com", "Access-Control-Request-Method": "POST"},

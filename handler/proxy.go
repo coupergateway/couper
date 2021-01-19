@@ -181,7 +181,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 
-	if p.options.CORS != nil && isCorsPreflightRequest(req) {
+	if isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
 		return
@@ -406,108 +406,146 @@ func (p *Proxy) Director(req *http.Request) error {
 
 func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	var (
-		attrCtx   = []string{attrReqHeaders, attrSetReqHeaders}
-		bereq     *http.Request
-		headerCtx http.Header
+		attrCtxAdd = attrAddReqHeaders
+		attrCtxDel = attrDelReqHeaders
+		attrCtxSet = attrSetReqHeaders
+		bereq      *http.Request
+		headerCtx  http.Header
 	)
 
 	if beresp != nil {
-		attrCtx = []string{attrResHeaders, attrSetResHeaders}
+		attrCtxAdd = attrAddResHeaders
+		attrCtxDel = attrDelResHeaders
+		attrCtxSet = attrSetResHeaders
 		bereq = beresp.Request
 		headerCtx = beresp.Header
+
+		defer p.setCorsRespHeaders(headerCtx, req)
 	} else if req != nil {
 		headerCtx = req.Header
-	}
 
-	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
-
-	// Remove blacklisted headers after evaluation to be accessible within our context configuration.
-	if attrCtx[0] == attrReqHeaders {
-		for _, key := range headerBlacklist {
-			headerCtx.Del(key)
+		// Remove blacklisted headers after evaluation to
+		// be accessible within our context configuration.
+		if attrCtxSet == attrSetReqHeaders {
+			for _, key := range headerBlacklist {
+				headerCtx.Del(key)
+			}
 		}
 	}
 
 	allAttributes, attrOk := p.options.Context.(body.Attributes)
+	if !attrOk {
+		return
+	}
 
-	// apply header values
-	for _, ctxName := range attrCtx { // headers
-		if !attrOk {
-			break
-		}
+	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
 
-		for _, attrs := range allAttributes.JustAllAttributesWithName(ctxName) {
-			attr, ok := attrs[ctxName]
-			if !ok {
-				continue
-			}
-			options, diags := NewOptionsMap(evalCtx, attr)
-			if diags.HasErrors() {
+	var modifyQuery bool
+
+	u := *req.URL
+	u.RawQuery = strings.ReplaceAll(u.RawQuery, "+", "%2B")
+	values := u.Query()
+
+	for _, attrs := range allAttributes.JustAllAttributes() {
+		// apply header values in hierarchical and logical order: delete, set, add
+		attr, ok := attrs[attrCtxDel]
+		if ok {
+			val, diags := attr.Expr.Value(evalCtx)
+			if seetie.SetSeverityLevel(diags).HasErrors() {
 				p.log.WithField("parse config", p.String()).Error(diags)
-				continue
 			}
-			setHeaderFields(headerCtx, options)
+
+			for _, key := range seetie.ValueToStringSlice(val) {
+				k := http.CanonicalHeaderKey(key)
+				if k == "User-Agent" {
+					headerCtx[k] = []string{}
+					continue
+				}
+
+				headerCtx.Del(k)
+			}
 		}
-	}
 
-	// apply query params in hierarchical and logical order: delete, set, add
-	if attrOk && req != nil && beresp == nil { // just one way -> origin
-		var modify bool
-
-		u := *req.URL
-		u.RawQuery = strings.ReplaceAll(u.RawQuery, "+", "%2B")
-		values := u.Query()
-
-		// not by name to ensure the order for all params
-		for _, attrs := range allAttributes.JustAllAttributes() {
-			attr, ok := attrs[attrDelQueryParams]
-			if ok {
-				val, diags := attr.Expr.Value(evalCtx)
-				if seetie.SetSeverityLevel(diags).HasErrors() {
-					p.log.WithField("parse config", p.String()).Error(diags)
-				}
-				for _, key := range seetie.ValueToStringSlice(val) {
-					values.Del(key)
-				}
-				modify = true
+		attr, ok = attrs[attrCtxSet]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
 			}
 
-			attr, ok = attrs[attrSetQueryParams]
-			if ok {
-				options, diags := NewOptionsMap(evalCtx, attr)
-				if diags != nil {
-					p.log.WithField("parse config", p.String()).Error(diags)
-				}
-				for k, v := range options {
+			for key, values := range options {
+				k := http.CanonicalHeaderKey(key)
+				headerCtx[k] = values
+			}
+		}
+
+		attr, ok = attrs[attrCtxAdd]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for key, values := range options {
+				k := http.CanonicalHeaderKey(key)
+				headerCtx[k] = append(headerCtx[k], values...)
+			}
+		}
+
+		if req == nil || beresp != nil { // just one way -> origin
+			continue
+		}
+
+		// apply query params in hierarchical and logical order: delete, set, add
+		attr, ok = attrs[attrDelQueryParams]
+		if ok {
+			val, diags := attr.Expr.Value(evalCtx)
+			if seetie.SetSeverityLevel(diags).HasErrors() {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for _, key := range seetie.ValueToStringSlice(val) {
+				values.Del(key)
+			}
+
+			modifyQuery = true
+		}
+
+		attr, ok = attrs[attrSetQueryParams]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for k, v := range options {
+				values[k] = v
+			}
+
+			modifyQuery = true
+		}
+
+		attr, ok = attrs[attrAddQueryParams]
+		if ok {
+			options, diags := NewOptionsMap(evalCtx, attr)
+			if diags != nil {
+				p.log.WithField("parse config", p.String()).Error(diags)
+			}
+
+			for k, v := range options {
+				if _, ok = values[k]; !ok {
 					values[k] = v
+				} else {
+					values[k] = append(values[k], v...)
 				}
-				modify = true
 			}
 
-			attr, ok = attrs[attrAddQueryParams]
-			if ok {
-				options, diags := NewOptionsMap(evalCtx, attr)
-				if diags != nil {
-					p.log.WithField("parse config", p.String()).Error(diags)
-				}
-				for k, v := range options {
-					if _, ok = values[k]; !ok {
-						values[k] = v
-					} else {
-						values[k] = append(values[k], v...)
-					}
-				}
-				modify = true
-			}
-		}
-
-		if modify {
-			req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
+			modifyQuery = true
 		}
 	}
 
-	if beresp != nil && isCorsRequest(req) {
-		p.setCorsRespHeaders(headerCtx, req)
+	if modifyQuery {
+		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 	}
 }
 
@@ -549,7 +587,7 @@ func isCorsRequest(req *http.Request) bool {
 }
 
 func isCorsPreflightRequest(req *http.Request) bool {
-	return isCorsRequest(req) && req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
+	return req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
 }
 
 func IsCredentialed(headers http.Header) bool {
@@ -557,7 +595,7 @@ func IsCredentialed(headers http.Header) bool {
 }
 
 func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
-	if p.options.CORS == nil {
+	if p.options.CORS == nil || !isCorsRequest(req) {
 		return
 	}
 	requestOrigin := req.Header.Get("Origin")
