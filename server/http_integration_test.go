@@ -427,36 +427,34 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 	shutdown, logHook := newCouper(confPath, test.New(t))
 	os.Setenv("COUPER_XFH", "")
 
-	t.Run("Test", func(subT *testing.T) {
-		helper := test.New(subT)
-		logHook.Reset()
+	helper := test.New(t)
+	logHook.Reset()
 
-		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
-		helper.Must(err)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
+	helper.Must(err)
 
-		req.Host = "example.com"
-		req.Header.Set("X-Forwarded-Host", "example.com.")
-		res, err := client.Do(req)
-		helper.Must(err)
+	req.Host = "example.com"
+	req.Header.Set("X-Forwarded-Host", "example.com.")
+	res, err := client.Do(req)
+	helper.Must(err)
 
-		resBytes, err := ioutil.ReadAll(res.Body)
-		helper.Must(err)
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
 
-		_ = res.Body.Close()
+	_ = res.Body.Close()
 
-		if `<html lang="en">index B</html>` != string(resBytes) {
-			t.Errorf("%s", resBytes)
-		}
+	if `<html lang="en">index B</html>` != string(resBytes) {
+		t.Errorf("%s", resBytes)
+	}
 
-		entry := logHook.LastEntry()
-		if entry == nil {
-			t.Error("Expected a log entry, got nothing")
-		} else if entry.Data["server"] != "multi-files-host2" {
-			t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
-		} else if entry.Data["url"] != "http://example.com:9898/b" {
-			t.Errorf("Expected 'http://example.com:9898/b', got: %s", entry.Data["url"])
-		}
-	})
+	entry := logHook.LastEntry()
+	if entry == nil {
+		t.Error("Expected a log entry, got nothing")
+	} else if entry.Data["server"] != "multi-files-host2" {
+		t.Errorf("Expected 'multi-files-host2', got: %s", entry.Data["server"])
+	} else if entry.Data["url"] != "http://example.com:9898/b" {
+		t.Errorf("Expected 'http://example.com:9898/b', got: %s", entry.Data["url"])
+	}
 
 	shutdown()
 }
