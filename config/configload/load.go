@@ -60,10 +60,30 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 	}
 
 	// reading possible reference definitions first. Those are the base for refinement merges during server block read out.
+	var backends Backends
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			if diags = gohcl.DecodeBody(outerBlock.Body, file.Context, file.Definitions); diags.HasErrors() {
+			backendContent, leftOver, diags := outerBlock.Body.PartialContent(&hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{
+				{Type: backend, LabelNames: []string{"name"}},
+			}})
+
+			if diags.HasErrors() {
+				return nil, diags
+			}
+
+			if backendContent != nil {
+				for _, be := range backendContent.Blocks {
+					// TODO: without label -> err
+					// TODO: duplicate
+					backends = append(backends, &Backend{
+						Name:   be.Labels[0],
+						Config: be.Body,
+					})
+				}
+			}
+
+			if diags = gohcl.DecodeBody(leftOver, file.Context, file.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
 		case settings:
@@ -92,13 +112,13 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 				continue
 			}
 
-			bodies, err := mergeBackendBodies(file.Definitions, apiBlock)
+			bodies, err := mergeBackendBodies(backends, apiBlock)
 			if err != nil {
 				return nil, err
 			}
 
 			// empty bodies would be removed with a hcl.Merge.. later on.
-			if err = refineEndpoints(file.Definitions, bodies, apiBlock.Endpoints); err != nil {
+			if err = refineEndpoints(backends, bodies, apiBlock.Endpoints); err != nil {
 				return nil, err
 			}
 		}
@@ -116,11 +136,8 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 	return file, nil
 }
 
-func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.Inline) ([]hcl.Body, error) {
-	reference, err := definitions.BackendWithName(inlineBackend.Reference())
-	if err != nil {
-		return nil, err
-	}
+func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hcl.Body, error) {
+	reference := backendList.WithName(inlineBackend.Reference())
 
 	content, _, diags := inlineBackend.Body().PartialContent(inlineBackend.Schema(true))
 	if diags.HasErrors() {
@@ -138,7 +155,7 @@ func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.In
 			return nil, fmt.Errorf("configuration error: inlineBackend reference and inline definition")
 		}
 		// we have a reference, append to list and...
-		bodies = append(bodies, reference.Remain)
+		bodies = append(bodies, reference)
 	}
 	// ...additionally add the inline overrides.
 	if content != nil && len(content.Attributes) > 0 {
@@ -150,11 +167,9 @@ func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.In
 
 	if len(backends) > 0 {
 		if len(backends[0].Labels) > 0 {
-			reference, err = definitions.BackendWithName(backends[0].Labels[0])
-			if err != nil {
-				return nil, err
+			if ref := backendList.WithName(backends[0].Labels[0]); ref != nil {
+				bodies = append(bodies, ref)
 			}
-			bodies = append(bodies, reference.Remain)
 		}
 
 		bodies = append(bodies, backends[0].Body)
@@ -163,9 +178,9 @@ func mergeBackendBodies(definitions *config.Definitions, inlineBackend config.In
 	return bodies, nil
 }
 
-func refineEndpoints(definitions *config.Definitions, parents []hcl.Body, endpoints config.Endpoints) error {
+func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.Endpoints) error {
 	for e, endpoint := range endpoints {
-		merged, err := mergeBackendBodies(definitions, endpoint)
+		merged, err := mergeBackendBodies(backendList, endpoint)
 		if err != nil {
 			return err
 		}

@@ -899,3 +899,39 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 	}
 	shutdown()
 }
+
+func TestConfigBodyContent(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/config/01_couper.hcl", test.New(t))
+
+	// default port changed in config
+	req, err := http.NewRequest(http.MethodGet, "http://time.out:8090/", nil)
+	helper.Must(err)
+
+	// 2s timeout in config
+	ctx, cancel := context.WithDeadline(req.Context(), time.Now().Add(time.Second*10))
+	defer cancel()
+	*req = *req.Clone(ctx)
+	defer func() {
+		if e := ctx.Err(); e != nil {
+			t.Error("Expected used config timeout instead of deadline timer")
+		}
+	}()
+
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	// disabled cert check in config
+	req, err = http.NewRequest(http.MethodGet, "http://time.out:8090/expired/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK with disabled certificate validation, got: %q", res.Status)
+	}
+
+	shutdown()
+}
