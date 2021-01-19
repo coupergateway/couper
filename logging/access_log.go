@@ -182,13 +182,17 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		responseFields["bytes"] = statusRecorder.writtenBytes
 	}
 
-	scheme := "http"
-	if reqCtx.TLS != nil {
-		scheme = "https"
+	requestFields["tls"] = reqCtx.TLS != nil
+	fields["scheme"] = reqCtx.URL.Scheme
+	if requestFields["port"] == "" {
+		if fields["scheme"] == "https" {
+			requestFields["port"] = "443"
+		} else {
+			requestFields["port"] = "80"
+		}
 	}
-	fields["scheme"] = scheme
 
-	fields["url"] = scheme + "://" + reqCtx.Host + path.String()
+	fields["url"] = reqCtx.URL.Scheme + "://" + reqCtx.Host + path.String()
 
 	var err error
 	if isUpstreamRequest && roundtripInfo != nil {
@@ -212,7 +216,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	if isUpstreamRequest && roundtripInfo != nil { // log all validation errors on access for now
 		var validationErr []string
-		for _, err := range roundtripInfo.ValidationError {
+		for _, err = range roundtripInfo.ValidationError {
 			validationErr = append(validationErr, err.Error())
 		}
 		if len(validationErr) > 0 {
@@ -255,10 +259,7 @@ func filterHeader(list []string, src http.Header) map[string]string {
 func splitHostPort(hp string) (string, string) {
 	host, port, err := net.SplitHostPort(hp)
 	if err != nil {
-		return hp, "-"
-	}
-	if port == "" {
-		port = "-"
+		return hp, port
 	}
 	return host, port
 }
