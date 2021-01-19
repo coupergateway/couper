@@ -183,7 +183,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	requestFields["tls"] = reqCtx.TLS != nil
-	fields["scheme"] = reqCtx.URL.Scheme
+	fields["scheme"] = "http"
+	if reqCtx.URL.Scheme != "" {
+		fields["scheme"] = reqCtx.URL.Scheme
+	}
 	if requestFields["port"] == "" {
 		if fields["scheme"] == "https" {
 			requestFields["port"] = "443"
@@ -192,7 +195,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		}
 	}
 
-	fields["url"] = reqCtx.URL.Scheme + "://" + reqCtx.Host + path.String()
+	fields["url"] = fields["scheme"].(string) + "://" + reqCtx.Host + path.String()
 
 	var err error
 	if isUpstreamRequest && roundtripInfo != nil {
