@@ -23,75 +23,17 @@ server "api" {
           aeb_empty = ""
           "${req.query.aeb[0]}" = "aeb"
         }
-      }
 
-      remove_request_headers = [ "ae_del" ]
-      set_request_headers = {
-        ae_string = "str"
-        ae_multi = ["str1", "str2"]
-        ae_a_and_b = "A&B"
-        ae_noop = req.headers.noop
-        ae_null = null
-        ae_empty = ""
-        xxx = "zzz"
-        "${req.query.ae[0]}" = "ae"
-      }
-      add_request_headers = {
-        ae_string = "str"
-        ae_multi = ["str3", "str4"]
-        ae_a_and_b = "A&B"
-        ae_noop = req.headers.noop
-        ae_null = null
-        ae_empty = ""
-        xxx = "ccc"
-        "${req.query.ae[0]}" = "ae"
+        remove_response_headers = [ "Remove-Me-2" ]
+        set_response_headers = {
+          "Set-Me-2" = "s2"
+        }
+        add_response_headers = {
+          "Add-Me-2" = "a2"
+        }
       }
     }
   }
-
-# TODO: free-endpoints
-#   endpoint "/free/endpoint" {
-#     backend {
-#       origin = "https://w11w.de"
-#       hostname = "w11w.de"
-
-#       remove_request_headers = [ "feb_del" ]
-#       set_request_headers = {
-#         feb_string = "str"
-#         feb_multi = ["str1", "str2"]
-#         feb_a_and_b = "A&B"
-#         feb_noop = req.headers.noop
-#         feb_null = null
-#         feb_empty = ""
-#       }
-#       add_request_headers = {
-#         feb_string = "str"
-#         feb_multi = ["str3", "str4"]
-#         feb_a_and_b = "A&B"
-#         feb_noop = req.headers.noop
-#         feb_null = null
-#         feb_empty = ""
-#       }
-#     }
-
-#     remove_request_headers = [ "fe_del" ]
-#     set_request_headers = {
-#       fe_String = "str"
-#       fe_multi = ["str1", "str2"]
-#       fe_a_and_b = "A&B"
-#       fe_noop = req.headers.noop
-#       fe_null = null
-#       fe_empty = ""
-#     }
-#     add_request_headers = {
-#       fe_String = "str"
-#       fe_multi = ["str3", "str4"]
-#       fe_a_and_b = "A&B"
-#       fe_noop = req.headers.noop
-#       fe_null = null
-#       fe_empty = ""
-#     }
-#   }
 }
 
 definitions {
@@ -120,6 +62,14 @@ definitions {
       def_empty = ""
       xxx = "eee"
       "${req.query.def[0]}" = "def"
+    }
+
+    remove_response_headers = [ "remove-me-1" ]
+    set_response_headers = {
+      "set-me-1" = "s1"
+    }
+    add_response_headers = {
+      "add-me-1" = "a1"
     }
   }
 }
