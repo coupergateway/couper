@@ -803,6 +803,28 @@ func TestHTTPServer_QueryEncoding(t *testing.T) {
 	shutdown()
 }
 
+func TestHTTPServer_Backends(t *testing.T) {
+	client := newClient()
+
+	config := "testdata/integration/config/02_couper.hcl"
+
+	shutdown, _ := newCouper(config, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	exp := []string{"1", "2", "3", "4"}
+	if !reflect.DeepEqual(res.Header.Values("Foo"), exp) {
+		t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, res.Header.Values("Foo"))
+	}
+}
+
 func TestHTTPServer_TrailingSlash(t *testing.T) {
 	client := newClient()
 
@@ -1044,7 +1066,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"/anything", http.Header{"Foo": []string{"3"}}, url.Values{"bar": []string{"3", "4"}}},
+		{"/anything", http.Header{"Foo": []string{"4"}}, url.Values{"bar": []string{"3", "4"}}},
 		{"/get", http.Header{"Foo": []string{"1", "3"}}, url.Values{"bar": []string{"1", "3", "4"}}},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
