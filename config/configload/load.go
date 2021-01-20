@@ -118,6 +118,12 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 
 		file.Server = append(file.Server, srv)
 
+		serverBodies, err := mergeBackendBodies(backends, srv)
+		if err != nil {
+			return nil, err
+		}
+		srv.Remain = MergeBodies(serverBodies)
+
 		// api block(s)
 		for _, apiBlock := range []*config.Api{srv.API} {
 			if apiBlock == nil {
@@ -128,6 +134,8 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			bodies = appendUniqueBodies(serverBodies, bodies...)
 
 			// empty bodies would be removed with a hcl.Merge.. later on.
 			if err = refineEndpoints(backends, bodies, apiBlock.Endpoints); err != nil {
@@ -171,7 +179,7 @@ func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hc
 			return nil, fmt.Errorf("configuration error: inlineBackend reference and inline definition")
 		}
 		// we have a reference, append to list and...
-		bodies = append(bodies, reference)
+		bodies = appendUniqueBodies(bodies, reference)
 	}
 	// ...additionally add the inline overrides.
 	if content != nil && len(content.Attributes) > 0 {
@@ -197,7 +205,7 @@ func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hc
 			bodies = append([]hcl.Body{ref}, bodies...)
 		}
 
-		bodies = append(bodies, backends[0].Body)
+		bodies = appendUniqueBodies(bodies, backends[0].Body)
 	}
 
 	return bodies, nil
