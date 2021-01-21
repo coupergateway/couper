@@ -188,7 +188,8 @@ func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hc
 		bodies = append(bodies, backends[0].Body)
 	}
 
-	return bodies, nil
+	err := validateOrigin(bodies)
+	return bodies, err
 }
 
 func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.Endpoints) error {
@@ -245,4 +246,23 @@ func appendPathAttribute(bodies []hcl.Body, endpoint *config.Endpoint) ([]hcl.Bo
 	}
 
 	return bodies, nil
+}
+
+// validateOrigin checks at least for an origin attribute definition.
+func validateOrigin(bodies []hcl.Body) error {
+	merged := MergeBodies(bodies)
+	attrs, diags := merged.JustAttributes()
+	if diags.HasErrors() {
+		return diags
+	}
+
+	_, ok := attrs["origin"]
+	if !ok {
+		bodyRange := merged.MissingItemRange()
+		return hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &bodyRange,
+			Summary: "missing backend.origin attribute",
+		}}
+	}
+	return nil
 }
