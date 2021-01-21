@@ -7,19 +7,22 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
-	backend     = "backend"
-	definitions = "definitions"
-	pathAttr    = "path"
-	server      = "server"
-	settings    = "settings"
+	backend      = "backend"
+	backendLabel = "name"
+	definitions  = "definitions"
+	pathAttr     = "path"
+	server       = "server"
+	settings     = "settings"
 )
 
 func LoadFile(filePath string) (*config.CouperFile, error) {
@@ -64,9 +67,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			backendContent, leftOver, diags := outerBlock.Body.PartialContent(&hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{
-				{Type: backend, LabelNames: []string{"name"}},
-			}})
+			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 
 			if diags.HasErrors() {
 				return nil, diags
@@ -82,17 +83,15 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 						}}
 					}
 					name := be.Labels[0]
-					if backends.WithName(name) != nil {
+					ref, _ := backends.WithName(name)
+					if ref != nil {
 						return nil, hcl.Diagnostics{&hcl.Diagnostic{
 							Severity: hcl.DiagError,
-							Summary:  fmt.Sprintf("Duplicate backend name: %q", name),
+							Summary:  fmt.Sprintf("duplicate backend name: %q", name),
 							Subject:  &be.LabelRanges[0],
 						}}
 					}
-					backends = append(backends, &Backend{
-						Name:   name,
-						Config: be.Body,
-					})
+					backends = append(backends, NewBackend(name, be.Body))
 				}
 			}
 
@@ -150,7 +149,12 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 }
 
 func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hcl.Body, error) {
-	reference := backendList.WithName(inlineBackend.Reference())
+	reference, err := backendList.WithName(inlineBackend.Reference())
+	if err != nil {
+		r := inlineBackend.Body().MissingItemRange()
+		err.(hcl.Diagnostics)[0].Subject = &r
+		return nil, err
+	}
 
 	content, _, diags := inlineBackend.Body().PartialContent(inlineBackend.Schema(true))
 	if diags.HasErrors() {
@@ -180,16 +184,24 @@ func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hc
 
 	if len(backends) > 0 {
 		if len(backends[0].Labels) > 0 {
-			if ref := backendList.WithName(backends[0].Labels[0]); ref != nil {
-				bodies = append(bodies, ref)
+			ref, err := backendList.WithName(backends[0].Labels[0])
+			if err != nil {
+				err.(hcl.Diagnostics)[0].Subject = &backends[0].DefRange
+				return nil, err
 			}
+			// link name attribute
+			if syntaxBody, ok := backends[0].Body.(*hclsyntax.Body); ok {
+				if refBody, ok := ref.(*hclsyntax.Body); ok {
+					syntaxBody.Attributes[backendLabel] = refBody.Attributes[backendLabel]
+				}
+			}
+			bodies = append(bodies, ref)
 		}
 
 		bodies = append(bodies, backends[0].Body)
 	}
 
-	err := validateOrigin(bodies)
-	return bodies, err
+	return bodies, nil
 }
 
 func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.Endpoints) error {
@@ -199,12 +211,35 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 			return err
 		}
 
-		merged, err = appendPathAttribute(append(parents, merged...), endpoint)
+		p := parents
+		block, label := getBackendBlock(endpoint.Body())
+		if block != nil && label != "" {
+			p = nil
+			for _, b := range parents {
+				attrs, _ := b.JustAttributes()
+				if len(attrs) == 0 {
+					continue
+				}
+				if attr, ok := attrs[backendLabel]; ok {
+					val, _ := attr.Expr.Value(nil)
+					if seetie.ValueToString(val) == label {
+						p = append(p, b)
+					}
+					continue // skip backends with other names
+				}
+				p = append(p, b)
+			}
+		}
+
+		merged, err = appendPathAttribute(append(p, merged...), endpoint)
 		if err != nil {
 			return err
 		}
 
 		endpoints[e].Remain = MergeBodies(merged)
+		if err = validateOrigin(endpoints[e].Remain); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -249,14 +284,13 @@ func appendPathAttribute(bodies []hcl.Body, endpoint *config.Endpoint) ([]hcl.Bo
 }
 
 // validateOrigin checks at least for an origin attribute definition.
-func validateOrigin(bodies []hcl.Body) error {
-	merged := MergeBodies(bodies)
-	attrs, diags := merged.JustAttributes()
+func validateOrigin(merged hcl.Body) error {
+	content, _, diags := merged.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}})
 	if diags.HasErrors() {
 		return diags
 	}
 
-	_, ok := attrs["origin"]
+	_, ok := content.Attributes["origin"]
 	if !ok {
 		bodyRange := merged.MissingItemRange()
 		return hcl.Diagnostics{&hcl.Diagnostic{
