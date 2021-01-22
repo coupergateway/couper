@@ -195,7 +195,7 @@ func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hc
 					syntaxBody.Attributes[backendLabel] = refBody.Attributes[backendLabel]
 				}
 			}
-			bodies = append(bodies, ref)
+			bodies = append([]hcl.Body{ref}, bodies...)
 		}
 
 		bodies = append(bodies, backends[0].Body)
@@ -213,7 +213,7 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 
 		p := parents
 		block, label := getBackendBlock(endpoint.Body())
-		if block != nil && label != "" {
+		if block != nil {
 			p = nil
 			for _, b := range parents {
 				attrs, _ := b.JustAttributes()
@@ -222,16 +222,16 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 				}
 				if attr, ok := attrs[backendLabel]; ok {
 					val, _ := attr.Expr.Value(nil)
-					if seetie.ValueToString(val) == label {
+					if label != "" && seetie.ValueToString(val) == label {
 						p = append(p, b)
 					}
-					continue // skip backends with other names
+					continue // skip backends with other names or block is an inline one
 				}
 				p = append(p, b)
 			}
 		}
 
-		merged, err = appendPathAttribute(append(p, merged...), endpoint)
+		merged, err = appendPathAttribute(appendUniqueBodies(p, merged...), endpoint)
 		if err != nil {
 			return err
 		}
@@ -299,4 +299,21 @@ func validateOrigin(merged hcl.Body) error {
 		}}
 	}
 	return nil
+}
+
+func appendUniqueBodies(parents []hcl.Body, bodies ...hcl.Body) []hcl.Body {
+	merged := parents[:]
+	for _, b := range bodies {
+		unique := true
+		for _, m := range merged {
+			if m == b {
+				unique = false
+				break
+			}
+		}
+		if unique {
+			merged = append(merged, b)
+		}
+	}
+	return merged
 }
