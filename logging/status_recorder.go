@@ -1,10 +1,14 @@
 package logging
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 )
 
 var _ http.ResponseWriter = &Recorder{}
+var _ http.Hijacker = &Recorder{}
 
 // Recorder represents the Recorder object.
 type Recorder struct {
@@ -39,4 +43,12 @@ func (sr *Recorder) WriteHeader(statusCode int) {
 		sr.status = statusCode
 	}
 	sr.rw.WriteHeader(statusCode)
+}
+
+func (sr *Recorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijack, ok := sr.rw.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", sr.rw)
+	}
+	return hijack.Hijack()
 }

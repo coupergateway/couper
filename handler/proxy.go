@@ -699,7 +699,7 @@ func (p *Proxy) handleUpgradeResponse(rw http.ResponseWriter, req *http.Request,
 	reqUpType := upgradeType(req.Header)
 	resUpType := upgradeType(res.Header)
 	if reqUpType != resUpType {
-		p.log.Error(fmt.Errorf("backend tried to switch protocol %q when %q was requested", resUpType, reqUpType))
+		p.log.Errorf("backend tried to switch protocol %q when %q was requested", resUpType, reqUpType)
 		return
 	}
 
@@ -707,28 +707,28 @@ func (p *Proxy) handleUpgradeResponse(rw http.ResponseWriter, req *http.Request,
 
 	hj, ok := rw.(http.Hijacker)
 	if !ok {
-		p.log.Error(fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", rw))
+		p.log.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", rw)
 		return
 	}
 	backConn, ok := res.Body.(io.ReadWriteCloser)
 	if !ok {
-		p.log.Error(fmt.Errorf("internal error: 101 switching protocols response with non-writable body"))
+		p.log.Errorf("internal error: 101 switching protocols response with non-writable body")
 		return
 	}
 	defer backConn.Close()
 	conn, brw, err := hj.Hijack()
 	if err != nil {
-		p.log.Error(fmt.Errorf("hijack failed on protocol switch: %v", err))
+		p.log.Errorf("hijack failed on protocol switch: %v", err)
 		return
 	}
 	defer conn.Close()
 	res.Body = nil // so res.Write only writes the headers; we have res.Body in backConn above
-	if err := res.Write(brw); err != nil {
-		p.log.Error(fmt.Errorf("response write: %v", err))
+	if err = res.Write(brw); err != nil {
+		p.log.Errorf("response write: %v", err)
 		return
 	}
-	if err := brw.Flush(); err != nil {
-		p.log.Error(fmt.Errorf("response flush: %v", err))
+	if err = brw.Flush(); err != nil {
+		p.log.Errorf("response flush: %v", err)
 		return
 	}
 	errc := make(chan error, 1)
