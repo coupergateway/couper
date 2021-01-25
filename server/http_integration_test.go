@@ -1026,6 +1026,58 @@ func TestConfigBodyContent(t *testing.T) {
 	shutdown()
 }
 
+func TestConfigBodyContentBackends(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/config/02_couper.hcl", test.New(t))
+
+	type testCase struct {
+		path   string
+		header http.Header
+		query  url.Values
+	}
+
+	for _, tc := range []testCase{
+		{"/anything", http.Header{"Foo": []string{"3"}}, url.Values{"bar": []string{"3", "4"}}},
+		{"/get", http.Header{"Foo": []string{"1", "3"}}, url.Values{"bar": []string{"1", "3", "4"}}},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				t.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
+			}
+
+			b, err := ioutil.ReadAll(res.Body)
+
+			type payload struct {
+				Query url.Values
+			}
+			var p payload
+			helper.Must(json.Unmarshal(b, &p))
+
+			for k, v := range tc.header {
+				if !reflect.DeepEqual(res.Header[k], v) {
+					t.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
+				}
+			}
+
+			for k, v := range tc.query {
+				if !reflect.DeepEqual(p.Query[k], v) {
+					t.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
+				}
+			}
+		})
+	}
+
+	shutdown()
+}
+
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 	helper := test.New(t)
 	shutdown, _ := newCouper("testdata/integration/api/04_couper.hcl", test.New(t))

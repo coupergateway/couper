@@ -2,15 +2,11 @@ package runtime
 
 import (
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/avenga/couper/internal/seetie"
-
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
-	"github.com/hashicorp/hcl/v2"
 )
 
 var (
@@ -75,55 +71,6 @@ func validatePortHosts(conf *config.CouperFile, configuredPort int) (ports, host
 	}
 
 	return portMap, hostMap, nil
-}
-
-func validateOrigin(ctx *hcl.EvalContext, inline config.Inline) error {
-	content, _, diags := inline.Body().PartialContent(inline.Schema(true))
-	if seetie.SetSeverityLevel(diags).HasErrors() {
-		return diags
-	}
-
-	ctxRange := inline.Body().MissingItemRange()
-
-	originAttr, ok := content.Attributes["origin"]
-	if !ok {
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &ctxRange,
-			Summary: "missing backend.origin attribute",
-		}}
-	}
-	return nil // TODO: read byte range
-
-	originValue, diags := originAttr.Expr.Value(ctx)
-	if seetie.SetSeverityLevel(diags).HasErrors() {
-		return diags
-	}
-
-	origin := seetie.ValueToString(originValue)
-
-	diagErr := &hcl.Diagnostic{
-		Subject: &ctxRange,
-		Summary: "invalid backend.origin value",
-	}
-
-	if origin == "" {
-		diagErr.Detail = "origin attribute is required"
-		return hcl.Diagnostics{diagErr}
-	}
-
-	// if origin contains fallback content with variables
-	origin = strings.ReplaceAll(strings.ReplaceAll(origin, "}", ""), "${", "")
-
-	u, err := url.Parse(origin)
-	if err != nil {
-		diagErr.Detail = fmt.Sprintf("url parse error: %v", err)
-		return hcl.Diagnostics{diagErr}
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		diagErr.Detail = fmt.Sprintf("valid http scheme required for origin: %q", origin)
-		return hcl.Diagnostics{diagErr}
-	}
-	return nil
 }
 
 func validateACName(accessControls ac.Map, name, acType string) (string, error) {

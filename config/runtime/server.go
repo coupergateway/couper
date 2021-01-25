@@ -171,12 +171,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 func newProxy(
 	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS,
-	log *logrus.Entry, srvOpts *server.Options,
-	noProxyFromEnv bool,
-) (http.Handler, error) {
-	if err := validateOrigin(ctx, beConf); err != nil {
-		return nil, err
-	}
+	log *logrus.Entry, srvOpts *server.Options, noProxyFromEnv bool) (http.Handler, error) {
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
 		return nil, err
