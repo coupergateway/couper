@@ -2,10 +2,12 @@ package test
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -24,6 +26,7 @@ func NewBackend() *Backend {
 	// test handler
 	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
 	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
+	b.mux.HandleFunc("/ws", echo)
 
 	return b
 }
@@ -81,4 +84,49 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 		rw.WriteHeader(status)
 		_, _ = rw.Write(respContent)
 	}
+}
+
+// echo handler expected a "ping" after sending the ws upgrade header and response with a "pong" once.
+func echo(rw http.ResponseWriter, req *http.Request) {
+	if req.Header.Get("Connection") != "upgrade" &&
+		req.Header.Get("Upgrade") != "websocket" {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	hj, ok := rw.(http.Hijacker)
+	if !ok {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	conn, _, err := hj.Hijack()
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	defer conn.Close()
+
+	// Clear deadlines
+	conn.SetDeadline(time.Time{})
+
+	_, err = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	go func(c net.Conn) {
+		time.Sleep(time.Second)
+		for {
+			p := make([]byte, 4)
+			conn.Read(p)
+			if string(p) == "ping" {
+				conn.Write([]byte("pong"))
+				wg.Done()
+			}
+			return
+		}
+	}(conn)
+
+	wg.Wait()
 }

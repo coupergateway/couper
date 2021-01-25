@@ -1,15 +1,19 @@
 package server
 
 import (
+	"bufio"
 	"compress/gzip"
+	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/avenga/couper/handler"
 )
 
 var (
-	_ http.ResponseWriter = &RWWrapper{}
 	_ http.Flusher        = &RWWrapper{}
+	_ http.Hijacker       = &RWWrapper{}
+	_ http.ResponseWriter = &RWWrapper{}
 )
 
 // RWWrapper wraps the <http.ResponseWriter>.
@@ -43,6 +47,14 @@ func (w *RWWrapper) Write(p []byte) (int, error) {
 	}
 
 	return w.rw.Write(p)
+}
+
+func (w *RWWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijack, ok := w.rw.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", w.rw)
+	}
+	return hijack.Hijack()
 }
 
 // Close closes the GZ writer.
