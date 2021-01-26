@@ -25,7 +25,6 @@
   * [The `definitions` block](#definitions_block)
     * [The `basic_auth` block](#basic_auth_block)
     * [The `jwt` block](#jwt_block)
-  * [The `defaults` block](#defaults_block)
   * [The `settings` block](#settings_block)
 * [Examples](#examples)
   * [Request routing](#request_routing_ex)
@@ -106,7 +105,6 @@ definitions { ... }
   * `endpoint` configuration block for Couper's entry points
   * `backend` configuration block for connection to local/remote backend service(s)
 * `definitions` block for predefined configurations, that can be referenced
-* `defaults` block for default configurations
 * `settings` block for server configuration which applies to the running instance
 
 ### Variables <a name="variables_conf"></a>
@@ -475,8 +473,6 @@ In this case the response validation will fail if not ignored too.
 
 Use the `definitions` block to define configurations you want to reuse.
 `access_control` is **always** defined in the `definitions` block.
-
-### The `defaults` block <a name="defaults_block"></a>
 
 ### The `settings` block <a name="settings_block"></a>
 
