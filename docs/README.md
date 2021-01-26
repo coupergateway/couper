@@ -206,10 +206,10 @@ shouty_message = upper(message)
 Functions are little helper methods which are registered for every hcl evaluation
 context.
 
-- `base64_decode`
-- `base64_encode`
-- `to_upper`
-- `to_lower`
+* `base64_decode`
+* `base64_encode`
+* `to_upper`
+* `to_lower`
 
 Example usage:
 
