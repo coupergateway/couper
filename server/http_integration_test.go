@@ -1149,3 +1149,57 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 		t.Errorf("Expected pong answer, got: %q", string(p))
 	}
 }
+
+func TestHTTPServer_MultiAPI(t *testing.T) {
+	client := newClient()
+
+	type expectation struct {
+		Path string
+	}
+
+	type testCase struct {
+		path string
+		exp  expectation
+	}
+
+	for _, tc := range []testCase{
+		{"/xxx", expectation{
+			Path: "/xxx",
+		}},
+		{"/yyy", expectation{
+			Path: "/yyy",
+		}},
+		{"/zzz", expectation{
+			Path: "/zzz",
+		}},
+	} {
+		shutdown, _ := newCouper("testdata/integration/api/05_couper.hcl", test.New(t))
+
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+
+		shutdown()
+	}
+}
