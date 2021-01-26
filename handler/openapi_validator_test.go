@@ -64,7 +64,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api")
 	helper.Must(err)
 
-	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, eval.NewENVContext(nil))
+	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), &server.Options{APIErrTpl: []*errors.Template{errors.DefaultJSON}}, eval.NewENVContext(nil))
 	helper.Must(err)
 
 	tests := []struct {

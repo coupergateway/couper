@@ -460,7 +460,7 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 		},
 	}
 
-	srvOpts := &server.Options{APIErrTpl: errors.DefaultJSON}
+	srvOpts := &server.Options{APIErrTpl: []*errors.Template{errors.DefaultJSON}}
 
 	logger, hook := logrustest.NewNullLogger()
 
@@ -658,7 +658,7 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 				}),
 			}, log.WithContext(context.Background()),
 				&server.Options{
-					APIErrTpl: errors.DefaultJSON,
+					APIErrTpl: []*errors.Template{errors.DefaultJSON},
 				},
 				baseCtx)
 
@@ -978,7 +978,7 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					helper.NewProxyContext(tc.remain)}),
 				RequestBodyLimit: 64,
-			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
+			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: []*errors.Template{errors.DefaultJSON}}, evalCtx)
 			h.Must(err)
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
@@ -1074,7 +1074,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					helper.NewProxyContext(tc.remain)}),
 				RequestBodyLimit: 64,
-			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
+			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: []*errors.Template{errors.DefaultJSON}}, evalCtx)
 			h.Must(err)
 
 			configuredOption := reflect.ValueOf(proxy).Elem().FieldByName("bufferOption") // private field: ro

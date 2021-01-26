@@ -179,10 +179,12 @@ func TestServer_getEndpointsList(t *testing.T) {
 	}
 
 	srvConf := &config.Server{
-		API: &config.API{
-			Endpoints: []*config.Endpoint{
-				{Remain: getHCLBody("/api/1")},
-				{Remain: getHCLBody("/api/2")},
+		APIs: []*config.API{
+			{
+				Endpoints: []*config.Endpoint{
+					{Remain: getHCLBody("/api/1")},
+					{Remain: getHCLBody("/api/2")},
+				},
 			},
 		},
 		Endpoints: []*config.Endpoint{
@@ -208,7 +210,7 @@ func TestServer_getEndpointsList(t *testing.T) {
 		v, _ := a["path"].Expr.Value(nil)
 		path := seetie.ValueToString(v)
 
-		if v, ok := checks[path]; !ok || v != kind {
+		if v, ok := checks[path]; !ok || v != kind.kind {
 			t.Fatalf("Missing an endpoint for %s", path)
 		}
 
