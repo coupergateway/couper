@@ -8,7 +8,11 @@
   * [Syntax](#syntax)
   * [File name](#file_name)
   * [Basic file structure](#basic_conf)
-  * [Variables](#variables_conf)
+  * [Variables](#variables)
+    * [`env`](#variables_env)
+    * [`req`](#variables_req)
+    * [`bereq`](#variables_bereq)
+    * [`beresp`](#variables_beresp)
   * [Expressions](#expressions)
   * [Functions](#functions)
 * [Reference](#reference)
@@ -107,7 +111,7 @@ definitions { ... }
 * `definitions` block for predefined configurations, that can be referenced
 * `settings` block for server configuration which applies to the running instance
 
-### Variables <a name="variables_conf"></a>
+### Variables <a name="variables"></a>
 
 The configuration file allows the use of some predefined variables. There are
 two phases when those variables get evaluated. The first phase is at config load
@@ -121,12 +125,12 @@ will happen during the request/response handling.
 
 Most fields are self-explanatory (compare tables below).
 
-#### `env` variables
+#### `env` variables <a name="variables_env"></a>
 
 Environment variables can be accessed everywhere within the configuration file
 since these references get evaluated at start.
 
-#### `req` (client request) variables
+#### `req` (client request) variables <a name="variables_req"></a>
 
 | Variable                  | Description |
 |:--------------------------|:------------|
@@ -142,7 +146,7 @@ since these references get evaluated at start.
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name |
 
-#### `bereq`(modified backend request) variables
+#### `bereq`(modified backend request) variables <a name="variables_bereq"></a>
 
 | Variable                  | Description |
 |:--------------------------|:------------|
@@ -156,7 +160,7 @@ since these references get evaluated at start.
 | `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name |
 | `url`                     | backend origin URL |
 
-#### `beresp` (original backend response) variables
+#### `beresp` (original backend response) variables <a name="variables_beresp"></a>
 | Variable           | Description |
 |:-------------------|:------------|
 | `status`           | HTTP status code |
