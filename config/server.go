@@ -42,7 +42,7 @@ func (s Server) Schema(inline bool) *hcl.BodySchema {
 	}
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	// The API contains a backend reference, backend block is not allowed.
+	// The Server contains a backend reference, backend block is not allowed.
 	if s.Backend != "" {
 		schema.Blocks = nil
 	}
