@@ -53,7 +53,15 @@ const (
 	KindSPA
 )
 
-type endpointList map[*config.Endpoint]HandlerKind
+type endpointList map[*config.Endpoint]endpointItem
+
+type endpointItem struct {
+	ac        []string
+	apiIdx    int
+	cors      *config.CORS
+	disableAC []string
+	kind      HandlerKind
+}
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
@@ -130,16 +138,16 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 		endpointsPatterns := make(map[string]bool)
 
-		for endpoint, epType := range getEndpointsList(srvConf) {
+		for endpoint, item := range getEndpointsList(srvConf) {
 			var basePath string
 			var cors *config.CORS
 			var errTpl *errors.Template
 
-			switch epType {
+			switch item.kind {
 			case KindAPI:
-				basePath = serverOptions.APIBasePath
-				cors = srvConf.API.CORS
-				errTpl = serverOptions.APIErrTpl
+				basePath = serverOptions.APIBasePath[item.apiIdx]
+				cors = item.cors
+				errTpl = serverOptions.APIErrTpl[item.apiIdx]
 			case KindEndpoint:
 				basePath = serverOptions.SrvBasePath
 				errTpl = serverOptions.ServerErrTpl
@@ -155,11 +163,11 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedHandler http.Handler) {
 				ac := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
-				if epType == KindAPI {
-					ac = ac.Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl))
+				if item.kind == KindAPI {
+					ac = ac.Merge(config.NewAccessControl(item.ac, item.disableAC))
 				}
 
-				api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
+				api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl[item.apiIdx],
 					ac,
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
 					protectedHandler)
@@ -172,7 +180,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 			backend, err := newProxy(
 				confCtx, &backendConf, cors, log, serverOptions,
-				conf.Settings.NoProxyFromEnv, errTpl, epType,
+				conf.Settings.NoProxyFromEnv, errTpl, item.kind,
 			)
 			if err != nil {
 				return nil, err
@@ -365,14 +373,22 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 func getEndpointsList(srvConf *config.Server) endpointList {
 	endpoints := make(endpointList)
 
-	if srvConf.API != nil {
-		for _, endpoint := range srvConf.API.Endpoints {
-			endpoints[endpoint] = KindAPI
+	for i, api := range srvConf.APIs {
+		for _, endpoint := range api.Endpoints {
+			endpoints[endpoint] = endpointItem{
+				ac:        api.AccessControl,
+				apiIdx:    i,
+				cors:      api.CORS,
+				disableAC: api.DisableAccessControl,
+				kind:      KindAPI,
+			}
 		}
 	}
 
 	for _, endpoint := range srvConf.Endpoints {
-		endpoints[endpoint] = KindEndpoint
+		endpoints[endpoint] = endpointItem{
+			kind: KindEndpoint,
+		}
 	}
 
 	return endpoints

@@ -125,7 +125,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 		srv.Remain = MergeBodies(serverBodies)
 
 		// api block(s)
-		for _, apiBlock := range []*config.API{srv.API} {
+		for _, apiBlock := range srv.APIs {
 			if apiBlock == nil {
 				continue
 			}

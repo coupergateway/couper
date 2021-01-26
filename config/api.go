@@ -7,6 +7,8 @@ import (
 
 var _ Inline = &API{}
 
+type APIs []*API
+
 type API struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`
