@@ -5,9 +5,9 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ Inline = &Api{}
+var _ Inline = &API{}
 
-type Api struct {
+type API struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`
 	Backend              string    `hcl:"backend,optional"`
@@ -18,15 +18,15 @@ type Api struct {
 	Remain               hcl.Body  `hcl:",remain" json:"-"`
 }
 
-func (a Api) Body() hcl.Body {
+func (a API) Body() hcl.Body {
 	return a.Remain
 }
 
-func (a Api) Reference() string {
+func (a API) Reference() string {
 	return a.Backend
 }
 
-func (a Api) Schema(inline bool) *hcl.BodySchema {
+func (a API) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(a)
 		return schema

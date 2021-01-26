@@ -11,7 +11,7 @@ var _ Inline = &Server{}
 type Server struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
-	API                  *Api      `hcl:"api,block"`
+	API                  *API      `hcl:"api,block"`
 	Backend              string    `hcl:"backend,optional"`
 	BasePath             string    `hcl:"base_path,optional"`
 	Endpoints            Endpoints `hcl:"endpoint,block"`

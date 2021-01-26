@@ -179,7 +179,7 @@ func TestServer_getEndpointsList(t *testing.T) {
 	}
 
 	srvConf := &config.Server{
-		API: &config.Api{
+		API: &config.API{
 			Endpoints: []*config.Endpoint{
 				{Remain: getHCLBody("/api/1")},
 				{Remain: getHCLBody("/api/2")},
