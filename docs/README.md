@@ -36,12 +36,14 @@
 
 ## Introduction <a name="introduction"></a>
 
-Couper is a frontend gateway especially designed to support building and running API-driven Web projects.
-Acting as a proxy component it connects clients with (micro) services and adds access control and observability to the project. Couper does not need any special development skills and offers easy configuration and integration.
+Couper is a frontend gateway especially designed to support building and running
+API-driven Web projects. Acting as a proxy component it connects clients with (micro)
+services and adds access control and observability to the project. Couper does not
+need any special development skills and offers easy configuration and integration.
 
 ## Core concepts <a name="core_concepts"></a>
 
-![](./overview.png)
+![overview](./overview.png)
 
 | Concept / Feature  | Description |
 |:-------------------|:------------|
@@ -58,18 +60,24 @@ Acting as a proxy component it connects clients with (micro) services and adds a
 
 ### Syntax <a name="syntax"></a>
 
-The syntax for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
+The syntax for Couper's configuration file is
+[HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax),
+a configuration language by HashiCorp.
 
 ### File name <a name="file_name"></a>
 
-The file-ending of your configuration file should be `.hcl` to have syntax highlighting within your IDE.
+The file-ending of your configuration file should be `.hcl` to have syntax
+highlighting within your IDE.
 
-The `filename` defaults to `couper.hcl` in your working directory. This can be changed with the `-f` command-line flag.
-With `-f /opt/couper/my_conf.hcl` couper changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
+The `filename` defaults to `couper.hcl` in your working directory. This can be
+changed with the `-f` command-line flag. With `-f /opt/couper/my_conf.hcl` couper
+changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
 
 ### Basic file structure <a name="basic_conf"></a>
 
-Couper's configuration file consists of nested configuration blocks that configure web serving and routing of the gateway. Access control is controlled by an `access_control` attribute that can be set for blocks.
+Couper's configuration file consists of nested configuration blocks that configure
+web serving and routing of the gateway. Access control is controlled by an
+`access_control` attribute that can be set for blocks.
 
 For orientation compare the following example and the information below:
 
@@ -103,9 +111,10 @@ definitions { ... }
 
 ### Variables <a name="variables_conf"></a>
 
-The configuration file allows the use of some predefined variables. There are two phases when those variables get evaluated.
-The first phase is at config load which is currently related to `env` and **function** usage.
-The second evaluation will happen during the request/response handling.
+The configuration file allows the use of some predefined variables. There are
+two phases when those variables get evaluated. The first phase is at config load
+which is currently related to `env` and **function** usage. The second evaluation
+will happen during the request/response handling.
 
 * `env` are the environment variables
 * `req` is the client request
@@ -116,7 +125,8 @@ Most fields are self-explanatory (compare tables below).
 
 #### `env` variables
 
-Environment variables can be accessed everywhere within the configuration file since these references get evaluated at start.
+Environment variables can be accessed everywhere within the configuration file
+since these references get evaluated at start.
 
 #### `req` (client request) variables
 
@@ -158,7 +168,8 @@ Environment variables can be accessed everywhere within the configuration file s
 
 ##### Variable Example
 
-An example to send an additional header with client request header to a configured backend and gets evaluated on per request basis:
+An example to send an additional header with client request header to a configured
+backend and gets evaluated on per request basis:
 
 ```hcl
 server "variables-srv" {
@@ -178,7 +189,8 @@ server "variables-srv" {
 
 ### Expressions <a name="expressions">
 
-Since we use HCL2 for our configuration, we are able to use attribute values as expression:
+Since we use HCL2 for our configuration, we are able to use attribute values as
+expression:
 
 ```hcl
 # Arithmetic with literals and application-provided variables
@@ -193,7 +205,8 @@ shouty_message = upper(message)
 
 ### Functions <a name="functions">
 
-Functions are little helper methods which are registered for every hcl evaluation context.
+Functions are little helper methods which are registered for every hcl evaluation
+context.
 
 - `base64_decode`
 - `base64_encode`
@@ -211,7 +224,9 @@ my_attribute = base64_decode("aGVsbG8gd29ybGQK")
 ### The `server` block <a name="server_block"></a>
 
 The `server` block is the main configuration block of Couper's configuration file.
-It has an optional label and a `hosts` attribute. Nested blocks are `files`, `spa` and `api`. You can declare `access_control` for the `server` block. `access_control` is inherited by nested blocks.
+It has an optional label and a `hosts` attribute. Nested blocks are `files`, `spa`
+and `api`. You can declare `access_control` for the `server` block.
+`access_control` is inherited by nested blocks.
 
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
@@ -226,7 +241,8 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 
 ### The `files` block <a name="files_block"></a>
 
-The `files` block configures your document root, and the location of your error document.
+The `files` block configures your document root, and the location of your error
+document.
 
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
@@ -250,8 +266,11 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 
 ### The `api` block <a name="api_block"></a>
 
-The `api` block contains all information about endpoints, and the connection to remote/local backend service(s) (configured in the nested `endpoint` and `backend` blocks). You can add more than one `api` block to a `server` block.
-If an error occurred for api endpoints the response gets processed as json error with an error body payload. This can be customized via `error_file`.
+The `api` block contains all information about endpoints, and the connection to
+remote/local backend service(s) (configured in the nested `endpoint` and `backend`
+blocks). You can add more than one `api` block to a `server` block. If an error
+occurred for api endpoints the response gets processed as json error with an error
+body payload. This can be customized via `error_file`.
 
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
@@ -276,7 +295,11 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 
 ### The `endpoint` block <a name="endpoint_block"></a>
 
-Endpoints define the entry points of Couper. The mandatory *label* defines the path suffix for the incoming client request. The `path` attribute changes the path for the outgoing request (compare [request routing example](#request_routing_ex)). Each `endpoint` must have at least one `backend` which can be declared in the `api` context above or inside an `endpoint`.
+Endpoints define the entry points of Couper. The mandatory *label* defines the path
+suffix for the incoming client request. The `path` attribute changes the path for
+the outgoing request (compare [request routing example](#request_routing_ex)).
+Each `endpoint` must have at least one `backend` which can be declared in the `api`
+context above or inside an `endpoint`.
 
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
@@ -291,11 +314,16 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 
 #### Query parameter <a name="query_params"></a>
 
-Couper offers three attributes to manipulate the query parameter. The query attributes can be defined unordered within the configuration file but will be executed ordered as follows:
+Couper offers three attributes to manipulate the query parameter. The query
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
 
-* `remove_query_params` a list of query parameters to be removed from the upstream request URL.
-* `set_query_params` key/value(s) pairs to set query parameters in the upstream request URL.
-* `add_query_params` key/value(s) pairs to add query parameters to the upstream request URL.
+* `remove_query_params` a list of query parameters to be removed from the upstream
+  request URL.
+* `set_query_params` key/value(s) pairs to set query parameters in the upstream
+  request URL.
+* `add_query_params` key/value(s) pairs to add query parameters to the upstream
+  request URL.
 
 All `*_query_params` are collected and executed from: `definitions.backend`, `endpoint`,
 `endpoint.backend` (if refined).
@@ -332,7 +360,8 @@ definitions {
 
 #### Path parameter
 
-An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }` to access the named path parameter `section` and `project` via `req.path_param.*`.
+An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
+to access the named path parameter `section` and `project` via `req.path_param.*`.
 The values would map as following for the request path: `/app/nature/plant-a-tree/view`:
 
 | Variable                  | Value          |
@@ -342,7 +371,10 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 
 ### The `backend` block <a name="backend_block"></a>
 
-A `backend` defines the connection to a local/remote backend service. Backends can be defined globally in the `api` block for all endpoints of an API or inside an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also define backends in the `definitions` block and use the mandatory *label* as reference.
+A `backend` defines the connection to a local/remote backend service. Backends
+can be defined globally in the `api` block for all endpoints of an API or inside
+an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also
+define backends in the `definitions` block and use the mandatory *label* as reference.
 
 | Name                                   | Description | Default |
 |:---------------------------------------|:------------|:--------|
@@ -372,16 +404,25 @@ A `backend` defines the connection to a local/remote backend service. Backends c
 
 ### The `access_control` attribute <a name="access_control_attribute"></a>
 
-The configuration of access control is twofold in Couper: You define the particular type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label. Anywhere in the `server` block those labels can be used in the `access_control` list to protect that block.
-&#9888; access rights are inherited by nested blocks. You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`, the `access_control` type `bar` will be disabled for the corresponding block context.
+The configuration of access control is twofold in Couper: You define the particular
+type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
+Anywhere in the `server` block those labels can be used in the `access_control`
+list to protect that block. &#9888; access rights are inherited by nested blocks.
+You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`,
+the `access_control` type `bar` will be disabled for the corresponding block context.
 
 Compare the `access_control` [example](#access_control_conf_ex) for details.
 
 #### The `basic_auth` block <a name="basic_auth_block"></a>
 
-The `basic_auth` block let you configure basic auth for your gateway. Like all `access_control` types, the `basic_auth` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*.
+The `basic_auth` block let you configure basic auth for your gateway. Like all
+`access_control` types, the `basic_auth` block is defined in the `definitions`
+block and can be referenced in all configuration blocks by its mandatory *label*.
 
-If both `user`/`password` and `htpasswd_file` are configured, the incoming credentials from the `Authorization` request header are checked against `user`/`password` if the user matches, and against the data in the file referenced by `htpasswd_file` otherwise.
+If both `user`/`password` and `htpasswd_file` are configured, the incoming
+credentials from the `Authorization` request header are checked against `user`/`password`
+if the user matches, and against the data in the file referenced by `htpasswd_file`
+otherwise.
 
 | Name            | Description |
 |:----------------|:------------|
@@ -394,7 +435,9 @@ If both `user`/`password` and `htpasswd_file` are configured, the incoming crede
 
 #### The `jwt` block <a name="jwt_block"></a>
 
-The `jwt` block let you configure JSON Web Token access control for your gateway. Like all `access_control` types, the `jwt` block is defined in the `definitions` block and can be referenced in all configuration blocks by its mandatory *label*.
+The `jwt` block let you configure JSON Web Token access control for your gateway.
+Like all `access_control` types, the `jwt` block is defined in the `definitions`
+block and can be referenced in all configuration blocks by its mandatory *label*.
 
 | Name                      | Description |
 |:--------------------------|:------------|
@@ -410,10 +453,12 @@ The `jwt` block let you configure JSON Web Token access control for your gateway
 
 #### The `openapi` block <a name="openapi_block"></a>
 
-The `openapi` block configures the backends proxy behaviour to validate outgoing and incoming requests to and from the origin.
-Preventing the origin from invalid requests, and the Couper client from invalid answers. An example can be found [here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
-To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load the definitions from a given document
-defined with the `file` attribute.
+The `openapi` block configures the backends proxy behaviour to validate outgoing
+and incoming requests to and from the origin. Preventing the origin from invalid
+requests, and the Couper client from invalid answers. An example can be found
+[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
+the definitions from a given document defined with the `file` attribute.
 
 | Name                         | Description                                        | Default   |
 |:-----------------------------|:---------------------------------------------------|:----------|
@@ -422,18 +467,21 @@ defined with the `file` attribute.
 | `ignore_request_violations`  | log request validation results, skip err handling  | `false`   |
 | `ignore_response_violations` | log response validation results, skip err handling | `false`   |
 
-**Caveats**: While ignoring request violations an invalid method or path would lead to a non-matching *route* which is still required
-for response validations. In this case the response validation will fail if not ignored too.
+**Caveats**: While ignoring request violations an invalid method or path would
+lead to a non-matching *route* which is still required for response validations.
+In this case the response validation will fail if not ignored too.
 
 ### The `definitions` block <a name="definitions_block"></a>
 
-Use the `definitions` block to define configurations you want to reuse. `access_control` is **always** defined in the `definitions` block.
+Use the `definitions` block to define configurations you want to reuse.
+`access_control` is **always** defined in the `definitions` block.
 
 ### The `defaults` block <a name="defaults_block"></a>
 
 ### The `settings` block <a name="settings_block"></a>
 
-The `settings` block let you configure the more basic and global behavior of your gateway instance.
+The `settings` block let you configure the more basic and global behavior of your
+gateway instance.
 
 | Name                | Description | Default |
 |:--------------------|:------------|:--------|
@@ -446,17 +494,19 @@ The `settings` block let you configure the more basic and global behavior of you
 
 ### Health-Check
 
-The health check will answer a status `200 OK` on every port with the configured `health_path`.
-As soon as the gateway instance will receive a `SIGINT` or `SIGTERM` the check will return a status `500 StatusInternalServerError`.
-A shutdown delay of `5s` allows the server to finish all running requests and gives a load-balancer time to pick another gateway instance.
-After this delay the server goes into shutdown mode with a deadline of `5s` and no new requests will be accepted.
-The shutdown timings cannot be configured at this moment.
+The health check will answer a status `200 OK` on every port with the configured
+`health_path`. As soon as the gateway instance will receive a `SIGINT` or `SIGTERM`
+the check will return a status `500 StatusInternalServerError`. A shutdown delay
+of `5s` allows the server to finish all running requests and gives a load-balancer
+time to pick another gateway instance. After this delay the server goes into
+shutdown mode with a deadline of `5s` and no new requests will be accepted. The
+shutdown timings cannot be configured at this moment.
 
 ## Examples <a name="examples"></a>
 
 ### Request routing example <a name="request_routing_ex"></a>
 
-![](./routing_example.png)
+![routing_example](./routing_example.png)
 
 | No. | Configuration source                              |
 |:----|:--------------------------------------------------|
@@ -568,9 +618,10 @@ Example configuration: `hosts = [ "localhost:9090", "api-stage.wao.io", "api.wao
 
 The example configuration above makes Couper listen to port `:9090`, `:8081`and `8080`.
 
-![](./hosts_example.png)
+![hosts_example](./hosts_example.png)
 
-In a second step Couper compares the host-header information with the configuration. In case of mismatch a system error occurs (HTML error, status 500).
+In a second step Couper compares the host-header information with the configuration.
+In case of mismatch a system error occurs (HTML error, status 500).
 
 ### Referencing and overwriting example
 
