@@ -538,6 +538,9 @@ shutdown timings cannot be configured at this moment.
 
 ## Examples <a name="examples"></a>
 
+See the official Couper's examples and tutorials
+[repository](https://github.com/avenga/couper-examples), too.
+
 ### Request routing example <a name="request_routing_ex"></a>
 
 ![routing_example](./routing_example.png)
@@ -650,7 +653,7 @@ The following table shows which `access_control` is set for which context:
 
 Example configuration: `hosts = [ "localhost:9090", "api-stage.wao.io", "api.wao.io", "*:8081" ]`
 
-The example configuration above makes Couper listen to port `:9090`, `:8081`and `8080`.
+The example configuration above makes Couper listen to port `:9090`, `:8081` and `8080`.
 
 ![hosts_example](./hosts_example.png)
 
