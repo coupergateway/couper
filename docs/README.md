@@ -28,7 +28,6 @@
     * [The `backend` block](#backend_block)
       * [The `openapi` block](#openapi_block)
     * [The `cors` block](#cors_block)
-    * [The `request` block](#request_block)
     * [The `access_control` attribute](#access_control)
   * [The `definitions` block](#definitions_block)
     * [The `basic_auth` block](#basic_auth_block)
@@ -194,7 +193,7 @@ server "variables-srv" {
 }
 ```
 
-### Expressions <a name="expressions">
+### Expressions <a name="expressions"></a>
 
 Since we use HCL2 for our configuration, we are able to use attribute values as
 expression:
@@ -210,7 +209,7 @@ message = "Hello, ${name}!"
 shouty_message = upper(message)
 ```
 
-### Functions <a name="functions">
+### Functions <a name="functions"></a>
 
 Functions are little helper methods which are registered for every hcl evaluation
 context.
@@ -242,9 +241,9 @@ and `api`. You can declare `access_control` for the `server` block.
 | `hosts`                                 | <ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:* `hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul> |
 | `error_file`                            | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
 | [**`access_control`**](#access_control) | <ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul> |
-| [**`files`**](#fi) block                | configures file serving |
-| [**`spa`**](#spa) block                 | configures web serving for spa assets |
-| [**`api`**](#api) block(s)              | configures routing and backend connection(s) |
+| [**`files`**](#files_block) block       | configures file serving |
+| [**`spa`**](#spa_block) block           | configures web serving for spa assets |
+| [**`api`**](#api_block) block(s)        | configures routing and backend connection(s) |
 
 ### The `files` block <a name="files_block"></a>
 
