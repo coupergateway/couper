@@ -40,7 +40,7 @@
 ## Introduction <a name="introduction"></a>
 
 Couper is a frontend gateway especially designed to support building and running
-API-driven Web projects. Acting as a proxy component it connects clients with (micro)
+API-driven web projects. Acting as a proxy component it connects clients with (micro)
 services and adds access control and observability to the project. Couper does not
 need any special development skills and offers easy configuration and integration.
 
@@ -51,7 +51,7 @@ need any special development skills and offers easy configuration and integratio
 | Concept / Feature  | Description |
 |:-------------------|:------------|
 | Client(s)          | Browser, App or API Client that sends requests to Couper. |
-| Web Serving        | Couper supports file serving and Web serving for SPA assets. |
+| Web Serving        | Couper supports file serving and web serving for SPA assets. |
 | API                | Configuration block that bundles endpoints under a certain base path. |
 | Access Control     | Couper handles access control for incoming client requests. |
 | Endpoint           | Configuration block that specifies how (and if) requests are sent to backend service(s) after they reach Couper. |
@@ -69,10 +69,10 @@ a configuration language by HashiCorp.
 
 ### File name <a name="file_name"></a>
 
-The file-ending of your configuration file should be `.hcl` to have syntax
-highlighting within your IDE.
+The file name of your configuration file should be `couper.hcl` to have syntax
+highlighting within the VS Code IDE.
 
-The `filename` defaults to `couper.hcl` in your working directory. This can be
+The file name defaults to `couper.hcl` in your working directory. This can be
 changed with the `-f` command-line flag. With `-f /opt/couper/my_conf.hcl` couper
 changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
 
@@ -91,7 +91,7 @@ server "my_project" {
   spa { ... }
 
   api {
-    access_control = "foo"
+    access_control = ["foo"]
     endpoint "/bar" {
       backend { ... }
     }
@@ -104,7 +104,7 @@ definitions { ... }
 * `server` main configuration block(s)
   * `files` configuration block for file serving
   * `spa` configuration block for web serving (spa assets)
-  * `api` configuration block(s) that bundles endpoints under a certain base path
+  * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
   * `access_control` attribute that sets access control for a block context
   * `endpoint` configuration block for Couper's entry points
   * `backend` configuration block for connection to local/remote backend service(s)
@@ -235,7 +235,7 @@ and `api`. You can declare `access_control` for the `server` block.
 | context                                           | none |
 | *label*                                           | optional |
 | `hosts`                                           | <ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:* `hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul> |
-| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html" `</li></ul> |
+| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
 | [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul> |
 | [**`files`**](#fi) block                          | configures file serving |
 | [**`spa`**](#spa) block                           | configures web serving for spa assets |
@@ -249,9 +249,8 @@ document.
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
 | context                                           | `server` block |
-| *label*                                           | optional |
 | `document_root`                                   | <ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul> |
-| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html" `</li></ul> |
+| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
 | [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
 
 ### The `spa` block <a name="spa_block"></a>
@@ -261,9 +260,8 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
 | context                                           | `server` block |
-| *label*                                           | optional |
-| `bootstrap_file`                                  | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html" "`</li></ul>|
-| `paths`                                           | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]"`</li></ul> |
+| `bootstrap_file`                                  | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
+| `paths`                                           | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]`</li></ul> |
 | [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
 
 ### The `api` block <a name="api_block"></a>
@@ -277,8 +275,8 @@ body payload. This can be customized via `error_file`.
 | Name                                              | Description |
 |:--------------------------------------------------|:------------|
 | context                                           | `server` block |
-| `base_path`                                       | <ul><li>optional</li><li>*example:* `base_path = "/api" `</li></ul> |
-| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json" `</li></ul> |
+| `base_path`                                       | <ul><li>optional</li><li>*example:* `base_path = "/api"`</li></ul> |
+| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json"`</li></ul> |
 | [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
 | [**`backend`**](#backend_block) block             | <ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
 | [**`endpoint`**](#endpoint_block) block           | configures specific endpoint for `api` block context |
@@ -399,7 +397,7 @@ define backends in the `definitions` block and use the mandatory *label* as refe
 | [`remove_query_params`](#query_params) | a list of query parameters to be removed from the upstream request URL ||
 | [`set_query_params`](#query_params)    | key/value(s) pairs to set query parameters in the upstream request URL ||
 | [`add_query_params`](#query_params)    | key/value(s) pairs to add query parameters to the upstream request URL ||
-| **Timings** | **valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"**  | **Default** |
+| **Timings**                            | **valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"**  | **Default** |
 | `connect_timeout`                      | The total timeout for dialing and connect to the origins network address. | `10s` |
 | `timeout`                              | the total deadline duration a backend request has for write and read/pipe | `300s` |
 | `ttfb_timeout`                         | Time to first byte timeout describes the duration from writing the full request to the `origin` to receiving the answer. | `60s` |
@@ -587,7 +585,7 @@ server {
   api {
     access_control = ["ac3"]
     endpoint "/foo" {
-      disable_access_control = "ac3"
+      disable_access_control = ["ac3"]
     }
     endpoint "/bar" {
       access_control = ["ac4"]
