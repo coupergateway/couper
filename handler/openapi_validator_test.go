@@ -55,13 +55,13 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.URL)),
 			},
 		}}),
-		OpenAPI: []*config.OpenAPI{&config.OpenAPI{
+		OpenAPI: []*config.OpenAPI{{
 			File: filepath.Join("testdata/validation/backend_01_openapi.yaml"),
 		}},
 		RequestBodyLimit: "64MiB",
 	}
 
-	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv)
+	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api")
 	helper.Must(err)
 
 	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, eval.NewENVContext(nil))

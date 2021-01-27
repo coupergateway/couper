@@ -48,9 +48,12 @@ type HandlerKind uint8
 
 const (
 	KindAPI HandlerKind = iota
+	KindEndpoint
 	KindFiles
 	KindSPA
 )
+
+type endpointList map[*config.Endpoint]HandlerKind
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
@@ -125,59 +128,85 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 			}
 		}
 
-		if srvConf.API != nil {
-			// map backends to endpoint
-			endpoints := make(map[string]bool)
+		endpointsPatterns := make(map[string]bool)
 
-			for _, endpoint := range srvConf.API.Endpoints {
-				pattern := utils.JoinPath("/", serverOptions.APIBasePath, endpoint.Pattern)
+		for endpoint, epType := range getEndpointsList(srvConf) {
+			var basePath string
+			var cors *config.CORS
+			var errTpl *errors.Template
 
-				unique, cleanPattern := isUnique(endpoints, pattern)
-				if !unique {
-					return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
+			switch epType {
+			case KindAPI:
+				basePath = serverOptions.APIBasePath
+				cors = srvConf.API.CORS
+				errTpl = serverOptions.APIErrTpl
+			case KindEndpoint:
+				basePath = serverOptions.SrvBasePath
+				errTpl = serverOptions.ServerErrTpl
+			}
+
+			pattern := utils.JoinPath(basePath, endpoint.Pattern)
+			unique, cleanPattern := isUnique(endpointsPatterns, pattern)
+			if !unique {
+				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpoint.Body().MissingItemRange().String(), pattern)
+			}
+			endpointsPatterns[cleanPattern] = true
+
+			// setACHandlerFn individual wrap for access_control configuration per endpoint
+			setACHandlerFn := func(protectedHandler http.Handler) {
+				ac := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
+				if epType == KindAPI {
+					ac = ac.Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl))
 				}
-				endpoints[cleanPattern] = true
 
-				// setACHandlerFn individual wrap for access_control configuration per endpoint
-				setACHandlerFn := func(protectedHandler http.Handler) {
-					api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
-						config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl).
-							Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl)),
-						config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
-						protectedHandler)
-				}
+				api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
+					ac,
+					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
+					protectedHandler)
+			}
 
-				backendConf := *DefaultBackendConf
-				if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
-					return nil, diags
-				}
+			backendConf := *DefaultBackendConf
+			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
+				return nil, diags
+			}
 
-				backend, err := newProxy(confCtx, &backendConf, srvConf.API.CORS, log, serverOptions, conf.Settings.NoProxyFromEnv)
-				if err != nil {
-					return nil, err
-				}
+			backend, err := newProxy(
+				confCtx, &backendConf, cors, log, serverOptions,
+				conf.Settings.NoProxyFromEnv, errTpl, epType,
+			)
+			if err != nil {
+				return nil, err
+			}
 
-				setACHandlerFn(backend)
+			setACHandlerFn(backend)
 
-				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
-				if err != nil {
-					return nil, err
-				}
+			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
+
 	return serverConfiguration, nil
 }
 
 func newProxy(
-	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS,
-	log *logrus.Entry, srvOpts *server.Options, noProxyFromEnv bool) (http.Handler, error) {
+	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, log *logrus.Entry,
+	srvOpts *server.Options, noProxyFromEnv bool, errTpl *errors.Template, epType HandlerKind) (http.Handler, error) {
 	corsOptions, err := handler.NewCORSOptions(corsOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, noProxyFromEnv)
+	var kind string
+	switch epType {
+	case KindAPI:
+		kind = "api"
+	case KindEndpoint:
+		kind = "endpoint"
+	}
+
+	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, noProxyFromEnv, errTpl, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -314,6 +343,8 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 
 		switch kind {
 		case KindAPI:
+			fallthrough
+		case KindEndpoint:
 			routes = srvConf[listenPort].EndpointRoutes
 		case KindFiles:
 			routes = srvConf[listenPort].FileRoutes
@@ -329,4 +360,20 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 		routes[joinedPath] = handler
 	}
 	return nil
+}
+
+func getEndpointsList(srvConf *config.Server) endpointList {
+	endpoints := make(endpointList)
+
+	if srvConf.API != nil {
+		for _, endpoint := range srvConf.API.Endpoints {
+			endpoints[endpoint] = KindAPI
+		}
+	}
+
+	for _, endpoint := range srvConf.Endpoints {
+		endpoints[endpoint] = KindEndpoint
+	}
+
+	return endpoints
 }

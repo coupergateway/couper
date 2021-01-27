@@ -38,6 +38,13 @@ const (
 	UpstreamResponseBufferingFailed
 )
 
+const (
+	EndpointError Code = 7000 + iota
+	EndpointConnect
+	EndpointProxyConnect
+	EndpointReqBodySizeExceeded
+)
+
 var codes = map[Code]string{
 	// 1xxx
 	Server:         "Server error",

@@ -40,16 +40,18 @@ func TestProxy_ServeHTTP_Timings(t *testing.T) {
 	}))
 	defer origin.Close()
 
+	tpl, _ := errors.NewTemplate("text/plain", []byte("error"))
+
 	tests := []struct {
 		name           string
 		options        *handler.ProxyOptions
 		req            *http.Request
 		expectedStatus int
 	}{
-		{"with zero timings", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL)}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
-		{"with overall timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://1.2.3.4/"), Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), http.StatusBadGateway},
-		{"with connect timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), http.StatusBadGateway},
-		{"with ttfb timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), http.StatusBadGateway},
+		{"with zero timings", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), ErrorTemplate: tpl}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
+		{"with overall timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://1.2.3.4/"), ErrorTemplate: tpl, Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), http.StatusBadGateway},
+		{"with connect timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), ErrorTemplate: tpl, ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), http.StatusBadGateway},
+		{"with ttfb timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), ErrorTemplate: tpl, TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), http.StatusBadGateway},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -462,6 +464,8 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 
 	logger, hook := logrustest.NewNullLogger()
 
+	tpl, _ := errors.NewTemplate("text/plain", []byte("error"))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 
@@ -472,7 +476,7 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 			content := helper.NewProxyContext(`
 				origin = "` + origin.URL + `"
 			`)
-			p, err := handler.NewProxy(&handler.ProxyOptions{Context: content, OpenAPI: openapiValidatorOptions}, logger.WithContext(context.Background()), srvOpts, eval.NewENVContext(nil))
+			p, err := handler.NewProxy(&handler.ProxyOptions{Context: content, OpenAPI: openapiValidatorOptions, ErrorTemplate: tpl}, logger.WithContext(context.Background()), srvOpts, eval.NewENVContext(nil))
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -712,7 +716,7 @@ func TestProxy_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
 			proxyOpts, err := handler.NewProxyOptions(&config.Backend{
 				Remain:           helper.NewProxyContext("set_request_headers = { x = req.post }"), // ensure buffering is enabled
 				RequestBodyLimit: testcase.limit,
-			}, nil, config.DefaultSettings.NoProxyFromEnv)
+			}, nil, config.DefaultSettings.NoProxyFromEnv, nil, "api")
 			if err != nil {
 				subT.Error(err)
 				return

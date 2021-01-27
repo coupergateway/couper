@@ -19,6 +19,7 @@ type Options struct {
 	APIBasePath  string
 	FileBasePath string
 	SPABasePath  string
+	SrvBasePath  string
 	ServerName   string
 }
 
@@ -33,6 +34,7 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 		return options, nil
 	}
 	options.ServerName = conf.Name
+	options.SrvBasePath = path.Join("/", conf.BasePath)
 
 	if conf.ErrorFile != "" {
 		tpl, err := errors.NewTemplateFromFile(conf.ErrorFile)
@@ -44,7 +46,7 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 	}
 
 	if conf.API != nil {
-		options.APIBasePath = path.Join("/", conf.BasePath, conf.API.BasePath)
+		options.APIBasePath = path.Join(options.SrvBasePath, conf.API.BasePath)
 
 		if conf.API.ErrorFile != "" {
 			tpl, err := errors.NewTemplateFromFile(conf.API.ErrorFile)
@@ -64,11 +66,11 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 			options.FileErrTpl = tpl
 		}
 
-		options.FileBasePath = utils.JoinPath("/", conf.BasePath, conf.Files.BasePath)
+		options.FileBasePath = utils.JoinPath(options.SrvBasePath, conf.Files.BasePath)
 	}
 
 	if conf.Spa != nil {
-		options.SPABasePath = utils.JoinPath("/", conf.BasePath, conf.Spa.BasePath)
+		options.SPABasePath = utils.JoinPath(options.SrvBasePath, conf.Spa.BasePath)
 	}
 
 	return options, nil

@@ -213,7 +213,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	err := p.Director(outreq)
 	if err != nil {
 		roundtripInfo.Err = err
-		p.srvOptions.APIErrTpl.ServeError(err).ServeHTTP(rw, req)
+		p.options.ErrorTemplate.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	if p.options.OpenAPI != nil {
 		apiValidator = NewOpenAPIValidator(p.options.OpenAPI)
 		if roundtripInfo.Err = apiValidator.ValidateRequest(outreq, roundtripInfo); roundtripInfo.Err != nil {
-			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+			p.options.ErrorTemplate.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
 			return
 		}
 	}
@@ -263,7 +263,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		if strings.HasPrefix(err.Error(), "proxyconnect") {
 			errCode = couperErr.APIProxyConnect
 		}
-		p.srvOptions.APIErrTpl.ServeError(errCode).ServeHTTP(rw, req)
+		p.options.ErrorTemplate.ServeError(p.getErrorCode(errCode)).ServeHTTP(rw, req)
 		return
 	}
 
@@ -297,7 +297,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	if apiValidator != nil {
 		roundtripInfo.Err = apiValidator.ValidateResponse(res, roundtripInfo)
 		if roundtripInfo.Err != nil {
-			p.srvOptions.APIErrTpl.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
+			p.options.ErrorTemplate.ServeError(couperErr.UpstreamResponseValidationFailed).ServeHTTP(rw, req)
 			return
 		}
 	}
@@ -570,7 +570,7 @@ func (p *Proxy) SetGetBody(req *http.Request) error {
 		}
 
 		if n > p.options.RequestBodyLimit {
-			return couperErr.APIReqBodySizeExceeded
+			return p.getErrorCode(couperErr.APIReqBodySizeExceeded)
 		}
 
 		bodyBytes := buf.Bytes()
@@ -744,7 +744,24 @@ func (p *Proxy) Options() *server.Options {
 }
 
 func (p *Proxy) String() string {
-	return "api"
+	return p.options.Kind
+}
+
+func (p *Proxy) getErrorCode(code couperErr.Code) couperErr.Code {
+	if p.options.Kind == "endpoint" {
+		switch code {
+		case couperErr.APIConnect:
+			return couperErr.EndpointConnect
+		case couperErr.APIProxyConnect:
+			return couperErr.EndpointProxyConnect
+		case couperErr.APIReqBodySizeExceeded:
+			return couperErr.EndpointReqBodySizeExceeded
+		}
+
+		return couperErr.EndpointError
+	}
+
+	return code
 }
 
 func setHeaderFields(header http.Header, options OptionsMap) {
