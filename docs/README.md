@@ -22,6 +22,8 @@
     * [The `api` block](#api_block)
     * [The `endpoint` block](#endpoint_block)
       * [Query parameter](#query_params)
+      * [Request header fields](#request_headers)
+      * [Response header fields](#response_headers)
       * [Path parameter](#path_params)
     * [The `backend` block](#backend_block)
       * [The `openapi` block](#openapi_block)
@@ -360,6 +362,38 @@ definitions {
   }
 }
 ```
+
+#### Request header fields <a name="request_headers"></a>
+
+Couper offers three attributes to manipulate the request header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+* `remove_request_headers` a list of request header to be removed from the upstream
+  request.
+* `set_request_headers` key/value(s) pairs to set request header in the upstream
+  request.
+* `add_request_headers` key/value(s) pairs to add request header to the upstream
+  request.
+
+All `*_request_headers` are collected and executed from: `definitions.backend`,
+`endpoint.backend` (if refined).
+
+#### Response header fields <a name="response_headers"></a>
+
+Couper offers three attributes to manipulate the response header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+* `remove_response_headers` a list of response header to be removed from the client
+  response.
+* `set_response_headers` key/value(s) pairs to set response header in the client
+  response.
+* `add_response_headers` key/value(s) pairs to add response header to the client
+  response.
+
+All `*_response_headers` are collected and executed from: `definitions.backend`,
+`endpoint.backend` (if refined).
 
 #### Path parameter <a name="path_params"></a>
 
