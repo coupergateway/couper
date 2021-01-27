@@ -153,7 +153,9 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
 
 		var proxyFunc func(req *http.Request) (*url.URL, error)
-		if !p.options.NoProxyFromEnv {
+		if p.options.Proxy != "" {
+
+		} else if !p.options.NoProxyFromEnv {
 			proxyFunc = http.ProxyFromEnvironment
 		}
 

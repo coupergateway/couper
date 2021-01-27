@@ -25,6 +25,7 @@ type ProxyOptions struct {
 	OpenAPI                              *OpenAPIValidatorOptions
 	ErrorTemplate                        *errors.Template
 	Kind                                 string
+	Proxy                                string
 	RequestBodyLimit                     int64
 }
 
@@ -71,6 +72,7 @@ func NewProxyOptions(
 		OpenAPI:                openAPIValidatorOptions,
 		ErrorTemplate:          errTpl,
 		Kind:                   kind,
+		Proxy:                  conf.Proxy,
 		RequestBodyLimit:       bodyLimit,
 		TTFBTimeout:            ttfbTimeout,
 		Timeout:                timeout,

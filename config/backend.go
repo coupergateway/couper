@@ -17,6 +17,7 @@ type Backend struct {
 	HTTP2                  bool       `hcl:"http2,optional"`
 	MaxConnections         int        `hcl:"max_connections,optional"`
 	Name                   string     `hcl:"name,label"`
+	Proxy                  string     `hcl:"proxy,optional"`
 	Remain                 hcl.Body   `hcl:",remain"`
 	RequestBodyLimit       string     `hcl:"request_body_limit,optional"`
 	TTFBTimeout            string     `hcl:"ttfb_timeout,optional"`
