@@ -414,8 +414,8 @@ define backends in the `definitions` block and use the mandatory *label* as refe
 
 | Name                                   | Description | Default |
 |:---------------------------------------|:------------|:--------|
-| context                                | <ul><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul> ||
-| *label*                                | <ul><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul> ||
+| context                                | <ul><li>`server` block</li><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul> ||
+| *label*                                | <ul><li>&#9888; mandatory, when declared in `server` block</li><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul> ||
 | `base_path`                            | <ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> ||
 | `disable_certificate_validation`       | Disables the peer certificate validation. | `false` |
 | `hostname`                             | value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. ||
