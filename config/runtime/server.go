@@ -148,7 +148,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 			pattern := utils.JoinPath(basePath, endpoint.Pattern)
 			unique, cleanPattern := isUnique(endpointsPatterns, pattern)
 			if !unique {
-				return nil, fmt.Errorf("duplicate endpoint: %q", pattern)
+				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpoint.Body().MissingItemRange().String(), pattern)
 			}
 			endpointsPatterns[cleanPattern] = true
 
