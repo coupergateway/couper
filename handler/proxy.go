@@ -165,6 +165,9 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				}
 				return conn, nil
 			},
+			Dial: (&net.Dialer{
+				KeepAlive: 60 * time.Second,
+			}).Dial,
 			DisableCompression:    true,
 			MaxConnsPerHost:       p.options.MaxConnections,
 			Proxy:                 proxyFunc,
