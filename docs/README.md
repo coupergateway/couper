@@ -21,15 +21,18 @@
     * [The `spa` block](#spa_block)
     * [The `api` block](#api_block)
     * [The `endpoint` block](#endpoint_block)
+      * [Query parameter](#query_params)
+      * [Path parameter](#path_params)
     * [The `backend` block](#backend_block)
       * [The `openapi` block](#openapi_block)
     * [The `cors` block](#cors_block)
     * [The `request` block](#request_block)
-    * [The `access_control` attribute](#access_control_attribute)
+    * [The `access_control` attribute](#access_control)
   * [The `definitions` block](#definitions_block)
     * [The `basic_auth` block](#basic_auth_block)
     * [The `jwt` block](#jwt_block)
   * [The `settings` block](#settings_block)
+  * [Health-Check](#health_check)
 * [Examples](#examples)
   * [Request routing](#request_routing_ex)
   * [Routing configuration](#routing_conf_ex)
@@ -144,7 +147,7 @@ since these references get evaluated at start.
 | `path_params.<name>`      | value from a named path parameter defined within an endpoint path label |
 | `post.<name>`             | post form parameter |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
-| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name |
 
 #### `bereq`(modified backend request) variables <a name="variables_bereq"></a>
 
@@ -157,7 +160,7 @@ since these references get evaluated at start.
 | `cookies.<name>`          | value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | query parameter values (&#9888; last wins!) |
 | `post.<name>`             | post form parameter |
-| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control_attribute), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#access_control), `<name>` being the [`jwt` block's](#jwt_block) label and `claim_name` being the claim's name |
 | `url`                     | backend origin URL |
 
 #### `beresp` (original backend response) variables <a name="variables_beresp"></a>
@@ -230,39 +233,39 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 and `api`. You can declare `access_control` for the `server` block.
 `access_control` is inherited by nested blocks.
 
-| Name                                              | Description |
-|:--------------------------------------------------|:------------|
-| context                                           | none |
-| *label*                                           | optional |
-| `hosts`                                           | <ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:* `hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul> |
-| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
-| [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul> |
-| [**`files`**](#fi) block                          | configures file serving |
-| [**`spa`**](#spa) block                           | configures web serving for spa assets |
-| [**`api`**](#api) block(s)                        | configures routing and backend connection(s) |
+| Name                                    | Description |
+|:----------------------------------------|:------------|
+| context                                 | none |
+| *label*                                 | optional |
+| `hosts`                                 | <ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:* `hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts_conf_ex) for details</li></ul> |
+| `error_file`                            | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
+| [**`access_control`**](#access_control) | <ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul> |
+| [**`files`**](#fi) block                | configures file serving |
+| [**`spa`**](#spa) block                 | configures web serving for spa assets |
+| [**`api`**](#api) block(s)              | configures routing and backend connection(s) |
 
 ### The `files` block <a name="files_block"></a>
 
 The `files` block configures your document root, and the location of your error
 document.
 
-| Name                                              | Description |
-|:--------------------------------------------------|:------------|
-| context                                           | `server` block |
-| `document_root`                                   | <ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul> |
-| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
-| [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| Name                                    | Description |
+|:----------------------------------------|:------------|
+| context                                 | `server` block |
+| `document_root`                         | <ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul> |
+| `error_file`                            | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
+| [**`access_control`**](#access_control) | <ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
 
 ### The `spa` block <a name="spa_block"></a>
 
 The `spa` block configures the location of your bootstrap file and your SPA paths.
 
-| Name                                              | Description |
-|:--------------------------------------------------|:------------|
-| context                                           | `server` block |
-| `bootstrap_file`                                  | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
-| `paths`                                           | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]`</li></ul> |
-| [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| Name                                    | Description |
+|:----------------------------------------|:------------|
+| context                                 | `server` block |
+| `bootstrap_file`                        | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
+| `paths`                                 | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]`</li></ul> |
+| [**`access_control`**](#access_control) | <ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
 
 ### The `api` block <a name="api_block"></a>
 
@@ -272,15 +275,15 @@ blocks). You can add more than one `api` block to a `server` block. If an error
 occurred for api endpoints the response gets processed as json error with an error
 body payload. This can be customized via `error_file`.
 
-| Name                                              | Description |
-|:--------------------------------------------------|:------------|
-| context                                           | `server` block |
-| `base_path`                                       | <ul><li>optional</li><li>*example:* `base_path = "/api"`</li></ul> |
-| `error_file`                                      | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json"`</li></ul> |
-| [**`access_control`**](#access_control_attribute) | <ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
-| [**`backend`**](#backend_block) block             | <ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
-| [**`endpoint`**](#endpoint_block) block           | configures specific endpoint for `api` block context |
-| [**`cors`**](#cors_block) block                   | configures CORS behavior for `api` block context |
+| Name                                    | Description |
+|:----------------------------------------|:------------|
+| context                                 | `server` block |
+| `base_path`                             | <ul><li>optional</li><li>*example:* `base_path = "/api"`</li></ul> |
+| `error_file`                            | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json"`</li></ul> |
+| [**`access_control`**](#access_control) | <ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
+| [**`backend`**](#backend_block) block   | <ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
+| [**`endpoint`**](#endpoint_block) block | configures specific endpoint for `api` block context |
+| [**`cors`**](#cors_block) block         | configures CORS behavior for `api` block context |
 
 ### </a> The `cors` block <a name="cors_block"></a>
 
@@ -301,16 +304,16 @@ the outgoing request (compare [request routing example](#request_routing_ex)).
 Each `endpoint` must have at least one `backend` which can be declared in the `api`
 context above or inside an `endpoint`.
 
-| Name                                              | Description |
-|:--------------------------------------------------|:------------|
-| context                                           | `server` and `api` block |
-| *label*                                           | <ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" {`</li><li>incoming client request: `example.com/api/dashboard`</li></ul> |
-| `path`                                            | <ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul> |
-| [**`access_control`**](#access_control_attribute) | sets predefined `access_control` for `endpoint` |
-| [**`backend`**](#backend_block) block             | configures connection to a local/remote backend service for `endpoint` |
-| [**`remove_query_params`**](#query_params)        | <ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
-| [**`set_query_params`**](#query_params)           | <ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
-| [**`add_query_params`**](#query_params)           | <ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
+| Name                                       | Description |
+|:-------------------------------------------|:------------|
+| context                                    | `server` and `api` block |
+| *label*                                    | <ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" {`</li><li>incoming client request: `example.com/api/dashboard`</li></ul> |
+| `path`                                     | <ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul> |
+| [**`access_control`**](#access_control)    | sets predefined `access_control` for `endpoint` |
+| [**`backend`**](#backend_block) block      | configures connection to a local/remote backend service for `endpoint` |
+| [**`remove_query_params`**](#query_params) | <ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
+| [**`set_query_params`**](#query_params)    | <ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
+| [**`add_query_params`**](#query_params)    | <ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
 
 #### Query parameter <a name="query_params"></a>
 
@@ -358,7 +361,7 @@ definitions {
 }
 ```
 
-#### Path parameter
+#### Path parameter <a name="path_params"></a>
 
 An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
 to access the named path parameter `section` and `project` via `req.path_param.*`.
@@ -366,7 +369,7 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 
 | Variable                  | Value          |
 |:--------------------------|:---------------|
-| `req.path_params.section` | `nature` |
+| `req.path_params.section` | `nature`       |
 | `req.path_params.project` | `plant-a-tree` |
 
 ### The `backend` block <a name="backend_block"></a>
@@ -402,7 +405,7 @@ define backends in the `definitions` block and use the mandatory *label* as refe
 | `timeout`                              | the total deadline duration a backend request has for write and read/pipe | `300s` |
 | `ttfb_timeout`                         | Time to first byte timeout describes the duration from writing the full request to the `origin` to receiving the answer. | `60s` |
 
-### The `access_control` attribute <a name="access_control_attribute"></a>
+### The `access_control` attribute <a name="access_control"></a>
 
 The configuration of access control is twofold in Couper: You define the particular
 type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
@@ -412,6 +415,31 @@ You can also disable `access_control` for blocks. By typing `disable_access_cont
 the `access_control` type `bar` will be disabled for the corresponding block context.
 
 Compare the `access_control` [example](#access_control_conf_ex) for details.
+
+#### The `openapi` block <a name="openapi_block"></a>
+
+The `openapi` block configures the backends proxy behaviour to validate outgoing
+and incoming requests to and from the origin. Preventing the origin from invalid
+requests, and the Couper client from invalid answers. An example can be found
+[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
+the definitions from a given document defined with the `file` attribute.
+
+| Name                         | Description                                        | Default   |
+|:-----------------------------|:---------------------------------------------------|:----------|
+| context                      | `backend` block                                    |           |
+| `file`                       | OpenAPI yaml definition file                       | mandatory |
+| `ignore_request_violations`  | log request validation results, skip err handling  | `false`   |
+| `ignore_response_violations` | log response validation results, skip err handling | `false`   |
+
+**Caveats**: While ignoring request violations an invalid method or path would
+lead to a non-matching *route* which is still required for response validations.
+In this case the response validation will fail if not ignored too.
+
+### The `definitions` block <a name="definitions_block"></a>
+
+Use the `definitions` block to define configurations you want to reuse.
+`access_control` is **always** defined in the `definitions` block.
 
 #### The `basic_auth` block <a name="basic_auth_block"></a>
 
@@ -451,31 +479,6 @@ block and can be referenced in all configuration blocks by its mandatory *label*
 | `signature_algorithm`     | valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
 | **`claims`**              | equals/in comparison with JWT payload |
 
-#### The `openapi` block <a name="openapi_block"></a>
-
-The `openapi` block configures the backends proxy behaviour to validate outgoing
-and incoming requests to and from the origin. Preventing the origin from invalid
-requests, and the Couper client from invalid answers. An example can be found
-[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
-To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
-the definitions from a given document defined with the `file` attribute.
-
-| Name                         | Description                                        | Default   |
-|:-----------------------------|:---------------------------------------------------|:----------|
-| context                      | `backend` block                                    |           |
-| `file`                       | OpenAPI yaml definition file                       | mandatory |
-| `ignore_request_violations`  | log request validation results, skip err handling  | `false`   |
-| `ignore_response_violations` | log response validation results, skip err handling | `false`   |
-
-**Caveats**: While ignoring request violations an invalid method or path would
-lead to a non-matching *route* which is still required for response validations.
-In this case the response validation will fail if not ignored too.
-
-### The `definitions` block <a name="definitions_block"></a>
-
-Use the `definitions` block to define configurations you want to reuse.
-`access_control` is **always** defined in the `definitions` block.
-
 ### The `settings` block <a name="settings_block"></a>
 
 The `settings` block let you configure the more basic and global behavior of your
@@ -490,7 +493,7 @@ gateway instance.
 | `xfh`               | option to use the `X-Forwarded-Host` header as the request host | `false` |
 | `request_id_format` | if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
 
-### Health-Check
+### Health-Check <a name="health_check"></a>
 
 The health check will answer a status `200 OK` on every port with the configured
 `health_path`. As soon as the gateway instance will receive a `SIGINT` or `SIGTERM`
