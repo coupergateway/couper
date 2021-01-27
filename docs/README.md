@@ -273,7 +273,7 @@ Endpoints define the entry points of Couper. The mandatory *label* defines the p
 
 | Name | Description                           |
 |:-------------------|:--------------------------------------|
-|context|`api` block|
+|context|`server` and `api` block|
 |*label*|<ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" { `</li><li>incoming client request: `example.com/api/dashboard`</li></ul>|
 | `path`|<ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul>|
 |[**`access_control`**](#access_control_attribute)|sets predefined `access_control` for `endpoint`|
