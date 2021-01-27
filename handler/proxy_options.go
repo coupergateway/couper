@@ -19,6 +19,8 @@ type ProxyOptions struct {
 	CORS                                 *CORSOptions
 	NoProxyFromEnv                       bool
 	DisableCertValidation                bool
+	DisableConnectionReuse               bool
+	HTTP2                                bool
 	MaxConnections                       int
 	OpenAPI                              *OpenAPIValidatorOptions
 	ErrorTemplate                        *errors.Template
@@ -57,19 +59,21 @@ func NewProxyOptions(
 	}
 
 	return &ProxyOptions{
-		BackendName:           conf.Name,
-		CORS:                  cors,
-		Context:               conf.Remain,
-		ConnectTimeout:        connTimeout,
-		DisableCertValidation: conf.DisableCertValidation,
-		MaxConnections:        conf.MaxConnections,
-		NoProxyFromEnv:        noProxyFromEnv,
-		OpenAPI:               openAPIValidatorOptions,
-		ErrorTemplate:         errTpl,
-		Kind:                  kind,
-		RequestBodyLimit:      bodyLimit,
-		TTFBTimeout:           ttfbTimeout,
-		Timeout:               timeout,
+		BackendName:            conf.Name,
+		CORS:                   cors,
+		Context:                conf.Remain,
+		ConnectTimeout:         connTimeout,
+		DisableCertValidation:  conf.DisableCertValidation,
+		DisableConnectionReuse: conf.DisableConnectionReuse,
+		HTTP2:                  conf.HTTP2,
+		MaxConnections:         conf.MaxConnections,
+		NoProxyFromEnv:         noProxyFromEnv,
+		OpenAPI:                openAPIValidatorOptions,
+		ErrorTemplate:          errTpl,
+		Kind:                   kind,
+		RequestBodyLimit:       bodyLimit,
+		TTFBTimeout:            ttfbTimeout,
+		Timeout:                timeout,
 	}, nil
 }
 

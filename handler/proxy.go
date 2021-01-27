@@ -157,6 +157,11 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 			proxyFunc = http.ProxyFromEnvironment
 		}
 
+		var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
+		if !p.options.HTTP2 {
+			nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+		}
+
 		transport = &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				conn, err := d.DialContext(ctx, network, addr)
@@ -169,11 +174,14 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				KeepAlive: 60 * time.Second,
 			}).Dial,
 			DisableCompression:    true,
+			DisableKeepAlives:     p.options.DisableConnectionReuse,
 			MaxConnsPerHost:       p.options.MaxConnections,
 			Proxy:                 proxyFunc,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
 			TLSClientConfig:       tlsConf,
+			TLSNextProto:          nextProto,
 		}
+
 		transports.Store(key, transport)
 	}
 	if t, ok := transport.(*http.Transport); ok {
