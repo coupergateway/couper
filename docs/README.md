@@ -269,7 +269,7 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 | context                                     | `server` block |
 | `bootstrap_file`                            | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
 | `paths`                                     | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]`</li></ul> |
-| [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `api` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `spa` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
 
 ### The `api` block
 
