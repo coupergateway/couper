@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -369,9 +370,13 @@ func (p *Proxy) Director(req *http.Request) error {
 		path = pathVal
 	}
 
+	if origin == "" {
+		return errors.New("proxy: origin not set")
+	}
+
 	originURL, err := url.Parse(origin)
 	if err != nil {
-		return err
+		return fmt.Errorf("proxy: parse origin: %w", err)
 	}
 
 	req.URL.Host = originURL.Host
