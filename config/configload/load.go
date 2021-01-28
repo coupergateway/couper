@@ -1,6 +1,7 @@
 package configload
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -144,7 +145,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 		}
 
 		// standalone endpoints
-		if err := refineEndpoints(backends, nil, srv.Endpoints); err != nil {
+		if err := refineEndpoints(backends, serverBodies, srv.Endpoints); err != nil {
 			return nil, err
 		}
 	}
@@ -299,10 +300,14 @@ func validateOrigin(merged hcl.Body) error {
 
 	_, ok := content.Attributes["origin"]
 	if !ok {
+		err := errors.New("missing backend.origin attribute")
 		bodyRange := merged.MissingItemRange()
+		if bodyRange.Filename == "<empty>" {
+			return err
+		}
 		return hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &bodyRange,
-			Summary: "missing backend.origin attribute",
+			Summary: err.Error(),
 		}}
 	}
 	return nil
