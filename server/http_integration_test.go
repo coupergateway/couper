@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -1006,7 +1007,8 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 
 	shutdown, _ := newCouper("testdata/integration/endpoint_eval/08_couper.hcl", test.New(t))
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/"+
+		strings.Replace(testBackend.Addr(), "http://", "", 1), nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
