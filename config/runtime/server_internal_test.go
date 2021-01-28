@@ -5,9 +5,6 @@ import (
 	"testing"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hcltest"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -170,30 +167,22 @@ func TestServer_splitWildcardHostPort(t *testing.T) {
 }
 
 func TestServer_getEndpointsList(t *testing.T) {
-	getHCLBody := func(in string) hcl.Body {
-		return hcltest.MockBody(&hcl.BodyContent{
-			Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
-				"path": hcltest.MockExprLiteral(seetie.GoToValue(in)),
-			}),
-		})
-	}
-
 	srvConf := &config.Server{
 		APIs: []*config.API{
 			{
 				Endpoints: []*config.Endpoint{
-					{Remain: getHCLBody("/api/1")},
-					{Remain: getHCLBody("/api/2")},
+					{Pattern: "/api/1"},
+					{Pattern: "/api/2"},
 				},
 			},
 		},
 		Endpoints: []*config.Endpoint{
-			{Remain: getHCLBody("/free/1")},
-			{Remain: getHCLBody("/free/2")},
+			{Pattern: "/free/1"},
+			{Pattern: "/free/2"},
 		},
 	}
 
-	endpoints := getEndpointsList(srvConf)
+	endpoints := newEndpointMap(srvConf)
 	if l := len(endpoints); l != 4 {
 		t.Fatalf("Expected 4 endpointes, given %d", l)
 	}
@@ -205,19 +194,19 @@ func TestServer_getEndpointsList(t *testing.T) {
 		"/free/2": KindEndpoint,
 	}
 
-	for e, kind := range endpoints {
-		a, _ := e.Remain.JustAttributes()
-		v, _ := a["path"].Expr.Value(nil)
-		path := seetie.ValueToString(v)
-
-		if v, ok := checks[path]; !ok || v != kind.kind {
-			t.Fatalf("Missing an endpoint for %s", path)
+	for pattern, kind := range checks {
+		var exist bool
+		for endpoint, parent := range endpoints {
+			if endpoint.Pattern == pattern {
+				if kind == KindAPI && parent == nil {
+					t.Errorf("Expected an api endpoint for path pattern: %q", pattern)
+				}
+				exist = true
+				break
+			}
 		}
-
-		delete(checks, path)
-	}
-
-	if l := len(checks); l != 0 {
-		t.Fatalf("Expected 0 checks, given %d", l)
+		if !exist {
+			t.Errorf("Expected an endpoint for path pattern: %q", pattern)
+		}
 	}
 }

@@ -13,10 +13,10 @@ type Context interface {
 }
 
 type Options struct {
-	APIErrTpl    []*errors.Template
+	APIErrTpl    map[*config.API]*errors.Template
 	FileErrTpl   *errors.Template
 	ServerErrTpl *errors.Template
-	APIBasePath  []string
+	APIBasePath  map[*config.API]string
 	FileBasePath string
 	SPABasePath  string
 	SrvBasePath  string
@@ -25,7 +25,6 @@ type Options struct {
 
 func NewServerOptions(conf *config.Server) (*Options, error) {
 	options := &Options{
-		APIErrTpl:    []*errors.Template{errors.DefaultJSON},
 		FileErrTpl:   errors.DefaultHTML,
 		ServerErrTpl: errors.DefaultHTML,
 	}
@@ -46,21 +45,21 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 	}
 
 	if len(conf.APIs) > 0 {
-		options.APIBasePath = make([]string, len(conf.APIs))
-		options.APIErrTpl = make([]*errors.Template, len(conf.APIs))
+		options.APIBasePath = make(map[*config.API]string)
+		options.APIErrTpl = make(map[*config.API]*errors.Template)
 	}
 
-	for i, api := range conf.APIs {
-		options.APIBasePath[i] = path.Join(options.SrvBasePath, api.BasePath)
+	for _, api := range conf.APIs {
+		options.APIBasePath[api] = path.Join(options.SrvBasePath, api.BasePath)
 
 		if api.ErrorFile != "" {
 			tpl, err := errors.NewTemplateFromFile(api.ErrorFile)
 			if err != nil {
 				return nil, err
 			}
-			options.APIErrTpl[i] = tpl
+			options.APIErrTpl[api] = tpl
 		} else {
-			options.APIErrTpl[i] = errors.DefaultJSON
+			options.APIErrTpl[api] = errors.DefaultJSON
 		}
 	}
 
