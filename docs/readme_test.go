@@ -3,6 +3,7 @@ package docs_test
 import (
 	"io/ioutil"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/avenga/couper/internal/test"
@@ -17,15 +18,26 @@ func TestDocs_Links(t *testing.T) {
 	regexLinks := regexp.MustCompile(`]\(#([^)]+)\)`)
 	links := regexLinks.FindAllStringSubmatch(string(raw), -1)
 
-	regexAnchors := regexp.MustCompile(`<a name="([^"]+)"></a>`)
+	regexAnchors := regexp.MustCompile(`\n#+ (.*)\n`)
 	anchors := regexAnchors.FindAllStringSubmatch(string(raw), -1)
+
+	prepareAnchor := func(anchor string) string {
+		anchor = strings.TrimSpace(anchor)
+		anchor = strings.ToLower(anchor)
+		anchor = strings.ReplaceAll(anchor, "`", "")
+		anchor = strings.ReplaceAll(anchor, "(", "")
+		anchor = strings.ReplaceAll(anchor, ")", "")
+		anchor = strings.ReplaceAll(anchor, " ", "-")
+
+		return anchor
+	}
 
 	// Search for ghost-anchors
 	for _, link := range links {
 		exists := false
 
 		for _, anchor := range anchors {
-			if link[1] == anchor[1] {
+			if link[1] == prepareAnchor(anchor[1]) {
 				exists = true
 				break
 			}
@@ -41,13 +53,13 @@ func TestDocs_Links(t *testing.T) {
 		exists := false
 
 		for _, link := range links {
-			if anchor[1] == link[1] {
+			if prepareAnchor(anchor[1]) == link[1] {
 				exists = true
 				break
 			}
 		}
 
-		if !exists {
+		if !exists && prepareAnchor(anchor[1]) != "table-of-contents" {
 			t.Errorf("Link for '%s' not found", anchor[1])
 		}
 	}
