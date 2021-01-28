@@ -415,7 +415,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		attrCtxDel = attrDelReqHeaders
 		attrCtxSet = attrSetReqHeaders
 		bereq      *http.Request
-		headerCtx  http.Header
+		headerCtx  = req.Header
 	)
 
 	if beresp != nil {
@@ -426,16 +426,6 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = beresp.Header
 
 		defer p.setCorsRespHeaders(headerCtx, req)
-	} else if req != nil {
-		headerCtx = req.Header
-
-		// Remove blacklisted headers after evaluation to
-		// be accessible within our context configuration.
-		if attrCtxSet == attrSetReqHeaders {
-			for _, key := range headerBlacklist {
-				headerCtx.Del(key)
-			}
-		}
 	}
 
 	allAttributes, attrOk := p.options.Context.(body.Attributes)
@@ -444,6 +434,14 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	}
 
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
+
+	// Remove blacklisted headers after evaluation to
+	// be accessible within our context configuration.
+	if attrCtxSet == attrSetReqHeaders {
+		for _, key := range headerBlacklist {
+			headerCtx.Del(key)
+		}
+	}
 
 	var modifyQuery bool
 
