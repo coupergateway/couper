@@ -278,13 +278,13 @@ func getAPIErrorTemplate(srvOptions *server.Options, reqPath string) *errors.Tem
 		return nil
 	}
 
-	for i, path := range srvOptions.APIBasePath {
+	for api, path := range srvOptions.APIBasePath {
 		if !isConfigured(path) {
 			continue
 		}
 
 		if isAPIError(srvOptions, path, reqPath) {
-			return srvOptions.APIErrTpl[i]
+			return srvOptions.APIErrTpl[api]
 		}
 	}
 
