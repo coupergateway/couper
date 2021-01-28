@@ -767,21 +767,6 @@ func (p *Proxy) getErrorCode(code couperErr.Code) couperErr.Code {
 	return code
 }
 
-func setHeaderFields(header http.Header, options OptionsMap) {
-	if len(options) == 0 {
-		return
-	}
-
-	for key, value := range options {
-		k := http.CanonicalHeaderKey(key)
-		if (len(value) == 0 || value[0] == "") && k != "User-Agent" {
-			header.Del(k)
-			continue
-		}
-		header[k] = value
-	}
-}
-
 func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {
 	attr := body.Attributes
 	if _, ok := attr[name]; !ok {
