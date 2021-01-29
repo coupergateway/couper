@@ -11,7 +11,7 @@ server "protected" {
       }
     }
 
-    endpoint "/" {
+    endpoint "/{origin}" {
       path = "/set/by/endpoint/unset/by/backend"
       backend "anything" {
         path = "/anything"

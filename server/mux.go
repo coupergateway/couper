@@ -139,8 +139,8 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
 		// Otherwise look for existing files or spa fallback.
-		if srvCtxOpts != nil && isConfigured(srvCtxOpts.APIBasePath) && isAPIError(srvCtxOpts, req.URL.Path) {
-			return srvCtxOpts.APIErrTpl.ServeError(errors.APIRouteNotFound)
+		if tpl := getAPIErrorTemplate(srvCtxOpts, req.URL.Path); tpl != nil {
+			return tpl.ServeError(errors.APIRouteNotFound)
 		}
 
 		fileHandler, fileSrvCtxOpts, exist := m.hasFileResponse(req)
@@ -273,14 +273,32 @@ func unwrapServerOptions(suffix pathpattern.Suffix) *server.Options {
 	return unwrapServerOptions(suffix.Node.Suffixes[len(suffix.Node.Suffixes)-1]) // FIXME: check other more explicit suffixes?
 }
 
+func getAPIErrorTemplate(srvOptions *server.Options, reqPath string) *errors.Template {
+	if srvOptions == nil {
+		return nil
+	}
+
+	for api, path := range srvOptions.APIBasePath {
+		if !isConfigured(path) {
+			continue
+		}
+
+		if isAPIError(srvOptions, path, reqPath) {
+			return srvOptions.APIErrTpl[api]
+		}
+	}
+
+	return nil
+}
+
 // isAPIError checks the path w/ and w/o the
 // trailing slash against the request path.
-func isAPIError(srvOpts *server.Options, reqPath string) bool {
+func isAPIError(srvOpts *server.Options, apiPath, reqPath string) bool {
 	if srvOpts == nil {
 		return false
 	}
-	p1 := srvOpts.APIBasePath
-	p2 := srvOpts.APIBasePath
+	p1 := apiPath
+	p2 := apiPath
 
 	if p1 != "/" && !strings.HasSuffix(p1, "/") {
 		p1 += "/"
@@ -290,10 +308,10 @@ func isAPIError(srvOpts *server.Options, reqPath string) bool {
 	}
 
 	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
-		if isConfigured(srvOpts.FileBasePath) && srvOpts.APIBasePath == srvOpts.FileBasePath {
+		if isConfigured(srvOpts.FileBasePath) && apiPath == srvOpts.FileBasePath {
 			return false
 		}
-		if isConfigured(srvOpts.SPABasePath) && srvOpts.APIBasePath == srvOpts.SPABasePath {
+		if isConfigured(srvOpts.SPABasePath) && apiPath == srvOpts.SPABasePath {
 			return false
 		}
 

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -369,9 +370,13 @@ func (p *Proxy) Director(req *http.Request) error {
 		path = pathVal
 	}
 
+	if origin == "" {
+		return errors.New("proxy: origin not set")
+	}
+
 	originURL, err := url.Parse(origin)
 	if err != nil {
-		return err
+		return fmt.Errorf("proxy: parse origin: %w", err)
 	}
 
 	req.URL.Host = originURL.Host
@@ -410,7 +415,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		attrCtxDel = attrDelReqHeaders
 		attrCtxSet = attrSetReqHeaders
 		bereq      *http.Request
-		headerCtx  http.Header
+		headerCtx  = req.Header
 	)
 
 	if beresp != nil {
@@ -421,16 +426,6 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		headerCtx = beresp.Header
 
 		defer p.setCorsRespHeaders(headerCtx, req)
-	} else if req != nil {
-		headerCtx = req.Header
-
-		// Remove blacklisted headers after evaluation to
-		// be accessible within our context configuration.
-		if attrCtxSet == attrSetReqHeaders {
-			for _, key := range headerBlacklist {
-				headerCtx.Del(key)
-			}
-		}
 	}
 
 	allAttributes, attrOk := p.options.Context.(body.Attributes)
@@ -439,6 +434,14 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	}
 
 	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
+
+	// Remove blacklisted headers after evaluation to
+	// be accessible within our context configuration.
+	if attrCtxSet == attrSetReqHeaders {
+		for _, key := range headerBlacklist {
+			headerCtx.Del(key)
+		}
+	}
 
 	var modifyQuery bool
 
@@ -762,21 +765,6 @@ func (p *Proxy) getErrorCode(code couperErr.Code) couperErr.Code {
 	}
 
 	return code
-}
-
-func setHeaderFields(header http.Header, options OptionsMap) {
-	if len(options) == 0 {
-		return
-	}
-
-	for key, value := range options {
-		k := http.CanonicalHeaderKey(key)
-		if (len(value) == 0 || value[0] == "") && k != "User-Agent" {
-			header.Del(k)
-			continue
-		}
-		header[k] = value
-	}
 }
 
 func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {

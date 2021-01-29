@@ -53,7 +53,7 @@ const (
 	KindSPA
 )
 
-type endpointList map[*config.Endpoint]HandlerKind
+type endpointMap map[*config.Endpoint]*config.API
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
@@ -85,7 +85,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 		}
 	}
 
-	api := make(map[*config.Endpoint]http.Handler)
+	endpointHandler := make(map[*config.Endpoint]http.Handler)
 
 	for _, srvConf := range conf.Server {
 		serverOptions, err := server.NewServerOptions(srvConf)
@@ -130,17 +130,16 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 		endpointsPatterns := make(map[string]bool)
 
-		for endpoint, epType := range getEndpointsList(srvConf) {
+		for endpoint, parentAPI := range newEndpointMap(srvConf) {
 			var basePath string
 			var cors *config.CORS
 			var errTpl *errors.Template
 
-			switch epType {
-			case KindAPI:
-				basePath = serverOptions.APIBasePath
-				cors = srvConf.API.CORS
-				errTpl = serverOptions.APIErrTpl
-			case KindEndpoint:
+			if parentAPI != nil {
+				basePath = serverOptions.APIBasePath[parentAPI]
+				cors = parentAPI.CORS
+				errTpl = serverOptions.APIErrTpl[parentAPI]
+			} else {
 				basePath = serverOptions.SrvBasePath
 				errTpl = serverOptions.ServerErrTpl
 			}
@@ -154,13 +153,13 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedHandler http.Handler) {
-				ac := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
-				if epType == KindAPI {
-					ac = ac.Merge(config.NewAccessControl(srvConf.API.AccessControl, srvConf.API.DisableAccessControl))
+				accessControl := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
+
+				if parentAPI != nil {
+					accessControl = accessControl.Merge(config.NewAccessControl(parentAPI.AccessControl, parentAPI.DisableAccessControl))
 				}
 
-				api[endpoint] = configureProtectedHandler(accessControls, serverOptions.APIErrTpl,
-					ac,
+				endpointHandler[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
 					protectedHandler)
 			}
@@ -170,17 +169,19 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 				return nil, diags
 			}
 
-			backend, err := newProxy(
-				confCtx, &backendConf, cors, log, serverOptions,
-				conf.Settings.NoProxyFromEnv, errTpl, epType,
-			)
+			kind := KindEndpoint
+			if parentAPI != nil {
+				kind = KindAPI
+			}
+			backend, err := newProxy(confCtx, &backendConf, cors, log, serverOptions,
+				conf.Settings.NoProxyFromEnv, errTpl, kind)
 			if err != nil {
 				return nil, err
 			}
 
 			setACHandlerFn(backend)
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, api[endpoint], KindAPI)
+			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandler[endpoint], KindAPI)
 			if err != nil {
 				return nil, err
 			}
@@ -362,17 +363,17 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 	return nil
 }
 
-func getEndpointsList(srvConf *config.Server) endpointList {
-	endpoints := make(endpointList)
+func newEndpointMap(srvConf *config.Server) endpointMap {
+	endpoints := make(endpointMap)
 
-	if srvConf.API != nil {
-		for _, endpoint := range srvConf.API.Endpoints {
-			endpoints[endpoint] = KindAPI
+	for _, api := range srvConf.APIs {
+		for _, endpoint := range api.Endpoints {
+			endpoints[endpoint] = api
 		}
 	}
 
 	for _, endpoint := range srvConf.Endpoints {
-		endpoints[endpoint] = KindEndpoint
+		endpoints[endpoint] = nil
 	}
 
 	return endpoints

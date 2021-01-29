@@ -73,7 +73,7 @@ Couper's configuration file consists of nested configuration blocks that configu
 For orientation compare the following example and the information below:
 
 ```hcl
-server "my_project" {		
+server "my_project" {
   files { ... }
   
   spa { ... }
@@ -92,7 +92,7 @@ definitions { ... }
 * `server` main configuration block
     * `files` configuration block for file serving
     * `spa` configuration block for web serving (spa assets) 
-    * `api` configuration block that bundles endpoints under a certain base path
+    * `api` configuration block that bundles endpoints under a certain base path, multiple blocks are allowed
     * `access_control` attribute that sets access control for a block context
     * `endpoint` configuration block for Couper's entry points
     * `backend` configuration block for connection to local/remote backend service(s)
@@ -219,7 +219,7 @@ It has an optional label and a `hosts` attribute. Nested blocks are `files`, `sp
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul>|
 |[**`files`**](#fi) block|configures file serving|
 |[**`spa`**](#spa) block|configures web serving for spa assets|
-|[**`api`**](#api) block|configures routing and backend connection(s)|
+|[**`api`**](#api) block(s)|configures routing and backend connection(s)|
 
 
 ### The `files` block <a name="files_block"></a>
@@ -251,7 +251,6 @@ If an error occurred for api endpoints the response gets processed as json error
 | Name | Description                           |
 |:-------------------|:---------------------------------------|
 |context|`server` block|
-|*label*|&#9888; mandatory, if there is more than one `api` block|
 | `base_path`|<ul><li>optional</li><li>*example:* `base_path = "/api" `</li></ul> |
 | `error_file` | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json" `</li></ul> |
 |[**`access_control`**](#access_control_attribute)|<ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul>|

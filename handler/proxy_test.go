@@ -460,7 +460,7 @@ func TestProxy_ServeHTTP_Validation(t *testing.T) {
 		},
 	}
 
-	srvOpts := &server.Options{APIErrTpl: errors.DefaultJSON}
+	srvOpts := &server.Options{ServerName: "test"}
 
 	logger, hook := logrustest.NewNullLogger()
 
@@ -651,16 +651,13 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 			}
 
 			p, err := handler.NewProxy(&handler.ProxyOptions{
+				ErrorTemplate:    errors.DefaultJSON,
 				RequestBodyLimit: 10,
 				Context: configload.MergeBodies([]hcl.Body{
 					test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					remain.Inline,
 				}),
-			}, log.WithContext(context.Background()),
-				&server.Options{
-					APIErrTpl: errors.DefaultJSON,
-				},
-				baseCtx)
+			}, log.WithContext(context.Background()), nil, baseCtx)
 
 			if err != nil {
 				t.Fatal(err)
@@ -975,10 +972,11 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 			evalCtx := eval.NewENVContext(nil)
 
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
+				ErrorTemplate: errors.DefaultJSON,
 				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					helper.NewProxyContext(tc.remain)}),
 				RequestBodyLimit: 64,
-			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
+			}, log.WithContext(context.Background()), nil, evalCtx)
 			h.Must(err)
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
@@ -1070,11 +1068,12 @@ func TestProxy_BufferingOptions(t *testing.T) {
 			evalCtx := eval.NewENVContext(nil)
 
 			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				OpenAPI: tc.apiOptions,
+				ErrorTemplate: errors.DefaultJSON,
+				OpenAPI:       tc.apiOptions,
 				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 					helper.NewProxyContext(tc.remain)}),
 				RequestBodyLimit: 64,
-			}, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, evalCtx)
+			}, log.WithContext(context.Background()), nil, evalCtx)
 			h.Must(err)
 
 			configuredOption := reflect.ValueOf(proxy).Elem().FieldByName("bufferOption") // private field: ro

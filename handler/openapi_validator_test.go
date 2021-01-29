@@ -18,7 +18,6 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -64,7 +63,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api")
 	helper.Must(err)
 
-	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), &server.Options{APIErrTpl: errors.DefaultJSON}, eval.NewENVContext(nil))
+	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 	helper.Must(err)
 
 	tests := []struct {
