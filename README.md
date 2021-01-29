@@ -1,4 +1,4 @@
-# Couper by [Avenga](https://www.avenga.com/)
+# Couper
 
 ![Go](https://github.com/avenga/couper/workflows/Go/badge.svg)
 ![Docker](https://github.com/avenga/couper/workflows/Docker/badge.svg)
@@ -16,7 +16,6 @@ component.
 * adds security and observability to the project
 * needs no special development skills
 * is easy to configure & integrate
-* is [Avenga’s](https://www.avenga.com/) standard technology
 * runs on Linux, Mac OS X, FreeBSD and Windows.
 
 ## Key features
