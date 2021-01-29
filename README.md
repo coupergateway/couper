@@ -45,5 +45,6 @@ component.
 
 ## Contributing
 
-Thanks for your interest in contributing. If you have an issue, or a question
-about *anything* please open an [issue](https://github.com/avenga/couper/issues).
+Thanks for your interest in contributing.
+If you have any questions or feedback you are welcome to start a [discussion](https://github.com/avenga/couper/discussions).
+If you have an issue please open an [issue](https://github.com/avenga/couper/issues).
