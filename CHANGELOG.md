@@ -1,5 +1,32 @@
 # Couper Changelog
 
+<a name="0.5"></a>
+## [0.5](https://github.com/avenga/couper/compare/0.4.2...0.5)
+
+> 2021-01-29
+
+### Bug Fixes
+
+* Fix missing http.Hijacker interface to be able to handle websocket upgrades ([#80](https://github.com/avenga/couper/issues/80))
+
+### Features
+
+* Add additional eval functions: coalesce, json_decode, json_encode ([#105](https://github.com/avenga/couper/pull/105))
+* Add multi API support ([#103](https://github.com/avenga/couper/issues/103))
+* Add free endpoints ([#90](https://github.com/avenga/couper/issues/90))
+* Add remove_, set_ and  add_headers ([#98](https://github.com/avenga/couper/issues/98))
+
+### Code Refactoring
+
+* improved internals for configuration load
+
+### Dependencies
+
+* Upgrade hcl to 2.8.2
+* Upgrade go-cty module to 1.5.0
+* Upgrade logrus module to 1.7.0
+* Upgrade kin-openapi module to v0.37
+
 <a name="0.4.2"></a>
 ## [0.4.2](https://github.com/avenga/couper/compare/0.4.1...0.4.2)
 
