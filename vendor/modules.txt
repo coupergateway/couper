@@ -1,7 +1,5 @@
 # github.com/agext/levenshtein v1.2.1
 github.com/agext/levenshtein
-# github.com/apparentlymart/go-textseg v1.0.0
-github.com/apparentlymart/go-textseg/textseg
 # github.com/apparentlymart/go-textseg/v12 v12.0.0
 github.com/apparentlymart/go-textseg/v12/textseg
 # github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
@@ -55,7 +53,7 @@ github.com/satori/go.uuid
 ## explicit
 github.com/sirupsen/logrus
 github.com/sirupsen/logrus/hooks/test
-# github.com/zclconf/go-cty v1.2.0
+# github.com/zclconf/go-cty v1.5.0
 ## explicit
 github.com/zclconf/go-cty/cty
 github.com/zclconf/go-cty/cty/convert
