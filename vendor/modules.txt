@@ -10,7 +10,7 @@ github.com/dgrijalva/jwt-go/v4
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
-# github.com/getkin/kin-openapi v0.33.0
+# github.com/getkin/kin-openapi v0.37.0
 ## explicit
 github.com/getkin/kin-openapi/jsoninfo
 github.com/getkin/kin-openapi/openapi3
