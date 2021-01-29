@@ -217,15 +217,25 @@ shouty_message = upper(message)
 Functions are little helper methods which are registered for every hcl evaluation
 context.
 
-* `base64_decode`
-* `base64_encode`
-* `to_upper`
-* `to_lower`
+| Name               | Description |
+|:-------------------|:------------|
+| `base64_decode`    | base64_decode decodes Base64 data, as specified in RFC 4648         |
+| `base64_encode`    | base64_encode encodes Base64 data, as specified in RFC 4648         |
+| `coalesce`         | coalesce returns the first of the given arguments that is not null. |
+| `json_decode`      | json_decode parses the given JSON string and, if it is valid, returns the value it represents. |
+| `json_encode`      | json_encode returns a JSON serialization of the given value.        |
+| `to_lower`         | to_lower is a Function that converts a given string to lowercase.   |
+| `to_upper`         | to_upper is a Function that converts a given string to uppercase.   |
 
 Example usage:
 
 ```hcl
 my_attribute = base64_decode("aGVsbG8gd29ybGQK")
+
+my_json = json_encode({
+  value-a: beresp.json_body.origin
+  value-b: ["item1", "item2"]
+})
 ```
 
 ## Reference
