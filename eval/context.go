@@ -245,8 +245,11 @@ func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"base64_decode": lib.Base64DecodeFunc,
 		"base64_encode": lib.Base64EncodeFunc,
-		"to_upper":      stdlib.UpperFunc,
+		"coalesce":      stdlib.CoalesceFunc,
+		"json_decode":   stdlib.JSONDecodeFunc,
+		"json_encode":   stdlib.JSONEncodeFunc,
 		"to_lower":      stdlib.LowerFunc,
+		"to_upper":      stdlib.UpperFunc,
 	}
 }
 
