@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -1006,7 +1007,8 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 
 	shutdown, _ := newCouper("testdata/integration/endpoint_eval/08_couper.hcl", test.New(t))
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/"+
+		strings.Replace(testBackend.Addr(), "http://", "", 1), nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -1098,6 +1100,74 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			for k, v := range tc.query {
 				if !reflect.DeepEqual(p.Query[k], v) {
 					t.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
+				}
+			}
+		})
+	}
+
+	shutdown()
+}
+
+func TestConfigBodyContentAccessControl(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+
+	type testCase struct {
+		path   string
+		header http.Header
+		status int
+	}
+
+	for _, tc := range []testCase{
+		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK},
+		// TODO: Can a disabled auth being enabled again?
+		//{"/v1", http.Header{"Authorization": []string{"Basic Og=="}, "Auth": []string{"ba1"}}, http.StatusOK},
+		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized},
+		{"/v2", http.Header{"Authorization": []string{"Basic Og=="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK}, // minimum ':'
+		{"/v2", http.Header{}, http.StatusUnauthorized},
+		{"/v3", http.Header{}, http.StatusOK},
+		{"/status", http.Header{}, http.StatusOK},
+		{"/superadmin", http.Header{"Authorization": []string{"Basic Og=="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			if val := tc.header.Get("Authorization"); val != "" {
+				req.Header.Set("Authorization", val)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.status {
+				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
+				return
+			}
+
+			if ct := res.Header.Get("Content-Type"); ct != "application/json" {
+				t.Errorf("%q: unexpected content-type: %q", tc.path, ct)
+				return
+			}
+
+			b, err := ioutil.ReadAll(res.Body)
+
+			type payload struct {
+				Headers http.Header
+			}
+			var p payload
+			helper.Must(json.Unmarshal(b, &p))
+
+			for k, v := range tc.header {
+				if _, ok := p.Headers[k]; !ok {
+					t.Errorf("Expected header %q, got nothing", k)
+					break
+				}
+				if !reflect.DeepEqual(p.Headers[k], v) {
+					t.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
 				}
 			}
 		})
