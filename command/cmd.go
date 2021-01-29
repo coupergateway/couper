@@ -18,6 +18,8 @@ func NewCommand(cmd string) Cmd {
 	switch strings.ToLower(cmd) {
 	case "run":
 		return NewRun(ContextWithSignal(context.Background()))
+	case "version":
+		return NewVersion()
 	default:
 		return nil
 	}
