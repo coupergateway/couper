@@ -39,7 +39,7 @@
   * [Request routing](#request-routing-example)
   * [Routing configuration](#routing-configuration-example)
   * [Web serving configuration](#web-serving-configuration-example)
-  * [`access_control`configuration](#access_control-configuration-example)
+  * [`access_control` configuration](#access_control-configuration-example)
   * [`hosts` configuration](#hosts-configuration-example)
   * [Referencing and overwriting](#referencing-and-overwriting-example)
 
@@ -75,8 +75,8 @@ a configuration language by HashiCorp.
 
 ### File name
 
-The file name of your configuration file should be `couper.hcl` to have syntax
-highlighting within the VS Code IDE.
+The file-ending of your configuration file should be .hcl to have syntax highlighting
+within your IDE.
 
 The file name defaults to `couper.hcl` in your working directory. This can be
 changed with the `-f` command-line flag. With `-f /opt/couper/my_conf.hcl` couper
