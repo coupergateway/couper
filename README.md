@@ -7,7 +7,7 @@ Couper is designed to support developers building and operating API-driven Web
 projects by offering security and observability functionality in a frontend gateway
 component.
 
-* [Tutorials](https://github.com/avenga/couper-examples)
+* [Examples](https://github.com/avenga/couper-examples)
 * [Documentation](https://github.com/avenga/couper/tree/master/docs)
 
 ## Couper
