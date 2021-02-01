@@ -11,6 +11,7 @@ var (
 )
 
 type Backend struct {
+	BasicAuth              string     `hcl:"basic_auth,optional"`
 	ConnectTimeout         string     `hcl:"connect_timeout,optional"`
 	DisableCertValidation  bool       `hcl:"disable_certificate_validation,optional"`
 	DisableConnectionReuse bool       `hcl:"disable_connection_reuse,optional"`

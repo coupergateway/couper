@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -506,6 +507,11 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 				k := http.CanonicalHeaderKey(key)
 				headerCtx[k] = append(headerCtx[k], values...)
 			}
+		}
+
+		if p.options.BasicAuth != "" {
+			auth := base64.StdEncoding.EncodeToString([]byte(p.options.BasicAuth))
+			headerCtx.Set("Authorization", "Basic "+auth)
 		}
 
 		if req == nil || beresp != nil { // just one way -> origin

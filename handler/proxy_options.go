@@ -13,6 +13,7 @@ import (
 )
 
 type ProxyOptions struct {
+	BasicAuth                            string
 	ConnectTimeout, Timeout, TTFBTimeout time.Duration
 	Context                              hcl.Body
 	BackendName                          string
@@ -60,6 +61,7 @@ func NewProxyOptions(
 	}
 
 	return &ProxyOptions{
+		BasicAuth:              conf.BasicAuth,
 		BackendName:            conf.Name,
 		CORS:                   cors,
 		Context:                conf.Remain,
