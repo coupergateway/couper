@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
+	"golang.org/x/net/http/httpproxy"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
@@ -155,7 +156,14 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 
 		var proxyFunc func(req *http.Request) (*url.URL, error)
 		if p.options.Proxy != "" {
+			proxyFunc = func(req *http.Request) (*url.URL, error) {
+				config := &httpproxy.Config{
+					HTTPProxy:  p.options.Proxy,
+					HTTPSProxy: p.options.Proxy,
+				}
 
+				return config.ProxyFunc()(req.URL)
+			}
 		} else if !p.options.NoProxyFromEnv {
 			proxyFunc = http.ProxyFromEnvironment
 		}
