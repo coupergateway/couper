@@ -95,7 +95,15 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
-			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions)
+			cors := getCORS(srvConf.CORS, srvConf.Spa.CORS)
+			corsOptions, err := handler.NewCORSOptions(cors)
+			if err != nil {
+				return nil, err
+			}
+
+			spaHandler, err = handler.NewSpa(
+				srvConf.Spa.BootstrapFile, serverOptions, corsOptions,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -113,7 +121,16 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, err := handler.NewFile(serverOptions.FileBasePath, srvConf.Files.DocumentRoot, serverOptions)
+			cors := getCORS(srvConf.CORS, srvConf.Files.CORS)
+			corsOptions, err := handler.NewCORSOptions(cors)
+			if err != nil {
+				return nil, err
+			}
+
+			fileHandler, err := handler.NewFile(
+				serverOptions.FileBasePath, srvConf.Files.DocumentRoot,
+				serverOptions, corsOptions,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -137,7 +154,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePath[parentAPI]
-				cors = parentAPI.CORS
+				cors = getCORS(srvConf.CORS, parentAPI.CORS)
 				errTpl = serverOptions.APIErrTpl[parentAPI]
 			} else {
 				basePath = serverOptions.SrvBasePath
@@ -377,4 +394,16 @@ func newEndpointMap(srvConf *config.Server) endpointMap {
 	}
 
 	return endpoints
+}
+
+func getCORS(parent, curr *config.CORS) *config.CORS {
+	if curr == nil {
+		return parent
+	}
+
+	if curr.Disable {
+		return nil
+	}
+
+	return curr
 }

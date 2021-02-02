@@ -11,9 +11,9 @@ type APIs []*API
 
 type API struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
-	CORS                 *CORS     `hcl:"cors,block"`
 	Backend              string    `hcl:"backend,optional"`
 	BasePath             string    `hcl:"base_path,optional"`
+	CORS                 *CORS     `hcl:"cors,block"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	Endpoints            Endpoints `hcl:"endpoint,block"`
 	ErrorFile            string    `hcl:"error_file,optional"`
