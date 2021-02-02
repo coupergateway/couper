@@ -8,12 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -66,53 +64,6 @@ type Proxy struct {
 	srvOptions   *server.Options
 	transport    *http.Transport
 	upstreamLog  *logging.AccessLog
-}
-
-type CORSOptions struct {
-	AllowedOrigins   []string
-	AllowCredentials bool
-	MaxAge           string
-}
-
-func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
-	if cors == nil {
-		return nil, nil
-	}
-	dur, err := time.ParseDuration(cors.MaxAge)
-	if err != nil {
-		return nil, err
-	}
-	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
-
-	allowedOrigins := seetie.ValueToStringSlice(cors.AllowedOrigins)
-	for i, a := range allowedOrigins {
-		allowedOrigins[i] = strings.ToLower(a)
-	}
-
-	return &CORSOptions{
-		AllowedOrigins:   allowedOrigins,
-		AllowCredentials: cors.AllowCredentials,
-		MaxAge:           corsMaxAge,
-	}, nil
-}
-
-// NeedsVary if a request with not allowed origin is ignored.
-func (c *CORSOptions) NeedsVary() bool {
-	return !c.AllowsOrigin("*")
-}
-
-func (c *CORSOptions) AllowsOrigin(origin string) bool {
-	if c == nil {
-		return false
-	}
-
-	for _, a := range c.AllowedOrigins {
-		if a == strings.ToLower(origin) || a == "*" {
-			return true
-		}
-	}
-
-	return false
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
@@ -183,7 +134,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 
 	if isCorsPreflightRequest(req) {
-		p.setCorsRespHeaders(rw.Header(), req)
+		setCorsRespHeaders(p.options.CORS, rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -425,7 +376,7 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 		bereq = beresp.Request
 		headerCtx = beresp.Header
 
-		defer p.setCorsRespHeaders(headerCtx, req)
+		defer setCorsRespHeaders(p.options.CORS, headerCtx, req)
 	}
 
 	allAttributes, attrOk := p.options.Context.(body.Attributes)
@@ -583,56 +534,6 @@ func (p *Proxy) SetGetBody(req *http.Request) error {
 	}
 
 	return nil
-}
-
-func isCorsRequest(req *http.Request) bool {
-	return req.Header.Get("Origin") != ""
-}
-
-func isCorsPreflightRequest(req *http.Request) bool {
-	return req.Method == http.MethodOptions && (req.Header.Get("Access-Control-Request-Method") != "" || req.Header.Get("Access-Control-Request-Headers") != "")
-}
-
-func IsCredentialed(headers http.Header) bool {
-	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
-}
-
-func (p *Proxy) setCorsRespHeaders(headers http.Header, req *http.Request) {
-	if p.options.CORS == nil || !isCorsRequest(req) {
-		return
-	}
-	requestOrigin := req.Header.Get("Origin")
-	if !p.options.CORS.AllowsOrigin(requestOrigin) {
-		return
-	}
-	// see https://fetch.spec.whatwg.org/#http-responses
-	if p.options.CORS.AllowsOrigin("*") && !IsCredentialed(req.Header) {
-		headers.Set("Access-Control-Allow-Origin", "*")
-	} else {
-		headers.Set("Access-Control-Allow-Origin", requestOrigin)
-	}
-
-	if p.options.CORS.AllowCredentials == true {
-		headers.Set("Access-Control-Allow-Credentials", "true")
-	}
-
-	if isCorsPreflightRequest(req) {
-		// Reflect request header value
-		acrm := req.Header.Get("Access-Control-Request-Method")
-		if acrm != "" {
-			headers.Set("Access-Control-Allow-Methods", acrm)
-		}
-		// Reflect request header value
-		acrh := req.Header.Get("Access-Control-Request-Headers")
-		if acrh != "" {
-			headers.Set("Access-Control-Allow-Headers", acrh)
-		}
-		if p.options.CORS.MaxAge != "" {
-			headers.Set("Access-Control-Max-Age", p.options.CORS.MaxAge)
-		}
-	} else if p.options.CORS.NeedsVary() {
-		headers.Add("Vary", "Origin")
-	}
 }
 
 // Hop-by-hop headers. These are removed when sent to the backend.

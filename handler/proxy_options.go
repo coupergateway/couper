@@ -46,11 +46,6 @@ func NewProxyOptions(
 		return nil, fmt.Errorf("backend bodyLimit: %v", err)
 	}
 
-	cors := corsOpts
-	if cors == nil { // Could be nil on non api context like 'free' endpoints or definitions.
-		cors = &CORSOptions{}
-	}
-
 	openAPIValidatorOptions, err := NewOpenAPIValidatorOptions(conf.OpenAPI)
 	if err != nil {
 		return nil, err
@@ -58,7 +53,7 @@ func NewProxyOptions(
 
 	return &ProxyOptions{
 		BackendName:           conf.Name,
-		CORS:                  cors,
+		CORS:                  corsOpts,
 		Context:               conf.Remain,
 		ConnectTimeout:        connTimeout,
 		DisableCertValidation: conf.DisableCertValidation,
