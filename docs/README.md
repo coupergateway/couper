@@ -257,6 +257,7 @@ and `api`. You can declare `access_control` for the `server` block.
 | [**`files`**](#the-files-block) block       | configures file serving |
 | [**`spa`**](#the-spa-block) block           | configures web serving for spa assets |
 | [**`api`**](#the-api-block) block(s)        | configures routing and backend connection(s) |
+| [**`cors`**](#the-cors-block) block         | configures CORS behavior for `api`, `spa` and `files` block contexts |
 
 ### The `files` block
 
@@ -269,6 +270,7 @@ document.
 | `document_root`                             | <ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul> |
 | `error_file`                                | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
 | [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| [**`cors`**](#the-cors-block) block         | configures CORS behavior for `files` block context, overrides the CORS behavior of `server` block |
 
 ### The `spa` block
 
@@ -280,6 +282,7 @@ The `spa` block configures the location of your bootstrap file and your SPA path
 | `bootstrap_file`                            | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
 | `paths`                                     | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]`</li></ul> |
 | [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `spa` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| [**`cors`**](#the-cors-block) block         | configures CORS behavior for `spa` block context, overrides the CORS behavior of `server` block |
 
 ### The `api` block
 
@@ -297,7 +300,7 @@ body payload. This can be customized via `error_file`.
 | [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
 | [**`backend`**](#the-backend-block) block   | <ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
 | [**`endpoint`**](#the-endpoint-block) block | configures specific endpoint for `api` block context |
-| [**`cors`**](#the-cors-block) block         | configures CORS behavior for `api` block context |
+| [**`cors`**](#the-cors-block) block         | configures CORS behavior for `api` block context, overrides the CORS behavior of `server` block |
 
 ### The `cors` block
 
@@ -308,6 +311,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | context                    | `api`block |
 | `allowed_origins`          | <ul><li>(list of) allowed origin(s)</li><li> can be either a string with a single specific origin (e.g. `https://www.example.com`)</li><li> or `*` (all origins allowed) </li><li>or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`)</li></ul> |
 | `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
+| `disable`                  | `boolean`, default `false`, can block inheritance of `server.cors` in `api`, `spa` and `files` block contexts |
 | `max_age`                  |  <ul><li>indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers</li><li> can be cached (string with time unit, e.g. `"1h"`) </li></ul> |
 
 ### The `endpoint` block
