@@ -27,11 +27,14 @@ type HasResponse interface {
 
 type File struct {
 	basePath   string
+	cors       *CORSOptions
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(basePath, docRoot string, srvOpts *server.Options) (*File, error) {
+func NewFile(
+	basePath, docRoot string, srvOpts *server.Options, corsOpts *CORSOptions,
+) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -55,6 +58,7 @@ func NewFile(basePath, docRoot string, srvOpts *server.Options) (*File, error) {
 
 	f := &File{
 		basePath:   basePath,
+		cors:       corsOpts,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
 	}
@@ -63,6 +67,12 @@ func NewFile(basePath, docRoot string, srvOpts *server.Options) (*File, error) {
 }
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if isCorsPreflightRequest(req) {
+		setCorsRespHeaders(f.cors, rw.Header(), req)
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -81,6 +91,8 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		f.serveDirectory(reqPath, rw, req)
 		return
 	}
+
+	setCorsRespHeaders(f.cors, rw.Header(), req)
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
 }

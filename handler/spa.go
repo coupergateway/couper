@@ -15,22 +15,32 @@ var (
 )
 
 type Spa struct {
+	cors       *CORSOptions
 	file       string
 	srvOptions *server.Options
 }
 
-func NewSpa(bootstrapFile string, srvOpts *server.Options) (*Spa, error) {
+func NewSpa(
+	bootstrapFile string, srvOpts *server.Options, corsOpts *CORSOptions,
+) (*Spa, error) {
 	absPath, err := filepath.Abs(bootstrapFile)
 	if err != nil {
 		return nil, err
 	}
 	return &Spa{
+		cors:       corsOpts,
 		file:       absPath,
 		srvOptions: srvOpts,
 	}, nil
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if isCorsPreflightRequest(req) {
+		setCorsRespHeaders(s.cors, rw.Header(), req)
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -53,6 +63,8 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		s.srvOptions.ServerErrTpl.ServeError(errors.SPAError).ServeHTTP(rw, req)
 		return
 	}
+
+	setCorsRespHeaders(s.cors, rw.Header(), req)
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
 }
