@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/env"
 
 	"github.com/avenga/couper/config"
@@ -47,7 +48,11 @@ func (r Run) Execute(args Args, config *config.CouperFile, logEntry *logrus.Entr
 		return err
 	}
 
-	serverList, listenCmdShutdown := server.NewServerList(r.context, logEntry.Logger, config.Settings, &timings, srvMux)
+	memStore := cache.New()
+
+	serverList, listenCmdShutdown := server.NewServerList(
+		r.context, logEntry.Logger, config.Settings, &timings, srvMux, memStore,
+	)
 	for _, srv := range serverList {
 		srv.Listen()
 	}
