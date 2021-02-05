@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/sha256"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/docker/go-units"
@@ -23,6 +24,8 @@ type ProxyOptions struct {
 	DisableConnectionReuse               bool
 	HTTP2                                bool
 	MaxConnections                       int
+	OAuth2                               *config.OAuth2
+	OAuth2Transport                      *transportConfig
 	OpenAPI                              *OpenAPIValidatorOptions
 	ErrorTemplate                        *errors.Template
 	Kind                                 string
@@ -32,7 +35,7 @@ type ProxyOptions struct {
 
 func NewProxyOptions(
 	conf *config.Backend, corsOpts *CORSOptions, noProxyFromEnv bool,
-	errTpl *errors.Template, kind string,
+	errTpl *errors.Template, kind string, oAuth2 *config.OAuth2, oAuth2Backend *config.Backend,
 ) (*ProxyOptions, error) {
 	var timeout, connTimeout, ttfbTimeout time.Duration
 	if err := parseDuration(conf.Timeout, &timeout); err != nil {
@@ -60,6 +63,11 @@ func NewProxyOptions(
 		return nil, err
 	}
 
+	oAuth2Transport, err := prepareOAuthTransport(conf, oAuth2Backend, noProxyFromEnv)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ProxyOptions{
 		BasicAuth:              conf.BasicAuth,
 		BackendName:            conf.Name,
@@ -71,6 +79,8 @@ func NewProxyOptions(
 		HTTP2:                  conf.HTTP2,
 		MaxConnections:         conf.MaxConnections,
 		NoProxyFromEnv:         noProxyFromEnv,
+		OAuth2:                 oAuth2,
+		OAuth2Transport:        oAuth2Transport,
 		OpenAPI:                openAPIValidatorOptions,
 		ErrorTemplate:          errTpl,
 		Kind:                   kind,
@@ -98,4 +108,49 @@ func parseDuration(src string, target *time.Duration) error {
 	}
 	*target = d
 	return nil
+}
+
+func prepareOAuthTransport(
+	conf *config.Backend, oAuth2Backend *config.Backend,
+	noProxyFromEnv bool,
+) (*transportConfig, error) {
+	if conf.OAuth2 == nil {
+		return nil, nil
+	}
+
+	u, err := url.Parse(conf.OAuth2.TokenEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	tc := &transportConfig{
+		backendName: "OAuth2-" + u.Host,
+		hostname:    u.Host,
+		origin:      u.Host,
+		scheme:      u.Scheme,
+	}
+
+	if oAuth2Backend != nil {
+		var timeout, connTimeout, ttfbTimeout time.Duration
+		if err := parseDuration(conf.Timeout, &timeout); err != nil {
+			return nil, err
+		}
+		if err := parseDuration(conf.TTFBTimeout, &ttfbTimeout); err != nil {
+			return nil, err
+		}
+		if err := parseDuration(conf.ConnectTimeout, &connTimeout); err != nil {
+			return nil, err
+		}
+
+		tc.connectTimeout = connTimeout
+		tc.disableCertValidation = oAuth2Backend.DisableCertValidation
+		tc.disableConnectionReuse = oAuth2Backend.DisableConnectionReuse
+		tc.http2 = oAuth2Backend.HTTP2
+		tc.maxConnections = oAuth2Backend.MaxConnections
+		tc.noProxyFromEnv = noProxyFromEnv
+		tc.ttfbTimeout = ttfbTimeout
+		tc.timeout = timeout
+	}
+
+	return tc, nil
 }

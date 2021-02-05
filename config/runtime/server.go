@@ -207,7 +207,16 @@ func newProxy(
 		kind = "endpoint"
 	}
 
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, noProxyFromEnv, errTpl, kind)
+	oAuthBackendConf := *DefaultBackendConf
+	if beConf.OAuth2 != nil {
+		if diags := gohcl.DecodeBody(beConf.OAuth2.Remain, ctx, &oAuthBackendConf); diags.HasErrors() {
+			return nil, diags
+		}
+	}
+
+	proxyOptions, err := handler.NewProxyOptions(
+		beConf, corsOptions, noProxyFromEnv, errTpl, kind, beConf.OAuth2, &oAuthBackendConf,
+	)
 	if err != nil {
 		return nil, err
 	}
