@@ -60,7 +60,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		RequestBodyLimit: "64MiB",
 	}
 
-	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api")
+	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api", nil, nil)
 	helper.Must(err)
 
 	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), nil, eval.NewENVContext(nil))
