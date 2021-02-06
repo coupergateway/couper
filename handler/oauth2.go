@@ -71,6 +71,7 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	auth := base64.StdEncoding.EncodeToString([]byte(user + ":" + pass))
 	outreq.Header.Set("Authorization", "Basic "+auth)
+	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	conf := oa.transport
 	conf.hash = key
