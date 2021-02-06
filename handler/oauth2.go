@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -55,6 +56,9 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		req.Header.Set("Authorization", "Bearer "+token)
 
+		ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
+		*req = *req.WithContext(ctx)
+
 		oa.gotoProxy(rw, req, nil)
 		return
 	}
@@ -100,6 +104,8 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
+	ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
+	*req = *req.WithContext(ctx)
 
 	oa.gotoProxy(rw, req, nil)
 }

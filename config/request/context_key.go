@@ -9,6 +9,7 @@ const (
 	MemStore
 	PathParams
 	RoundtripInfo
+	SendAuthHeader
 	ServerName
 	Wildcard
 )

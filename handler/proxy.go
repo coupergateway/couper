@@ -419,7 +419,19 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	// Remove blacklisted headers after evaluation to
 	// be accessible within our context configuration.
 	if attrCtxSet == attrSetReqHeaders {
+		var sendAuthHeader bool
+
+		send := req.Context().Value(request.SendAuthHeader)
+		switch send.(type) {
+		case bool:
+			sendAuthHeader = send.(bool)
+		}
+
 		for _, key := range headerBlacklist {
+			if sendAuthHeader && strings.ToLower(key) == "authorization" {
+				continue
+			}
+
 			headerCtx.Del(key)
 		}
 	}
