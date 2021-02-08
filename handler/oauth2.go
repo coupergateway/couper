@@ -32,7 +32,10 @@ func newOAuth2(proxy *Proxy, config *config.OAuth2, transport *transportConfig) 
 	}
 }
 
-func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (oa *oAuth2) Do(rw http.ResponseWriter, req *http.Request, startTime time.Time) {
+	ctx := context.WithValue(req.Context(), request.StartTime, startTime)
+	*req = *req.WithContext(ctx)
+
 	if oa.config == nil {
 		oa.gotoProxy(rw, req, nil)
 		return
@@ -57,7 +60,6 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
-		ctx = context.WithValue(ctx, request.DisableLogging, true)
 		*req = *req.WithContext(ctx)
 
 		oa.gotoProxy(rw, req, nil)
@@ -77,38 +79,59 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	outreq.Header.Set("Authorization", "Basic "+auth)
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	outCtx := context.WithValue(outreq.Context(), request.ConfigKey, key)
+	outCtx = context.WithValue(outCtx, request.SourceRequest, req)
+	*outreq = *outreq.WithContext(outCtx)
+
+	oa.proxy.upstreamLog.ServeHTTP(rw, outreq, logging.RoundtripHandlerFunc(oa.ServeHTTP), startTime)
+}
+
+func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	sourceReq := ctx.Value(request.SourceRequest).(*http.Request)
+	key := ctx.Value(request.ConfigKey).(string)
+	roundtripInfo := req.Context().Value(request.RoundtripInfo).(*logging.RoundtripInfo)
+
 	conf := oa.transport
 	conf.hash = key
 
-	res, err := getTransport(conf).RoundTrip(outreq)
-	if err != nil {
-		oa.gotoProxy(rw, req, err)
-		return
-	}
-
-	if res.StatusCode != http.StatusOK {
-		oa.gotoProxy(rw, req, nil)
-		return
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		oa.gotoProxy(rw, req, err)
-		return
-	}
-
-	token, err := oa.getAccessToken(string(b), key, memStore)
-	if err != nil {
-		oa.gotoProxy(rw, req, err)
-		return
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
+	ctx = context.WithValue(ctx, request.UID, sourceReq.Context().Value(request.UID))
+	ctx = context.WithValue(ctx, request.ServerName, sourceReq.Context().Value(request.ServerName))
 	*req = *req.WithContext(ctx)
 
-	oa.gotoProxy(rw, req, nil)
+	res, err := getTransport(conf).RoundTrip(req)
+	if err != nil {
+		oa.gotoProxy(rw, sourceReq, err)
+		return
+	}
+
+	roundtripInfo.BeReq, roundtripInfo.BeResp = req, res
+
+	if res.StatusCode != http.StatusOK {
+		oa.gotoProxy(rw, sourceReq, nil)
+		return
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		oa.gotoProxy(rw, sourceReq, err)
+		return
+	}
+
+	memStore := sourceReq.Context().Value(request.MemStore).(*cache.MemoryStore)
+
+	token, err := oa.getAccessToken(string(body), key, memStore)
+	if err != nil {
+		oa.gotoProxy(rw, sourceReq, err)
+		return
+	}
+
+	sourceReq.Header.Set("Authorization", "Bearer "+token)
+
+	ctx = context.WithValue(sourceReq.Context(), request.SendAuthHeader, true)
+	*sourceReq = *sourceReq.WithContext(ctx)
+
+	oa.gotoProxy(rw, sourceReq, nil)
 }
 
 func (oa *oAuth2) getCredentials(req *http.Request) (string, string, error) {
@@ -145,19 +168,7 @@ func (oa *oAuth2) gotoProxy(rw http.ResponseWriter, req *http.Request, err error
 		oa.proxy.log.Error(err)
 	}
 
-	var disableLogging bool
-
-	disable := req.Context().Value(request.DisableLogging)
-	switch disable.(type) {
-	case bool:
-		disableLogging = disable.(bool)
-	}
-
-	if disableLogging {
-		oa.proxy.roundtrip(rw, req)
-	} else {
-		oa.proxy.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), startTime)
-	}
+	oa.proxy.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), startTime)
 }
 
 func (oa *oAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryStore) (string, error) {

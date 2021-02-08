@@ -5,12 +5,14 @@ type ContextKey uint8
 const (
 	UID ContextKey = iota
 	BackendName
-	DisableLogging
+	ConfigKey
 	Endpoint
 	MemStore
 	PathParams
 	RoundtripInfo
 	SendAuthHeader
 	ServerName
+	SourceRequest
+	StartTime
 	Wildcard
 )

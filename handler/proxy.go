@@ -150,11 +150,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
 
-	if p.oauth2.config != nil {
-		p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.oauth2.ServeHTTP), startTime)
-	} else {
-		p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip), startTime)
-	}
+	p.oauth2.Do(rw, req, startTime)
 }
 
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
