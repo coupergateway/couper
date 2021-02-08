@@ -57,6 +57,7 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
+		ctx = context.WithValue(ctx, request.DisableLogging, true)
 		*req = *req.WithContext(ctx)
 
 		oa.gotoProxy(rw, req, nil)
@@ -104,6 +105,7 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
+
 	ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
 	*req = *req.WithContext(ctx)
 
@@ -144,7 +146,19 @@ func (oa *oAuth2) gotoProxy(rw http.ResponseWriter, req *http.Request, err error
 		oa.proxy.log.Error(err)
 	}
 
-	oa.proxy.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), startTime)
+	var disableLogging bool
+
+	disable := req.Context().Value(request.DisableLogging)
+	switch disable.(type) {
+	case bool:
+		disableLogging = disable.(bool)
+	}
+
+	if disableLogging {
+		oa.proxy.roundtrip(rw, req)
+	} else {
+		oa.proxy.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), startTime)
+	}
 }
 
 func (oa *oAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryStore) (string, error) {
@@ -168,7 +182,7 @@ func (oa *oAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryS
 			ttl = (int64)(t * 0.9)
 		}
 
-		memStore.Set(key, jsonString, time.Now().Unix()+ttl)
+		memStore.Set(key, jsonString, ttl)
 	}
 
 	return token, nil
