@@ -140,17 +140,17 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 }
 
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	startTime := time.Now()
-
 	if isCorsPreflightRequest(req) {
 		p.setCorsRespHeaders(rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
+	*req = *req.Clone(
+		context.WithValue(req.Context(), request.BackendName, p.options.BackendName),
+	)
 
-	p.oauth2.Do(rw, req, startTime)
+	p.oauth2.Do(rw, req)
 }
 
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {

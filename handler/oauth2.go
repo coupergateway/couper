@@ -32,10 +32,7 @@ func newOAuth2(proxy *Proxy, config *config.OAuth2, transport *transportConfig) 
 	}
 }
 
-func (oa *oAuth2) Do(rw http.ResponseWriter, req *http.Request, startTime time.Time) {
-	ctx := context.WithValue(req.Context(), request.StartTime, startTime)
-	*req = *req.WithContext(ctx)
-
+func (oa *oAuth2) Do(rw http.ResponseWriter, req *http.Request) {
 	if oa.config == nil {
 		oa.gotoProxy(rw, req, nil)
 		return
@@ -83,7 +80,9 @@ func (oa *oAuth2) Do(rw http.ResponseWriter, req *http.Request, startTime time.T
 	outCtx = context.WithValue(outCtx, request.SourceRequest, req)
 	*outreq = *outreq.WithContext(outCtx)
 
-	oa.proxy.upstreamLog.ServeHTTP(rw, outreq, logging.RoundtripHandlerFunc(oa.ServeHTTP), startTime)
+	oa.proxy.upstreamLog.ServeHTTP(
+		rw, outreq, logging.RoundtripHandlerFunc(oa.ServeHTTP), time.Now(),
+	)
 }
 
 func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -128,8 +127,8 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	sourceReq.Header.Set("Authorization", "Bearer "+token)
 
-	ctx = context.WithValue(sourceReq.Context(), request.SendAuthHeader, true)
-	*sourceReq = *sourceReq.WithContext(ctx)
+	sourceCtx := context.WithValue(sourceReq.Context(), request.SendAuthHeader, true)
+	*sourceReq = *sourceReq.WithContext(sourceCtx)
 
 	oa.gotoProxy(rw, sourceReq, nil)
 }
@@ -162,13 +161,13 @@ func (oa *oAuth2) getCredentials(req *http.Request) (string, string, error) {
 }
 
 func (oa *oAuth2) gotoProxy(rw http.ResponseWriter, req *http.Request, err error) {
-	startTime := time.Now()
-
 	if err != nil {
 		oa.proxy.log.Error(err)
 	}
 
-	oa.proxy.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), startTime)
+	oa.proxy.upstreamLog.ServeHTTP(
+		rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), time.Now(),
+	)
 }
 
 func (oa *oAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryStore) (string, error) {
