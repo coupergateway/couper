@@ -64,8 +64,7 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	params := "grant_type=client_credentials" + "&" +
-		"token_endpoint_auth_method=client_secret_basic"
+	params := "grant_type=client_credentials"
 
 	body := ioutil.NopCloser(strings.NewReader(params))
 	outreq, err := http.NewRequest("POST", oa.config.TokenEndpoint, body)
