@@ -51,10 +51,18 @@ server "acs" {
 }
 
 definitions {
-  basic_auth "ba1" {}
-  basic_auth "ba2" {}
-  basic_auth "ba3" {}
-  basic_auth "ba4" {}
+  basic_auth "ba1" {
+    password = "asdf"
+  }
+  basic_auth "ba2" {
+    password = "asdf"
+  }
+  basic_auth "ba3" {
+    password = "asdf"
+  }
+  basic_auth "ba4" {
+    password = "asdf"
+  }
 
   backend "test" {
     origin = env.COUPER_TEST_BACKEND_ADDR
