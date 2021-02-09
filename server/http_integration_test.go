@@ -1122,13 +1122,13 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 	for _, tc := range []testCase{
 		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK},
 		// TODO: Can a disabled auth being enabled again?
-		//{"/v1", http.Header{"Authorization": []string{"Basic Og=="}, "Auth": []string{"ba1"}}, http.StatusOK},
+		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK},
 		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized},
-		{"/v2", http.Header{"Authorization": []string{"Basic Og=="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK}, // minimum ':'
+		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK}, // minimum ':'
 		{"/v2", http.Header{}, http.StatusUnauthorized},
 		{"/v3", http.Header{}, http.StatusOK},
 		{"/status", http.Header{}, http.StatusOK},
-		{"/superadmin", http.Header{"Authorization": []string{"Basic Og=="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK},
+		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK},
 		{"/superadmin", http.Header{}, http.StatusUnauthorized},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
