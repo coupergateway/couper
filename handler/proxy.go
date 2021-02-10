@@ -21,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/env"
@@ -245,6 +246,15 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if isResourceRequest(req.Context()) {
+		if res.StatusCode == http.StatusUnauthorized {
+			_, _, key, _ := p.oauth2.getCredentials(req)
+
+			memStore := req.Context().Value(request.MemStore).(*cache.MemoryStore)
+			memStore.Del(key)
+		}
+	}
+
 	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
 	if res.StatusCode == http.StatusSwitchingProtocols {
 		p.SetRoundtripContext(req, res)
@@ -415,16 +425,10 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 	// Remove blacklisted headers after evaluation to
 	// be accessible within our context configuration.
 	if attrCtxSet == attrSetReqHeaders {
-		var sendAuthHeader bool
-
-		send := req.Context().Value(request.SendAuthHeader)
-		switch send.(type) {
-		case bool:
-			sendAuthHeader = send.(bool)
-		}
+		isResourceReq := isResourceRequest(req.Context())
 
 		for _, key := range headerBlacklist {
-			if sendAuthHeader && strings.ToLower(key) == "authorization" {
+			if isResourceReq && strings.ToLower(key) == "authorization" {
 				continue
 			}
 
@@ -768,6 +772,18 @@ func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) stri
 	}
 	originValue, _ := attr[name].Expr.Value(ctx)
 	return seetie.ValueToString(originValue)
+}
+
+func isResourceRequest(ctx context.Context) bool {
+	var isResourceReq bool
+
+	send := ctx.Value(request.IsResourceReq)
+	switch send.(type) {
+	case bool:
+		isResourceReq = send.(bool)
+	}
+
+	return isResourceReq
 }
 
 // switchProtocolCopier exists so goroutines proxying data back and

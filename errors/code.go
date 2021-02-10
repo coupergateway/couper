@@ -30,6 +30,7 @@ const (
 	AuthorizationRequired Code = 5000 + iota
 	AuthorizationFailed
 	BasicAuthFailed
+	TokenRequestFailed
 )
 
 const (

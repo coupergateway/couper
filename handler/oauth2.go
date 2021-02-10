@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
@@ -38,13 +39,11 @@ func (oa *oAuth2) Do(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	user, pass, err := oa.getCredentials(req)
+	user, pass, key, err := oa.getCredentials(req)
 	if err != nil {
 		oa.gotoProxy(rw, req, err)
 		return
 	}
-
-	key := oa.config.TokenEndpoint + "|" + user + "|" + pass
 
 	memStore := req.Context().Value(request.MemStore).(*cache.MemoryStore)
 	if data := memStore.Get(key); data != "" {
@@ -56,7 +55,7 @@ func (oa *oAuth2) Do(rw http.ResponseWriter, req *http.Request) {
 
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		ctx := context.WithValue(req.Context(), request.SendAuthHeader, true)
+		ctx := context.WithValue(req.Context(), request.IsResourceReq, true)
 		*req = *req.WithContext(ctx)
 
 		oa.gotoProxy(rw, req, nil)
@@ -99,12 +98,15 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	*req = *req.WithContext(ctx)
 
 	res, err := getTransport(conf).RoundTrip(req)
+
+	roundtripInfo.BeReq, roundtripInfo.BeResp = req, res
+	roundtripInfo.IsTokenReq = true
+
 	if err != nil {
+		roundtripInfo.Err = err
 		oa.gotoProxy(rw, sourceReq, err)
 		return
 	}
-
-	roundtripInfo.BeReq, roundtripInfo.BeResp = req, res
 
 	if res.StatusCode != http.StatusOK {
 		oa.gotoProxy(rw, sourceReq, nil)
@@ -113,6 +115,7 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		roundtripInfo.Err = err
 		oa.gotoProxy(rw, sourceReq, err)
 		return
 	}
@@ -121,24 +124,25 @@ func (oa *oAuth2) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	token, err := oa.getAccessToken(string(body), key, memStore)
 	if err != nil {
+		roundtripInfo.Err = err
 		oa.gotoProxy(rw, sourceReq, err)
 		return
 	}
 
 	sourceReq.Header.Set("Authorization", "Bearer "+token)
 
-	sourceCtx := context.WithValue(sourceReq.Context(), request.SendAuthHeader, true)
+	sourceCtx := context.WithValue(sourceReq.Context(), request.IsResourceReq, true)
 	*sourceReq = *sourceReq.WithContext(sourceCtx)
 
 	oa.gotoProxy(rw, sourceReq, nil)
 }
 
-func (oa *oAuth2) getCredentials(req *http.Request) (string, string, error) {
+func (oa *oAuth2) getCredentials(req *http.Request) (string, string, string, error) {
 	content, _, diags := oa.config.Remain.PartialContent(
 		oa.config.Schema(true),
 	)
 	if diags.HasErrors() {
-		return "", "", diags
+		return "", "", "", diags
 	}
 
 	evalCtx := eval.NewHTTPContext(
@@ -154,20 +158,24 @@ func (oa *oAuth2) getCredentials(req *http.Request) (string, string, error) {
 	pass := seetie.ValueToString(pv)
 
 	if !userOK || !passOK {
-		return "", "", fmt.Errorf("Missing OAuth2 'client_id' or 'client_secret' value")
+		return "", "", "", fmt.Errorf("Missing OAuth2 'client_id' or 'client_secret' value")
 	}
 
-	return user, pass, nil
+	key := oa.config.TokenEndpoint + "|" + user + "|" + pass
+
+	return user, pass, key, nil
 }
 
 func (oa *oAuth2) gotoProxy(rw http.ResponseWriter, req *http.Request, err error) {
 	if err != nil {
-		oa.proxy.log.Error(err)
+		oa.proxy.options.ErrorTemplate.ServeError(
+			errors.TokenRequestFailed,
+		).ServeHTTP(rw, req)
+	} else {
+		oa.proxy.upstreamLog.ServeHTTP(
+			rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), time.Now(),
+		)
 	}
-
-	oa.proxy.upstreamLog.ServeHTTP(
-		rw, req, logging.RoundtripHandlerFunc(oa.proxy.roundtrip), time.Now(),
-	)
 }
 
 func (oa *oAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryStore) (string, error) {

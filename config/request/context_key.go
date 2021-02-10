@@ -7,10 +7,10 @@ const (
 	BackendName
 	ConfigKey
 	Endpoint
+	IsResourceReq
 	MemStore
 	PathParams
 	RoundtripInfo
-	SendAuthHeader
 	ServerName
 	SourceRequest
 	StartTime

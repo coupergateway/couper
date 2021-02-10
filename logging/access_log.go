@@ -24,6 +24,8 @@ type RoundtripInfo struct {
 	BeReq           *http.Request
 	BeResp          *http.Response
 	Err             error
+	IsResourceReq   bool
+	IsTokenReq      bool
 	ValidationError []error
 }
 
@@ -126,6 +128,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 				fields["proxy"] = u.Host
 			}
 		}
+	}
+
+	if roundtripInfo != nil && roundtripInfo.IsTokenReq {
+		fields["token_request"] = "oauth2"
 	}
 
 	fields["method"] = reqCtx.Method

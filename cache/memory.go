@@ -29,6 +29,15 @@ func New() *MemoryStore {
 	return store
 }
 
+// Del deletes the value by the key from the <MemoryStore>.
+func (ms *MemoryStore) Del(k string) {
+	ms.mu.Lock()
+
+	delete(ms.db, k)
+
+	ms.mu.Unlock()
+}
+
 // Get return the value by the key if the ttl is not expired from the <MemoryStore>.
 func (ms *MemoryStore) Get(k string) string {
 	ms.mu.Lock()
