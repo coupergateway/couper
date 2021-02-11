@@ -152,17 +152,20 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 			tlsConf.ServerName = hostname
 		}
 
-		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
+		d := &net.Dialer{
+			KeepAlive: 60 * time.Second,
+			Timeout:   p.options.ConnectTimeout,
+		}
 
 		var proxyFunc func(req *http.Request) (*url.URL, error)
 		if p.options.Proxy != "" {
 			proxyFunc = func(req *http.Request) (*url.URL, error) {
-				config := &httpproxy.Config{
+				c := &httpproxy.Config{
 					HTTPProxy:  p.options.Proxy,
 					HTTPSProxy: p.options.Proxy,
 				}
 
-				return config.ProxyFunc()(req.URL)
+				return c.ProxyFunc()(req.URL)
 			}
 		} else if !p.options.NoProxyFromEnv {
 			proxyFunc = http.ProxyFromEnvironment
@@ -181,9 +184,6 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				}
 				return conn, nil
 			},
-			Dial: (&net.Dialer{
-				KeepAlive: 60 * time.Second,
-			}).Dial,
 			DisableCompression:    true,
 			DisableKeepAlives:     p.options.DisableConnectionReuse,
 			MaxConnsPerHost:       p.options.MaxConnections,
