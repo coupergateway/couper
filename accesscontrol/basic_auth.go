@@ -146,6 +146,10 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 		return ErrorBasicAuthNotConfigured
 	}
 
+	if ba.pass == "" {
+		return &BasicAuthError{error: ErrorBasicAuthUnauthorized, Realm: ba.realm}
+	}
+
 	user, pass, ok := req.BasicAuth()
 	if !ok {
 		return &BasicAuthError{error: ErrorBasicAuthMissingCredentials, Realm: ba.realm}
