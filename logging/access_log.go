@@ -107,12 +107,15 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
-	fields := Fields{}
+	fields := Fields{
+		"proto": req.Proto,
+	}
 
 	reqCtx := req
 	if isUpstreamRequest && roundtripInfo != nil && roundtripInfo.BeReq != nil {
 		reqCtx = roundtripInfo.BeReq
 		if roundtripInfo.BeResp != nil {
+			fields["proto"] = roundtripInfo.BeResp.Proto
 			reqCtx.TLS = roundtripInfo.BeResp.TLS
 		}
 
@@ -135,7 +138,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	fields["method"] = reqCtx.Method
-	fields["proto"] = reqCtx.Proto
 	fields["server"] = reqCtx.Context().Value(request.ServerName)
 	fields["uid"] = reqCtx.Context().Value(request.UID)
 

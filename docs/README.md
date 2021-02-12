@@ -438,7 +438,7 @@ define backends in the `definitions` block and use the mandatory *label* as refe
 | `max_connections`                                 | Describes the maximum number of concurrent connections in any state (*active* or *idle*) to the `origin`. | `0` (no limit) |
 | `origin`                                          | URL to connect to for backend requests </br> &#9888; must start with the scheme `http://...` ||
 | `path`                                            | changeable part of upstream URL ||
-| `proxy`                                           | Configured proxy for current backend ||
+| `proxy`                                           | A Proxy URL for the related origin request. Example: `http://SERVER-IP_OR_NAME:PORT` | `none` |
 | `request_body_limit`                              | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. | `64MiB` |
 | [**`add_request_headers`**](#request-header)      | header map to define additional header values for the `origin` request ||
 | [**`add_response_headers`**](#response-header)    | same as `add_request_headers` for the client response ||
