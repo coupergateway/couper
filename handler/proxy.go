@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
+	"golang.org/x/net/http/httpproxy"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
@@ -150,11 +152,31 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 			tlsConf.ServerName = hostname
 		}
 
-		d := &net.Dialer{Timeout: p.options.ConnectTimeout}
+		d := &net.Dialer{
+			KeepAlive: 60 * time.Second,
+			Timeout:   p.options.ConnectTimeout,
+		}
 
 		var proxyFunc func(req *http.Request) (*url.URL, error)
-		if !p.options.NoProxyFromEnv {
+		if p.options.Proxy != "" {
+			proxyFunc = func(req *http.Request) (*url.URL, error) {
+				c := &httpproxy.Config{
+					HTTPProxy:  p.options.Proxy,
+					HTTPSProxy: p.options.Proxy,
+				}
+
+				return c.ProxyFunc()(req.URL)
+			}
+		} else if !p.options.NoProxyFromEnv {
 			proxyFunc = http.ProxyFromEnvironment
+		}
+
+		// This is the documented way to disable http2. However if a custom tls.Config or
+		// DialContext is used h2 will also be disabled. To enable h2 the transport must be
+		// explicitly configured, this can be done with the 'ForceAttemptHTTP2' below.
+		var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
+		if !p.options.HTTP2 {
+			nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
 		}
 
 		transport = &http.Transport{
@@ -166,11 +188,15 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 				return conn, nil
 			},
 			DisableCompression:    true,
+			DisableKeepAlives:     p.options.DisableConnectionReuse,
+			ForceAttemptHTTP2:     p.options.HTTP2,
 			MaxConnsPerHost:       p.options.MaxConnections,
 			Proxy:                 proxyFunc,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
 			TLSClientConfig:       tlsConf,
+			TLSNextProto:          nextProto,
 		}
+
 		transports.Store(key, transport)
 	}
 	if t, ok := transport.(*http.Transport); ok {
@@ -493,6 +519,11 @@ func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
 				k := http.CanonicalHeaderKey(key)
 				headerCtx[k] = append(headerCtx[k], values...)
 			}
+		}
+
+		if p.options.BasicAuth != "" {
+			auth := base64.StdEncoding.EncodeToString([]byte(p.options.BasicAuth))
+			headerCtx.Set("Authorization", "Basic "+auth)
 		}
 
 		if req == nil || beresp != nil { // just one way -> origin
