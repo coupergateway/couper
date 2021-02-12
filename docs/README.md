@@ -430,11 +430,15 @@ define backends in the `definitions` block and use the mandatory *label* as refe
 | context                                           | <ul><li>`server` block</li><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul> ||
 | *label*                                           | <ul><li>&#9888; mandatory, when declared in `server` block</li><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul> ||
 | `base_path`                                       | <ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> ||
+| `basic_auth`                                      | basic_auth for the upstream request in format `username:password` ||
 | `disable_certificate_validation`                  | Disables the peer certificate validation. | `false` |
+| `disable_connection_reuse`                        | Disables reusage of connections | `false` |
 | `hostname`                                        | value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. ||
+| `http2`                                           | `boolean`, enables the HTTP2 support | `false` |
 | `max_connections`                                 | Describes the maximum number of concurrent connections in any state (*active* or *idle*) to the `origin`. | `0` (no limit) |
 | `origin`                                          | URL to connect to for backend requests </br> &#9888; must start with the scheme `http://...` ||
 | `path`                                            | changeable part of upstream URL ||
+| `proxy`                                           | A Proxy URL for the related origin request. Example: `http://SERVER-IP_OR_NAME:PORT` | `none` |
 | `request_body_limit`                              | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. | `64MiB` |
 | [**`add_request_headers`**](#request-header)      | header map to define additional header values for the `origin` request ||
 | [**`add_response_headers`**](#response-header)    | same as `add_request_headers` for the client response ||
