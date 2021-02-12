@@ -171,6 +171,9 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 			proxyFunc = http.ProxyFromEnvironment
 		}
 
+		// This is the documented way to disable http2. However if a custom tls.Config or
+		// DialContext is used h2 will also be disabled. To enable h2 the transport must be
+		// explicitly configured, this can be done with the 'ForceAttemptHTTP2' below.
 		var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
 		if !p.options.HTTP2 {
 			nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
@@ -186,6 +189,7 @@ func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
 			},
 			DisableCompression:    true,
 			DisableKeepAlives:     p.options.DisableConnectionReuse,
+			ForceAttemptHTTP2:     p.options.HTTP2,
 			MaxConnsPerHost:       p.options.MaxConnections,
 			Proxy:                 proxyFunc,
 			ResponseHeaderTimeout: p.options.TTFBTimeout,
