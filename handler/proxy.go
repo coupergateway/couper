@@ -61,7 +61,6 @@ type Proxy struct {
 	options      *ProxyOptions
 	optionsHash  string
 	srvOptions   *server.Options
-	transport    *http.Transport
 	upstreamLog  *logging.AccessLog
 }
 
