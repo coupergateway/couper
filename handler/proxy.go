@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -16,13 +15,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpguts"
-	"golang.org/x/net/http/httpproxy"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
@@ -47,8 +44,6 @@ const (
 var (
 	_ http.Handler   = &Proxy{}
 	_ server.Context = &Proxy{}
-
-	transports sync.Map
 
 	// headerBlacklist lists all header keys which will be removed after
 	// context variable evaluation to ensure to not pass them upstream.
@@ -118,9 +113,13 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
+	if options.Transport == nil {
+		options.Transport = &TransportConfig{} // For test cases
+	}
+
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
-	logConf.NoProxyFromEnv = options.NoProxyFromEnv
+	logConf.NoProxyFromEnv = options.Transport.NoProxyFromEnv
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
 	var apiValidation eval.BufferOption
@@ -141,70 +140,6 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 	return proxy, nil
 }
 
-func (p *Proxy) getTransport(scheme, origin, hostname string) *http.Transport {
-	key := scheme + "|" + origin + "|" + hostname + "|" + p.optionsHash
-	transport, ok := transports.Load(key)
-	if !ok {
-		tlsConf := &tls.Config{
-			InsecureSkipVerify: p.options.DisableCertValidation,
-		}
-		if origin != hostname {
-			tlsConf.ServerName = hostname
-		}
-
-		d := &net.Dialer{
-			KeepAlive: 60 * time.Second,
-			Timeout:   p.options.ConnectTimeout,
-		}
-
-		var proxyFunc func(req *http.Request) (*url.URL, error)
-		if p.options.Proxy != "" {
-			proxyFunc = func(req *http.Request) (*url.URL, error) {
-				c := &httpproxy.Config{
-					HTTPProxy:  p.options.Proxy,
-					HTTPSProxy: p.options.Proxy,
-				}
-
-				return c.ProxyFunc()(req.URL)
-			}
-		} else if !p.options.NoProxyFromEnv {
-			proxyFunc = http.ProxyFromEnvironment
-		}
-
-		// This is the documented way to disable http2. However if a custom tls.Config or
-		// DialContext is used h2 will also be disabled. To enable h2 the transport must be
-		// explicitly configured, this can be done with the 'ForceAttemptHTTP2' below.
-		var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
-		if !p.options.HTTP2 {
-			nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
-		}
-
-		transport = &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				conn, err := d.DialContext(ctx, network, addr)
-				if err != nil {
-					return nil, fmt.Errorf("connecting to %s %q failed: %w", p.options.BackendName, addr, err)
-				}
-				return conn, nil
-			},
-			DisableCompression:    true,
-			DisableKeepAlives:     p.options.DisableConnectionReuse,
-			ForceAttemptHTTP2:     p.options.HTTP2,
-			MaxConnsPerHost:       p.options.MaxConnections,
-			Proxy:                 proxyFunc,
-			ResponseHeaderTimeout: p.options.TTFBTimeout,
-			TLSClientConfig:       tlsConf,
-			TLSNextProto:          nextProto,
-		}
-
-		transports.Store(key, transport)
-	}
-	if t, ok := transport.(*http.Transport); ok {
-		return t
-	}
-	return nil
-}
-
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 
@@ -214,14 +149,14 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
+	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.Transport.BackendName))
 	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip), startTime)
 }
 
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	if p.options.Timeout > 0 {
-		deadline := time.Now().Add(p.options.Timeout)
+	if p.options.Transport.Timeout > 0 {
+		deadline := time.Now().Add(p.options.Transport.Timeout)
 		c, cancelFn := context.WithDeadline(req.Context(), deadline)
 		ctx = c
 		defer cancelFn()
@@ -282,7 +217,14 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	res, err := p.getTransport(outreq.URL.Scheme, outreq.URL.Host, outreq.Host).RoundTrip(outreq)
+	conf := p.options.Transport
+	conf.Hash = p.optionsHash
+	conf.Hostname = outreq.Host
+	conf.Origin = outreq.URL.Host
+	conf.Scheme = outreq.URL.Scheme
+
+	res, err := getTransport(conf).RoundTrip(outreq)
+
 	roundtripInfo.BeReq, roundtripInfo.BeResp = outreq, res
 	if err != nil {
 		roundtripInfo.Err = err
