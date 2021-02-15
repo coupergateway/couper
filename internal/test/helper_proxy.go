@@ -20,7 +20,11 @@ func (h *Helper) NewProxy(opts *handler.ProxyOptions) (*handler.Proxy, *http.Cli
 	var upstream http.HandlerFunc
 	server := httptest.NewServer(upstream)
 
-	opts.BackendName = "HelperUpstream"
+	if opts.Transport == nil {
+		opts.Transport = &handler.TransportConfig{}
+	}
+
+	opts.Transport.BackendName = "HelperUpstream"
 	proxy, err := handler.NewProxy(opts, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
 	h.Must(err)
 

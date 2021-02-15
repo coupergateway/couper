@@ -13,21 +13,14 @@ import (
 )
 
 type ProxyOptions struct {
-	BasicAuth                            string
-	ConnectTimeout, Timeout, TTFBTimeout time.Duration
-	Context                              hcl.Body
-	BackendName                          string
-	CORS                                 *CORSOptions
-	NoProxyFromEnv                       bool
-	DisableCertValidation                bool
-	DisableConnectionReuse               bool
-	HTTP2                                bool
-	MaxConnections                       int
-	OpenAPI                              *OpenAPIValidatorOptions
-	ErrorTemplate                        *errors.Template
-	Kind                                 string
-	Proxy                                string
-	RequestBodyLimit                     int64
+	BasicAuth        string
+	Context          hcl.Body
+	CORS             *CORSOptions
+	ErrorTemplate    *errors.Template
+	Kind             string
+	OpenAPI          *OpenAPIValidatorOptions
+	RequestBodyLimit int64
+	Transport        *TransportConfig
 }
 
 func NewProxyOptions(
@@ -61,23 +54,25 @@ func NewProxyOptions(
 	}
 
 	return &ProxyOptions{
-		BasicAuth:              conf.BasicAuth,
-		BackendName:            conf.Name,
-		CORS:                   cors,
-		Context:                conf.Remain,
-		ConnectTimeout:         connTimeout,
-		DisableCertValidation:  conf.DisableCertValidation,
-		DisableConnectionReuse: conf.DisableConnectionReuse,
-		HTTP2:                  conf.HTTP2,
-		MaxConnections:         conf.MaxConnections,
-		NoProxyFromEnv:         noProxyFromEnv,
-		OpenAPI:                openAPIValidatorOptions,
-		ErrorTemplate:          errTpl,
-		Kind:                   kind,
-		Proxy:                  conf.Proxy,
-		RequestBodyLimit:       bodyLimit,
-		TTFBTimeout:            ttfbTimeout,
-		Timeout:                timeout,
+		BasicAuth:        conf.BasicAuth,
+		CORS:             cors,
+		Context:          conf.Remain,
+		OpenAPI:          openAPIValidatorOptions,
+		ErrorTemplate:    errTpl,
+		Kind:             kind,
+		RequestBodyLimit: bodyLimit,
+		Transport: &TransportConfig{
+			BackendName:            conf.Name,
+			ConnectTimeout:         connTimeout,
+			DisableCertValidation:  conf.DisableCertValidation,
+			DisableConnectionReuse: conf.DisableConnectionReuse,
+			HTTP2:                  conf.HTTP2,
+			MaxConnections:         conf.MaxConnections,
+			NoProxyFromEnv:         noProxyFromEnv,
+			Proxy:                  conf.Proxy,
+			TTFBTimeout:            ttfbTimeout,
+			Timeout:                timeout,
+		},
 	}, nil
 }
 

@@ -113,9 +113,13 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 }
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
+	if options.Transport == nil {
+		options.Transport = &TransportConfig{} // For test cases
+	}
+
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_backend"
-	logConf.NoProxyFromEnv = options.NoProxyFromEnv
+	logConf.NoProxyFromEnv = options.Transport.NoProxyFromEnv
 	env.DecodeWithPrefix(&logConf, "BACKEND_")
 
 	var apiValidation eval.BufferOption
@@ -145,14 +149,14 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.BackendName))
+	*req = *req.Clone(context.WithValue(req.Context(), request.BackendName, p.options.Transport.BackendName))
 	p.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(p.roundtrip), startTime)
 }
 
 func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	if p.options.Timeout > 0 {
-		deadline := time.Now().Add(p.options.Timeout)
+	if p.options.Transport.Timeout > 0 {
+		deadline := time.Now().Add(p.options.Transport.Timeout)
 		c, cancelFn := context.WithDeadline(req.Context(), deadline)
 		ctx = c
 		defer cancelFn()
@@ -213,21 +217,11 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	conf := &transportConfig{
-		backendName:            p.options.BackendName,
-		connectTimeout:         p.options.ConnectTimeout,
-		disableCertValidation:  p.options.DisableCertValidation,
-		disableConnectionReuse: p.options.DisableConnectionReuse,
-		hash:                   p.optionsHash,
-		hostname:               outreq.Host,
-		http2:                  p.options.HTTP2,
-		maxConnections:         p.options.MaxConnections,
-		noProxyFromEnv:         p.options.NoProxyFromEnv,
-		origin:                 outreq.URL.Host,
-		proxy:                  p.options.Proxy,
-		scheme:                 outreq.URL.Scheme,
-		ttfbTimeout:            p.options.TTFBTimeout,
-	}
+	conf := p.options.Transport
+	conf.Hash = p.optionsHash
+	conf.Hostname = outreq.Host
+	conf.Origin = outreq.URL.Host
+	conf.Scheme = outreq.URL.Scheme
 
 	res, err := getTransport(conf).RoundTrip(outreq)
 
