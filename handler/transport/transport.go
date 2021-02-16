@@ -1,4 +1,4 @@
-package handler
+package transport
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 var transports sync.Map
 
 // TransportConfig represents the <TransportConfig> object.
-type TransportConfig struct {
+type Config struct {
 	BackendName            string
 	ConnectTimeout         time.Duration
 	DisableCertValidation  bool
@@ -33,7 +33,7 @@ type TransportConfig struct {
 	Timeout                time.Duration
 }
 
-func getTransport(conf *TransportConfig) *http.Transport {
+func Get(conf *Config) *http.Transport {
 	key := conf.Scheme + "|" + conf.Origin + "|" + conf.Hostname + "|" + conf.Hash
 
 	transport, ok := transports.Load(key)

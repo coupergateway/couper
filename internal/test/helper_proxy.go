@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/avenga/couper/handler/transport"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -21,7 +23,7 @@ func (h *Helper) NewProxy(opts *handler.ProxyOptions) (*handler.Proxy, *http.Cli
 	server := httptest.NewServer(upstream)
 
 	if opts.Transport == nil {
-		opts.Transport = &handler.TransportConfig{}
+		opts.Transport = &transport.Config{}
 	}
 
 	opts.Transport.BackendName = "HelperUpstream"

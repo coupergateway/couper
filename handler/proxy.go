@@ -28,6 +28,7 @@ import (
 	"github.com/avenga/couper/config/runtime/server"
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/utils"
@@ -113,7 +114,7 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 
 func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options, evalCtx *hcl.EvalContext) (http.Handler, error) {
 	if options.Transport == nil {
-		options.Transport = &TransportConfig{} // For test cases
+		options.Transport = &transport.Config{} // For test cases
 	}
 
 	logConf := *logging.DefaultConfig
@@ -222,7 +223,7 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 	conf.Origin = outreq.URL.Host
 	conf.Scheme = outreq.URL.Scheme
 
-	res, err := getTransport(conf).RoundTrip(outreq)
+	res, err := transport.Get(conf).RoundTrip(outreq)
 
 	roundtripInfo.BeReq, roundtripInfo.BeResp = outreq, res
 	if err != nil {

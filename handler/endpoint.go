@@ -8,15 +8,17 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+
+	"github.com/avenga/couper/handler/generator"
 )
 
 type Endpoint struct {
 	context  hcl.Body
 	eval     *hcl.EvalContext
 	proxy    *Proxy // TODO: proxy with backend struct
-	redirect *Redirect
-	requests []*Request
-	response *Response
+	redirect *generator.Redirect
+	requests []*generator.Request
+	response *generator.Response
 }
 
 type result struct {
@@ -97,7 +99,7 @@ func (e *Endpoint) ServerHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (e *Endpoint) roundtrip(ctx context.Context, req *Request, results chan<- *result) {
+func (e *Endpoint) roundtrip(ctx context.Context, req *generator.Request, results chan<- *result) {
 	outreq, err := http.NewRequest(req.Method, req.URL, req.Body)
 	if err != nil {
 		results <- &result{err: err}

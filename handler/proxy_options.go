@@ -10,17 +10,18 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler/transport"
 )
 
 type ProxyOptions struct {
 	BasicAuth        string
-	Context          hcl.Body
 	CORS             *CORSOptions
+	Context          hcl.Body
 	ErrorTemplate    *errors.Template
 	Kind             string
 	OpenAPI          *OpenAPIValidatorOptions
 	RequestBodyLimit int64
-	Transport        *TransportConfig
+	Transport        *transport.Config
 }
 
 func NewProxyOptions(
@@ -61,7 +62,7 @@ func NewProxyOptions(
 		ErrorTemplate:    errTpl,
 		Kind:             kind,
 		RequestBodyLimit: bodyLimit,
-		Transport: &TransportConfig{
+		Transport: &transport.Config{
 			BackendName:            conf.Name,
 			ConnectTimeout:         connTimeout,
 			DisableCertValidation:  conf.DisableCertValidation,
