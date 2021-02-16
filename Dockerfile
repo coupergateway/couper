@@ -8,7 +8,7 @@ ENV GOFLAGS="-mod=vendor" \
 
 RUN go generate && \
 	CGO_ENABLED=0 go build -v \
-	-ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD`" \
+	-ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" \
 	-o /couper main.go && \
 	ls -lh /couper
 
