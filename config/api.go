@@ -7,8 +7,7 @@ import (
 
 var _ Inline = &API{}
 
-type APIs []*API
-
+// API represents the <API> object.
 type API struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`
@@ -20,14 +19,20 @@ type API struct {
 	Remain               hcl.Body  `hcl:",remain"`
 }
 
-func (a API) Body() hcl.Body {
+// APIs represents a list of <API> objects.
+type APIs []*API
+
+// HCLBody implements the <Inline> interface.
+func (a API) HCLBody() hcl.Body {
 	return a.Remain
 }
 
+// Reference implements the <Inline> interface.
 func (a API) Reference() string {
 	return a.Backend
 }
 
+// Schema implements the <Inline> interface.
 func (a API) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(a)
@@ -37,6 +42,7 @@ func (a API) Schema(inline bool) *hcl.BodySchema {
 	type Inline struct {
 		Backend *Backend `hcl:"backend,block"`
 	}
+
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
 	// The API contains a backend reference, backend block is not allowed.
@@ -44,5 +50,5 @@ func (a API) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return newBackendSchema(schema, a.Body())
+	return newBackendSchema(schema, a.HCLBody())
 }

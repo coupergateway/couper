@@ -6,42 +6,34 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var _ Inline = &Endpoint{}
+var _ Inline = &Proxy{}
 
-// Endpoint represents the <Endpoint> object.
-type Endpoint struct {
-	AccessControl        []string `hcl:"access_control,optional"`
-	DisableAccessControl []string `hcl:"disable_access_control,optional"`
-	Pattern              string   `hcl:"pattern,label"`
-	Proxy                *Proxy   `hcl:"proxy,block"`
-	Remain               hcl.Body `hcl:",remain"`
-	Request              *Request `hcl:"request,block"`
-	Response             string   `hcl:"response,optional"`
+// Proxy represents the <Proxy> object.
+type Proxy struct {
+	Backend string   `hcl:"backend,optional"`
+	Remain  hcl.Body `hcl:",remain"`
 }
 
-// Endpoints represents a list of <Endpoint> objects.
-type Endpoints []*Endpoint
-
 // HCLBody implements the <Inline> interface.
-func (e Endpoint) HCLBody() hcl.Body {
-	return e.Remain
+func (p Proxy) HCLBody() hcl.Body {
+	return p.Remain
 }
 
 // Reference implements the <Inline> interface.
-func (e Endpoint) Reference() string {
-	return e.Pattern
+func (p Proxy) Reference() string {
+	return "proxy"
 }
 
 // Schema implements the <Inline> interface.
-func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
+func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(e)
+		schema, _ := gohcl.ImpliedBodySchema(p)
 		return schema
 	}
 
 	type Inline struct {
+		Backend            *Backend             `hcl:"backend,block"`
 		Path               string               `hcl:"path,optional"`
-		Response           *Response            `hcl:"response,block"`
 		SetRequestHeaders  map[string]string    `hcl:"set_request_headers,optional"`
 		AddRequestHeaders  map[string]string    `hcl:"add_request_headers,optional"`
 		DelRequestHeaders  []string             `hcl:"remove_request_headers,optional"`
@@ -55,10 +47,12 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	// A response reference is defined, response block is not allowed.
-	if e.Response != "" {
+	// A backend reference is defined, backend block is not allowed.
+	if p.Backend != "" {
 		schema.Blocks = nil
 	}
 
-	return newResponseSchema(schema, e.HCLBody())
+	// TODO: Wenn <URL> definiert, dann kein <Backend> und <Path>
+
+	return newBackendSchema(schema, p.HCLBody())
 }

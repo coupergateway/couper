@@ -159,12 +159,12 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hcl.Body, error) {
 	reference, err := backendList.WithName(inlineBackend.Reference())
 	if err != nil {
-		r := inlineBackend.Body().MissingItemRange()
+		r := inlineBackend.HCLBody().MissingItemRange()
 		err.(hcl.Diagnostics)[0].Subject = &r
 		return nil, err
 	}
 
-	content, _, diags := inlineBackend.Body().PartialContent(inlineBackend.Schema(true))
+	content, _, diags := inlineBackend.HCLBody().PartialContent(inlineBackend.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -220,7 +220,7 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 		}
 
 		p := parents
-		block, label := getBackendBlock(endpoint.Body())
+		block, label := getBackendBlock(endpoint.HCLBody())
 		if block != nil {
 			p = nil
 			for _, b := range parents {
@@ -259,7 +259,7 @@ func appendPathAttribute(bodies []hcl.Body, endpoint *config.Endpoint) ([]hcl.Bo
 		return bodies, nil
 	}
 
-	ctnt, _, diags := endpoint.Body().PartialContent(endpoint.Schema(true))
+	ctnt, _, diags := endpoint.HCLBody().PartialContent(endpoint.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
 	} else if ctnt == nil {
