@@ -15,7 +15,7 @@ import (
 
 var transports sync.Map
 
-// TransportConfig represents the <TransportConfig> object.
+// Config represents the transport <Config> object.
 type Config struct {
 	BackendName            string
 	ConnectTimeout         time.Duration
@@ -33,6 +33,7 @@ type Config struct {
 	Timeout                time.Duration
 }
 
+// Get creates a new <*http.Transport> object by the given <*Config>.
 func Get(conf *Config) *http.Transport {
 	key := conf.Scheme + "|" + conf.Origin + "|" + conf.Hostname + "|" + conf.Hash
 
