@@ -57,7 +57,7 @@ type endpointMap map[*config.Endpoint]*config.API
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerConfiguration, error) {
+func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfiguration, error) {
 	defaultPort := conf.Settings.DefaultPort
 
 	// confCtx is created to evaluate request / response related configuration errors on start.
@@ -87,7 +87,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 	endpointHandler := make(map[*config.Endpoint]http.Handler)
 
-	for _, srvConf := range conf.Server {
+	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf)
 		if err != nil {
 			return nil, err
@@ -240,7 +240,7 @@ func splitWildcardHostPort(host string, configuredPort int) (string, Port, error
 	return ho, Port(po), nil
 }
 
-func configureAccessControls(conf *config.CouperFile, confCtx *hcl.EvalContext) (ac.Map, error) {
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.Map, error) {
 	accessControls := make(ac.Map)
 
 	if conf.Definitions != nil {

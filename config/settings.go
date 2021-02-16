@@ -1,18 +1,21 @@
 package config
 
+// DefaultSettings defines the <DefaultSettings> object.
 var DefaultSettings = Settings{
 	DefaultPort:     8080,
 	HealthPath:      "/healthz",
 	LogFormat:       "common",
+	NoProxyFromEnv:  false,
 	RequestIDFormat: "common",
 	XForwardedHost:  false,
 }
 
+// Settings represents the <Settings> object.
 type Settings struct {
 	DefaultPort     int    `hcl:"default_port,optional"`
 	HealthPath      string `hcl:"health_path,optional"`
-	NoProxyFromEnv  bool   `hcl:"no_proxy_from_env,optional"`
 	LogFormat       string `hcl:"log_format,optional"`
+	NoProxyFromEnv  bool   `hcl:"no_proxy_from_env,optional"`
 	RequestIDFormat string `hcl:"request_id_format,optional"`
 	XForwardedHost  bool   `hcl:"xfh,optional"`
 }

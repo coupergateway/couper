@@ -24,7 +24,7 @@ func NewRun(ctx context.Context) *Run {
 	return &Run{context: ctx}
 }
 
-func (r Run) Execute(args Args, config *config.CouperFile, logEntry *logrus.Entry) error {
+func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
 	// TODO: Extract and execute flagSet & env handling in a more generic way for future commands.
 	set := flag.NewFlagSet("settings", flag.ContinueOnError)
 	set.StringVar(&config.Settings.HealthPath, "health-path", config.Settings.HealthPath, "-health-path /healthz")

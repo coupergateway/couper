@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
+	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -26,20 +27,23 @@ const (
 	settings     = "settings"
 )
 
-func LoadFile(filePath string) (*config.CouperFile, error) {
-	_, err := config.SetWorkingDirectory(filePath)
+func LoadFile(filePath string) (*config.Couper, error) {
+	_, err := startup.SetWorkingDirectory(filePath)
 	if err != nil {
 		return nil, err
 	}
+
 	filename := filepath.Base(filePath)
+
 	src, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
+
 	return LoadBytes(src, filename)
 }
 
-func LoadBytes(src []byte, filename string) (*config.CouperFile, error) {
+func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	hclBody, diags := parser.Load(src, filename)
 	if diags.HasErrors() {
 		return nil, diags
@@ -48,9 +52,9 @@ func LoadBytes(src []byte, filename string) (*config.CouperFile, error) {
 	return LoadConfig(hclBody, src)
 }
 
-func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
+func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	defaults := config.DefaultSettings
-	file := &config.CouperFile{
+	file := &config.Couper{
 		Bytes:       src,
 		Context:     eval.NewENVContext(src),
 		Definitions: &config.Definitions{},
@@ -117,7 +121,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 			srv.Name = serverBlock.Labels[0]
 		}
 
-		file.Server = append(file.Server, srv)
+		file.Servers = append(file.Servers, srv)
 
 		serverBodies, err := mergeBackendBodies(backends, srv)
 		if err != nil {
@@ -150,7 +154,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.CouperFile, error) {
 		}
 	}
 
-	if len(file.Server) == 0 {
+	if len(file.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing server definition")
 	}
 	return file, nil

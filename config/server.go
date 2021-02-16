@@ -23,6 +23,9 @@ type Server struct {
 	Spa                  *Spa      `hcl:"spa,block"`
 }
 
+// Servers represents a list of <Server> objects.
+type Servers []*Server
+
 // HCLBody implements the <Inline> interface.
 func (s Server) HCLBody() hcl.Body {
 	return s.Remain
@@ -46,7 +49,7 @@ func (s Server) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	// The Server contains a backend reference, backend block is not allowed.
+	// A backend reference is defined, backend block is not allowed.
 	if s.Backend != "" {
 		schema.Blocks = nil
 	}

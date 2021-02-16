@@ -42,7 +42,7 @@ func realmain(arguments []string) int {
 
 	var filePath, logFormat string
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
-	set.StringVar(&filePath, "f", config.DefaultFileName, "-f ./couper.hcl")
+	set.StringVar(&filePath, "f", config.DefaultFilename, "-f ./couper.hcl")
 	set.StringVar(&logFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
 	err := set.Parse(args.Filter(set))
 	if err != nil {

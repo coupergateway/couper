@@ -39,7 +39,7 @@ func TestServer_isUnique(t *testing.T) {
 
 func TestServer_validatePortHosts(t *testing.T) {
 	type args struct {
-		conf           *config.CouperFile
+		conf           *config.Couper
 		configuredPort int
 	}
 	tests := []struct {
@@ -50,8 +50,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Same host/port in one server",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"*", "*", "*:9090", "*:9090", "*:8080"}},
 					},
 				}, 8080,
@@ -61,8 +61,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Same host/port in two servers with *",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"*"}},
 						{Hosts: []string{"*"}},
 					},
@@ -73,8 +73,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Same host/port in two servers with *:<port>",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"*:8080"}},
 						{Hosts: []string{"*:8080"}},
 					},
@@ -85,8 +85,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Same host/port in two servers with example.com",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"example.com", "couper.io"}},
 						{Hosts: []string{"example.com", "couper.io"}},
 					},
@@ -97,8 +97,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Same host/port in two servers with example.com:<port>",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"example.com:9090"}},
 						{Hosts: []string{"example.com:9090"}},
 					},
@@ -109,8 +109,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Same port w/ different host in two servers",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"*", "example.com:9090"}},
 						{Hosts: []string{"couper.io:9090"}},
 					},
@@ -121,8 +121,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Host is mandatory for multiple servers",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{Hosts: []string{"*"}},
 						{},
 					},
@@ -133,8 +133,8 @@ func TestServer_validatePortHosts(t *testing.T) {
 		{
 			"Host is optional for single server",
 			args{
-				&config.CouperFile{
-					Server: []*config.Server{
+				&config.Couper{
+					Servers: []*config.Server{
 						{},
 					},
 				}, 8080,

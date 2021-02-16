@@ -73,7 +73,7 @@ func teardown() {
 }
 
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperFile, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
 	helper.Must(err)
 
 	log, hook := logrustest.NewNullLogger()
@@ -90,7 +90,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	//log.Out = os.Stdout
 
 	go func() {
-		if err := command.NewRun(ctx).Execute([]string{file}, couperFile, log.WithContext(ctx)); err != nil {
+		if err := command.NewRun(ctx).Execute([]string{file}, couperConfig, log.WithContext(ctx)); err != nil {
 			shutdownFn()
 			panic(err)
 		}
