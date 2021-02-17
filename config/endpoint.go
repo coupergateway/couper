@@ -10,13 +10,13 @@ var _ Inline = &Endpoint{}
 
 // Endpoint represents the <Endpoint> object.
 type Endpoint struct {
-	AccessControl        []string `hcl:"access_control,optional"`
-	DisableAccessControl []string `hcl:"disable_access_control,optional"`
-	Pattern              string   `hcl:"pattern,label"`
-	Proxy                *Proxy   `hcl:"proxy,block"`
-	Remain               hcl.Body `hcl:",remain"`
-	Request              *Request `hcl:"request,block"`
-	Response             string   `hcl:"response,optional"`
+	AccessControl        []string  `hcl:"access_control,optional"`
+	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
+	Pattern              string    `hcl:"pattern,label"`
+	Proxies              Proxies   `hcl:"proxy,block"`
+	Remain               hcl.Body  `hcl:",remain"`
+	Requests             Requests  `hcl:"request,block"`
+	Response             *Response `hcl:"response,block"`
 }
 
 // Endpoints represents a list of <Endpoint> objects.
@@ -41,7 +41,6 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		Path               string               `hcl:"path,optional"`
-		Response           *Response            `hcl:"response,block"`
 		SetRequestHeaders  map[string]string    `hcl:"set_request_headers,optional"`
 		AddRequestHeaders  map[string]string    `hcl:"add_request_headers,optional"`
 		DelRequestHeaders  []string             `hcl:"remove_request_headers,optional"`
@@ -55,10 +54,5 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	// A response reference is defined, response block is not allowed.
-	if e.Response != "" {
-		schema.Blocks = nil
-	}
-
-	return newResponseSchema(schema, e.HCLBody())
+	return schema
 }

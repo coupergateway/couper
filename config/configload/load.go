@@ -54,40 +54,35 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 
 func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	defaults := config.DefaultSettings
-	file := &config.Couper{
+	couperConfig := &config.Couper{
 		Bytes:       src,
 		Context:     eval.NewENVContext(src),
 		Definitions: &config.Definitions{},
 		Settings:    &defaults,
 	}
 
-	fileSchema, _ := gohcl.ImpliedBodySchema(file)
-	content, diags := body.Content(fileSchema)
+	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
+	content, diags := body.Content(schema)
 	if content == nil {
 		return nil, fmt.Errorf("invalid configuration: %w", diags)
 	}
 
-	// reading possible reference definitions first. Those are the base for refinement merges during server block read out.
+	// Read possible reference definitions first. Those are the
+	// base for refinement merges during server block read out.
 	var backends Backends
+
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
 			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
-
 			if diags.HasErrors() {
 				return nil, diags
 			}
 
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
-					if len(be.Labels) == 0 {
-						return nil, hcl.Diagnostics{&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  "Missing backend name",
-							Subject:  &be.DefRange,
-						}}
-					}
 					name := be.Labels[0]
+
 					ref, _ := backends.WithName(name)
 					if ref != nil {
 						return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -96,15 +91,16 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 							Subject:  &be.LabelRanges[0],
 						}}
 					}
+
 					backends = append(backends, NewBackend(name, be.Body))
 				}
 			}
 
-			if diags = gohcl.DecodeBody(leftOver, file.Context, file.Definitions); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(leftOver, couperConfig.Context, couperConfig.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
 		case settings:
-			if diags = gohcl.DecodeBody(outerBlock.Body, file.Context, file.Settings); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(outerBlock.Body, couperConfig.Context, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
 			}
 		}
@@ -113,15 +109,11 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	// reading per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
 		srv := &config.Server{}
-		if diags = gohcl.DecodeBody(serverBlock.Body, file.Context, srv); diags.HasErrors() {
+		if diags = gohcl.DecodeBody(serverBlock.Body, couperConfig.Context, srv); diags.HasErrors() {
 			return nil, diags
 		}
 
-		if len(serverBlock.Labels) > 0 {
-			srv.Name = serverBlock.Labels[0]
-		}
-
-		file.Servers = append(file.Servers, srv)
+		couperConfig.Servers = append(couperConfig.Servers, srv)
 
 		serverBodies, err := mergeBackendBodies(backends, srv)
 		if err != nil {
@@ -154,10 +146,11 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 		}
 	}
 
-	if len(file.Servers) == 0 {
+	if len(couperConfig.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing server definition")
 	}
-	return file, nil
+
+	return couperConfig, nil
 }
 
 func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hcl.Body, error) {
@@ -224,6 +217,7 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 		}
 
 		p := parents
+
 		block, label := getBackendBlock(endpoint.HCLBody())
 		if block != nil {
 			p = nil
@@ -232,13 +226,16 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 				if len(attrs) == 0 {
 					continue
 				}
+
 				if attr, ok := attrs[backendLabel]; ok {
 					val, _ := attr.Expr.Value(nil)
 					if label != "" && seetie.ValueToString(val) == label {
 						p = append(p, b)
 					}
+
 					continue // skip backends with other names or block is an inline one
 				}
+
 				p = append(p, b)
 			}
 		}
@@ -253,6 +250,7 @@ func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.
 			return err
 		}
 	}
+
 	return nil
 }
 

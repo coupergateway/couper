@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-// Response represents the generator <Response> object.
+// Response represents the producer <Response> object.
 type Response struct {
 	Body      io.Reader
 	Context   hcl.Body

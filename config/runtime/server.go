@@ -164,6 +164,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 					protectedHandler)
 			}
 
+			for _, proxy := range endpoint.Proxies {
+
+			}
+
 			backendConf := *DefaultBackendConf
 			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
 				return nil, diags

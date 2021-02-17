@@ -14,7 +14,7 @@ import (
 type Endpoint struct {
 	context  hcl.Body
 	eval     *hcl.EvalContext
-	proxy    []*producer.Proxy
+	proxies  producer.Proxies
 	redirect *producer.Redirect
 	requests *producer.Requests
 	response *producer.Response

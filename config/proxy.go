@@ -14,6 +14,9 @@ type Proxy struct {
 	Remain  hcl.Body `hcl:",remain"`
 }
 
+// Proxies represents a list of <Proxy> objects.
+type Proxies []*Proxy
+
 // HCLBody implements the <Inline> interface.
 func (p Proxy) HCLBody() hcl.Body {
 	return p.Remain

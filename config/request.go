@@ -18,6 +18,9 @@ type Request struct {
 	URL     string   `hcl:"url,optional"`
 }
 
+// Requests represents a list of <Requests> objects.
+type Requests []*Request
+
 // HCLBody implements the <Inline> interface.
 func (r Request) HCLBody() hcl.Body {
 	return r.Remain
@@ -48,5 +51,7 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return schema
+	// TODO: <URL> vs. <Origin> + <Path> im <Backend>?
+
+	return newBackendSchema(schema, r.HCLBody())
 }

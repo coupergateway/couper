@@ -44,10 +44,9 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Origin             string               `hcl:"origin,optional"`
 		Hostname           string               `hcl:"hostname,optional"`
+		Origin             string               `hcl:"origin,optional"`
 		Path               string               `hcl:"path,optional"`
-		URL                string               `hcl:"url,optional"`
 		SetRequestHeaders  map[string]string    `hcl:"set_request_headers,optional"`
 		AddRequestHeaders  map[string]string    `hcl:"add_request_headers,optional"`
 		DelRequestHeaders  []string             `hcl:"remove_request_headers,optional"`
@@ -60,8 +59,6 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
-
-	// TODO: Entweder <URL> oder <Origin> + <Path>
 
 	return schema
 }
