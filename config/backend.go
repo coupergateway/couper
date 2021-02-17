@@ -6,10 +6,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var (
-	_ Inline = &Backend{}
-)
+var _ Inline = &Backend{}
 
+// Backend represents the <Backend> object.
 type Backend struct {
 	BasicAuth              string     `hcl:"basic_auth,optional"`
 	ConnectTimeout         string     `hcl:"connect_timeout,optional"`
@@ -18,22 +17,26 @@ type Backend struct {
 	HTTP2                  bool       `hcl:"http2,optional"`
 	MaxConnections         int        `hcl:"max_connections,optional"`
 	Name                   string     `hcl:"name,label"`
+	OpenAPI                []*OpenAPI `hcl:"openapi,block"`
+	PathPrefix             string     `hcl:"path_prefix,optional"`
 	Proxy                  string     `hcl:"proxy,optional"`
 	Remain                 hcl.Body   `hcl:",remain"`
 	RequestBodyLimit       string     `hcl:"request_body_limit,optional"`
 	TTFBTimeout            string     `hcl:"ttfb_timeout,optional"`
 	Timeout                string     `hcl:"timeout,optional"`
-	OpenAPI                []*OpenAPI `hcl:"openapi,block"`
 }
 
-func (b Backend) Body() hcl.Body {
+// HCLBody implements the <Inline> interface.
+func (b Backend) HCLBody() hcl.Body {
 	return b.Remain
 }
 
+// Reference implements the <Inline> interface.
 func (b Backend) Reference() string {
 	return b.Name
 }
 
+// Schema implements the <Inline> interface.
 func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	schema, _ := gohcl.ImpliedBodySchema(b)
 	if !inline {
@@ -41,8 +44,8 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Origin             string               `hcl:"origin,optional"`
 		Hostname           string               `hcl:"hostname,optional"`
+		Origin             string               `hcl:"origin,optional"`
 		Path               string               `hcl:"path,optional"`
 		SetRequestHeaders  map[string]string    `hcl:"set_request_headers,optional"`
 		AddRequestHeaders  map[string]string    `hcl:"add_request_headers,optional"`
@@ -56,20 +59,23 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
+
 	return schema
 }
 
 func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
 	for i, block := range schema.Blocks {
-		// inline backend block MAY have no label
+		// Inline backend block MAY have no label.
 		if block.Type == "backend" && len(block.LabelNames) > 0 {
-			// check if a backend block could be parsed with label, otherwise its an inline one without label.
+			// Check if a backend block could be parsed w/ label, otherwise its an inline one w/o label.
 			content, _, _ := body.PartialContent(schema)
 			if content == nil || len(content.Blocks) == 0 {
 				schema.Blocks[i].LabelNames = nil
+
 				break
 			}
 		}
 	}
+
 	return schema
 }

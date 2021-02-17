@@ -1,5 +1,6 @@
 package config
 
+// OpenAPI represents the <OpenAPI> object.
 type OpenAPI struct {
 	File                     string `hcl:"file"`
 	IgnoreRequestViolations  bool   `hcl:"ignore_request_violations,optional"`

@@ -10,6 +10,7 @@ import (
 	"github.com/avenga/couper/handler/transport"
 )
 
+// Request represents the producer <Request> object.
 type Request struct {
 	Backend *transport.Backend
 	Body    io.Reader
@@ -20,6 +21,7 @@ type Request struct {
 	URL    string
 }
 
+// Requests represents the producer <Requests> object.
 type Requests struct {
 	eval *hcl.EvalContext
 	list []*Request
