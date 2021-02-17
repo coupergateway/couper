@@ -15,7 +15,7 @@ type Request struct {
 	Method  string   `hcl:"method,optional"`
 	Name    string   `hcl:"name,label"`
 	Remain  hcl.Body `hcl:",remain"`
-	URL     string   `hcl:"url"`
+	URL     string   `hcl:"url,optional"`
 }
 
 // HCLBody implements the <Inline> interface.
