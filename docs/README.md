@@ -1,4 +1,4 @@
-# Couper Docs - Version 0.5
+# Couper Docs - Version 0.5.1
 
 ## Table of contents
 
