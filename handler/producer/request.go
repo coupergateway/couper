@@ -4,9 +4,11 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 )
 
@@ -22,31 +24,34 @@ type Request struct {
 }
 
 // Requests represents the producer <Requests> object.
-type Requests struct {
-	eval *hcl.EvalContext
-	list []*Request
-}
+type Requests []*Request
 
-func NewRequests(eval *hcl.EvalContext, reqs []*Request, idFormat string) *Requests {
-	return &Requests{
-		eval: eval,
-		list: reqs[:],
-	}
-}
+func (r Requests) Produce(ctx context.Context, _ *http.Request, evalCtx *hcl.EvalContext, results chan<- *Result) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(r))
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
-func (r *Requests) Produce(ctx context.Context, results Results) {
-	for _, req := range r.list {
+	for _, req := range r {
 		outreq, err := http.NewRequest(req.Method, req.URL, req.Body)
 		if err != nil {
 			results <- &Result{Err: err}
+			wg.Done()
 			continue
 		}
+
+		eval.ApplyRequestContext(evalCtx, req.Context, outreq)
 		*outreq = *outreq.WithContext(ctx)
 
 		backend := req.Backend
+		hclContext := req.Context
 		go func() {
 			beresp, e := backend.RoundTrip(outreq)
+			eval.ApplyResponseContext(evalCtx, hclContext, beresp)
 			results <- &Result{Beresp: beresp, Err: e}
+			wg.Done()
 		}()
 	}
 }
