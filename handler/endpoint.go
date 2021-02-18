@@ -37,13 +37,16 @@ func (e *Endpoint) ServerHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(req.Context())
 	defer cancel()
 
-	eval.ApplyRequestContext(e.eval, e.context, req)
+	if ee := eval.ApplyRequestContext(e.eval, e.context, req); ee != nil {
+		e.log.Error(ee)
+	}
 
 	proxyResults := make(producer.Results)
 	requestResults := make(producer.Results)
 
-	e.proxies.Produce(subCtx, req, e.eval, proxyResults)
-	e.requests.Produce(subCtx, req, e.eval, requestResults)
+	// go for it due to chan write on error
+	go e.proxies.Produce(subCtx, req, e.eval, proxyResults)
+	go e.requests.Produce(subCtx, req, e.eval, requestResults)
 
 	beresps := make(map[string]*producer.Result)
 	// TODO: read parallel, proxy first for now
@@ -76,9 +79,11 @@ func (e *Endpoint) ServerHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// always apply before write: redirect, response
-	eval.ApplyResponseContext(e.eval, e.context, clientres)
+	if err = eval.ApplyResponseContext(e.eval, e.context, req, clientres); err != nil {
+		e.log.Error(err)
+	}
 
-	if err := clientres.Write(rw); err != nil {
+	if err = clientres.Write(rw); err != nil {
 		e.log.Errorf("endpoint write error: %v", err)
 	}
 }

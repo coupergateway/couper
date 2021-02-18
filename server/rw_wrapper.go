@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/transport"
 )
 
 var (
@@ -78,11 +78,11 @@ func (w *RWWrapper) Flush() {
 // WriteHeader wraps the WriteHeader method of the <http.ResponseWriter>.
 func (w *RWWrapper) WriteHeader(statusCode int) {
 	w.rw.Header().Set("Server", "couper.io")
-	w.rw.Header().Add(handler.VaryHeader, handler.AcceptEncodingHeader)
+	w.rw.Header().Add(transport.VaryHeader, transport.AcceptEncodingHeader)
 
 	if w.gz != nil {
-		w.rw.Header().Del(handler.ContentLengthHeader)
-		w.rw.Header().Set(handler.ContentEncodingHeader, handler.GzipName)
+		w.rw.Header().Del(transport.ContentLengthHeader)
+		w.rw.Header().Set(transport.ContentEncodingHeader, transport.GzipName)
 	}
 
 	w.rw.WriteHeader(statusCode)

@@ -2,9 +2,7 @@ package handler
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +19,6 @@ import (
 	"golang.org/x/net/http/httpguts"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
@@ -34,14 +30,6 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-const (
-	GzipName              = "gzip"
-	AcceptEncodingHeader  = "Accept-Encoding"
-	ContentEncodingHeader = "Content-Encoding"
-	ContentLengthHeader   = "Content-Length"
-	VaryHeader            = "Vary"
-)
-
 var (
 	_ http.Handler   = &Proxy{}
 	_ server.Context = &Proxy{}
@@ -49,8 +37,6 @@ var (
 	// headerBlacklist lists all header keys which will be removed after
 	// context variable evaluation to ensure to not pass them upstream.
 	headerBlacklist = []string{"Authorization", "Cookie"}
-
-	ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
 	backendInlineSchema = config.Backend{}.Schema(true)
 )
@@ -129,7 +115,6 @@ func NewProxy(options *ProxyOptions, log *logrus.Entry, srvOpts *server.Options,
 
 	proxy := &Proxy{
 		bufferOption: apiValidation | eval.MustBuffer(options.Context),
-		evalContext:  evalCtx,
 		log:          log,
 		options:      options,
 		optionsHash:  options.Hash(),
@@ -238,23 +223,8 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 
 	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
 	if res.StatusCode == http.StatusSwitchingProtocols {
-		p.SetRoundtripContext(req, res)
 		p.handleUpgradeResponse(rw, outreq, res)
 		return
-	}
-
-	if strings.ToLower(res.Header.Get(ContentEncodingHeader)) == GzipName {
-		var src io.Reader
-		var err error
-
-		res.Header.Del(ContentEncodingHeader)
-
-		src, err = gzip.NewReader(res.Body)
-		if err != nil {
-			src = res.Body
-		}
-
-		res.Body = eval.NewReadCloser(src, res.Body)
 	}
 
 	removeConnectionHeaders(res.Header)
@@ -270,8 +240,6 @@ func (p *Proxy) roundtrip(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-
-	p.SetRoundtripContext(req, res)
 
 	copyHeader(rw.Header(), res.Header)
 
@@ -355,12 +323,6 @@ func (p *Proxy) Director(req *http.Request) error {
 		req.Host = hostname
 	}
 
-	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
-		req.Header.Set(AcceptEncodingHeader, GzipName)
-	} else {
-		req.Header.Del(AcceptEncodingHeader)
-	}
-
 	if pathMatch, ok := req.Context().
 		Value(request.Wildcard).(string); ok && strings.HasSuffix(path, "/**") {
 		if strings.HasSuffix(req.URL.Path, "/") && !strings.HasSuffix(pathMatch, "/") {
@@ -371,158 +333,7 @@ func (p *Proxy) Director(req *http.Request) error {
 	} else if path != "" {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
-
-	p.SetRoundtripContext(req, nil)
-
 	return nil
-}
-
-func (p *Proxy) SetRoundtripContext(req *http.Request, beresp *http.Response) {
-	var (
-		attrCtxAdd = attrAddReqHeaders
-		attrCtxDel = attrDelReqHeaders
-		attrCtxSet = attrSetReqHeaders
-		bereq      *http.Request
-		headerCtx  = req.Header
-	)
-
-	if beresp != nil {
-		attrCtxAdd = attrAddResHeaders
-		attrCtxDel = attrDelResHeaders
-		attrCtxSet = attrSetResHeaders
-		bereq = beresp.Request
-		headerCtx = beresp.Header
-
-		defer p.setCorsRespHeaders(headerCtx, req)
-	}
-
-	allAttributes, attrOk := p.options.Context.(body.Attributes)
-	if !attrOk {
-		return
-	}
-
-	evalCtx := eval.NewHTTPContext(p.evalContext, p.bufferOption, req, bereq, beresp)
-
-	// Remove blacklisted headers after evaluation to
-	// be accessible within our context configuration.
-	if attrCtxSet == attrSetReqHeaders {
-		for _, key := range headerBlacklist {
-			headerCtx.Del(key)
-		}
-	}
-
-	var modifyQuery bool
-
-	u := *req.URL
-	u.RawQuery = strings.ReplaceAll(u.RawQuery, "+", "%2B")
-	values := u.Query()
-
-	for _, attrs := range allAttributes.JustAllAttributes() {
-		// apply header values in hierarchical and logical order: delete, set, add
-		attr, ok := attrs[attrCtxDel]
-		if ok {
-			val, diags := attr.Expr.Value(evalCtx)
-			if seetie.SetSeverityLevel(diags).HasErrors() {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-
-			for _, key := range seetie.ValueToStringSlice(val) {
-				k := http.CanonicalHeaderKey(key)
-				if k == "User-Agent" {
-					headerCtx[k] = []string{}
-					continue
-				}
-
-				headerCtx.Del(k)
-			}
-		}
-
-		attr, ok = attrs[attrCtxSet]
-		if ok {
-			options, diags := NewOptionsMap(evalCtx, attr)
-			if diags != nil {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-
-			for key, values := range options {
-				k := http.CanonicalHeaderKey(key)
-				headerCtx[k] = values
-			}
-		}
-
-		attr, ok = attrs[attrCtxAdd]
-		if ok {
-			options, diags := NewOptionsMap(evalCtx, attr)
-			if diags != nil {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-
-			for key, values := range options {
-				k := http.CanonicalHeaderKey(key)
-				headerCtx[k] = append(headerCtx[k], values...)
-			}
-		}
-
-		if p.options.BasicAuth != "" {
-			auth := base64.StdEncoding.EncodeToString([]byte(p.options.BasicAuth))
-			headerCtx.Set("Authorization", "Basic "+auth)
-		}
-
-		if req == nil || beresp != nil { // just one way -> origin
-			continue
-		}
-
-		// apply query params in hierarchical and logical order: delete, set, add
-		attr, ok = attrs[attrDelQueryParams]
-		if ok {
-			val, diags := attr.Expr.Value(evalCtx)
-			if seetie.SetSeverityLevel(diags).HasErrors() {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-
-			for _, key := range seetie.ValueToStringSlice(val) {
-				values.Del(key)
-			}
-
-			modifyQuery = true
-		}
-
-		attr, ok = attrs[attrSetQueryParams]
-		if ok {
-			options, diags := NewOptionsMap(evalCtx, attr)
-			if diags != nil {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-
-			for k, v := range options {
-				values[k] = v
-			}
-
-			modifyQuery = true
-		}
-
-		attr, ok = attrs[attrAddQueryParams]
-		if ok {
-			options, diags := NewOptionsMap(evalCtx, attr)
-			if diags != nil {
-				p.log.WithField("parse config", p.String()).Error(diags)
-			}
-
-			for k, v := range options {
-				if _, ok = values[k]; !ok {
-					values[k] = v
-				} else {
-					values[k] = append(values[k], v...)
-				}
-			}
-
-			modifyQuery = true
-		}
-	}
-
-	if modifyQuery {
-		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
-	}
 }
 
 // SetGetBody determines if we have to buffer a request body for further processing.

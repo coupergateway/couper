@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
@@ -169,8 +170,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	h := s.mux.FindHandler(req)
 	w := NewRWWrapper(rw,
-		handler.ReClientSupportsGZ.MatchString(
-			req.Header.Get(handler.AcceptEncodingHeader),
+		transport.ReClientSupportsGZ.MatchString(
+			req.Header.Get(transport.AcceptEncodingHeader),
 		),
 	)
 	rw = w

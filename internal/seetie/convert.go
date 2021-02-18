@@ -20,9 +20,13 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 	if SetSeverityLevel(diags).HasErrors() {
 		return nil, filterErrors(diags)
 	}
+	return ValueToMap(val), nil
+}
+
+func ValueToMap(val cty.Value) map[string]interface{} {
 	result := make(map[string]interface{})
 	if val.IsNull() || !val.IsKnown() {
-		return result, nil
+		return result
 	}
 
 	for k, v := range val.AsValueMap() {
@@ -49,7 +53,7 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 			result[k] = ""
 		}
 	}
-	return result, nil
+	return result
 }
 
 func ValuesMapToValue(m url.Values) cty.Value {

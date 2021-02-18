@@ -42,16 +42,13 @@ func (r Requests) Produce(ctx context.Context, _ *http.Request, evalCtx *hcl.Eva
 			continue
 		}
 
-		eval.ApplyRequestContext(evalCtx, req.Context, outreq)
-		*outreq = *outreq.WithContext(ctx)
-
-		backend := req.Backend
-		hclContext := req.Context
-		go func() {
-			beresp, e := backend.RoundTrip(outreq)
-			eval.ApplyResponseContext(evalCtx, hclContext, beresp)
-			results <- &Result{Beresp: beresp, Err: e}
+		err = eval.ApplyRequestContext(evalCtx, req.Context, outreq)
+		if err != nil {
+			results <- &Result{Err: err}
 			wg.Done()
-		}()
+			continue
+		}
+		*outreq = *outreq.WithContext(ctx)
+		go roundtrip(req.Backend, outreq, evalCtx, req.Context, results, wg)
 	}
 }
