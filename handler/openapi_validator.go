@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -34,12 +33,12 @@ func NewOpenAPIValidatorOptions(openapi []*config.OpenAPI) (*OpenAPIValidatorOpt
 
 	openapiBlock := openapi[len(openapi)-1]
 
-	dir, err := os.Getwd()
+	p, err := filepath.Abs(openapiBlock.File)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(dir, openapiBlock.File))
+	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err
 	}
