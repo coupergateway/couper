@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"path/filepath"
 
@@ -13,6 +14,20 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
+
+var (
+	ErrorNoProfileForLabel        = errors.New("no signing profile for label")
+	ErrorMissingKey               = errors.New("either key_file or key must be specified")
+	ErrorUnsupportedSigningMethod = errors.New("unsupported signing method")
+)
+
+type JwtSigningError struct {
+	error
+}
+
+func (e *JwtSigningError) Error() string {
+	return e.error.Error()
+}
 
 func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx *hcl.EvalContext) function.Function {
 	signingProfiles := make(map[string]*config.JWTSigningProfile)
@@ -35,7 +50,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			label := args[0].AsString()
 			signingProfile := signingProfiles[label]
 			if signingProfile == nil {
-				return cty.StringVal(""), err
+				return cty.StringVal(""), &JwtSigningError{error: ErrorNoProfileForLabel}
 			}
 
 			// get key or secret
@@ -54,7 +69,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				key = []byte(signingProfile.Key)
 			}
 			if len(key) == 0 {
-				return cty.StringVal(""), err
+				return cty.StringVal(""), &JwtSigningError{error: ErrorMissingKey}
 			}
 
 			mapClaims := jwt.MapClaims{}
@@ -91,14 +106,13 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			// create token
 			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm);
 			if signingMethod == nil {
-				return cty.StringVal(""), err
+				return cty.StringVal(""), &JwtSigningError{error: ErrorUnsupportedSigningMethod}
 			}
 
 			token := jwt.NewWithClaims(signingMethod, mapClaims)
 
 			// sign token
 			tokenString, err := token.SignedString(key)
-
 			if err != nil {
 				return cty.StringVal(""), err
 			}
