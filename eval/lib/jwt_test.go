@@ -15,11 +15,11 @@ import (
 
 func TestJwtSignStatic(t *testing.T) {
 	tests := []struct {
-		name      string
-		hcl       string
-		jspLabel  string
-		claims    string
-		want      string
+		name     string
+		hcl      string
+		jspLabel string
+		claims   string
+		want     string
 	}{
 		{
 			"HS256 / key",
@@ -346,11 +346,11 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 
 func TestJwtSignDynamic(t *testing.T) {
 	tests := []struct {
-		name      string
-		hcl       string
-		jspLabel  string
-		claims    string
-		wantTTL   int64
+		name     string
+		hcl      string
+		jspLabel string
+		claims   string
+		wantTTL  int64
 	}{
 		{
 			"ttl 1h",
@@ -423,9 +423,9 @@ func TestJwtSignDynamic(t *testing.T) {
 				t.Errorf("Expected exp claim, got: %#v", body)
 			}
 			exp := resultClaims["exp"].(float64)
-			if int64(exp) - now != tt.wantTTL {
+			if int64(exp)-now != tt.wantTTL {
 				t.Errorf(string(body))
-				t.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp) - now)
+				t.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
 			}
 		})
 	}
@@ -433,11 +433,11 @@ func TestJwtSignDynamic(t *testing.T) {
 
 func TestJwtSignError(t *testing.T) {
 	tests := []struct {
-		name      string
-		hcl       string
-		jspLabel  string
-		claims    string
-		wantErr   string
+		name     string
+		hcl      string
+		jspLabel string
+		claims   string
+		wantErr  string
 	}{
 		{
 			"No profile for label",

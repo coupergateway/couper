@@ -113,7 +113,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			}
 
 			// create token
-			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm);
+			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm)
 			if signingMethod == nil {
 				return cty.StringVal(""), &JwtSigningError{error: ErrorUnsupportedSigningMethod}
 			}
@@ -121,7 +121,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			token := jwt.NewWithClaims(signingMethod, mapClaims)
 
 			var key interface{}
-			if (strings.HasPrefix(signingProfile.SignatureAlgorithm, "RS")) {
+			if strings.HasPrefix(signingProfile.SignatureAlgorithm, "RS") {
 				key, err = jwt.ParseRSAPrivateKeyFromPEM(keyData)
 				if err != nil {
 					return cty.StringVal(""), err
