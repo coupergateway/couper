@@ -289,7 +289,7 @@ context.
 | `coalesce`         | Returns the first of the given arguments that is not null. |
 | `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
 | `json_encode`      | Returns a JSON serialization of the given value. |
-| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [`jwt_signing_profile` block](#the-jwt_signing_profile-block) and additional claims provided as a function parameter. |
+| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [`jwt_signing_profile` block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
@@ -732,7 +732,7 @@ mandatory *label*.
 | `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
 | **`claims`**              | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
 
-#### The `jwt_signing_profile` block
+#### JWT Signing Profile Block
 
 The `jwt_signing_profile` block lets you configure a JSON Web Token signing
 profile for your gateway. It is referenced in the [`jwt_sign()` function](#functions)

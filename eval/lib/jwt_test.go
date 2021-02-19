@@ -3,9 +3,15 @@ package lib_test
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/avenga/couper/internal/test"
+
+	"github.com/avenga/couper/eval/lib"
 
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -333,7 +339,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			if err != nil {
 				t.Fatal(err)
 			}
-			token, err := cf.Context.Functions["jwt_sign"].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
+			token, err := cf.Context.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -351,6 +357,7 @@ func TestJwtSignDynamic(t *testing.T) {
 		jspLabel string
 		claims   string
 		wantTTL  int64
+		wantMeth string
 	}{
 		{
 			"ttl 1h",
@@ -363,6 +370,7 @@ func TestJwtSignDynamic(t *testing.T) {
 					key = "$3cRe4"
 					ttl = "1h"
 					claims = {
+						x-method = req.method
 						exp = 1234567890
 					}
 				}
@@ -371,6 +379,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			"MyToken",
 			`{"sub": "12345"}`,
 			3600,
+			http.MethodPost,
 		},
 		{
 			"ttl 60.6s",
@@ -382,50 +391,60 @@ func TestJwtSignDynamic(t *testing.T) {
 					signature_algorithm = "HS256"
 					key = "$3cRe4"
 					ttl = "60.6s"
+					claims = {
+						x-method = req.method
+					}
 				}
 			}
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
 			60,
+			http.MethodPost,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			helper := test.New(t)
+
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(err)
+
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
-			if err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(err)
+
+			req := httptest.NewRequest(tt.wantMeth, "http://1.2.3.4/", nil)
+			evalCtx := cf.Context.WithClientRequest(req)
+
 			now := time.Now().Unix()
-			token, err := cf.Context.Functions["jwt_sign"].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
-			if err != nil {
-				t.Fatal(err)
-			}
+			token, err := evalCtx.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
+			helper.Must(err)
+
 			tokenParts := strings.Split(token.AsString(), ".")
 			if len(tokenParts) != 3 {
 				t.Errorf("Needs 3 parts, got: %d", len(tokenParts))
 			}
 			body, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
-			if err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(err)
+
 			var resultClaims map[string]interface{}
 			err = json.Unmarshal(body, &resultClaims)
-			if err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(err)
+
 			if resultClaims["exp"] == nil {
 				t.Errorf("Expected exp claim, got: %#v", body)
 			}
 			exp := resultClaims["exp"].(float64)
-			if int64(exp)-now != tt.wantTTL {
+			if !fuzzyEqual(int64(exp)-now, tt.wantTTL, 1) {
 				t.Errorf(string(body))
 				t.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
+			}
+			if resultClaims["x-method"] == nil {
+				t.Errorf("Expected x-method claim, got: %#v", body)
+			}
+			if resultClaims["x-method"] != tt.wantMeth {
+				t.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
 			}
 		})
 	}
@@ -564,7 +583,7 @@ func TestJwtSignError(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = cf.Context.Functions["jwt_sign"].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
+			_, err = cf.Context.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err == nil {
 				t.Fatal(err)
 			}

@@ -19,6 +19,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
+	"github.com/avenga/couper/config/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
@@ -41,6 +42,7 @@ type Context struct {
 	bufferOption BufferOption
 	eval         *hcl.EvalContext
 	inner        context.Context
+	profiles     []*jwt.JWTSigningProfile
 }
 
 func NewContext(src []byte) *Context {
@@ -79,6 +81,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx := &Context{
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
+		profiles:     c.profiles[:],
 	}
 	ctx.inner = context.WithValue(req.Context(), ContextType, ctx)
 
@@ -108,6 +111,11 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
+	if len(ctx.profiles) > 0 { // recreate function with updated context
+		jwtfn := lib.NewJwtSignFunction(c.profiles, ctx.eval)
+		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
+	}
+
 	return ctx
 }
 
@@ -115,12 +123,18 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx := &Context{
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
+		profiles:     c.profiles[:],
 	}
 	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
 
 	resps := make(ContextMap, 0)
 	bereqs := make(ContextMap, 0)
 	for _, beresp := range beresps {
+		if beresp == nil {
+			panic("titanic")
+			continue
+		}
+
 		bereq := beresp.Request
 		name := BackendDefault // TODO: name related error handling? override previous one for now
 		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
@@ -156,7 +170,17 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	return ctx
 }
 
-func (c Context) HCLContext() *hcl.EvalContext {
+// WithJWTProfiles initially setup the lib.FnJWTSign function.
+func (c *Context) WithJWTProfiles(profiles []*jwt.JWTSigningProfile) *Context {
+	c.profiles = profiles
+	if c.profiles == nil {
+		c.profiles = make([]*jwt.JWTSigningProfile, 0)
+	}
+	c.eval.Functions[lib.FnJWTSign] = lib.NewJwtSignFunction(c.profiles, c.eval)
+	return c
+}
+
+func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
 }
 
