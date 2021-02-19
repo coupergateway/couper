@@ -1,4 +1,4 @@
-package lib
+package lib_test
 
 import (
 	"encoding/base64"
