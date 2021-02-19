@@ -430,3 +430,147 @@ func TestJwtSignDynamic(t *testing.T) {
 		})
 	}
 }
+
+func TestJwtSignError(t *testing.T) {
+	tests := []struct {
+		name      string
+		hcl       string
+		jspLabel  string
+		claims    string
+		wantErr   string
+	}{
+		{
+			"No profile for label",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"NoProfileForThisLabel",
+			`{"sub":"12345"}`,
+			"no signing profile for label",
+		},
+		{
+			"Missing file for key_file",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key_file = "not_there.txt"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"no such file or directory",
+		},
+		{
+			"Missing key and key_file",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"either key_file or key must be specified",
+		},
+		{
+			"Invalid ttl value",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "invalid"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"time: invalid duration ",
+		},
+		{
+			"argument claims no object",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "0"
+				}
+			}
+			`,
+			"MyToken",
+			`"no object"`,
+			"json: cannot unmarshal string into Go value of type map[string]interface {}",
+		},
+		{
+			"unsupported signature algorithm",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "invalid"
+					key = "$3cRe4"
+					ttl = "0"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"unsupported signing method",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = cf.Context.Functions["jwt_sign"].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
+			if err == nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("Expected %q, got: %#v", tt.wantErr, err.Error())
+			}
+		})
+	}
+}
