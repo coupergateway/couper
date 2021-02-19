@@ -1,7 +1,11 @@
 package lib
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -9,7 +13,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 )
 
-func TestJwtSign(t *testing.T) {
+func TestJwtSignStatic(t *testing.T) {
 	tests := []struct {
 		name      string
 		hcl       string
@@ -26,6 +30,7 @@ func TestJwtSign(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS256"
 					key = "$3cRe4"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -46,6 +51,7 @@ func TestJwtSign(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS256"
 					key_file = "testdata/secret.txt"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -66,6 +72,7 @@ func TestJwtSign(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS384"
 					key = "$3cRe4"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -86,6 +93,7 @@ func TestJwtSign(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS384"
 					key_file = "testdata/secret.txt"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -106,6 +114,7 @@ func TestJwtSign(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS512"
 					key = "$3cRe4"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -126,6 +135,7 @@ func TestJwtSign(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS512"
 					key_file = "testdata/secret.txt"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -162,6 +172,7 @@ GqKpFC8DORjzU3hl4wJACEzmqzAco2M4mVc+PxPX0b3LHaREyXURd+faFXUecxSF
 BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 -----END RSA PRIVATE KEY-----
 					EOF
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -182,6 +193,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "RS256"
 					key_file = "testdata/rsa_priv.pem"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -218,6 +230,7 @@ GqKpFC8DORjzU3hl4wJACEzmqzAco2M4mVc+PxPX0b3LHaREyXURd+faFXUecxSF
 BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 -----END RSA PRIVATE KEY-----
 					EOF
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -238,6 +251,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "RS384"
 					key_file = "testdata/rsa_priv.pem"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -274,6 +288,7 @@ GqKpFC8DORjzU3hl4wJACEzmqzAco2M4mVc+PxPX0b3LHaREyXURd+faFXUecxSF
 BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 -----END RSA PRIVATE KEY-----
 					EOF
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -294,6 +309,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "RS512"
 					key_file = "testdata/rsa_priv.pem"
+					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
 					  aud = to_upper("The_Audience")
@@ -323,6 +339,93 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			}
 			if token.AsString() != tt.want {
 				t.Errorf("Expected %q, got: %#v", tt.want, token.AsString())
+			}
+		})
+	}
+}
+
+func TestJwtSignDynamic(t *testing.T) {
+	tests := []struct {
+		name      string
+		hcl       string
+		jspLabel  string
+		claims    string
+		wantTTL   int64
+	}{
+		{
+			"ttl 1h",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					claims = {
+						exp = 1234567890
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			3600,
+		},
+		{
+			"ttl 60.6s",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "60.6s"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			60,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
+			if err != nil {
+				t.Fatal(err)
+			}
+			now := time.Now().Unix()
+			token, err := cf.Context.Functions["jwt_sign"].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
+			if err != nil {
+				t.Fatal(err)
+			}
+			tokenParts := strings.Split(token.AsString(), ".")
+			if len(tokenParts) != 3 {
+				t.Errorf("Needs 3 parts, got: %d", len(tokenParts))
+			}
+			body, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var resultClaims map[string]interface{}
+			err = json.Unmarshal(body, &resultClaims)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resultClaims["exp"] == nil {
+				t.Errorf("Expected exp claim, got: %#v", body)
+			}
+			exp := resultClaims["exp"].(float64)
+			if int64(exp) - now != tt.wantTTL {
+				t.Errorf(string(body))
+				t.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp) - now)
 			}
 		})
 	}

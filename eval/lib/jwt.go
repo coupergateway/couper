@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/seetie"
@@ -74,7 +75,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			}
 
 			mapClaims := jwt.MapClaims{}
-			var claims map[string]interface{}
+			var defaultClaims, argumentClaims map[string]interface{}
 
 			// get claims from signing profile
 			if signingProfile.Claims != nil {
@@ -82,11 +83,18 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				if diags.HasErrors() {
 					return cty.StringVal(""), diags
 				}
-				claims = c
+				defaultClaims = c
 			}
 
-			for k, v := range claims {
+			for k, v := range defaultClaims {
 				mapClaims[k] = v
+			}
+			if signingProfile.TTL != "0" {
+				ttl, err := time.ParseDuration(signingProfile.TTL)
+				if err != nil {
+					return cty.StringVal(""), err
+				}
+				mapClaims["exp"] = time.Now().Unix() + int64(ttl.Seconds())
 			}
 
 			// get claims from function argument
@@ -95,12 +103,12 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				return cty.StringVal(""), err
 			}
 
-			err = json.Unmarshal([]byte(jsonClaims.AsString()), &claims)
+			err = json.Unmarshal([]byte(jsonClaims.AsString()), &argumentClaims)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
 
-			for k, v := range claims {
+			for k, v := range argumentClaims {
 				mapClaims[k] = v
 			}
 
