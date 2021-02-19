@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/seetie"
@@ -37,7 +38,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
-				Name: "jwt_signing_profile",
+				Name: "jwt_signing_profile_label",
 				Type: cty.String,
 			},
 			{
@@ -54,7 +55,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			}
 
 			// get key or secret
-			var key []byte
+			var keyData []byte
 			if signingProfile.KeyFile != "" {
 				p, err := filepath.Abs(signingProfile.KeyFile)
 				if err != nil {
@@ -64,11 +65,11 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				if err != nil {
 					return cty.StringVal(""), err
 				}
-				key = content
+				keyData = content
 			} else if signingProfile.Key != "" {
-				key = []byte(signingProfile.Key)
+				keyData = []byte(signingProfile.Key)
 			}
-			if len(key) == 0 {
+			if len(keyData) == 0 {
 				return cty.StringVal(""), &JwtSigningError{error: ErrorMissingKey}
 			}
 
@@ -110,6 +111,16 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			}
 
 			token := jwt.NewWithClaims(signingMethod, mapClaims)
+
+			var key interface{}
+			if (strings.HasPrefix(signingProfile.SignatureAlgorithm, "RS")) {
+				key, err = jwt.ParseRSAPrivateKeyFromPEM(keyData)
+				if err != nil {
+					return cty.StringVal(""), err
+				}
+			} else {
+				key = keyData
+			}
 
 			// sign token
 			tokenString, err := token.SignedString(key)
