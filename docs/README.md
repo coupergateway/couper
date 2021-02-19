@@ -38,6 +38,7 @@
   * [Definitions Block](#definitions-block)
     * [Basic Auth Block](#basic-auth-block)
     * [JWT Block](#jwt-block)
+    * [JWT Signing Profile Block](#jwt-signing-profile-block)
   * [Settings Block](#settings-block)
   * [Health-Check](#health-check)
 * [Examples](#examples)
@@ -288,6 +289,7 @@ context.
 | `coalesce`         | Returns the first of the given arguments that is not null. |
 | `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
 | `json_encode`      | Returns a JSON serialization of the given value. |
+| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [`jwt_signing_profile` block](#the-jwt_signing_profile-block) and additional claims provided as a function parameter. |
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
@@ -303,6 +305,19 @@ my_json = json_encode({
   value-a: beresp.json_body.origin
   value-b: ["item1", "item2"]
 })
+
+jwt_sign("MyJwt", {"sub": "abc12345"})
+
+definitions {
+  jwt_signing_profile "MyJwt" {
+    signature_algorithm = "RS256"
+    key_file = "priv_key.pem"
+    ttl = "1h"
+    claims = {
+      iss = "The_Issuer"
+    }
+  }
+}
 ```
 
 ## Reference
@@ -710,12 +725,29 @@ mandatory *label*.
 | *label*                   | &#9888; Mandatory. |
 | **Attributes**            | **Description** |
 | `cookie = "AccessToken"`  | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul> |
-| `header = "Authorization` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` is used, otherwise any other header name can be used.</li></ul> |
-| `header = "API-Token`     | <ul><li>Optional.</li><li>Alternative header source for our token.</li></ul> |
-| `key`                     | <ul><li>Optional.</li><li>Public key for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
-| `key_file`                | <ul><li>Optional.</li><li>optional file reference instead of `key` usage.</li></ul> |
+| `header = "Authorization"` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` is used, otherwise any other header name can be used.</li></ul> |
+| `header = "API-Token"`     | <ul><li>Optional.</li><li>Alternative header source for our token.</li></ul> |
+| `key`                     | <ul><li>Optional.</li><li>Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
+| `key_file`                | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul> |
 | `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
 | **`claims`**              | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
+
+#### The `jwt_signing_profile` block
+
+The `jwt_signing_profile` block lets you configure a JSON Web Token signing
+profile for your gateway. It is referenced in the [`jwt_sign()` function](#functions)
+by its mandatory *label*.
+
+| Name                      | Description |
+|:--------------------------|:------------|
+| *context*                 | [Definitions Block](#definitions-block). |
+| *label*                   | &#9888; Mandatory. |
+| **Attributes**            | **Description** |
+| `key`                     | <ul><li>Optional.</li><li>Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
+| `key_file`                | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul> |
+| `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
+| `ttl`                     | <ul><li>Optional.</li><li>The token's time-to-live (creates the `exp` claim).</li></ul> |
+| **`claims`**              | <ul><li>Optional.</li><li>Default claims for the JWT payload.</li></ul> |
 
 ### Settings Block
 
