@@ -49,6 +49,6 @@ func (r Requests) Produce(ctx context.Context, _ *http.Request, evalCtx *hcl.Eva
 			continue
 		}
 		*outreq = *outreq.WithContext(ctx)
-		go roundtrip(req.Backend, outreq, evalCtx, req.Context, results, wg)
+		go roundtrip(req.Backend, outreq, results, wg)
 	}
 }

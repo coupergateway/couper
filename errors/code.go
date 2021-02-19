@@ -1,5 +1,7 @@
 package errors
 
+import "fmt"
+
 const (
 	Server Code = 1000 + iota
 	ServerShutdown
@@ -75,6 +77,12 @@ var codes = map[Code]string{
 }
 
 type Code int
+
+// TODO: Own error type
+// New creates a standard error.
+func New(msg string) error {
+	return fmt.Errorf(msg)
+}
 
 func (c Code) Error() string {
 	if msg, ok := codes[c]; ok {

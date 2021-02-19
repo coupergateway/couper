@@ -12,39 +12,52 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
 
-// Proxy represents the producer <Proxy> object.
+// Proxy wraps a httputil.ReverseProxy to apply additional configuration context
+// and have control over the roundtrip configuration.
 type Proxy struct {
-	Backend          *transport.Backend
+	backend          *transport.Backend
 	bufferOption     eval.BufferOption
-	requestBodyLimit int64
-	Context          hcl.Body
+	context          hcl.Body
 	evalCtx          *hcl.EvalContext
-	Proxy            *httputil.ReverseProxy
+	requestBodyLimit int64
+	reverseProxy     *httputil.ReverseProxy
 }
 
 func NewProxy(backend *transport.Backend, ctx hcl.Body, evalCtx *hcl.EvalContext) *Proxy {
 	proxy := &Proxy{
-		Backend: backend,
-		Context: ctx,
+		backend: backend,
+		context: ctx,
 		evalCtx: evalCtx,
 	}
-	p := &httputil.ReverseProxy{
-		Director:       proxy.director,
-		ModifyResponse: proxy.modifyResponse,
-		Transport:      proxy,
+	rp := &httputil.ReverseProxy{
+		Director:  proxy.director,
+		Transport: proxy,
 	}
-	proxy.Proxy = p
+	proxy.reverseProxy = rp
 	return proxy
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
-	return p.Backend.RoundTrip(req)
+	if req.URL.Host == "" || req.URL.Scheme == "" {
+		return nil, errors.New("proxy: origin not set")
+	}
+
+	if err := eval.ApplyRequestContext(p.evalCtx, p.context, req); err != nil {
+		return nil, err
+	}
+	beresp, err := p.backend.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	err = eval.ApplyResponseContext(p.evalCtx, p.context, req, beresp)
+	return beresp, err
 }
 
 var backendInlineSchema = config.Backend{}.Schema(true)
@@ -53,27 +66,19 @@ func (p *Proxy) director(req *http.Request) {
 	_ = p.setGetBody(req)
 
 	var origin, hostname, path string
-	evalContext := eval.NewHTTPContext(p.evalCtx, p.bufferOption, req, nil, nil)
-
-	content, _, _ := p.Context.PartialContent(backendInlineSchema)
-	if o := getAttribute(evalContext, "origin", content); o != "" {
+	httpContext := eval.NewHTTPContext(p.evalCtx, p.bufferOption, req, nil, nil)
+	content, _, _ := p.context.PartialContent(backendInlineSchema)
+	if o := getAttribute(httpContext, "origin", content); o != "" {
 		origin = o
 	}
-	if h := getAttribute(evalContext, "hostname", content); h != "" {
+	if h := getAttribute(httpContext, "hostname", content); h != "" {
 		hostname = h
 	}
-	if pathVal := getAttribute(evalContext, "path", content); pathVal != "" {
+	if pathVal := getAttribute(httpContext, "path", content); pathVal != "" {
 		path = pathVal
 	}
 
-	//if origin == "" {
-	//	return errors.New("proxy: origin not set")
-	//}
-
 	originURL, _ := url.Parse(origin)
-	//if err != nil {
-	//	return fmt.Errorf("proxy: parse origin: %w", err)
-	//}
 
 	req.URL.Host = originURL.Host
 	req.URL.Scheme = originURL.Scheme
@@ -93,10 +98,6 @@ func (p *Proxy) director(req *http.Request) {
 	} else if path != "" {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
-}
-
-func (p *Proxy) modifyResponse(res *http.Response) error {
-	return nil
 }
 
 // SetGetBody determines if we have to buffer a request body for further processing.
@@ -120,7 +121,7 @@ func (p *Proxy) setGetBody(req *http.Request) error {
 		}
 
 		if n > p.requestBodyLimit {
-			//return p.getErrorCode(couperErr.APIReqBodySizeExceeded)
+			return errors.APIReqBodySizeExceeded
 		}
 
 		bodyBytes := buf.Bytes()
