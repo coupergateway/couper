@@ -28,7 +28,7 @@ func (r Request) HCLBody() hcl.Body {
 
 // Reference implements the <Inline> interface.
 func (r Request) Reference() string {
-	return r.Name
+	return r.Backend
 }
 
 // Schema implements the <Inline> interface.

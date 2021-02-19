@@ -32,9 +32,7 @@ func (r Response) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		SetHeaders map[string]string `hcl:"set_headers,optional"`
-		AddHeaders map[string]string `hcl:"add_headers,optional"`
-		DelHeaders []string          `hcl:"remove_headers,optional"`
+		Headers map[string]string `hcl:"headers,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

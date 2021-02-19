@@ -9,9 +9,8 @@ import (
 
 // Response represents the producer <Response> object.
 type Response struct {
-	Body      io.Reader
-	Context   hcl.Body
-	Header    http.Header
-	Reference string
-	Status    int
+	Body    io.Reader
+	Context hcl.Body
+	Header  http.Header
+	Status  int
 }

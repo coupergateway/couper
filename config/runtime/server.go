@@ -22,6 +22,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -85,7 +86,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 		}
 	}
 
-	endpointHandler := make(map[*config.Endpoint]http.Handler)
+	endpointHandlers := make(map[*config.Endpoint]http.Handler)
 
 	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf)
@@ -159,13 +160,31 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 					accessControl = accessControl.Merge(config.NewAccessControl(parentAPI.AccessControl, parentAPI.DisableAccessControl))
 				}
 
-				endpointHandler[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
+				endpointHandlers[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
 					protectedHandler)
 			}
 
-			for _, proxy := range endpoint.Proxies {
+			// type Endpoint struct {
+			// 	context  hcl.Body
+			// 	eval     *hcl.EvalContext
+			// 	proxies  producer.Proxies
+			// 	redirect *producer.Redirect
+			// 	requests *producer.Requests
+			// 	response *producer.Response
+			// }
 
+			var proxies producer.Proxies
+
+			for _, proxy := range endpoint.Proxies {
+				p := &producer.Proxy{}
+				if diags := gohcl.DecodeBody(proxy.Remain, confCtx, p); diags.HasErrors() {
+					return nil, diags
+				}
+
+				proxies = append(proxies, &producer.Proxy{Context: proxy.HCLBody()})
+
+				fmt.Printf("%#v\n", p.Backend)
 			}
 
 			backendConf := *DefaultBackendConf
@@ -185,7 +204,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 			setACHandlerFn(backend)
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandler[endpoint], KindAPI)
+			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpoint], KindAPI)
 			if err != nil {
 				return nil, err
 			}
