@@ -22,6 +22,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -164,9 +165,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 					protectedHandler)
 			}
 
-			for _, proxy := range endpoint.Proxies {
-
-			}
+			//for _, proxy := range endpoint.Proxies {
+			//
+			//}
 
 			backendConf := *DefaultBackendConf
 			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
@@ -198,7 +199,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 func newProxy(
 	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, log *logrus.Entry,
 	srvOpts *server.Options, noProxyFromEnv bool, errTpl *errors.Template, epType HandlerKind) (http.Handler, error) {
-	corsOptions, err := handler.NewCORSOptions(corsOpts)
+	corsOptions, err := middleware.NewCORSOptions(corsOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +212,7 @@ func newProxy(
 		kind = "endpoint"
 	}
 
+	// TODO: create backend for proxy
 	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, noProxyFromEnv, errTpl, kind)
 	if err != nil {
 		return nil, err

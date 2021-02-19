@@ -110,14 +110,15 @@ func TestNewHTTPContext(t *testing.T) {
 			srvOpts, _ := server.NewServerOptions(&config.Server{})
 
 			// since the proxy prepares the getBody rewind:
-			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				Context:          hclBody,
-				RequestBodyLimit: 256,
-				CORS:             &handler.CORSOptions{},
-			}, log.WithContext(nil), srvOpts, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
+			// TODO: newProxy
+			//proxy, err := handler.NewProxy(&handler.ProxyOptions{
+			//	Context:          hclBody,
+			//	RequestBodyLimit: 256,
+			//	CORS:             &handler.CORSOptions{},
+			//}, log.WithContext(nil), srvOpts, nil)
+			//if err != nil {
+			//	t.Fatal(err)
+			//}
 			proxyType := proxy.(*handler.Proxy)
 			if err = proxyType.SetGetBody(req); err != nil {
 				t.Fatal(err)

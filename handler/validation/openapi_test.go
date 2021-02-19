@@ -1,7 +1,6 @@
-package handler_test
+package validation_test
 
 import (
-	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -10,17 +9,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config/body"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	logrustest "github.com/sirupsen/logrus/hooks/test"
-
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -45,7 +44,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		}
 	}))
 
-	log, hook := logrustest.NewNullLogger()
+	_, hook := logrustest.NewNullLogger()
 
 	beConf := &config.Backend{
 		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
@@ -54,17 +53,16 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.URL)),
 			},
 		}}),
-		OpenAPI: []*config.OpenAPI{{
-			File: filepath.Join("testdata/validation/backend_01_openapi.yaml"),
-		}},
+		OpenAPI: &config.OpenAPI{
+			File: filepath.Join("testdata/backend_01_openapi.yaml"),
+		},
 		RequestBodyLimit: "64MiB",
 	}
-
-	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api")
+	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), nil, eval.NewENVContext(nil))
-	helper.Must(err)
+	backend := transport.NewBackend(eval.NewENVContext(nil), &transport.Config{}, openAPI)
+	proxy := handler.NewProxy(backend, beConf.Remain, eval.NewENVContext(nil))
 
 	tests := []struct {
 		name, method, path string
@@ -84,17 +82,14 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, tt.body)
-			rec := httptest.NewRecorder()
 
 			if tt.body != nil {
 				req.Header.Set("Content-Type", "application/json")
 			}
 
 			hook.Reset()
-			backend.ServeHTTP(rec, req)
-			rec.Flush()
-
-			res := rec.Result()
+			res, err := proxy.RoundTrip(req)
+			helper.Must(err)
 
 			if tt.wantErrLog == "" && res.StatusCode != http.StatusOK {
 				t.Errorf("Expected OK, got: %s", res.Status)

@@ -1,4 +1,4 @@
-package handler
+package middleware
 
 import (
 	"net/http"
@@ -121,6 +121,8 @@ func TestCORSOptions_isCorsRequest(t *testing.T) {
 			true,
 		},
 	}
+
+	cors := &CORS{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
@@ -128,7 +130,7 @@ func TestCORSOptions_isCorsRequest(t *testing.T) {
 				req.Header.Set(name, value)
 			}
 
-			corsRequest := isCorsRequest(req)
+			corsRequest := cors.isCorsRequest(req)
 			if corsRequest != tt.exp {
 				subT.Errorf("Expected %t, got: %t", tt.exp, corsRequest)
 			}
@@ -180,6 +182,8 @@ func TestCORSOptions_isCorsPreflightRequest(t *testing.T) {
 			true,
 		},
 	}
+
+	cors := &CORS{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			req := httptest.NewRequest(tt.method, "http://1.2.3.4/", nil)
@@ -187,7 +191,7 @@ func TestCORSOptions_isCorsPreflightRequest(t *testing.T) {
 				req.Header.Set(name, value)
 			}
 
-			corsPfRequest := isCorsPreflightRequest(req)
+			corsPfRequest := cors.isCorsPreflightRequest(req)
 			if corsPfRequest != tt.exp {
 				subT.Errorf("Expected %t, got: %t", tt.exp, corsPfRequest)
 			}

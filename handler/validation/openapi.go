@@ -1,4 +1,4 @@
-package handler
+package validation
 
 import (
 	"bytes"
@@ -6,90 +6,28 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"path/filepath"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/logging"
 )
 
-type OpenAPIValidatorOptions struct {
-	buffer                   eval.BufferOption
-	ignoreRequestViolations  bool
-	ignoreResponseViolations bool
-	filterOptions            *openapi3filter.Options
-	router                   *openapi3filter.Router
+type OpenAPI struct {
+	options                *OpenAPIOptions
+	requestValidationInput *openapi3filter.RequestValidationInput
 }
 
-// NewOpenAPIValidatorOptions takes a list of openAPI configuration due to merging configurations.
-// The last item will be set and no attributes gets merged.
-func NewOpenAPIValidatorOptions(openapi []*config.OpenAPI) (*OpenAPIValidatorOptions, error) {
-	if len(openapi) == 0 {
-		return nil, nil
+func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
+	if opts == nil {
+		return nil
 	}
-
-	openapiBlock := openapi[len(openapi)-1]
-
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(filepath.Join(dir, openapiBlock.File))
-	if err != nil {
-		return nil, err
-	}
-	return NewOpenAPIValidatorOptionsFromBytes(openapiBlock, b)
-}
-
-func NewOpenAPIValidatorOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIValidatorOptions, error) {
-	if openapi == nil || bytes == nil {
-		return nil, nil
-	}
-
-	swagger, err := openapi3.NewSwaggerLoader().LoadSwaggerFromData(bytes)
-	if err != nil {
-		return nil, fmt.Errorf("error loading openapi file: %w", err)
-	}
-
-	router := openapi3filter.NewRouter()
-	if err = router.AddSwagger(swagger); err != nil {
-		return nil, err
-	}
-
-	// Always buffer if openAPI is active. Request buffering is handled by openapifilter too.
-	// Anyway adding request buffer option to let Couper check the body limits.
-	bufferBodies := eval.BufferRequest | eval.BufferResponse
-
-	return &OpenAPIValidatorOptions{
-		buffer: bufferBodies,
-		filterOptions: &openapi3filter.Options{
-			ExcludeRequestBody:    false,
-			ExcludeResponseBody:   false,
-			IncludeResponseStatus: true,
-		},
-		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
-		ignoreResponseViolations: openapi.IgnoreResponseViolations,
-		router:                   router,
-	}, nil
-}
-
-func NewOpenAPIValidator(opts *OpenAPIValidatorOptions) *OpenAPIValidator {
-	return &OpenAPIValidator{
+	return &OpenAPI{
 		options: opts,
 	}
 }
 
-type OpenAPIValidator struct {
-	options                *OpenAPIValidatorOptions
-	requestValidationInput *openapi3filter.RequestValidationInput
-}
-
-func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.RoundtripInfo) error {
+func (v *OpenAPI) ValidateRequest(req *http.Request, tripInfo *logging.RoundtripInfo) error {
 	route, pathParams, err := v.options.router.FindRoute(req.Method, req.URL)
 	if err != nil {
 		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
@@ -122,7 +60,7 @@ func (v *OpenAPIValidator) ValidateRequest(req *http.Request, tripInfo *logging.
 	return nil
 }
 
-func (v *OpenAPIValidator) ValidateResponse(beresp *http.Response, tripInfo *logging.RoundtripInfo) error {
+func (v *OpenAPI) ValidateResponse(beresp *http.Response, tripInfo *logging.RoundtripInfo) error {
 	// since a request validation could fail and ignored due to user options, the input route MAY be nil
 	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
 		err := fmt.Errorf("response validation: '%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)

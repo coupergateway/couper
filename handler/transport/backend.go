@@ -7,6 +7,10 @@ import (
 	"regexp"
 	"strings"
 
+	couperErr "github.com/avenga/couper/errors"
+
+	"github.com/avenga/couper/handler/validation"
+
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/eval"
@@ -27,23 +31,24 @@ var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
 // Backend represents the transport <Backend> object.
 type Backend struct {
-	accessControl string // maps to basic-auth atm
-	context       hcl.Body
-	evalContext   *hcl.EvalContext
-	name          string
-	transportConf *Config
-	upstreamLog   *logging.AccessLog
-	//OpenAPI       *OpenAPIValidatorOptions
+	accessControl    string // maps to basic-auth atm
+	context          hcl.Body
+	evalContext      *hcl.EvalContext
+	name             string
+	transportConf    *Config
+	upstreamLog      *logging.AccessLog
+	openAPIValidator *validation.OpenAPI
 	// oauth
 	// ...
 	// TODO: OrderedList for origin AC, middlewares etc.
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(evalCtx *hcl.EvalContext, conf *Config) *Backend {
+func NewBackend(evalCtx *hcl.EvalContext, conf *Config, openAPIopts *validation.OpenAPIOptions) *Backend {
 	return &Backend{
-		evalContext:   evalCtx,
-		transportConf: conf,
+		evalContext:      evalCtx,
+		openAPIValidator: validation.NewOpenAPI(openAPIopts),
+		transportConf:    conf,
 	}
 }
 
@@ -73,10 +78,26 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del(AcceptEncodingHeader)
 	}
 
+	// TODO: logging, roundtrip
+	roundtripInfo := &logging.RoundtripInfo{}
+
+	if b.openAPIValidator != nil {
+		if err = b.openAPIValidator.ValidateRequest(req, roundtripInfo); err != nil {
+			//p.options.ErrorTemplate.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+			return nil, couperErr.UpstreamRequestValidationFailed
+		}
+	}
+
 	//b.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(t.RoundTrip), startTime)
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if b.openAPIValidator != nil {
+		if err = b.openAPIValidator.ValidateResponse(beresp, roundtripInfo); err != nil {
+			return nil, couperErr.UpstreamResponseValidationFailed
+		}
 	}
 
 	if strings.ToLower(beresp.Header.Get(ContentEncodingHeader)) == GzipName {
