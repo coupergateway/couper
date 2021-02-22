@@ -1,5 +1,22 @@
 # Couper Changelog
 
+<a name="0.5.1"></a>
+## [0.5.1](https://github.com/avenga/couper/compare/0.5...0.5.1)
+
+> 2021-02-16
+
+### Features
+
+* backend:
+    * a user-friendly `basic_auth` option 
+    * backend `proxy` url, `disable_connection_reuse` and `http2` settings ([#108](https://github.com/avenga/couper/pull/108))
+* version command
+
+### Change
+
+* KeepAlive `60s` ([#108](https://github.com/avenga/couper/pull/108)), previously `15s`
+* Reject requests which hits an endpoint with basic-auth access-control, and the configured password evaluates to an empty string ([#115](https://github.com/avenga/couper/pull/115))
+
 <a name="0.5"></a>
 ## [0.5](https://github.com/avenga/couper/compare/0.4.2...0.5)
 

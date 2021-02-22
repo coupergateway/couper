@@ -40,6 +40,11 @@ func realmain(arguments []string) int {
 	cmd := args[0]
 	args = args[1:]
 
+	if cmd == "version" { // global options are not required, fast exit.
+		_ = command.NewCommand(cmd).Execute(args, nil, nil)
+		return 0
+	}
+
 	var filePath, logFormat string
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
 	set.StringVar(&filePath, "f", config.DefaultFilename, "-f ./couper.hcl")

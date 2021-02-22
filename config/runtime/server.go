@@ -6,8 +6,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -281,11 +281,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 			}
 			var key []byte
 			if jwt.KeyFile != "" {
-				wd, err := os.Getwd()
+				p, err := filepath.Abs(jwt.KeyFile)
 				if err != nil {
 					return nil, err
 				}
-				content, err := ioutil.ReadFile(path.Join(wd, jwt.KeyFile))
+				content, err := ioutil.ReadFile(p)
 				if err != nil {
 					return nil, err
 				}

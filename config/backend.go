@@ -10,20 +10,20 @@ var _ Inline = &Backend{}
 
 // Backend represents the <Backend> object.
 type Backend struct {
-	BasicAuth              string     `hcl:"basic_auth,optional"`
-	ConnectTimeout         string     `hcl:"connect_timeout,optional"`
-	DisableCertValidation  bool       `hcl:"disable_certificate_validation,optional"`
-	DisableConnectionReuse bool       `hcl:"disable_connection_reuse,optional"`
-	HTTP2                  bool       `hcl:"http2,optional"`
-	MaxConnections         int        `hcl:"max_connections,optional"`
-	Name                   string     `hcl:"name,label"`
+	BasicAuth              string   `hcl:"basic_auth,optional"`
+	ConnectTimeout         string   `hcl:"connect_timeout,optional"`
+	DisableCertValidation  bool     `hcl:"disable_certificate_validation,optional"`
+	DisableConnectionReuse bool     `hcl:"disable_connection_reuse,optional"`
+	HTTP2                  bool     `hcl:"http2,optional"`
+	MaxConnections         int      `hcl:"max_connections,optional"`
+	Name                   string   `hcl:"name,label"`
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
-	PathPrefix             string     `hcl:"path_prefix,optional"`
-	Proxy                  string     `hcl:"proxy,optional"`
-	Remain                 hcl.Body   `hcl:",remain"`
-	RequestBodyLimit       string     `hcl:"request_body_limit,optional"`
-	TTFBTimeout            string     `hcl:"ttfb_timeout,optional"`
-	Timeout                string     `hcl:"timeout,optional"`
+	PathPrefix             string   `hcl:"path_prefix,optional"`
+	Proxy                  string   `hcl:"proxy,optional"`
+	Remain                 hcl.Body `hcl:",remain"`
+	RequestBodyLimit       string   `hcl:"request_body_limit,optional"`
+	TTFBTimeout            string   `hcl:"ttfb_timeout,optional"`
+	Timeout                string   `hcl:"timeout,optional"`
 }
 
 // HCLBody implements the <Inline> interface.
