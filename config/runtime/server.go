@@ -22,7 +22,8 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
+	"github.com/avenga/couper/handler/producer"
+	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -86,7 +87,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 		}
 	}
 
-	endpointHandler := make(map[*config.Endpoint]http.Handler)
+	endpointHandlers := make(map[*config.Endpoint]http.Handler)
 
 	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf)
@@ -133,12 +134,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 		for endpoint, parentAPI := range newEndpointMap(srvConf) {
 			var basePath string
-			var cors *config.CORS
+			//var cors *config.CORS
 			var errTpl *errors.Template
 
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePath[parentAPI]
-				cors = parentAPI.CORS
+				//cors = parentAPI.CORS
 				errTpl = serverOptions.APIErrTpl[parentAPI]
 			} else {
 				basePath = serverOptions.SrvBasePath
@@ -160,14 +161,33 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 					accessControl = accessControl.Merge(config.NewAccessControl(parentAPI.AccessControl, parentAPI.DisableAccessControl))
 				}
 
-				endpointHandler[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
+				endpointHandlers[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
 					protectedHandler)
 			}
 
-			//for _, proxy := range endpoint.Proxies {
-			//
-			//}
+			// type Endpoint struct {
+			// 	context  hcl.Body
+			// 	eval     *hcl.EvalContext
+			// 	proxies  producer.Proxies
+			// 	redirect *producer.Redirect
+			// 	requests *producer.Requests
+			// 	response *producer.Response
+			// }
+
+			var proxies producer.Proxies
+
+			for _, proxy := range endpoint.Proxies {
+				proxyHandler := handler.NewProxy(nil, proxy.HCLBody(), nil)
+				p := &handler.Proxy{}
+				if diags := gohcl.DecodeBody(proxy.Remain, confCtx, p); diags.HasErrors() {
+					return nil, diags
+				}
+
+				proxies = append(proxies, proxyHandler)
+
+				//fmt.Printf("%#v\n", p.Backend)
+			}
 
 			backendConf := *DefaultBackendConf
 			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
@@ -178,15 +198,14 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			if parentAPI != nil {
 				kind = KindAPI
 			}
-			backend, err := newProxy(confCtx, &backendConf, cors, log, serverOptions,
-				conf.Settings.NoProxyFromEnv, errTpl, kind)
+			backend, err := newProxy(confCtx, &backendConf, log, serverOptions, conf.Settings.NoProxyFromEnv, errTpl, kind)
 			if err != nil {
 				return nil, err
 			}
 
 			setACHandlerFn(backend)
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandler[endpoint], KindAPI)
+			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpoint], KindAPI)
 			if err != nil {
 				return nil, err
 			}
@@ -197,28 +216,18 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 }
 
 func newProxy(
-	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, log *logrus.Entry,
+	ctx *hcl.EvalContext, beConf *config.Backend, log *logrus.Entry,
 	srvOpts *server.Options, noProxyFromEnv bool, errTpl *errors.Template, epType HandlerKind) (http.Handler, error) {
-	corsOptions, err := middleware.NewCORSOptions(corsOpts)
-	if err != nil {
-		return nil, err
-	}
+	//corsOptions, err := middleware.NewCORSOptions(corsOpts)
 
-	var kind string
-	switch epType {
-	case KindAPI:
+	kind := "endpoint"
+	if epType == KindAPI {
 		kind = "api"
-	case KindEndpoint:
-		kind = "endpoint"
 	}
 
 	// TODO: create backend for proxy
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, noProxyFromEnv, errTpl, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	return handler.NewProxy(proxyOptions, log, srvOpts, ctx)
+	backend := transport.NewBackend(ctx, nil, log, nil)
+	return handler.NewProxy(backend, nil, ctx), nil
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {

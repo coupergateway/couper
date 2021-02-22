@@ -15,7 +15,6 @@ import (
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -69,7 +68,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 
 	// Read possible reference definitions first. Those are the
 	// base for refinement merges during server block read out.
-	var backends Backends
+	var definedBackends Backends
 
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
@@ -82,8 +81,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
 					name := be.Labels[0]
-
-					ref, _ := backends.WithName(name)
+					ref, _ := definedBackends.WithName(name)
 					if ref != nil {
 						return nil, hcl.Diagnostics{&hcl.Diagnostic{
 							Severity: hcl.DiagError,
@@ -92,7 +90,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 						}}
 					}
 
-					backends = append(backends, NewBackend(name, be.Body))
+					definedBackends = append(definedBackends, NewBackend(name, be.Body))
 				}
 			}
 
@@ -106,44 +104,45 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 		}
 	}
 
-	// reading per server block and merge backend settings which results in a final server configuration.
+	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
-		srv := &config.Server{}
-		if diags = gohcl.DecodeBody(serverBlock.Body, couperConfig.Context, srv); diags.HasErrors() {
+		serverConfig := &config.Server{}
+		if diags = gohcl.DecodeBody(serverBlock.Body, couperConfig.Context, serverConfig); diags.HasErrors() {
 			return nil, diags
 		}
 
-		couperConfig.Servers = append(couperConfig.Servers, srv)
-
-		serverBodies, err := mergeBackendBodies(backends, srv)
-		if err != nil {
-			return nil, err
+		// Set the server name since gohcl.DecodeBody decoded the body and not the block.
+		if len(serverBlock.Labels) > 0 {
+			serverConfig.Name = serverBlock.Labels[0]
 		}
-		srv.Remain = MergeBodies(serverBodies)
 
-		// api block(s)
-		for _, apiBlock := range srv.APIs {
-			if apiBlock == nil {
-				continue
-			}
+		// Read server inline, reference overrides or referenced backends
+		serverBackend, mergeErr := mergeBackendBodies(definedBackends, serverConfig)
+		if mergeErr != nil {
+			return nil, mergeErr
+		}
 
-			bodies, err := mergeBackendBodies(backends, apiBlock)
+		// Read api blocks and merge backends with server and definitions backends.
+		for _, apiBlock := range serverConfig.APIs {
+			apiBackend, err := mergeBackendBodies(definedBackends, apiBlock)
 			if err != nil {
 				return nil, err
 			}
 
-			bodies = appendUniqueBodies(serverBodies, bodies...)
-
-			// empty bodies would be removed with a hcl.Merge.. later on.
-			if err = refineEndpoints(backends, bodies, apiBlock.Endpoints); err != nil {
+			parentBackend := mergeRight(apiBackend, serverBackend)
+			err = refineEndpoints(definedBackends, parentBackend, apiBlock.Endpoints)
+			if err != nil {
 				return nil, err
 			}
 		}
 
 		// standalone endpoints
-		if err := refineEndpoints(backends, serverBodies, srv.Endpoints); err != nil {
+		err := refineEndpoints(definedBackends, serverBackend, serverConfig.Endpoints)
+		if err != nil {
 			return nil, err
 		}
+
+		couperConfig.Servers = append(couperConfig.Servers, serverConfig)
 	}
 
 	if len(couperConfig.Servers) == 0 {
@@ -153,144 +152,123 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	return couperConfig, nil
 }
 
-func mergeBackendBodies(backendList Backends, inlineBackend config.Inline) ([]hcl.Body, error) {
-	reference, err := backendList.WithName(inlineBackend.Reference())
+// mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
+func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
+	reference, err := getReference(definedBackends, inline)
 	if err != nil {
-		r := inlineBackend.HCLBody().MissingItemRange()
-		err.(hcl.Diagnostics)[0].Subject = &r
 		return nil, err
 	}
 
-	content, _, diags := inlineBackend.HCLBody().PartialContent(inlineBackend.Schema(true))
+	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
-	var bodies []hcl.Body
-	var backends hcl.Blocks
-	if content != nil {
-		backends = content.Blocks.OfType(backend)
+	if content == nil {
+		return reference, nil
 	}
 
-	if reference != nil {
-		if content != nil && len(backends) > 0 {
-			return nil, fmt.Errorf("configuration error: inlineBackend reference and inline definition")
-		}
-		// we have a reference, append to list and...
-		bodies = appendUniqueBodies(bodies, reference)
-	}
-	// ...additionally add the inline overrides.
-	if content != nil && len(content.Attributes) > 0 {
-		bodies = append(bodies, body.New(&hcl.BodyContent{
+	// Apply current attributes to the referenced body.
+	if len(content.Attributes) > 0 {
+		reference = MergeBodies([]hcl.Body{reference, body.New(&hcl.BodyContent{
 			Attributes:       content.Attributes,
 			MissingItemRange: content.MissingItemRange,
-		}))
+		})})
 	}
 
-	if len(backends) > 0 {
-		if len(backends[0].Labels) > 0 {
-			ref, err := backendList.WithName(backends[0].Labels[0])
-			if err != nil {
-				err.(hcl.Diagnostics)[0].Subject = &backends[0].DefRange
-				return nil, err
-			}
-			// link name attribute
-			if syntaxBody, ok := backends[0].Body.(*hclsyntax.Body); ok {
-				if refBody, ok := ref.(*hclsyntax.Body); ok {
-					syntaxBody.Attributes[backendLabel] = refBody.Attributes[backendLabel]
-				}
-			}
-			bodies = append([]hcl.Body{ref}, bodies...)
+	var backendBlock *hcl.Block
+	if backends := content.Blocks.OfType(backend); len(backends) > 0 {
+		backendBlock = backends[0]
+	} else {
+		return reference, nil
+	}
+
+	// Case: `backend {}`, anonymous backend.
+	if len(backendBlock.Labels) == 0 {
+		return MergeBodies([]hcl.Body{reference, backendBlock.Body}), nil
+	}
+
+	// Case: `backend "reference" {}`, referenced backend.
+	refOverride, err := definedBackends.WithName(backendBlock.Labels[0])
+	if err != nil {
+		err.(hcl.Diagnostics)[0].Subject = &backendBlock.DefRange
+
+		// Case: referenced backend is not defined in definitions.
+		return nil, err
+	}
+
+	// link backend block name (label) to attribute 'name'
+	if syntaxBody, ok := backendBlock.Body.(*hclsyntax.Body); ok {
+		if refBody, ok := refOverride.(*hclsyntax.Body); ok {
+			syntaxBody.Attributes[backendLabel] = refBody.Attributes[backendLabel]
 		}
-
-		bodies = appendUniqueBodies(bodies, backends[0].Body)
 	}
 
-	return bodies, nil
+	return MergeBodies([]hcl.Body{reference, refOverride}), nil
 }
 
-func refineEndpoints(backendList Backends, parents []hcl.Body, endpoints config.Endpoints) error {
-	for e, endpoint := range endpoints {
-		merged, err := mergeBackendBodies(backendList, endpoint)
-		if err != nil {
-			return err
-		}
-
-		p := parents
-
-		block, label := getBackendBlock(endpoint.HCLBody())
-		if block != nil {
-			p = nil
-			for _, b := range parents {
-				attrs, _ := b.JustAttributes()
-				if len(attrs) == 0 {
-					continue
-				}
-
-				if attr, ok := attrs[backendLabel]; ok {
-					val, _ := attr.Expr.Value(nil)
-					if label != "" && seetie.ValueToString(val) == label {
-						p = append(p, b)
-					}
-
-					continue // skip backends with other names or block is an inline one
-				}
-
-				p = append(p, b)
+// mergeRight merges the right over the left one if the
+// name label is the same, otherwise returns the right one.
+func mergeRight(left hcl.Body, right hcl.Body) hcl.Body {
+	if right != nil && left != nil {
+		leftAttrs, _ := left.JustAttributes()
+		leftLabel, ok := leftAttrs[backendLabel]
+		if ok {
+			rightAttrs, _ := right.JustAttributes()
+			rightLabel, exist := rightAttrs[backendLabel]
+			if exist && leftLabel == rightLabel {
+				return MergeBodies([]hcl.Body{left, right})
 			}
 		}
+	}
+	return right
+}
 
-		merged, err = appendPathAttribute(appendUniqueBodies(p, merged...), endpoint)
-		if err != nil {
-			return err
+// getReference tries to fetch a backend from `definitions`
+// block by a reference name, e.g. `backend = "name"`.
+func getReference(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
+	reference, err := definedBackends.WithName(inline.Reference())
+	if err != nil {
+		// Backend reference is given, but not defined in definitions.
+		r := inline.HCLBody().MissingItemRange()
+		err.(hcl.Diagnostics)[0].Subject = &r
+	}
+
+	return reference, err
+}
+
+func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints config.Endpoints) error {
+	for _, endpoint := range endpoints {
+		for j, proxyConfig := range endpoint.Proxies { // TODO: loop content -> method
+			proxyBackend, err := mergeBackendBodies(definedBackends, proxyConfig)
+			if err != nil {
+				return err
+			}
+
+			proxyBackend = mergeRight(parentBackend, proxyBackend)
+			if err = validateOrigin(proxyBackend); err != nil {
+				return err
+			}
+			// TODO: mergeRemain is wrong, merged and configured backend seems to require own attr field
+			endpoint.Proxies[j].Remain = MergeBodies([]hcl.Body{proxyConfig.Remain, proxyBackend})
 		}
 
-		endpoints[e].Remain = MergeBodies(merged)
-		if err = validateOrigin(endpoints[e].Remain); err != nil {
-			return err
+		for j, reqConfig := range endpoint.Requests {
+			reqBackend, err := mergeBackendBodies(definedBackends, reqConfig)
+			if err != nil {
+				return err
+			}
+
+			reqBackend = mergeRight(parentBackend, reqBackend)
+			if err = validateOrigin(reqBackend); err != nil {
+				return err
+			}
+			// TODO: mergeRemain is wrong, merged and configured backend seems to require own attr field
+			endpoint.Requests[j].Remain = MergeBodies([]hcl.Body{reqConfig.Remain, reqBackend})
 		}
 	}
 
 	return nil
-}
-
-// appendPathAttribute determines if the given endpoint has child definitions which relies on references
-// which 'path' attribute should be refined with the endpoints inline value.
-func appendPathAttribute(bodies []hcl.Body, endpoint *config.Endpoint) ([]hcl.Body, error) {
-	if len(bodies) == 0 || endpoint == nil {
-		return bodies, nil
-	}
-
-	ctnt, _, diags := endpoint.HCLBody().PartialContent(endpoint.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	} else if ctnt == nil {
-		return bodies, nil
-	}
-
-	// do not override path with an endpoint one if a reference override or
-	// an inline definition contains an explicit path attribute value.
-	blocks := ctnt.Blocks.OfType(backend)
-	if len(blocks) > 0 {
-		bodyAttrs, _ := blocks[0].Body.JustAttributes()
-		for name := range bodyAttrs {
-			if name == pathAttr {
-				return bodies, nil
-			}
-		}
-	}
-
-	for name, attr := range ctnt.Attributes {
-		if name == pathAttr {
-			return append(bodies, body.New(&hcl.BodyContent{
-				Attributes: hcl.Attributes{
-					pathAttr: attr,
-				},
-			})), nil
-		}
-	}
-
-	return bodies, nil
 }
 
 // validateOrigin checks at least for an origin attribute definition.
@@ -313,21 +291,4 @@ func validateOrigin(merged hcl.Body) error {
 		}}
 	}
 	return nil
-}
-
-func appendUniqueBodies(parents []hcl.Body, bodies ...hcl.Body) []hcl.Body {
-	merged := parents[:]
-	for _, b := range bodies {
-		unique := true
-		for _, m := range merged {
-			if m == b {
-				unique = false
-				break
-			}
-		}
-		if unique {
-			merged = append(merged, b)
-		}
-	}
-	return merged
 }

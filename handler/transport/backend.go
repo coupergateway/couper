@@ -7,13 +7,12 @@ import (
 	"regexp"
 	"strings"
 
-	couperErr "github.com/avenga/couper/errors"
-
-	"github.com/avenga/couper/handler/validation"
-
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
+	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
 )
 
@@ -44,11 +43,12 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(evalCtx *hcl.EvalContext, conf *Config, openAPIopts *validation.OpenAPIOptions) *Backend {
+func NewBackend(evalCtx *hcl.EvalContext, conf *Config, log *logrus.Entry, openAPIopts *validation.OpenAPIOptions) *Backend {
 	return &Backend{
 		evalContext:      evalCtx,
 		openAPIValidator: validation.NewOpenAPI(openAPIopts),
 		transportConf:    conf,
+		//upstreamLog:      logging.NewAccessLog(nil, log),
 	}
 }
 
