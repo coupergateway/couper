@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -62,7 +63,15 @@ func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logru
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	t := Get(b.transportConf)
-	err := eval.ApplyRequestContext(b.evalContext, b.context, req)
+
+	// TODO: transport related director fn ?
+	targetHost, err := url.Parse(b.transportConf.Origin)
+	if err != nil {
+		return nil, err
+	}
+	req.URL.Host = targetHost.Host
+
+	err = eval.ApplyRequestContext(b.evalContext, b.context, req)
 	if err != nil {
 		return nil, err
 	}
