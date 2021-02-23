@@ -15,7 +15,7 @@ func NewVersion() *Version {
 	return &Version{}
 }
 
-func (v Version) Execute(_ Args, _ *config.CouperFile, _ *logrus.Entry) error {
+func (v Version) Execute(_ Args, _ *config.Couper, _ *logrus.Entry) error {
 	println(runtime.VersionName + " " + runtime.BuildDate + " " + runtime.BuildName)
 	return nil
 }

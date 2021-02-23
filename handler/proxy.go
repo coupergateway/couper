@@ -62,7 +62,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 var backendInlineSchema = config.Backend{}.Schema(true)
 
 func (p *Proxy) director(req *http.Request) {
-	_ = p.setGetBody(req)
+	_ = p.SetGetBody(req)
 
 	var origin, hostname, path string
 	httpContext := eval.NewHTTPContext(p.evalCtx, p.bufferOption, req, nil, nil)
@@ -102,7 +102,7 @@ func (p *Proxy) director(req *http.Request) {
 // SetGetBody determines if we have to buffer a request body for further processing.
 // First of all the user has a related reference within a config.Backend options declaration.
 // Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
-func (p *Proxy) setGetBody(req *http.Request) error {
+func (p *Proxy) SetGetBody(req *http.Request) error {
 	if req.Method == http.MethodTrace {
 		return nil
 	}
