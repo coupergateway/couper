@@ -15,9 +15,11 @@ import (
 	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
@@ -48,7 +50,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
 			log := logger.WithContext(context.Background())
 
-			backend := transport.NewBackend(eval.NewENVContext(nil), tt.context, tt.tconf, log, nil)
+			backend := transport.NewBackend(eval.NewENVContext(nil), hcl.EmptyBody(), tt.tconf, log, nil)
 			proxy := handler.NewProxy(backend, tt.context, eval.NewENVContext(nil))
 
 			hook.Reset()
@@ -149,5 +151,128 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 
 	if n != 6993 {
 		t.Errorf("Unexpected body length: %d, want: %d", n, 6993)
+	}
+}
+
+func TestBackend_RoundTrip_Validation(t *testing.T) {
+	helper := test.New(t)
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "text/plain")
+		if req.URL.RawQuery == "404" {
+			rw.WriteHeader(http.StatusNotFound)
+		}
+		_, err := rw.Write([]byte("from upstream"))
+		helper.Must(err)
+	}))
+	defer origin.Close()
+
+	openAPIYAML := helper.NewOpenAPIConf("/get")
+
+	tests := []struct {
+		name               string
+		openapi            *config.OpenAPI
+		requestMethod      string
+		requestPath        string
+		expectedStatusCode int
+		expectedLogMessage string
+	}{
+		{
+			"valid request / valid response",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/get",
+			http.StatusOK,
+			"",
+		},
+		{
+			"invalid request",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodPost,
+			"/get",
+			http.StatusBadRequest,
+			"request validation: 'POST /get': Path doesn't support the HTTP method",
+		},
+		{
+			"invalid request, IgnoreRequestViolations",
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true, IgnoreResponseViolations: true},
+			http.MethodPost,
+			"/get",
+			http.StatusOK,
+			"request validation: 'POST /get': Path doesn't support the HTTP method",
+		},
+		{
+			"invalid response",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/get?404",
+			http.StatusBadGateway,
+			"response validation: status is not supported",
+		},
+		{
+			"invalid response, IgnoreResponseViolations",
+			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
+			http.MethodGet,
+			"/get?404",
+			http.StatusNotFound,
+			"response validation: status is not supported",
+		},
+	}
+
+	logger, hook := logrustest.NewNullLogger()
+	log := logger.WithContext(context.Background())
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+
+			openapiValidatorOptions, err := validation.NewOpenAPIOptionsFromBytes(tt.openapi, openAPIYAML)
+			if err != nil {
+				subT.Fatal(err)
+			}
+			content := helper.NewProxyContext(`
+				origin = "` + origin.URL + `"
+			`)
+
+			backend := transport.NewBackend(eval.NewENVContext(nil), hcl.EmptyBody(), &transport.Config{}, log, openapiValidatorOptions)
+			proxy := handler.NewProxy(backend, content, eval.NewENVContext(nil))
+
+			// TODO: origin.URL
+			req := httptest.NewRequest(tt.requestMethod, "http://1.2.3.4"+tt.requestPath, nil)
+
+			hook.Reset()
+			res, err := proxy.RoundTrip(req)
+			if err != nil {
+				subT.Error(err)
+				return
+			}
+
+			// TODO: validations fields in log
+			if res.StatusCode != tt.expectedStatusCode {
+				subT.Errorf("Expected status %d, got: %d", tt.expectedStatusCode, res.StatusCode)
+				subT.Log(hook.LastEntry().Message)
+			}
+
+			entry := hook.LastEntry()
+			if tt.expectedLogMessage != "" {
+				if !tt.openapi.IgnoreRequestViolations && !tt.openapi.IgnoreResponseViolations {
+					if entry.Message != tt.expectedLogMessage {
+						subT.Errorf("Expected log message %q, got: %q", tt.expectedLogMessage, entry.Message)
+					}
+					return
+				}
+
+				if data, ok := entry.Data["validation"]; ok {
+					for _, err := range data.([]string) {
+						if err == tt.expectedLogMessage {
+							return
+						}
+					}
+					for _, err := range data.([]string) {
+						subT.Log(err)
+					}
+				}
+				subT.Error("expected matching validation error logs")
+			}
+
+		})
 	}
 }
