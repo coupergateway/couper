@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -64,14 +63,7 @@ func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logru
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	t := Get(b.transportConf)
 
-	// TODO: transport related director fn ?
-	targetHost, err := url.Parse(b.transportConf.Origin)
-	if err != nil {
-		return nil, err
-	}
-	req.URL.Host = targetHost.Host
-
-	err = eval.ApplyRequestContext(b.evalContext, b.context, req)
+	err := eval.ApplyRequestContext(b.evalContext, b.context, req)
 	if err != nil {
 		return nil, err
 	}

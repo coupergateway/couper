@@ -32,55 +32,7 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
-func TestProxy_ServeHTTP_Timings(t *testing.T) {
-	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodHead {
-			time.Sleep(time.Second * 2) // > ttfb proxy settings
-		}
-		rw.WriteHeader(http.StatusNoContent)
-	}))
-	defer origin.Close()
 
-	tpl, _ := errors.NewTemplate("text/plain", []byte("error"))
-
-	tests := []struct {
-		name           string
-		options        *handler.ProxyOptions
-		req            *http.Request
-		expectedStatus int
-	}{
-		{"with zero timings", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), ErrorTemplate: tpl}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
-		{"with overall timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://1.2.3.4/"), ErrorTemplate: tpl, Transport: &transport.Config{Timeout: time.Second}}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), http.StatusBadGateway},
-		{"with connect timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), ErrorTemplate: tpl, Transport: &transport.Config{ConnectTimeout: time.Second}}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), http.StatusBadGateway},
-		{"with ttfb timeout", &handler.ProxyOptions{Context: test.NewRemainContext("origin", origin.URL), ErrorTemplate: tpl, Transport: &transport.Config{TTFBTimeout: time.Second}}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), http.StatusBadGateway},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logger, hook := logrustest.NewNullLogger()
-			srvOpts, _ := server.NewServerOptions(nil)
-			p, err := handler.NewProxy(tt.options, logger.WithContext(nil), srvOpts, eval.NewENVContext(nil))
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			hook.Reset()
-			rec := httptest.NewRecorder()
-			p.ServeHTTP(rec, tt.req)
-
-			if rec.Code != tt.expectedStatus {
-				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, rec.Code)
-			} else {
-				return // no error log for expected codes
-			}
-
-			for _, log := range hook.AllEntries() {
-				if log.Level >= logrus.ErrorLevel {
-					t.Error(log.Message)
-				}
-			}
-		})
-	}
-}
 
 func TestProxy_ServeHTTP_Validation(t *testing.T) {
 	helper := test.New(t)
