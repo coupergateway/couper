@@ -21,7 +21,6 @@ type Backend struct {
 	PathPrefix             string   `hcl:"path_prefix,optional"`
 	Proxy                  string   `hcl:"proxy,optional"`
 	Remain                 hcl.Body `hcl:",remain"`
-	RequestBodyLimit       string   `hcl:"request_body_limit,optional"`
 	TTFBTimeout            string   `hcl:"ttfb_timeout,optional"`
 	Timeout                string   `hcl:"timeout,optional"`
 }

@@ -30,7 +30,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 		return nil
 	}
 
-	// TODO: bufferOpts
+	// TODO: bufferOpts from parent
 	opts := BufferNone
 	httpCtx := NewHTTPContext(ctx, opts, req, nil, nil)
 
@@ -118,7 +118,7 @@ func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request
 		return nil
 	}
 
-	// TODO: bufferOpts
+	// TODO: bufferOpts from parent
 	opts := BufferNone
 	httpCtx := NewHTTPContext(ctx, opts, req, res.Request, res)
 

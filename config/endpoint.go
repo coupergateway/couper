@@ -15,6 +15,7 @@ type Endpoint struct {
 	Pattern              string    `hcl:"pattern,label"`
 	Proxies              Proxies   `hcl:"proxy,block"`
 	Remain               hcl.Body  `hcl:",remain"`
+	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
 	Requests             Requests  `hcl:"request,block"`
 	Response             *Response `hcl:"response,block"`
 }

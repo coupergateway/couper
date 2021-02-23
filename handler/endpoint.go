@@ -1,37 +1,51 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
 )
 
 var _ http.Handler = &Endpoint{}
 
+const defaultReqBodyLimit = "64MiB"
+
 type Endpoint struct {
-	context  hcl.Body
-	eval     *hcl.EvalContext
-	log      *logrus.Entry
-	proxies  producer.Roundtrips
-	redirect *producer.Redirect
-	requests producer.Roundtrips
-	response *producer.Response
+	evalContext *hcl.EvalContext
+	log         *logrus.Entry
+	opts        *EndpointOptions
+	proxies     producer.Roundtrips
+	redirect    *producer.Redirect
+	requests    producer.Roundtrips
+	response    *producer.Response
 }
 
-func NewEndpoint(ctx hcl.Body, evalCtx *hcl.EvalContext, log *logrus.Entry,
+type EndpointOptions struct {
+	Context       hcl.Body
+	ReqBufferOpts eval.BufferOption
+	ReqBodyLimit  int64
+	Error         *errors.Template
+}
+
+func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.Entry,
 	proxies producer.Proxies, requests producer.Requests) *Endpoint {
+	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
-		context:  ctx,
-		eval:     evalCtx,
-		log:      log,
-		proxies:  proxies,
-		requests: requests,
+		evalContext: evalCtx,
+		log:         log,
+		opts:        opts,
+		proxies:     proxies,
+		requests:    requests,
 	}
 }
 
@@ -39,7 +53,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(req.Context())
 	defer cancel()
 
-	if ee := eval.ApplyRequestContext(e.eval, e.context, req); ee != nil {
+	if err := e.SetGetBody(req); err != nil {
+		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
+		return
+	}
+
+	if ee := eval.ApplyRequestContext(e.evalContext, e.opts.Context, req); ee != nil {
 		e.log.Error(ee)
 	}
 
@@ -47,8 +66,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	requestResults := make(producer.Results)
 
 	// go for it due to chan write on error
-	go e.proxies.Produce(subCtx, req, e.eval, proxyResults)
-	go e.requests.Produce(subCtx, req, e.eval, requestResults)
+	go e.proxies.Produce(subCtx, req, e.evalContext, proxyResults)
+	go e.requests.Produce(subCtx, req, e.evalContext, requestResults)
 
 	beresps := make(map[string]*producer.Result)
 	// TODO: read parallel, proxy first for now
@@ -81,13 +100,46 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// always apply before write: redirect, response
-	if err = eval.ApplyResponseContext(e.eval, e.context, req, clientres); err != nil {
+	if err = eval.ApplyResponseContext(e.evalContext, e.opts.Context, req, clientres); err != nil {
 		e.log.Error(err)
 	}
 
 	if err = clientres.Write(rw); err != nil {
 		e.log.Errorf("endpoint write error: %v", err)
 	}
+}
+
+// SetGetBody determines if we have to buffer a request body for further processing.
+// First of all the user has a related reference within a related options context declaration.
+// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
+func (e *Endpoint) SetGetBody(req *http.Request) error {
+	if req.Method == http.MethodTrace {
+		return nil
+	}
+
+	if (e.opts.ReqBufferOpts & eval.BufferRequest) != eval.BufferRequest {
+		return nil
+	}
+
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		buf := &bytes.Buffer{}
+		lr := io.LimitReader(req.Body, e.opts.ReqBodyLimit+1)
+		n, err := buf.ReadFrom(lr)
+		if err != nil {
+			return err
+		}
+
+		if n > e.opts.ReqBodyLimit {
+			return errors.APIReqBodySizeExceeded
+		}
+
+		bodyBytes := buf.Bytes()
+		req.GetBody = func() (io.ReadCloser, error) {
+			return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
+		}
+	}
+
+	return nil
 }
 
 func (e *Endpoint) newResponse(beresps map[string]*producer.Result) *http.Response {
@@ -126,4 +178,12 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps map[stri
 		beresps[strconv.Itoa(i)+name] = r
 		i++
 	}
+}
+
+func ParseBodyLimit(limit string) (int64, error) {
+	requestBodyLimit := defaultReqBodyLimit
+	if limit != "" {
+		requestBodyLimit = limit
+	}
+	return units.FromHumanSize(requestBodyLimit)
 }

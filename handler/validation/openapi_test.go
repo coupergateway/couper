@@ -1,6 +1,7 @@
 package validation_test
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -44,8 +45,8 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		}
 	}))
 
-	_, hook := logrustest.NewNullLogger()
-
+	log, hook := logrustest.NewNullLogger()
+	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
 		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
 			"origin": &hcl.Attribute{
@@ -56,12 +57,12 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		OpenAPI: &config.OpenAPI{
 			File: filepath.Join("testdata/backend_01_openapi.yaml"),
 		},
-		RequestBodyLimit: "64MiB",
 	}
 	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend := transport.NewBackend(eval.NewENVContext(nil), &transport.Config{}, openAPI)
+	evalCtx := eval.NewENVContext(nil)
+	backend := transport.NewBackend(evalCtx, hcl.EmptyBody(), &transport.Config{}, logger, openAPI)
 	proxy := handler.NewProxy(backend, beConf.Remain, eval.NewENVContext(nil))
 
 	tests := []struct {

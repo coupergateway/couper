@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"bytes"
-	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -21,12 +19,10 @@ import (
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
-	backend          http.RoundTripper
-	bufferOption     eval.BufferOption
-	context          hcl.Body
-	evalCtx          *hcl.EvalContext
-	requestBodyLimit int64
-	reverseProxy     *httputil.ReverseProxy
+	backend      http.RoundTripper
+	context      hcl.Body
+	evalCtx      *hcl.EvalContext
+	reverseProxy *httputil.ReverseProxy
 }
 
 func NewProxy(backend http.RoundTripper, ctx hcl.Body, evalCtx *hcl.EvalContext) *Proxy {
@@ -62,10 +58,9 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 var backendInlineSchema = config.Backend{}.Schema(true)
 
 func (p *Proxy) director(req *http.Request) {
-	_ = p.SetGetBody(req)
-
 	var origin, hostname, path string
-	httpContext := eval.NewHTTPContext(p.evalCtx, p.bufferOption, req, nil, nil)
+	// TODO: apply eval via produce // bufferopts
+	httpContext := eval.NewHTTPContext(p.evalCtx, eval.BufferNone, req, nil, nil)
 	content, _, _ := p.context.PartialContent(backendInlineSchema)
 	if o := getAttribute(httpContext, "origin", content); o != "" {
 		origin = o
@@ -97,39 +92,6 @@ func (p *Proxy) director(req *http.Request) {
 	} else if path != "" {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
-}
-
-// SetGetBody determines if we have to buffer a request body for further processing.
-// First of all the user has a related reference within a config.Backend options declaration.
-// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
-func (p *Proxy) SetGetBody(req *http.Request) error {
-	if req.Method == http.MethodTrace {
-		return nil
-	}
-
-	if (p.bufferOption & eval.BufferRequest) != eval.BufferRequest {
-		return nil
-	}
-
-	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
-		buf := &bytes.Buffer{}
-		lr := io.LimitReader(req.Body, p.requestBodyLimit+1)
-		n, err := buf.ReadFrom(lr)
-		if err != nil {
-			return err
-		}
-
-		if n > p.requestBodyLimit {
-			return errors.APIReqBodySizeExceeded
-		}
-
-		bodyBytes := buf.Bytes()
-		req.GetBody = func() (io.ReadCloser, error) {
-			return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
-		}
-	}
-
-	return nil
 }
 
 func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {

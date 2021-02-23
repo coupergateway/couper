@@ -380,42 +380,6 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	}
 }
 
-func TestProxy_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
-	helper := test.New(t)
-
-	type testCase struct {
-		name    string
-		limit   string
-		payload string
-		wantErr error
-	}
-
-	for _, testcase := range []testCase{
-		{"/w well sized limit", "12MiB", "content", nil},
-		{"/w zero limit", "0", "01", errors.APIReqBodySizeExceeded},
-		{"/w limit /w oversize body", "4B", "12345", errors.APIReqBodySizeExceeded},
-	} {
-		t.Run(testcase.name, func(subT *testing.T) {
-			proxyOpts, err := handler.NewProxyOptions(&config.Backend{
-				Remain:           helper.NewProxyContext("set_request_headers = { x = req.post }"), // ensure buffering is enabled
-				RequestBodyLimit: testcase.limit,
-			}, nil, config.DefaultSettings.NoProxyFromEnv, nil, "api")
-			if err != nil {
-				subT.Error(err)
-				return
-			}
-			proxy, _, _, closeFn := helper.NewProxy(proxyOpts)
-			closeFn() // unused
-
-			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
-			err = proxy.SetGetBody(req)
-			if !reflect.DeepEqual(err, testcase.wantErr) {
-				subT.Errorf("Expected '%v', got: '%v'", testcase.wantErr, err)
-			}
-		})
-	}
-}
-
 func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 	type want struct {
 		req test.Header

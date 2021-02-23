@@ -30,10 +30,9 @@ import (
 )
 
 var DefaultBackendConf = &config.Backend{
-	ConnectTimeout:   "10s",
-	RequestBodyLimit: "64MiB",
-	TTFBTimeout:      "60s",
-	Timeout:          "300s",
+	ConnectTimeout: "10s",
+	TTFBTimeout:    "60s",
+	Timeout:        "300s",
 }
 
 type Port int
@@ -191,7 +190,29 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				kind = KindAPI
 			}
 
-			epHandler := handler.NewEndpoint(endpoint.Remain, confCtx, log, proxies, requests)
+			bodyLimit, err := handler.ParseBodyLimit(endpoint.RequestBodyLimit)
+			if err != nil {
+				r := endpoint.Remain.MissingItemRange()
+				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "parsing endpoint request body limit: " + endpoint.Pattern,
+					Subject:  &r,
+				}}
+			}
+
+			// TODO: determine req/beresp.body access in this context (all including backend) or for now:
+			bufferOpts := eval.MustBuffer(endpoint.Remain)
+			if len(proxies)+len(requests) > 1 { // also buffer with more possible results
+				bufferOpts |= eval.BufferResponse
+			}
+
+			epOpts := &handler.EndpointOptions{
+				Context:       endpoint.Remain,
+				ReqBufferOpts: bufferOpts,
+				ReqBodyLimit:  bodyLimit,
+				Error:         errTpl,
+			}
+			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests)
 			setACHandlerFn(epHandler)
 
 			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpoint], kind)
