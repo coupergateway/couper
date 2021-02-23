@@ -12,6 +12,8 @@ import (
 	"github.com/avenga/couper/handler/producer"
 )
 
+var _ http.Handler = &Endpoint{}
+
 type Endpoint struct {
 	context  hcl.Body
 	eval     *hcl.EvalContext
@@ -33,7 +35,7 @@ func NewEndpoint(ctx hcl.Body, evalCtx *hcl.EvalContext, log *logrus.Entry,
 	}
 }
 
-func (e *Endpoint) ServerHTTP(rw http.ResponseWriter, req *http.Request) {
+func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(req.Context())
 	defer cancel()
 

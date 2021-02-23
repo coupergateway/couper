@@ -18,24 +18,27 @@ var transports sync.Map
 // Config represents the transport <Config> object.
 type Config struct {
 	BackendName            string
-	ConnectTimeout         time.Duration
 	DisableCertValidation  bool
 	DisableConnectionReuse bool
-	Hash                   string
-	Hostname               string
 	HTTP2                  bool
 	MaxConnections         int
 	NoProxyFromEnv         bool
-	Origin                 string
-	Proxy                  string
-	Scheme                 string
-	TTFBTimeout            time.Duration
-	Timeout                time.Duration
+
+	// Dynamic values
+	Hostname string
+	Origin   string
+	Proxy    string
+	Scheme   string
+	hash     string
+
+	ConnectTimeout time.Duration
+	TTFBTimeout    time.Duration
+	Timeout        time.Duration
 }
 
 // Get creates a new <*http.Transport> object by the given <*Config>.
 func Get(conf *Config) *http.Transport {
-	key := conf.Scheme + "|" + conf.Origin + "|" + conf.Hostname + "|" + conf.Hash
+	key := conf.Scheme + "|" + conf.Origin + "|" + conf.Hostname + "|" + conf.hash
 
 	transport, ok := transports.Load(key)
 	if !ok {

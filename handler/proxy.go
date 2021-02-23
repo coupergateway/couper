@@ -14,7 +14,6 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -22,7 +21,7 @@ import (
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
-	backend          *transport.Backend
+	backend          http.RoundTripper
 	bufferOption     eval.BufferOption
 	context          hcl.Body
 	evalCtx          *hcl.EvalContext
@@ -30,7 +29,7 @@ type Proxy struct {
 	reverseProxy     *httputil.ReverseProxy
 }
 
-func NewProxy(backend *transport.Backend, ctx hcl.Body, evalCtx *hcl.EvalContext) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx hcl.Body, evalCtx *hcl.EvalContext) *Proxy {
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,

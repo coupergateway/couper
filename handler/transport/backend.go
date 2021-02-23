@@ -34,28 +34,33 @@ type Backend struct {
 	context          hcl.Body
 	evalContext      *hcl.EvalContext
 	name             string
-	transportConf    *Config
-	upstreamLog      *logging.AccessLog
 	openAPIValidator *validation.OpenAPI
+	transportConf    *Config
+	upstreamLog      *logging.UpstreamLog
 	// oauth
 	// ...
 	// TODO: OrderedList for origin AC, middlewares etc.
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(evalCtx *hcl.EvalContext, conf *Config, log *logrus.Entry, openAPIopts *validation.OpenAPIOptions) *Backend {
-	return &Backend{
+func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logrus.Entry, openAPIopts *validation.OpenAPIOptions) http.RoundTripper {
+	logEntry := log
+	if conf.BackendName != "" {
+		logEntry = log.WithField("backend", conf.BackendName)
+	}
+
+	backend := &Backend{
 		evalContext:      evalCtx,
+		context:          ctx,
 		openAPIValidator: validation.NewOpenAPI(openAPIopts),
 		transportConf:    conf,
-		//upstreamLog:      logging.NewAccessLog(nil, log),
 	}
+	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, conf.NoProxyFromEnv)
+	return backend.upstreamLog
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	//startTime := time.Now()
-
 	t := Get(b.transportConf)
 	err := eval.ApplyRequestContext(b.evalContext, b.context, req)
 	if err != nil {
@@ -78,9 +83,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del(AcceptEncodingHeader)
 	}
 
-	// TODO: logging, roundtrip
+	// TODO: enrich logging, roundtrip
 	roundtripInfo := &logging.RoundtripInfo{}
-
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateRequest(req, roundtripInfo); err != nil {
 			//p.options.ErrorTemplate.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
@@ -88,7 +92,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	//b.upstreamLog.ServeHTTP(rw, req, logging.RoundtripHandlerFunc(t.RoundTrip), startTime)
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
 		return nil, err

@@ -10,8 +10,10 @@ var _ Inline = &Proxy{}
 
 // Proxy represents the <Proxy> object.
 type Proxy struct {
-	Backend string   `hcl:"backend,optional"`
-	Remain  hcl.Body `hcl:",remain"`
+	BackendName string   `hcl:"backend,optional"`
+	Remain      hcl.Body `hcl:",remain"`
+	// internally used
+	Backend *Backend
 }
 
 // Proxies represents a list of <Proxy> objects.
@@ -24,7 +26,7 @@ func (p Proxy) HCLBody() hcl.Body {
 
 // Reference implements the <Inline> interface.
 func (p Proxy) Reference() string {
-	return p.Backend
+	return p.BackendName
 }
 
 // Schema implements the <Inline> interface.
@@ -51,7 +53,7 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
 	// A backend reference is defined, backend block is not allowed.
-	if p.Backend != "" {
+	if p.BackendName != "" {
 		schema.Blocks = nil
 	}
 
