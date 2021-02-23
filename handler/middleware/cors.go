@@ -64,12 +64,19 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
+func NewCORSHandler(opts *CORSOptions) NextHandler {
+	return &CORS{
+		options: opts,
+	}
+}
+
 func (c *CORS) ServeNextHTTP(rw http.ResponseWriter, nextHandler http.Handler, req *http.Request) {
 	if c.isCorsPreflightRequest(req) {
 		c.setCorsRespHeaders(rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
+	c.setCorsRespHeaders(rw.Header(), req)
 	nextHandler.ServeHTTP(rw, req)
 }
 
