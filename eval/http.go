@@ -137,7 +137,7 @@ func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
 	err := applyHeaderOps(attrs,
-		[]string{attrDelReqHeaders, attrSetReqHeaders, attrAddReqHeaders}, httpCtx, res.Header)
+		[]string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}, httpCtx, res.Header)
 	return err
 }
 
