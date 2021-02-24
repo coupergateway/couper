@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -12,22 +11,18 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
-	"github.com/hashicorp/hcl/v2/hcltest"
-	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
@@ -73,22 +68,13 @@ func TestProxy_director(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hclContext := helper.NewProxyContext(tt.inlineCtx)
 
-			p, err := handler.NewProxy(&handler.ProxyOptions{
-				Context: hclContext,
-				CORS:    &handler.CORSOptions{},
-			}, nullLog, nil, eval.NewENVContext(nil))
-			if err != nil {
-				t.Fatal(err)
-			}
+			backend := transport.NewBackend(eval.NewENVContext(nil), hcl.EmptyBody(), &transport.Config{}, nullLog, nil)
+			proxy := handler.NewProxy(backend, hclContext, eval.NewENVContext(nil))
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.Clone(tt.ctx)
 
-			proxy := p.(*handler.Proxy)
-			err = proxy.Director(req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			_, _ = proxy.RoundTrip(req) // implicit director() call
 
 			attr, _ := hclContext.JustAttributes()
 			hostnameExp, ok := attr["hostname"]
@@ -156,36 +142,32 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		hook.Reset()
 		t.Run(tt.name, func(t *testing.T) {
+			helper := test.New(t)
+			hook.Reset()
+
 			var remain hclBody
 			err := hclsimple.Decode("test.hcl", []byte(tt.hcl), baseCtx, &remain)
-			if err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(err)
 
-			p, err := handler.NewProxy(&handler.ProxyOptions{
-				ErrorTemplate:    errors.DefaultJSON,
-				RequestBodyLimit: 10,
-				Context: configload.MergeBodies([]hcl.Body{
-					test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-					remain.Inline,
-				}),
-			}, log.WithContext(context.Background()), nil, baseCtx)
-
-			if err != nil {
-				t.Fatal(err)
-			}
+			l := log.WithContext(context.Background())
+			evalCtx := eval.NewENVContext(nil)
+			backend := transport.NewBackend(evalCtx, hcl.EmptyBody(), &transport.Config{}, l, nil)
+			proxy := handler.NewProxy(backend, configload.MergeBodies([]hcl.Body{
+				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				remain.Inline,
+			}), evalCtx)
 
 			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
-			rw := httptest.NewRecorder()
 
 			if tt.body != nil {
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			}
 
-			p.ServeHTTP(rw, req)
-			res := rw.Result()
+			res, err := proxy.RoundTrip(req)
+			if err != nil {
+				t.Error(err)
+			}
 
 			if res == nil {
 				t.Fatal("Expected a response")
@@ -254,13 +236,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		for _, method := range tt.methods {
 			t.Run(method+" "+tt.name, func(subT *testing.T) {
 				helper := test.New(subT)
-				proxy, _, _, closeFn := helper.NewProxy(&handler.ProxyOptions{
-					Context:          helper.NewProxyContext(tt.inlineCtx),
-					CORS:             &handler.CORSOptions{},
-					RequestBodyLimit: 64,
-				})
-
-				closeFn() // unused
+				proxy := helper.NewProxy(&transport.Config{}, hcl.EmptyBody(), helper.NewProxyContext(tt.inlineCtx))
 
 				var body io.Reader
 				if tt.body != "" {
@@ -268,7 +244,8 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 				}
 				req := httptest.NewRequest(method, "/", body)
 				tt.header.Set(req)
-				helper.Must(proxy.Director(req))
+
+				_, _ = proxy.RoundTrip(req) // indirect director call
 
 				for k, v := range tt.want.req {
 					if req.Header.Get(k) != v {
@@ -322,26 +299,18 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
-			log, hook := logrustest.NewNullLogger()
-			evalCtx := eval.NewENVContext(nil)
 
-			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				ErrorTemplate: errors.DefaultJSON,
-				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-					helper.NewProxyContext(tc.remain)}),
-				RequestBodyLimit: 64,
-			}, log.WithContext(context.Background()), nil, evalCtx)
-			h.Must(err)
+			proxy := h.NewProxy(nil, hcl.EmptyBody(), configload.MergeBodies([]hcl.Body{
+				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				helper.NewProxyContext(tc.remain),
+			}))
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
 			req.Header.Set("Content-Type", "application/json")
 			*req = *req.WithContext(context.WithValue(req.Context(), request.UID, fmt.Sprintf("#%.2d: %s", i+1, tc.name)))
-			rec := httptest.NewRecorder()
 
-			proxy.ServeHTTP(rec, req)
-			rec.Flush()
-
-			res := rec.Result()
+			res, err := proxy.RoundTrip(req)
+			h.Must(err)
 
 			if res.StatusCode != http.StatusOK {
 				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
@@ -352,9 +321,6 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 
 			if !bytes.Equal(originPayload, originData) {
 				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
-				for _, entry := range hook.AllEntries() {
-					st.Log(entry.Message)
-				}
 			}
 
 			for k, v := range tc.expHeaders {
@@ -374,7 +340,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 
 	type testCase struct {
 		name           string
-		apiOptions     *handler.OpenAPIValidatorOptions
+		apiOptions     *validation.OpenAPIOptions
 		remain         string
 		expectedOption eval.BufferOption
 	}
@@ -396,9 +362,9 @@ func TestProxy_BufferingOptions(t *testing.T) {
 		helper.Must(err)
 	}))
 
-	newOptions := func() *handler.OpenAPIValidatorOptions {
+	newOptions := func() *validation.OpenAPIOptions {
 		c := config.OpenAPI{}
-		conf, err := handler.NewOpenAPIValidatorOptionsFromBytes(&c, helper.NewOpenAPIConf("/"))
+		conf, err := validation.NewOpenAPIOptionsFromBytes(&c, helper.NewOpenAPIConf("/"))
 		helper.Must(err)
 		return conf
 	}
@@ -418,17 +384,11 @@ func TestProxy_BufferingOptions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
-			log, hook := logrustest.NewNullLogger()
-			evalCtx := eval.NewENVContext(nil)
 
-			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				ErrorTemplate: errors.DefaultJSON,
-				OpenAPI:       tc.apiOptions,
-				Context: configload.MergeBodies([]hcl.Body{test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-					helper.NewProxyContext(tc.remain)}),
-				RequestBodyLimit: 64,
-			}, log.WithContext(context.Background()), nil, evalCtx)
-			h.Must(err)
+			proxy := h.NewProxy(nil, hcl.EmptyBody(), configload.MergeBodies([]hcl.Body{
+				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				helper.NewProxyContext(tc.remain),
+			}))
 
 			configuredOption := reflect.ValueOf(proxy).Elem().FieldByName("bufferOption") // private field: ro
 			opt := eval.BufferOption(configuredOption.Uint())
@@ -439,12 +399,9 @@ func TestProxy_BufferingOptions(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
 			req.Header.Set("Content-Type", "application/json")
 			*req = *req.WithContext(context.WithValue(req.Context(), request.UID, fmt.Sprintf("#%.2d: %s", i+1, tc.name)))
-			rec := httptest.NewRecorder()
 
-			proxy.ServeHTTP(rec, req)
-			rec.Flush()
-
-			res := rec.Result()
+			res, err := proxy.RoundTrip(req)
+			h.Must(err)
 
 			if res.StatusCode != http.StatusOK {
 				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
@@ -455,9 +412,6 @@ func TestProxy_BufferingOptions(t *testing.T) {
 
 			if !bytes.Equal(originPayload, originData) {
 				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
-				for _, entry := range hook.AllEntries() {
-					st.Log(entry.Message)
-				}
 			}
 		})
 
