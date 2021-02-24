@@ -10,12 +10,14 @@ var _ Inline = &Request{}
 
 // Request represents the <Request> object.
 type Request struct {
-	Backend string   `hcl:"backend,optional"`
-	Body    string   `hcl:"body,optional"`
-	Method  string   `hcl:"method,optional"`
-	Name    string   `hcl:"name,label"`
-	Remain  hcl.Body `hcl:",remain"`
-	URL     string   `hcl:"url,optional"`
+	BackendName string   `hcl:"backend,optional"`
+	Body        string   `hcl:"body,optional"`
+	Method      string   `hcl:"method,optional"`
+	Name        string   `hcl:"name,label"`
+	Remain      hcl.Body `hcl:",remain"`
+	URL         string   `hcl:"url,optional"`
+	// Internally used
+	Backend hcl.Body
 }
 
 // Requests represents a list of <Requests> objects.
@@ -28,7 +30,7 @@ func (r Request) HCLBody() hcl.Body {
 
 // Reference implements the <Inline> interface.
 func (r Request) Reference() string {
-	return r.Backend
+	return r.BackendName
 }
 
 // Schema implements the <Inline> interface.
@@ -47,7 +49,7 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
 	// A backend reference is defined, backend block is not allowed.
-	if r.Backend != "" {
+	if r.BackendName != "" {
 		schema.Blocks = nil
 	}
 

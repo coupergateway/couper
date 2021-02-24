@@ -165,11 +165,14 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 	}
 
 	if content == nil {
-		return reference, nil
+		if reference != nil {
+			return reference, nil
+		}
+		return nil, fmt.Errorf("configuration error: missing backend reference or inline definition")
 	}
 
 	// Apply current attributes to the referenced body.
-	if len(content.Attributes) > 0 {
+	if len(content.Attributes) > 0 && reference != nil {
 		reference = MergeBodies([]hcl.Body{reference, body.New(&hcl.BodyContent{
 			Attributes:       content.Attributes,
 			MissingItemRange: content.MissingItemRange,
@@ -185,7 +188,7 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 
 	// Case: `backend {}`, anonymous backend.
 	if len(backendBlock.Labels) == 0 {
-		return MergeBodies([]hcl.Body{reference, backendBlock.Body}), nil
+		return backendBlock.Body, nil
 	}
 
 	// Case: `backend "reference" {}`, referenced backend.
@@ -204,7 +207,7 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 		}
 	}
 
-	return MergeBodies([]hcl.Body{reference, refOverride}), nil
+	return MergeBodies([]hcl.Body{refOverride, backendBlock.Body}), nil
 }
 
 // mergeRight merges the right over the left one if the
@@ -239,36 +242,38 @@ func getReference(definedBackends Backends, inline config.Inline) (hcl.Body, err
 
 func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints config.Endpoints) error {
 	for _, endpoint := range endpoints {
-		for j, proxyConfig := range endpoint.Proxies { // TODO: loop content -> method
-			proxyBackend, err := mergeBackendBodies(definedBackends, proxyConfig)
+		for i, proxyConfig := range endpoint.Proxies {
+			bend, err := newBackend(definedBackends, parentBackend, proxyConfig)
 			if err != nil {
 				return err
 			}
-
-			proxyBackend = mergeRight(parentBackend, proxyBackend)
-			if err = validateOrigin(proxyBackend); err != nil {
-				return err
-			}
-			// TODO: mergeRemain is wrong, merged and configured backend seems to require own attr field
-			endpoint.Proxies[j].Remain = MergeBodies([]hcl.Body{proxyConfig.Remain, proxyBackend})
+			endpoint.Proxies[i].Backend = bend
 		}
 
-		for j, reqConfig := range endpoint.Requests {
-			reqBackend, err := mergeBackendBodies(definedBackends, reqConfig)
+		for i, reqConfig := range endpoint.Requests {
+			bend, err := newBackend(definedBackends, parentBackend, reqConfig)
 			if err != nil {
 				return err
 			}
-
-			reqBackend = mergeRight(parentBackend, reqBackend)
-			if err = validateOrigin(reqBackend); err != nil {
-				return err
-			}
-			// TODO: mergeRemain is wrong, merged and configured backend seems to require own attr field
-			endpoint.Requests[j].Remain = MergeBodies([]hcl.Body{reqConfig.Remain, reqBackend})
+			endpoint.Requests[i].Backend = bend
 		}
 	}
 
 	return nil
+}
+
+func newBackend(definedBackends Backends, parentBackend hcl.Body, inlineConfig config.Inline) (hcl.Body, error) {
+	bend, err := mergeBackendBodies(definedBackends, inlineConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	bend = mergeRight(parentBackend, bend)
+	if err = validateOrigin(bend); err != nil {
+		return nil, err
+	}
+
+	return bend, nil
 }
 
 // validateOrigin checks at least for an origin attribute definition.

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/pathpattern"
 	"github.com/hashicorp/hcl/v2"
@@ -171,7 +172,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			//var redirect producer.Redirect
 
 			for _, proxy := range endpoint.Proxies {
-				backend, berr := newBackend(confCtx, proxy.Remain, proxy.Backend, log, conf.Settings.NoProxyFromEnv)
+				backend, berr := newBackend(confCtx, proxy.Backend, log, conf.Settings.NoProxyFromEnv)
 				if berr != nil {
 					return nil, berr
 				}
@@ -184,6 +185,14 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				return nil, diags
 			}
 			// TODO: requests, redirect
+			if len(proxies)+len(requests) == 0 { // && redirect == nil
+				r := endpoint.Remain.MissingItemRange()
+				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request or redirect block", endpoint.Pattern),
+					Subject:  &r,
+				}}
+			}
 
 			kind := KindEndpoint
 			if parentAPI != nil {
@@ -225,7 +234,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 	return serverConfiguration, nil
 }
 
-func newBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, beConf *config.Backend, log *logrus.Entry, ignoreProxyEnv bool) (http.RoundTripper, error) {
+func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry, ignoreProxyEnv bool) (http.RoundTripper, error) {
+	beConf := *DefaultBackendConf
+	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
+		return nil, diags
+	}
+
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
 		DisableCertValidation:  beConf.DisableCertValidation,
@@ -234,10 +248,19 @@ func newBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, beConf *config.Backend, 
 		NoProxyFromEnv:         ignoreProxyEnv,
 		Proxy:                  beConf.Proxy,
 		// TODO: parse timings /w defaults
-		ConnectTimeout: 0,
 		MaxConnections: 0,
-		TTFBTimeout:    0,
-		Timeout:        0,
+	}
+
+	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
+		return nil, err
+	}
+
+	if err := parseDuration(beConf.TTFBTimeout, &tc.TTFBTimeout); err != nil {
+		return nil, err
+	}
+
+	if err := parseDuration(beConf.Timeout, &tc.Timeout); err != nil {
+		return nil, err
 	}
 
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
@@ -245,7 +268,7 @@ func newBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, beConf *config.Backend, 
 		return nil, err
 	}
 
-	backend := transport.NewBackend(evalCtx, ctx, tc, log, openAPIopts)
+	backend := transport.NewBackend(evalCtx, backendCtx, tc, log, openAPIopts)
 	return backend, nil
 }
 
@@ -411,4 +434,14 @@ func newEndpointMap(srvConf *config.Server) endpointMap {
 	}
 
 	return endpoints
+}
+
+// parseDuration sets the target value if the given duration string is not empty.
+func parseDuration(src string, target *time.Duration) error {
+	d, err := time.ParseDuration(src)
+	if src != "" && err != nil {
+		return err
+	}
+	*target = d
+	return nil
 }

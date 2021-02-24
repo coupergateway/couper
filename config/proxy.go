@@ -13,7 +13,7 @@ type Proxy struct {
 	BackendName string   `hcl:"backend,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 	// internally used
-	Backend *Backend
+	Backend hcl.Body
 }
 
 // Proxies represents a list of <Proxy> objects.

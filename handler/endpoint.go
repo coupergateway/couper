@@ -170,10 +170,14 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps map[stri
 		if r == nil {
 			panic("implement nil result handling")
 		}
-		// TODO: safe bereq access
-		name, ok := r.Beresp.Request.Context().Value("requestName").(string)
-		if !ok {
-			name = "proxy"
+
+		name := "default"
+		if r.Beresp != nil {
+			// TODO: safe bereq access
+			n, ok := r.Beresp.Request.Context().Value("requestName").(string)
+			if ok && n != "" {
+				name = n
+			}
 		}
 		beresps[strconv.Itoa(i)+name] = r
 		i++
