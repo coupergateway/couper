@@ -273,6 +273,7 @@ func newFunctionsMap() map[string]function.Function {
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"to_lower":      stdlib.LowerFunc,
 		"to_upper":      stdlib.UpperFunc,
+		"unixtime":      lib.UnixtimeFunc,
 	}
 }
 
