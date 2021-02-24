@@ -184,12 +184,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
 				return nil, diags
 			}
-			// TODO: requests, redirect
-			if len(proxies)+len(requests) == 0 { // && redirect == nil
+			// TODO: redirect
+			if endpoint.Response == nil && len(proxies)+len(requests) == 0 { // && redirect == nil
 				r := endpoint.Remain.MissingItemRange()
+				m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpoint.Pattern)
 				return nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request or redirect block", endpoint.Pattern),
+					Summary:  m,
 					Subject:  &r,
 				}}
 			}
