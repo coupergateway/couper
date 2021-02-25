@@ -77,10 +77,10 @@ func Get(conf *Config) *http.Transport {
 		}
 
 		transport = &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				conn, err := d.DialContext(ctx, network, addr)
+			DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				conn, err := d.DialContext(ctx, network, conf.Origin)
 				if err != nil {
-					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, addr, err)
+					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
 				}
 				return conn, nil
 			},
@@ -105,10 +105,31 @@ func Get(conf *Config) *http.Transport {
 }
 
 func (c *Config) With(scheme, origin, hostname string) *Config {
+	const defaultScheme = "http"
 	conf := *c
-	conf.Scheme = scheme
+	if scheme != "" {
+		conf.Scheme = scheme
+	} else {
+		conf.Scheme = defaultScheme
+		if conf.HTTP2 {
+			conf.Scheme += "s"
+		}
+	}
+
 	conf.Origin = origin
 	conf.Hostname = hostname
+
+	// Port required by transport.DialContext
+	_, p, _ := net.SplitHostPort(origin)
+	if p == "" {
+		const port, tlsPort = "80", "443"
+		if conf.Scheme == defaultScheme {
+			conf.Origin += ":" + port
+		} else {
+			conf.Origin += ":" + tlsPort
+		}
+	}
+
 	return &conf
 }
 

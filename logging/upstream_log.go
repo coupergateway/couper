@@ -147,6 +147,12 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
+func (u *UpstreamLog) LogEntry() *logrus.Entry {
+	// TODO: field enrichment / copy
+	// used for validation errors
+	return u.log
+}
+
 func (u *UpstreamLog) withTraceContext(req *http.Request) Fields {
 	timings := Fields{}
 	var timeTTFB, timeGotConn, timeConnect, timeDNS, timeTLS time.Time

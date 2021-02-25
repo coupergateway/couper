@@ -4,15 +4,18 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
 )
 
@@ -61,7 +64,16 @@ func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logru
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	t := Get(b.transportConf)
+	tc := b.evalTransport(req)
+	t := Get(tc)
+
+	if req.URL.Scheme == "" {
+		req.URL.Scheme = tc.Scheme
+	}
+	if req.URL.Host == "" {
+		req.URL.Host = tc.Hostname
+	}
+	req.Host = tc.Hostname
 
 	err := eval.ApplyRequestContext(b.evalContext, b.context, req)
 	if err != nil {
@@ -116,6 +128,40 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	err = eval.ApplyResponseContext(b.evalContext, b.context, req, beresp)
 	return beresp, err
+}
+
+var backendInlineSchema = config.Backend{}.Schema(true)
+
+func (b *Backend) evalTransport(req *http.Request) *Config {
+	httpContext := eval.NewHTTPContext(b.evalContext, eval.BufferNone, req, nil, nil)
+	content, _, diags := b.context.PartialContent(backendInlineSchema)
+	if diags.HasErrors() {
+		b.upstreamLog.LogEntry().Error(diags)
+	}
+
+	var origin, hostname string
+	if o := getAttribute(httpContext, "origin", content); o != "" {
+		origin = o
+	}
+	if h := getAttribute(httpContext, "hostname", content); h != "" {
+		hostname = h
+	}
+
+	originURL, _ := url.Parse(origin)
+	if hostname == "" {
+		hostname = originURL.Host
+	}
+
+	return b.transportConf.With(req.URL.Scheme, originURL.Host, hostname)
+}
+
+func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {
+	attr := body.Attributes
+	if _, ok := attr[name]; !ok {
+		return ""
+	}
+	originValue, _ := attr[name].Expr.Value(ctx)
+	return seetie.ValueToString(originValue)
 }
 
 // removeConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
