@@ -89,6 +89,8 @@ func GoToValue(v interface{}) cty.Value {
 		return cty.StringVal(ToString(v))
 	case bool:
 		return cty.BoolVal(v.(bool))
+	case int64:
+		return cty.NumberIntVal(v.(int64))
 	case float64:
 		return cty.NumberFloatVal(v.(float64))
 	case []interface{}:

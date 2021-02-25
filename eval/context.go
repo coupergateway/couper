@@ -277,9 +277,9 @@ func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
 }
 
 func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) ContextMap {
-	jwtClaims, _ := ctx.Value(request.AccessControls).(map[string]interface{})
+	acData, _ := ctx.Value(request.AccessControls).(map[string]interface{})
 	ctxAcMap := make(map[string]cty.Value)
-	for name, data := range jwtClaims {
+	for name, data := range acData {
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
 			continue
