@@ -2,8 +2,10 @@ server "api" {
   api {
     endpoint "/" {
       path = "/yyy"
-      backend "anything" {
-        path = "/zzz"
+      proxy {
+        backend "anything" {
+          path = "/zzz"
+        }
       }
 
       add_query_params = {

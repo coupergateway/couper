@@ -1,10 +1,12 @@
 server "ws" {
   api {
     endpoint "/upgrade" {
-      backend {
-        origin = env.COUPER_TEST_BACKEND_ADDR
-        # /ws path is a echo websocket upgrade handler at our test-backend
-        path = "/ws"
+      proxy {
+        backend {
+          origin = env.COUPER_TEST_BACKEND_ADDR
+          # /ws path is a echo websocket upgrade handler at our test-backend
+          path = "/ws"
+        }
       }
     }
   }

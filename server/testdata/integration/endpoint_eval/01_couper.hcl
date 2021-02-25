@@ -10,12 +10,14 @@ server "api" {
 
     endpoint "/{path}/{hostname}/{origin}" {
       path = "/set/by/endpoint/unset/by/backend"
-      backend "anything" {
-        path = "/anything"
-        origin = "http://${req.path_params.origin}"
-        hostname = req.path_params.hostname
-        set_response_headers = {
-          x-origin = req.path_params.origin
+      proxy {
+        backend "anything" {
+          path = "/anything"
+          origin = "http://${req.path_params.origin}"
+          hostname = req.path_params.hostname
+          set_response_headers = {
+            x-origin = req.path_params.origin
+          }
         }
       }
     }

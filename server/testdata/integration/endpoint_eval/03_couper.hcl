@@ -8,22 +8,28 @@ server "api" {
 
     endpoint "/endpoint1" {
       path = "/anything"
+      proxy {}
     }
 
     endpoint "/endpoint2" {
-     path = "/unset/by/local-backend"
-     backend "anything" {
-       path = "/anything"
-     }
+      path = "/unset/by/local-backend"
+      proxy {
+        backend "anything" {
+          path = "/anything"
+        }
+      }
     }
 
     # don't override path
     endpoint "/endpoint3" {
-      backend  = "anything"
+      proxy {
+        backend  = "anything"
+      }
     }
 
     endpoint "/endpoint4" {
       path = "/anything"
+      proxy {}
     }
 
   }

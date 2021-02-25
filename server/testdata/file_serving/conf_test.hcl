@@ -13,9 +13,11 @@ server "TestFileServing" {
     error_file = "./error.json"
 
     endpoint "/" {
-      backend {
-        origin = "{{.origin}}"
-        hostname = "{{.hostname}}"
+      proxy {
+        backend {
+          origin = "{{.origin}}"
+          hostname = "{{.hostname}}"
+        }
       }
     }
   }

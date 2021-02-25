@@ -7,19 +7,25 @@ server "api" {
     error_file = "./../api_error.json"
 
     endpoint "/" {
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
 
     endpoint "/proxy" {
-      backend {
-        origin = "http://example.com"
+      proxy {
+        backend {
+          origin = "http://example.com"
+        }
       }
     }
 
     endpoint "/connect-error" {
-      backend {
-        connect_timeout = "2s"
-        origin = "http://1.2.3.4"
+      proxy {
+        backend {
+          connect_timeout = "2s"
+          origin = "http://1.2.3.4"
+        }
       }
     }
   }
