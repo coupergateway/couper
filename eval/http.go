@@ -7,11 +7,14 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/utils"
 )
 
 // common "inline" attribute directives
-// TODO: move to config package, ask there for req /res related attrs (direction type <> )
+// TODO: move to config(meta?) package, ask there for req /res related attrs (direction type <> )
 const (
 	attrSetReqHeaders  = "set_request_headers"
 	attrAddReqHeaders  = "add_request_headers"
@@ -34,19 +37,18 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 	opts := BufferNone
 	httpCtx := NewHTTPContext(ctx, opts, req, nil, nil)
 
-	attributes, diags := body.JustAttributes()
-	if diags.HasErrors() {
-		return diags
-	}
+	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
 	headerCtx := req.Header
 
 	// map to name
 	// TODO: sorted data structure on load
 	attrs := make(map[string]*hcl.Attribute)
-	for _, attr := range attributes {
+	for _, attr := range content.Attributes {
 		attrs[attr.Name] = attr
 	}
+
+	evalURLPath(req, attrs, httpCtx)
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
 	if err := applyHeaderOps(attrs,
@@ -65,7 +67,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 	if ok {
 		val, attrDiags := attr.Expr.Value(httpCtx)
 		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return diags
+			return attrDiags
 		}
 		for _, key := range seetie.ValueToStringSlice(val) {
 			values.Del(key)
@@ -77,7 +79,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 	if ok {
 		val, attrDiags := attr.Expr.Value(httpCtx)
 		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return diags
+			return attrDiags
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
@@ -91,7 +93,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 	if ok {
 		val, attrDiags := attr.Expr.Value(httpCtx)
 		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return diags
+			return attrDiags
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
@@ -113,6 +115,27 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 	return nil
 }
 
+func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) {
+	path := req.URL.Path
+	if pathAttr, ok := attrs["path"]; ok {
+		pathValue, _ := pathAttr.Expr.Value(httpCtx)
+		if str := seetie.ValueToString(pathValue); str != "" {
+			path = str
+		}
+	}
+
+	if pathMatch, ok := req.Context().
+		Value(request.Wildcard).(string); ok && strings.HasSuffix(path, "/**") {
+		if strings.HasSuffix(req.URL.Path, "/") && !strings.HasSuffix(pathMatch, "/") {
+			pathMatch += "/"
+		}
+
+		req.URL.Path = utils.JoinPath("/", strings.ReplaceAll(path, "/**", "/"), pathMatch)
+	} else if path != "" {
+		req.URL.Path = utils.JoinPath("/", path)
+	}
+}
+
 func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request, res *http.Response) error {
 	if res == nil {
 		return nil
@@ -122,16 +145,13 @@ func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request
 	opts := BufferNone
 	httpCtx := NewHTTPContext(ctx, opts, req, res.Request, res)
 
-	attributes, diags := body.JustAttributes()
-	if diags.HasErrors() {
-		return diags
-	}
+	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
 	// map to name
 	// TODO: sorted data structure on load
 	// TODO: func
 	attrs := make(map[string]*hcl.Attribute)
-	for _, attr := range attributes {
+	for _, attr := range content.Attributes {
 		attrs[attr.Name] = attr
 	}
 

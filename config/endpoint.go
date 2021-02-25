@@ -3,7 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var _ Inline = &Endpoint{}
@@ -40,20 +41,5 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 		return schema
 	}
 
-	type Inline struct {
-		Path               string               `hcl:"path,optional"`
-		SetRequestHeaders  map[string]string    `hcl:"set_request_headers,optional"`
-		AddRequestHeaders  map[string]string    `hcl:"add_request_headers,optional"`
-		DelRequestHeaders  []string             `hcl:"remove_request_headers,optional"`
-		SetResponseHeaders map[string]string    `hcl:"set_response_headers,optional"`
-		AddResponseHeaders map[string]string    `hcl:"add_response_headers,optional"`
-		DelResponseHeaders []string             `hcl:"remove_response_headers,optional"`
-		AddQueryParams     map[string]cty.Value `hcl:"add_query_params,optional"`
-		DelQueryParams     []string             `hcl:"remove_query_params,optional"`
-		SetQueryParams     map[string]cty.Value `hcl:"set_query_params,optional"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
+	return meta.AttributesSchema
 }
