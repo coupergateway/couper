@@ -68,8 +68,11 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		requestFields["bytes"] = req.ContentLength
 	}
 
-	if h, ok := nextHandler.(fmt.Stringer); ok {
+	// Read out handler kind from stringer interface
+	if h, ok := nextHandler.(fmt.Stringer); ok && h.String() != "" {
 		fields["handler"] = h.String()
+	} else if kind, ok := req.Context().Value(request.EndpointKind).(string); ok { // fallback, e.g. with ErrorHandler
+		fields["handler"] = kind
 	}
 
 	if log.conf.TypeFieldKey != "" {

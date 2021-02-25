@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
@@ -21,20 +22,23 @@ var _ http.Handler = &Endpoint{}
 const defaultReqBodyLimit = "64MiB"
 
 type Endpoint struct {
-	evalContext *hcl.EvalContext
-	log         *logrus.Entry
-	opts        *EndpointOptions
-	proxies     producer.Roundtrips
-	redirect    *producer.Redirect
-	requests    producer.Roundtrips
-	response    *producer.Response
+	evalContext    *hcl.EvalContext
+	log            *logrus.Entry
+	logHandlerKind string
+	opts           *EndpointOptions
+	proxies        producer.Roundtrips
+	redirect       *producer.Redirect
+	requests       producer.Roundtrips
+	response       *producer.Response
 }
 
 type EndpointOptions struct {
-	Context       hcl.Body
-	ReqBufferOpts eval.BufferOption
-	ReqBodyLimit  int64
-	Error         *errors.Template
+	Context        hcl.Body
+	Error          *errors.Template
+	LogHandlerKind string
+	LogPattern     string
+	ReqBodyLimit   int64
+	ReqBufferOpts  eval.BufferOption
 }
 
 func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.Entry,
@@ -42,7 +46,7 @@ func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.En
 	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
 		evalContext: evalCtx,
-		log:         log,
+		log:         log.WithField("handler", opts.LogHandlerKind),
 		opts:        opts,
 		proxies:     proxies,
 		requests:    requests,
@@ -50,7 +54,13 @@ func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.En
 }
 
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	subCtx, cancel := context.WithCancel(req.Context())
+	// Bind some values for logging purposes
+	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
+	reqCtx = context.WithValue(req.Context(), request.EndpointKind, e.opts.LogHandlerKind)
+	*req = *req.WithContext(reqCtx)
+
+	// subCtx is handled by this endpoint handler and should not be attached to req
+	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
 	if err := e.SetGetBody(req); err != nil {
@@ -182,6 +192,11 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps map[stri
 		beresps[strconv.Itoa(i)+name] = r
 		i++
 	}
+}
+
+// String interface maps to the access log handler field.
+func (e *Endpoint) String() string {
+	return e.logHandlerKind
 }
 
 func ParseBodyLimit(limit string) (int64, error) {

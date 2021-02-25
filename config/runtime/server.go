@@ -1,3 +1,5 @@
+//go:generate stringer -type=HandlerKind -output=./server_string.go
+
 package runtime
 
 import (
@@ -50,10 +52,10 @@ type ports map[Port]hosts
 type HandlerKind uint8
 
 const (
-	KindAPI HandlerKind = iota
-	KindEndpoint
-	KindFiles
-	KindSPA
+	api HandlerKind = iota
+	endpoint
+	files
+	spa
 )
 
 type endpointMap map[*config.Endpoint]*config.API
@@ -108,7 +110,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 
 			for _, spaPath := range srvConf.Spa.Paths {
-				err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, KindSPA)
+				err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
 				if err != nil {
 					return nil, err
 				}
@@ -125,7 +127,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), fileHandler)
 
-			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, KindFiles)
+			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, files)
 			if err != nil {
 				return nil, err
 			}
@@ -133,7 +135,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 		endpointsPatterns := make(map[string]bool)
 
-		for endpoint, parentAPI := range newEndpointMap(srvConf) {
+		for endpointConf, parentAPI := range newEndpointMap(srvConf) {
 			var basePath string
 			//var cors *config.CORS
 			var errTpl *errors.Template
@@ -147,10 +149,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				errTpl = serverOptions.ServerErrTpl
 			}
 
-			pattern := utils.JoinPath(basePath, endpoint.Pattern)
+			pattern := utils.JoinPath(basePath, endpointConf.Pattern)
 			unique, cleanPattern := isUnique(endpointsPatterns, pattern)
 			if !unique {
-				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpoint.HCLBody().MissingItemRange().String(), pattern)
+				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpointConf.HCLBody().MissingItemRange().String(), pattern)
 			}
 			endpointsPatterns[cleanPattern] = true
 
@@ -162,8 +164,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 					accessControl = accessControl.Merge(config.NewAccessControl(parentAPI.AccessControl, parentAPI.DisableAccessControl))
 				}
 
-				endpointHandlers[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
-					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
+				endpointHandlers[endpointConf] = configureProtectedHandler(accessControls, errTpl, accessControl,
+					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 					protectedHandler)
 			}
 
@@ -171,7 +173,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			var requests producer.Requests
 			//var redirect producer.Redirect
 
-			for _, proxy := range endpoint.Proxies {
+			for _, proxy := range endpointConf.Proxies {
 				backend, berr := newBackend(confCtx, proxy.Backend, log, conf.Settings.NoProxyFromEnv)
 				if berr != nil {
 					return nil, berr
@@ -181,13 +183,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			}
 
 			backendConf := *DefaultBackendConf
-			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
 				return nil, diags
 			}
 			// TODO: redirect
-			if endpoint.Response == nil && len(proxies)+len(requests) == 0 { // && redirect == nil
-				r := endpoint.Remain.MissingItemRange()
-				m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpoint.Pattern)
+			if endpointConf.Response == nil && len(proxies)+len(requests) == 0 { // && redirect == nil
+				r := endpointConf.Remain.MissingItemRange()
+				m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
 				return nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  m,
@@ -195,37 +197,39 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				}}
 			}
 
-			kind := KindEndpoint
+			kind := endpoint
 			if parentAPI != nil {
-				kind = KindAPI
+				kind = api
 			}
 
-			bodyLimit, err := handler.ParseBodyLimit(endpoint.RequestBodyLimit)
+			bodyLimit, err := handler.ParseBodyLimit(endpointConf.RequestBodyLimit)
 			if err != nil {
-				r := endpoint.Remain.MissingItemRange()
+				r := endpointConf.Remain.MissingItemRange()
 				return nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
-					Summary:  "parsing endpoint request body limit: " + endpoint.Pattern,
+					Summary:  "parsing endpoint request body limit: " + endpointConf.Pattern,
 					Subject:  &r,
 				}}
 			}
 
 			// TODO: determine req/beresp.body access in this context (all including backend) or for now:
-			bufferOpts := eval.MustBuffer(endpoint.Remain)
+			bufferOpts := eval.MustBuffer(endpointConf.Remain)
 			if len(proxies)+len(requests) > 1 { // also buffer with more possible results
 				bufferOpts |= eval.BufferResponse
 			}
 
 			epOpts := &handler.EndpointOptions{
-				Context:       endpoint.Remain,
-				ReqBufferOpts: bufferOpts,
-				ReqBodyLimit:  bodyLimit,
-				Error:         errTpl,
+				Context:        endpointConf.Remain,
+				LogPattern:     endpointConf.Pattern,
+				LogHandlerKind: kind.String(),
+				ReqBufferOpts:  bufferOpts,
+				ReqBodyLimit:   bodyLimit,
+				Error:          errTpl,
 			}
 			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests)
 			setACHandlerFn(epHandler)
 
-			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpoint], kind)
+			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
 				return nil, err
 			}
@@ -403,13 +407,13 @@ func setRoutesFromHosts(srvConf ServerConfiguration, srvErrHandler *errors.Templ
 		var routes map[string]http.Handler
 
 		switch kind {
-		case KindAPI:
+		case api:
 			fallthrough
-		case KindEndpoint:
+		case endpoint:
 			routes = srvConf[listenPort].EndpointRoutes
-		case KindFiles:
+		case files:
 			routes = srvConf[listenPort].FileRoutes
-		case KindSPA:
+		case spa:
 			routes = srvConf[listenPort].SPARoutes
 		default:
 			return fmt.Errorf("unknown route kind")

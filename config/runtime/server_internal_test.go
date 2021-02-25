@@ -188,17 +188,17 @@ func TestServer_getEndpointsList(t *testing.T) {
 	}
 
 	checks := map[string]HandlerKind{
-		"/api/1":  KindAPI,
-		"/api/2":  KindAPI,
-		"/free/1": KindEndpoint,
-		"/free/2": KindEndpoint,
+		"/api/1":  api,
+		"/api/2":  api,
+		"/free/1": endpoint,
+		"/free/2": endpoint,
 	}
 
 	for pattern, kind := range checks {
 		var exist bool
 		for endpoint, parent := range endpoints {
 			if endpoint.Pattern == pattern {
-				if kind == KindAPI && parent == nil {
+				if kind == api && parent == nil {
 					t.Errorf("Expected an api endpoint for path pattern: %q", pattern)
 				}
 				exist = true
