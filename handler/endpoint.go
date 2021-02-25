@@ -95,7 +95,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil {
-		e.log.Errorf("upstream error: %v", err)
+		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 

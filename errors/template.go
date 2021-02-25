@@ -20,11 +20,11 @@ const HeaderErrorCode = "Couper-Error"
 
 func init() {
 	var err error
-	DefaultHTML, err = NewTemplate("text/html", assets.Assets.MustOpen("error.html").Bytes())
+	DefaultHTML, err = NewTemplate("text/html", "default.html", assets.Assets.MustOpen("error.html").Bytes())
 	if err != nil {
 		panic(err)
 	}
-	DefaultJSON, err = NewTemplate("application/json", assets.Assets.MustOpen("error.json").Bytes())
+	DefaultJSON, err = NewTemplate("application/json", "default.json", assets.Assets.MustOpen("error.json").Bytes())
 	if err != nil {
 		panic(err)
 	}
@@ -55,11 +55,11 @@ func NewTemplateFromFile(path string) (*Template, error) {
 		mime = "application/json"
 	}
 
-	return NewTemplate(mime, tplFile)
+	return NewTemplate(mime, path, tplFile)
 }
 
-func NewTemplate(mime string, src []byte) (*Template, error) {
-	tpl, err := template.New("").Parse(string(src))
+func NewTemplate(mime, name string, src []byte) (*Template, error) {
+	tpl, err := template.New(name).Parse(string(src))
 	if err != nil {
 		return nil, err
 	}

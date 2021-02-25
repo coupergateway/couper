@@ -50,7 +50,7 @@ const serverOptionsKey = "serverContextOptions"
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
-		opts = runtime.NewMuxOptions(nil)
+		opts = runtime.NewMuxOptions(errors.DefaultHTML, nil)
 	}
 
 	mux := &Mux{
@@ -167,7 +167,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 				return srvCtxOpts.ServerErrTpl.ServeError(errors.Configuration)
 			}
 			// Fallback
-			return errors.DefaultHTML.ServeError(errors.Configuration)
+			return m.opts.ErrorTpl.ServeError(errors.Configuration)
 		}
 	}
 

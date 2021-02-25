@@ -81,10 +81,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 	serverConfiguration := make(ServerConfiguration)
 	if len(validPortMap) == 0 {
-		serverConfiguration[Port(defaultPort)] = NewMuxOptions(hostsMap)
+		serverConfiguration[Port(defaultPort)] = NewMuxOptions(errors.DefaultHTML, hostsMap)
 	} else {
 		for p := range validPortMap {
-			serverConfiguration[p] = NewMuxOptions(hostsMap)
+			serverConfiguration[p] = NewMuxOptions(errors.DefaultHTML, hostsMap)
 		}
 	}
 
@@ -108,7 +108,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 
 			for _, spaPath := range srvConf.Spa.Paths {
-				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, KindSPA)
+				err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, KindSPA)
 				if err != nil {
 					return nil, err
 				}
@@ -125,7 +125,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), fileHandler)
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, KindFiles)
+			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, KindFiles)
 			if err != nil {
 				return nil, err
 			}
@@ -225,7 +225,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests)
 			setACHandlerFn(epHandler)
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpoint], kind)
+			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpoint], kind)
 			if err != nil {
 				return nil, err
 			}
@@ -379,7 +379,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
+func setRoutesFromHosts(srvConf ServerConfiguration, srvErrHandler *errors.Template, defaultPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
 	hostList := hosts
 	if len(hostList) == 0 {
 		hostList = []string{"*"}
@@ -397,6 +397,8 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 				pathpattern.PathFromHost(
 					net.JoinHostPort(host, listenPort.String()), false), "/", path)
 		}
+
+		srvConf[listenPort].ErrorTpl = srvErrHandler
 
 		var routes map[string]http.Handler
 
@@ -416,6 +418,7 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 		if _, exist := routes[joinedPath]; exist {
 			return fmt.Errorf("duplicate route found on port %q: %q", listenPort.String(), path)
 		}
+
 		routes[joinedPath] = handler
 	}
 	return nil
