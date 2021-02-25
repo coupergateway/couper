@@ -2,6 +2,8 @@
 github.com/agext/levenshtein
 # github.com/apparentlymart/go-textseg/v13 v13.0.0
 github.com/apparentlymart/go-textseg/v13/textseg
+# github.com/beevik/etree v1.1.0
+github.com/beevik/etree
 # github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 ## explicit
 github.com/dgrijalva/jwt-go/v4
@@ -37,15 +39,28 @@ github.com/hashicorp/hcl/v2/hclsyntax
 github.com/hashicorp/hcl/v2/hcltest
 github.com/hashicorp/hcl/v2/hclwrite
 github.com/hashicorp/hcl/v2/json
+# github.com/jonboulle/clockwork v0.2.0
+github.com/jonboulle/clockwork
 # github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
+# github.com/mattermost/xml-roundtrip-validator v0.0.0-20201208211235-fe770d50d911
+github.com/mattermost/xml-roundtrip-validator
 # github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7
 github.com/mitchellh/go-wordwrap
 # github.com/rs/xid v1.2.1
 ## explicit
 github.com/rs/xid
+# github.com/russellhaering/gosaml2 v0.6.0
+## explicit
+github.com/russellhaering/gosaml2
+github.com/russellhaering/gosaml2/types
+github.com/russellhaering/gosaml2/uuid
+# github.com/russellhaering/goxmldsig v1.1.0
+github.com/russellhaering/goxmldsig
+github.com/russellhaering/goxmldsig/etreeutils
+github.com/russellhaering/goxmldsig/types
 # github.com/satori/go.uuid v1.2.0
 ## explicit
 github.com/satori/go.uuid
