@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -23,22 +24,21 @@ type Config struct {
 	HTTP2                  bool
 	MaxConnections         int
 	NoProxyFromEnv         bool
-
-	// Dynamic values
-	Hostname string
-	Origin   string
-	Proxy    string
-	Scheme   string
-	hash     string
+	Proxy                  string
 
 	ConnectTimeout time.Duration
 	TTFBTimeout    time.Duration
 	Timeout        time.Duration
+
+	// Dynamic values
+	Hostname string
+	Origin   string
+	Scheme   string
 }
 
 // Get creates a new <*http.Transport> object by the given <*Config>.
 func Get(conf *Config) *http.Transport {
-	key := conf.Scheme + "|" + conf.Origin + "|" + conf.Hostname + "|" + conf.hash
+	key := conf.hash()
 
 	transport, ok := transports.Load(key)
 	if !ok {
@@ -98,4 +98,18 @@ func Get(conf *Config) *http.Transport {
 	}
 
 	return nil
+}
+
+func (c *Config) With(scheme, origin, hostname string) *Config {
+	conf := *c
+	conf.Scheme = scheme
+	conf.Origin = origin
+	conf.Hostname = hostname
+	return &conf
+}
+
+func (c *Config) hash() string {
+	h := sha256.New()
+	h.Write([]byte(fmt.Sprintf("%v", c)))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
