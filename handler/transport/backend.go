@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
@@ -87,8 +88,13 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 
-	removeConnectionHeaders(req.Header)
-	removeHopHeaders(req.Header)
+	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
+	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
+
+	if !isProxyReq {
+		removeConnectionHeaders(req.Header)
+		removeHopHeaders(req.Header)
+	}
 
 	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
 		req.Header.Set(AcceptEncodingHeader, GzipName)
@@ -124,7 +130,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	removeConnectionHeaders(req.Header)
+	if !isProxyReq {
+		removeConnectionHeaders(req.Header)
+	}
 
 	err = eval.ApplyResponseContext(b.evalContext, b.context, req, beresp)
 	return beresp, err
