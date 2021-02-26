@@ -83,7 +83,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
-			values[k] = v.([]string)
+			values[k] = toSlice(v)
 		}
 
 		modifyQuery = true
@@ -97,7 +97,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
-			list := v.([]string)
+			list := toSlice(v)
 			if _, ok = values[k]; !ok {
 				values[k] = list
 			} else {
@@ -193,13 +193,7 @@ func setHeader(val cty.Value, headerCtx http.Header) {
 	expMap := seetie.ValueToMap(val)
 	for key, v := range expMap {
 		k := http.CanonicalHeaderKey(key)
-		switch v.(type) {
-		case string:
-			headerCtx[k] = []string{v.(string)}
-			continue
-		case []string:
-			headerCtx[k] = v.([]string)
-		}
+		headerCtx[k] = toSlice(v)
 	}
 }
 
@@ -212,4 +206,14 @@ func deleteHeader(val cty.Value, headerCtx http.Header) {
 		}
 		headerCtx.Del(k)
 	}
+}
+
+func toSlice(val interface{}) []string {
+	switch val.(type) {
+	case string:
+		return []string{val.(string)}
+	case []string:
+		return val.([]string)
+	}
+	return []string{}
 }
