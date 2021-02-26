@@ -116,6 +116,9 @@ func NewReadCloser(r io.Reader, c io.Closer) *ReadCloser {
 }
 
 func (rc ReadCloser) Close() error {
+	if rc.closer == nil {
+		return nil
+	}
 	return rc.closer.Close()
 }
 
