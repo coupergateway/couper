@@ -270,7 +270,11 @@ func newBackend(definedBackends Backends, parentBackend hcl.Body, inlineConfig c
 
 	bend = mergeRight(parentBackend, bend)
 	if err = validateOrigin(bend); err != nil {
-		return nil, err
+		r := inlineConfig.HCLBody().MissingItemRange()
+		return nil, hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &r,
+			Summary: err.Error(),
+		}}
 	}
 
 	return bend, nil
@@ -278,6 +282,10 @@ func newBackend(definedBackends Backends, parentBackend hcl.Body, inlineConfig c
 
 // validateOrigin checks at least for an origin attribute definition.
 func validateOrigin(merged hcl.Body) error {
+	if merged == nil {
+		return fmt.Errorf("missing backend reference or definition")
+	}
+
 	content, _, diags := merged.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}})
 	if diags.HasErrors() {
 		return diags
