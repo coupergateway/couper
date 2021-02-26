@@ -13,13 +13,6 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-type RoundtripInfo struct {
-	BeReq           *http.Request
-	BeResp          *http.Response
-	Err             error
-	ValidationError []error
-}
-
 type RoundtripHandlerFunc http.HandlerFunc
 
 func (f RoundtripHandlerFunc) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

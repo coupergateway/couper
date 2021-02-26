@@ -102,11 +102,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del(AcceptEncodingHeader)
 	}
 
-	// TODO: enrich logging, roundtrip
-	roundtripInfo := &logging.RoundtripInfo{}
 	if b.openAPIValidator != nil {
-		if err = b.openAPIValidator.ValidateRequest(req, roundtripInfo); err != nil {
-			//p.options.ErrorTemplate.ServeError(couperErr.UpstreamRequestValidationFailed).ServeHTTP(rw, req)
+		if err = b.openAPIValidator.ValidateRequest(req); err != nil {
+			b.upstreamLog.LogEntry().Error(err)
+
 			return nil, couperErr.UpstreamRequestValidationFailed
 		}
 	}
@@ -117,7 +116,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if b.openAPIValidator != nil {
-		if err = b.openAPIValidator.ValidateResponse(beresp, roundtripInfo); err != nil {
+		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
+			b.upstreamLog.LogEntry().Error(err)
+
 			return nil, couperErr.UpstreamResponseValidationFailed
 		}
 	}

@@ -18,7 +18,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/test"
@@ -61,36 +60,38 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	evalCtx := eval.NewENVContext(nil)
-	backend := transport.NewBackend(evalCtx, hcl.EmptyBody(), &transport.Config{}, logger, openAPI)
-	proxy := handler.NewProxy(backend, beConf.Remain, eval.NewENVContext(nil))
+	backend := transport.NewBackend(
+		eval.NewENVContext(nil), beConf.Remain, &transport.Config{}, logger, openAPI,
+	)
 
 	tests := []struct {
-		name, method, path string
-		body               io.Reader
-		wantBody           bool
-		wantErrLog         string
+		name, path string
+		body       io.Reader
+		wantBody   bool
+		wantErrLog string
 	}{
-		{"GET without required query", http.MethodGet, "/a?b", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
-		{"GET with required query", http.MethodGet, "/a?b=value", nil, false, ""},
-		{"GET with required path", http.MethodGet, "/a/value", nil, false, ""},
-		{"GET with required path missing", http.MethodGet, "/a//", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
-		{"GET with optional query", http.MethodGet, "/b", nil, false, ""},
-		{"GET with optional path param", http.MethodGet, "/b/a", nil, false, ""},
-		{"GET with required json body", http.MethodGet, "/json", strings.NewReader(`["hans", "wurst"]`), true, ""},
+		{"GET without required query", "/a?b", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
+		{"GET with required query", "/a?b=value", nil, false, ""},
+		{"GET with required path", "/a/value", nil, false, ""},
+		{"GET with required path missing", "/a//", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
+		{"GET with optional query", "/b", nil, false, ""},
+		{"GET with optional path param", "/b/a", nil, false, ""},
+		{"GET with required json body", "/json", strings.NewReader(`["hans", "wurst"]`), true, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, tt.body)
+			req := httptest.NewRequest(http.MethodGet, tt.path, tt.body)
 
 			if tt.body != nil {
 				req.Header.Set("Content-Type", "application/json")
 			}
 
 			hook.Reset()
-			res, err := proxy.RoundTrip(req)
-			helper.Must(err)
+			res, err := backend.RoundTrip(req)
+			if tt.wantErrLog == "" {
+				helper.Must(err)
+			}
 
 			if tt.wantErrLog == "" && res.StatusCode != http.StatusOK {
 				t.Errorf("Expected OK, got: %s", res.Status)

@@ -10,7 +10,6 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/logging"
 )
 
 type OpenAPI struct {
@@ -27,14 +26,13 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request, tripInfo *logging.RoundtripInfo) error {
+func (v *OpenAPI) ValidateRequest(req *http.Request) error {
 	route, pathParams, err := v.options.router.FindRoute(req.Method, req.URL)
 	if err != nil {
 		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
 		if !v.options.ignoreRequestViolations {
 			return err
 		}
-		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
 		return nil
 	}
 
@@ -54,18 +52,16 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, tripInfo *logging.Roundtrip
 		if !v.options.ignoreRequestViolations {
 			return err
 		}
-		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
 	}
 
 	return nil
 }
 
-func (v *OpenAPI) ValidateResponse(beresp *http.Response, tripInfo *logging.RoundtripInfo) error {
+func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 	// since a request validation could fail and ignored due to user options, the input route MAY be nil
 	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
 		err := fmt.Errorf("response validation: '%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
 		if v.options.ignoreResponseViolations {
-			tripInfo.ValidationError = append(tripInfo.ValidationError, err)
 			return nil
 		}
 		// Since a matching route is required; we are done here.
@@ -98,7 +94,6 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response, tripInfo *logging.Roun
 		if !v.options.ignoreResponseViolations {
 			return err
 		}
-		tripInfo.ValidationError = append(tripInfo.ValidationError, err)
 	}
 
 	return nil
