@@ -69,7 +69,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
-	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopReq, noopResp)
+	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopResp)
 
 	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
 	if err != nil {
@@ -174,12 +174,30 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			//var redirect producer.Redirect
 
 			for _, proxy := range endpointConf.Proxies {
+				// TODO: proxy label name; see requests
 				backend, berr := newBackend(confCtx, proxy.Backend, log, conf.Settings.NoProxyFromEnv)
 				if berr != nil {
 					return nil, berr
 				}
 				proxyHandler := handler.NewProxy(backend, proxy.HCLBody(), confCtx)
 				proxies = append(proxies, proxyHandler)
+			}
+
+			for _, request := range endpointConf.Requests {
+				backend, berr := newBackend(confCtx, request.Backend, log, conf.Settings.NoProxyFromEnv)
+				if berr != nil {
+					return nil, berr
+				}
+				method := http.MethodGet
+				if request.Method != "" {
+					method = request.Method
+				}
+				requests = append(requests, &producer.Request{
+					Backend: backend,
+					Body:    request.Body,
+					Context: request.Remain,
+					Method:  method,
+				})
 			}
 
 			backendConf := *DefaultBackendConf

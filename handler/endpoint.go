@@ -5,16 +5,18 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"strconv"
+	"strings"
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var _ http.Handler = &Endpoint{}
@@ -91,17 +93,19 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if e.redirect != nil {
 		clientres = e.newRedirect()
 	} else if e.response != nil {
-		clientres = e.newResponse(beresps)
+		clientres, err = e.newResponse(req, beresps)
 	} else {
-		if len(beresps) > 1 {
-			e.log.Error("endpoint configuration error")
-			return
-		}
 		for _, result := range beresps {
 			clientres = result.Beresp
 			err = result.Err
 			break
 		}
+		//if result, ok := beresps["default"]; ok {
+		//	clientres = result.Beresp
+		//	err = result.Err
+		//} else {
+		//	err = errors.Configuration
+		//}
 	}
 
 	if err != nil {
@@ -152,45 +156,71 @@ func (e *Endpoint) SetGetBody(req *http.Request) error {
 	return nil
 }
 
-func (e *Endpoint) newResponse(beresps map[string]*producer.Result) *http.Response {
-	// TODO: beresps.eval....
-	clientres := &http.Response{
-		StatusCode: e.response.Status,
-		Header:     e.response.Header,
+func (e *Endpoint) newResponse(req *http.Request, beresps map[string]*producer.Result) (*http.Response, error) {
+	var resps []*http.Response
+	for _, br := range beresps {
+		resps = append(resps, br.Beresp)
 	}
-	return clientres
+
+	clientres := &http.Response{
+		Header:     make(http.Header),
+		Proto:      req.Proto,
+		ProtoMajor: req.ProtoMajor,
+		ProtoMinor: req.ProtoMinor,
+	}
+
+	httpCtx := eval.NewHTTPContext(e.evalContext, e.opts.ReqBufferOpts, req, resps...)
+	content, _, diags := e.response.Context.PartialContent(meta.AttributesSchema)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	statusCode := http.StatusOK
+	if attr, ok := content.Attributes["status"]; ok {
+		val, _ := attr.Expr.Value(httpCtx)
+		statusCode = int(seetie.ValueToInt(val))
+	}
+	clientres.StatusCode = statusCode
+	clientres.Status = http.StatusText(clientres.StatusCode)
+
+	if attr, ok := content.Attributes["headers"]; ok {
+		val, _ := attr.Expr.Value(httpCtx)
+		eval.SetHeader(val, clientres.Header)
+	}
+
+	if attr, ok := content.Attributes["body"]; ok {
+		val, _ := attr.Expr.Value(httpCtx)
+		r := strings.NewReader(seetie.ValueToString(val))
+		clientres.Body = eval.NewReadCloser(r, nil)
+	}
+
+	return clientres, nil
 }
 
 func (e *Endpoint) newRedirect() *http.Response {
 	// TODO use http.RedirectHandler
 	status := http.StatusMovedPermanently
-	if e.redirect.Status > 0 {
-		status = e.redirect.Status
-	}
 	return &http.Response{
-		Header: e.redirect.Header,
+		//Header: e.redirect.Header,
 		//Body:   e.redirect.Body, // TODO: closeWrapper
 		StatusCode: status,
 	}
 }
 
 func (e *Endpoint) readResults(requestResults producer.Results, beresps map[string]*producer.Result) {
-	i := 0
 	for r := range requestResults { // collect resps
 		if r == nil {
 			panic("implement nil result handling")
 		}
 
-		name := "default"
 		if r.Beresp != nil {
-			// TODO: safe bereq access
-			n, ok := r.Beresp.Request.Context().Value("requestName").(string)
-			if ok && n != "" {
+			ctx := r.Beresp.Request.Context()
+			name := ctx.Value(request.UID).(string)
+			if n, ok := ctx.Value(request.RoundTripName).(string); ok && n != "" {
 				name = n
 			}
+			beresps[name] = r
 		}
-		beresps[strconv.Itoa(i)+name] = r
-		i++
 	}
 }
 

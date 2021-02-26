@@ -10,12 +10,12 @@ var _ Inline = &Request{}
 
 // Request represents the <Request> object.
 type Request struct {
-	BackendName string   `hcl:"backend,optional"`
-	Body        string   `hcl:"body,optional"`
-	Method      string   `hcl:"method,optional"`
-	Name        string   `hcl:"name,label"`
-	Remain      hcl.Body `hcl:",remain"`
-	URL         string   `hcl:"url,optional"`
+	BackendName string `hcl:"backend,optional"`
+	Body        string `hcl:"body,optional"`
+	Method      string `hcl:"method,optional"`
+	//Name        string   `hcl:"name,label"`
+	Remain hcl.Body `hcl:",remain"`
+	URL    string   `hcl:"url,optional"`
 	// Internally used
 	Backend hcl.Body
 }

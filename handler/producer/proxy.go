@@ -11,7 +11,7 @@ import (
 // Proxies represents a list of producer <Proxy> objects.
 type Proxies []http.RoundTripper
 
-func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, evalCtx *hcl.EvalContext, results chan<- *Result) {
+func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, _ *hcl.EvalContext, results chan<- *Result) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(pr))
 	go func() {
@@ -21,6 +21,7 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, evalCtx 
 
 	for _, proxy := range pr {
 		outreq := clientReq.WithContext(ctx)
+		withRoundTripName("", outreq)
 		go roundtrip(proxy, outreq, results, wg)
 	}
 }

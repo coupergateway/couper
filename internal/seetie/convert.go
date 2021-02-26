@@ -196,6 +196,12 @@ func ValueToString(v cty.Value) string {
 	}
 }
 
+func ValueToInt(v cty.Value) int64 {
+	n := v.AsBigFloat()
+	ni, _ := n.Int64()
+	return ni
+}
+
 func SliceToString(sl []interface{}) string {
 	var str []string
 	for _, s := range sl {

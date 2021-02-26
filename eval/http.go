@@ -13,9 +13,10 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-// common "inline" attribute directives
+// common "inline" meta-attributes
 // TODO: move to config(meta?) package, ask there for req /res related attrs (direction type <> )
 const (
+	attrPath           = "path"
 	attrSetReqHeaders  = "set_request_headers"
 	attrAddReqHeaders  = "add_request_headers"
 	attrDelReqHeaders  = "remove_request_headers"
@@ -35,7 +36,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 
 	// TODO: bufferOpts from parent
 	opts := BufferNone
-	httpCtx := NewHTTPContext(ctx, opts, req, nil, nil)
+	httpCtx := NewHTTPContext(ctx, opts, req)
 
 	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
@@ -117,7 +118,7 @@ func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request)
 
 func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) {
 	path := req.URL.Path
-	if pathAttr, ok := attrs["path"]; ok {
+	if pathAttr, ok := attrs[attrPath]; ok {
 		pathValue, _ := pathAttr.Expr.Value(httpCtx)
 		if str := seetie.ValueToString(pathValue); str != "" {
 			path = str
@@ -136,14 +137,14 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	}
 }
 
-func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request, res *http.Response) error {
-	if res == nil {
+func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request, beresp *http.Response, beresps ...*http.Response) error {
+	if len(beresps) == 0 {
 		return nil
 	}
 
 	// TODO: bufferOpts from parent
 	opts := BufferNone
-	httpCtx := NewHTTPContext(ctx, opts, req, res.Request, res)
+	httpCtx := NewHTTPContext(ctx, opts, req, beresps...)
 
 	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
@@ -157,39 +158,41 @@ func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
 	err := applyHeaderOps(attrs,
-		[]string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}, httpCtx, res.Header)
+		[]string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}, httpCtx, beresp.Header)
 	return err
 }
 
-func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hcl.EvalContext, headerCtx http.Header) error {
-	for _, name := range names {
-		attr, ok := attrs[name]
-		if !ok {
-			continue
-		}
+func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hcl.EvalContext, headers ...http.Header) error {
+	for _, headerCtx := range headers {
+		for _, name := range names {
+			attr, ok := attrs[name]
+			if !ok {
+				continue
+			}
 
-		val, attrDiags := attr.Expr.Value(httpCtx)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
-		}
+			val, attrDiags := attr.Expr.Value(httpCtx)
+			if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+				return attrDiags
+			}
 
-		switch name {
-		case attrDelReqHeaders, attrDelResHeaders:
-			deleteHeader(val, headerCtx)
-		case attrSetReqHeaders, attrSetResHeaders:
-			setHeader(val, headerCtx)
-		case attrAddReqHeaders, attrAddResHeaders:
-			addedHeaders := make(http.Header)
-			setHeader(val, addedHeaders)
-			for k, v := range addedHeaders {
-				headerCtx[k] = append(headerCtx[k], v...)
+			switch name {
+			case attrDelReqHeaders, attrDelResHeaders:
+				deleteHeader(val, headerCtx)
+			case attrSetReqHeaders, attrSetResHeaders:
+				SetHeader(val, headerCtx)
+			case attrAddReqHeaders, attrAddResHeaders:
+				addedHeaders := make(http.Header)
+				SetHeader(val, addedHeaders)
+				for k, v := range addedHeaders {
+					headerCtx[k] = append(headerCtx[k], v...)
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func setHeader(val cty.Value, headerCtx http.Header) {
+func SetHeader(val cty.Value, headerCtx http.Header) {
 	expMap := seetie.ValueToMap(val)
 	for key, v := range expMap {
 		k := http.CanonicalHeaderKey(key)

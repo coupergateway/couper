@@ -107,6 +107,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
 		serverConfig := &config.Server{}
+		//serverSchema, _ := gohcl.ImpliedBodySchema(serverConfig) // TODO: handle proxy/request labels here
 		if diags = gohcl.DecodeBody(serverBlock.Body, couperConfig.Context, serverConfig); diags.HasErrors() {
 			return nil, diags
 		}

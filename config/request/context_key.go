@@ -9,6 +9,7 @@ const (
 	EndpointKind
 	PathParams
 	RoundTripProxy
+	RoundTripName
 	ServerName
 	Wildcard
 )

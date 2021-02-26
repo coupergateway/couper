@@ -11,7 +11,6 @@ var _ Inline = &Response{}
 type Response struct {
 	Body   string   `hcl:"body,optional"`
 	Remain hcl.Body `hcl:",remain"`
-	Status int      `hcl:"status"`
 }
 
 // HCLBody implements the <Inline> interface.
@@ -32,7 +31,9 @@ func (r Response) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
+		Body    string            `hcl:"body,optional"`
 		Headers map[string]string `hcl:"headers,optional"`
+		Status  int               `hcl:"status,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
