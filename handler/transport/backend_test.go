@@ -50,8 +50,8 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
 			log := logger.WithContext(context.Background())
 
-			backend := transport.NewBackend(eval.NewENVContext(nil), hcl.EmptyBody(), tt.tconf, log, nil)
-			proxy := handler.NewProxy(backend, tt.context, eval.NewENVContext(nil))
+			backend := transport.NewBackend(eval.NewENVContext(nil), tt.context, tt.tconf, log, nil)
+			proxy := handler.NewProxy(backend, hcl.EmptyBody(), eval.NewENVContext(nil))
 
 			hook.Reset()
 
@@ -232,8 +232,8 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 				origin = "` + origin.URL + `"
 			`)
 
-			backend := transport.NewBackend(eval.NewENVContext(nil), hcl.EmptyBody(), &transport.Config{}, log, openapiValidatorOptions)
-			proxy := handler.NewProxy(backend, content, eval.NewENVContext(nil))
+			backend := transport.NewBackend(eval.NewENVContext(nil), content, &transport.Config{}, log, openapiValidatorOptions)
+			proxy := handler.NewProxy(backend, hcl.EmptyBody(), eval.NewENVContext(nil))
 
 			// TODO: origin.URL
 			req := httptest.NewRequest(tt.requestMethod, "http://1.2.3.4"+tt.requestPath, nil)
