@@ -697,14 +697,6 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				"Aeb_noop":    []string{"", ""},
 				"Aeb_null":    []string{"", ""},
 				"Aeb_string":  []string{"str", "str"},
-				"Def_a_and_b": []string{"A&B", "A&B"},
-				"Def_empty":   []string{"", ""},
-				"Def_multi":   []string{"str1", "str2", "str3", "str4"},
-				"Def_noop":    []string{"", ""},
-				"Def_null":    []string{"", ""},
-				"Def_string":  []string{"str", "str"},
-				"Def":         []string{"def", "def"},
-				"Foo":         []string{""},
 				"Xxx":         []string{"aaa", "bbb"},
 			},
 		}},
@@ -720,23 +712,17 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			if r1 := res.Header.Get("Remove-Me-1"); r1 != "" {
-				t.Errorf("Unexpected header %s", r1)
+			if r1 := res.Header.Get("Remove-Me-1"); r1 != "r1" {
+				t.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
 			}
 			if r2 := res.Header.Get("Remove-Me-2"); r2 != "" {
 				t.Errorf("Unexpected header %s", r2)
 			}
 
-			if s1 := res.Header.Get("Set-Me-1"); s1 != "s1" {
-				t.Errorf("Missing or invalid header Set-Me-1: %s", s1)
-			}
 			if s2 := res.Header.Get("Set-Me-2"); s2 != "s2" {
 				t.Errorf("Missing or invalid header Set-Me-2: %s", s2)
 			}
 
-			if a1 := res.Header.Get("Add-Me-1"); a1 != "a1" {
-				t.Errorf("Missing or invalid header Add-Me-1: %s", a1)
-			}
 			if a2 := res.Header.Get("Add-Me-2"); a2 != "a2" {
 				t.Errorf("Missing or invalid header Add-Me-2: %s", a2)
 			}

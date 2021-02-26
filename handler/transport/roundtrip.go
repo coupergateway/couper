@@ -56,6 +56,7 @@ func (r *Recorder) Read(p []byte) (n int, err error) {
 func (r *Recorder) Response(req *http.Request) (*http.Response, error) {
 	return &http.Response{
 		Body:       eval.NewReadCloser(r.body, nil),
+		Header:     r.Header(),
 		Proto:      req.Proto,
 		ProtoMajor: req.ProtoMajor,
 		ProtoMinor: req.ProtoMinor,
