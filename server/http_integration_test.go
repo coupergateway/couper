@@ -985,6 +985,7 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 	client := newClient()
 
 	shutdown, _ := newCouper("testdata/integration/endpoint_eval/08_couper.hcl", test.New(t))
+	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/"+
 		strings.Replace(testBackend.Addr(), "http://", "", 1), nil)
@@ -996,7 +997,6 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Error("Expected a bad request without required query param")
 	}
-	shutdown()
 }
 
 func TestConfigBodyContent(t *testing.T) {

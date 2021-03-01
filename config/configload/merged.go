@@ -7,6 +7,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
+
+	hclbody "github.com/avenga/couper/config/body"
 )
 
 // reportDuplicates is the global switch to handle force merges.
@@ -188,7 +190,40 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 		}
 
 		if len(thisContent.Blocks) != 0 {
-			content.Blocks = append(content.Blocks, thisContent.Blocks...)
+			for _, thisContentBlock := range thisContent.Blocks {
+				if len(thisContentBlock.Labels) == 0 {
+					// assume a block definition without a label could not exist twice. Merge attrs.
+					var contentBlockType string
+					for _, contentBlock := range content.Blocks {
+						if contentBlock.Type == thisContentBlock.Type {
+							contentBlockType = contentBlock.Type
+							contentAttrs, contentAttrsDiags := contentBlock.Body.JustAttributes()
+							if contentAttrsDiags.HasErrors() {
+								diags = append(diags, contentAttrsDiags...)
+								break
+							}
+							thisContentAttrs, thisContentAttrsDiags := thisContentBlock.Body.JustAttributes()
+							if thisContentAttrsDiags.HasErrors() {
+								diags = append(diags, thisContentAttrsDiags...)
+								break
+							}
+							for name, attr := range thisContentAttrs {
+								contentAttrs[name] = attr
+							}
+							contentBlock.Body = hclbody.New(&hcl.BodyContent{
+								Attributes:       contentAttrs,
+								MissingItemRange: thisContentBlock.DefRange,
+							})
+						}
+					}
+					if contentBlockType == "" { // nothing found
+						content.Blocks = append(content.Blocks, thisContentBlock)
+					}
+				} else {
+					content.Blocks = append(content.Blocks, thisContentBlock)
+				}
+			}
+			//content.Blocks = append(content.Blocks, thisContent.Blocks...)
 		}
 	}
 
