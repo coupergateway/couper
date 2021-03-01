@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -11,6 +12,7 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/test"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func TestEndpoint_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
@@ -29,11 +31,14 @@ func TestEndpoint_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
 		t.Run(testcase.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
+			logger, _ := logrustest.NewNullLogger()
+			log := logger.WithContext(context.Background())
+
 			bodyLimit, _ := handler.ParseBodyLimit(testcase.limit)
 			epHandler := handler.NewEndpoint(&handler.EndpointOptions{
 				Context:      helper.NewProxyContext("set_request_headers = { x = req.post }"),
 				ReqBodyLimit: bodyLimit,
-			}, eval.NewENVContext(nil), nil, nil, nil)
+			}, eval.NewENVContext(nil), log, nil, nil)
 
 			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
 			err := epHandler.SetGetBody(req)
