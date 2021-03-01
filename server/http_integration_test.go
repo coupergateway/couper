@@ -1048,7 +1048,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/anything", http.Header{"Foo": []string{"4"}}, url.Values{"bar": []string{"3", "4"}}},
-		{"/get", http.Header{"Foo": []string{"1", "3"}}, url.Values{"bar": []string{"1", "3", "4"}}},
+		{"/get", http.Header{"Foo": []string{"1", "3"}}, url.Values{"bar": []string{"1", "4"}}},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
