@@ -95,17 +95,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	} else if e.response != nil {
 		clientres, err = e.newResponse(req, beresps)
 	} else {
-		for _, result := range beresps {
+		if result, ok := beresps["default"]; ok {
 			clientres = result.Beresp
 			err = result.Err
-			break
+		} else {
+			err = errors.Configuration
 		}
-		//if result, ok := beresps["default"]; ok {
-		//	clientres = result.Beresp
-		//	err = result.Err
-		//} else {
-		//	err = errors.Configuration
-		//}
 	}
 
 	if err != nil {

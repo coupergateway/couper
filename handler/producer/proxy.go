@@ -20,8 +20,8 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, _ *hcl.E
 	}()
 
 	for _, proxy := range pr {
-		outreq := clientReq.WithContext(ctx)
-		withRoundTripName("", outreq)
-		go roundtrip(proxy, outreq, results, wg)
+		outCtx := withRoundTripName(ctx, "")
+		outReq := clientReq.WithContext(outCtx)
+		go roundtrip(proxy, outReq, results, wg)
 	}
 }

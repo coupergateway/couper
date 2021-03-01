@@ -42,22 +42,22 @@ func (r Requests) Produce(ctx context.Context, _ *http.Request, evalCtx *hcl.Eva
 			continue
 		}
 
-		*outreq = *withRoundTripName(req.Name, outreq)
+		outCtx := withRoundTripName(ctx, req.Name)
 		err = eval.ApplyRequestContext(evalCtx, req.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
-		*outreq = *outreq.WithContext(ctx)
+		*outreq = *outreq.WithContext(outCtx)
 		go roundtrip(req.Backend, outreq, results, wg)
 	}
 }
 
-func withRoundTripName(name string, outreq *http.Request) *http.Request {
+func withRoundTripName(ctx context.Context, name string) context.Context {
 	n := name
 	if n == "" {
 		n = "default"
 	}
-	return outreq.WithContext(context.WithValue(outreq.Context(), request.RoundTripName, n))
+	return context.WithValue(ctx, request.RoundTripName, n)
 }
