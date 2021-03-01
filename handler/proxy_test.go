@@ -152,11 +152,10 @@ func TestProxy_ServeHTTP_Eval(t *testing.T) {
 
 			l := log.WithContext(context.Background())
 			evalCtx := eval.NewENVContext(nil)
-			backend := transport.NewBackend(evalCtx, hcl.EmptyBody(), &transport.Config{}, l, nil)
-			proxy := handler.NewProxy(backend, configload.MergeBodies([]hcl.Body{
+			backend := transport.NewBackend(evalCtx,
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-				remain.Inline,
-			}), evalCtx)
+				&transport.Config{}, l, nil)
+			proxy := handler.NewProxy(backend, remain.Inline, evalCtx)
 
 			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
 
@@ -236,7 +235,7 @@ func TestProxy_setRoundtripContext_Variables_json_body(t *testing.T) {
 		for _, method := range tt.methods {
 			t.Run(method+" "+tt.name, func(subT *testing.T) {
 				helper := test.New(subT)
-				proxy := helper.NewProxy(&transport.Config{}, hcl.EmptyBody(), helper.NewProxyContext(tt.inlineCtx))
+				proxy := helper.NewProxy(&transport.Config{}, helper.NewProxyContext(tt.inlineCtx), hcl.EmptyBody())
 
 				var body io.Reader
 				if tt.body != "" {
@@ -300,10 +299,10 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
 
-			proxy := h.NewProxy(nil, hcl.EmptyBody(), configload.MergeBodies([]hcl.Body{
+			proxy := h.NewProxy(nil,
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 				helper.NewProxyContext(tc.remain),
-			}))
+			)
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
 			req.Header.Set("Content-Type", "application/json")
@@ -336,6 +335,7 @@ func TestProxy_SetRoundtripContext_Null_Eval(t *testing.T) {
 // TestProxy_BufferingOptions tests the option interaction with enabled/disabled validation and
 // the requirement for buffering to read the post or json body.
 func TestProxy_BufferingOptions(t *testing.T) {
+	t.Skip("TODO: move to backend")
 	helper := test.New(t)
 
 	type testCase struct {
@@ -385,10 +385,10 @@ func TestProxy_BufferingOptions(t *testing.T) {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
 
-			proxy := h.NewProxy(nil, hcl.EmptyBody(), configload.MergeBodies([]hcl.Body{
+			proxy := h.NewProxy(nil, configload.MergeBodies([]hcl.Body{
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 				helper.NewProxyContext(tc.remain),
-			}))
+			}), hcl.EmptyBody())
 
 			configuredOption := reflect.ValueOf(proxy).Elem().FieldByName("bufferOption") // private field: ro
 			opt := eval.BufferOption(configuredOption.Uint())
