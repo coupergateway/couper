@@ -111,7 +111,7 @@ func TestNewHTTPContext(t *testing.T) {
 
 			helper.Must(endpointHandler.SetGetBody(req))
 
-			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, bereq, beresp)
+			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, beresp)
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
