@@ -137,14 +137,14 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	}
 }
 
-func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request, beresp *http.Response, beresps ...*http.Response) error {
-	if len(beresps) == 0 {
+func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request, beresp *http.Response) error {
+	if beresp == nil {
 		return nil
 	}
 
 	// TODO: bufferOpts from parent
 	opts := BufferNone
-	httpCtx := NewHTTPContext(ctx, opts, req, beresps...)
+	httpCtx := NewHTTPContext(ctx, opts, req, beresp)
 
 	content, _, _ := body.PartialContent(meta.AttributesSchema)
 

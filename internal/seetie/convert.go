@@ -28,8 +28,14 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 	if val.IsNull() || !val.IsKnown() {
 		return result
 	}
+	var valMap map[string]cty.Value
+	if isTuple(val) {
+		valMap = val.AsValueSlice()[0].AsValueMap()
+	} else {
+		valMap = val.AsValueMap()
+	}
 
-	for k, v := range val.AsValueMap() {
+	for k, v := range valMap {
 		if v.IsNull() || !v.IsKnown() {
 			result[k] = ""
 			continue
