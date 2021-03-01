@@ -110,6 +110,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
+	setUserAgent(req)
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
 		return nil, err
@@ -172,6 +173,14 @@ func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) stri
 	}
 	originValue, _ := attr[name].Expr.Value(ctx)
 	return seetie.ValueToString(originValue)
+}
+
+// setUserAgent sets an empty one if none is present or empty
+// to prevent the go http defaultUA gets written.
+func setUserAgent(outreq *http.Request) {
+	if ua := outreq.Header.Get("User-Agent"); ua == "" {
+		outreq.Header.Set("User-Agent", "")
+	}
 }
 
 // removeConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.

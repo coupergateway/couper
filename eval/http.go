@@ -203,10 +203,6 @@ func SetHeader(val cty.Value, headerCtx http.Header) {
 func deleteHeader(val cty.Value, headerCtx http.Header) {
 	for _, key := range seetie.ValueToStringSlice(val) {
 		k := http.CanonicalHeaderKey(key)
-		if k == "User-Agent" {
-			headerCtx[k] = []string{}
-			continue
-		}
 		headerCtx.Del(k)
 	}
 }
