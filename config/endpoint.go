@@ -14,11 +14,12 @@ type Endpoint struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	Pattern              string    `hcl:"pattern,label"`
-	Proxies              Proxies   `hcl:"proxy,block"`
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
-	Requests             Requests  `hcl:"request,block"`
 	Response             *Response `hcl:"response,block"`
+	// internally used
+	Proxies  Proxies
+	Requests Requests
 }
 
 // Endpoints represents a list of <Endpoint> objects.
@@ -41,5 +42,11 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 		return schema
 	}
 
-	return meta.AttributesSchema
+	type Inline struct {
+		meta.Attributes
+		Requests Requests `hcl:"request,block"`
+		Proxies  Proxies  `hcl:"proxy,block"`
+	}
+	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	return schema
 }

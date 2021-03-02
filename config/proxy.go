@@ -13,7 +13,7 @@ var _ Inline = &Proxy{}
 type Proxy struct {
 	BackendName string   `hcl:"backend,optional"`
 	Remain      hcl.Body `hcl:",remain"`
-	//Name        string   `hcl:"name,label"`
+	Name        string   `hcl:"name,label"`
 	// internally used
 	Backend hcl.Body
 }

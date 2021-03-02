@@ -8,6 +8,7 @@ import (
 )
 
 var _ Inline = &Backend{}
+var BackendInlineSchema = Backend{}.Schema(true)
 
 // Backend represents the <Backend> object.
 type Backend struct {

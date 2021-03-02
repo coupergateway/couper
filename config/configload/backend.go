@@ -61,25 +61,3 @@ func (b Backends) WithName(name string) (hcl.Body, error) {
 		Summary:  "backend reference is not defined: " + name,
 	}}
 }
-
-func getBackendBlock(b hcl.Body) (*hcl.Block, string) {
-	var label string
-	content, _ := b.Content(backendBlockSchema)
-	if content == nil || len(content.Blocks) == 0 {
-		// fallback without label
-		content, _ = b.Content(&hcl.BodySchema{
-			Blocks: []hcl.BlockHeaderSchema{{Type: backend}},
-		})
-		if content == nil {
-			return nil, label
-		}
-	}
-
-	if backends := content.Blocks.OfType(backend); len(backends) > 0 {
-		if len(backends[0].Labels) > 0 {
-			label = backends[0].Labels[0]
-		}
-		return backends[0], label
-	}
-	return nil, label
-}

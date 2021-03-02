@@ -11,19 +11,20 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
 )
 
 const (
-	backend      = "backend"
-	backendLabel = "name"
-	definitions  = "definitions"
-	pathAttr     = "path"
-	server       = "server"
-	settings     = "settings"
+	backend     = "backend"
+	definitions = "definitions"
+	nameLabel   = "name"
+	proxy       = "proxy"
+	request     = "request"
+	server      = "server"
+	settings    = "settings"
 )
 
 func LoadFile(filePath string) (*config.Couper, error) {
@@ -51,11 +52,16 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	return LoadConfig(hclBody, src)
 }
 
+var envContext *hcl.EvalContext
+
 func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
+	envContext = eval.NewENVContext(src)
+
 	defaults := config.DefaultSettings
+
 	couperConfig := &config.Couper{
 		Bytes:       src,
-		Context:     eval.NewENVContext(src),
+		Context:     envContext,
 		Definitions: &config.Definitions{},
 		Settings:    &defaults,
 	}
@@ -107,7 +113,6 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
 		serverConfig := &config.Server{}
-		//serverSchema, _ := gohcl.ImpliedBodySchema(serverConfig) // TODO: handle proxy/request labels here
 		if diags = gohcl.DecodeBody(serverBlock.Body, couperConfig.Context, serverConfig); diags.HasErrors() {
 			return nil, diags
 		}
@@ -155,7 +160,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 
 // mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
 func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
-	reference, err := getReference(definedBackends, inline)
+	reference, err := getBackendReference(definedBackends, inline.HCLBody())
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +179,7 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 
 	// Apply current attributes to the referenced body.
 	if len(content.Attributes) > 0 && reference != nil {
-		reference = MergeBodies([]hcl.Body{reference, body.New(&hcl.BodyContent{
+		reference = MergeBodies([]hcl.Body{reference, hclbody.New(&hcl.BodyContent{
 			Attributes:       content.Attributes,
 			MissingItemRange: content.MissingItemRange,
 		})})
@@ -204,7 +209,7 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 	// link backend block name (label) to attribute 'name'
 	if syntaxBody, ok := backendBlock.Body.(*hclsyntax.Body); ok {
 		if refBody, ok := refOverride.(*hclsyntax.Body); ok {
-			syntaxBody.Attributes[backendLabel] = refBody.Attributes[backendLabel]
+			syntaxBody.Attributes[nameLabel] = refBody.Attributes[nameLabel]
 		}
 	}
 
@@ -216,10 +221,10 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 func mergeRight(left hcl.Body, right hcl.Body) hcl.Body {
 	if right != nil && left != nil {
 		leftAttrs, _ := left.JustAttributes()
-		leftLabel, ok := leftAttrs[backendLabel]
+		leftLabel, ok := leftAttrs[nameLabel]
 		if ok {
 			rightAttrs, _ := right.JustAttributes()
-			rightLabel, exist := rightAttrs[backendLabel]
+			rightLabel, exist := rightAttrs[nameLabel]
 			if exist && leftLabel == rightLabel {
 				return MergeBodies([]hcl.Body{left, right})
 			}
@@ -228,39 +233,172 @@ func mergeRight(left hcl.Body, right hcl.Body) hcl.Body {
 	return right
 }
 
-// getReference tries to fetch a backend from `definitions`
+// getBackendReference tries to fetch a backend from `definitions`
 // block by a reference name, e.g. `backend = "name"`.
-func getReference(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
-	reference, err := definedBackends.WithName(inline.Reference())
-	if err != nil {
-		// Backend reference is given, but not defined in definitions.
-		r := inline.HCLBody().MissingItemRange()
-		err.(hcl.Diagnostics)[0].Subject = &r
+func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, error) {
+	content, _, diags := body.PartialContent(&hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: backend},
+		}})
+	if diags.HasErrors() {
+		return nil, diags
 	}
 
-	return reference, err
+	// read out possible attribute reference
+	var name string
+	if attr, ok := content.Attributes["backend"]; ok {
+		val, valDiags := attr.Expr.Value(envContext)
+		if valDiags.HasErrors() {
+			return nil, valDiags
+		}
+		name = val.AsString()
+	}
+
+	// backend string attribute just not set
+	if name == "" {
+		return nil, nil
+	}
+
+	reference, err := definedBackends.WithName(name)
+	if err != nil {
+		return nil, err // parse err
+	}
+
+	// a name is given but we have no definition
+	if reference == nil {
+		r := body.MissingItemRange()
+		return nil, hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &r,
+			Summary: fmt.Sprintf("backend reference '%s' is not defined", name),
+		}}
+	}
+
+	return reference, nil
 }
 
 func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints config.Endpoints) error {
 	for _, endpoint := range endpoints {
-		for i, proxyConfig := range endpoint.Proxies {
+		// try to obtain proxy and request block with a chicken-and-egg situation:
+		// hcl labels are required if set, to make them optional we must know the content
+		// which could not unwrapped without label errors. We will handle this by block type
+		// and may have to throw an error which hints the user to configure the file properly.
+		endpointContent := &hcl.BodyContent{Attributes: make(hcl.Attributes)}
+		for _, t := range []string{proxy, request} {
+			c, err := contentByType(t, endpoint.Remain)
+			if err != nil {
+				return err
+			}
+			endpointContent.MissingItemRange = c.MissingItemRange
+			endpointContent.Blocks = append(endpointContent.Blocks, c.Blocks...)
+			for n, attr := range c.Attributes { // possible same key and content override, it's ok.
+				endpointContent.Attributes[n] = attr
+			}
+		}
+
+		proxies := endpointContent.Blocks.OfType(proxy)
+		requests := endpointContent.Blocks.OfType(request)
+		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
+
+		for _, proxyBlock := range proxies {
+			proxyConfig := &config.Proxy{}
+			if diags := gohcl.DecodeBody(proxyBlock.Body, envContext, proxyConfig); diags.HasErrors() {
+				return diags
+			}
+			if len(proxyBlock.Labels) > 0 {
+				proxyConfig.Name = proxyBlock.Labels[0]
+			}
+			if proxyConfig.Name == "" {
+				proxyConfig.Name = "default"
+			}
+
+			proxyConfig.Remain = proxyBlock.Body
 			bend, err := newBackend(definedBackends, parentBackend, proxyConfig)
 			if err != nil {
 				return err
 			}
-			endpoint.Proxies[i].Backend = bend
+			proxyConfig.Backend = bend
+			endpoint.Proxies = append(endpoint.Proxies, proxyConfig)
 		}
 
-		for i, reqConfig := range endpoint.Requests {
+		for _, reqBlock := range requests {
+			reqConfig := &config.Request{}
+			if diags := gohcl.DecodeBody(reqBlock.Body, envContext, reqConfig); diags.HasErrors() {
+				return diags
+			}
+
+			if len(reqBlock.Labels) > 0 {
+				reqConfig.Name = reqBlock.Labels[0]
+			}
+			if reqConfig.Name == "" {
+				reqConfig.Name = "default"
+			}
+
+			reqConfig.Remain = reqBlock.Body
 			bend, err := newBackend(definedBackends, parentBackend, reqConfig)
 			if err != nil {
 				return err
 			}
-			endpoint.Requests[i].Backend = bend
+			reqConfig.Backend = bend
+			endpoint.Requests = append(endpoint.Requests, reqConfig)
+		}
+
+		if proxyRequestLabelRequired {
+			unique := map[string]struct{}{}
+			itemRange := endpoint.Remain.MissingItemRange()
+			for _, p := range endpoint.Proxies {
+				if err := uniqueLabelName(unique, p.Name, &itemRange); err != nil {
+					return err
+				}
+			}
+			for _, r := range endpoint.Requests {
+				if err := uniqueLabelName(unique, r.Name, &itemRange); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
 	return nil
+}
+
+func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
+	if _, exist := unique[name]; exist {
+		if name == "default" {
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "proxy and request labels are required and only one 'default' label is allowed",
+				Subject:  hr,
+			}}
+		}
+		return hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("proxy and request labels are required and must be unique: %q", name),
+			Subject:  hr,
+		}}
+	}
+	unique[name] = struct{}{}
+	return nil
+}
+
+func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
+	headerSchema := &hcl.BodySchema{
+		Blocks: []hcl.BlockHeaderSchema{
+			{Type: blockType},
+		}}
+	content, _, diags := body.PartialContent(headerSchema)
+	if diags.HasErrors() {
+		derr := diags.Errs()[0].(*hcl.Diagnostic)
+		if derr.Summary == "Extraneous label for "+blockType { // retry with label
+			headerSchema.Blocks[0].LabelNames = []string{nameLabel}
+			content, _, diags = body.PartialContent(headerSchema)
+			if diags.HasErrors() { // due to interface nil check, do not return empty diags
+				return nil, diags
+			}
+			return content, nil
+		}
+		return nil, diags
+	}
+	return content, nil
 }
 
 func newBackend(definedBackends Backends, parentBackend hcl.Body, inlineConfig config.Inline) (hcl.Body, error) {
@@ -292,9 +430,13 @@ func validateOrigin(merged hcl.Body) error {
 		return diags
 	}
 
+	err := errors.New("missing backend.origin attribute")
+	if content == nil {
+		return err
+	}
+
 	_, ok := content.Attributes["origin"]
 	if !ok {
-		err := errors.New("missing backend.origin attribute")
 		bodyRange := merged.MissingItemRange()
 		if bodyRange.Filename == "<empty>" {
 			return err

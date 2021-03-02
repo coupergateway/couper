@@ -54,6 +54,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	requestFields := Fields{
 		"headers": filterHeader(u.config.RequestHeaders, req.Header),
 		"method":  req.Method,
+		"name":    req.Context().Value(request.RoundTripName),
 		"proto":   req.Proto,
 		"scheme":  req.URL.Scheme,
 	}

@@ -173,30 +173,34 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			var requests producer.Requests
 			//var redirect producer.Redirect
 
-			for _, proxy := range endpointConf.Proxies {
-				// TODO: proxy label name; see requests
-				backend, berr := newBackend(confCtx, proxy.Backend, log, conf.Settings.NoProxyFromEnv)
+			for _, proxyConf := range endpointConf.Proxies {
+				backend, berr := newBackend(confCtx, proxyConf.Backend, log, conf.Settings.NoProxyFromEnv)
 				if berr != nil {
 					return nil, berr
 				}
-				proxyHandler := handler.NewProxy(backend, proxy.HCLBody(), confCtx)
-				proxies = append(proxies, proxyHandler)
+				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), confCtx)
+				p := &producer.Proxy{
+					Name:      proxyConf.Name,
+					RoundTrip: proxyHandler,
+				}
+				proxies = append(proxies, p)
 			}
 
-			for _, request := range endpointConf.Requests {
-				backend, berr := newBackend(confCtx, request.Backend, log, conf.Settings.NoProxyFromEnv)
+			for _, requestConf := range endpointConf.Requests {
+				backend, berr := newBackend(confCtx, requestConf.Backend, log, conf.Settings.NoProxyFromEnv)
 				if berr != nil {
 					return nil, berr
 				}
 				method := http.MethodGet
-				if request.Method != "" {
-					method = request.Method
+				if requestConf.Method != "" {
+					method = requestConf.Method
 				}
 				requests = append(requests, &producer.Request{
 					Backend: backend,
-					Body:    request.Body,
-					Context: request.Remain,
+					Body:    requestConf.Body,
+					Context: requestConf.Remain,
 					Method:  method,
+					Name:    requestConf.Name,
 				})
 			}
 

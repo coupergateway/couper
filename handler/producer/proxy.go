@@ -8,8 +8,12 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-// Proxies represents a list of producer <Proxy> objects.
-type Proxies []http.RoundTripper
+type Proxy struct {
+	Name      string // label
+	RoundTrip http.RoundTripper
+}
+
+type Proxies []*Proxy
 
 func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, _ *hcl.EvalContext, results chan<- *Result) {
 	wg := &sync.WaitGroup{}
@@ -20,8 +24,8 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, _ *hcl.E
 	}()
 
 	for _, proxy := range pr {
-		outCtx := withRoundTripName(ctx, "")
+		outCtx := withRoundTripName(ctx, proxy.Name)
 		outReq := clientReq.WithContext(outCtx)
-		go roundtrip(proxy, outReq, results, wg)
+		go roundtrip(proxy.RoundTrip, outReq, results, wg)
 	}
 }
