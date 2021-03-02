@@ -77,8 +77,12 @@ func Get(conf *Config) *http.Transport {
 		}
 
 		transport = &http.Transport{
-			DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				conn, err := d.DialContext(ctx, network, conf.Origin)
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				address := addr
+				if proxyFunc == nil {
+					address = conf.Origin
+				} // Otherwise proxy connect will use this dial method and addr could be a proxy one.
+				conn, err := d.DialContext(ctx, network, address)
 				if err != nil {
 					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
 				}
