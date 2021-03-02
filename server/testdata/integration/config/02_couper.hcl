@@ -64,7 +64,7 @@ server "backends" {
 
 definitions {
   backend "b" {
-    origin = "http://1.2.3.4"
+    origin = env.COUPER_TEST_BACKEND_ADDR
     set_response_headers = {
       foo = "1"
     }

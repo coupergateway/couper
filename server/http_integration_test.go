@@ -799,7 +799,7 @@ func TestHTTPServer_Backends(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	exp := []string{"1", "2", "3", "4"}
+	exp := []string{"1", "4"}
 	if !reflect.DeepEqual(res.Header.Values("Foo"), exp) {
 		t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, res.Header.Values("Foo"))
 	}
