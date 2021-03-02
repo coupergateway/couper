@@ -141,11 +141,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
-var backendInlineSchema = config.Backend{}.Schema(true)
-
 func (b *Backend) evalTransport(req *http.Request) *Config {
 	httpContext := eval.NewHTTPContext(b.evalContext, eval.BufferNone, req)
-	content, _, diags := b.context.PartialContent(backendInlineSchema)
+	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
 		b.upstreamLog.LogEntry().Error(diags)
 	}
