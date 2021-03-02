@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
-	"time"
 
 	saml2 "github.com/russellhaering/gosaml2"
 	"github.com/russellhaering/gosaml2/types"
@@ -97,7 +96,7 @@ func (s *SAML2ACS) Validate(req *http.Request) error {
 	}
 
 	encodedResponse := req.FormValue("SAMLResponse")
-	req.ContentLength = 0 // TODO remove when used with response {}
+	req.ContentLength = 0
 
 	assertionInfo, err := s.sp.RetrieveAssertionInfo(encodedResponse)
 	if err != nil {
@@ -105,19 +104,7 @@ func (s *SAML2ACS) Validate(req *http.Request) error {
 	}
 
 	if assertionInfo.WarningInfo.NotInAudience {
-		// TODO do we want this?
 		return errors.New("Audience mismatch")
-	}
-
-	assertion := assertionInfo.Assertions[0]
-	conditions := assertion.Conditions
-	notBefore, err := time.Parse(time.RFC3339, conditions.NotBefore)
-	if err != nil {
-		return err
-	}
-	notOnOrAfter, err := time.Parse(time.RFC3339, conditions.NotOnOrAfter)
-	if err != nil {
-		return err
 	}
 
 	attributes := make(map[string]interface{})
@@ -135,21 +122,12 @@ func (s *SAML2ACS) Validate(req *http.Request) error {
 		}
 	}
 
-	audiences := []string{}
-	for _, audienceRestriction := range conditions.AudienceRestrictions {
-		for _, audience := range audienceRestriction.Audiences {
-			audiences = append(audiences, audience.Value)
-		}
-	}
-
 	ass := make(map[string]interface{})
 	ass["attributes"] = attributes
-	ass["aud"] = audiences
 	ass["sub"] = assertionInfo.NameID
-	ass["iss"] = assertion.Issuer.Value
-	ass["exp"] = notOnOrAfter.Unix()
-	ass["iat"] = assertion.IssueInstant.Unix()
-	ass["nbf"] = notBefore.Unix()
+	if assertionInfo.SessionNotOnOrAfter != nil {
+		ass["exp"] = assertionInfo.SessionNotOnOrAfter.Unix()
+	}
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
