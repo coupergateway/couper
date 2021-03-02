@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
@@ -299,7 +302,9 @@ func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints
 		requests := endpointContent.Blocks.OfType(request)
 		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
 
+		const defaultNameLabel = "default"
 		for _, proxyBlock := range proxies {
+			// TODO: refactor with request construction below // almost same ( later :-) )
 			proxyConfig := &config.Proxy{}
 			if diags := gohcl.DecodeBody(proxyBlock.Body, envContext, proxyConfig); diags.HasErrors() {
 				return diags
@@ -308,15 +313,26 @@ func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints
 				proxyConfig.Name = proxyBlock.Labels[0]
 			}
 			if proxyConfig.Name == "" {
-				proxyConfig.Name = "default"
+				proxyConfig.Name = defaultNameLabel
 			}
 
 			proxyConfig.Remain = proxyBlock.Body
-			bend, err := newBackend(definedBackends, parentBackend, proxyConfig)
+
+			createFromURL, err := shouldCreateFromURL(proxyConfig.URL, proxyConfig.BackendName, proxyBlock)
 			if err != nil {
 				return err
+			} else if createFromURL {
+				proxyConfig.Backend, err = newBackendFromURL(proxyConfig.URL)
+				if err != nil {
+					return err
+				}
+			} else {
+				proxyConfig.Backend, err = newBackend(definedBackends, parentBackend, proxyConfig)
+				if err != nil {
+					return err
+				}
 			}
-			proxyConfig.Backend = bend
+
 			endpoint.Proxies = append(endpoint.Proxies, proxyConfig)
 		}
 
@@ -330,15 +346,26 @@ func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints
 				reqConfig.Name = reqBlock.Labels[0]
 			}
 			if reqConfig.Name == "" {
-				reqConfig.Name = "default"
+				reqConfig.Name = defaultNameLabel
 			}
 
 			reqConfig.Remain = reqBlock.Body
-			bend, err := newBackend(definedBackends, parentBackend, reqConfig)
+
+			createFromURL, err := shouldCreateFromURL(reqConfig.URL, reqConfig.BackendName, reqBlock)
 			if err != nil {
 				return err
+			} else if createFromURL {
+				reqConfig.Backend, err = newBackendFromURL(reqConfig.URL)
+				if err != nil {
+					return err
+				}
+			} else {
+				reqConfig.Backend, err = newBackend(definedBackends, parentBackend, reqConfig)
+				if err != nil {
+					return err
+				}
 			}
-			reqConfig.Backend = bend
+
 			endpoint.Requests = append(endpoint.Requests, reqConfig)
 		}
 
@@ -359,6 +386,41 @@ func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints
 	}
 
 	return nil
+}
+
+// shouldCreateFromURL determines some option and reads a possible backend block from body.
+// Since its still valid to override parent backend with a "local" url.
+func shouldCreateFromURL(url, backendName string, block *hcl.Block) (bool, error) {
+	if url == "" {
+		return false, nil
+	}
+
+	if url != "" && backendName != "" {
+		return false, hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "either url or backend is allowed",
+			Subject:  &block.DefRange,
+		}}
+	}
+
+	content, err := contentByType(backend, block.Body)
+	if err != nil {
+		return false, err
+	}
+
+	if content == nil {
+		return true, nil
+	}
+
+	if len(content.Blocks.OfType(backend)) > 0 {
+		return false, hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "either url or backend is allowed",
+			Subject:  &block.DefRange,
+		}}
+	}
+
+	return true, nil
 }
 
 func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
@@ -417,6 +479,22 @@ func newBackend(definedBackends Backends, parentBackend hcl.Body, inlineConfig c
 	}
 
 	return bend, nil
+}
+
+func newBackendFromURL(rawURL string) (hcl.Body, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return hclbody.New(&hcl.BodyContent{
+		Attributes: map[string]*hcl.Attribute{
+			// TODO: replace with own expression literal
+			"origin": {Name: "origin", Expr: hcltest.MockExprLiteral(cty.StringVal(u.Scheme + "://" + u.Host))},
+			"path":   {Name: "path", Expr: hcltest.MockExprLiteral(cty.StringVal(u.RawPath))},
+			// TODO: set query_params (request) -vs- set_query_params (proxy)
+		},
+	}), nil
 }
 
 // validateOrigin checks at least for an origin attribute definition.

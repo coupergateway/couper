@@ -14,6 +14,7 @@ type Proxy struct {
 	BackendName string   `hcl:"backend,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 	Name        string   `hcl:"name,label"`
+	URL         string   `hcl:"url,optional"`
 	// internally used
 	Backend hcl.Body
 }
