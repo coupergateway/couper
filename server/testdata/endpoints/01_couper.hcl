@@ -14,8 +14,9 @@ server "api" {
         backend = "request"
       }
       response {
-        status = 200
-        body = "string"
+        status = beresp.status + 1
+		# 404 + 404
+        body = beresps.request.status + beresps.default.status
       }
     }
   }

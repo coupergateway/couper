@@ -30,16 +30,18 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	if l := len(entries); l != 3 {
 		t.Fatalf("Expected 3 log entries, given %d", l)
 	}
-	t.Errorf("%#v", res.Status)
-	t.Errorf("%#v", entries[0].Data)
-	t.Errorf("%#v", entries[1].Data)
-	t.Errorf("%#v", entries[2].Data)
+
+	if res.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status 405, given %d", res.StatusCode)
+	}
 
 	resBytes, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 	helper.Must(err)
 
-	t.Errorf("%s", resBytes)
+	if string(resBytes) != "808" {
+		t.Errorf("Expected body 808, given %s", resBytes)
+	}
 }
 
 func TestEndpoints_Res(t *testing.T) {
@@ -61,12 +63,16 @@ func TestEndpoints_Res(t *testing.T) {
 	if l := len(entries); l != 1 {
 		t.Fatalf("Expected 1 log entries, given %d", l)
 	}
-	t.Errorf("%#v", res.Status)
-	t.Errorf("%#v", entries[0].Data)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, given %d", res.StatusCode)
+	}
 
 	resBytes, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 	helper.Must(err)
 
-	t.Errorf("%s", resBytes)
+	if string(resBytes) != "string" {
+		t.Errorf("Expected body 'string', given %s", resBytes)
+	}
 }
