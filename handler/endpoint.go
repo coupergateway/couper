@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -44,7 +44,7 @@ type EndpointOptions struct {
 }
 
 func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.Entry,
-	proxies producer.Proxies, requests producer.Requests) *Endpoint {
+	proxies producer.Proxies, requests producer.Requests, resp *producer.Response) *Endpoint {
 	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
 		evalContext: evalCtx,
@@ -52,6 +52,7 @@ func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.En
 		opts:        opts,
 		proxies:     proxies,
 		requests:    requests,
+		response:    resp,
 	}
 }
 
@@ -162,10 +163,11 @@ func (e *Endpoint) newResponse(req *http.Request, beresps map[string]*producer.R
 		Proto:      req.Proto,
 		ProtoMajor: req.ProtoMajor,
 		ProtoMinor: req.ProtoMinor,
+		Request:    req,
 	}
 
 	httpCtx := eval.NewHTTPContext(e.evalContext, e.opts.ReqBufferOpts, req, resps...)
-	content, _, diags := e.response.Context.PartialContent(meta.AttributesSchema)
+	content, _, diags := e.response.Context.PartialContent(config.ResponseInlineSchema)
 	if diags.HasErrors() {
 		return nil, diags
 	}

@@ -6,10 +6,10 @@ import (
 )
 
 var _ Inline = &Response{}
+var ResponseInlineSchema = Response{}.Schema(true)
 
 // Response represents the <Response> object.
 type Response struct {
-	Body   string   `hcl:"body,optional"`
 	Remain hcl.Body `hcl:",remain"`
 }
 

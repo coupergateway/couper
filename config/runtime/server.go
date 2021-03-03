@@ -169,6 +169,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 					protectedHandler)
 			}
 
+			var response *producer.Response
+			if endpointConf.Response != nil {
+				response = &producer.Response{
+					Context: endpointConf.Response.Remain,
+				}
+			}
+
 			var proxies producer.Proxies
 			var requests producer.Requests
 			//var redirect producer.Redirect
@@ -248,7 +255,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				ReqBodyLimit:   bodyLimit,
 				Error:          errTpl,
 			}
-			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests)
+			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests, response)
 			setACHandlerFn(epHandler)
 
 			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpointConf], kind)

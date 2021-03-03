@@ -38,7 +38,7 @@ func TestEndpoint_SetGetBody_LimitBody_Roundtrip(t *testing.T) {
 			epHandler := handler.NewEndpoint(&handler.EndpointOptions{
 				Context:      helper.NewProxyContext("set_request_headers = { x = req.post }"),
 				ReqBodyLimit: bodyLimit,
-			}, eval.NewENVContext(nil), log, nil, nil)
+			}, eval.NewENVContext(nil), log, nil, nil, nil)
 
 			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
 			err := epHandler.SetGetBody(req)

@@ -107,7 +107,7 @@ func TestNewHTTPContext(t *testing.T) {
 				Context:       helper.NewProxyContext(tt.hcl),
 				ReqBodyLimit:  512,
 				ReqBufferOpts: eval.BufferRequest,
-			}, eval.NewENVContext(nil), log, nil, nil)
+			}, eval.NewENVContext(nil), log, nil, nil, nil)
 
 			helper.Must(endpointHandler.SetGetBody(req))
 
