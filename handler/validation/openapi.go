@@ -54,6 +54,9 @@ func (v *OpenAPI) ValidateRequest(req *http.Request) error {
 
 	if err != nil {
 		err = fmt.Errorf("request validation: %w", err)
+		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
+			ctx.errors = append(ctx.errors, err)
+		}
 		if !v.options.ignoreRequestViolations {
 			return err
 		}

@@ -89,20 +89,22 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 
 			hook.Reset()
 			res, err := backend.RoundTrip(req)
-			if tt.wantErrLog == "" {
+			if err != nil && tt.wantErrLog == "" {
 				helper.Must(err)
-			}
-
-			if tt.wantErrLog == "" && res.StatusCode != http.StatusOK {
-				t.Errorf("Expected OK, got: %s", res.Status)
 			}
 
 			if tt.wantErrLog != "" {
 				var found bool
 				for _, entry := range hook.Entries {
-					if entry.Message == tt.wantErrLog {
-						found = true
-						break
+					if valEntry, ok := entry.Data["validation"]; ok {
+						if list, ok := valEntry.([]string); ok {
+							for _, valMsg := range list {
+								if valMsg == tt.wantErrLog {
+									found = true
+									break
+								}
+							}
+						}
 					}
 				}
 				if !found {
