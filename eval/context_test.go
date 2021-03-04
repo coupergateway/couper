@@ -11,16 +11,14 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
-	"github.com/hashicorp/hcl/v2/hcltest"
-	"github.com/sirupsen/logrus/hooks/test"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestNewHTTPContext(t *testing.T) {
@@ -86,17 +84,15 @@ func TestNewHTTPContext(t *testing.T) {
 		`, http.Header{"method": {http.MethodGet}, "title": {""}}},
 	}
 
-	log, _ := test.NewNullLogger()
-
-	// ensure proxy bufferOption for setBodyFunc
-	hclBody := hcltest.MockBody(&hcl.BodyContent{
-		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
-			eval.ClientRequest: hcltest.MockExprTraversalSrc(eval.ClientRequest + "." + eval.JsonBody),
-		}),
-	})
+	logger, hook := logrustest.NewNullLogger()
+	log := logger.WithContext(context.Background())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			hook.Reset()
+
+			helper := test.New(t)
+
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
 			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
 
@@ -107,27 +103,19 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			srvOpts, _ := server.NewServerOptions(&config.Server{})
+			endpointHandler := handler.NewEndpoint(&handler.EndpointOptions{
+				Context:       helper.NewProxyContext(tt.hcl),
+				ReqBodyLimit:  512,
+				ReqBufferOpts: eval.BufferRequest,
+			}, eval.NewENVContext(nil), log, nil, nil, nil)
 
-			// since the proxy prepares the getBody rewind:
-			proxy, err := handler.NewProxy(&handler.ProxyOptions{
-				Context:          hclBody,
-				RequestBodyLimit: 256,
-				CORS:             &handler.CORSOptions{},
-			}, log.WithContext(nil), srvOpts, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			proxyType := proxy.(*handler.Proxy)
-			if err = proxyType.SetGetBody(req); err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(endpointHandler.SetGetBody(req))
 
-			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, bereq, beresp)
+			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, beresp)
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			err = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
+			err := hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
 			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
 			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
 				t.Fatal(err)

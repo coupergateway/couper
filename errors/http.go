@@ -9,9 +9,9 @@ func httpStatus(code Code) int {
 	switch code {
 	case APIRouteNotFound, FilesRouteNotFound, RouteNotFound, SPARouteNotFound:
 		return http.StatusNotFound
-	case APIConnect, APIProxyConnect, UpstreamResponseValidationFailed:
+	case APIConnect, APIProxyConnect, EndpointConnect, EndpointProxyConnect, UpstreamResponseValidationFailed:
 		return http.StatusBadGateway
-	case APIReqBodySizeExceeded:
+	case EndpointReqBodySizeExceeded:
 		return http.StatusRequestEntityTooLarge
 	case InvalidRequest, UpstreamRequestValidationFailed:
 		return http.StatusBadRequest

@@ -8,7 +8,9 @@ server "multi-api-host1" {
     error_file = "./../api_error.json"
 
     endpoint "/" {
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
   }
 }
@@ -23,7 +25,9 @@ server "multi-api-host2" {
     error_file = "./../api_error.json"
 
     endpoint "/" {
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
   }
 }

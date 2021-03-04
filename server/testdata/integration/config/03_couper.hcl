@@ -1,15 +1,16 @@
 server "acs" {
   access_control = ["ba1"]
-  backend = "test"
   error_file = "../api_error.json"
   api {
     base_path = "/v1"
     disable_access_control = ["ba1"]
     endpoint "/**" {
       # access_control = ["ba1"] # not possible atm TODO: spec
-      backend "test" {
-        set_request_headers = {
-          auth = ["ba1"]
+      proxy {
+        backend "test" {
+          set_request_headers = {
+            auth = ["ba1"]
+          }
         }
       }
     }
@@ -19,9 +20,11 @@ server "acs" {
     base_path = "/v2"
     access_control = ["ba2"]
     endpoint "/**" {
-      backend "test" {
-        set_request_headers = {
-          auth = ["ba1", "ba2"]
+      proxy {
+        backend "test" {
+          set_request_headers = {
+            auth = ["ba1", "ba2"]
+          }
         }
       }
     }
@@ -33,18 +36,26 @@ server "acs" {
     endpoint "/**" {
       access_control = ["ba3"]
       disable_access_control = ["ba1", "ba2", "ba3"]
+      proxy {
+        backend = "test"
+      }
     }
   }
 
   endpoint "/status" {
     disable_access_control = ["ba1"]
+    proxy {
+      backend = "test"
+    }
   }
 
   endpoint "/superadmin" {
     access_control = ["ba4"]
-    backend "test" {
-      set_request_headers = {
-        auth = ["ba1", "ba4"]
+    proxy {
+      backend "test" {
+        set_request_headers = {
+          auth = ["ba1", "ba4"]
+        }
       }
     }
   }

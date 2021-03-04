@@ -1,4 +1,4 @@
-package handler_test
+package validation_test
 
 import (
 	"context"
@@ -10,17 +10,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config/body"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	logrustest "github.com/sirupsen/logrus/hooks/test"
-
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -46,7 +45,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	}))
 
 	log, hook := logrustest.NewNullLogger()
-
+	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
 		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
 			"origin": &hcl.Attribute{
@@ -54,58 +53,58 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.URL)),
 			},
 		}}),
-		OpenAPI: []*config.OpenAPI{{
-			File: filepath.Join("testdata/validation/backend_01_openapi.yaml"),
-		}},
-		RequestBodyLimit: "64MiB",
+		OpenAPI: &config.OpenAPI{
+			File: filepath.Join("testdata/backend_01_openapi.yaml"),
+		},
 	}
-
-	proxyOpts, err := handler.NewProxyOptions(beConf, &handler.CORSOptions{}, config.DefaultSettings.NoProxyFromEnv, errors.DefaultJSON, "api")
+	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend, err := handler.NewProxy(proxyOpts, log.WithContext(context.Background()), nil, eval.NewENVContext(nil))
-	helper.Must(err)
+	backend := transport.NewBackend(
+		eval.NewENVContext(nil), beConf.Remain, &transport.Config{}, logger, openAPI,
+	)
 
 	tests := []struct {
-		name, method, path string
-		body               io.Reader
-		wantBody           bool
-		wantErrLog         string
+		name, path string
+		body       io.Reader
+		wantBody   bool
+		wantErrLog string
 	}{
-		{"GET without required query", http.MethodGet, "/a?b", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
-		{"GET with required query", http.MethodGet, "/a?b=value", nil, false, ""},
-		{"GET with required path", http.MethodGet, "/a/value", nil, false, ""},
-		{"GET with required path missing", http.MethodGet, "/a//", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
-		{"GET with optional query", http.MethodGet, "/b", nil, false, ""},
-		{"GET with optional path param", http.MethodGet, "/b/a", nil, false, ""},
-		{"GET with required json body", http.MethodGet, "/json", strings.NewReader(`["hans", "wurst"]`), true, ""},
+		{"GET without required query", "/a?b", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
+		{"GET with required query", "/a?b=value", nil, false, ""},
+		{"GET with required path", "/a/value", nil, false, ""},
+		{"GET with required path missing", "/a//", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
+		{"GET with optional query", "/b", nil, false, ""},
+		{"GET with optional path param", "/b/a", nil, false, ""},
+		{"GET with required json body", "/json", strings.NewReader(`["hans", "wurst"]`), true, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, tt.body)
-			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tt.path, tt.body)
 
 			if tt.body != nil {
 				req.Header.Set("Content-Type", "application/json")
 			}
 
 			hook.Reset()
-			backend.ServeHTTP(rec, req)
-			rec.Flush()
-
-			res := rec.Result()
-
-			if tt.wantErrLog == "" && res.StatusCode != http.StatusOK {
-				t.Errorf("Expected OK, got: %s", res.Status)
+			res, err := backend.RoundTrip(req)
+			if err != nil && tt.wantErrLog == "" {
+				helper.Must(err)
 			}
 
 			if tt.wantErrLog != "" {
 				var found bool
 				for _, entry := range hook.Entries {
-					if entry.Message == tt.wantErrLog {
-						found = true
-						break
+					if valEntry, ok := entry.Data["validation"]; ok {
+						if list, ok := valEntry.([]string); ok {
+							for _, valMsg := range list {
+								if valMsg == tt.wantErrLog {
+									found = true
+									break
+								}
+							}
+						}
 					}
 				}
 				if !found {

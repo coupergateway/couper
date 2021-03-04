@@ -30,7 +30,7 @@ func (sr *Recorder) Header() http.Header {
 // Write wraps the Write method of the ResponseWriter.
 func (sr *Recorder) Write(p []byte) (int, error) {
 	if sr.status == 0 {
-		sr.WriteHeader(http.StatusOK)
+		sr.status = http.StatusOK
 	}
 	i, err := sr.rw.Write(p)
 	sr.writtenBytes += i

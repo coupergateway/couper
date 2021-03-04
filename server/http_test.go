@@ -66,7 +66,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil))
 	helper.Must(err)
 
-	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
+	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
 	port := runtime.Port(conf.Settings.DefaultPort)
@@ -156,7 +156,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	helper.Must(err)
 
 	error404Content := []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>")
-	spaContent, err := ioutil.ReadFile(conf.Server[0].Spa.BootstrapFile)
+	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
 	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil))

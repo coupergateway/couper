@@ -20,12 +20,22 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 	if SetSeverityLevel(diags).HasErrors() {
 		return nil, filterErrors(diags)
 	}
+	return ValueToMap(val), nil
+}
+
+func ValueToMap(val cty.Value) map[string]interface{} {
 	result := make(map[string]interface{})
 	if val.IsNull() || !val.IsKnown() {
-		return result, nil
+		return result
+	}
+	var valMap map[string]cty.Value
+	if isTuple(val) {
+		valMap = val.AsValueSlice()[0].AsValueMap()
+	} else {
+		valMap = val.AsValueMap()
 	}
 
-	for k, v := range val.AsValueMap() {
+	for k, v := range valMap {
 		if v.IsNull() || !v.IsKnown() {
 			result[k] = ""
 			continue
@@ -49,7 +59,7 @@ func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{},
 			result[k] = ""
 		}
 	}
-	return result, nil
+	return result
 }
 
 func ValuesMapToValue(m url.Values) cty.Value {
@@ -190,6 +200,12 @@ func ValueToString(v cty.Value) string {
 	default:
 		return ""
 	}
+}
+
+func ValueToInt(v cty.Value) int64 {
+	n := v.AsBigFloat()
+	ni, _ := n.Int64()
+	return ni
 }
 
 func SliceToString(sl []interface{}) string {

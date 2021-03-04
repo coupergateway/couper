@@ -17,7 +17,9 @@ server "v-server1" {
 
     endpoint "/" {
       path = "/"
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
   }
 }
@@ -42,7 +44,9 @@ server "v-server2" {
 
     endpoint "/" {
       path = "/"
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
   }
 }

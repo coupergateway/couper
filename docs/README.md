@@ -1,4 +1,4 @@
-# Couper Docs - Version 0.5.1
+# Couper Docs - Version 1.0
 
 ## Table of contents
 
@@ -8,32 +8,37 @@
   * [Syntax](#syntax)
   * [File name](#file-name)
   * [Basic file structure](#basic-file-structure)
+    * [Nesting of configuration blocks and attributes](#nesting-of-configuration-blocks-and-attributes)
   * [Variables](#variables)
     * [`env`](#env-variable)
     * [`req`](#req-client-request-variable)
     * [`bereq`](#bereq-modified-backend-request-variable)
+    * [`bereqs`](#bereqs-modified-backend-requests-variable)
     * [`beresp`](#beresp-original-backend-response-variable)
+    * [`beresps`](#beresps-original-backend-responses-variable)
     * [Variable example](#variable-example)
   * [Expressions](#expressions)
   * [Functions](#functions)
 * [Reference](#reference)
-  * [The `server` block](#the-server-block)
-    * [The `files` block](#the-files-block)
-    * [The `spa` block](#the-spa-block)
-    * [The `api` block](#the-api-block)
-    * [The `endpoint` block](#the-endpoint-block)
-      * [Query parameter](#query-parameter)
-      * [Request header](#request-header)
-      * [Response header](#response-header)
-      * [Path parameter](#path-parameter)
-    * [The `backend` block](#the-backend-block)
-      * [The `openapi` block](#the-openapi-block)
-    * [The `cors` block](#the-cors-block)
-    * [The `access_control`](#the-access_control)
-  * [The `definitions` block](#the-definitions-block)
-    * [The `basic_auth` block](#the-basic_auth-block)
-    * [The `jwt` block](#the-jwt-block)
-  * [The `settings` block](#the-settings-block)
+  * [Server Block](#server-block)
+    * [Files Block](#files-block)
+    * [SPA Block](#spa-block)
+    * [API Block](#api-block)
+    * [Endpoint Block](#endpoint-block)
+    * [Backend Block](#backend-block)
+      * [OpenAPI Block](#openapi-block)
+      * [Transport Settings Attributes](#transport-settings-attributes)
+    * [CORS Block](#cors-block)
+    * [Access Control](#access-control)
+  * [Modifier](#modifier)
+    * [Query Parameter](#query-parameter)
+    * [Request Header](#request-header)
+    * [Response Header](#response-header)
+  * [Path parameter](#path-parameter)
+  * [Definitions Block](#definitions-block)
+    * [Basic Auth Block](#basic-auth-block)
+    * [JWT Block](#jwt-block)
+  * [Settings Block](#settings-block)
   * [Health-Check](#health-check)
 * [Examples](#examples)
   * [Request routing](#request-routing-example)
@@ -59,11 +64,12 @@ need any special development skills and offers easy configuration and integratio
 | Client(s)          | Browser, App or API Client that sends requests to Couper. |
 | Web Serving        | Couper supports file serving and web serving for SPA assets. |
 | API                | Configuration block that bundles endpoints under a certain base path. |
-| Access Control     | Couper handles access control for incoming client requests. |
+| Access Control     | Couper handles access control for incoming client requests and outgoing backend requests. |
 | Endpoint           | Configuration block that specifies how (and if) requests are sent to backend service(s) after they reach Couper. |
 | Backend            | Configuration block that specifies the connection to a local/remote backend service. |
 | Logging            | Couper provides standard logs for analysis and monitoring. |
 | Backend Service(s) | External API or micro services where Couper fetches data from. |
+| Validation         | Couper supports validation of outgoing and incoming requests to and from the origin. |
 
 ## Configuration file
 
@@ -86,7 +92,7 @@ changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
 
 Couper's configuration file consists of nested configuration blocks that configure
 web serving and routing of the gateway. Access control is controlled by an
-`access_control` attribute that can be set for blocks.
+[Access Control](#access-control) attribute that can be set for many blocks.
 
 For orientation compare the following example and the information below:
 
@@ -99,23 +105,67 @@ server "my_project" {
   api {
     access_control = ["foo"]
     endpoint "/bar" {
-      backend { ... }
+      proxy {
+        backend { ... }
+      }
+      request "sub-request" {
+        backend { ... }
+      }
+      response { ... }
     }
   }
 }
 
 definitions { ... }
+
+settings { ... }
 ```
 
 * `server` main configuration block(s)
   * `files` configuration block for file serving
-  * `spa` configuration block for web serving (spa assets)
+  * `spa` configuration block for web serving (SPA assets)
   * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
   * `access_control` attribute that sets access control for a block context
   * `endpoint` configuration block for Couper's entry points
-  * `backend` configuration block for connection to local/remote backend service(s)
+    * `proxy` configuration block for a proxy request and response to an origin
+    * `request` configuration block for a manual request to an origin
+    * `response` configuration block for a manual client response
+    * `backend` configuration block for connection to local/remote backend service(s)
 * `definitions` block for predefined configurations, that can be referenced
 * `settings` block for server configuration which applies to the running instance
+
+#### Nesting of configuration blocks and attributes
+
+* [Server Block(s)](#server-block)
+  * [Access Control](#access-control)
+  * [Endpoint Block(s)](#endpoint-block)
+    * [Access Control](#access-control)
+    * [Proxy Block(s)](#proxy-block)
+      * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
+    * [Request Block(s)](#request-block)
+      * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
+    * [Response Block](#response-block)
+    * [Modifier](#modifier)
+  * [Files Block](#files-block)
+    * [Access Control](#access-control)
+  * [SPA Block](#spa-block)
+    * [Access Control](#access-control)
+  * [API Block](#api-block)
+    * [Access Control](#access-control)
+    * [Endpoint Block(s)](#endpoint-block)
+      * [Access Control](#access-control)
+      * [Proxy Block(s)](#proxy-block)
+        * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
+        * [Modifier](#modifier)
+      * [Request Block(s)](#request-block)
+        * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
+      * [Response Block](#response-block)
+      * [Modifier](#modifier)
+* [Definitions Block](#definitions-block)
+  * [Backend Block](#backend-block)
+  * [JWT Block(s)](#jwt-block)
+  * [Basic Auth Block(s)](#basic-auth-block)
+* [Settings Block](#settings-block)
 
 ### Variables
 
@@ -127,7 +177,9 @@ will happen during the request/response handling.
 * `env` are the environment variables
 * `req` is the client request
 * `bereq` is the modified backend request
-* `beresp` is the original backend response
+* `bereqs` contains all modified backend requests
+* `beresp` is the original backend response from proxy or request block with label "default" (no label equals to label "default")
+* `beresps` contains all original backend responses
 
 Most fields are self-explanatory (compare tables below).
 
@@ -140,31 +192,36 @@ since these references get evaluated at start.
 
 | Variable                  | Description |
 |:--------------------------|:------------|
-| `id`                      | unique request id |
+| `id`                      | Unique request id |
 | `method`                  | HTTP method |
 | `path`                    | URL path |
-| `endpoint`                | matched endpoint pattern |
+| `endpoint`                | Matched endpoint pattern |
 | `headers.<name>`          | HTTP request header value for requested lower-case key |
-| `cookies.<name>`          | value from `Cookie` request header for requested key (&#9888; last wins!) |
-| `query.<name>`            | query parameter values (&#9888; last wins!) |
-| `path_params.<name>`      | value from a named path parameter defined within an endpoint path label |
-| `post.<name>`             | post form parameter |
+| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
+| `query.<name>`            | Query parameter values (&#9888; last wins!) |
+| `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
+| `post.<name>`             | Post form parameter |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
-| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#the-access_control), `<name>` being the [`jwt` block's](#the-jwt-block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<claim_name>` | Request context containing claims from JWT used for [Access Control](#access-control), `<name>` being the [JWT Block's](#jwt-block) label and `claim_name` being the claim's name |
 
 #### `bereq` (modified backend request) variable
 
 | Variable                  | Description |
 |:--------------------------|:------------|
-| `id`                      | unique request id |
+| `id`                      | Unique request id |
 | `method`                  | HTTP method |
 | `path`                    | URL path |
 | `headers.<name>`          | HTTP request header value for requested lower-case key |
-| `cookies.<name>`          | value from `Cookie` request header for requested key (&#9888; last wins!) |
-| `query.<name>`            | query parameter values (&#9888; last wins!) |
-| `post.<name>`             | post form parameter |
-| `ctx.<name>.<claim_name>` | request context containing claims from JWT used for [access control](#the-access_control), `<name>` being the [`jwt` block's](#the-jwt-block) label and `claim_name` being the claim's name |
-| `url`                     | backend origin URL |
+| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
+| `query.<name>`            | Query parameter values (&#9888; last wins!) |
+| `post.<name>`             | Post form parameter |
+| `ctx.<name>.<claim_name>` | Request context containing claims from JWT used for [Access Control](#access-control), `<name>` being the [JWT Block's](#jwt-block) label and `claim_name` being the claim's name |
+| `url`                     | Backend origin URL |
+
+#### `bereqs` (modified backend requests) variable
+
+`bereqs` ist a list of all `bereq` variables with the access via label.
+To access the HTTP method of the `default` request use `beresps.default.method`
 
 #### `beresp` (original backend response) variable
 
@@ -175,6 +232,11 @@ since these references get evaluated at start.
 | `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
 | `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 
+#### `beresps` (original backend responses) variable
+
+`beresps` ist a list of all `beresp` variables with the access via label.
+To access the HTTP status code of the `default` response use `beresps.default.status`
+
 ##### Variable Example
 
 An example to send an additional header with client request header to a configured
@@ -184,11 +246,13 @@ backend and gets evaluated on per request basis:
 server "variables-srv" {
   api {
     endpoint "/" {
-      backend "my_backend_definition" {
-        set_request_headers = {
-          x-env-user = env.USER
-          user-agent = "myproxyClient/${req.headers.app-version}"
-          x-uuid = req.id
+      proxy {
+        backend "my_backend_definition" {
+          set_request_headers = {
+            x-env-user = env.USER
+            user-agent = "myproxyClient/${req.headers.app-version}"
+            x-uuid = req.id
+          }
         }
       }
     }
@@ -219,13 +283,13 @@ context.
 
 | Name               | Description |
 |:-------------------|:------------|
-| `base64_decode`    | base64_decode decodes Base64 data, as specified in RFC 4648         |
-| `base64_encode`    | base64_encode encodes Base64 data, as specified in RFC 4648         |
-| `coalesce`         | coalesce returns the first of the given arguments that is not null. |
-| `json_decode`      | json_decode parses the given JSON string and, if it is valid, returns the value it represents. |
-| `json_encode`      | json_encode returns a JSON serialization of the given value.        |
-| `to_lower`         | to_lower is a Function that converts a given string to lowercase.   |
-| `to_upper`         | to_upper is a Function that converts a given string to uppercase.   |
+| `base64_decode`    | Decodes Base64 data, as specified in RFC 4648. |
+| `base64_encode`    | Encodes Base64 data, as specified in RFC 4648. |
+| `coalesce`         | Returns the first of the given arguments that is not null. |
+| `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
+| `json_encode`      | Returns a JSON serialization of the given value. |
+| `to_lower`         | Converts a given string to lowercase. |
+| `to_upper`         | Converts a given string to uppercase. |
 
 Example usage:
 
@@ -240,116 +304,313 @@ my_json = json_encode({
 
 ## Reference
 
-### The `server` block
+### Server Block
 
 The `server` block is the main configuration block of Couper's configuration file.
-It has an optional label and a `hosts` attribute. Nested blocks are `files`, `spa`
-and `api`. You can declare `access_control` for the `server` block.
-`access_control` is inherited by nested blocks.
 
-| Name                                        | Description |
-|:--------------------------------------------|:------------|
-| context                                     | none |
-| *label*                                     | optional |
-| `hosts`                                     | <ul><li>list  </li><li>&#9888; mandatory, if there is more than one `server` block</li><li>*example:* `hosts = ["example.com", "..."]`</li><li>you can add a specific port to your host <br> *example:* `hosts = ["localhost:9090"]` </li><li>default port is `8080`</li><li>only **one** `hosts` attribute per `server` block is allowed</li><li>compare the hosts [example](#hosts-configuration-example) for details</li></ul> |
-| `error_file`                                | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
-| [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `server` block</li><li>*example:* `access_control = ["foo"]`</li><li>&#9888; inherited</li></ul> |
-| [**`files`**](#the-files-block) block       | configures file serving |
-| [**`spa`**](#the-spa-block) block           | configures web serving for spa assets |
-| [**`api`**](#the-api-block) block(s)        | configures routing and backend connection(s) |
+| Block                                | Description |
+|:-------------------------------------|:------------|
+| *context*                            | Root of the configuration file. |
+| *label*                              | &#9888; Mandatory. |
+| **Nested blocks**                    | **Description** |
+| [Files Block](#files-block)          | Configures the file serving. |
+| [SPA Block](#spa-block)              | Configures web serving for SPA assets. |
+| [API Block(s)](#api-block)           | Configures routing and communication with backend(s). |
+| [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `Server Block` context. |
+| **Attributes**                       | **Description** |
+| `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/api"`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
+| `hosts`                              | <ul><li>List.</li><li>&#9888; Mandatory, if there is more than one `Server Block`.</li><li>*Example:* `hosts = ["example.com", "..."]`</li><li>You can add a specific port to your host.</li><li>*Example:* `hosts = ["localhost:9090"]`</li><li>Default port is `8080`.</li><li>Only **one** `hosts` attribute per `Server Block` is allowed.</li><li>Compare the hosts [example](#hosts-configuration-example) for details.</li></ul> |
+| `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
+| `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Server Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
-### The `files` block
+### Files Block
 
-The `files` block configures your document root, and the location of your error
-document.
+The `files` block configures the file serving.
 
-| Name                                        | Description |
-|:--------------------------------------------|:------------|
-| context                                     | `server` block |
-| `document_root`                             | <ul><li>location of the document root</li><li>*example:* `document_root = "./htdocs"`</li></ul> |
-| `error_file`                                | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_page.html"`</li></ul> |
-| [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `files` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| Block            | Description |
+|:-----------------|:------------|
+| *context*        | [Server Block](#server-block). |
+| *label*          | Not implemented. |
+| **Attributes**   | **Description** |
+| `base_path`      | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/files"`</li></ul> |
+| `document_root`  | <ul><li>&#9888; Mandatory.</li><li>Location of the document root.</li><li>*Example:* `document_root = "./htdocs"`</li></ul> |
+| `error_file`     | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
+| `access_control` | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 
-### The `spa` block
+### SPA Block
 
-The `spa` block configures the location of your bootstrap file and your SPA paths.
+The `spa` block configures the web serving for SPA assets.
 
-| Name                                        | Description |
-|:--------------------------------------------|:------------|
-| context                                     | `server` block |
-| `bootstrap_file`                            | <ul><li>location of the bootstrap file</li><li>*example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
-| `paths`                                     | <ul><li>list of SPA paths that need the bootstrap file</li><li>*example:* `paths = ["/app/**"]`</li></ul> |
-| [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `spa` block context</li><li>*example:* `access_control = ["foo"]`</li></ul> |
+| Block            | Description |
+|:-----------------|:------------|
+| *context*        | [Server Block](#server-block). |
+| *label*          | Not implemented. |
+| **Attributes**   | **Description** |
+| `base_path`      | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/assets"`</li></ul> |
+| `bootstrap_file` | <ul><li>&#9888; Mandatory.</li><li>Location of the bootstrap file.</li><li>*Example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
+| `paths`          | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
+| `access_control` | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 
-### The `api` block
+### API Block
 
 The `api` block contains all information about endpoints, and the connection to
-remote/local backend service(s) (configured in the nested `endpoint` and `backend`
-blocks). You can add more than one `api` block to a `server` block. If an error
-occurred for api endpoints the response gets processed as json error with an error
-body payload. This can be customized via `error_file`.
+remote/local backend service(s), configured in the nested
+[Endpoint Block(s)](#endpoint-block). You can add more than one `api` block to a
+`Server Block`. If an error occurred for api endpoints the response gets processed
+as json error with an error body payload. This can be customized via `error_file`.
 
-| Name                                        | Description |
-|:--------------------------------------------|:------------|
-| context                                     | `server` block |
-| `base_path`                                 | <ul><li>optional</li><li>*example:* `base_path = "/api"`</li></ul> |
-| `error_file`                                | <ul><li>location of the error template file</li><li>*example:* `error_file = "./my_error_body.json"`</li></ul> |
-| [**`access_control`**](#the-access_control) | <ul><li>sets predefined `access_control` for `api` block context</li><li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
-| [**`backend`**](#the-backend-block) block   | <ul><li>configures connection to a local/remote backend service for `api` block context</li><li>&#9888; only one `backend` block per `api` block<li>&#9888; inherited by all endpoints in `api` block context</li></ul> |
-| [**`endpoint`**](#the-endpoint-block) block | configures specific endpoint for `api` block context |
-| [**`cors`**](#the-cors-block) block         | configures CORS behavior for `api` block context |
+| Block                                | Description |
+|:-------------------------------------|:------------|
+| *context*                            | [Server Block](#server-block). |
+| *label*                              | Optional. |
+| **Nested blocks**                    | **Description** |
+| [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `API Block` context. |
+| [CORS Block](#cors-block)            | Configures CORS behavior for current `API Block` context. |
+| **Attributes**                       | **Description** |
+| `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/v1"`</li></ul> |
+| `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_body.json"`</li></ul> |
+| `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `API Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
-### The `cors` block
+### Endpoint Block
+
+The `endpoint` blocks define the entry points of Couper. The mandatory *label*
+defines the path suffix for the incoming client request. The `path` attribute
+changes the path for the outgoing request (compare
+[request routing example](#request-routing-example)). Each `Endpoint Block` must
+produce an explicit or implicit client response.
+
+| Block                              | Description |
+|:-----------------------------------|:------------|
+| *context*                          | [Server Block](#server-block), [API Block](#api-block) |
+| *label*                            | <ul><li>&#9888; Mandatory.</li><li>Defines the path suffix for incoming client requests.</li><li>*Example:* `endpoint "/dashboard" {...}`</li><li>Incoming client request: `http://example.com/api/v1/dashboard`</li><li>See [Path Parameter](#path-parameter), too.</ul> |
+| **Nested blocks**                  | **Description** |
+| [Proxy Block(s)](#proxy-block)     |  |
+| [Request Block(s)](#request-block) |  |
+| [Response Block](#response-block)  |  |
+| **Attributes**                     | **Description** |
+| `request_body_limit`               | <ul><li>Optional.</li><li>Configures the maximum buffer size while accessing `req.post` or `req.json_body` content.</li><li>Valid units are: `KiB, MiB, GiB`.</li><li>Default limit is `64MiB`.</li></ul> |
+| `path`                             | <ul><li>Optional.</li><li>Changeable part of the upstream URL.</li><li>Changes the path suffix of the outgoing request.</li></ul> |
+| `access_control`                   | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Endpoint Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
+| [Modifier](#modifier)              | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
+
+### Proxy Block
+
+The `proxy` block creates and executes a proxy request to a backend service.
+
+&#9888; Multiple `proxy` and `request` blocks are executed in parallel.
+
+| Block                                               | Description |
+|:----------------------------------------------------|:------------|
+| *context*                                           | [Endpoint Block](#endpoint-block). |
+| *label*                                             | <ul><li>Partly optional.</li><li>A `Proxy Block` or [Request Block](#request-block) w/o a label has an implicit label `"default"`.</li><li>Only **one** `Proxy Block` or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.</li></ul> |
+| **Nested blocks**                                   | **Description** |
+| [Backend Block](#backend-block)                     | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block-reference) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul> |
+| **Attributes**                                      | **Description** |
+| [Backend Block Reference](#backend-block-reference) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
+| `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
+| [Modifier](#modifier)                               | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
+
+### Request Block
+
+The `request` block creates and executes a request to a backend service.
+
+&#9888; Multiple `proxy` and `request` blocks are executed in parallel.
+
+| Block                                               | Description |
+|:----------------------------------------------------|:------------|
+| *context*                                           | [Endpoint Block](#endpoint-block). |
+| *label*                                             | <ul><li>Partly optional.</li><li>A [Proxy Block](#proxy-block) or `Request Block` w/o a label has an implicit label `"default"`.</li><li>Only **one** [Proxy Block](#proxy-block) or `Request Block` w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.</li></ul> |
+| **Nested blocks**                                   | **Description** |
+| [Backend Block](#backend-block)                     | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block-reference) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul> |
+| **Attributes**                                      | **Description** |
+| [Backend Block Reference](#backend-block-reference) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
+| `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
+| `body`                                              | <ul><li>String.</li><li>Optional.</li></ul> |
+| `method`                                            | <ul><li>String.</li><li>Optional.</li><li>Default `GET`.</li></ul> |
+| `headers`                                           | <ul><li>Optional.</li><li>Same as `set_request_headers` in [Request Header](#request-header).</li></ul> |
+| `query_params`                                      | <ul><li>Optional.</li><li>Same as `set_query_params` in [Query Parameter](#query-parameter).</li></ul> |
+
+### Response Block
+
+The `response` block creates and sends a client response.
+
+| Block          | Description |
+|:---------------|:------------|
+| *context*      | [Endpoint Block](#endpoint-block). |
+| *label*        | Not implemented. |
+| **Attributes** | **Description** |
+| `body`         | <ul><li>String.</li><li>Optional.</li></ul> |
+| `status`       | <ul><li>HTTP status code.</li><li>Optional.</li><li>Default `200`.</li></ul> |
+| `headers`      | <ul><li>Optional.</li><li>Same as `set_response_headers` in [Request Header](#response-header).</li></ul> |
+
+### Backend Block
+
+A `backend` defines the connection to a local/remote backend service. Backends
+can be defined in the [Definitions Block](#definitions-block) and use the *label*
+as reference.
+
+| Block                           | Description |
+|:--------------------------------|:------------|
+| *context*                       | [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block). |
+| *label*                         | &#9888; Mandatory in the [Definitions Block](#definitions-block). |
+| **Nested blocks**               | **Description** |
+| [OpenAPI Block](#openapi-block) | <ul><li>Optional.</li><li>Definition for validating outgoing requests to the origin and incoming responses from the origin.</li></ul> |
+| **Attributes**                  | **Description** |
+| `basic_auth`                    | <ul><li>Optional.</li><li>Basic auth for the upstream request in format `username:password`.</li></ul> |
+| `hostname`                      | <ul><li>Optional.</li><li>Value of the HTTP host header field for the origin request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.</li></ul> |
+| `origin`                        | <ul><li>&#9888; Mandatory.</li><li>URL to connect to for backend requests.</li><li>&#9888; Must start with the scheme `http://...`.</li></ul> |
+| `path`                          | <ul><li>&#9888; Mandatory, if not defined in parent blocks.</li><li>Changeable part of upstream URL.</li></ul> |
+| [Modifier](#modifier)           | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
+
+#### Transport Settings Attributes
+
+| Name                             | Type               | Default         | Description |
+|:---------------------------------|:-------------------|:----------------|:------------|
+| `connect_timeout`                | [Timing](#timings) | `10s`           | The total timeout for dialing and connect to the origin. |
+| `disable_certificate_validation` | bool               | `false`         | Disables the peer certificate validation. |
+| `disable_connection_reuse`       | bool               | `false`         | Disables reusage of connections to the origin. |
+| `http2`                          | bool               | `false`         | Enables the HTTP2 support. |
+| `max_connections`                | int                | `0` (unlimited) | The maximum number of concurrent connections in any state (*active* or *idle*) to the origin. |
+| `proxy`                          | string             | (no default)    | A proxy URL for the related origin request. Example: `http://SERVER-IP_OR_NAME:PORT`. |
+| `timeout`                        | [Timing](#timings) | `300s`          | The total deadline duration a backend request has for write and read/pipe. |
+| `ttfb_timeout`                   | [Timing](#timings) | `60s`           | The duration from writing the full request to the origin and receiving the answer. |
+
+### Timings
+
+| Valid time unit | Description  |
+|:----------------|:-------------|
+| `ns`            | nanoseconds  |
+| `us` (or `µs`)  | microseconds |
+| `ms`            | milliseconds |
+| `s`             | seconds      |
+| `m`             | minutes      |
+| `h`             | hours        |
+
+### Backend Block Reference
+
+A [Backend Block](#backend-block) can be used as reference of a `backend` block
+from the [Definitions Block](#definitions-block). In addition, a `backend` block
+from the [Definitions Block](#definitions-block) can be refined.
+
+```hcl
+server "my_project" {
+  api {
+    endpoint "/e1" {
+      proxy {
+        # Uses the "example" backend from the definitions block.
+        backend = "example"
+      }
+    }
+    endpoint "/e2" {
+      proxy {
+        # Uses a refined version of the "example" backend from the definitions block.
+        backend "example" {
+          set_query_params = {
+            foo = "bar"
+          }
+        }
+      }
+    }
+  }
+}
+
+definitions {
+  backend "example" {
+    origin = "http://example.com"
+  }
+}
+```
+
+#### OpenAPI Block
+
+The `openapi` block configures the backends proxy behaviour to validate outgoing
+and incoming requests to and from the origin. Preventing the origin from invalid
+requests, and the Couper client from invalid answers. An example can be found
+[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
+the definitions from a given document defined with the `file` attribute.
+
+| Block                        | Description |
+|:-----------------------------|:------------|
+| *context*                    | [Backend Block](#backend-block). |
+| *label*                      | Not implemented. |
+| **Attributes**               | **Description** |
+| `file`                       | <ul><li>&#9888; Mandatory.</li><li>OpenAPI yaml definition file.</li></ul> |
+| `ignore_request_violations`  | <ul><li>Optional.</li><li>Log request validation results, skip err handling.</li><li>Default `false`.</li></ul> |
+| `ignore_response_violations` | <ul><li>Optional.</li><li>Log response validation results, skip err handling.</li><li>Default `false`.</li></ul> |
+
+**Caveats**: While ignoring request violations an invalid method or path would
+lead to a non-matching *route* which is still required for response validations.
+In this case the response validation will fail if not ignored too.
+
+### CORS Block
 
 The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
-| Name                       | Description |
-|:---------------------------|:------------|
-| context                    | `api`block |
-| `allowed_origins`          | <ul><li>(list of) allowed origin(s)</li><li> can be either a string with a single specific origin (e.g. `https://www.example.com`)</li><li> or `*` (all origins allowed) </li><li>or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`)</li></ul> |
-| `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
-| `max_age`                  |  <ul><li>indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers</li><li> can be cached (string with time unit, e.g. `"1h"`) </li></ul> |
+| Block               | Description |
+|:--------------------|:------------|
+| *context*           | [API Block](#api-block). |
+| *label*             | Not implemented. |
+| **Attributes**      | **Description** |
+| `allowed_origins`   | <ul><li>&#9888; Mandatory.</li><li>A list of allowed origin(s).</li><li>Can be either of:<br/><ul><li>a string with a single specific origin (e.g. `"https://www.example.com"`).</li><li>`"*"` (all origins are allowed).</li><li>an array of specific origins (e.g. `["https://www.example.com", "https://www.another.host.org"]`).</li></ul></li></ul> |
+| `allow_credentials` | <ul><li>Optional.</li><li>Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).</li><li>Default `false`.</li></ul> |
+| `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
 
-### The `endpoint` block
+### Modifier
 
-Endpoints define the entry points of Couper. The mandatory *label* defines the path
-suffix for the incoming client request. The `path` attribute changes the path for
-the outgoing request (compare [request routing example](#request-routing-example)).
-Each `endpoint` must have at least one `backend` which can be declared in the `api`
-context above or inside an `endpoint`.
+* [Query Parameter](#query-parameter)
+* [Request Header](#request-header)
+* [Response Header](#response-header)
 
-| Name                                          | Description |
-|:----------------------------------------------|:------------|
-| context                                       | `server` and `api` block |
-| *label*                                       | <ul><li>&#9888; mandatory</li><li>defines the path suffix for incoming client requests</li><li>*example:* `endpoint "/dashboard" {`</li><li>incoming client request: `example.com/api/dashboard`</li></ul> |
-| `path`                                        | <ul><li>changeable part of upstream URL</li><li>changes the path suffix of the outgoing request</li></ul> |
-| [**`access_control`**](#the-access_control)   | sets predefined `access_control` for `endpoint` |
-| [**`backend`**](#the-backend-block) block     | configures connection to a local/remote backend service for `endpoint` |
-| [**`remove_query_params`**](#query-parameter) | <ul><li>a list of query parameters to be removed from the upstream request URL</li></ul> |
-| [**`set_query_params`**](#query-parameter)    | <ul><li>key/value(s) pairs to set query parameters in the upstream request URL</li></ul> |
-| [**`add_query_params`**](#query-parameter)    | <ul><li>key/value(s) pairs to add query parameters to the upstream request URL</li></ul> |
+#### Request Header
 
-#### Query parameter
+Couper offers three attributes to manipulate the request header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier                 | Contexts                                                                                        | Description |
+|:-------------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set request header in the upstream request. |
+| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add request header to the upstream request. |
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of request header to be removed from the upstream request. |
+
+All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend`.
+
+#### Response Header
+
+Couper offers three attributes to manipulate the response header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier                  | Contexts                                                                                        | Description |
+|:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `set_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add response header to the client response. |
+| `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of response header to be removed from the client response. |
+
+All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend`.
+
+#### Query Parameter
 
 Couper offers three attributes to manipulate the query parameter. The query
 attributes can be defined unordered within the configuration file but will be
 executed ordered as follows:
 
-* `remove_query_params` a list of query parameters to be removed from the upstream
-  request URL.
-* `set_query_params` key/value(s) pairs to set query parameters in the upstream
-  request URL.
-* `add_query_params` key/value(s) pairs to add query parameters to the upstream
-  request URL.
+| Modifier              | Contexts                                                                                        | Description |
+|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set query parameters in the upstream request URL. |
+| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add query parameters to the upstream request URL. |
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of query parameters to be removed from the upstream request URL. |
 
-All `*_query_params` are collected and executed from: `definitions.backend`, `endpoint`,
-`endpoint.backend` (if refined).
+All `*_query_params` are executed from: `endpoint`, `proxy`, `backend`.
 
 ```hcl
 server "my_project" {
   api {
     endpoint "/" {
-      backend = "example"
+      proxy {
+        backend = "example"
+      }
     }
   }
 }
@@ -375,39 +636,7 @@ definitions {
 }
 ```
 
-#### Request header
-
-Couper offers three attributes to manipulate the request header fields. The header
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-* `remove_request_headers` a list of request header to be removed from the upstream
-  request.
-* `set_request_headers` key/value(s) pairs to set request header in the upstream
-  request.
-* `add_request_headers` key/value(s) pairs to add request header to the upstream
-  request.
-
-All `*_request_headers` are collected and executed from: `definitions.backend`,
-`endpoint.backend` (if refined).
-
-#### Response header
-
-Couper offers three attributes to manipulate the response header fields. The header
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-* `remove_response_headers` a list of response header to be removed from the client
-  response.
-* `set_response_headers` key/value(s) pairs to set response header in the client
-  response.
-* `add_response_headers` key/value(s) pairs to add response header to the client
-  response.
-
-All `*_response_headers` are collected and executed from: `definitions.backend`,
-`endpoint.backend` (if refined).
-
-#### Path parameter
+### Path Parameter
 
 An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
 to access the named path parameter `section` and `project` via `req.path_param.*`.
@@ -418,44 +647,7 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 | `req.path_params.section` | `nature`       |
 | `req.path_params.project` | `plant-a-tree` |
 
-### The `backend` block
-
-A `backend` defines the connection to a local/remote backend service. Backends
-can be defined globally in the `api` block for all endpoints of an API or inside
-an `endpoint`. An `endpoint` must have (at least) one `backend`. You can also
-define backends in the `definitions` block and use the mandatory *label* as reference.
-
-| Name                                              | Description | Default |
-|:--------------------------------------------------|:------------|:--------|
-| context                                           | <ul><li>`server` block</li><li>`api` block</li><li>`endpoint` block</li><li>`definitions` block (reference purpose)</li></ul> ||
-| *label*                                           | <ul><li>&#9888; mandatory, when declared in `server` block</li><li>&#9888; mandatory, when declared in `api` block</li><li>&#9888; mandatory, when declared in `definitions` block</li></ul> ||
-| `base_path`                                       | <ul><li>`base_path` for backend</li><li>won\`t change for `endpoint`</li></ul> ||
-| `basic_auth`                                      | basic_auth for the upstream request in format `username:password` ||
-| `disable_certificate_validation`                  | Disables the peer certificate validation. | `false` |
-| `disable_connection_reuse`                        | Disables reusage of connections | `false` |
-| `hostname`                                        | value of the HTTP host header field for the `origin` request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin. ||
-| `http2`                                           | `boolean`, enables the HTTP2 support | `false` |
-| `max_connections`                                 | Describes the maximum number of concurrent connections in any state (*active* or *idle*) to the `origin`. | `0` (no limit) |
-| `origin`                                          | URL to connect to for backend requests </br> &#9888; must start with the scheme `http://...` ||
-| `path`                                            | changeable part of upstream URL ||
-| `proxy`                                           | A Proxy URL for the related origin request. Example: `http://SERVER-IP_OR_NAME:PORT` | `none` |
-| `request_body_limit`                              | Limit to configure the maximum buffer size while accessing `req.post` or `req.json_body` content. Valid units are: `KiB, MiB, GiB`. | `64MiB` |
-| [**`add_request_headers`**](#request-header)      | header map to define additional header values for the `origin` request ||
-| [**`add_response_headers`**](#response-header)    | same as `add_request_headers` for the client response ||
-| [**`remove_request_headers`**](#request-header)   | header list to define header to be removed from the `origin` request ||
-| [**`remove_response_headers`**](#response-header) | same as `remove_request_headers` for the client response ||
-| [**`set_request_headers`**](#request-header)      | header map to override header for the `origin` request ||
-| [**`set_response_headers`**](#response-header)    | same as `set_request_headers` for the client response ||
-| [**`openapi`**](#the-openapi-block)               | Definition for validating outgoing requests to the `origin` and incoming responses from the `origin`. ||
-| [**`remove_query_params`**](#query-parameter)     | a list of query parameters to be removed from the upstream request URL ||
-| [**`set_query_params`**](#query-parameter)        | key/value(s) pairs to set query parameters in the upstream request URL ||
-| [**`add_query_params`**](#query-parameter)        | key/value(s) pairs to add query parameters to the upstream request URL ||
-| **Timings**                                       | **valid time units are: "ns", "us" (or "µs"), "ms", "s", "m", "h"**  | **Default** |
-| `connect_timeout`                                 | The total timeout for dialing and connect to the origins network address. | `10s` |
-| `timeout`                                         | the total deadline duration a backend request has for write and read/pipe | `300s` |
-| `ttfb_timeout`                                    | Time to first byte timeout describes the duration from writing the full request to the `origin` to receiving the answer. | `60s` |
-
-### The `access_control`
+### Access Control
 
 The configuration of access control is twofold in Couper: You define the particular
 type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
@@ -466,79 +658,75 @@ the `access_control` type `bar` will be disabled for the corresponding block con
 
 Compare the `access_control` [example](#access_control-configuration-example) for details.
 
-#### The `openapi` block
-
-The `openapi` block configures the backends proxy behaviour to validate outgoing
-and incoming requests to and from the origin. Preventing the origin from invalid
-requests, and the Couper client from invalid answers. An example can be found
-[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
-To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
-the definitions from a given document defined with the `file` attribute.
-
-| Name                         | Description                                        | Default   |
-|:-----------------------------|:---------------------------------------------------|:----------|
-| context                      | `backend` block                                    |           |
-| `file`                       | OpenAPI yaml definition file                       | mandatory |
-| `ignore_request_violations`  | log request validation results, skip err handling  | `false`   |
-| `ignore_response_violations` | log response validation results, skip err handling | `false`   |
-
-**Caveats**: While ignoring request violations an invalid method or path would
-lead to a non-matching *route* which is still required for response validations.
-In this case the response validation will fail if not ignored too.
-
-### The `definitions` block
+### Definitions Block
 
 Use the `definitions` block to define configurations you want to reuse.
-`access_control` is **always** defined in the `definitions` block.
+[Access Control](#access-control) is **always** defined in the `Definitions Block`.
 
-#### The `basic_auth` block
+| Block                                    | Description |
+|:-----------------------------------------|:------------|
+| *context*                                | Root of the configuration file. |
+| *label*                                  | Not impplemented. |
+| **Nested blocks**                        | **Description** |
+| [Backend Block(s)](#backend-block)       | Defines `Backend Block(s)`. |
+| [Basic Auth Block(s)](#basic-auth-block) | Defines `Basic Auth Block(s)`. |
+| [JWT Block(s)](#jwt-block)               | Defines `JWT Block(s)`. |
+
+#### Basic Auth Block
 
 The `basic_auth` block let you configure basic auth for your gateway. Like all
-`access_control` types, the `basic_auth` block is defined in the `definitions`
-block and can be referenced in all configuration blocks by its mandatory *label*.
+[Access Control](#access-control) types, the `Basic Auth` block is defined in the
+[Definitions Block](#definitions-block) and can be referenced in all configuration
+blocks by its mandatory *label*.
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming
-credentials from the `Authorization` request header are checked against `user`/`password`
-if the user matches, and against the data in the file referenced by `htpasswd_file`
-otherwise.
+credentials from the `Authorization` request HTTP header field are checked against
+`user`/`password` if the user matches, and against the data in the file referenced
+by `htpasswd_file` otherwise.
 
-| Name            | Description |
+| Block           | Description |
 |:----------------|:------------|
-| context         | `definitions` block |
-| *label*         | <ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul> |
-| `user`          | The user name |
-| `password`      | The corresponding password |
-| `htpasswd_file` | The htpasswd file |
-| `realm`         | The realm to be sent in a `WWW-Authenticate` response header |
+| *context*       | [Definitions Block](#definitions-block). |
+| *label*         | &#9888; Mandatory. |
+| **Attributes**  | **Description** |
+| `user`          | <ul><li>Optional.</li><li>The user name.</li></ul> |
+| `password`      | <ul><li>Optional.</li><li>The corresponding password.</li></ul> |
+| `htpasswd_file` | <ul><li>Optional.</li><li>The htpasswd file.</li></ul> |
+| `realm`         | <ul><li>Optional.</li><li>The realm to be sent in a `WWW-Authenticate` response HTTP header field.</li></ul> |
 
-#### The `jwt` block
+#### JWT Block
 
 The `jwt` block let you configure JSON Web Token access control for your gateway.
-Like all `access_control` types, the `jwt` block is defined in the `definitions`
-block and can be referenced in all configuration blocks by its mandatory *label*.
+Like all [Access Control](#access-control) types, the `jwt` block is defined in
+the `definitions` block and can be referenced in all configuration blocks by its
+mandatory *label*.
 
-| Name                      | Description |
+| Block                     | Description |
 |:--------------------------|:------------|
-| context                   | `definitions` block |
-| *label*                   | <ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul> |
-| `cookie = "AccessToken"`  | read `AccessToken` key to gain the token value from a cookie |
-| `header = "Authorization` | &#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used |
-| `header = "API-Token`     | alternative header source for our token |
-| `key`                     | public key for `RS*` variants or the secret for `HS*` algorithm |
-| `key_file`                | optional file reference instead of `key` usage |
-| `signature_algorithm`     | valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
-| **`claims`**              | equals/in comparison with JWT payload |
+| *context*                 | [Definitions Block](#definitions-block). |
+| *label*                   | &#9888; Mandatory. |
+| **Attributes**            | **Description** |
+| `cookie = "AccessToken"`  | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul> |
+| `header = "Authorization` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` is used, otherwise any other header name can be used.</li></ul> |
+| `header = "API-Token`     | <ul><li>Optional.</li><li>Alternative header source for our token.</li></ul> |
+| `key`                     | <ul><li>Optional.</li><li>Public key for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
+| `key_file`                | <ul><li>Optional.</li><li>optional file reference instead of `key` usage.</li></ul> |
+| `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
+| **`claims`**              | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
 
-### The `settings` block
+### Settings Block
 
 The `settings` block let you configure the more basic and global behavior of your
 gateway instance.
 
-| Name                | Description | Default |
+| Block               | Description |  |
 |:--------------------|:------------|:--------|
+| *context*           | Root of the configuration file. | |
+| *label*             | Not impplemented. | |
+| **Attributes**      | **Description** | **Default** |
 | `health_path`       | health path which is available for all configured server and ports | `/healthz` |
 | `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). | `false` |
-| `default_port`      | port which will be used if not explicitly specified per host within the [`hosts`](#the-server-block) list | `8080` |
+| `default_port`      | port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
 | `log_format`        | switch for tab/field based colored view or json log lines | `common` |
 | `xfh`               | option to use the `X-Forwarded-Host` header as the request host | `false` |
 | `request_id_format` | if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
@@ -581,8 +769,10 @@ api "my_api" {
     # incoming request: .../login/foo
     # implicit proxy
     # outgoing request: http://identityprovider:8080/login/foo
-    backend {
-      origin = "http://identityprovider:8080"
+    proxy {
+      backend {
+        origin = "http://identityprovider:8080"
+      }
     }
   }
 
@@ -590,16 +780,20 @@ api "my_api" {
       # incoming request: .../cart/items
       # outgoing request: http://cartservice:8080/api/v1/items
       path = "/api/v1/**"
-      backend {
-        origin = "http://cartservice:8080"
+      proxy {
+        backend {
+          origin = "http://cartservice:8080"
+        }
       }
 
       endpoint "/account/{id}" {
         # incoming request: .../account/brenda
         # outgoing request: http://accountservice:8080/user/brenda/info
-        backend {
-          path = "/user/${req.param.id}/info"
-          origin = "http://accountservice:8080"
+        proxy {
+          backend {
+            path = "/user/${req.param.id}/info"
+            origin = "http://accountservice:8080"
+          }
         }
       }
     }
@@ -628,7 +822,7 @@ server "my_project" {
 ### `access_control` configuration example
 
 ```hcl
-server {
+server "ac-example" {
   access_control = ["ac1"]
   files {
     access_control = ["ac2"]

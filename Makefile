@@ -2,15 +2,15 @@ image:
 	docker build -t avenga/couper:latest .
 
 test:
-	go test -v -short -race -timeout 60s ./...
+	go test -v -short -race -timeout 90s ./...
 
 test-coverage:
-	go test -short -timeout 60s -covermode=count -coverprofile=ac.coverage ./accesscontrol
-	go test -short -timeout 60s -covermode=count -coverprofile=eval.coverage ./eval
-	go test -short -timeout 60s -covermode=count -coverprofile=config.coverage ./config
-	go test -short -timeout 60s -covermode=count -coverprofile=handler.coverage ./handler
-	go test -short -timeout 60s -covermode=count -coverprofile=server.coverage ./server
-	go test -short -timeout 60s -covermode=count -coverprofile=main.coverage ./
+	go test -short -timeout 90s -covermode=count -coverprofile=ac.coverage ./accesscontrol
+	go test -short -timeout 90s -covermode=count -coverprofile=eval.coverage ./eval
+	go test -short -timeout 90s -covermode=count -coverprofile=config.coverage ./config
+	go test -short -timeout 90s -covermode=count -coverprofile=handler.coverage ./handler
+	go test -short -timeout 90s -covermode=count -coverprofile=server.coverage ./server
+	go test -short -timeout 90s -covermode=count -coverprofile=main.coverage ./
 	$(MAKE) test-coverage-show
 
 test-coverage-show:

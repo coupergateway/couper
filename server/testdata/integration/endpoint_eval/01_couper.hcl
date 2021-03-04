@@ -4,18 +4,16 @@ server "api" {
   api {
     error_file = "./../api_error.json"
 
-    backend "anything" { # overrides definitions: backend "anything"
-      path = "/set/by/api/unset/by/endpoint"
-    }
-
     endpoint "/{path}/{hostname}/{origin}" {
       path = "/set/by/endpoint/unset/by/backend"
-      backend "anything" {
-        path = "/anything"
-        origin = "http://${req.path_params.origin}"
-        hostname = req.path_params.hostname
-        set_response_headers = {
-          x-origin = req.path_params.origin
+      proxy {
+        backend "anything" {
+          path = "/anything"
+          origin = "http://${req.path_params.origin}"
+          hostname = req.path_params.hostname
+          set_response_headers = {
+            x-origin = req.path_params.origin
+          }
         }
       }
     }

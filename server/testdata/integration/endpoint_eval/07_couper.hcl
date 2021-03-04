@@ -1,7 +1,9 @@
 server "api" {
   api {
     endpoint "/" {
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
 
       add_query_params = {
         ae = "ae"

@@ -1,3 +1,5 @@
+//go:generate stringer -type=HandlerKind -output=./server_string.go
+
 package runtime
 
 import (
@@ -10,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/pathpattern"
 	"github.com/hashicorp/hcl/v2"
@@ -22,15 +25,17 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/producer"
+	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
 
 var DefaultBackendConf = &config.Backend{
-	ConnectTimeout:   "10s",
-	RequestBodyLimit: "64MiB",
-	TTFBTimeout:      "60s",
-	Timeout:          "300s",
+	ConnectTimeout: "10s",
+	TTFBTimeout:    "60s",
+	Timeout:        "300s",
 }
 
 type Port int
@@ -47,24 +52,24 @@ type ports map[Port]hosts
 type HandlerKind uint8
 
 const (
-	KindAPI HandlerKind = iota
-	KindEndpoint
-	KindFiles
-	KindSPA
+	api HandlerKind = iota
+	endpoint
+	files
+	spa
 )
 
 type endpointMap map[*config.Endpoint]*config.API
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerConfiguration, error) {
+func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfiguration, error) {
 	defaultPort := conf.Settings.DefaultPort
 
 	// confCtx is created to evaluate request / response related configuration errors on start.
 	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
-	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopReq, noopResp)
+	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopResp)
 
 	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
 	if err != nil {
@@ -78,16 +83,16 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 	serverConfiguration := make(ServerConfiguration)
 	if len(validPortMap) == 0 {
-		serverConfiguration[Port(defaultPort)] = NewMuxOptions(hostsMap)
+		serverConfiguration[Port(defaultPort)] = NewMuxOptions(errors.DefaultHTML, hostsMap)
 	} else {
 		for p := range validPortMap {
-			serverConfiguration[p] = NewMuxOptions(hostsMap)
+			serverConfiguration[p] = NewMuxOptions(errors.DefaultHTML, hostsMap)
 		}
 	}
 
-	endpointHandler := make(map[*config.Endpoint]http.Handler)
+	endpointHandlers := make(map[*config.Endpoint]http.Handler)
 
-	for _, srvConf := range conf.Server {
+	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf)
 		if err != nil {
 			return nil, err
@@ -105,7 +110,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
 
 			for _, spaPath := range srvConf.Spa.Paths {
-				err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, KindSPA)
+				err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
 				if err != nil {
 					return nil, err
 				}
@@ -122,7 +127,7 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), fileHandler)
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, KindFiles)
+			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, files)
 			if err != nil {
 				return nil, err
 			}
@@ -130,24 +135,24 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 
 		endpointsPatterns := make(map[string]bool)
 
-		for endpoint, parentAPI := range newEndpointMap(srvConf) {
+		for endpointConf, parentAPI := range newEndpointMap(srvConf) {
 			var basePath string
-			var cors *config.CORS
+			//var cors *config.CORS
 			var errTpl *errors.Template
 
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePath[parentAPI]
-				cors = parentAPI.CORS
+				//cors = parentAPI.CORS
 				errTpl = serverOptions.APIErrTpl[parentAPI]
 			} else {
 				basePath = serverOptions.SrvBasePath
 				errTpl = serverOptions.ServerErrTpl
 			}
 
-			pattern := utils.JoinPath(basePath, endpoint.Pattern)
+			pattern := utils.JoinPath(basePath, endpointConf.Pattern)
 			unique, cleanPattern := isUnique(endpointsPatterns, pattern)
 			if !unique {
-				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpoint.Body().MissingItemRange().String(), pattern)
+				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpointConf.HCLBody().MissingItemRange().String(), pattern)
 			}
 			endpointsPatterns[cleanPattern] = true
 
@@ -159,29 +164,102 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 					accessControl = accessControl.Merge(config.NewAccessControl(parentAPI.AccessControl, parentAPI.DisableAccessControl))
 				}
 
-				endpointHandler[endpoint] = configureProtectedHandler(accessControls, errTpl, accessControl,
-					config.NewAccessControl(endpoint.AccessControl, endpoint.DisableAccessControl),
+				endpointHandlers[endpointConf] = configureProtectedHandler(accessControls, errTpl, accessControl,
+					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 					protectedHandler)
 			}
 
+			var response *producer.Response
+			if endpointConf.Response != nil {
+				response = &producer.Response{
+					Context: endpointConf.Response.Remain,
+				}
+			}
+
+			var proxies producer.Proxies
+			var requests producer.Requests
+			//var redirect producer.Redirect
+
+			for _, proxyConf := range endpointConf.Proxies {
+				backend, berr := newBackend(confCtx, proxyConf.Backend, log, conf.Settings.NoProxyFromEnv)
+				if berr != nil {
+					return nil, berr
+				}
+				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), confCtx)
+				p := &producer.Proxy{
+					Name:      proxyConf.Name,
+					RoundTrip: proxyHandler,
+				}
+				proxies = append(proxies, p)
+			}
+
+			for _, requestConf := range endpointConf.Requests {
+				backend, berr := newBackend(confCtx, requestConf.Backend, log, conf.Settings.NoProxyFromEnv)
+				if berr != nil {
+					return nil, berr
+				}
+				method := http.MethodGet
+				if requestConf.Method != "" {
+					method = requestConf.Method
+				}
+				requests = append(requests, &producer.Request{
+					Backend: backend,
+					Body:    requestConf.Body,
+					Context: requestConf.Remain,
+					Method:  method,
+					Name:    requestConf.Name,
+				})
+			}
+
 			backendConf := *DefaultBackendConf
-			if diags := gohcl.DecodeBody(endpoint.Remain, confCtx, &backendConf); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
 				return nil, diags
 			}
+			// TODO: redirect
+			if endpointConf.Response == nil && len(proxies)+len(requests) == 0 { // && redirect == nil
+				r := endpointConf.Remain.MissingItemRange()
+				m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
+				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  m,
+					Subject:  &r,
+				}}
+			}
 
-			kind := KindEndpoint
+			kind := endpoint
 			if parentAPI != nil {
-				kind = KindAPI
+				kind = api
 			}
-			backend, err := newProxy(confCtx, &backendConf, cors, log, serverOptions,
-				conf.Settings.NoProxyFromEnv, errTpl, kind)
+
+			bodyLimit, err := handler.ParseBodyLimit(endpointConf.RequestBodyLimit)
 			if err != nil {
-				return nil, err
+				r := endpointConf.Remain.MissingItemRange()
+				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "parsing endpoint request body limit: " + endpointConf.Pattern,
+					Subject:  &r,
+				}}
 			}
 
-			setACHandlerFn(backend)
+			// TODO: determine req/beresp.body access in this context (all including backend) or for now:
+			bufferOpts := eval.MustBuffer(endpointConf.Remain)
+			if len(proxies)+len(requests) > 1 { // also buffer with more possible results
+				bufferOpts |= eval.BufferResponse
+			}
 
-			err = setRoutesFromHosts(serverConfiguration, defaultPort, srvConf.Hosts, pattern, endpointHandler[endpoint], KindAPI)
+			epOpts := &handler.EndpointOptions{
+				Context:        endpointConf.Remain,
+				Error:          errTpl,
+				LogHandlerKind: kind.String(),
+				LogPattern:     endpointConf.Pattern,
+				ReqBodyLimit:   bodyLimit,
+				ReqBufferOpts:  bufferOpts,
+				ServerOpts:     serverOptions,
+			}
+			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests, response)
+			setACHandlerFn(epHandler)
+
+			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
 				return nil, err
 			}
@@ -191,28 +269,42 @@ func NewServerConfiguration(conf *config.CouperFile, log *logrus.Entry) (ServerC
 	return serverConfiguration, nil
 }
 
-func newProxy(
-	ctx *hcl.EvalContext, beConf *config.Backend, corsOpts *config.CORS, log *logrus.Entry,
-	srvOpts *server.Options, noProxyFromEnv bool, errTpl *errors.Template, epType HandlerKind) (http.Handler, error) {
-	corsOptions, err := handler.NewCORSOptions(corsOpts)
+func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry, ignoreProxyEnv bool) (http.RoundTripper, error) {
+	beConf := *DefaultBackendConf
+	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
+		return nil, diags
+	}
+
+	tc := &transport.Config{
+		BackendName:            beConf.Name,
+		DisableCertValidation:  beConf.DisableCertValidation,
+		DisableConnectionReuse: beConf.DisableConnectionReuse,
+		HTTP2:                  beConf.HTTP2,
+		NoProxyFromEnv:         ignoreProxyEnv,
+		Proxy:                  beConf.Proxy,
+		// TODO: parse timings /w defaults
+		MaxConnections: 0,
+	}
+
+	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
+		return nil, err
+	}
+
+	if err := parseDuration(beConf.TTFBTimeout, &tc.TTFBTimeout); err != nil {
+		return nil, err
+	}
+
+	if err := parseDuration(beConf.Timeout, &tc.Timeout); err != nil {
+		return nil, err
+	}
+
+	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
 		return nil, err
 	}
 
-	var kind string
-	switch epType {
-	case KindAPI:
-		kind = "api"
-	case KindEndpoint:
-		kind = "endpoint"
-	}
-
-	proxyOptions, err := handler.NewProxyOptions(beConf, corsOptions, noProxyFromEnv, errTpl, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	return handler.NewProxy(proxyOptions, log, srvOpts, ctx)
+	backend := transport.NewBackend(evalCtx, backendCtx, tc, log, openAPIopts)
+	return backend, nil
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {
@@ -240,7 +332,7 @@ func splitWildcardHostPort(host string, configuredPort int) (string, Port, error
 	return ho, Port(po), nil
 }
 
-func configureAccessControls(conf *config.CouperFile, confCtx *hcl.EvalContext) (ac.Map, error) {
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.Map, error) {
 	accessControls := make(ac.Map)
 
 	if conf.Definitions != nil {
@@ -321,7 +413,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
+func setRoutesFromHosts(srvConf ServerConfiguration, srvErrHandler *errors.Template, defaultPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
 	hostList := hosts
 	if len(hostList) == 0 {
 		hostList = []string{"*"}
@@ -340,16 +432,18 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 					net.JoinHostPort(host, listenPort.String()), false), "/", path)
 		}
 
+		srvConf[listenPort].ErrorTpl = srvErrHandler
+
 		var routes map[string]http.Handler
 
 		switch kind {
-		case KindAPI:
+		case api:
 			fallthrough
-		case KindEndpoint:
+		case endpoint:
 			routes = srvConf[listenPort].EndpointRoutes
-		case KindFiles:
+		case files:
 			routes = srvConf[listenPort].FileRoutes
-		case KindSPA:
+		case spa:
 			routes = srvConf[listenPort].SPARoutes
 		default:
 			return fmt.Errorf("unknown route kind")
@@ -358,6 +452,7 @@ func setRoutesFromHosts(srvConf ServerConfiguration, defaultPort int, hosts []st
 		if _, exist := routes[joinedPath]; exist {
 			return fmt.Errorf("duplicate route found on port %q: %q", listenPort.String(), path)
 		}
+
 		routes[joinedPath] = handler
 	}
 	return nil
@@ -377,4 +472,14 @@ func newEndpointMap(srvConf *config.Server) endpointMap {
 	}
 
 	return endpoints
+}
+
+// parseDuration sets the target value if the given duration string is not empty.
+func parseDuration(src string, target *time.Duration) error {
+	d, err := time.ParseDuration(src)
+	if src != "" && err != nil {
+		return err
+	}
+	*target = d
+	return nil
 }

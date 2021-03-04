@@ -2,8 +2,7 @@ package test
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
+	"github.com/avenga/couper/handler/transport"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
@@ -14,21 +13,27 @@ import (
 	"github.com/avenga/couper/handler"
 )
 
-func (h *Helper) NewProxy(opts *handler.ProxyOptions) (*handler.Proxy, *http.Client, http.Handler, func()) {
+func (h *Helper) NewProxy(conf *transport.Config, backendContext, proxyContext hcl.Body) *handler.Proxy {
 	logger, _ := test.NewNullLogger()
 
-	var upstream http.HandlerFunc
-	server := httptest.NewServer(upstream)
-
-	if opts.Transport == nil {
-		opts.Transport = &handler.TransportConfig{}
+	config := conf
+	if config == nil {
+		config = &transport.Config{
+			BackendName:    "HelperUpstream",
+			NoProxyFromEnv: true,
+		}
 	}
 
-	opts.Transport.BackendName = "HelperUpstream"
-	proxy, err := handler.NewProxy(opts, logger.WithContext(context.Background()), nil, eval.NewENVContext(nil))
-	h.Must(err)
+	proxyCtx := proxyContext
+	if proxyCtx == nil {
+		proxyCtx = hcl.EmptyBody()
+	}
 
-	return proxy.(*handler.Proxy), server.Client(), upstream, server.Close
+	evalCtx := eval.NewENVContext(nil)
+	backend := transport.NewBackend(evalCtx, backendContext, config, logger.WithContext(context.Background()), nil)
+
+	proxy := handler.NewProxy(backend, proxyCtx, evalCtx)
+	return proxy
 }
 
 func (h *Helper) NewProxyContext(inlineHCL string) hcl.Body {

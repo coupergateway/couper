@@ -10,7 +10,7 @@ import (
 )
 
 type Cmd interface {
-	Execute(args Args, config *config.CouperFile, logger *logrus.Entry) error
+	Execute(args Args, config *config.Couper, logger *logrus.Entry) error
 	Usage() string
 }
 

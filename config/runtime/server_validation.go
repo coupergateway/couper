@@ -23,12 +23,12 @@ var (
 //	"*"							equals to "*:configuredPort"
 //	"host:*"					equals to "host:configuredPort"
 //	"host"						listen on configured default port for given host
-func validatePortHosts(conf *config.CouperFile, configuredPort int) (ports, hosts, error) {
+func validatePortHosts(conf *config.Couper, configuredPort int) (ports, hosts, error) {
 	portMap := make(ports)
 	hostMap := make(hosts)
-	isHostsMandatory := len(conf.Server) > 1
+	isHostsMandatory := len(conf.Servers) > 1
 
-	for _, srv := range conf.Server {
+	for _, srv := range conf.Servers {
 		if isHostsMandatory && len(srv.Hosts) == 0 {
 			return nil, nil, fmt.Errorf("hosts attribute is mandatory for multiple servers: %q", srv.Name)
 		}

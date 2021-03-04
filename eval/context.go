@@ -49,7 +49,7 @@ func NewENVContext(src []byte) *hcl.EvalContext {
 	}
 }
 
-func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *http.Request, beresp *http.Response) *hcl.EvalContext {
+func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req *http.Request, beresps ...*http.Response) *hcl.EvalContext {
 	if req == nil {
 		return baseCtx
 	}
@@ -82,8 +82,19 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(httpCtx, req.Cookies(), req.Header))))
 
-	if beresp != nil {
-		evalCtx.Variables[BackendRequest] = cty.ObjectVal(ContextMap{
+	if len(beresps) == 0 {
+		return evalCtx
+	}
+
+	resps := make(ContextMap, 0)
+	bereqs := make(ContextMap, 0)
+	for _, beresp := range beresps {
+		bereq := beresp.Request
+		name := BackendDefault // TODO: name related error handling? override previous one for now
+		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
+			name = n
+		}
+		bereqs[name] = cty.ObjectVal(ContextMap{
 			Method: cty.StringVal(bereq.Method),
 			Path:   cty.StringVal(bereq.URL.Path),
 			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
@@ -95,11 +106,20 @@ func NewHTTPContext(baseCtx *hcl.EvalContext, bufOpt BufferOption, req, bereq *h
 		if (bufOpt & BufferResponse) == BufferResponse {
 			jsonBody = parseRespJSON(beresp)
 		}
-		evalCtx.Variables[BackendResponse] = cty.ObjectVal(ContextMap{
+		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
 			JsonBody:   seetie.MapToValue(jsonBody),
 		}.Merge(newVariable(httpCtx, beresp.Cookies(), beresp.Header)))
 	}
+
+	if val, ok := bereqs[BackendDefault]; ok {
+		evalCtx.Variables[BackendRequest] = val
+	}
+	if val, ok := resps[BackendDefault]; ok {
+		evalCtx.Variables[BackendResponse] = val
+	}
+	evalCtx.Variables[BackendRequests] = cty.ObjectVal(bereqs)
+	evalCtx.Variables[BackendResponses] = cty.ObjectVal(resps)
 
 	return evalCtx
 }
@@ -116,6 +136,9 @@ func NewReadCloser(r io.Reader, c io.Closer) *ReadCloser {
 }
 
 func (rc ReadCloser) Close() error {
+	if rc.closer == nil {
+		return nil
+	}
 	return rc.closer.Close()
 }
 

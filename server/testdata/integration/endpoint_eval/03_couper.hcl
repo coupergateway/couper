@@ -1,29 +1,37 @@
 server "api" {
   api {
 
-    backend {
-      origin = env.COUPER_TEST_BACKEND_ADDR != "" ? env.COUPER_TEST_BACKEND_ADDR : "http://127.0.0.1:1"
-      path = "/unset/by/endpoint"
-    }
-
     endpoint "/endpoint1" {
-      path = "/anything"
+      proxy {
+        backend "anything" {
+          path = "/anything"
+        }
+      }
     }
 
     endpoint "/endpoint2" {
-     path = "/unset/by/local-backend"
-     backend "anything" {
-       path = "/anything"
-     }
+      path = "/unset/by/local-backend"
+      proxy {
+        backend "anything" {
+          path = "/anything"
+        }
+      }
     }
 
     # don't override path
     endpoint "/endpoint3" {
-      backend  = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
 
     endpoint "/endpoint4" {
-      path = "/anything"
+      path = "/unset/here"
+      proxy {
+        backend "anything" {
+          path = "/anything"
+        }
+      }
     }
 
   }

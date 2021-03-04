@@ -1,27 +1,29 @@
 server "api" {
   api {
     endpoint "/" {
-      backend "anything" {
-        remove_query_params = [ "aeb_del", "CaseIns", req.headers.xyz ]
-        set_query_params = {
-          aeb_string = "str"
-          aeb_multi = ["str1", "str2"]
-          aeb_a_and_b = "A&B"
-          aeb_noop = req.query.noop
-          aeb_null = null
-          aeb_empty = ""
-          xxx = ["yyy", "xxx"]
-          xxx = ["aaa", "bbb"]
-          "${req.headers.aeb}" = "aeb"
-        }
-        add_query_params = {
-          aeb_string = "str"
-          aeb_multi = ["str3", "str4"]
-          aeb_a_and_b = "A&B"
-          aeb_noop = req.query.noop
-          aeb_null = null
-          aeb_empty = ""
-          "${req.headers.aeb}" = "aeb"
+      proxy {
+        backend "anything" {
+          remove_query_params = [ "aeb_del", "CaseIns", req.headers.xyz ]
+          set_query_params = {
+            aeb_string = "str"
+            aeb_multi = ["str1", "str2"]
+            aeb_a_and_b = "A&B"
+            aeb_noop = req.query.noop
+            aeb_null = null
+            aeb_empty = ""
+            xxx = ["yyy", "xxx"]
+            xxx = ["aaa", "bbb"]
+            "${req.headers.aeb}" = "aeb"
+          }
+          add_query_params = {
+            aeb_string = "str"
+            aeb_multi = ["str3", "str4"]
+            aeb_a_and_b = "A&B"
+            aeb_noop = req.query.noop
+            aeb_null = null
+            aeb_empty = ""
+            "${req.headers.aeb}" = "aeb"
+          }
         }
       }
 

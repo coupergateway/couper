@@ -1,11 +1,16 @@
 server "hcl" {
   api {
-    backend = "a"
-    endpoint "/" {}
+    endpoint "/" {
+      proxy {
+        backend = "a"
+      }
+    }
     endpoint "/expired" {
-      backend "b" {
-        origin = "https://expired.badssl.com"
-        path = "/"
+      proxy {
+        backend "b" {
+          origin = "https://expired.badssl.com"
+          path = "/"
+        }
       }
     }
   }

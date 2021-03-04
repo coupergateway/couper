@@ -24,10 +24,12 @@ server "fileserving-tests" {
         base_path = "/api"
         error_file = "./error.json"
         endpoint "/foo/**" {
-            backend {
-                path = "/**"
-                origin = "{{.origin}}"
-                hostname = "test.couper.io"
+            proxy {
+                backend {
+                    path = "/**"
+                    origin = "{{.origin}}"
+                    hostname = "test.couper.io"
+                }
             }
         }
     }

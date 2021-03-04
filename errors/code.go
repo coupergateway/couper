@@ -1,5 +1,7 @@
 package errors
 
+import "fmt"
+
 const (
 	Server Code = 1000 + iota
 	ServerShutdown
@@ -23,7 +25,6 @@ const (
 	APIRouteNotFound
 	APIConnect
 	APIProxyConnect
-	APIReqBodySizeExceeded
 )
 
 const (
@@ -59,11 +60,10 @@ var codes = map[Code]string{
 	FilesError:         "Files failed",
 	FilesRouteNotFound: "Files route not found",
 	// 4xxx
-	APIError:               "API failed",
-	APIRouteNotFound:       "API route not found",
-	APIConnect:             "API upstream connection error",
-	APIProxyConnect:        "upstream connection error via configured proxy",
-	APIReqBodySizeExceeded: "Request body size exceeded",
+	APIError:         "API failed",
+	APIRouteNotFound: "API route not found",
+	APIConnect:       "API upstream connection error",
+	APIProxyConnect:  "upstream connection error via configured proxy",
 	// 5xxx
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",
@@ -72,9 +72,19 @@ var codes = map[Code]string{
 	UpstreamRequestValidationFailed:  "Upstream request validation failed",
 	UpstreamResponseValidationFailed: "Upstream response validation failed",
 	UpstreamResponseBufferingFailed:  "Upstream response buffering failed",
+	// 7xxx
+	EndpointConnect:             "Endpoint upstream connection error",
+	EndpointProxyConnect:        "upstream connection error via configured proxy",
+	EndpointReqBodySizeExceeded: "Request body size exceeded",
 }
 
 type Code int
+
+// TODO: Own error type
+// New creates a standard error.
+func New(msg string) error {
+	return fmt.Errorf(msg)
+}
 
 func (c Code) Error() string {
 	if msg, ok := codes[c]; ok {

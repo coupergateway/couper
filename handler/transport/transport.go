@@ -1,7 +1,8 @@
-package handler
+package transport
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -15,26 +16,29 @@ import (
 
 var transports sync.Map
 
-// TransportConfig represents the <TransportConfig> object.
-type TransportConfig struct {
+// Config represents the transport <Config> object.
+type Config struct {
 	BackendName            string
-	ConnectTimeout         time.Duration
 	DisableCertValidation  bool
 	DisableConnectionReuse bool
-	Hash                   string
-	Hostname               string
 	HTTP2                  bool
 	MaxConnections         int
 	NoProxyFromEnv         bool
-	Origin                 string
 	Proxy                  string
-	Scheme                 string
-	TTFBTimeout            time.Duration
-	Timeout                time.Duration
+
+	ConnectTimeout time.Duration
+	TTFBTimeout    time.Duration
+	Timeout        time.Duration
+
+	// Dynamic values
+	Hostname string
+	Origin   string
+	Scheme   string
 }
 
-func getTransport(conf *TransportConfig) *http.Transport {
-	key := conf.Scheme + "|" + conf.Origin + "|" + conf.Hostname + "|" + conf.Hash
+// Get creates a new <*http.Transport> object by the given <*Config>.
+func Get(conf *Config) *http.Transport {
+	key := conf.hash()
 
 	transport, ok := transports.Load(key)
 	if !ok {
@@ -74,9 +78,13 @@ func getTransport(conf *TransportConfig) *http.Transport {
 
 		transport = &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				conn, err := d.DialContext(ctx, network, addr)
+				address := addr
+				if proxyFunc == nil {
+					address = conf.Origin
+				} // Otherwise proxy connect will use this dial method and addr could be a proxy one.
+				conn, err := d.DialContext(ctx, network, address)
 				if err != nil {
-					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, addr, err)
+					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
 				}
 				return conn, nil
 			},
@@ -98,4 +106,39 @@ func getTransport(conf *TransportConfig) *http.Transport {
 	}
 
 	return nil
+}
+
+func (c *Config) With(scheme, origin, hostname string) *Config {
+	const defaultScheme = "http"
+	conf := *c
+	if scheme != "" {
+		conf.Scheme = scheme
+	} else {
+		conf.Scheme = defaultScheme
+		if conf.HTTP2 {
+			conf.Scheme += "s"
+		}
+	}
+
+	conf.Origin = origin
+	conf.Hostname = hostname
+
+	// Port required by transport.DialContext
+	_, p, _ := net.SplitHostPort(origin)
+	if p == "" {
+		const port, tlsPort = "80", "443"
+		if conf.Scheme == defaultScheme {
+			conf.Origin += ":" + port
+		} else {
+			conf.Origin += ":" + tlsPort
+		}
+	}
+
+	return &conf
+}
+
+func (c *Config) hash() string {
+	h := sha256.New()
+	h.Write([]byte(fmt.Sprintf("%v", c)))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }

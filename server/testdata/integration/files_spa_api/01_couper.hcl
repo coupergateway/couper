@@ -11,7 +11,9 @@ server "spa" {
     error_file = "./../api_error.json"
     endpoint "/api" {
       path = "/"
-      backend = "anything"
+      proxy {
+        backend = "anything"
+      }
     }
   }
 }

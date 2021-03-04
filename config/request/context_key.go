@@ -6,8 +6,11 @@ const (
 	UID ContextKey = iota
 	BackendName
 	Endpoint
+	EndpointKind
+	OpenAPI
 	PathParams
-	RoundtripInfo
+	RoundTripName
+	RoundTripProxy
 	ServerName
 	Wildcard
 )
