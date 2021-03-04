@@ -311,7 +311,9 @@ func TestBackend_director(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hclContext := helper.NewProxyContext(tt.inlineCtx)
 
-			backend := transport.NewBackend(eval.NewENVContext(nil), hclContext, &transport.Config{}, nullLog, nil)
+			backend := transport.NewBackend(eval.NewENVContext(nil), hclContext, &transport.Config{
+				Timeout: time.Second,
+			}, nullLog, nil)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.Clone(tt.ctx)
