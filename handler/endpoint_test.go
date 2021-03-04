@@ -36,8 +36,8 @@ func TestEndpoint_RoundTrip_SetGetBody_LimitBody(t *testing.T) {
 
 	for _, testcase := range []testCase{
 		{"/w well sized limit", "12MiB", "content", nil},
-		{"/w zero limit", "0", "01", errors.APIReqBodySizeExceeded},
-		{"/w limit /w oversize body", "4B", "12345", errors.APIReqBodySizeExceeded},
+		{"/w zero limit", "0", "01", errors.EndpointReqBodySizeExceeded},
+		{"/w limit /w oversize body", "4B", "12345", errors.EndpointReqBodySizeExceeded},
 	} {
 		t.Run(testcase.name, func(subT *testing.T) {
 			helper := test.New(subT)

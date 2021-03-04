@@ -249,11 +249,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 			epOpts := &handler.EndpointOptions{
 				Context:        endpointConf.Remain,
-				LogPattern:     endpointConf.Pattern,
-				LogHandlerKind: kind.String(),
-				ReqBufferOpts:  bufferOpts,
-				ReqBodyLimit:   bodyLimit,
 				Error:          errTpl,
+				LogHandlerKind: kind.String(),
+				LogPattern:     endpointConf.Pattern,
+				ReqBodyLimit:   bodyLimit,
+				ReqBufferOpts:  bufferOpts,
+				ServerOpts:     serverOptions,
 			}
 			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests, response)
 			setACHandlerFn(epHandler)

@@ -25,7 +25,6 @@ const (
 	APIRouteNotFound
 	APIConnect
 	APIProxyConnect
-	APIReqBodySizeExceeded
 )
 
 const (
@@ -65,7 +64,6 @@ var codes = map[Code]string{
 	APIRouteNotFound:       "API route not found",
 	APIConnect:             "API upstream connection error",
 	APIProxyConnect:        "upstream connection error via configured proxy",
-	APIReqBodySizeExceeded: "Request body size exceeded",
 	// 5xxx
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",
@@ -74,6 +72,10 @@ var codes = map[Code]string{
 	UpstreamRequestValidationFailed:  "Upstream request validation failed",
 	UpstreamResponseValidationFailed: "Upstream response validation failed",
 	UpstreamResponseBufferingFailed:  "Upstream response buffering failed",
+	// 7xxx
+	EndpointConnect:             "Endpoint upstream connection error",
+	EndpointProxyConnect:        "upstream connection error via configured proxy",
+	EndpointReqBodySizeExceeded: "Request body size exceeded",
 }
 
 type Code int

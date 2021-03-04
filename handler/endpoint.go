@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
@@ -41,6 +43,7 @@ type EndpointOptions struct {
 	LogPattern     string
 	ReqBodyLimit   int64
 	ReqBufferOpts  eval.BufferOption
+	ServerOpts     *server.Options
 }
 
 func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.Entry,
@@ -105,7 +108,15 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil {
-		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
+		serveErr := err
+		switch err.(type) { // TODO proper err mapping and handling
+		case net.Error:
+			serveErr = errors.EndpointConnect
+			if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
+				serveErr = errors.EndpointProxyConnect
+			}
+		}
+		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
 		return
 	}
 
@@ -141,7 +152,7 @@ func (e *Endpoint) SetGetBody(req *http.Request) error {
 		}
 
 		if n > e.opts.ReqBodyLimit {
-			return errors.APIReqBodySizeExceeded
+			return errors.EndpointReqBodySizeExceeded
 		}
 
 		bodyBytes := buf.Bytes()
@@ -226,6 +237,10 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps map[stri
 			beresps[name] = r
 		}
 	}
+}
+
+func (e *Endpoint) Options() *server.Options {
+	return e.opts.ServerOpts
 }
 
 // String interface maps to the access log handler field.
