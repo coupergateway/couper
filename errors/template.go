@@ -55,7 +55,8 @@ func NewTemplateFromFile(path string) (*Template, error) {
 		mime = "application/json"
 	}
 
-	return NewTemplate(mime, path, tplFile)
+	_, fileName := filepath.Split(path)
+	return NewTemplate(mime, fileName, tplFile)
 }
 
 func NewTemplate(mime, name string, src []byte) (*Template, error) {
