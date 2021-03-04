@@ -127,9 +127,10 @@ func (e *Endpoint) SetGetBody(req *http.Request) error {
 		return nil
 	}
 
-	if (e.opts.ReqBufferOpts & eval.BufferRequest) != eval.BufferRequest {
-		return nil
-	}
+	// TODO: handle buffer options based on overall body context and reference
+	//if (e.opts.ReqBufferOpts & eval.BufferRequest) != eval.BufferRequest {
+	//	return nil
+	//}
 
 	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
 		buf := &bytes.Buffer{}
