@@ -521,11 +521,74 @@ definitions {
 }
 ```
 
+#### OpenAPI Block
+
+The `openapi` block configures the backends proxy behaviour to validate outgoing
+and incoming requests to and from the origin. Preventing the origin from invalid
+requests, and the Couper client from invalid answers. An example can be found
+[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
+the definitions from a given document defined with the `file` attribute.
+
+| Block                        | Description |
+|:-----------------------------|:------------|
+| *context*                    | [Backend Block](#backend-block). |
+| *label*                      | Not implemented. |
+| **Attributes**               | **Description** |
+| `file`                       | <ul><li>&#9888; Mandatory.</li><li>OpenAPI yaml definition file.</li></ul> |
+| `ignore_request_violations`  | <ul><li>Optional.</li><li>Log request validation results, skip err handling.</li><li>Default `false`.</li></ul> |
+| `ignore_response_violations` | <ul><li>Optional.</li><li>Log response validation results, skip err handling.</li><li>Default `false`.</li></ul> |
+
+**Caveats**: While ignoring request violations an invalid method or path would
+lead to a non-matching *route* which is still required for response validations.
+In this case the response validation will fail if not ignored too.
+
+### CORS Block
+
+The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
+
+| Block               | Description |
+|:--------------------|:------------|
+| *context*           | [API Block](#api-block). |
+| *label*             | Not implemented. |
+| **Attributes**      | **Description** |
+| `allowed_origins`   | <ul><li>&#9888; Mandatory.</li><li>A list of allowed origin(s).</li><li>Can be either of:<br/><ul><li>a string with a single specific origin (e.g. `"https://www.example.com"`).</li><li>`"*"` (all origins are allowed).</li><li>an array of specific origins (e.g. `["https://www.example.com", "https://www.another.host.org"]`).</li></ul></li></ul> |
+| `allow_credentials` | <ul><li>Optional.</li><li>Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).</li><li>Default `false`.</li></ul> |
+| `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
+
 ### Modifier
 
 * [Query Parameter](#query-parameter)
 * [Request Header](#request-header)
 * [Response Header](#response-header)
+
+#### Request Header
+
+Couper offers three attributes to manipulate the request header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier                 | Contexts                                                                                        | Description |
+|:-------------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set request header in the upstream request. |
+| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add request header to the upstream request. |
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of request header to be removed from the upstream request. |
+
+All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend`.
+
+#### Response Header
+
+Couper offers three attributes to manipulate the response header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier                  | Contexts                                                                                        | Description |
+|:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `set_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add response header to the client response. |
+| `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of response header to be removed from the client response. |
+
+All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend`.
 
 #### Query Parameter
 
@@ -533,12 +596,11 @@ Couper offers three attributes to manipulate the query parameter. The query
 attributes can be defined unordered within the configuration file but will be
 executed ordered as follows:
 
-* `remove_query_params` a list of query parameters to be removed from the upstream
-  request URL.
-* `set_query_params` key/value(s) pairs to set query parameters in the upstream
-  request URL.
-* `add_query_params` key/value(s) pairs to add query parameters to the upstream
-  request URL.
+| Modifier              | Contexts                                                                                        | Description |
+|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set query parameters in the upstream request URL. |
+| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add query parameters to the upstream request URL. |
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of query parameters to be removed from the upstream request URL. |
 
 All `*_query_params` are executed from: `endpoint`, `proxy`, `backend`.
 
@@ -574,36 +636,6 @@ definitions {
 }
 ```
 
-#### Request Header
-
-Couper offers three attributes to manipulate the request header fields. The header
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-* `remove_request_headers` a list of request header to be removed from the upstream
-  request.
-* `set_request_headers` key/value(s) pairs to set request header in the upstream
-  request.
-* `add_request_headers` key/value(s) pairs to add request header to the upstream
-  request.
-
-All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend`.
-
-#### Response Header
-
-Couper offers three attributes to manipulate the response header fields. The header
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-* `remove_response_headers` a list of response header to be removed from the client
-  response.
-* `set_response_headers` key/value(s) pairs to set response header in the client
-  response.
-* `add_response_headers` key/value(s) pairs to add response header to the client
-  response.
-
-All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend`.
-
 ### Path Parameter
 
 An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
@@ -614,17 +646,6 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 |:--------------------------|:---------------|
 | `req.path_params.section` | `nature`       |
 | `req.path_params.project` | `plant-a-tree` |
-
-### CORS Block
-
-The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
-
-| Name                       | Description |
-|:---------------------------|:------------|
-| context                    | `api`block |
-| `allowed_origins`          | <ul><li>(list of) allowed origin(s)</li><li> can be either a string with a single specific origin (e.g. `https://www.example.com`)</li><li> or `*` (all origins allowed) </li><li>or an array of specific origins (`["https://www.example.com", "https://www.another.host.org"]`)</li></ul> |
-| `allow_credentials = true` | if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` headers) |
-| `max_age`                  |  <ul><li>indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response headers</li><li> can be cached (string with time unit, e.g. `"1h"`) </li></ul> |
 
 ### Access Control
 
@@ -637,76 +658,72 @@ the `access_control` type `bar` will be disabled for the corresponding block con
 
 Compare the `access_control` [example](#access_control-configuration-example) for details.
 
-#### OpenAPI Block
-
-The `openapi` block configures the backends proxy behaviour to validate outgoing
-and incoming requests to and from the origin. Preventing the origin from invalid
-requests, and the Couper client from invalid answers. An example can be found
-[here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
-To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
-the definitions from a given document defined with the `file` attribute.
-
-| Name                         | Description                                        | Default   |
-|:-----------------------------|:---------------------------------------------------|:----------|
-| context                      | `backend` block                                    |           |
-| `file`                       | OpenAPI yaml definition file                       | mandatory |
-| `ignore_request_violations`  | log request validation results, skip err handling  | `false`   |
-| `ignore_response_violations` | log response validation results, skip err handling | `false`   |
-
-**Caveats**: While ignoring request violations an invalid method or path would
-lead to a non-matching *route* which is still required for response validations.
-In this case the response validation will fail if not ignored too.
-
 ### Definitions Block
 
 Use the `definitions` block to define configurations you want to reuse.
-`access_control` is **always** defined in the `definitions` block.
+[Access Control](#access-control) is **always** defined in the `Definitions Block`.
+
+| Block                                    | Description |
+|:-----------------------------------------|:------------|
+| *context*                                | Root of the configuration file. |
+| *label*                                  | Not impplemented. |
+| **Nested blocks**                        | **Description** |
+| [Backend Block(s)](#backend-block)       | Defines `Backend Block(s)`. |
+| [Basic Auth Block(s)](#basic-auth-block) | Defines `Basic Auth Block(s)`. |
+| [JWT Block(s)](#jwt-block)               | Defines `JWT Block(s)`. |
 
 #### Basic Auth Block
 
 The `basic_auth` block let you configure basic auth for your gateway. Like all
-`access_control` types, the `basic_auth` block is defined in the `definitions`
-block and can be referenced in all configuration blocks by its mandatory *label*.
+[Access Control](#access-control) types, the `Basic Auth` block is defined in the
+[Definitions Block](#definitions-block) and can be referenced in all configuration
+blocks by its mandatory *label*.
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming
-credentials from the `Authorization` request header are checked against `user`/`password`
-if the user matches, and against the data in the file referenced by `htpasswd_file`
-otherwise.
+credentials from the `Authorization` request HTTP header field are checked against
+`user`/`password` if the user matches, and against the data in the file referenced
+by `htpasswd_file` otherwise.
 
-| Name            | Description |
+| Block           | Description |
 |:----------------|:------------|
-| context         | `definitions` block |
-| *label*         | <ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul> |
-| `user`          | The user name |
-| `password`      | The corresponding password |
-| `htpasswd_file` | The htpasswd file |
-| `realm`         | The realm to be sent in a `WWW-Authenticate` response header |
+| *context*       | [Definitions Block](#definitions-block). |
+| *label*         | &#9888; Mandatory. |
+| **Attributes**  | **Description** |
+| `user`          | <ul><li>Optional.</li><li>The user name.</li></ul> |
+| `password`      | <ul><li>Optional.</li><li>The corresponding password.</li></ul> |
+| `htpasswd_file` | <ul><li>Optional.</li><li>The htpasswd file.</li></ul> |
+| `realm`         | <ul><li>Optional.</li><li>The realm to be sent in a `WWW-Authenticate` response HTTP header field.</li></ul> |
 
 #### JWT Block
 
 The `jwt` block let you configure JSON Web Token access control for your gateway.
-Like all `access_control` types, the `jwt` block is defined in the `definitions`
-block and can be referenced in all configuration blocks by its mandatory *label*.
+Like all [Access Control](#access-control) types, the `jwt` block is defined in
+the `definitions` block and can be referenced in all configuration blocks by its
+mandatory *label*.
 
-| Name                      | Description |
+| Block                     | Description |
 |:--------------------------|:------------|
-| context                   | `definitions` block |
-| *label*                   | <ul><li>&#9888; mandatory</li><li>always defined in `definitions` block</li></ul> |
-| `cookie = "AccessToken"`  | read `AccessToken` key to gain the token value from a cookie |
-| `header = "Authorization` | &#9888; implies Bearer if `Authorization` is used, otherwise any other header name can be used |
-| `header = "API-Token`     | alternative header source for our token |
-| `key`                     | public key for `RS*` variants or the secret for `HS*` algorithm |
-| `key_file`                | optional file reference instead of `key` usage |
-| `signature_algorithm`     | valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` |
-| **`claims`**              | equals/in comparison with JWT payload |
+| *context*                 | [Definitions Block](#definitions-block). |
+| *label*                   | &#9888; Mandatory. |
+| **Attributes**            | **Description** |
+| `cookie = "AccessToken"`  | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul> |
+| `header = "Authorization` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` is used, otherwise any other header name can be used.</li></ul> |
+| `header = "API-Token`     | <ul><li>Optional.</li><li>Alternative header source for our token.</li></ul> |
+| `key`                     | <ul><li>Optional.</li><li>Public key for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
+| `key_file`                | <ul><li>Optional.</li><li>optional file reference instead of `key` usage.</li></ul> |
+| `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
+| **`claims`**              | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
 
 ### Settings Block
 
 The `settings` block let you configure the more basic and global behavior of your
 gateway instance.
 
-| Name                | Description | Default |
+| Block               | Description |  |
 |:--------------------|:------------|:--------|
+| *context*           | Root of the configuration file. | |
+| *label*             | Not impplemented. | |
+| **Attributes**      | **Description** | **Default** |
 | `health_path`       | health path which is available for all configured server and ports | `/healthz` |
 | `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). | `false` |
 | `default_port`      | port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
