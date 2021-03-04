@@ -4,10 +4,6 @@ server "api" {
   api {
     error_file = "./../api_error.json"
 
-    backend "anything" { # overrides definitions: backend "anything"
-      path = "/set/by/api/unset/by/endpoint"
-    }
-
     endpoint "/{path}/{hostname}/{origin}" {
       path = "/set/by/endpoint/unset/by/backend"
       proxy {

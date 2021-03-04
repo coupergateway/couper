@@ -1,6 +1,5 @@
 server "acs" {
   access_control = ["ba1"]
-  backend = "test"
   error_file = "../api_error.json"
   api {
     base_path = "/v1"
@@ -37,13 +36,17 @@ server "acs" {
     endpoint "/**" {
       access_control = ["ba3"]
       disable_access_control = ["ba1", "ba2", "ba3"]
-      proxy {}
+      proxy {
+        backend = "test"
+      }
     }
   }
 
   endpoint "/status" {
     disable_access_control = ["ba1"]
-    proxy {}
+    proxy {
+      backend = "test"
+    }
   }
 
   endpoint "/superadmin" {

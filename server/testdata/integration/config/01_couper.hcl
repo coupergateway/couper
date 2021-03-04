@@ -1,8 +1,9 @@
 server "hcl" {
   api {
-    backend = "a"
     endpoint "/" {
-      proxy {}
+      proxy {
+        backend = "a"
+      }
     }
     endpoint "/expired" {
       proxy {

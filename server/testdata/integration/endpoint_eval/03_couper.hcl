@@ -1,11 +1,6 @@
 server "api" {
   api {
 
-    backend {
-      origin = env.COUPER_TEST_BACKEND_ADDR != "" ? env.COUPER_TEST_BACKEND_ADDR : "http://127.0.0.1:1"
-      path = "/unset/by/endpoint"
-    }
-
     endpoint "/endpoint1" {
       proxy {
         backend "anything" {

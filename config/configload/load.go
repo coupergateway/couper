@@ -125,28 +125,16 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 			serverConfig.Name = serverBlock.Labels[0]
 		}
 
-		// Read server inline, reference overrides or referenced backends
-		serverBackend, mergeErr := mergeBackendBodies(definedBackends, serverConfig)
-		if mergeErr != nil {
-			return nil, mergeErr
-		}
-
 		// Read api blocks and merge backends with server and definitions backends.
 		for _, apiBlock := range serverConfig.APIs {
-			apiBackend, err := mergeBackendBodies(definedBackends, apiBlock)
-			if err != nil {
-				return nil, err
-			}
-
-			parentBackend := mergeRight(apiBackend, serverBackend)
-			err = refineEndpoints(definedBackends, parentBackend, apiBlock.Endpoints)
+			err := refineEndpoints(definedBackends, apiBlock.Endpoints)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		// standalone endpoints
-		err := refineEndpoints(definedBackends, serverBackend, serverConfig.Endpoints)
+		err := refineEndpoints(definedBackends, serverConfig.Endpoints)
 		if err != nil {
 			return nil, err
 		}
@@ -219,23 +207,6 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 	return MergeBodies([]hcl.Body{refOverride, backendBlock.Body}), nil
 }
 
-// mergeRight merges the right over the left one if the
-// name label is the same, otherwise returns the right one.
-func mergeRight(left hcl.Body, right hcl.Body) hcl.Body {
-	if right != nil && left != nil {
-		leftAttrs, _ := left.JustAttributes()
-		leftLabel, ok := leftAttrs[nameLabel]
-		if ok {
-			rightAttrs, _ := right.JustAttributes()
-			rightLabel, exist := rightAttrs[nameLabel]
-			if exist && leftLabel == rightLabel {
-				return MergeBodies([]hcl.Body{left, right})
-			}
-		}
-	}
-	return right
-}
-
 // getBackendReference tries to fetch a backend from `definitions`
 // block by a reference name, e.g. `backend = "name"`.
 func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, error) {
@@ -279,7 +250,7 @@ func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, err
 	return reference, nil
 }
 
-func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints config.Endpoints) error {
+func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error {
 	for _, endpoint := range endpoints {
 		// try to obtain proxy and request block with a chicken-and-egg situation:
 		// hcl labels are required if set, to make them optional we must know the content
@@ -327,7 +298,7 @@ func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints
 					return err
 				}
 			} else {
-				proxyConfig.Backend, err = newBackend(definedBackends, parentBackend, proxyConfig)
+				proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 				if err != nil {
 					return err
 				}
@@ -360,7 +331,7 @@ func refineEndpoints(definedBackends Backends, parentBackend hcl.Body, endpoints
 					return err
 				}
 			} else {
-				reqConfig.Backend, err = newBackend(definedBackends, parentBackend, reqConfig)
+				reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 				if err != nil {
 					return err
 				}
@@ -463,13 +434,12 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 	return content, nil
 }
 
-func newBackend(definedBackends Backends, parentBackend hcl.Body, inlineConfig config.Inline) (hcl.Body, error) {
+func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body, error) {
 	bend, err := mergeBackendBodies(definedBackends, inlineConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	bend = mergeRight(parentBackend, bend)
 	if err = validateOrigin(bend); err != nil {
 		r := inlineConfig.HCLBody().MissingItemRange()
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{

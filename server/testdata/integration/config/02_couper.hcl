@@ -1,22 +1,5 @@
 server "backends" {
-
-  backend "b" {
-    add_response_headers = {
-      foo = "2"
-    }
-  }
-
   api {
-    backend "b" {
-      origin = env.COUPER_TEST_BACKEND_ADDR
-      add_response_headers = {
-        foo = "3"
-      }
-      add_query_params = {
-        bar = "2"
-      }
-    }
-
     endpoint "/anything" {
       add_query_params = {
         bar = "3"

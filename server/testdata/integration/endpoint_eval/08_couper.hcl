@@ -4,13 +4,6 @@ server "protected" {
   api {
     error_file = "./../api_error.json"
 
-    backend "anything" { # overrides definitions: backend "anything"
-      path = "/set/by/api/unset/by/endpoint"
-      openapi {
-        file = "also-not-there.yml"
-      }
-    }
-
     endpoint "/{origin}" {
       path = "/set/by/endpoint/unset/by/backend"
       proxy {
