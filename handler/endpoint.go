@@ -213,9 +213,15 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps map[stri
 
 		if r.Beresp != nil {
 			ctx := r.Beresp.Request.Context()
-			name := ctx.Value(request.UID).(string)
+			var name string
 			if n, ok := ctx.Value(request.RoundTripName).(string); ok && n != "" {
 				name = n
+			}
+			// fallback
+			if name == "" {
+				if id, ok := ctx.Value(request.UID).(string); ok {
+					name = id
+				}
 			}
 			beresps[name] = r
 		}

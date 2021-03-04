@@ -2,6 +2,7 @@ package transport
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"net/http"
 	"net/url"
@@ -65,15 +66,20 @@ func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logru
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
+	if b.transportConf.Timeout > 0 {
+		deadline, cancel := context.WithTimeout(req.Context(), b.transportConf.Timeout)
+		defer cancel()
+		*req = *req.WithContext(deadline)
+	}
+
 	tc := b.evalTransport(req)
 	t := Get(tc)
 
 	if req.URL.Scheme == "" {
 		req.URL.Scheme = tc.Scheme
 	}
-	if req.URL.Host == "" {
-		req.URL.Host = tc.Hostname
-	}
+
+	req.URL.Host = tc.Origin
 	req.Host = tc.Hostname
 
 	err := eval.ApplyRequestContext(b.evalContext, b.context, req)
@@ -104,8 +110,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateRequest(req); err != nil {
-			b.upstreamLog.LogEntry().Error(err)
-
 			return nil, couperErr.UpstreamRequestValidationFailed
 		}
 	}
@@ -118,8 +122,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
-			b.upstreamLog.LogEntry().Error(err)
-
 			return nil, couperErr.UpstreamResponseValidationFailed
 		}
 	}

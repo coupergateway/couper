@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/avenga/couper/config/request"
+
 	"github.com/getkin/kin-openapi/openapi3filter"
 
 	"github.com/avenga/couper/eval"
@@ -30,6 +32,9 @@ func (v *OpenAPI) ValidateRequest(req *http.Request) error {
 	route, pathParams, err := v.options.router.FindRoute(req.Method, req.URL)
 	if err != nil {
 		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
+		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
+			ctx.errors = append(ctx.errors, err)
+		}
 		if !v.options.ignoreRequestViolations {
 			return err
 		}
@@ -61,6 +66,11 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 	// since a request validation could fail and ignored due to user options, the input route MAY be nil
 	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
 		err := fmt.Errorf("response validation: '%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
+		if beresp.Request != nil {
+			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
+				ctx.errors = append(ctx.errors, err)
+			}
+		}
 		if v.options.ignoreResponseViolations {
 			return nil
 		}
@@ -91,6 +101,11 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 
 	if err := openapi3filter.ValidateResponse(beresp.Request.Context(), responseValidationInput); err != nil {
 		err = fmt.Errorf("response validation: %w", err)
+		if beresp.Request != nil {
+			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
+				ctx.errors = append(ctx.errors, err)
+			}
+		}
 		if !v.options.ignoreResponseViolations {
 			return err
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler/validation"
 )
 
 var _ http.RoundTripper = &UpstreamLog{}
@@ -92,6 +93,9 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
+	oCtx, openAPIContext := validation.NewWithContext(req.Context())
+	*req = *req.WithContext(oCtx)
+
 	rtStart := time.Now()
 	beresp, err := u.next.RoundTrip(req)
 	rtDone := time.Now()
@@ -117,6 +121,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
+	if validationErrors := openAPIContext.Errors(); len(validationErrors) > 0 {
+		fields["validation"] = validationErrors
+	}
+
 	fields["timings"] = timings
 	var entry *logrus.Entry
 	if u.config.ParentFieldKey != "" {
@@ -125,15 +133,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		entry = u.log.WithFields(logrus.Fields(fields))
 	}
 	entry.Time = startTime
-
-	// TODO: collect validation errors
-	//var validationErr []string
-	//for _, err = range roundtripInfo.ValidationError {
-	//	validationErr = append(validationErr, err.Error())
-	//}
-	//if len(validationErr) > 0 {
-	//	fields["validation"] = validationErr
-	//}
 
 	if (beresp != nil && beresp.StatusCode == http.StatusInternalServerError) || err != nil {
 		if err != nil {

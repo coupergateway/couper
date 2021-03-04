@@ -7,9 +7,10 @@ const (
 	BackendName
 	Endpoint
 	EndpointKind
+	OpenAPI
 	PathParams
-	RoundTripProxy
 	RoundTripName
+	RoundTripProxy
 	ServerName
 	Wildcard
 )

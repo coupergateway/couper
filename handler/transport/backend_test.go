@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,12 +19,14 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 func TestBackend_RoundTrip_Timings(t *testing.T) {
@@ -34,37 +39,37 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	defer origin.Close()
 
 	tests := []struct {
-		name           string
-		context        hcl.Body
-		tconf          *transport.Config
-		req            *http.Request
-		expectedStatus int
+		name        string
+		context     hcl.Body
+		tconf       *transport.Config
+		req         *http.Request
+		expectedErr string
 	}{
-		{"with zero timings", test.NewRemainContext("origin", origin.URL), &transport.Config{}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), http.StatusNoContent},
-		{"with overall timeout", test.NewRemainContext("origin", "http://1.2.3.4/"), &transport.Config{Timeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), http.StatusBadGateway},
-		{"with connect timeout", test.NewRemainContext("origin", "http://blackhole.webpagetest.org/"), &transport.Config{ConnectTimeout: time.Second}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), http.StatusBadGateway},
-		{"with ttfb timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), http.StatusBadGateway},
+		{"with zero timings", test.NewRemainContext("origin", origin.URL), &transport.Config{}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
+		{"with overall timeout", test.NewRemainContext("origin", "http://10.1.2.3"), &transport.Config{Timeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), "context deadline exceeded"},
+		{"with connect timeout", test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), &transport.Config{ConnectTimeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
+		{"with ttfb timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
+
+	logger, hook := logrustest.NewNullLogger()
+	log := logger.WithContext(context.Background())
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger, hook := logrustest.NewNullLogger()
-			log := logger.WithContext(context.Background())
-
-			backend := transport.NewBackend(eval.NewENVContext(nil), tt.context, tt.tconf, log, nil)
-			proxy := handler.NewProxy(backend, hcl.EmptyBody(), eval.NewENVContext(nil))
-
 			hook.Reset()
 
-			res, err := proxy.RoundTrip(tt.req)
-			if err != nil {
+			tt.tconf.NoProxyFromEnv = true // use origin addr from transport.Config
+			backend := transport.NewBackend(eval.NewENVContext(nil), tt.context, tt.tconf, log, nil)
+
+			_, err := backend.RoundTrip(tt.req)
+			if err != nil && tt.expectedErr == "" {
 				t.Error(err)
 				return
 			}
 
-			if res.StatusCode != tt.expectedStatus {
-				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, res.StatusCode)
-			} else {
-				return // no error log for expected codes
+			if tt.expectedErr != "" &&
+				(err == nil || !strings.HasSuffix(err.Error(), tt.expectedErr)) {
+				t.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
 			}
 		})
 	}
@@ -90,9 +95,7 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 			"origin": hcltest.MockExprLiteral(u),
 		}),
 	})
-	backend := transport.NewBackend(eval.NewENVContext(nil), hclBody, &transport.Config{
-		Origin: origin.URL,
-	}, log, nil)
+	backend := transport.NewBackend(eval.NewENVContext(nil), hclBody, &transport.Config{}, log, nil)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 	res, err := backend.RoundTrip(req)
@@ -173,7 +176,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 		openapi            *config.OpenAPI
 		requestMethod      string
 		requestPath        string
-		expectedStatusCode int
+		expectedErr        string
 		expectedLogMessage string
 	}{
 		{
@@ -181,7 +184,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/get",
-			http.StatusOK,
+			"",
 			"",
 		},
 		{
@@ -189,7 +192,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodPost,
 			"/get",
-			http.StatusBadRequest,
+			"Upstream request validation failed",
 			"request validation: 'POST /get': Path doesn't support the HTTP method",
 		},
 		{
@@ -197,7 +200,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true, IgnoreResponseViolations: true},
 			http.MethodPost,
 			"/get",
-			http.StatusOK,
+			"",
 			"request validation: 'POST /get': Path doesn't support the HTTP method",
 		},
 		{
@@ -205,7 +208,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/get?404",
-			http.StatusBadGateway,
+			"Upstream response validation failed",
 			"response validation: status is not supported",
 		},
 		{
@@ -213,7 +216,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
 			http.MethodGet,
 			"/get?404",
-			http.StatusNotFound,
+			"",
 			"response validation: status is not supported",
 		},
 	}
@@ -223,6 +226,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			hook.Reset()
 
 			openapiValidatorOptions, err := validation.NewOpenAPIOptionsFromBytes(tt.openapi, openAPIYAML)
 			if err != nil {
@@ -233,33 +237,22 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			`)
 
 			backend := transport.NewBackend(eval.NewENVContext(nil), content, &transport.Config{}, log, openapiValidatorOptions)
-			proxy := handler.NewProxy(backend, hcl.EmptyBody(), eval.NewENVContext(nil))
 
-			// TODO: origin.URL
 			req := httptest.NewRequest(tt.requestMethod, "http://1.2.3.4"+tt.requestPath, nil)
 
-			hook.Reset()
-			res, err := proxy.RoundTrip(req)
-			if err != nil {
+			_, err = backend.RoundTrip(req)
+			if err != nil && tt.expectedErr == "" {
 				subT.Error(err)
 				return
 			}
 
-			// TODO: validations fields in log
-			if res.StatusCode != tt.expectedStatusCode {
-				subT.Errorf("Expected status %d, got: %d", tt.expectedStatusCode, res.StatusCode)
+			if tt.expectedErr != "" && (err == nil || err.Error() != tt.expectedErr) {
+				subT.Errorf("Expected error %s, got: %v", tt.expectedErr, err)
 				subT.Log(hook.LastEntry().Message)
 			}
 
 			entry := hook.LastEntry()
 			if tt.expectedLogMessage != "" {
-				if !tt.openapi.IgnoreRequestViolations && !tt.openapi.IgnoreResponseViolations {
-					if entry.Message != tt.expectedLogMessage {
-						subT.Errorf("Expected log message %q, got: %q", tt.expectedLogMessage, entry.Message)
-					}
-					return
-				}
-
 				if data, ok := entry.Data["validation"]; ok {
 					for _, err := range data.([]string) {
 						if err == tt.expectedLogMessage {
@@ -270,9 +263,173 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 						subT.Log(err)
 					}
 				}
-				subT.Error("expected matching validation error logs")
+				subT.Errorf("expected matching validation error logs:\n\t%s\n\tgot: nothing", tt.expectedLogMessage)
 			}
 
 		})
+	}
+}
+
+func TestBackend_director(t *testing.T) {
+	helper := test.New(t)
+
+	log, _ := logrustest.NewNullLogger()
+	nullLog := log.WithContext(nil)
+
+	bgCtx := context.Background()
+
+	tests := []struct {
+		name      string
+		inlineCtx string
+		path      string
+		ctx       context.Context
+		expReq    *http.Request
+	}{
+		{"proxy url settings", `origin = "http://1.2.3.4"`, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings w/hostname", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+		`, "", bgCtx, httptest.NewRequest("GET", "http://couper.io", nil)},
+		{"proxy url settings w/wildcard ctx", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+			path = "/**"
+		`, "/peter", context.WithValue(bgCtx, request.Wildcard, "/hans"), httptest.NewRequest("GET", "http://couper.io/hans", nil)},
+		{"proxy url settings w/wildcard ctx empty", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+			path = "/docs/**"
+		`, "", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs", nil)},
+		{"proxy url settings w/wildcard ctx empty /w trailing path slash", `
+			origin = "http://1.2.3.4"
+			hostname =  "couper.io"
+			path = "/docs/**"
+		`, "/", context.WithValue(bgCtx, request.Wildcard, ""), httptest.NewRequest("GET", "http://couper.io/docs/", nil)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hclContext := helper.NewProxyContext(tt.inlineCtx)
+
+			backend := transport.NewBackend(eval.NewENVContext(nil), hclContext, &transport.Config{}, nullLog, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
+			*req = *req.Clone(tt.ctx)
+
+			_, _ = backend.RoundTrip(req) // implicit director()
+
+			attr, _ := hclContext.JustAttributes()
+			hostnameExp, ok := attr["hostname"]
+
+			if !ok && tt.expReq.Host != req.Host {
+				t.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
+			} else if ok {
+				hostVal, _ := hostnameExp.Expr.Value(eval.NewENVContext(nil))
+				hostname := seetie.ValueToString(hostVal)
+				if hostname != tt.expReq.Host {
+					t.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)
+				}
+			}
+
+			if req.URL.Path != tt.expReq.URL.Path {
+				t.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
+			}
+		})
+	}
+}
+
+// TestProxy_BufferingOptions tests the option interaction with enabled/disabled validation and
+// the requirement for buffering to read the post or json body.
+func TestProxy_BufferingOptions(t *testing.T) {
+	t.Skip("TODO: variable buffering option configurable again")
+	helper := test.New(t)
+
+	type testCase struct {
+		name           string
+		apiOptions     *validation.OpenAPIOptions
+		remain         string
+		expectedOption eval.BufferOption
+	}
+
+	clientPayload := []byte(`{ "client": true, "origin": false }`)
+	originPayload := []byte(`{ "client": false, "origin": true }`)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		clientData, err := ioutil.ReadAll(r.Body)
+		helper.Must(err)
+		if !bytes.Equal(clientData, clientPayload) {
+			t.Errorf("Expected a request with client payload, got %q", string(clientData))
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		_, err = rw.Write(originPayload)
+		helper.Must(err)
+	}))
+
+	newOptions := func() *validation.OpenAPIOptions {
+		c := config.OpenAPI{}
+		conf, err := validation.NewOpenAPIOptionsFromBytes(&c, helper.NewOpenAPIConf("/"))
+		helper.Must(err)
+		return conf
+	}
+
+	log, _ := logrustest.NewNullLogger()
+	nullLog := log.WithContext(nil)
+
+	for i, tc := range []testCase{
+		{"no buffering", nil, `path = "/"`, eval.BufferNone},
+		{"req buffer json.body", nil, `path = "/${req.json_body.client}"`, eval.BufferRequest},
+		{"beresp buffer json.body", nil, `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+		{"bereq/beresp validation", newOptions(), `path = "/"`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp validation", newOptions(), `path = "/"`, eval.BufferResponse},
+		{"bereq validation", newOptions(), `path = "/"`, eval.BufferRequest},
+		{"no validation", newOptions(), `path = "/"`, eval.BufferNone},
+		{"req buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"req buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
+		{"beresp buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+
+			backend := transport.NewBackend(eval.NewENVContext(nil), configload.MergeBodies([]hcl.Body{
+				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				helper.NewProxyContext(tc.remain),
+			}), &transport.Config{}, nullLog, newOptions())
+
+			upstreamLog := backend.(*logging.UpstreamLog)
+			backendHandler := reflect.ValueOf(upstreamLog).Elem().FieldByName("next")              // private field: ro
+			configuredOption := reflect.ValueOf(backendHandler).Elem().FieldByName("bufferOption") // private field: ro
+			var opt eval.BufferOption
+			if configuredOption.IsValid() {
+				opt = eval.BufferOption(configuredOption.Uint())
+			} else {
+				st.Errorf("Field read out failed: bufferOption")
+			}
+			if (opt & tc.expectedOption) != tc.expectedOption {
+				st.Errorf("Expected option: %#v, got: %#v", tc.expectedOption, opt)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
+			req.Header.Set("Content-Type", "application/json")
+			*req = *req.WithContext(context.WithValue(req.Context(), request.UID, fmt.Sprintf("#%.2d: %s", i+1, tc.name)))
+
+			res, err := backend.RoundTrip(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+			}
+
+			originData, err := ioutil.ReadAll(res.Body)
+			h.Must(err)
+
+			if !bytes.Equal(originPayload, originData) {
+				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
+			}
+		})
+
 	}
 }
