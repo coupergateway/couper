@@ -53,7 +53,5 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	// TODO: <URL> vs. <Origin> + <Path> im <Backend>?
-
 	return newBackendSchema(schema, r.HCLBody())
 }

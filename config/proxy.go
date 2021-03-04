@@ -12,9 +12,9 @@ var _ Inline = &Proxy{}
 // Proxy represents the <Proxy> object.
 type Proxy struct {
 	BackendName string   `hcl:"backend,optional"`
-	Remain      hcl.Body `hcl:",remain"`
 	Name        string   `hcl:"name,label"`
 	URL         string   `hcl:"url,optional"`
+	Remain      hcl.Body `hcl:",remain"`
 	// internally used
 	Backend hcl.Body
 }
@@ -50,8 +50,6 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	if p.BackendName != "" {
 		schema.Blocks = nil
 	}
-
-	// TODO: Wenn <URL> definiert, dann kein <Backend> und <Path>
 
 	return newBackendSchema(schema, p.HCLBody())
 }
