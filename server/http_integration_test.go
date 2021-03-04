@@ -1004,6 +1004,7 @@ func TestConfigBodyContent(t *testing.T) {
 	client := newClient()
 
 	shutdown, _ := newCouper("testdata/integration/config/01_couper.hcl", test.New(t))
+	defer shutdown()
 
 	// default port changed in config
 	req, err := http.NewRequest(http.MethodGet, "http://time.out:8090/", nil)
@@ -1031,8 +1032,6 @@ func TestConfigBodyContent(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("Expected status OK with disabled certificate validation, got: %q", res.Status)
 	}
-
-	shutdown()
 }
 
 func TestConfigBodyContentBackends(t *testing.T) {

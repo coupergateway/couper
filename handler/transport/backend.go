@@ -163,7 +163,7 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 		hostname = originURL.Host
 	}
 
-	return b.transportConf.With(req.URL.Scheme, originURL.Host, hostname)
+	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname)
 }
 
 func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {
