@@ -7,6 +7,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ func NewUpstreamLog(log *logrus.Entry, next http.RoundTripper, ignoreProxyEnv bo
 func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	startTime := time.Now()
 
-	timings := u.withTraceContext(req)
+	timings, timingsMu := u.withTraceContext(req)
 
 	fields := Fields{
 		"uid": req.Context().Value(request.UID),
@@ -125,7 +126,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["validation"] = validationErrors
 	}
 
-	fields["timings"] = timings
+	timingsMu.RLock()
+	fields["timings"] = timings // roundtrip is done, map clone is not required here
+	timingsMu.RUnlock()
+
 	var entry *logrus.Entry
 	if u.config.ParentFieldKey != "" {
 		entry = u.log.WithField(u.config.ParentFieldKey, fields)
@@ -153,8 +157,9 @@ func (u *UpstreamLog) LogEntry() *logrus.Entry {
 	return u.log
 }
 
-func (u *UpstreamLog) withTraceContext(req *http.Request) Fields {
+func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex) {
 	timings := Fields{}
+	mapMu := &sync.RWMutex{}
 	var timeTTFB, timeGotConn, timeConnect, timeDNS, timeTLS time.Time
 	trace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
@@ -162,7 +167,9 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) Fields {
 		},
 		GotFirstResponseByte: func() {
 			timeTTFB = time.Now()
+			mapMu.Lock()
 			timings["ttfb"] = roundMS(timeTTFB.Sub(timeGotConn))
+			mapMu.Unlock()
 		},
 		ConnectStart: func(_, _ string) {
 			timeConnect = time.Now()
@@ -175,19 +182,25 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) Fields {
 		},
 		ConnectDone: func(network, addr string, err error) {
 			if err == nil {
+				mapMu.Lock()
 				timings["connect"] = roundMS(time.Since(timeConnect))
+				mapMu.Unlock()
 			}
 		},
 		DNSDone: func(_ httptrace.DNSDoneInfo) {
+			mapMu.Lock()
 			timings["dns"] = roundMS(time.Since(timeDNS))
+			mapMu.Unlock()
 		},
 		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
 			if err == nil {
+				mapMu.Lock()
 				timings["tls"] = roundMS(time.Since(timeTLS))
+				mapMu.Unlock()
 			}
 		},
 	}
 	ctx := httptrace.WithClientTrace(req.Context(), trace)
 	*req = *req.WithContext(ctx)
-	return timings
+	return timings, mapMu
 }
