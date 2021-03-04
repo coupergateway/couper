@@ -60,10 +60,10 @@ var codes = map[Code]string{
 	FilesError:         "Files failed",
 	FilesRouteNotFound: "Files route not found",
 	// 4xxx
-	APIError:               "API failed",
-	APIRouteNotFound:       "API route not found",
-	APIConnect:             "API upstream connection error",
-	APIProxyConnect:        "upstream connection error via configured proxy",
+	APIError:         "API failed",
+	APIRouteNotFound: "API route not found",
+	APIConnect:       "API upstream connection error",
+	APIProxyConnect:  "upstream connection error via configured proxy",
 	// 5xxx
 	AuthorizationRequired: "Authorization required",
 	AuthorizationFailed:   "Authorization failed",
