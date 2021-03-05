@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/avenga/couper/cache"
@@ -34,6 +35,13 @@ func NewOAuth2(
 ) (http.RoundTripper, error) {
 	if config.GrantType != "client_credentials" {
 		return nil, fmt.Errorf("The grant_type has to be set to 'client_credentials'")
+	} else if config.TokenEndpoint == "" {
+		return nil, fmt.Errorf("Missing 'token_endpoint'")
+	}
+
+	_, err := url.Parse(config.TokenEndpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	return &OAuth2{
