@@ -135,6 +135,10 @@ func HeaderToMapValue(headers http.Header) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range headers {
 		if validKey.MatchString(k) {
+			if len(v) == 0 {
+				ctyMap[strings.ToLower(k)] = cty.StringVal("")
+				continue
+			}
 			ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
 		}
 	}

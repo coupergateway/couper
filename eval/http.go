@@ -2,6 +2,7 @@ package eval
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -209,6 +210,8 @@ func deleteHeader(val cty.Value, headerCtx http.Header) {
 
 func toSlice(val interface{}) []string {
 	switch val.(type) {
+	case float64:
+		return []string{strconv.FormatFloat(val.(float64), 'f', 0, 64)}
 	case string:
 		return []string{val.(string)}
 	case []string:
