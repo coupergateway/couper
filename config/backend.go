@@ -19,6 +19,7 @@ type Backend struct {
 	HTTP2                  bool     `hcl:"http2,optional"`
 	MaxConnections         int      `hcl:"max_connections,optional"`
 	Name                   string   `hcl:"name,label"`
+	OAuth2                 *OAuth2  `hcl:"oauth2,block"`
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
 	PathPrefix             string   `hcl:"path_prefix,optional"`
 	Proxy                  string   `hcl:"proxy,optional"`

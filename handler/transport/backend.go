@@ -45,8 +45,6 @@ type Backend struct {
 	options          *BackendOptions
 	transportConf    *Config
 	upstreamLog      *logging.UpstreamLog
-	// oauth
-	// ...
 	// TODO: OrderedList for origin AC, middlewares etc.
 }
 
@@ -90,8 +88,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// oauth ....
 
 	if b.options != nil && b.options.BasicAuth != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(b.options.BasicAuth))
