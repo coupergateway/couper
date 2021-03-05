@@ -168,9 +168,18 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			var corsOptions *middleware.CORSOptions
 			var errTpl *errors.Template
 
+			if endpointConf.ErrorFile != "" {
+				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile)
+				if err != nil {
+					return nil, err
+				}
+			} else if parentAPI != nil {
+				errTpl = serverOptions.APIErrTpl[parentAPI]
+			} else {
+				errTpl = serverOptions.ServerErrTpl
+			}
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePath[parentAPI]
-				errTpl = serverOptions.APIErrTpl[parentAPI]
 
 				cors, err := middleware.NewCORSOptions(
 					getCORS(srvConf.CORS, parentAPI.CORS),
@@ -181,7 +190,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				corsOptions = cors
 			} else {
 				basePath = serverOptions.SrvBasePath
-				errTpl = serverOptions.ServerErrTpl
 
 				cors, err := middleware.NewCORSOptions(
 					getCORS(nil, srvConf.CORS),
