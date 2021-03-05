@@ -290,11 +290,14 @@ context.
 | `json_encode`      | Returns a JSON serialization of the given value. |
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
+| `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
 
 Example usage:
 
 ```hcl
 my_attribute = base64_decode("aGVsbG8gd29ybGQK")
+
+iat = unixtime()
 
 my_json = json_encode({
   value-a: beresp.json_body.origin
