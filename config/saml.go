@@ -1,6 +1,6 @@
 package config
 
-type SAML2 struct {
+type SAML struct {
 	ArrayAttributes []string `hcl:"array_attributes,optional"`
 	IdpMetadataFile string   `hcl:"idp_metadata_file"`
 	Name            string   `hcl:"name,label"`

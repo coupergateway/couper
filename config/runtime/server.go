@@ -497,15 +497,15 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 			accessControls[name] = ac.ValidateFunc(j.Validate)
 		}
 
-		for _, saml2 := range conf.Definitions.SAML2 {
-			name, err := validateACName(accessControls, saml2.Name, "saml2")
+		for _, saml := range conf.Definitions.SAML {
+			name, err := validateACName(accessControls, saml.Name, "saml")
 			if err != nil {
 				return nil, err
 			}
 
-			s, err := ac.NewSAML2ACS(saml2.IdpMetadataFile, name, saml2.SpAcsUrl, saml2.SpEntityId, saml2.ArrayAttributes)
+			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
-				return nil, fmt.Errorf("loading saml2 %q definition failed: %s", name, err)
+				return nil, fmt.Errorf("loading saml %q definition failed: %s", name, err)
 			}
 
 			accessControls[name] = ac.ValidateFunc(s.Validate)
