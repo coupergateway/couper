@@ -15,14 +15,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/avenga/couper/eval"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
-
-	logrustest "github.com/sirupsen/logrus/hooks/test"
-
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/server"
 )

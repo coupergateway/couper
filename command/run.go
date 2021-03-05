@@ -41,6 +41,8 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
 
+	//memStore := cache.New()
+
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
 	srvMux, err := runtime.NewServerConfiguration(config, logEntry)
 	if err != nil {
