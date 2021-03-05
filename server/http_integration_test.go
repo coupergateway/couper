@@ -307,12 +307,13 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 	} {
 		confPath := path.Join("testdata/integration", testcase.fileName)
 		t.Logf("#%.2d: Create Couper: %q", i+1, confPath)
-		shutdown, logHook := newCouper(confPath, test.New(t))
-		defer shutdown()
 
 		for _, rc := range testcase.requests {
 			t.Run(testcase.fileName+" "+rc.req.method+"|"+rc.req.url, func(subT *testing.T) {
 				helper := test.New(subT)
+				shutdown, logHook := newCouper(confPath, helper)
+				defer shutdown()
+
 				logHook.Reset()
 
 				req, err := http.NewRequest(rc.req.method, rc.req.url, nil)

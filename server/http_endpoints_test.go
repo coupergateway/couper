@@ -15,7 +15,7 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "01_couper.hcl"), test.New(t))
+	shutdown, logHook := newCouper(path.Join(testdataPath, "01_couper.hcl"), helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
@@ -36,8 +36,8 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	}
 
 	resBytes, err := ioutil.ReadAll(res.Body)
-	defer res.Body.Close()
 	helper.Must(err)
+	res.Body.Close()
 
 	if string(resBytes) != "808" {
 		t.Errorf("Expected body 808, given %s", resBytes)
@@ -48,7 +48,7 @@ func TestEndpoints_Res(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "02_couper.hcl"), test.New(t))
+	shutdown, logHook := newCouper(path.Join(testdataPath, "02_couper.hcl"), helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
@@ -69,8 +69,8 @@ func TestEndpoints_Res(t *testing.T) {
 	}
 
 	resBytes, err := ioutil.ReadAll(res.Body)
-	defer res.Body.Close()
 	helper.Must(err)
+	res.Body.Close()
 
 	if string(resBytes) != "string" {
 		t.Errorf("Expected body 'string', given %s", resBytes)
