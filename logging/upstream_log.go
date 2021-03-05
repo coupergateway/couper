@@ -104,6 +104,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	requestFields["proto"] = req.Proto
 	requestFields["scheme"] = req.URL.Scheme
 
+	if ep, ok := req.Context().Value(request.TokenEndpoint).(string); ok && ep != "" {
+		fields["token_request"] = "oauth2"
+	}
+
 	fields["realtime"] = roundMS(rtDone.Sub(rtStart))
 
 	fields["status"] = 0

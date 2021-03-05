@@ -31,6 +31,9 @@ const (
 	AuthorizationRequired Code = 5000 + iota
 	AuthorizationFailed
 	BasicAuthFailed
+	TokenRequestFailed
+	MissingOAuth2Credentials
+	MissingOAuth2AccessToken
 )
 
 const (
@@ -66,9 +69,12 @@ var codes = map[Code]string{
 	APIConnect:       "API upstream connection error",
 	APIProxyConnect:  "upstream connection error via configured proxy",
 	// 5xxx
-	AuthorizationRequired: "Authorization required",
-	AuthorizationFailed:   "Authorization failed",
-	BasicAuthFailed:       "Unauthorized",
+	AuthorizationRequired:    "Authorization required",
+	AuthorizationFailed:      "Authorization failed",
+	BasicAuthFailed:          "Unauthorized",
+	TokenRequestFailed:       "Token request failed",
+	MissingOAuth2Credentials: "Missing OAuth2 credentials",
+	MissingOAuth2AccessToken: "Missing OAuth2 access token",
 	// 6xxx
 	UpstreamRequestValidationFailed:  "Upstream request validation failed",
 	UpstreamResponseValidationFailed: "Upstream response validation failed",
