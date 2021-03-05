@@ -113,7 +113,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 			"tls":     beresp.TLS != nil,
 		}
 		fields["response"] = responseFields
-		//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
 		if couperErr := beresp.Header.Get(errors.HeaderErrorCode); couperErr != "" {
 			i, _ := strconv.Atoi(couperErr[:4])
@@ -126,9 +125,14 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["validation"] = validationErrors
 	}
 
+	timingResults := Fields{}
 	timingsMu.RLock()
-	fields["timings"] = timings // roundtrip is done, map clone is not required here
+	for f, v := range timings { // clone
+		timingResults[f] = v
+	}
 	timingsMu.RUnlock()
+	fields["timings"] = timingResults
+	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
 	var entry *logrus.Entry
 	if u.config.ParentFieldKey != "" {
@@ -163,7 +167,10 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 	var timeTTFB, timeGotConn, timeConnect, timeDNS, timeTLS time.Time
 	trace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
-			timeGotConn = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeGotConn = now
+			mapMu.Unlock()
 		},
 		GotFirstResponseByte: func() {
 			timeTTFB = time.Now()
@@ -172,13 +179,22 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 			mapMu.Unlock()
 		},
 		ConnectStart: func(_, _ string) {
-			timeConnect = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeConnect = now
+			mapMu.Unlock()
 		},
 		DNSStart: func(_ httptrace.DNSStartInfo) {
-			timeDNS = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeDNS = now
+			mapMu.Unlock()
 		},
 		TLSHandshakeStart: func() {
-			timeTLS = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeTLS = now
+			mapMu.Unlock()
 		},
 		ConnectDone: func(network, addr string, err error) {
 			if err == nil {
