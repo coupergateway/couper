@@ -12,6 +12,10 @@ import (
 	"github.com/avenga/couper/handler/transport"
 )
 
+// headerBlacklist lists all header keys which will be removed after
+// context variable evaluation to ensure to not pass them upstream.
+var headerBlacklist = []string{"Authorization", "Cookie"}
+
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
@@ -55,6 +59,8 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
-func (p *Proxy) director(_ *http.Request) {
-	// noop
+func (p *Proxy) director(req *http.Request) {
+	for _, key := range headerBlacklist {
+		req.Header.Del(key)
+	}
 }
