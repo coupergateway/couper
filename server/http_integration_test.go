@@ -458,6 +458,14 @@ func TestHTTPServer_ProxyFromEnv(t *testing.T) {
 
 	seen := make(chan struct{})
 	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Tets proxy.headerBlacklist
+		if req.Header.Get("Authorization") != "" {
+			t.Error("Unexpected 'Authorization' header")
+		}
+		if req.Header.Get("Authorization") != "" {
+			t.Error("Unexpected 'Cookie' header")
+		}
+
 		rw.WriteHeader(http.StatusNoContent)
 		go func() {
 			seen <- struct{}{}
@@ -475,6 +483,10 @@ func TestHTTPServer_ProxyFromEnv(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/v1/proxy", nil)
 	helper.Must(err)
+
+	// Tets proxy.headerBlacklist
+	req.Header.Set("Authorization", "foo")
+	req.Header.Set("Cookie", "bar")
 
 	_, err = newClient().Do(req)
 	helper.Must(err)
