@@ -70,8 +70,6 @@ func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId str
 		AudienceURI:                 spEntityId,
 		IDPCertificateStore:         &certStore,
 		IdentityProviderIssuer:      metadata.EntityID,
-		IdentityProviderSSOURL:      metadata.IDPSSODescriptor.SingleSignOnServices[0].Location,
-		SignAuthnRequests:           false,
 	}
 	if arrayAttributes != nil {
 		sort.Strings(arrayAttributes)
@@ -103,10 +101,34 @@ func (s *SAML2ACS) Validate(req *http.Request) error {
 		return err
 	}
 
+	err = s.ValidateAssertionInfo(assertionInfo)
+	if err != nil {
+		return err
+	}
+
+	ass := s.GetAssertionData(assertionInfo)
+
+	ctx := req.Context()
+	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
+	if !ok {
+		acMap = make(map[string]interface{})
+	}
+	acMap[s.name] = ass
+	ctx = context.WithValue(ctx, request.AccessControls, acMap)
+	*req = *req.WithContext(ctx)
+
+	return nil
+}
+
+func (s *SAML2ACS) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error {
 	if assertionInfo.WarningInfo.NotInAudience {
 		return errors.New("Audience mismatch")
 	}
 
+	return nil
+}
+
+func (s *SAML2ACS) GetAssertionData(assertionInfo *saml2.AssertionInfo) map[string]interface{} {
 	attributes := make(map[string]interface{})
 	for _, attribute := range assertionInfo.Values {
 		if !contains(s.arrayAttributes, attribute.Name) {
@@ -129,14 +151,5 @@ func (s *SAML2ACS) Validate(req *http.Request) error {
 		ass["exp"] = assertionInfo.SessionNotOnOrAfter.Unix()
 	}
 
-	ctx := req.Context()
-	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
-	if !ok {
-		acMap = make(map[string]interface{})
-	}
-	acMap[s.name] = ass
-	ctx = context.WithValue(ctx, request.AccessControls, acMap)
-	*req = *req.WithContext(ctx)
-
-	return nil
+	return ass
 }
