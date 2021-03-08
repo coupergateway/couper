@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
+	"regexp"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -29,6 +30,8 @@ const (
 	server      = "server"
 	settings    = "settings"
 )
+
+var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
 func LoadFile(filePath string) (*config.Couper, error) {
 	_, err := startup.SetWorkingDirectory(filePath)
@@ -340,15 +343,25 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			endpoint.Requests = append(endpoint.Requests, reqConfig)
 		}
 
-		if proxyRequestLabelRequired {
-			unique := map[string]struct{}{}
-			itemRange := endpoint.Remain.MissingItemRange()
-			for _, p := range endpoint.Proxies {
+		unique := map[string]struct{}{}
+		itemRange := endpoint.Remain.MissingItemRange()
+		for _, p := range endpoint.Proxies {
+			if err := validLabelName(p.Name, &itemRange); err != nil && p.Name != "" {
+				return err
+			}
+
+			if proxyRequestLabelRequired {
 				if err := uniqueLabelName(unique, p.Name, &itemRange); err != nil {
 					return err
 				}
 			}
-			for _, r := range endpoint.Requests {
+		}
+		for _, r := range endpoint.Requests {
+			if err := validLabelName(r.Name, &itemRange); err != nil && r.Name != "" {
+				return err
+			}
+
+			if proxyRequestLabelRequired {
 				if err := uniqueLabelName(unique, r.Name, &itemRange); err != nil {
 					return err
 				}
@@ -392,6 +405,18 @@ func shouldCreateFromURL(url, backendName string, block *hcl.Block) (bool, error
 	}
 
 	return true, nil
+}
+
+func validLabelName(name string, hr *hcl.Range) error {
+	if !regexProxyRequestLabel.MatchString(name) {
+		return hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "proxy or request label contains unallowed character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'",
+			Subject:  hr,
+		}}
+	}
+
+	return nil
 }
 
 func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
