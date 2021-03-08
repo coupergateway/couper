@@ -1,4 +1,4 @@
-package config
+package saml
 
 type SAML struct {
 	ArrayAttributes []string `hcl:"array_attributes,optional"`

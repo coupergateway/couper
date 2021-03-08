@@ -21,6 +21,7 @@ import (
 
 	"github.com/avenga/couper/config/jwt"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/saml"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -43,6 +44,7 @@ type Context struct {
 	eval         *hcl.EvalContext
 	inner        context.Context
 	profiles     []*jwt.JWTSigningProfile
+	saml         []*saml.SAML
 }
 
 func NewContext(src []byte) *Context {
@@ -82,6 +84,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		profiles:     c.profiles[:],
+		saml:         c.saml[:],
 	}
 	ctx.inner = context.WithValue(req.Context(), ContextType, ctx)
 
@@ -121,6 +124,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		profiles:     c.profiles[:],
+		saml:         c.saml[:],
 	}
 	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
 
@@ -178,6 +182,16 @@ func (c *Context) WithJWTProfiles(profiles []*jwt.JWTSigningProfile) *Context {
 	return c
 }
 
+// WithSAML initially setup the lib.FnSamlSsoUrl function.
+func (c *Context) WithSAML(s []*saml.SAML) *Context {
+	c.saml = s
+	if c.saml == nil {
+		c.saml = make([]*saml.SAML, 0)
+	}
+	updateFunctions(c)
+	return c
+}
+
 func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
 }
@@ -187,6 +201,10 @@ func updateFunctions(ctx *Context) {
 	if len(ctx.profiles) > 0 {
 		jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
 		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
+	}
+	if len(ctx.saml) > 0 {
+		samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
+		ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	}
 }
 
