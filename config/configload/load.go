@@ -22,13 +22,14 @@ import (
 )
 
 const (
-	backend     = "backend"
-	definitions = "definitions"
-	nameLabel   = "name"
-	proxy       = "proxy"
-	request     = "request"
-	server      = "server"
-	settings    = "settings"
+	backend      = "backend"
+	definitions  = "definitions"
+	nameLabel    = "name"
+	proxy        = "proxy"
+	request      = "request"
+	server       = "server"
+	settings     = "settings"
+	defaultLabel = "default"
 )
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -276,7 +277,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		requests := endpointContent.Blocks.OfType(request)
 		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
 
-		const defaultNameLabel = "default"
 		for _, proxyBlock := range proxies {
 			// TODO: refactor with request construction below // almost same ( later :-) )
 			proxyConfig := &config.Proxy{}
@@ -287,7 +287,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				proxyConfig.Name = proxyBlock.Labels[0]
 			}
 			if proxyConfig.Name == "" {
-				proxyConfig.Name = defaultNameLabel
+				proxyConfig.Name = defaultLabel
 			}
 
 			proxyConfig.Remain = proxyBlock.Body
@@ -320,7 +320,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				reqConfig.Name = reqBlock.Labels[0]
 			}
 			if reqConfig.Name == "" {
-				reqConfig.Name = defaultNameLabel
+				reqConfig.Name = defaultLabel
 			}
 
 			reqConfig.Remain = reqBlock.Body
@@ -343,10 +343,13 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			endpoint.Requests = append(endpoint.Requests, reqConfig)
 		}
 
+		names := map[string]struct{}{}
 		unique := map[string]struct{}{}
 		itemRange := endpoint.Remain.MissingItemRange()
 		for _, p := range endpoint.Proxies {
-			if err := validLabelName(p.Name, &itemRange); err != nil && p.Name != "" {
+			names[p.Name] = struct{}{}
+
+			if err := validLabelName(p.Name, &itemRange); err != nil {
 				return err
 			}
 
@@ -357,7 +360,9 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 		}
 		for _, r := range endpoint.Requests {
-			if err := validLabelName(r.Name, &itemRange); err != nil && r.Name != "" {
+			names[r.Name] = struct{}{}
+
+			if err := validLabelName(r.Name, &itemRange); err != nil {
 				return err
 			}
 
@@ -365,6 +370,16 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				if err := uniqueLabelName(unique, r.Name, &itemRange); err != nil {
 					return err
 				}
+			}
+		}
+
+		if len(names) > 0 && endpoint.Response == nil {
+			if _, ok := names[defaultLabel]; !ok {
+				return hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "missing 'default' proxy or request block, or a response definition",
+					Subject:  &itemRange,
+				}}
 			}
 		}
 	}
@@ -421,7 +436,7 @@ func validLabelName(name string, hr *hcl.Range) error {
 
 func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
 	if _, exist := unique[name]; exist {
-		if name == "default" {
+		if name == defaultLabel {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "proxy and request labels are required and only one 'default' label is allowed",
