@@ -17,7 +17,6 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/test"
@@ -60,9 +59,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend := transport.NewBackend(
-		eval.NewENVContext(nil), beConf.Remain, &transport.Config{}, logger, openAPI,
-	)
+	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, logger, openAPI)
 
 	tests := []struct {
 		name, path string

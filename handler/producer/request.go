@@ -26,7 +26,7 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(ctx context.Context, _ *http.Request, evalCtx *hcl.EvalContext, results chan<- *Result) {
+func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(r))
 	go func() {
@@ -34,23 +34,23 @@ func (r Requests) Produce(ctx context.Context, _ *http.Request, evalCtx *hcl.Eva
 		close(results)
 	}()
 
-	for _, req := range r {
-		outreq, err := http.NewRequest(req.Method, req.URL, strings.NewReader(req.Body))
+	for _, or := range r {
+		outreq, err := http.NewRequest(or.Method, or.URL, strings.NewReader(or.Body))
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
 
-		outCtx := withRoundTripName(ctx, req.Name)
-		err = eval.ApplyRequestContext(evalCtx, req.Context, outreq)
+		outCtx := withRoundTripName(ctx, or.Name)
+		err = eval.ApplyRequestContext(req.Context(), or.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
 		*outreq = *outreq.WithContext(outCtx)
-		go roundtrip(req.Backend, outreq, results, wg)
+		go roundtrip(or.Backend, outreq, results, wg)
 	}
 }
 

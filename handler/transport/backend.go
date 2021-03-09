@@ -37,7 +37,6 @@ var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 type Backend struct {
 	accessControl    string // maps to basic-auth atm
 	context          hcl.Body
-	evalContext      *hcl.EvalContext
 	name             string
 	openAPIValidator *validation.OpenAPI
 	transportConf    *Config
@@ -48,14 +47,13 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logrus.Entry, openAPIopts *validation.OpenAPIOptions) http.RoundTripper {
+func NewBackend(ctx hcl.Body, conf *Config, log *logrus.Entry, openAPIopts *validation.OpenAPIOptions) http.RoundTripper {
 	logEntry := log
 	if conf.BackendName != "" {
 		logEntry = log.WithField("backend", conf.BackendName)
 	}
 
 	backend := &Backend{
-		evalContext:      evalCtx,
 		context:          ctx,
 		openAPIValidator: validation.NewOpenAPI(openAPIopts),
 		transportConf:    conf,
@@ -66,14 +64,14 @@ func NewBackend(evalCtx *hcl.EvalContext, ctx hcl.Body, conf *Config, log *logru
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
+	tc := b.evalTransport(req)
+	t := Get(tc)
+
 	if b.transportConf.Timeout > 0 {
 		deadline, cancel := context.WithTimeout(req.Context(), b.transportConf.Timeout)
 		defer cancel()
 		*req = *req.WithContext(deadline)
 	}
-
-	tc := b.evalTransport(req)
-	t := Get(tc)
 
 	if req.URL.Scheme == "" {
 		req.URL.Scheme = tc.Scheme
@@ -82,7 +80,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.URL.Host = tc.Origin
 	req.Host = tc.Hostname
 
-	err := eval.ApplyRequestContext(b.evalContext, b.context, req)
+	err := eval.ApplyRequestContext(req.Context(), b.context, req)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +136,24 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		removeConnectionHeaders(req.Header)
 	}
 
-	err = eval.ApplyResponseContext(b.evalContext, b.context, req, beresp)
-	beresp.Request = req
+	// Backend response context creates the beresp variables in first place and applies this context
+	// to the current beresp obj. Downstream response context evals reading their beresp variable values
+	// from this result. Fallback case is for testing purposes.
+	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+		evalCtx = evalCtx.WithBeresps(beresp)
+		err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
+	} else {
+		err = eval.ApplyResponseContext(req.Context(), b.context, beresp)
+	}
+
 	return beresp, err
 }
 
 func (b *Backend) evalTransport(req *http.Request) *Config {
-	httpContext := eval.NewHTTPContext(b.evalContext, eval.BufferNone, req)
+	var httpContext *hcl.EvalContext
+	if httpCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+		httpContext = httpCtx.HCLContext()
+	}
 	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
 		b.upstreamLog.LogEntry().Error(diags)

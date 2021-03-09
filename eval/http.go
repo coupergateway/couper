@@ -1,6 +1,9 @@
 package eval
 
 import (
+	"bytes"
+	"context"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -30,14 +34,49 @@ const (
 	attrDelResHeaders = "remove_response_headers"
 )
 
-func ApplyRequestContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request) error {
+// SetGetBody determines if we have to buffer a request body for further processing.
+// First of all the user has a related reference within a related options context declaration.
+// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
+func SetGetBody(req *http.Request, bodyLimit int64) error {
+	if req.Method == http.MethodTrace {
+		return nil
+	}
+
+	// TODO: handle buffer options based on overall body context and reference
+	//if (e.opts.ReqBufferOpts & eval.BufferRequest) != eval.BufferRequest {
+	//	return nil
+	//}
+
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		buf := &bytes.Buffer{}
+		lr := io.LimitReader(req.Body, bodyLimit+1)
+		n, err := buf.ReadFrom(lr)
+		if err != nil {
+			return err
+		}
+
+		if n > bodyLimit {
+			return errors.EndpointReqBodySizeExceeded
+		}
+
+		bodyBytes := buf.Bytes()
+		req.GetBody = func() (io.ReadCloser, error) {
+			return NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
+		}
+	}
+
+	return nil
+}
+
+func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) error {
 	if req == nil {
 		return nil
 	}
 
-	// TODO: bufferOpts from parent
-	opts := BufferRequest
-	httpCtx := NewHTTPContext(ctx, opts, req)
+	var httpCtx *hcl.EvalContext
+	if c, ok := ctx.Value(ContextType).(*Context); ok {
+		httpCtx = c.eval
+	}
 
 	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
@@ -138,15 +177,15 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	}
 }
 
-func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, req *http.Request, beresp *http.Response) error {
+func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
 	}
 
-	// TODO: bufferOpts from parent
-	opts := BufferResponse
-	httpCtx := NewHTTPContext(ctx, opts, req, beresp)
-
+	var httpCtx *hcl.EvalContext
+	if c, ok := ctx.Value(ContextType).(*Context); ok {
+		httpCtx = c.eval
+	}
 	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
 	// map to name

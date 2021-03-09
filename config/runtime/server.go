@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/getkin/kin-openapi/pathpattern"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -69,7 +70,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
-	confCtx := eval.NewHTTPContext(conf.Context, 0, noopReq, noopResp)
+	confCtx := conf.Context.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
 	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
 	if err != nil {
@@ -185,7 +186,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				if berr != nil {
 					return nil, berr
 				}
-				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), confCtx)
+				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody())
 				p := &producer.Proxy{
 					Name:      proxyConf.Name,
 					RoundTrip: proxyHandler,
@@ -231,7 +232,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				kind = api
 			}
 
-			bodyLimit, err := handler.ParseBodyLimit(endpointConf.RequestBodyLimit)
+			bodyLimit, err := parseBodyLimit(endpointConf.RequestBodyLimit)
 			if err != nil {
 				r := endpointConf.Remain.MissingItemRange()
 				return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -256,7 +257,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				ReqBufferOpts:  bufferOpts,
 				ServerOpts:     serverOptions,
 			}
-			epHandler := handler.NewEndpoint(epOpts, confCtx, log, proxies, requests, response)
+			epHandler := handler.NewEndpoint(epOpts, log, proxies, requests, response)
 			setACHandlerFn(epHandler)
 
 			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpointConf], kind)
@@ -303,7 +304,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		return nil, err
 	}
 
-	backend := transport.NewBackend(evalCtx, backendCtx, tc, log, openAPIopts)
+	backend := transport.NewBackend(backendCtx, tc, log, openAPIopts)
 	return backend, nil
 }
 
@@ -482,4 +483,13 @@ func parseDuration(src string, target *time.Duration) error {
 	}
 	*target = d
 	return nil
+}
+
+func parseBodyLimit(limit string) (int64, error) {
+	const defaultReqBodyLimit = "64MiB"
+	requestBodyLimit := defaultReqBodyLimit
+	if limit != "" {
+		requestBodyLimit = limit
+	}
+	return units.FromHumanSize(requestBodyLimit)
 }

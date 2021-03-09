@@ -58,16 +58,16 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 var envContext *hcl.EvalContext
 
 func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
-	envContext = eval.NewENVContext(src)
-
 	defaults := config.DefaultSettings
 
 	couperConfig := &config.Couper{
 		Bytes:       src,
-		Context:     envContext,
+		Context:     eval.NewContext(src),
 		Definitions: &config.Definitions{},
 		Settings:    &defaults,
 	}
+
+	envContext = couperConfig.Context.HCLContext()
 
 	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
 	content, diags := body.Content(schema)
@@ -103,11 +103,11 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 				}
 			}
 
-			if diags = gohcl.DecodeBody(leftOver, couperConfig.Context, couperConfig.Definitions); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(leftOver, envContext, couperConfig.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
 		case settings:
-			if diags = gohcl.DecodeBody(outerBlock.Body, couperConfig.Context, couperConfig.Settings); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
 			}
 		}
@@ -116,7 +116,7 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
 		serverConfig := &config.Server{}
-		if diags = gohcl.DecodeBody(serverBlock.Body, couperConfig.Context, serverConfig); diags.HasErrors() {
+		if diags = gohcl.DecodeBody(serverBlock.Body, envContext, serverConfig); diags.HasErrors() {
 			return nil, diags
 		}
 

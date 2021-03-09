@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+
 	"github.com/avenga/couper/handler/transport"
 
 	"github.com/hashicorp/hcl/v2"
@@ -29,10 +30,9 @@ func (h *Helper) NewProxy(conf *transport.Config, backendContext, proxyContext h
 		proxyCtx = hcl.EmptyBody()
 	}
 
-	evalCtx := eval.NewENVContext(nil)
-	backend := transport.NewBackend(evalCtx, backendContext, config, logger.WithContext(context.Background()), nil)
+	backend := transport.NewBackend(backendContext, config, logger.WithContext(context.Background()), nil)
 
-	proxy := handler.NewProxy(backend, proxyCtx, evalCtx)
+	proxy := handler.NewProxy(backend, proxyCtx)
 	return proxy
 }
 
@@ -42,6 +42,6 @@ func (h *Helper) NewProxyContext(inlineHCL string) hcl.Body {
 	}
 
 	var remain hclBody
-	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewENVContext(nil), &remain))
+	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewContext(nil).HCLContext(), &remain))
 	return configload.MergeBodies([]hcl.Body{remain.Inline})
 }

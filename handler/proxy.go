@@ -17,15 +17,13 @@ import (
 type Proxy struct {
 	backend      http.RoundTripper
 	context      hcl.Body
-	evalCtx      *hcl.EvalContext
 	reverseProxy *httputil.ReverseProxy
 }
 
-func NewProxy(backend http.RoundTripper, ctx hcl.Body, evalCtx *hcl.EvalContext) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx hcl.Body) *Proxy {
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,
-		evalCtx: evalCtx,
 	}
 	rp := &httputil.ReverseProxy{
 		Director:  proxy.director,
@@ -41,7 +39,7 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, evalCtx *hcl.EvalContext)
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
-	if err := eval.ApplyRequestContext(p.evalCtx, p.context, req); err != nil {
+	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
 		return nil, err // TODO: log only
 	}
 
@@ -53,7 +51,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return beresp, err
 	}
-	err = eval.ApplyResponseContext(p.evalCtx, p.context, req, beresp) // TODO: log only
+	err = eval.ApplyResponseContext(req.Context(), p.context, beresp) // TODO: log only
 	return beresp, err
 }
 

@@ -11,12 +11,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
@@ -33,7 +31,7 @@ func TestNewHTTPContext(t *testing.T) {
 		}
 	}
 
-	baseCtx := eval.NewENVContext(nil)
+	baseCtx := eval.NewContext(nil)
 
 	tests := []struct {
 		name      string
@@ -41,7 +39,7 @@ func TestNewHTTPContext(t *testing.T) {
 		reqHeader http.Header
 		body      io.Reader
 		query     string
-		baseCtx   *hcl.EvalContext
+		baseCtx   *eval.Context
 		hcl       string
 		want      http.Header
 	}{
@@ -84,13 +82,8 @@ func TestNewHTTPContext(t *testing.T) {
 		`, http.Header{"method": {http.MethodGet}, "title": {""}}},
 	}
 
-	logger, hook := logrustest.NewNullLogger()
-	log := logger.WithContext(context.Background())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hook.Reset()
-
 			helper := test.New(t)
 
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
@@ -103,15 +96,9 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			endpointHandler := handler.NewEndpoint(&handler.EndpointOptions{
-				Context:       helper.NewProxyContext(tt.hcl),
-				ReqBodyLimit:  512,
-				ReqBufferOpts: eval.BufferRequest,
-			}, eval.NewENVContext(nil), log, nil, nil, nil)
+			helper.Must(eval.SetGetBody(req, 512))
 
-			helper.Must(endpointHandler.SetGetBody(req))
-
-			ctx := eval.NewHTTPContext(tt.baseCtx, eval.BufferRequest, req, beresp)
+			ctx := baseCtx.WithClientRequest(req).WithBeresps(beresp).HCLContext()
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value

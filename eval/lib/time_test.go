@@ -7,6 +7,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestUnixtime(t *testing.T) {
@@ -27,14 +28,16 @@ func TestUnixtime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			helper := test.New(t)
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
-			now, err := cf.Context.Functions["unixtime"].Call([]cty.Value{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			helper.Must(err)
+			now, err := cf.Context.HCLContext().Functions["unixtime"].Call([]cty.Value{})
+			helper.Must(err)
+
 			if !cty.Number.Equals(now.Type()) {
 				t.Errorf("Wrong return type; expected %s, got: %s", cty.Number.FriendlyName(), now.Type().FriendlyName())
 			}
+
 			bfnow := now.AsBigFloat()
 			inow, _ := bfnow.Int64()
 			if inow != tt.want {

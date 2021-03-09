@@ -11,10 +11,12 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
+	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
@@ -25,23 +27,24 @@ import (
 type HTTPServer struct {
 	accessLog  *logging.AccessLog
 	commandCtx context.Context
-	settings   *config.Settings
-	timings    *runtime.HTTPTimings
+	evalCtx    *eval.Context
 	listener   net.Listener
 	log        logrus.FieldLogger
 	mux        *Mux
 	port       string
+	settings   *config.Settings
 	shutdownCh chan struct{}
 	srv        *http.Server
+	timings    *runtime.HTTPTimings
 	uidFn      func() string
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
+func NewServerList(cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
 	for port, srvMux := range srvConf {
-		list = append(list, New(cmdCtx, log, settings, timings, port, srvMux))
+		list = append(list, New(cmdCtx, evalCtx, log, settings, timings, port, srvMux))
 	}
 
 	handleShutdownFn := func() {
@@ -53,7 +56,7 @@ func NewServerList(cmdCtx context.Context, log logrus.FieldLogger, settings *con
 }
 
 // New creates a configured HTTP server.
-func New(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
+func New(cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings, timings *runtime.HTTPTimings, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
 	var uidFn func() string
 	if settings.RequestIDFormat == "uuid4" {
 		uidFn = func() string {
@@ -75,6 +78,7 @@ func New(cmdCtx context.Context, log logrus.FieldLogger, settings *config.Settin
 	mux.MustAddRoute(http.MethodGet, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
 
 	httpSrv := &HTTPServer{
+		evalCtx:    evalCtx,
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
@@ -176,9 +180,31 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	)
 	rw = w
 
-	s.accessLog.ServeHTTP(rw, req, h, startTime)
+	if err := s.setGetBody(h, req); err != nil {
+		s.mux.opts.ErrorTpl.ServeError(err).ServeHTTP(rw, req)
+		return
+	}
+
+	ctx = s.evalCtx.WithClientRequest(req)
+	clientReq := req.Clone(ctx)
+
+	s.accessLog.ServeHTTP(rw, clientReq, h, startTime)
 
 	w.Close() // Closes the GZ writer.
+}
+
+func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
+	outer := h
+	if inner, protected := outer.(ac.ProtectedHandler); protected {
+		outer = inner.Child()
+	}
+
+	if limitHandler, ok := h.(handler.EndpointLimit); ok {
+		if err := eval.SetGetBody(req, limitHandler.RequestLimit()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // getHost configures the host from the incoming request host based on
