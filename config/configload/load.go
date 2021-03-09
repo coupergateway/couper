@@ -275,6 +275,15 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 
 		proxies := endpointContent.Blocks.OfType(proxy)
 		requests := endpointContent.Blocks.OfType(request)
+
+		if len(proxies)+len(requests) == 0 && endpoint.Response == nil {
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "missing 'default' proxy or request block, or a response definition",
+				Subject:  &endpointContent.MissingItemRange,
+			}}
+		}
+
 		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
 
 		for _, proxyBlock := range proxies {
@@ -367,14 +376,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 					return err
 				}
 			}
-		}
-
-		if len(unique) == 0 && endpoint.Response == nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "missing 'default' proxy or request block, or a response definition",
-				Subject:  &itemRange,
-			}}
 		}
 	}
 
