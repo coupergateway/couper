@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"sync"
+
+	"github.com/avenga/couper/config/request"
 )
 
 type Proxy struct {
@@ -23,6 +25,7 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 
 	for _, proxy := range pr {
 		outCtx := withRoundTripName(ctx, proxy.Name)
+		outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
 		outReq := clientReq.WithContext(outCtx)
 		go roundtrip(proxy.RoundTrip, outReq, results, wg)
 	}

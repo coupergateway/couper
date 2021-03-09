@@ -1,13 +1,11 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"net/http/httputil"
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 )
@@ -46,8 +44,6 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
 		return nil, err // TODO: log only
 	}
-
-	*req = *req.WithContext(context.WithValue(req.Context(), request.RoundTripProxy, true))
 
 	rec := transport.NewRecorder()
 	p.reverseProxy.ServeHTTP(rec, req)
