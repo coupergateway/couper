@@ -24,6 +24,7 @@ server "acs" {
         backend "test" {
           set_request_headers = {
             auth = ["ba1", "ba2"]
+            Authorization = req.headers.authorization # proxy blacklist
           }
         }
       }
@@ -55,6 +56,7 @@ server "acs" {
       backend "test" {
         set_request_headers = {
           auth = ["ba1", "ba4"]
+          Authorization = req.headers.authorization # proxy blacklist
         }
       }
     }
