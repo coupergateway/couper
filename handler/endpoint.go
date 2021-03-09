@@ -1,14 +1,11 @@
 package handler
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"net"
 	"net/http"
 	"strings"
 
-	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
@@ -22,11 +19,9 @@ import (
 )
 
 var _ http.Handler = &Endpoint{}
-
-const defaultReqBodyLimit = "64MiB"
+var _ EndpointLimit = &Endpoint{}
 
 type Endpoint struct {
-	evalContext    *hcl.EvalContext
 	log            *logrus.Entry
 	logHandlerKind string
 	opts           *EndpointOptions
@@ -46,16 +41,19 @@ type EndpointOptions struct {
 	ServerOpts     *server.Options
 }
 
-func NewEndpoint(opts *EndpointOptions, evalCtx *hcl.EvalContext, log *logrus.Entry,
-	proxies producer.Proxies, requests producer.Requests, resp *producer.Response) *Endpoint {
+type EndpointLimit interface {
+	RequestLimit() int64
+}
+
+func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, proxies producer.Proxies,
+	requests producer.Requests, resp *producer.Response) *Endpoint {
 	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
-		evalContext: evalCtx,
-		log:         log.WithField("handler", opts.LogHandlerKind),
-		opts:        opts,
-		proxies:     proxies,
-		requests:    requests,
-		response:    resp,
+		log:      log.WithField("handler", opts.LogHandlerKind),
+		opts:     opts,
+		proxies:  proxies,
+		requests: requests,
+		response: resp,
 	}
 }
 
@@ -69,12 +67,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
-	if err := e.SetGetBody(req); err != nil {
-		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
-		return
-	}
-
-	if ee := eval.ApplyRequestContext(e.evalContext, e.opts.Context, req); ee != nil {
+	if ee := eval.ApplyRequestContext(req.Context(), e.opts.Context, req); ee != nil {
 		e.log.Error(ee)
 	}
 
@@ -82,10 +75,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	requestResults := make(producer.Results)
 
 	// go for it due to chan write on error
-	go e.proxies.Produce(subCtx, req, e.evalContext, proxyResults)
-	go e.requests.Produce(subCtx, req, e.evalContext, requestResults)
+	go e.proxies.Produce(subCtx, req, proxyResults)
+	go e.requests.Produce(subCtx, req, requestResults)
 
-	beresps := make(map[string]*producer.Result)
+	beresps := make(producer.ResultMap)
 	// TODO: read parallel, proxy first for now
 	e.readResults(proxyResults, beresps)
 	e.readResults(requestResults, beresps)
@@ -93,11 +86,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var clientres *http.Response
 	var err error
 
+	evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+	evalContext = evalContext.WithBeresps(beresps.List()...)
+
 	// assume prio or err on conf load if set with response
 	if e.redirect != nil {
 		clientres = e.newRedirect()
 	} else if e.response != nil {
-		clientres, err = e.newResponse(req, beresps)
+		clientres, err = e.newResponse(req, evalContext)
 	} else {
 		if result, ok := beresps["default"]; ok {
 			clientres = result.Beresp
@@ -121,7 +117,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// always apply before write: redirect, response
-	if err = eval.ApplyResponseContext(e.evalContext, e.opts.Context, req, clientres); err != nil {
+	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
 		e.log.Error(err)
 	}
 
@@ -130,46 +126,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// SetGetBody determines if we have to buffer a request body for further processing.
-// First of all the user has a related reference within a related options context declaration.
-// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
-func (e *Endpoint) SetGetBody(req *http.Request) error {
-	if req.Method == http.MethodTrace {
-		return nil
-	}
-
-	// TODO: handle buffer options based on overall body context and reference
-	//if (e.opts.ReqBufferOpts & eval.BufferRequest) != eval.BufferRequest {
-	//	return nil
-	//}
-
-	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
-		buf := &bytes.Buffer{}
-		lr := io.LimitReader(req.Body, e.opts.ReqBodyLimit+1)
-		n, err := buf.ReadFrom(lr)
-		if err != nil {
-			return err
-		}
-
-		if n > e.opts.ReqBodyLimit {
-			return errors.EndpointReqBodySizeExceeded
-		}
-
-		bodyBytes := buf.Bytes()
-		req.GetBody = func() (io.ReadCloser, error) {
-			return eval.NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
-		}
-	}
-
-	return nil
-}
-
-func (e *Endpoint) newResponse(req *http.Request, beresps map[string]*producer.Result) (*http.Response, error) {
-	var resps []*http.Response
-	for _, br := range beresps {
-		resps = append(resps, br.Beresp)
-	}
-
+func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.Response, error) {
 	clientres := &http.Response{
 		Header:     make(http.Header),
 		Proto:      req.Proto,
@@ -178,7 +135,8 @@ func (e *Endpoint) newResponse(req *http.Request, beresps map[string]*producer.R
 		Request:    req,
 	}
 
-	httpCtx := eval.NewHTTPContext(e.evalContext, e.opts.ReqBufferOpts, req, resps...)
+	hclCtx := evalCtx.HCLContext()
+
 	content, _, diags := e.response.Context.PartialContent(config.ResponseInlineSchema)
 	if diags.HasErrors() {
 		return nil, diags
@@ -186,19 +144,19 @@ func (e *Endpoint) newResponse(req *http.Request, beresps map[string]*producer.R
 
 	statusCode := http.StatusOK
 	if attr, ok := content.Attributes["status"]; ok {
-		val, _ := attr.Expr.Value(httpCtx)
+		val, _ := attr.Expr.Value(hclCtx)
 		statusCode = int(seetie.ValueToInt(val))
 	}
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)
 
 	if attr, ok := content.Attributes["headers"]; ok {
-		val, _ := attr.Expr.Value(httpCtx)
+		val, _ := attr.Expr.Value(hclCtx)
 		eval.SetHeader(val, clientres.Header)
 	}
 
 	if attr, ok := content.Attributes["body"]; ok {
-		val, _ := attr.Expr.Value(httpCtx)
+		val, _ := attr.Expr.Value(hclCtx)
 		r := strings.NewReader(seetie.ValueToString(val))
 		clientres.Body = eval.NewReadCloser(r, nil)
 	}
@@ -216,7 +174,7 @@ func (e *Endpoint) newRedirect() *http.Response {
 	}
 }
 
-func (e *Endpoint) readResults(requestResults producer.Results, beresps map[string]*producer.Result) {
+func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
 	for r := range requestResults { // collect resps
 		if r == nil {
 			panic("implement nil result handling")
@@ -243,15 +201,11 @@ func (e *Endpoint) Options() *server.Options {
 	return e.opts.ServerOpts
 }
 
+func (e *Endpoint) RequestLimit() int64 {
+	return e.opts.ReqBodyLimit
+}
+
 // String interface maps to the access log handler field.
 func (e *Endpoint) String() string {
 	return e.logHandlerKind
-}
-
-func ParseBodyLimit(limit string) (int64, error) {
-	requestBodyLimit := defaultReqBodyLimit
-	if limit != "" {
-		requestBodyLimit = limit
-	}
-	return units.FromHumanSize(requestBodyLimit)
 }

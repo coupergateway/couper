@@ -7,7 +7,7 @@ const (
 	BackendResponses = "beresps"
 	BackendDefault   = "default"
 	ClientRequest    = "req"
-	Context          = "ctx"
+	CTX              = "ctx"
 	Cookies          = "cookies"
 	Endpoint         = "endpoint"
 	Environment      = "env"

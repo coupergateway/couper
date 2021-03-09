@@ -36,7 +36,7 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 	}
 
 	for k, v := range valMap {
-		if v.IsNull() || !v.IsKnown() {
+		if v.IsNull() || !v.IsWhollyKnown() {
 			result[k] = ""
 			continue
 		}
@@ -50,6 +50,8 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 		case cty.Number:
 			f, _ := v.AsBigFloat().Float64()
 			result[k] = f
+		case cty.Map(cty.NilType):
+			result[k] = ""
 		default:
 			if isTuple(v) {
 				result[k] = ValueToStringSlice(v)

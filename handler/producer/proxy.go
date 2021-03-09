@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-
-	"github.com/hashicorp/hcl/v2"
 )
 
 type Proxy struct {
@@ -15,7 +13,7 @@ type Proxy struct {
 
 type Proxies []*Proxy
 
-func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, _ *hcl.EvalContext, results chan<- *Result) {
+func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results chan<- *Result) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(pr))
 	go func() {
