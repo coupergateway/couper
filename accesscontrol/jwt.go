@@ -15,6 +15,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
 )
 
 const (
@@ -160,6 +161,10 @@ func (j *JWT) Validate(req *http.Request) error {
 	acMap[j.name] = tokenClaims
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 	*req = *req.WithContext(ctx)
+
+	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+		*req = *req.WithContext(evalCtx.WithClientRequest(req))
+	}
 
 	return nil
 }
