@@ -79,7 +79,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 
 	log, hook := logrustest.NewNullLogger()
 
-	ctx, cancel := context.WithCancel(test.NewContext())
+	ctx, cancel := context.WithCancel(context.Background())
 	cancelFn := func() {
 		cancel()
 		time.Sleep(time.Second / 2)

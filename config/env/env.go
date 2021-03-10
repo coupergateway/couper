@@ -6,11 +6,12 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const PREFIX = "COUPER_"
 
-var OsEnviron func() []string = os.Environ
+var OsEnviron = os.Environ
 
 func Decode(conf interface{}) {
 	DecodeWithPrefix(conf, "")
@@ -73,6 +74,11 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 			val.Field(i).SetString(mapVal)
 		case []string:
 			val.Field(i).Set(reflect.ValueOf(strings.Split(mapVal, ",")))
+		case time.Duration:
+			parsedDuration, err := time.ParseDuration(mapVal)
+			if err == nil {
+				val.Field(i).Set(reflect.ValueOf(parsedDuration))
+			}
 		default:
 			panic(fmt.Sprintf("env decode: type mapping not implemented: %v", reflect.TypeOf(val.Field(i).Interface())))
 		}
