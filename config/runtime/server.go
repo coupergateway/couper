@@ -276,6 +276,14 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		return nil, diags
 	}
 
+	if beConf.Name == "" {
+		name, err := getBackendName(evalCtx, backendCtx)
+		if err != nil {
+			return nil, err
+		}
+		beConf.Name = name
+	}
+
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
 		DisableCertValidation:  beConf.DisableCertValidation,
@@ -305,6 +313,23 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	backend := transport.NewBackend(backendCtx, tc, log, openAPIopts)
 	return backend, nil
+}
+
+func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {
+	content, _, _ := backendCtx.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+		{Name: "name"}},
+	})
+	if content != nil && len(content.Attributes) > 0 {
+
+		if n, exist := content.Attributes["name"]; exist {
+			v, d := n.Expr.Value(evalCtx)
+			if d.HasErrors() {
+				return "", d
+			}
+			return v.AsString(), nil
+		}
+	}
+	return "", nil
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {

@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
@@ -22,14 +21,15 @@ import (
 )
 
 const (
-	backend      = "backend"
-	definitions  = "definitions"
-	nameLabel    = "name"
-	proxy        = "proxy"
-	request      = "request"
-	server       = "server"
-	settings     = "settings"
-	defaultLabel = "default"
+	backend     = "backend"
+	definitions = "definitions"
+	nameLabel   = "name"
+	proxy       = "proxy"
+	request     = "request"
+	server      = "server"
+	settings    = "settings"
+	// defaultNameLabel maps the the hcl label attr 'name'.
+	defaultNameLabel = "default"
 )
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -296,7 +296,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				proxyConfig.Name = proxyBlock.Labels[0]
 			}
 			if proxyConfig.Name == "" {
-				proxyConfig.Name = defaultLabel
+				proxyConfig.Name = defaultNameLabel
 			}
 
 			proxyConfig.Remain = proxyBlock.Body
@@ -329,7 +329,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				reqConfig.Name = reqBlock.Labels[0]
 			}
 			if reqConfig.Name == "" {
-				reqConfig.Name = defaultLabel
+				reqConfig.Name = defaultNameLabel
 			}
 
 			reqConfig.Remain = reqBlock.Body
@@ -430,7 +430,7 @@ func validLabelName(name string, hr *hcl.Range) error {
 
 func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
 	if _, exist := unique[name]; exist {
-		if name == defaultLabel {
+		if name == defaultNameLabel {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "proxy and request labels are required and only one 'default' label is allowed",
@@ -493,9 +493,9 @@ func newBackendFromURL(rawURL string) (hcl.Body, error) {
 
 	return hclbody.New(&hcl.BodyContent{
 		Attributes: map[string]*hcl.Attribute{
-			// TODO: replace with own expression literal
-			"origin": {Name: "origin", Expr: hcltest.MockExprLiteral(cty.StringVal(u.Scheme + "://" + u.Host))},
-			"path":   {Name: "path", Expr: hcltest.MockExprLiteral(cty.StringVal(u.RawPath))},
+			"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
+			"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Scheme + "://" + u.Host)}},
+			"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.RawPath)}},
 			// TODO: set query_params (request) -vs- set_query_params (proxy)
 		},
 	}), nil

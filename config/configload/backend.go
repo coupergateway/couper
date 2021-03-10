@@ -36,7 +36,7 @@ var backendBlockSchema = &hcl.BodySchema{
 }
 
 // WithName picks a matching backend configuration from the backend sequence and does
-// some attribute enrichment to be able to filter with  this attributes later on.
+// some attribute enrichment to be able to filter with this attributes later on.
 func (b Backends) WithName(name string) (hcl.Body, error) {
 	if len(b) == 0 || name == "" {
 		return nil, nil
