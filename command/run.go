@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/env"
-
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/server"
@@ -41,10 +41,8 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
 
-	//memStore := cache.New()
-
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvMux, err := runtime.NewServerConfiguration(config, logEntry)
+	srvMux, err := runtime.NewServerConfiguration(config, logEntry, cache.New())
 	if err != nil {
 		return err
 	}

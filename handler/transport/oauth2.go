@@ -23,15 +23,17 @@ var _ http.RoundTripper = &OAuth2{}
 
 // OAuth2 represents the transport <OAuth2> object.
 type OAuth2 struct {
-	backend http.RoundTripper
-	config  *config.OAuth2
-	evalCtx *hcl.EvalContext
-	next    http.RoundTripper
+	backend  http.RoundTripper
+	config   *config.OAuth2
+	evalCtx  *hcl.EvalContext
+	memStore *cache.MemoryStore
+	next     http.RoundTripper
 }
 
 // NewOAuth2 creates a new <http.RoundTripper> object.
 func NewOAuth2(
-	evalCtx *hcl.EvalContext, config *config.OAuth2, backend, next http.RoundTripper,
+	evalCtx *hcl.EvalContext, config *config.OAuth2,
+	memStore *cache.MemoryStore, backend, next http.RoundTripper,
 ) (http.RoundTripper, error) {
 	if config.GrantType != "client_credentials" {
 		return nil, fmt.Errorf("The grant_type has to be set to 'client_credentials'")
@@ -45,10 +47,11 @@ func NewOAuth2(
 	}
 
 	return &OAuth2{
-		backend: backend,
-		config:  config,
-		evalCtx: evalCtx,
-		next:    next,
+		backend:  backend,
+		config:   config,
+		evalCtx:  evalCtx,
+		memStore: memStore,
+		next:     next,
 	}, nil
 }
 
@@ -59,18 +62,13 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	memStore := req.Context().Value(request.MemStore).(*cache.MemoryStore)
-	if data := memStore.Get(key); data != "" {
+	if data := oa.memStore.Get(key); data != "" {
 		token, err := oa.getAccessToken(data, key, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		req.Header.Set("Authorization", "Bearer "+token)
-
-		ctx := context.WithValue(req.Context(), request.IsResourceReq, true)
-		ctx = context.WithValue(ctx, request.TokenKey, key)
-		*req = *req.WithContext(ctx)
 
 		return oa.next.RoundTrip(req)
 	}
@@ -91,32 +89,34 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 	outCtx = context.WithValue(outCtx, request.UID, req.Context().Value(request.UID))
 	*outreq = *outreq.WithContext(outCtx)
 
-	res, err := oa.backend.RoundTrip(outreq)
+	outRes, err := oa.backend.RoundTrip(outreq)
 	if err != nil {
 		return nil, err
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if outRes.StatusCode != http.StatusOK {
 		return nil, couperErr.TokenRequestFailed
 	}
 
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, err := ioutil.ReadAll(outRes.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := oa.getAccessToken(string(resBody), key, memStore)
+	token, err := oa.getAccessToken(string(resBody), key, oa.memStore)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	ctx := context.WithValue(req.Context(), request.IsResourceReq, true)
-	ctx = context.WithValue(ctx, request.TokenKey, key)
-	*req = *req.WithContext(ctx)
+	res, err := oa.next.RoundTrip(req)
 
-	return oa.next.RoundTrip(req)
+	if res.StatusCode == http.StatusUnauthorized {
+		oa.memStore.Del(key)
+	}
+
+	return res, err
 }
 
 func (oa *OAuth2) getCredentials(req *http.Request) (string, string, string, error) {
