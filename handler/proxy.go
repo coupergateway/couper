@@ -1,16 +1,18 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"net/http/httputil"
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 )
+
+// headerBlacklist lists all header keys which will be removed after
+// context variable evaluation to ensure to not pass them upstream.
+var headerBlacklist = []string{"Authorization", "Cookie"}
 
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
@@ -43,8 +45,6 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err // TODO: log only
 	}
 
-	*req = *req.WithContext(context.WithValue(req.Context(), request.RoundTripProxy, true))
-
 	rec := transport.NewRecorder()
 	p.reverseProxy.ServeHTTP(rec, req)
 	beresp, err := rec.Response(req)
@@ -55,6 +55,8 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
-func (p *Proxy) director(_ *http.Request) {
-	// noop
+func (p *Proxy) director(req *http.Request) {
+	for _, key := range headerBlacklist {
+		req.Header.Del(key)
+	}
 }

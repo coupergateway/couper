@@ -34,3 +34,7 @@ docker run --rm -p 8080:8080 -v `pwd`:/htdocs avenga/couper
 | COUPER_BACKEND_LOG_TYPE_VALUE | `couper_backend`  | Value for the log field `type`. |
 | COUPER_BACKEND_LOG_REQUEST_HEADERS | `User-Agent, Accept, Referer`  | A comma separated list of header names whose values should be logged. |
 | COUPER_BACKEND_LOG_RESPONSE_HEADERS | `Cache-Control, Content-Encoding, Content-Type, Location`  | A comma separated list of header names whose values should be logged. |
+| COUPER_TIMING_IDLE_TIMEOUT | `60s`  | The maximum amount of time to wait for the next request on client connections when keep-alives are enabled. |
+| COUPER_TIMING_READ_HEADER_TIMEOUT | `10s`  | The amount of time allowed to read client request headers. |
+| COUPER_TIMING_SHUTDOWN_DELAY | `0`  | The amount of time the server is marked as unhealthy until calling server close finally. |
+| COUPER_TIMING_SHUTDOWN_TIMEOUT | `0`  | The maximum amount of time allowed to close the server with all running connections. |

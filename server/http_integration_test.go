@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -78,13 +79,30 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 
 	log, hook := logrustest.NewNullLogger()
 
-	ctx, cancel := context.WithCancel(test.NewContext(context.Background()))
+	ctx, cancel := context.WithCancel(context.Background())
 	cancelFn := func() {
 		cancel()
 		time.Sleep(time.Second / 2)
 	}
 	shutdownFn := func() {
 		cleanup(cancelFn, helper)
+	}
+
+	// ensure the previous test aren't listening
+	port := couperConfig.Settings.DefaultPort
+	round := time.Duration(0)
+	for {
+		round++
+		conn, dialErr := net.Dial("tcp4", ":"+strconv.Itoa(port))
+		if dialErr != nil {
+			break
+		}
+		_ = conn.Close()
+		time.Sleep(time.Second + (time.Second*round)/2)
+
+		if round == 10 {
+			panic("port is still in use")
+		}
 	}
 
 	//log.Out = os.Stdout
@@ -307,11 +325,13 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 	} {
 		confPath := path.Join("testdata/integration", testcase.fileName)
 		t.Logf("#%.2d: Create Couper: %q", i+1, confPath)
-		shutdown, logHook := newCouper(confPath, test.New(t))
 
 		for _, rc := range testcase.requests {
 			t.Run(testcase.fileName+" "+rc.req.method+"|"+rc.req.url, func(subT *testing.T) {
 				helper := test.New(subT)
+				shutdown, logHook := newCouper(confPath, helper)
+				defer shutdown()
+
 				logHook.Reset()
 
 				req, err := http.NewRequest(rc.req.method, rc.req.url, nil)
@@ -350,74 +370,66 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				}
 			})
 		}
-
-		shutdown()
 	}
 }
 
 func TestHTTPServer_HostHeader(t *testing.T) {
+	helper := test.New(t)
+
 	client := newClient()
 
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
-	shutdown, _ := newCouper(confPath, test.New(t))
+	shutdown, _ := newCouper(confPath, helper)
+	defer shutdown()
 
-	t.Run("Test", func(subT *testing.T) {
-		helper := test.New(subT)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
+	helper.Must(err)
 
-		req, err := http.NewRequest(http.MethodGet, "http://example.com:9898/b", nil)
-		helper.Must(err)
+	req.Host = "Example.com."
+	res, err := client.Do(req)
+	helper.Must(err)
 
-		req.Host = "Example.com."
-		res, err := client.Do(req)
-		helper.Must(err)
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
 
-		resBytes, err := ioutil.ReadAll(res.Body)
-		helper.Must(err)
+	_ = res.Body.Close()
 
-		_ = res.Body.Close()
-
-		if `<html lang="en">index B</html>` != string(resBytes) {
-			t.Errorf("%s", resBytes)
-		}
-	})
-
-	shutdown()
+	if `<html lang="en">index B</html>` != string(resBytes) {
+		t.Errorf("%s", resBytes)
+	}
 }
 
 func TestHTTPServer_HostHeader2(t *testing.T) {
+	helper := test.New(t)
+
 	client := newClient()
 
 	confPath := path.Join("testdata/integration", "api/03_couper.hcl")
-	shutdown, logHook := newCouper(confPath, test.New(t))
+	shutdown, logHook := newCouper(confPath, helper)
+	defer shutdown()
 
-	t.Run("Test", func(subT *testing.T) {
-		helper := test.New(subT)
+	req, err := http.NewRequest(http.MethodGet, "http://couper.io:9898/v3/def", nil)
+	helper.Must(err)
 
-		req, err := http.NewRequest(http.MethodGet, "http://couper.io:9898/v3/def", nil)
-		helper.Must(err)
+	req.Host = "couper.io"
+	res, err := client.Do(req)
+	helper.Must(err)
 
-		req.Host = "couper.io"
-		res, err := client.Do(req)
-		helper.Must(err)
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
 
-		resBytes, err := ioutil.ReadAll(res.Body)
-		helper.Must(err)
+	_ = res.Body.Close()
 
-		_ = res.Body.Close()
+	if `<html>1002</html>` != string(resBytes) {
+		t.Errorf("%s", resBytes)
+	}
 
-		if `<html>1002</html>` != string(resBytes) {
-			t.Errorf("%s", resBytes)
-		}
-
-		entry := logHook.LastEntry()
-		if entry == nil {
-			t.Error("Expected a log entry, got nothing")
-		} else if entry.Data["server"] != "multi-api-host1" {
-			t.Errorf("Expected 'multi-api-host1', got: %s", entry.Data["server"])
-		}
-	})
-
-	shutdown()
+	entry := logHook.LastEntry()
+	if entry == nil {
+		t.Error("Expected a log entry, got nothing")
+	} else if entry.Data["server"] != "multi-api-host1" {
+		t.Errorf("Expected 'multi-api-host1', got: %s", entry.Data["server"])
+	}
 }
 
 func TestHTTPServer_XFHHeader(t *testing.T) {
@@ -426,6 +438,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 	os.Setenv("COUPER_XFH", "true")
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
 	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
 	os.Setenv("COUPER_XFH", "")
 
 	helper := test.New(t)
@@ -456,8 +469,6 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 	} else if entry.Data["url"] != "http://example.com:9898/b" {
 		t.Errorf("Expected 'http://example.com:9898/b', got: %s", entry.Data["url"])
 	}
-
-	shutdown()
 }
 
 func TestHTTPServer_ProxyFromEnv(t *testing.T) {
@@ -474,7 +485,11 @@ func TestHTTPServer_ProxyFromEnv(t *testing.T) {
 	helper.Must(err)
 	origin.Listener = ln
 	origin.Start()
-	defer origin.Close()
+	defer func() {
+		origin.Close()
+		ln.Close()
+		time.Sleep(time.Second)
+	}()
 
 	confPath := path.Join("testdata/integration", "api/01_couper.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
@@ -499,6 +514,7 @@ func TestHTTPServer_Gzip(t *testing.T) {
 
 	confPath := path.Join("testdata/integration", "files/03_gzip.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
 
 	type testCase struct {
 		name                 string
@@ -557,8 +573,6 @@ func TestHTTPServer_Gzip(t *testing.T) {
 			}
 		})
 	}
-
-	shutdown()
 }
 
 func TestHTTPServer_QueryParams(t *testing.T) {
@@ -629,10 +643,12 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			Path: "/",
 		}},
 	} {
-		shutdown, _ := newCouper(path.Join(confPath, tc.file), test.New(t))
-
+		tc := tc
 		t.Run("_"+tc.query, func(subT *testing.T) {
 			helper := test.New(subT)
+
+			shutdown, _ := newCouper(path.Join(confPath, tc.file), helper)
+			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?"+tc.query, nil)
 			helper.Must(err)
@@ -660,8 +676,6 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
-
-		shutdown()
 	}
 }
 
@@ -694,10 +708,10 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			},
 		}},
 	} {
-		shutdown, _ := newCouper(path.Join(confPath, tc.file), test.New(t))
-
 		t.Run("_"+tc.query, func(subT *testing.T) {
 			helper := test.New(subT)
+			shutdown, _ := newCouper(path.Join(confPath, tc.file), helper)
+			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?"+tc.query, nil)
 			helper.Must(err)
@@ -738,8 +752,6 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
-
-		shutdown()
 	}
 }
 
@@ -752,35 +764,31 @@ func TestHTTPServer_QueryEncoding(t *testing.T) {
 		RawQuery string
 	}
 
-	shutdown, _ := newCouper(config, test.New(t))
+	helper := test.New(t)
+	shutdown, _ := newCouper(config, helper)
+	defer shutdown()
 
-	t.Run("Query-Encoding", func(subT *testing.T) {
-		helper := test.New(subT)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?a=a%20a&x=x+x", nil)
+	helper.Must(err)
 
-		req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?a=a%20a&x=x+x", nil)
-		helper.Must(err)
+	res, err := client.Do(req)
+	helper.Must(err)
 
-		res, err := client.Do(req)
-		helper.Must(err)
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
 
-		resBytes, err := ioutil.ReadAll(res.Body)
-		helper.Must(err)
+	_ = res.Body.Close()
 
-		_ = res.Body.Close()
+	var jsonResult expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
 
-		var jsonResult expectation
-		err = json.Unmarshal(resBytes, &jsonResult)
-		if err != nil {
-			t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-		}
-
-		exp := expectation{RawQuery: "a=a%20a&space=a%20b%2Bc&x=x%2Bx"}
-		if !reflect.DeepEqual(jsonResult, exp) {
-			t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, jsonResult)
-		}
-	})
-
-	shutdown()
+	exp := expectation{RawQuery: "a=a%20a&space=a%20b%2Bc&x=x%2Bx"}
+	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, jsonResult)
+	}
 }
 
 func TestHTTPServer_Backends(t *testing.T) {
@@ -788,10 +796,9 @@ func TestHTTPServer_Backends(t *testing.T) {
 
 	config := "testdata/integration/config/02_couper.hcl"
 
-	shutdown, _ := newCouper(config, test.New(t))
-	defer shutdown()
-
 	helper := test.New(t)
+	shutdown, _ := newCouper(config, helper)
+	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
 	helper.Must(err)
@@ -827,10 +834,10 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			Path: "/path/",
 		}},
 	} {
-		shutdown, _ := newCouper(config, test.New(t))
-
 		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
+			shutdown, _ := newCouper(config, helper)
+			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -853,8 +860,6 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
-
-		shutdown()
 	}
 }
 
@@ -863,6 +868,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 
 	confPath := path.Join("testdata/integration/endpoint_eval/01_couper.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
 
 	type expectation struct {
 		Host, Origin, Path string
@@ -912,8 +918,6 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			}
 		})
 	}
-
-	shutdown()
 }
 
 func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
@@ -921,7 +925,6 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 
 	for _, confFile := range []string{"02_couper.hcl", "03_couper.hcl"} {
 		confPath := path.Join("testdata/integration/endpoint_eval", confFile)
-		shutdown, _ := newCouper(confPath, test.New(t))
 
 		type expectation struct {
 			Path           string
@@ -953,6 +956,8 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 		} {
 			t.Run(confFile+"_"+tc.reqPath, func(subT *testing.T) {
 				helper := test.New(subT)
+				shutdown, _ := newCouper(confPath, helper)
+				defer shutdown()
 
 				req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
 				helper.Must(err)
@@ -976,7 +981,6 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				}
 			})
 		}
-		shutdown()
 	}
 }
 
@@ -1038,6 +1042,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 	client := newClient()
 
 	shutdown, _ := newCouper("testdata/integration/config/02_couper.hcl", test.New(t))
+	defer shutdown()
 
 	type testCase struct {
 		path   string
@@ -1082,14 +1087,13 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			}
 		})
 	}
-
-	shutdown()
 }
 
 func TestConfigBodyContentAccessControl(t *testing.T) {
 	client := newClient()
 
 	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
 
 	type testCase struct {
 		path   string
@@ -1150,8 +1154,6 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			}
 		})
 	}
-
-	shutdown()
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
@@ -1211,6 +1213,9 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 		exp  expectation
 	}
 
+	shutdown, _ := newCouper("testdata/integration/api/05_couper.hcl", test.New(t))
+	defer shutdown()
+
 	for _, tc := range []testCase{
 		{"/xxx", expectation{
 			Path: "/xxx",
@@ -1222,8 +1227,6 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			Path: "/zzz",
 		}},
 	} {
-		shutdown, _ := newCouper("testdata/integration/api/05_couper.hcl", test.New(t))
-
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 
@@ -1248,7 +1251,5 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
-
-		shutdown()
 	}
 }

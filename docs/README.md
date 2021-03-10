@@ -739,10 +739,11 @@ gateway instance.
 The health check will answer a status `200 OK` on every port with the configured
 `health_path`. As soon as the gateway instance will receive a `SIGINT` or `SIGTERM`
 the check will return a status `500 StatusInternalServerError`. A shutdown delay
-of `5s` allows the server to finish all running requests and gives a load-balancer
+of `5s` for example allows the server to finish all running requests and gives a load-balancer
 time to pick another gateway instance. After this delay the server goes into
-shutdown mode with a deadline of `5s` and no new requests will be accepted. The
-shutdown timings cannot be configured at this moment.
+shutdown mode with a deadline of `5s` and no new requests will be accepted.
+The shutdown timings defaults to `0` which means no delaying with development setups.
+Both durations can be configured via environment variable. Please refer to the [docker document](./../DOCKER.md).
 
 ## Examples
 
@@ -759,7 +760,7 @@ See the official Couper's examples and tutorials
 | 2   | `base_path` attribute in `api` block              |
 | 3   | *label* of `endpoint` block                       |
 | 4   | `origin` attribute in `backend` block             |
-| 5   | `base_path` attribute in `backend`                |
+| 5   | `path_prefix` attribute in `backend`              |
 | 6   | `path` attribute in `endpoint` or `backend` block |
 
 ### Routing configuration example

@@ -57,8 +57,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		"headers": filterHeader(u.config.RequestHeaders, req.Header),
 		"method":  req.Method,
 		"name":    req.Context().Value(request.RoundTripName),
-		"proto":   req.Proto,
-		"scheme":  req.URL.Scheme,
 	}
 
 	if req.ContentLength > 0 {
@@ -73,17 +71,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		Fragment:   req.URL.Fragment,
 	}
 	requestFields["path"] = path.String()
-
-	if req.Host != "" {
-		requestFields["addr"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
-	}
-
-	if req.URL.User != nil && req.URL.User.Username() != "" {
-		fields["auth_user"] = req.URL.User.Username()
-	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
-		fields["auth_user"] = user
-	}
 
 	if !u.config.NoProxyFromEnv {
 		proxyUrl, perr := http.ProxyFromEnvironment(req)
@@ -101,6 +88,22 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	beresp, err := u.next.RoundTrip(req)
 	rtDone := time.Now()
 
+	if req.Host != "" {
+		requestFields["addr"] = req.Host
+		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
+		if requestFields["port"] == "" {
+			delete(requestFields, "port")
+		}
+	}
+
+	if req.URL.User != nil && req.URL.User.Username() != "" {
+		fields["auth_user"] = req.URL.User.Username()
+	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
+		fields["auth_user"] = user
+	}
+	requestFields["proto"] = req.Proto
+	requestFields["scheme"] = req.URL.Scheme
+
 	fields["realtime"] = roundMS(rtDone.Sub(rtStart))
 
 	fields["status"] = 0
@@ -113,7 +116,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 			"tls":     beresp.TLS != nil,
 		}
 		fields["response"] = responseFields
-		//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
 		if couperErr := beresp.Header.Get(errors.HeaderErrorCode); couperErr != "" {
 			i, _ := strconv.Atoi(couperErr[:4])
@@ -126,9 +128,14 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["validation"] = validationErrors
 	}
 
+	timingResults := Fields{}
 	timingsMu.RLock()
-	fields["timings"] = timings // roundtrip is done, map clone is not required here
+	for f, v := range timings { // clone
+		timingResults[f] = v
+	}
 	timingsMu.RUnlock()
+	fields["timings"] = timingResults
+	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
 	var entry *logrus.Entry
 	if u.config.ParentFieldKey != "" {
@@ -163,7 +170,10 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 	var timeTTFB, timeGotConn, timeConnect, timeDNS, timeTLS time.Time
 	trace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
-			timeGotConn = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeGotConn = now
+			mapMu.Unlock()
 		},
 		GotFirstResponseByte: func() {
 			timeTTFB = time.Now()
@@ -172,13 +182,22 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 			mapMu.Unlock()
 		},
 		ConnectStart: func(_, _ string) {
-			timeConnect = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeConnect = now
+			mapMu.Unlock()
 		},
 		DNSStart: func(_ httptrace.DNSStartInfo) {
-			timeDNS = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeDNS = now
+			mapMu.Unlock()
 		},
 		TLSHandshakeStart: func() {
-			timeTLS = time.Now()
+			now := time.Now()
+			mapMu.Lock()
+			timeTLS = now
+			mapMu.Unlock()
 		},
 		ConnectDone: func(network, addr string, err error) {
 			if err == nil {

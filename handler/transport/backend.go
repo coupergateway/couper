@@ -113,6 +113,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	setUserAgent(req)
+	req.Close = false
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
 		return nil, err
@@ -154,6 +155,7 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 	if httpCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
 		httpContext = httpCtx.HCLContext()
 	}
+
 	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
 		b.upstreamLog.LogEntry().Error(diags)

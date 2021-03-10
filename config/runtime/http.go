@@ -19,6 +19,4 @@ type HTTPTimings struct {
 var DefaultTimings = HTTPTimings{
 	IdleTimeout:       time.Second * 60,
 	ReadHeaderTimeout: time.Second * 10,
-	ShutdownDelay:     time.Second * 5,
-	ShutdownTimeout:   time.Second * 5,
 }
