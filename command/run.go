@@ -5,8 +5,8 @@ import (
 	"flag"
 
 	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/server"
 	"github.com/sirupsen/logrus"
