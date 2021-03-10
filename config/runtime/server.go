@@ -311,7 +311,9 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		return nil, err
 	}
 
-	backend := transport.NewBackend(backendCtx, tc, log, openAPIopts)
+	options := transport.NewOptions(beConf.BasicAuth, beConf.PathPrefix)
+	backend := transport.NewBackend(backendCtx, tc, log, openAPIopts, options)
+
 	return backend, nil
 }
 
