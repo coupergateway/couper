@@ -283,8 +283,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         ignoreProxyEnv,
 		Proxy:                  beConf.Proxy,
-		// TODO: parse timings /w defaults
-		MaxConnections: 0,
+		MaxConnections:         beConf.MaxConnections,
 	}
 
 	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
