@@ -20,5 +20,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }} # provided by github/actions
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: "1.14"
+          goversion: "1.16"
           binary_name: "couper"
