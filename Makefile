@@ -4,6 +4,9 @@ image:
 test:
 	go test -v -short -race -timeout 90s ./...
 
+test-docker:
+	docker run --rm -v $(CURDIR):/go/app -w /go/app  golang sh -c "go test -short -count 10 -v -timeout 90s -race ./..."
+
 test-coverage:
 	go test -short -timeout 90s -covermode=count -coverprofile=ac.coverage ./accesscontrol
 	go test -short -timeout 90s -covermode=count -coverprofile=eval.coverage ./eval
