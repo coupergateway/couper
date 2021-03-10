@@ -46,7 +46,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 		expectedErr string
 	}{
 		{"with zero timings", test.NewRemainContext("origin", origin.URL), &transport.Config{}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
-		{"with overall timeout", test.NewRemainContext("origin", "http://10.1.2.3"), &transport.Config{Timeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), "context deadline exceeded"},
+		{"with overall timeout", test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), &transport.Config{Timeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.5/", nil), "context deadline exceeded"},
 		{"with connect timeout", test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), &transport.Config{ConnectTimeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
 		{"with ttfb timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
