@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -78,13 +79,30 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 
 	log, hook := logrustest.NewNullLogger()
 
-	ctx, cancel := context.WithCancel(test.NewContext(context.Background()))
+	ctx, cancel := context.WithCancel(test.NewContext())
 	cancelFn := func() {
 		cancel()
 		time.Sleep(time.Second / 2)
 	}
 	shutdownFn := func() {
 		cleanup(cancelFn, helper)
+	}
+
+	// ensure the previous test aren't listening
+	port := couperConfig.Settings.DefaultPort
+	round := time.Duration(0)
+	for {
+		round++
+		conn, dialErr := net.Dial("tcp4", ":"+strconv.Itoa(port))
+		if dialErr != nil {
+			break
+		}
+		_ = conn.Close()
+		time.Sleep(time.Second + (time.Second*round)/2)
+
+		if round == 10 {
+			panic("port is still in use")
+		}
 	}
 
 	//log.Out = os.Stdout
