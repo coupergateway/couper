@@ -493,7 +493,11 @@ func TestHTTPServer_ProxyFromEnv(t *testing.T) {
 	helper.Must(err)
 	origin.Listener = ln
 	origin.Start()
-	defer origin.Close()
+	defer func() {
+		origin.Close()
+		ln.Close()
+		time.Sleep(time.Second)
+	}()
 
 	confPath := path.Join("testdata/integration", "api/01_couper.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
