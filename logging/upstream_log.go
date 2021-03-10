@@ -57,8 +57,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		"headers": filterHeader(u.config.RequestHeaders, req.Header),
 		"method":  req.Method,
 		"name":    req.Context().Value(request.RoundTripName),
-		"proto":   req.Proto,
-		"scheme":  req.URL.Scheme,
 	}
 
 	if req.ContentLength > 0 {
@@ -73,17 +71,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		Fragment:   req.URL.Fragment,
 	}
 	requestFields["path"] = path.String()
-
-	if req.Host != "" {
-		requestFields["addr"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
-	}
-
-	if req.URL.User != nil && req.URL.User.Username() != "" {
-		fields["auth_user"] = req.URL.User.Username()
-	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
-		fields["auth_user"] = user
-	}
 
 	if !u.config.NoProxyFromEnv {
 		proxyUrl, perr := http.ProxyFromEnvironment(req)
@@ -100,6 +87,22 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	rtStart := time.Now()
 	beresp, err := u.next.RoundTrip(req)
 	rtDone := time.Now()
+
+	if req.Host != "" {
+		requestFields["addr"] = req.Host
+		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
+		if requestFields["port"] == "" {
+			delete(requestFields, "port")
+		}
+	}
+
+	if req.URL.User != nil && req.URL.User.Username() != "" {
+		fields["auth_user"] = req.URL.User.Username()
+	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
+		fields["auth_user"] = user
+	}
+	requestFields["proto"] = req.Proto
+	requestFields["scheme"] = req.URL.Scheme
 
 	fields["realtime"] = roundMS(rtDone.Sub(rtStart))
 
