@@ -372,7 +372,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, err
 			}
 
-			accessControls[name] = basicAuth
+			accessControls[name] = ac.ValidateFunc(basicAuth.Validate)
 		}
 
 		for _, jwt := range conf.Definitions.JWT {
@@ -418,7 +418,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, fmt.Errorf("loading jwt %q definition failed: %s", name, err)
 			}
 
-			accessControls[name] = j
+			accessControls[name] = ac.ValidateFunc(j.Validate)
 		}
 	}
 
