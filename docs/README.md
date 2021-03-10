@@ -760,7 +760,7 @@ See the official Couper's examples and tutorials
 | 2   | `base_path` attribute in `api` block              |
 | 3   | *label* of `endpoint` block                       |
 | 4   | `origin` attribute in `backend` block             |
-| 5   | `base_path` attribute in `backend`                |
+| 5   | `path_prefix` attribute in `backend`              |
 | 6   | `path` attribute in `endpoint` or `backend` block |
 
 ### Routing configuration example
