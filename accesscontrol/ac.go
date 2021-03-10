@@ -1,10 +1,12 @@
 package accesscontrol
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/avenga/couper/eval"
+)
 
 var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
-
-const ContextAccessControlKey = "access_controls"
 
 type (
 	Map  map[string]AccessControl
@@ -22,7 +24,14 @@ type ProtectedHandler interface {
 }
 
 func (f ValidateFunc) Validate(req *http.Request) error {
-	return f(req)
+	if err := f(req); err != nil {
+		return err
+	}
+
+	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+		*req = *req.WithContext(evalCtx.WithClientRequest(req))
+	}
+	return nil
 }
 
 func (m Map) MustExist(name string) {

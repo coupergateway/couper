@@ -405,7 +405,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				key = []byte(jwt.Key)
 			}
 
-			var claims ac.Claims
+			var claims map[string]interface{}
 			if jwt.Claims != nil {
 				c, diags := seetie.ExpToMap(confCtx, jwt.Claims)
 				if diags.HasErrors() {

@@ -13,6 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/config/request"
 )
 
 func TestJWT_Validate(t *testing.T) {
@@ -130,7 +131,7 @@ func TestJWT_Validate(t *testing.T) {
 				}
 
 				if !tt.wantErr && tt.fields.claims != nil {
-					acMap := tt.req.Context().Value(ac.ContextAccessControlKey).(map[string]interface{})
+					acMap := tt.req.Context().Value(request.AccessControls).(map[string]interface{})
 					if claims, ok := acMap["test_ac"]; !ok {
 						t.Errorf("Expected a configured access control name within request context")
 					} else {

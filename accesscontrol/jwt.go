@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
+
+	"github.com/avenga/couper/config/request"
 )
 
 const (
@@ -34,13 +36,12 @@ var (
 
 type (
 	Algorithm int
-	Claims    map[string]interface{}
 	Source    int
 )
 
 type JWT struct {
 	algorithm      Algorithm
-	claims         Claims
+	claims         map[string]interface{}
 	claimsRequired []string
 	ignoreExp      bool
 	source         Source
@@ -52,7 +53,7 @@ type JWT struct {
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(algorithm, name string, claims Claims, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
+func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
 	if len(key) == 0 {
 		return nil, ErrorMissingKey
 	}
@@ -152,12 +153,12 @@ func (j *JWT) Validate(req *http.Request) error {
 	}
 
 	ctx := req.Context()
-	acMap, ok := ctx.Value(ContextAccessControlKey).(map[string]interface{})
+	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
 	}
 	acMap[j.name] = tokenClaims
-	ctx = context.WithValue(ctx, ContextAccessControlKey, acMap)
+	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 	*req = *req.WithContext(ctx)
 
 	return nil
@@ -174,7 +175,7 @@ func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
 	}
 }
 
-func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
+func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 	var tokenClaims jwt.MapClaims
 	if tc, ok := token.Claims.(jwt.MapClaims); ok {
 		tokenClaims = tc
@@ -205,7 +206,7 @@ func (j *JWT) validateClaims(token *jwt.Token) (Claims, error) {
 			return nil, errors.New("unexpected value for claim '" + k + "'")
 		}
 	}
-	return Claims(tokenClaims), nil
+	return tokenClaims, nil
 }
 
 func getBearer(val string) (string, error) {
@@ -216,7 +217,7 @@ func getBearer(val string) (string, error) {
 	return "", ErrorBearerRequired
 }
 
-func newParser(algo Algorithm, claims Claims) (*jwt.Parser, error) {
+func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),
