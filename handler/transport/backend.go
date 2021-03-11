@@ -33,12 +33,12 @@ var _ http.RoundTripper = &Backend{}
 
 var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
-// Backend represents the transport <Backend> object.
+// Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
 	name             string
 	openAPIValidator *validation.OpenAPI
-	options          *Options
+	options          *BackendOptions
 	transportConf    *Config
 	upstreamLog      *logging.UpstreamLog
 	// oauth
@@ -47,19 +47,21 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(
-	ctx hcl.Body, tc *Config, log *logrus.Entry,
-	openAPIopts *validation.OpenAPIOptions, options *Options,
-) http.RoundTripper {
+func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	logEntry := log
 	if tc.BackendName != "" {
 		logEntry = log.WithField("backend", tc.BackendName)
 	}
 
+	var openAPI *validation.OpenAPI
+	if opts != nil {
+		openAPI = validation.NewOpenAPI(opts.OpenAPI)
+	}
+
 	backend := &Backend{
 		context:          ctx,
-		openAPIValidator: validation.NewOpenAPI(openAPIopts),
-		options:          options,
+		openAPIValidator: openAPI,
+		options:          opts,
 		transportConf:    tc,
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
@@ -91,8 +93,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// oauth ....
 
-	if b.options != nil && b.options.basicAuth != "" {
-		auth := base64.StdEncoding.EncodeToString([]byte(b.options.basicAuth))
+	if b.options != nil && b.options.BasicAuth != "" {
+		auth := base64.StdEncoding.EncodeToString([]byte(b.options.BasicAuth))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 

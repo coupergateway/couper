@@ -80,7 +80,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 
 			backend := transport.NewBackend(
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-				&transport.Config{NoProxyFromEnv: true}, logger, nil, nil)
+				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				Error:        errors.DefaultJSON,
@@ -183,7 +183,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				backend := transport.NewBackend(
 					helper.NewProxyContext(tt.inlineCtx),
-					&transport.Config{NoProxyFromEnv: true}, logger, nil, nil)
+					&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
 					Error:        errors.DefaultJSON,
@@ -268,7 +268,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 
 			backend := transport.NewBackend(
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-				&transport.Config{NoProxyFromEnv: true}, logger, nil, nil)
+				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				Error:        errors.DefaultJSON,
