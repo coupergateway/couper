@@ -293,6 +293,7 @@ context.
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
+| `url_encode`       | URL-encodes a given string. |
 
 Example usage:
 
