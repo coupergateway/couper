@@ -1,6 +1,7 @@
 package lib_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -371,6 +372,7 @@ func TestJwtSignDynamic(t *testing.T) {
 					ttl = "1h"
 					claims = {
 						x-method = req.method
+						x-status = beresp.status
 						exp = 1234567890
 					}
 				}
@@ -393,6 +395,7 @@ func TestJwtSignDynamic(t *testing.T) {
 					ttl = "60.6s"
 					claims = {
 						x-method = req.method
+						x-status = beresp.status
 					}
 				}
 			}
@@ -415,7 +418,13 @@ func TestJwtSignDynamic(t *testing.T) {
 			helper.Must(err)
 
 			req := httptest.NewRequest(tt.wantMeth, "http://1.2.3.4/", nil)
-			evalCtx := cf.Context.WithClientRequest(req)
+			*req = *req.WithContext(context.Background())
+			beresp := &http.Response{
+				Request:    req,
+				StatusCode: http.StatusOK,
+			}
+
+			evalCtx := cf.Context.WithClientRequest(req).WithBeresps(beresp)
 
 			now := time.Now().Unix()
 			token, err := evalCtx.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
@@ -445,6 +454,13 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			if resultClaims["x-method"] != tt.wantMeth {
 				t.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
+			}
+
+			if resultClaims["x-status"] == nil {
+				t.Errorf("Expected x-status claim, got: %#v", body)
+			}
+			if resultClaims["x-status"] != "200" {
+				t.Errorf("Expected: %d, got: %s", http.StatusOK, resultClaims["x-status"])
 			}
 		})
 	}

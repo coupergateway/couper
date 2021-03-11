@@ -111,10 +111,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
-	if len(ctx.profiles) > 0 { // recreate function with updated context
-		jwtfn := lib.NewJwtSignFunction(c.profiles, ctx.eval)
-		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
-	}
+	updateFunctions(ctx)
 
 	return ctx
 }
@@ -166,6 +163,8 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
 
+	updateFunctions(ctx)
+
 	return ctx
 }
 
@@ -175,12 +174,20 @@ func (c *Context) WithJWTProfiles(profiles []*jwt.JWTSigningProfile) *Context {
 	if c.profiles == nil {
 		c.profiles = make([]*jwt.JWTSigningProfile, 0)
 	}
-	c.eval.Functions[lib.FnJWTSign] = lib.NewJwtSignFunction(c.profiles, c.eval)
+	updateFunctions(c)
 	return c
 }
 
 func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
+}
+
+// updateFunctions recreates the listed functions with latest evaluation context.
+func updateFunctions(ctx *Context) {
+	if len(ctx.profiles) > 0 {
+		jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
+		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
+	}
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
