@@ -1156,6 +1156,52 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 	}
 }
 
+func TestJWTAccessControl(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		header http.Header
+		status int
+	}
+
+	for _, tc := range []testCase{
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden},
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			if val := tc.header.Get("Authorization"); val != "" {
+				req.Header.Set("Authorization", val)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.status {
+				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
+				return
+			}
+
+			if res.StatusCode != http.StatusOK {
+				return
+			}
+			if sub := res.Header.Get("X-Jwt-Sub"); sub != "1234567890" {
+				t.Errorf("%q: unexpected sub: %q", tc.name, sub)
+				return
+			}
+		})
+	}
+}
+
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 	t.Skip("TODO fix hijack and endpoint handling for ws")
 	helper := test.New(t)

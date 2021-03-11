@@ -13,12 +13,13 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/config/request"
 )
 
 func TestJWT_Validate(t *testing.T) {
 	type fields struct {
 		algorithm      ac.Algorithm
-		claims         ac.Claims
+		claims         map[string]interface{}
 		claimsRequired []string
 		source         ac.Source
 		sourceKey      string
@@ -91,7 +92,7 @@ func TestJWT_Validate(t *testing.T) {
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
 			{"src: header /w valid bearer & claims", fields{
 				algorithm: algo,
-				claims: ac.Claims{
+				claims: map[string]interface{}{
 					"aud":     "peter",
 					"test123": "value123",
 				},
@@ -102,7 +103,7 @@ func TestJWT_Validate(t *testing.T) {
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w valid bearer & w/o claims", fields{
 				algorithm: algo,
-				claims: ac.Claims{
+				claims: map[string]interface{}{
 					"aud":  "peter",
 					"cptn": "hook",
 				},
@@ -112,7 +113,7 @@ func TestJWT_Validate(t *testing.T) {
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
 			{"src: header /w valid bearer & w/o required claims", fields{
 				algorithm: algo,
-				claims: ac.Claims{
+				claims: map[string]interface{}{
 					"aud": "peter",
 				},
 				claimsRequired: []string{"exp"},
@@ -130,11 +131,11 @@ func TestJWT_Validate(t *testing.T) {
 				}
 
 				if !tt.wantErr && tt.fields.claims != nil {
-					acMap := tt.req.Context().Value(ac.ContextAccessControlKey).(map[string]interface{})
+					acMap := tt.req.Context().Value(request.AccessControls).(map[string]interface{})
 					if claims, ok := acMap["test_ac"]; !ok {
 						t.Errorf("Expected a configured access control name within request context")
 					} else {
-						claimsMap := claims.(ac.Claims)
+						claimsMap := claims.(map[string]interface{})
 						for k, v := range tt.fields.claims {
 							if claimsMap[k] != v {
 								t.Errorf("Claim does not match: %q want: %v, got: %v", k, v, claimsMap[k])

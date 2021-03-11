@@ -4,6 +4,7 @@ type ContextKey uint8
 
 const (
 	UID ContextKey = iota
+	AccessControls
 	BackendName
 	Endpoint
 	EndpointKind

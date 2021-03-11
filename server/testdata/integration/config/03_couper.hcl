@@ -61,6 +61,16 @@ server "acs" {
       }
     }
   }
+
+  endpoint "/jwt" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWTToken"]
+    response {
+      headers = {
+        x-jwt-sub = req.ctx.JWTToken.sub
+      }
+    }
+  }
 }
 
 definitions {
@@ -75,6 +85,11 @@ definitions {
   }
   basic_auth "ba4" {
     password = "asdf"
+  }
+  jwt "JWTToken" {
+    header = "Authorization"
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
   }
 
   backend "test" {

@@ -19,7 +19,6 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
@@ -248,10 +247,10 @@ func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
 }
 
 func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) ContextMap {
-	jwtClaims, _ := ctx.Value(ac.ContextAccessControlKey).(map[string]interface{})
+	jwtClaims, _ := ctx.Value(request.AccessControls).(map[string]interface{})
 	ctxAcMap := make(map[string]cty.Value)
 	for name, data := range jwtClaims {
-		dataMap, ok := data.(ac.Claims)
+		dataMap, ok := data.(map[string]interface{})
 		if !ok {
 			continue
 		}
