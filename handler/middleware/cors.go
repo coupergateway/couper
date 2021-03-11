@@ -11,10 +11,14 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-var _ NextHandler = &CORS{}
+var (
+	_ NextHandler  = &CORS{}
+	_ http.Handler = &CORS{}
+)
 
 type CORS struct {
-	options *CORSOptions
+	options     *CORSOptions
+	nextHandler http.Handler
 }
 
 type CORSOptions struct {
@@ -27,13 +31,15 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	if cors == nil {
 		return nil, nil
 	}
+
 	dur, err := time.ParseDuration(cors.MaxAge)
 	if err != nil {
 		return nil, err
 	}
-	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 
+	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 	allowedOrigins := seetie.ValueToStringSlice(cors.AllowedOrigins)
+
 	for i, a := range allowedOrigins {
 		allowedOrigins[i] = strings.ToLower(a)
 	}
@@ -64,20 +70,26 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewCORSHandler(opts *CORSOptions) NextHandler {
+func NewCORSHandler(opts *CORSOptions, nextHandler http.Handler) http.Handler {
 	return &CORS{
-		options: opts,
+		options:     opts,
+		nextHandler: nextHandler,
 	}
 }
 
 func (c *CORS) ServeNextHTTP(rw http.ResponseWriter, nextHandler http.Handler, req *http.Request) {
+	c.setCorsRespHeaders(rw.Header(), req)
+
 	if c.isCorsPreflightRequest(req) {
-		c.setCorsRespHeaders(rw.Header(), req)
 		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
-	c.setCorsRespHeaders(rw.Header(), req)
+
 	nextHandler.ServeHTTP(rw, req)
+}
+
+func (c *CORS) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	c.ServeNextHTTP(rw, c.nextHandler, req)
 }
 
 func (c *CORS) isCorsPreflightRequest(req *http.Request) bool {
