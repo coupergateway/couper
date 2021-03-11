@@ -6,6 +6,8 @@ import (
 	"math"
 	"net/url"
 	"strings"
+
+	"github.com/getkin/kin-openapi/jsoninfo"
 )
 
 // Servers is specified by OpenAPI/Swagger standard version 3.0.
@@ -37,9 +39,18 @@ func (servers Servers) MatchURL(parsedURL *url.URL) (*Server, []string, string) 
 
 // Server is specified by OpenAPI/Swagger standard version 3.0.
 type Server struct {
+	ExtensionProps
 	URL         string                     `json:"url" yaml:"url"`
 	Description string                     `json:"description,omitempty" yaml:"description,omitempty"`
 	Variables   map[string]*ServerVariable `json:"variables,omitempty" yaml:"variables,omitempty"`
+}
+
+func (server *Server) MarshalJSON() ([]byte, error) {
+	return jsoninfo.MarshalStrictStruct(server)
+}
+
+func (server *Server) UnmarshalJSON(data []byte) error {
+	return jsoninfo.UnmarshalStrictStruct(data, server)
 }
 
 func (server Server) ParameterNames() ([]string, error) {
@@ -127,9 +138,18 @@ func (server *Server) Validate(c context.Context) (err error) {
 
 // ServerVariable is specified by OpenAPI/Swagger standard version 3.0.
 type ServerVariable struct {
+	ExtensionProps
 	Enum        []interface{} `json:"enum,omitempty" yaml:"enum,omitempty"`
 	Default     interface{}   `json:"default,omitempty" yaml:"default,omitempty"`
 	Description string        `json:"description,omitempty" yaml:"description,omitempty"`
+}
+
+func (serverVariable *ServerVariable) MarshalJSON() ([]byte, error) {
+	return jsoninfo.MarshalStrictStruct(serverVariable)
+}
+
+func (serverVariable *ServerVariable) UnmarshalJSON(data []byte) error {
+	return jsoninfo.UnmarshalStrictStruct(data, serverVariable)
 }
 
 func (serverVariable *ServerVariable) Validate(c context.Context) error {

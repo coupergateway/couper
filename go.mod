@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
-	github.com/getkin/kin-openapi v0.37.0
+	github.com/getkin/kin-openapi v0.49.0
 	github.com/hashicorp/hcl/v2 v2.8.2
 	github.com/rs/xid v1.2.1
 	github.com/satori/go.uuid v1.2.0
