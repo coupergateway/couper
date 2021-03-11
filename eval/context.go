@@ -131,7 +131,6 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	bereqs := make(ContextMap, 0)
 	for _, beresp := range beresps {
 		if beresp == nil {
-			panic("titanic")
 			continue
 		}
 
