@@ -19,6 +19,7 @@ import (
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/utils"
 )
 
 const (
@@ -120,6 +121,11 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	setUserAgent(req)
 	req.Close = false
+
+	if b.options != nil && b.options.PathPrefix != "" {
+		req.URL.Path = utils.JoinPath("/", b.options.PathPrefix, req.URL.Path)
+	}
+
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
 		return nil, err
