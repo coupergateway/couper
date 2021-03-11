@@ -11,38 +11,27 @@ import (
 )
 
 func TestUnixtime(t *testing.T) {
-	tests := []struct {
-		name string
-		hcl  string
-		want int64
-	}{
-		{
-			"unixtime",
-			`
-			server "test" {
-			}
-			`,
-			time.Now().Unix(),
-		},
+	helper := test.New(t)
+
+	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
+	helper.Must(err)
+
+	expectedNow := time.Now().Unix()
+	now, err := cf.Context.HCLContext().Functions["unixtime"].Call([]cty.Value{})
+	helper.Must(err)
+
+	if !cty.Number.Equals(now.Type()) {
+		t.Errorf("Wrong return type; expected %s, got: %s", cty.Number.FriendlyName(), now.Type().FriendlyName())
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			helper := test.New(t)
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
-			helper.Must(err)
-			now, err := cf.Context.HCLContext().Functions["unixtime"].Call([]cty.Value{})
-			helper.Must(err)
-
-			if !cty.Number.Equals(now.Type()) {
-				t.Errorf("Wrong return type; expected %s, got: %s", cty.Number.FriendlyName(), now.Type().FriendlyName())
-			}
-
-			bfnow := now.AsBigFloat()
-			inow, _ := bfnow.Int64()
-			if inow != tt.want {
-				t.Errorf("Wrong return value; expected %d, got: %d", tt.want, inow)
-			}
-		})
+	bfnow := now.AsBigFloat()
+	inow, _ := bfnow.Int64()
+	if !fuzzyEqual(expectedNow, inow, 2) {
+		t.Errorf("Wrong return value; expected %d, got: %d", expectedNow, inow)
 	}
+}
+
+func fuzzyEqual(a, b, fuzz int64) bool {
+	return b <= a+fuzz &&
+		b >= a-fuzz
 }
