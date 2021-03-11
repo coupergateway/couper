@@ -478,7 +478,8 @@ as reference.
 | `basic_auth`                    | <ul><li>Optional.</li><li>Basic auth for the upstream request in format `username:password`.</li></ul> |
 | `hostname`                      | <ul><li>Optional.</li><li>Value of the HTTP host header field for the origin request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.</li></ul> |
 | `origin`                        | <ul><li>&#9888; Mandatory.</li><li>URL to connect to for backend requests.</li><li>&#9888; Must start with the scheme `http://...`.</li></ul> |
-| `path`                          | <ul><li>&#9888; Mandatory, if not defined in parent blocks.</li><li>Changeable part of upstream URL.</li></ul> |
+| `path`                          | <ul><li>Optional.</li><li>Changeable part of upstream URL.</li></ul> |
+| `path_prefix`                   | <ul><li>Optional.</li><li>Prefixes all backend request pathes with the given prefix.</li><li>Relative prefixes are not allowed and are automatically prefixed with a slash `/`.</li></ul>
 | [Modifier](#modifier)           | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
 #### Transport Settings Attributes
