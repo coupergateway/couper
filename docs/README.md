@@ -1,4 +1,4 @@
-# Couper Docs - Version 1.0
+# Couper Docs - Version 0.6
 
 ## Table of contents
 
@@ -306,7 +306,7 @@ my_json = json_encode({
   value-b: ["item1", "item2"]
 })
 
-jwt_sign("MyJwt", {"sub": "abc12345"})
+token = jwt_sign("MyJwt", {"sub": "abc12345"})
 
 definitions {
   jwt_signing_profile "MyJwt" {

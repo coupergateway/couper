@@ -1,5 +1,72 @@
 # Couper Changelog
 
+<a name="0.6"></a>
+## [0.6](https://github.com/avenga/couper/compare/0.5.1...0.6)
+
+> 2021-03-11
+
+### Breaking change
+
+* `backend` will be consumed by proxy and request as transport configuration now. The previous behaviour
+  that `backend` represents a `proxy` functionality is removed. Also the `backend` block must be defined in
+  `definitions`, `proxy` or `request`.
+  * Config migration, add a `proxy` block:
+```hcl
+  endpoint "/old" {
+    backend = "reference"
+    # or
+    backend {
+      #...
+    } 
+  }
+  # change to:
+  endpoint "/new" {
+    proxy {
+      backend = "reference"
+    }
+    # or
+    proxy {
+      backend {
+        #...
+      }
+    }
+  }
+```
+
+### Change
+
+* Client-Request and upstream response body buffering by default
+* Server shutdown delay and deadline defaults to `0s` now and can be configured via [env](DOCKER.md) if required
+* Websocket connection upgrades in combination with `proxy {}` are disabled
+  * we will add a proxy option for ws usage later on
+
+### Bug Fixes
+
+* An absolute path resolving for `*_file` configuration attributes ([#120](https://github.com/avenga/couper/pull/120))
+
+### Features
+
+* Endpoint:
+  * Add `proxy` block to reverse proxy the client request to the configured `backend`.
+  * Add `request` block to send a simple upstream request. [Docs](docs/README.md#request-block)
+  * Add `response` block to create a custom client response. [Docs](docs/README.md#response-block)
+* Add `jwt_sign()` function to be able to create and sign a token with a `jwt_signing_profile`. [Docs](docs/README.md#functions) ([#112](https://github.com/avenga/couper/issues/112))
+* Add `unixtime()` function for the current unix time in seconds ([#124](https://github.com/avenga/couper/issues/124))
+
+### Code Refactoring
+
+* underlying code structure to represent an `endpoint` block with `proxy`, `request` and `response` configuration
+* hcl evaluation context as own 'container' with `context.Context` interface
+* test cleanups
+
+### Dependencies
+
+* build with go 1.16
+* logrus to v1.8.1
+* hcl to v2.9.1
+* kin-openapi to v.0.49.0
+
+
 <a name="0.5.1"></a>
 ## [0.5.1](https://github.com/avenga/couper/compare/0.5...0.5.1)
 
