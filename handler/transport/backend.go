@@ -118,6 +118,14 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
+	if xff, ok := req.Context().Value(request.XFF).(string); ok {
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		} else {
+			req.Header.Del("X-Forwarded-For")
+		}
+	}
+
 	setUserAgent(req)
 	req.Close = false
 	beresp, err := t.RoundTrip(req)
