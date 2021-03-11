@@ -2,6 +2,7 @@ package lib
 
 import (
 	"net/url"
+	"strings"
 
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -20,7 +21,7 @@ func newUrlEncodeFunction() function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
 			first := args[0]
-			result := url.QueryEscape(first.AsString())
+			result := strings.Replace(url.QueryEscape(first.AsString()), "+", "%20", -1)
 			return cty.StringVal(string(result)), nil
 		},
 	})

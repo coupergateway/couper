@@ -24,7 +24,7 @@ func TestUrlEncode(t *testing.T) {
 	}
 
 	encoded := encodedV.AsString()
-	expected := "ABC123abc%0A+%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D%25"
+	expected := "ABC123abc%0A%20%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D%25"
 	if encoded != expected {
 		t.Errorf("Wrong return value; expected %s, got: %s", expected, encoded)
 	}
