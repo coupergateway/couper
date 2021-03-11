@@ -117,6 +117,9 @@ func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
 		}
 	}
 
+	// Prepare dynamic functions
+	couperConfig.Context = couperConfig.Context.WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile)
+
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
 		serverConfig := &config.Server{}

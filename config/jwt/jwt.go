@@ -1,4 +1,4 @@
-package config
+package jwt
 
 import (
 	"github.com/hashicorp/hcl/v2"
