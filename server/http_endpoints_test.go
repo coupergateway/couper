@@ -78,7 +78,7 @@ func TestEndpoints_Res(t *testing.T) {
 	}
 }
 
-func TestEndpoints_UpstreamBasicAuth(t *testing.T) {
+func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -87,6 +87,8 @@ func TestEndpoints_UpstreamBasicAuth(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
 	helper.Must(err)
+
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
 
 	res, err := client.Do(req)
 	helper.Must(err)
@@ -110,5 +112,9 @@ func TestEndpoints_UpstreamBasicAuth(t *testing.T) {
 	// The "dXNlcjpwYXNz" is base64encode("user:pass") from the HCL file.
 	if v := jsonResult.Headers.Get("Authorization"); v != "Basic dXNlcjpwYXNz" {
 		t.Errorf("Expected a valid 'Authorization' header, given '%s'", v)
+	}
+
+	if v := jsonResult.Headers.Get("X-Forwarded-For"); v != "1.2.3.4" {
+		t.Errorf("Unexpected XFF header given '%s'", v)
 	}
 }
