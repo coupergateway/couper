@@ -1,7 +1,5 @@
 # github.com/agext/levenshtein v1.2.1
 github.com/agext/levenshtein
-# github.com/apparentlymart/go-textseg/v12 v12.0.0
-## explicit
 # github.com/apparentlymart/go-textseg/v13 v13.0.0
 github.com/apparentlymart/go-textseg/v13/textseg
 # github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
@@ -51,7 +49,7 @@ github.com/rs/xid
 # github.com/satori/go.uuid v1.2.0
 ## explicit
 github.com/satori/go.uuid
-# github.com/sirupsen/logrus v1.7.0
+# github.com/sirupsen/logrus v1.8.1
 ## explicit
 github.com/sirupsen/logrus
 github.com/sirupsen/logrus/hooks/test

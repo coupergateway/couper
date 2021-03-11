@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.9.1
 	github.com/rs/xid v1.2.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/zclconf/go-cty v1.8.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
