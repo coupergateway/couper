@@ -59,7 +59,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 			hook.Reset()
 
 			tt.tconf.NoProxyFromEnv = true // use origin addr from transport.Config
-			backend := transport.NewBackend(tt.context, tt.tconf, log, nil)
+			backend := transport.NewBackend(tt.context, tt.tconf, nil, log)
 
 			_, err := backend.RoundTrip(tt.req)
 			if err != nil && tt.expectedErr == "" {
@@ -95,7 +95,7 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 			"origin": hcltest.MockExprLiteral(u),
 		}),
 	})
-	backend := transport.NewBackend(hclBody, &transport.Config{}, log, nil)
+	backend := transport.NewBackend(hclBody, &transport.Config{}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 	res, err := backend.RoundTrip(req)
@@ -138,7 +138,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 
 	backend := transport.NewBackend(hclBody, &transport.Config{
 		Origin: origin.URL,
-	}, log, nil)
+	}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 	req.Header.Set("Accept-Encoding", "br, gzip")
@@ -236,7 +236,9 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 				origin = "` + origin.URL + `"
 			`)
 
-			backend := transport.NewBackend(content, &transport.Config{}, log, openapiValidatorOptions)
+			backend := transport.NewBackend(content, &transport.Config{}, &transport.BackendOptions{
+				OpenAPI: openapiValidatorOptions,
+			}, log)
 
 			req := httptest.NewRequest(tt.requestMethod, "http://1.2.3.4"+tt.requestPath, nil)
 
@@ -313,7 +315,7 @@ func TestBackend_director(t *testing.T) {
 
 			backend := transport.NewBackend(hclContext, &transport.Config{
 				Timeout: time.Second,
-			}, nullLog, nil)
+			}, nil, nullLog)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.Clone(tt.ctx)
@@ -399,7 +401,9 @@ func TestProxy_BufferingOptions(t *testing.T) {
 			backend := transport.NewBackend(configload.MergeBodies([]hcl.Body{
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 				helper.NewProxyContext(tc.remain),
-			}), &transport.Config{}, nullLog, newOptions())
+			}), &transport.Config{}, &transport.BackendOptions{
+				OpenAPI: newOptions(),
+			}, nullLog)
 
 			upstreamLog := backend.(*logging.UpstreamLog)
 			backendHandler := reflect.ValueOf(upstreamLog).Elem().FieldByName("next")              // private field: ro

@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -74,5 +75,40 @@ func TestEndpoints_Res(t *testing.T) {
 
 	if string(resBytes) != "string" {
 		t.Errorf("Expected body 'string', given %s", resBytes)
+	}
+}
+
+func TestEndpoints_UpstreamBasicAuth(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "03_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, given %d", res.StatusCode)
+	}
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	type expectation struct {
+		Headers http.Header
+	}
+
+	var jsonResult expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	helper.Must(err)
+
+	// The "dXNlcjpwYXNz" is base64encode("user:pass") from the HCL file.
+	if v := jsonResult.Headers.Get("Authorization"); v != "Basic dXNlcjpwYXNz" {
+		t.Errorf("Expected a valid 'Authorization' header, given '%s'", v)
 	}
 }

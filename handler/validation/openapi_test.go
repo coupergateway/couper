@@ -59,7 +59,9 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, logger, openAPI)
+	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+		OpenAPI: openAPI,
+	}, logger)
 
 	tests := []struct {
 		name, path string
