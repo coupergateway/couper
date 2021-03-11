@@ -324,6 +324,7 @@ func newFunctionsMap() map[string]function.Function {
 		"to_lower":      stdlib.LowerFunc,
 		"to_upper":      stdlib.UpperFunc,
 		"unixtime":      lib.UnixtimeFunc,
+		"url_encode":    lib.UrlEncodeFunc,
 	}
 }
 
