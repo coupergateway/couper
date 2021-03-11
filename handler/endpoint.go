@@ -144,19 +144,31 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 
 	statusCode := http.StatusOK
 	if attr, ok := content.Attributes["status"]; ok {
-		val, _ := attr.Expr.Value(hclCtx)
+		val, err := attr.Expr.Value(hclCtx)
+		if err != nil {
+			e.log.Errorf("endpoint eval error: %v", err)
+		}
+
 		statusCode = int(seetie.ValueToInt(val))
 	}
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)
 
 	if attr, ok := content.Attributes["headers"]; ok {
-		val, _ := attr.Expr.Value(hclCtx)
+		val, err := attr.Expr.Value(hclCtx)
+		if err != nil {
+			e.log.Errorf("endpoint eval error: %v", err)
+		}
+
 		eval.SetHeader(val, clientres.Header)
 	}
 
 	if attr, ok := content.Attributes["body"]; ok {
-		val, _ := attr.Expr.Value(hclCtx)
+		val, err := attr.Expr.Value(hclCtx)
+		if err != nil {
+			e.log.Errorf("endpoint eval error: %v", err)
+		}
+
 		r := strings.NewReader(seetie.ValueToString(val))
 		clientres.Body = eval.NewReadCloser(r, nil)
 	}
