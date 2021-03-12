@@ -16,26 +16,26 @@ func TestMerge(t *testing.T) {
 	helper.Must(err)
 
 	tests := []struct {
-		name     string
-		args     []cty.Value
-		want     cty.Value
+		name string
+		args []cty.Value
+		want cty.Value
 	}{
 		{
 			/*
-			merge(
-				{"k1": 1},
-				{"k2": {"k2.2": 2}},
-				{"k3": 3},
-				null,
-				{"k2": {"k4.2": 4}},
-				{"k3": 5},
-				{"k6": [6]},
-				null,
-				{"k6": ["7", true]},
-				{"k6": [8]},
-				{"k9": [9]},
-				{"k9": 10}
-			)
+				merge(
+					{"k1": 1},
+					{"k2": {"k2.2": 2}},
+					{"k3": 3},
+					null,
+					{"k2": {"k4.2": 4}},
+					{"k3": 5},
+					{"k6": [6]},
+					null,
+					{"k6": ["7", true]},
+					{"k6": [8]},
+					{"k9": [9]},
+					{"k9": 10}
+				)
 			*/
 			"merge objects ignoring null arguments",
 			[]cty.Value{
@@ -52,12 +52,12 @@ func TestMerge(t *testing.T) {
 				}),
 				cty.NullVal(cty.Bool),
 				cty.ObjectVal(map[string]cty.Value{
-					"k2": cty.MapVal(map[string]cty.Value{	// ähnlicher Typ -> mergen
+					"k2": cty.MapVal(map[string]cty.Value{ // ähnlicher Typ -> mergen
 						"k4.2": cty.NumberIntVal(4),
 					}),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
-					"k3": cty.NumberIntVal(5),	// gleicher Typ, primitive -> überschreiben
+					"k3": cty.NumberIntVal(5), // gleicher Typ, primitive -> überschreiben
 				}),
 				cty.ObjectVal(map[string]cty.Value{
 					"k6": cty.TupleVal([]cty.Value{
@@ -66,13 +66,13 @@ func TestMerge(t *testing.T) {
 				}),
 				cty.NullVal(cty.Bool),
 				cty.ObjectVal(map[string]cty.Value{
-					"k6": cty.TupleVal([]cty.Value{	// gleicher Typ -> mergen
+					"k6": cty.TupleVal([]cty.Value{ // gleicher Typ -> mergen
 						cty.StringVal("7"),
 						cty.BoolVal(true),
 					}),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
-					"k6": cty.ListVal([]cty.Value{	// ähnlicher Typ -> mergen
+					"k6": cty.ListVal([]cty.Value{ // ähnlicher Typ -> mergen
 						cty.NumberIntVal(8),
 					}),
 				}),
@@ -82,17 +82,17 @@ func TestMerge(t *testing.T) {
 					}),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
-					"k9": cty.NumberIntVal(10),	// unterschiedlicher Typ -> überschreiben
+					"k9": cty.NumberIntVal(10), // unterschiedlicher Typ -> überschreiben
 				}),
 			},
 			/*
-			{
-			  "k1": 1,
-			  "k2": {"k2.2": 2, "k4.2": 4},
-			  "k3": 5,
-			  "k6": [6, "7", true, 8],
-			  "k9": 10
-			}
+				{
+				  "k1": 1,
+				  "k2": {"k2.2": 2, "k4.2": 4},
+				  "k3": 5,
+				  "k6": [6, "7", true, 8],
+				  "k9": 10
+				}
 			*/
 			cty.ObjectVal(map[string]cty.Value{
 				"k1": cty.NumberIntVal(1),
@@ -112,9 +112,9 @@ func TestMerge(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				{"k1": 1}
-			)
+				merge(
+					{"k1": 1}
+				)
 			*/
 			"merge with only one object",
 			[]cty.Value{
@@ -123,9 +123,9 @@ func TestMerge(t *testing.T) {
 				}),
 			},
 			/*
-			{
-			  "k1": 1
-			}
+				{
+				  "k1": 1
+				}
 			*/
 			cty.ObjectVal(map[string]cty.Value{
 				"k1": cty.NumberIntVal(1),
@@ -133,11 +133,11 @@ func TestMerge(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				{"k2": {"k2.2": 2}},
-				{"k2": null},
-				{"k2": {"k4.2": 4}}
-			)
+				merge(
+					{"k2": {"k2.2": 2}},
+					{"k2": null},
+					{"k2": {"k4.2": 4}}
+				)
 			*/
 			"merge objects with tombstone null",
 			[]cty.Value{
@@ -156,9 +156,9 @@ func TestMerge(t *testing.T) {
 				}),
 			},
 			/*
-			{
-			  "k2": {"k4.2": 4}
-			}
+				{
+				  "k2": {"k4.2": 4}
+				}
 			*/
 			cty.ObjectVal(map[string]cty.Value{
 				"k2": cty.MapVal(map[string]cty.Value{
@@ -168,15 +168,15 @@ func TestMerge(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				[1],
-				null,
-				["2"],
-				[true],
-				null,
-				[{"k": 4}],
-				[[5]]
-			)
+				merge(
+					[1],
+					null,
+					["2"],
+					[true],
+					null,
+					[{"k": 4}],
+					[[5]]
+				)
 			*/
 			"merge arrays ignoring null arguments",
 			[]cty.Value{
@@ -203,13 +203,13 @@ func TestMerge(t *testing.T) {
 				}),
 			},
 			/*
-			[
-			  1,
-			  "2",
-			  true,
-			  {"k": 4},
-			  [5]
-			]
+				[
+				  1,
+				  "2",
+				  true,
+				  {"k": 4},
+				  [5]
+				]
 			*/
 			cty.TupleVal([]cty.Value{
 				cty.NumberIntVal(1),
@@ -225,9 +225,9 @@ func TestMerge(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				[1]
-			)
+				merge(
+					[1]
+				)
 			*/
 			"merge with only one array",
 			[]cty.Value{
@@ -236,9 +236,9 @@ func TestMerge(t *testing.T) {
 				}),
 			},
 			/*
-			[
-			  1
-			]
+				[
+				  1
+				]
 			*/
 			cty.TupleVal([]cty.Value{
 				cty.NumberIntVal(1),
@@ -246,7 +246,7 @@ func TestMerge(t *testing.T) {
 		},
 		{
 			/*
-			merge()
+				merge()
 			*/
 			"merge without parameters",
 			[]cty.Value{},
@@ -274,17 +274,17 @@ func TestMergeErrors(t *testing.T) {
 	helper.Must(err)
 
 	tests := []struct {
-		name     string
-		args     []cty.Value
-		wantErr  string
+		name    string
+		args    []cty.Value
+		wantErr string
 	}{
 		{
 			/*
-			merge(
-				{"k1": 1},
-				true,
-				{"k3": 3},
-			)
+				merge(
+					{"k1": 1},
+					true,
+					{"k3": 3},
+				)
 			*/
 			"mix objects with bool",
 			[]cty.Value{
@@ -300,11 +300,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				{"k1": 1},
-				2,
-				{"k3": 3},
-			)
+				merge(
+					{"k1": 1},
+					2,
+					{"k3": 3},
+				)
 			*/
 			"mix objects with integer",
 			[]cty.Value{
@@ -320,11 +320,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				{"k1": 1},
-				"2",
-				{"k3": 3},
-			)
+				merge(
+					{"k1": 1},
+					"2",
+					{"k3": 3},
+				)
 			*/
 			"mix objects with string",
 			[]cty.Value{
@@ -340,11 +340,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				["1"],
-				true,
-				["3"],
-			)
+				merge(
+					["1"],
+					true,
+					["3"],
+				)
 			*/
 			"mix arrays with bool",
 			[]cty.Value{
@@ -360,11 +360,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				["1"],
-				2,
-				["3"],
-			)
+				merge(
+					["1"],
+					2,
+					["3"],
+				)
 			*/
 			"mix arrays with integer",
 			[]cty.Value{
@@ -380,11 +380,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				["1"],
-				"2",
-				["3"],
-			)
+				merge(
+					["1"],
+					"2",
+					["3"],
+				)
 			*/
 			"mix arrays with string",
 			[]cty.Value{
@@ -400,11 +400,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				{"k1": 1},
-				["2"],
-				{"k3": 3},
-			)
+				merge(
+					{"k1": 1},
+					["2"],
+					{"k3": 3},
+				)
 			*/
 			"mix objects with array",
 			[]cty.Value{
@@ -422,11 +422,11 @@ func TestMergeErrors(t *testing.T) {
 		},
 		{
 			/*
-			merge(
-				["1"],
-				{"k2": 2},
-				["3"],
-			)
+				merge(
+					["1"],
+					{"k2": 2},
+					["3"],
+				)
 			*/
 			"mix arrays with object",
 			[]cty.Value{
