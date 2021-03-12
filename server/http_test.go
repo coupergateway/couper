@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -272,5 +273,48 @@ func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
 				t.Errorf("Expected a %q uid format, got %#v", testcase.formatOption, entry.Data["uid"])
 			}
 		})
+	}
+}
+
+func TestHTTPServer_ServeProxyAbortHandler(t *testing.T) {
+	configFile := `
+server "zipzip" {
+	endpoint "/**" {
+		proxy {
+			backend {
+				origin = "%s"
+			}
+		}
+	}
+}
+`
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		//rw.Write([]byte(configFile))
+		//return
+		rw.Header().Set("Content-Encoding", "gzip")
+		_, err := gzip.NewWriter(rw).Write([]byte(configFile))
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+
+	helper := test.New(t)
+
+	shutdown, loghook := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL)), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080", nil)
+	helper.Must(err)
+
+	//req.Header.Set("Accept-Encoding", "gzip, br")
+
+	res, err := newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got: %s", res.Status)
+		for _, entry := range loghook.AllEntries() {
+			t.Log(entry.String())
+		}
 	}
 }
