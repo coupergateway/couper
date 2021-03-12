@@ -24,7 +24,7 @@ func newMergeFunction() function.Function {
 			// empty args is accepted, so assume an empty object since we have no
 			// key-value types.
 			if len(args) == 0 {
-				return cty.EmptyObject, nil
+				return cty.Bool, nil
 			}
 			return cty.DynamicPseudoType, nil
 		},
@@ -64,7 +64,7 @@ func merge(args []cty.Value) (cty.Value, error) {
 	if t == "l" {
 		return mergeTuples(args), nil
 	}
-	return cty.StringVal(""), errors.New("type mismatch")
+	return cty.NullVal(cty.Bool), nil
 }
 
 func mergeObjects(args []cty.Value) cty.Value {

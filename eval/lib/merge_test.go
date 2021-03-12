@@ -113,6 +113,27 @@ func TestMerge(t *testing.T) {
 		{
 			/*
 			merge(
+				{"k1": 1}
+			)
+			*/
+			"merge with only one object",
+			[]cty.Value{
+				cty.ObjectVal(map[string]cty.Value{
+					"k1": cty.NumberIntVal(1),
+				}),
+			},
+			/*
+			{
+			  "k1": 1
+			}
+			*/
+			cty.ObjectVal(map[string]cty.Value{
+				"k1": cty.NumberIntVal(1),
+			}),
+		},
+		{
+			/*
+			merge(
 				{"k2": {"k2.2": 2}},
 				{"k2": null},
 				{"k2": {"k4.2": 4}}
@@ -201,6 +222,36 @@ func TestMerge(t *testing.T) {
 					cty.NumberIntVal(5),
 				}),
 			}),
+		},
+		{
+			/*
+			merge(
+				[1]
+			)
+			*/
+			"merge with only one array",
+			[]cty.Value{
+				cty.TupleVal([]cty.Value{
+					cty.NumberIntVal(1),
+				}),
+			},
+			/*
+			[
+			  1
+			]
+			*/
+			cty.TupleVal([]cty.Value{
+				cty.NumberIntVal(1),
+			}),
+		},
+		{
+			/*
+			merge()
+			*/
+			"merge without parameters",
+			[]cty.Value{},
+			/* null */
+			cty.NullVal(cty.Bool),
 		},
 	}
 
