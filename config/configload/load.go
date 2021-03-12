@@ -491,15 +491,21 @@ func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
 
 	origin := u.Scheme + "://" + u.Host
 
+	attributes := map[string]*hcl.Attribute{
+		"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
+		"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
+		"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}},
+	}
+
+	if len(u.Query()) > 0 {
+		attributes["set_query_params"] = &hcl.Attribute{
+			Name: "set_query_params",
+			Expr: &hclsyntax.LiteralValueExpr{Val: seetie.ValuesMapToValue(u.Query())},
+		}
+	}
+
 	return hclbody.New(&hcl.BodyContent{
-		Attributes: map[string]*hcl.Attribute{
-			"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
-			"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
-			"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}},
-			"set_query_params": {
-				Name: "set_query_params", Expr: &hclsyntax.LiteralValueExpr{Val: seetie.ValuesMapToValue(u.Query())},
-			},
-		},
+		Attributes: attributes,
 	}), origin, nil
 }
 
