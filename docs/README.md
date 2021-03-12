@@ -290,6 +290,7 @@ context.
 | `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
 | `json_encode`      | Returns a JSON serialization of the given value. |
 | `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [`jwt_signing_profile` block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
+| `merge`            | Deep-merges two or more of either objects or arrays. `null` arguments are ignored. A `null` value for a key in an object removes the previous value for the key. A value for a key with a different type than the current value is set as the new value. |
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
@@ -306,6 +307,17 @@ my_json = json_encode({
   value-a: beresp.json_body.origin
   value-b: ["item1", "item2"]
 })
+
+merge({"k1": 1}, null, {"k2": 2})          // -> {"k1": 1, "k2": 2}        merge object properties
+merge({"k": [1]}, {"k": [2]})              // -> {"k": [1, 2]}             merge array values
+merge({"k": {"k1": 1]}}, {"k": {"k2": 2}}) // -> {"k": {"k1": 1, "k2": 2}} merge object properties
+merge({"k": [1]}, {"k": null}, {"k": [2]}) // -> {"k": [2]}                remove value and set new value
+merge({"k": [1]}, {"k": 2})                // -> {"k": 2}                  set new value
+merge([1], null, [2, "3"], [true, false])  // -> [1, 2, "3", true, false]  merge array values
+
+merge({"k1": 1}, 2)                        // -> error: cannot mix object with primitive value
+merge({"k1": 1}, [2])                      // -> error: cannot mix object with array
+merge([1], 2)                              // -> error: cannot mix array with primitive value
 
 token = jwt_sign("MyJwt", {"sub": "abc12345"})
 
