@@ -288,17 +288,26 @@ server "zipzip" {
 	}
 }
 `
-	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		//rw.Write([]byte(configFile))
-		//return
-		rw.Header().Set("Content-Encoding", "gzip")
-		_, err := gzip.NewWriter(rw).Write([]byte(configFile))
-		if err != nil {
-			t.Error(err)
-		}
-	}))
-
 	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Encoding", "gzip")
+		gzw := gzip.NewWriter(rw)
+		defer func() {
+			if r.Header.Get("x-close") != "" {
+				return // triggers reverseproxy copyBuffer panic due to missing gzip footer
+			}
+			if e := gzw.Close(); e != nil {
+				t.Error(e)
+			}
+		}()
+
+		_, err := gzw.Write([]byte(configFile))
+		helper.Must(err)
+
+		err = gzw.Flush() // explicit flush, just the gzip footer is missing
+		helper.Must(err)
+	}))
 
 	shutdown, loghook := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL)), helper)
 	defer shutdown()
@@ -306,13 +315,33 @@ server "zipzip" {
 	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080", nil)
 	helper.Must(err)
 
-	//req.Header.Set("Accept-Encoding", "gzip, br")
-
 	res, err := newClient().Do(req)
 	helper.Must(err)
 
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("Expected OK, got: %s", res.Status)
+		for _, entry := range loghook.AllEntries() {
+			t.Log(entry.String())
+		}
+	}
+
+	b, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
+
+	if string(b) != configFile {
+		t.Error("Expected same content")
+	}
+
+	loghook.Reset()
+
+	// Trigger panic
+	req.Header.Set("x-close", "dont")
+	res, err = newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected status %d, got: %d", http.StatusInternalServerError, res.StatusCode)
 		for _, entry := range loghook.AllEntries() {
 			t.Log(entry.String())
 		}
