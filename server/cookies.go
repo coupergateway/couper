@@ -19,21 +19,11 @@ func stripSecureCookies(header http.Header) {
 	list := header.Values(setCookieHeader)
 	header.Del(setCookieHeader)
 
-	for _, sc := range list {
-		var parts []string
-		var isSec bool
+	for _, original := range list {
+		parts, isSecure := parseSetCookieHeader(original)
 
-		for _, part := range parseSetCookieHeader(sc) {
-			if strings.ToLower(part) == strings.ToLower(SecureCookieAV) {
-				isSec = true
-				continue
-			}
-
-			parts = append(parts, part)
-		}
-
-		if !isSec {
-			header.Add(setCookieHeader, sc) // Unchanged
+		if !isSecure {
+			header.Add(setCookieHeader, original) // Unchanged
 		} else {
 			header.Add(setCookieHeader, strings.Join(parts, "; "))
 		}
@@ -44,21 +34,11 @@ func enforceSecureCookies(header http.Header) {
 	list := header.Values(setCookieHeader)
 	header.Del(setCookieHeader)
 
-	for _, sc := range list {
-		var parts []string
-		var isSec bool
+	for _, original := range list {
+		parts, isSecure := parseSetCookieHeader(original)
 
-		for _, part := range parseSetCookieHeader(sc) {
-			if strings.ToLower(part) == strings.ToLower(SecureCookieAV) {
-				isSec = true
-				continue
-			}
-
-			parts = append(parts, part)
-		}
-
-		if isSec {
-			header.Add(setCookieHeader, sc) // Unchanged
+		if isSecure {
+			header.Add(setCookieHeader, original) // Unchanged
 		} else {
 			header.Add(
 				setCookieHeader, strings.Join(append(parts, SecureCookieAV), "; "),
@@ -67,12 +47,21 @@ func enforceSecureCookies(header http.Header) {
 	}
 }
 
-func parseSetCookieHeader(setCookie string) []string {
+func parseSetCookieHeader(setCookie string) ([]string, bool) {
 	var parts []string
+	var isSecure bool
 
 	for _, m := range regexSplitSetCookie.FindAllStringSubmatch(setCookie, -1) {
-		parts = append(parts, strings.TrimSpace(m[1]))
+		part := strings.TrimSpace(m[1])
+
+		if strings.ToLower(part) == strings.ToLower(SecureCookieAV) {
+			isSecure = true
+
+			continue
+		}
+
+		parts = append(parts, part)
 	}
 
-	return parts
+	return parts, isSecure
 }
