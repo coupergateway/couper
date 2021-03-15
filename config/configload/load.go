@@ -456,7 +456,7 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline, url string
 			}
 
 			if attr, ok := content.Attributes["origin"]; ok {
-				val, err := attr.Expr.Value(nil)
+				val, err := attr.Expr.Value(envContext)
 				if err != nil {
 					return nil, err
 				}
