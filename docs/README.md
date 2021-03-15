@@ -774,12 +774,13 @@ gateway instance.
 | *context*           | Root of the configuration file. | |
 | *label*             | Not impplemented. | |
 | **Attributes**      | **Description** | **Default** |
-| `health_path`       | health path which is available for all configured server and ports | `/healthz` |
+| `health_path`       | Health path which is available for all configured server and ports | `/healthz` |
 | `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). | `false` |
-| `default_port`      | port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
-| `log_format`        | switch for tab/field based colored view or json log lines | `common` |
-| `xfh`               | option to use the `X-Forwarded-Host` header as the request host | `false` |
-| `request_id_format` | if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
+| `default_port`      | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
+| `log_format`        | Switch for tab/field based colored view or json log lines | `common` |
+| `xfh`               | Option to use the `X-Forwarded-Host` header as the request host | `false` |
+| `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
+| `secure_cookies`    | If set to `"strip"`, the `Secure` flag of all `Set-Cookie` HTTP header fileds are removed. If set to `"enforce"` the `Secure` flag is added to all `Set-Cookie` HTTP header fileds (if not already included). | `""` |
 
 ### Health-Check
 
