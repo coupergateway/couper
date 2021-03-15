@@ -721,18 +721,20 @@ Like all [Access Control](#access-control) types, the `jwt` block is defined in
 the `definitions` block and can be referenced in all configuration blocks by its
 mandatory *label*.
 
-| Block                     | Description |
-|:--------------------------|:------------|
-| *context*                 | [Definitions Block](#definitions-block). |
-| *label*                   | &#9888; Mandatory. |
-| **Attributes**            | **Description** |
-| `cookie = "AccessToken"`  | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul> |
+| Block                      | Description |
+|:---------------------------|:------------|
+| *context*                  | [Definitions Block](#definitions-block). |
+| *label*                    | &#9888; Mandatory. |
+| **Attributes**             | **Description** |
+| `cookie = "AccessToken"`   | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul> |
 | `header = "Authorization"` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` is used, otherwise any other header name can be used.</li></ul> |
 | `header = "API-Token"`     | <ul><li>Optional.</li><li>Alternative header source for our token.</li></ul> |
-| `key`                     | <ul><li>Optional.</li><li>Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
-| `key_file`                | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul> |
-| `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
-| **`claims`**              | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
+| `key`                      | <ul><li>Optional.</li><li>Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
+| `key_file`                 | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul> |
+| `signature_algorithm`      | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
+| **`claims`**               | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
+| **`required_claims`**      | <ul><li>Optional.</li><li>List of claims that must be given for a valid token</li></ul> |
+
 
 #### JWT Signing Profile Block
 
