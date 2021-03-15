@@ -18,6 +18,7 @@ import (
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -305,19 +306,10 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			createFromURL, err := shouldCreateFromURL(proxyConfig.URL, proxyConfig.BackendName, proxyBlock)
+			var err error
+			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig, proxyConfig.URL)
 			if err != nil {
 				return err
-			} else if createFromURL {
-				proxyConfig.Backend, err = newBackendFromURL(proxyConfig.URL)
-				if err != nil {
-					return err
-				}
-			} else {
-				proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
-				if err != nil {
-					return err
-				}
 			}
 
 			endpoint.Proxies = append(endpoint.Proxies, proxyConfig)
@@ -338,19 +330,10 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 
 			reqConfig.Remain = reqBlock.Body
 
-			createFromURL, err := shouldCreateFromURL(reqConfig.URL, reqConfig.BackendName, reqBlock)
+			var err error
+			reqConfig.Backend, err = newBackend(definedBackends, reqConfig, reqConfig.URL)
 			if err != nil {
 				return err
-			} else if createFromURL {
-				reqConfig.Backend, err = newBackendFromURL(reqConfig.URL)
-				if err != nil {
-					return err
-				}
-			} else {
-				reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
-				if err != nil {
-					return err
-				}
 			}
 
 			endpoint.Requests = append(endpoint.Requests, reqConfig)
@@ -397,41 +380,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 	}
 
 	return nil
-}
-
-// shouldCreateFromURL determines some option and reads a possible backend block from body.
-// Since its still valid to override parent backend with a "local" url.
-func shouldCreateFromURL(url, backendName string, block *hcl.Block) (bool, error) {
-	if url == "" {
-		return false, nil
-	}
-
-	if url != "" && backendName != "" {
-		return false, hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "either url or backend is allowed",
-			Subject:  &block.DefRange,
-		}}
-	}
-
-	content, err := contentByType(backend, block.Body)
-	if err != nil {
-		return false, err
-	}
-
-	if content == nil {
-		return true, nil
-	}
-
-	if len(content.Blocks.OfType(backend)) > 0 {
-		return false, hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "either url or backend is allowed",
-			Subject:  &block.DefRange,
-		}}
-	}
-
-	return true, nil
 }
 
 func validLabelName(name string, hr *hcl.Range) error {
@@ -485,10 +433,46 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 	return content, nil
 }
 
-func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body, error) {
+func newBackend(definedBackends Backends, inlineConfig config.Inline, url string) (hcl.Body, error) {
 	bend, err := mergeBackendBodies(definedBackends, inlineConfig)
 	if err != nil {
 		return nil, err
+	}
+
+	if url != "" {
+		body, urlOrigin, err := newBackendFromURL(url)
+		if err != nil {
+			return nil, err
+		}
+
+		if bend == nil {
+			bend = body
+		} else {
+			content, _, diags := bend.PartialContent(
+				&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}},
+			)
+			if diags.HasErrors() {
+				return nil, diags
+			}
+
+			if attr, ok := content.Attributes["origin"]; ok {
+				val, err := attr.Expr.Value(envContext)
+				if err != nil {
+					return nil, err
+				}
+				beOrigin := seetie.ValueToString(val)
+
+				if urlOrigin != beOrigin {
+					r := inlineConfig.HCLBody().MissingItemRange()
+					return nil, hcl.Diagnostics{&hcl.Diagnostic{
+						Subject: &r,
+						Summary: "The origin of 'url' and 'backend.origin' must be equal",
+					}}
+				}
+			}
+
+			bend = MergeBodies([]hcl.Body{bend, body})
+		}
 	}
 
 	if err = validateOrigin(bend); err != nil {
@@ -502,20 +486,30 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body,
 	return bend, nil
 }
 
-func newBackendFromURL(rawURL string) (hcl.Body, error) {
+func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+
+	origin := u.Scheme + "://" + u.Host
+
+	attributes := map[string]*hcl.Attribute{
+		"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
+		"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
+		"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}},
+	}
+
+	if len(u.Query()) > 0 {
+		attributes["set_query_params"] = &hcl.Attribute{
+			Name: "set_query_params",
+			Expr: &hclsyntax.LiteralValueExpr{Val: seetie.ValuesMapToValue(u.Query())},
+		}
 	}
 
 	return hclbody.New(&hcl.BodyContent{
-		Attributes: map[string]*hcl.Attribute{
-			"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
-			"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Scheme + "://" + u.Host)}},
-			"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.RawPath)}},
-			// TODO: set query_params (request) -vs- set_query_params (proxy)
-		},
-	}), nil
+		Attributes: attributes,
+	}), origin, nil
 }
 
 // validateOrigin checks at least for an origin attribute definition.

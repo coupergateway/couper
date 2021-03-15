@@ -875,6 +875,88 @@ func TestHTTPServer_Backends(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_OriginVsURL(t *testing.T) {
+	client := newClient()
+
+	configPath := "testdata/integration/url/"
+
+	type expectation struct {
+		Path  string
+		Query url.Values
+	}
+
+	type testCase struct {
+		file string
+		exp  expectation
+	}
+
+	for _, tc := range []testCase{
+		{"01_couper.hcl", expectation{
+			Path: "/anything",
+			Query: url.Values{
+				"x": []string{"y"},
+			},
+		}},
+		{"02_couper.hcl", expectation{
+			Path: "/anything",
+			Query: url.Values{
+				"a": []string{"A"},
+			},
+		}},
+		{"03_couper.hcl", expectation{
+			Path: "/anything",
+			Query: url.Values{
+				"x": []string{"y"},
+			},
+		}},
+		{"04_couper.hcl", expectation{
+			Path: "/anything",
+			Query: url.Values{
+				"x": []string{"y"},
+			},
+		}},
+		{"05_couper.hcl", expectation{
+			Path: "/anything",
+			Query: url.Values{
+				"x": []string{"y"},
+			},
+		}},
+		{"06_couper.hcl", expectation{
+			Path: "/anything",
+			Query: url.Values{
+				"x": []string{"y"},
+			},
+		}},
+	} {
+		t.Run("File "+tc.file, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			shutdown, _ := newCouper(path.Join(configPath, tc.file), helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+			}
+		})
+	}
+}
+
 func TestHTTPServer_TrailingSlash(t *testing.T) {
 	client := newClient()
 
