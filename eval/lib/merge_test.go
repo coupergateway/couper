@@ -185,7 +185,7 @@ func TestMerge(t *testing.T) {
 					[[5]]
 				)
 			*/
-			"merge arrays ignoring null arguments",
+			"merge tuples ignoring null arguments",
 			[]cty.Value{
 				cty.TupleVal([]cty.Value{
 					cty.NumberIntVal(1),
@@ -236,7 +236,7 @@ func TestMerge(t *testing.T) {
 					[1]
 				)
 			*/
-			"merge with only one array",
+			"merge with only one tuple",
 			[]cty.Value{
 				cty.TupleVal([]cty.Value{
 					cty.NumberIntVal(1),
@@ -353,7 +353,7 @@ func TestMergeErrors(t *testing.T) {
 					["3"],
 				)
 			*/
-			"mix arrays with bool",
+			"mix tuples with bool",
 			[]cty.Value{
 				cty.TupleVal([]cty.Value{
 					cty.StringVal("1"),
@@ -373,7 +373,7 @@ func TestMergeErrors(t *testing.T) {
 					["3"],
 				)
 			*/
-			"mix arrays with integer",
+			"mix tuples with integer",
 			[]cty.Value{
 				cty.TupleVal([]cty.Value{
 					cty.StringVal("1"),
@@ -393,7 +393,7 @@ func TestMergeErrors(t *testing.T) {
 					["3"],
 				)
 			*/
-			"mix arrays with string",
+			"mix tuples with string",
 			[]cty.Value{
 				cty.TupleVal([]cty.Value{
 					cty.StringVal("1"),
@@ -413,7 +413,7 @@ func TestMergeErrors(t *testing.T) {
 					{"k3": 3},
 				)
 			*/
-			"mix objects with array",
+			"mix objects with tuple",
 			[]cty.Value{
 				cty.ObjectVal(map[string]cty.Value{
 					"k1": cty.NumberIntVal(1),
@@ -435,7 +435,7 @@ func TestMergeErrors(t *testing.T) {
 					["3"],
 				)
 			*/
-			"mix arrays with object",
+			"mix tuples with object",
 			[]cty.Value{
 				cty.TupleVal([]cty.Value{
 					cty.StringVal("1"),
