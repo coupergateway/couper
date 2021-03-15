@@ -102,20 +102,19 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
-			corsOptions, err := middleware.NewCORSOptions(
-				getCORS(srvConf.CORS, srvConf.Spa.CORS),
-			)
-			if err != nil {
-				return nil, err
-			}
-
 			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions)
 			if err != nil {
 				return nil, err
 			}
 
 			var h http.Handler
-			if corsOptions != nil {
+
+			corsOptions, err := middleware.NewCORSOptions(
+				getCORS(srvConf.CORS, srvConf.Spa.CORS),
+			)
+			if err != nil {
+				return nil, err
+			} else if corsOptions != nil {
 				h = middleware.NewCORSHandler(corsOptions, spaHandler)
 			} else {
 				h = spaHandler
@@ -134,20 +133,19 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 		}
 
 		if srvConf.Files != nil {
-			corsOptions, err := middleware.NewCORSOptions(
-				getCORS(srvConf.CORS, srvConf.Files.CORS),
-			)
-			if err != nil {
-				return nil, err
-			}
-
 			fileHandler, err := handler.NewFile(serverOptions.FileBasePath, srvConf.Files.DocumentRoot, serverOptions)
 			if err != nil {
 				return nil, err
 			}
 
 			var h http.Handler
-			if corsOptions != nil {
+
+			corsOptions, err := middleware.NewCORSOptions(
+				getCORS(srvConf.CORS, srvConf.Files.CORS),
+			)
+			if err != nil {
+				return nil, err
+			} else if corsOptions != nil {
 				h = middleware.NewCORSHandler(corsOptions, fileHandler)
 			} else {
 				h = fileHandler
