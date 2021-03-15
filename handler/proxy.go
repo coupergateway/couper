@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
@@ -22,19 +25,20 @@ type Proxy struct {
 	reverseProxy *httputil.ReverseProxy
 }
 
-func NewProxy(backend http.RoundTripper, ctx hcl.Body) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,
 	}
 	rp := &httputil.ReverseProxy{
-		Director:  proxy.director,
-		Transport: backend,
+		Director: proxy.director,
 		ErrorHandler: func(rw http.ResponseWriter, _ *http.Request, err error) {
 			if rec, ok := rw.(*transport.Recorder); ok {
 				rec.SetError(err)
 			}
 		},
+		ErrorLog:  newErrorLogWrapper(logger),
+		Transport: backend,
 	}
 	proxy.reverseProxy = rp
 	return proxy
@@ -59,4 +63,15 @@ func (p *Proxy) director(req *http.Request) {
 	for _, key := range headerBlacklist {
 		req.Header.Del(key)
 	}
+}
+
+// ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.
+type ErrorWrapper struct{ l logrus.FieldLogger }
+
+func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
+	e.l.Error(strings.Replace(string(p), "\n", "", 1))
+	return len(p), nil
+}
+func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
+	return log.New(&ErrorWrapper{logger}, "", log.Lshortfile)
 }
