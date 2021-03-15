@@ -14,4 +14,5 @@ const (
 	RoundTripProxy
 	ServerName
 	Wildcard
+	XFF
 )
