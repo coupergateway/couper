@@ -17,5 +17,6 @@ type Settings struct {
 	LogFormat       string `hcl:"log_format,optional"`
 	NoProxyFromEnv  bool   `hcl:"no_proxy_from_env,optional"`
 	RequestIDFormat string `hcl:"request_id_format,optional"`
+	SecureCookies   string `hcl:"secure_cookies,optional"`
 	XForwardedHost  bool   `hcl:"xfh,optional"`
 }
