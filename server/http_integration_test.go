@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/config/configload"
-
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/command"
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -72,10 +72,21 @@ func teardown() {
 	}
 	testBackend.Close()
 }
-
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
 	helper.Must(err)
+
+	return newCouperWithConfig(couperConfig, helper)
+}
+
+func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
+	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl")
+	helper.Must(err)
+
+	return newCouperWithConfig(couperConfig, helper)
+}
+
+func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
 
 	log, hook := logrustest.NewNullLogger()
 
@@ -108,7 +119,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	//log.Out = os.Stdout
 
 	go func() {
-		if err := command.NewRun(ctx).Execute([]string{file}, couperConfig, log.WithContext(ctx)); err != nil {
+		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
 			shutdownFn()
 			panic(err)
 		}

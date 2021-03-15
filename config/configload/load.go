@@ -56,18 +56,19 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, src)
+	return LoadConfig(hclBody, src, filename)
 }
 
 var envContext *hcl.EvalContext
 
-func LoadConfig(body hcl.Body, src []byte) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
 
 	couperConfig := &config.Couper{
 		Bytes:       src,
 		Context:     eval.NewContext(src),
 		Definitions: &config.Definitions{},
+		Filename:    filename,
 		Settings:    &defaults,
 	}
 
@@ -373,6 +374,8 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		}
 
 		for _, r := range endpoint.Requests {
+			names[r.Name] = struct{}{}
+
 			if err := validLabelName(r.Name, &itemRange); err != nil {
 				return err
 			}
