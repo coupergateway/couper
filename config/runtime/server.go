@@ -230,7 +230,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				if berr != nil {
 					return nil, berr
 				}
-				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody())
+				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), log)
 				p := &producer.Proxy{
 					Name:      proxyConf.Name,
 					RoundTrip: proxyHandler,
