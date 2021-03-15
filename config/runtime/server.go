@@ -330,7 +330,7 @@ func newBackend(
 			return nil, authErr
 		}
 
-		return transport.NewOAuth2(evalCtx, beConf.OAuth2, memStore, authBackend, backend)
+		return transport.NewOAuth2(beConf.OAuth2, memStore, authBackend, backend)
 	}
 
 	return backend, nil

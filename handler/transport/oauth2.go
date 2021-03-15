@@ -16,7 +16,6 @@ import (
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
-	"github.com/hashicorp/hcl/v2"
 )
 
 var _ http.RoundTripper = &OAuth2{}
@@ -25,16 +24,13 @@ var _ http.RoundTripper = &OAuth2{}
 type OAuth2 struct {
 	backend  http.RoundTripper
 	config   *config.OAuth2
-	evalCtx  *hcl.EvalContext
 	memStore *cache.MemoryStore
 	next     http.RoundTripper
 }
 
 // NewOAuth2 creates a new <http.RoundTripper> object.
-func NewOAuth2(
-	evalCtx *hcl.EvalContext, config *config.OAuth2,
-	memStore *cache.MemoryStore, backend, next http.RoundTripper,
-) (http.RoundTripper, error) {
+func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
+	backend, next http.RoundTripper) (http.RoundTripper, error) {
 	if config.GrantType != "client_credentials" {
 		return nil, fmt.Errorf("The grant_type has to be set to 'client_credentials'")
 	} else if config.TokenEndpoint == "" {
@@ -49,7 +45,6 @@ func NewOAuth2(
 	return &OAuth2{
 		backend:  backend,
 		config:   config,
-		evalCtx:  evalCtx,
 		memStore: memStore,
 		next:     next,
 	}, nil
@@ -112,7 +107,7 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	res, err := oa.next.RoundTrip(req)
 
-	if res.StatusCode == http.StatusUnauthorized {
+	if res != nil && res.StatusCode == http.StatusUnauthorized {
 		oa.memStore.Del(key)
 	}
 
@@ -127,14 +122,14 @@ func (oa *OAuth2) getCredentials(req *http.Request) (string, string, string, err
 		return "", "", "", diags
 	}
 
-	evalCtx := eval.NewHTTPContext(oa.evalCtx, eval.BufferNone, req)
+	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
 
 	id, idOK := content.Attributes["client_id"]
-	idv, _ := id.Expr.Value(evalCtx)
+	idv, _ := id.Expr.Value(evalContext.HCLContext())
 	clientID := seetie.ValueToString(idv)
 
 	secret, secretOK := content.Attributes["client_secret"]
-	secretv, _ := secret.Expr.Value(evalCtx)
+	secretv, _ := secret.Expr.Value(evalContext.HCLContext())
 	clientSecret := seetie.ValueToString(secretv)
 
 	if !idOK || !secretOK {
