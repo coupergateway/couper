@@ -1392,3 +1392,43 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 		})
 	}
 }
+
+func TestFunctions(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		header map[string]string
+		status int
+	}
+
+	for _, tc := range []testCase{
+		{"merge", "/v1/merge", map[string]string{"X-Merged-1": "{\"foo\":[1,2]}", "X-Merged-2": "{\"bar\":[3,4]}", "X-Merged-3": "[\"a\",\"b\"]"}, http.StatusOK},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.status {
+				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
+				return
+			}
+
+			for k, v := range tc.header {
+				if v1 := res.Header.Get(k); v1 != v {
+					t.Errorf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
+					return
+				}
+			}
+		})
+	}
+}
