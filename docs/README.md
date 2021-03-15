@@ -344,6 +344,7 @@ The `server` block is the main configuration block of Couper's configuration fil
 | *context*                            | Root of the configuration file. |
 | *label*                              | &#9888; Mandatory. |
 | **Nested blocks**                    | **Description** |
+| [CORS Block](#cors-block)            | Configures CORS behavior for [Files Block](#files-block), [SPA Block](#spa-block) and [API Block(s)](#api-block) contexts. |
 | [Files Block](#files-block)          | Configures the file serving. |
 | [SPA Block](#spa-block)              | Configures web serving for SPA assets. |
 | [API Block(s)](#api-block)           | Configures routing and communication with backend(s). |
@@ -358,29 +359,33 @@ The `server` block is the main configuration block of Couper's configuration fil
 
 The `files` block configures the file serving.
 
-| Block            | Description |
-|:-----------------|:------------|
-| *context*        | [Server Block](#server-block). |
-| *label*          | Not implemented. |
-| **Attributes**   | **Description** |
-| `base_path`      | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/files"`</li></ul> |
-| `document_root`  | <ul><li>&#9888; Mandatory.</li><li>Location of the document root.</li><li>*Example:* `document_root = "./htdocs"`</li></ul> |
-| `error_file`     | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
-| `access_control` | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
+| Block                     | Description |
+|:--------------------------|:------------|
+| *context*                 | [Server Block](#server-block). |
+| *label*                   | Not implemented. |
+| **Nested blocks**         | **Description** |
+| [CORS Block](#cors-block) | Configures CORS behavior for the current `Files Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
+| **Attributes**            | **Description** |
+| `base_path`               | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/files"`</li></ul> |
+| `document_root`           | <ul><li>&#9888; Mandatory.</li><li>Location of the document root.</li><li>*Example:* `document_root = "./htdocs"`</li></ul> |
+| `error_file`              | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
+| `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul>  |
 
 ### SPA Block
 
 The `spa` block configures the web serving for SPA assets.
 
-| Block            | Description |
-|:-----------------|:------------|
-| *context*        | [Server Block](#server-block). |
-| *label*          | Not implemented. |
-| **Attributes**   | **Description** |
-| `base_path`      | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/assets"`</li></ul> |
-| `bootstrap_file` | <ul><li>&#9888; Mandatory.</li><li>Location of the bootstrap file.</li><li>*Example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
-| `paths`          | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
-| `access_control` | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
+| Block                     | Description |
+|:--------------------------|:------------|
+| *context*                 | [Server Block](#server-block). |
+| *label*                   | Not implemented. |
+| **Nested blocks**         | **Description** |
+| [CORS Block](#cors-block) | Configures CORS behavior for the current `SPA Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
+| **Attributes**            | **Description** |
+| `base_path`               | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/assets"`</li></ul> |
+| `bootstrap_file`          | <ul><li>&#9888; Mandatory.</li><li>Location of the bootstrap file.</li><li>*Example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
+| `paths`                   | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
+| `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 
 ### API Block
 
@@ -396,7 +401,7 @@ as json error with an error body payload. This can be customized via `error_file
 | *label*                              | Optional. |
 | **Nested blocks**                    | **Description** |
 | [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `API Block` context. |
-| [CORS Block](#cors-block)            | Configures CORS behavior for current `API Block` context. |
+| [CORS Block](#cors-block)            | Configures CORS behavior for the current `API Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
 | **Attributes**                       | **Description** |
 | `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/v1"`</li></ul> |
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_body.json"`</li></ul> |
@@ -580,11 +585,12 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 
 | Block               | Description |
 |:--------------------|:------------|
-| *context*           | [API Block](#api-block). |
+| *context*           | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block). |
 | *label*             | Not implemented. |
 | **Attributes**      | **Description** |
 | `allowed_origins`   | <ul><li>&#9888; Mandatory.</li><li>A list of allowed origin(s).</li><li>Can be either of:<br/><ul><li>a string with a single specific origin (e.g. `"https://www.example.com"`).</li><li>`"*"` (all origins are allowed).</li><li>an array of specific origins (e.g. `["https://www.example.com", "https://www.another.host.org"]`).</li></ul></li></ul> |
 | `allow_credentials` | <ul><li>Optional.</li><li>Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).</li><li>Default `false`.</li></ul> |
+| `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul> |
 | `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
 
 ### Modifier

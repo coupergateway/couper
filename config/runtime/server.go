@@ -26,6 +26,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
@@ -106,9 +107,22 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				return nil, err
 			}
 
+			var h http.Handler
+
+			corsOptions, err := middleware.NewCORSOptions(
+				getCORS(srvConf.CORS, srvConf.Spa.CORS),
+			)
+			if err != nil {
+				return nil, err
+			} else if corsOptions != nil {
+				h = middleware.NewCORSHandler(corsOptions, spaHandler)
+			} else {
+				h = spaHandler
+			}
+
 			spaHandler = configureProtectedHandler(accessControls, serverOptions.ServerErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), spaHandler)
+				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), h)
 
 			for _, spaPath := range srvConf.Spa.Paths {
 				err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
@@ -124,9 +138,22 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				return nil, err
 			}
 
+			var h http.Handler
+
+			corsOptions, err := middleware.NewCORSOptions(
+				getCORS(srvConf.CORS, srvConf.Files.CORS),
+			)
+			if err != nil {
+				return nil, err
+			} else if corsOptions != nil {
+				h = middleware.NewCORSHandler(corsOptions, fileHandler)
+			} else {
+				h = fileHandler
+			}
+
 			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FileErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), fileHandler)
+				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), h)
 
 			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, files)
 			if err != nil {
@@ -138,16 +165,31 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 
 		for endpointConf, parentAPI := range newEndpointMap(srvConf) {
 			var basePath string
-			//var cors *config.CORS
+			var corsOptions *middleware.CORSOptions
 			var errTpl *errors.Template
 
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePath[parentAPI]
-				//cors = parentAPI.CORS
 				errTpl = serverOptions.APIErrTpl[parentAPI]
+
+				cors, err := middleware.NewCORSOptions(
+					getCORS(srvConf.CORS, parentAPI.CORS),
+				)
+				if err != nil {
+					return nil, err
+				}
+				corsOptions = cors
 			} else {
 				basePath = serverOptions.SrvBasePath
 				errTpl = serverOptions.ServerErrTpl
+
+				cors, err := middleware.NewCORSOptions(
+					getCORS(nil, srvConf.CORS),
+				)
+				if err != nil {
+					return nil, err
+				}
+				corsOptions = cors
 			}
 
 			pattern := utils.JoinPath(basePath, endpointConf.Pattern)
@@ -258,7 +300,15 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				ServerOpts:     serverOptions,
 			}
 			epHandler := handler.NewEndpoint(epOpts, log, proxies, requests, response)
-			setACHandlerFn(epHandler)
+
+			var h http.Handler
+			if corsOptions != nil {
+				h = middleware.NewCORSHandler(corsOptions, epHandler)
+			} else {
+				h = epHandler
+			}
+
+			setACHandlerFn(h)
 
 			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
@@ -336,6 +386,18 @@ func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, erro
 		}
 	}
 	return "", nil
+}
+
+func getCORS(parent, curr *config.CORS) *config.CORS {
+	if curr == nil {
+		return parent
+	}
+
+	if curr.Disable {
+		return nil
+	}
+
+	return curr
 }
 
 func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {
