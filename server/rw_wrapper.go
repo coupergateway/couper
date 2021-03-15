@@ -26,14 +26,16 @@ type RWWrapper struct {
 	headerBuffer  *bytes.Buffer
 	httpStatus    []byte
 	httpLineDelim []byte
+	secureCookies string
 	statusWritten bool
 }
 
 // NewRWWrapper creates a new RWWrapper object.
-func NewRWWrapper(rw http.ResponseWriter, useGZ bool) *RWWrapper {
+func NewRWWrapper(rw http.ResponseWriter, useGZ bool, secureCookies string) *RWWrapper {
 	w := &RWWrapper{
-		rw:           rw,
-		headerBuffer: &bytes.Buffer{},
+		rw:            rw,
+		headerBuffer:  &bytes.Buffer{},
+		secureCookies: secureCookies,
 	}
 
 	if useGZ {
@@ -125,6 +127,12 @@ func (w *RWWrapper) configureHeader() {
 	if w.gz != nil {
 		w.rw.Header().Del(transport.ContentLengthHeader)
 		w.rw.Header().Set(transport.ContentEncodingHeader, transport.GzipName)
+	}
+
+	if w.secureCookies == SecureCookiesStrip {
+		stripSecureCookies(w.rw.Header())
+	} else if w.secureCookies == SecureCookiesEnforce {
+		enforceSecureCookies(w.rw.Header())
 	}
 }
 
