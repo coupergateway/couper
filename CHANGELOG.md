@@ -1,5 +1,24 @@
 # Couper Changelog
 
+<a name="0.6.1"></a>
+## [0.6.1](https://github.com/avenga/couper/compare/0.6...0.6.1)
+
+> 2021-03-15
+
+### Bug Fixes
+
+* Fix missing panic recovering for backend roundtrips ([#142](https://github.com/avenga/couper/issues/142))
+  * Fix backend `timeout` behaviour
+  * Add a more specific error message for proxy body copy errors
+
+### Change
+
+* Couper just passes the `X-Forwarded-For` header if any instead of adding the client remote addr to the list ([#139](https://github.com/avenga/couper/pull/139))
+
+### Features
+
+* `url_encode` function for RFC 3986 string encoding ([#136](https://github.com/avenga/couper/pull/136))
+
 <a name="0.6"></a>
 ## [0.6](https://github.com/avenga/couper/compare/0.5.1...0.6)
 
@@ -13,24 +32,24 @@
   * Config migration, add a `proxy` block:
 ```hcl
   endpoint "/old" {
+  backend = "reference"
+  # or
+  backend {
+    #...
+  }
+}
+# change to:
+endpoint "/new" {
+  proxy {
     backend = "reference"
-    # or
+  }
+  # or
+  proxy {
     backend {
       #...
-    } 
-  }
-  # change to:
-  endpoint "/new" {
-    proxy {
-      backend = "reference"
-    }
-    # or
-    proxy {
-      backend {
-        #...
-      }
     }
   }
+}
 ```
 
 ### Change
@@ -75,8 +94,8 @@
 ### Features
 
 * backend:
-    * a user-friendly `basic_auth` option 
-    * backend `proxy` url, `disable_connection_reuse` and `http2` settings ([#108](https://github.com/avenga/couper/pull/108))
+  * a user-friendly `basic_auth` option
+  * backend `proxy` url, `disable_connection_reuse` and `http2` settings ([#108](https://github.com/avenga/couper/pull/108))
 * version command
 
 ### Change
