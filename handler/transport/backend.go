@@ -4,10 +4,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -30,6 +32,8 @@ const (
 )
 
 var _ http.RoundTripper = &Backend{}
+
+var BackendDeadlineExceeded = fmt.Errorf("backend deadline exceeded")
 
 var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
@@ -73,11 +77,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	tc := b.evalTransport(req)
 	t := Get(tc)
 
-	if b.transportConf.Timeout > 0 {
-		deadline, cancel := context.WithTimeout(req.Context(), b.transportConf.Timeout)
-		defer cancel()
-		*req = *req.WithContext(deadline)
-	}
+	deadlineErr := b.withTimeout(req)
 
 	if req.URL.Scheme == "" {
 		req.URL.Scheme = tc.Scheme
@@ -122,7 +122,14 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Close = false
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
-		return nil, err
+		select {
+		case derr := <-deadlineErr:
+			if derr != nil {
+				return nil, derr
+			}
+		default:
+			return nil, err
+		}
 	}
 
 	if b.openAPIValidator != nil {
@@ -154,6 +161,28 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return beresp, err
+}
+
+func (b *Backend) withTimeout(req *http.Request) <-chan error {
+	errCh := make(chan error, 1)
+	if b.transportConf.Timeout <= 0 {
+		return errCh
+	}
+
+	ctx, cancel := context.WithCancel(req.Context())
+	*req = *req.WithContext(ctx)
+	go func(cancelFn func(), c context.Context, ec chan error) {
+		defer cancelFn()
+		deadline := time.After(b.transportConf.Timeout)
+		select {
+		case <-deadline:
+			ec <- BackendDeadlineExceeded
+			return
+		case <-c.Done():
+			return
+		}
+	}(cancel, ctx, errCh)
+	return errCh
 }
 
 func (b *Backend) evalTransport(req *http.Request) *Config {
