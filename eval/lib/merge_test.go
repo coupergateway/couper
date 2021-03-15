@@ -32,6 +32,7 @@ func TestMerge(t *testing.T) {
 					{"k6": [6]},
 					null,
 					{"k6": ["7", true]},
+					{"k6": [null]},
 					{"k6": [8]},
 					{"k9": [9]},
 					{"k9": 10}
@@ -73,6 +74,11 @@ func TestMerge(t *testing.T) {
 				}),
 				cty.ObjectVal(map[string]cty.Value{
 					"k6": cty.ListVal([]cty.Value{ // ähnlicher Typ -> mergen
+						cty.NullVal(cty.Bool),
+					}),
+				}),
+				cty.ObjectVal(map[string]cty.Value{
+					"k6": cty.ListVal([]cty.Value{ // ähnlicher Typ -> mergen
 						cty.NumberIntVal(8),
 					}),
 				}),
@@ -90,7 +96,7 @@ func TestMerge(t *testing.T) {
 				  "k1": 1,
 				  "k2": {"k2.2": 2, "k4.2": 4},
 				  "k3": 5,
-				  "k6": [6, "7", true, 8],
+				  "k6": [6, "7", true, null, 8],
 				  "k9": 10
 				}
 			*/
@@ -105,6 +111,7 @@ func TestMerge(t *testing.T) {
 					cty.NumberIntVal(6),
 					cty.StringVal("7"),
 					cty.BoolVal(true),
+					cty.NullVal(cty.Bool),
 					cty.NumberIntVal(8),
 				}),
 				"k9": cty.NumberIntVal(10),
