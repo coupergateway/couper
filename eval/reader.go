@@ -1,6 +1,8 @@
 package eval
 
-import "io"
+import (
+	"io"
+)
 
 type ReadCloser struct {
 	io.Reader
