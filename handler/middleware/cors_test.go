@@ -235,7 +235,7 @@ func TestCORS_IsCredentialed(t *testing.T) {
 				req.Header.Set(name, value)
 			}
 
-			credentialed := NewCORSHandler(nil).(*CORS).isCredentialed(req.Header)
+			credentialed := NewCORSHandler(nil, nil).(*CORS).isCredentialed(req.Header)
 			if credentialed != tt.exp {
 				t.Errorf("expected: %t, got: %t", tt.exp, credentialed)
 			}
@@ -375,7 +375,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			corsHandler := NewCORSHandler(tt.corsOptions)
+			corsHandler := NewCORSHandler(tt.corsOptions, nil)
 
 			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
@@ -383,7 +383,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			corsHandler.ServeNextHTTP(rec, upstreamHandler, req)
+			corsHandler.(NextHandler).ServeNextHTTP(rec, upstreamHandler, req)
 
 			if !rec.Flushed {
 				rec.Flush()
@@ -517,7 +517,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			corsHandler := NewCORSHandler(tt.corsOptions)
+			corsHandler := NewCORSHandler(tt.corsOptions, nil)
 
 			req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
@@ -525,7 +525,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			corsHandler.ServeNextHTTP(rec, upstreamHandler, req)
+
+			corsHandler.(NextHandler).ServeNextHTTP(rec, upstreamHandler, req)
 
 			if !rec.Flushed {
 				rec.Flush()
