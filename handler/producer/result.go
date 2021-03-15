@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"runtime/debug"
 	"sync"
+
+	"github.com/avenga/couper/errors"
 )
 
 // Result represents the producer <Result> object.
@@ -39,10 +41,16 @@ func (rm ResultMap) List() []*http.Response {
 func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, wg *sync.WaitGroup) {
 	defer func() {
 		if rp := recover(); rp != nil {
-			results <- &Result{Err: ResultPanic{
-				err:   fmt.Errorf("%v", rp),
-				stack: debug.Stack(),
-			}}
+			var err error
+			if rp == http.ErrAbortHandler {
+				err = errors.EndpointProxyBodyCopyFailed
+			} else {
+				err = &ResultPanic{
+					err:   fmt.Errorf("%v", rp),
+					stack: debug.Stack(),
+				}
+			}
+			results <- &Result{Err: err}
 		}
 		wg.Done()
 	}()

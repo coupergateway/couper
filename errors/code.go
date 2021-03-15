@@ -43,6 +43,7 @@ const (
 	EndpointError Code = 7000 + iota
 	EndpointConnect
 	EndpointProxyConnect
+	EndpointProxyBodyCopyFailed
 	EndpointReqBodySizeExceeded
 )
 
@@ -75,6 +76,7 @@ var codes = map[Code]string{
 	// 7xxx
 	EndpointConnect:             "Endpoint upstream connection error",
 	EndpointProxyConnect:        "upstream connection error via configured proxy",
+	EndpointProxyBodyCopyFailed: "proxy: error during body copy",
 	EndpointReqBodySizeExceeded: "Request body size exceeded",
 }
 
