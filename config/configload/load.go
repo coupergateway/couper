@@ -374,6 +374,8 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		}
 
 		for _, r := range endpoint.Requests {
+			names[r.Name] = struct{}{}
+
 			if err := validLabelName(r.Name, &itemRange); err != nil {
 				return err
 			}
