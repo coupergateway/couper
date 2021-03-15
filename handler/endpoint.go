@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -99,7 +100,18 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			clientres = result.Beresp
 			err = result.Err
 		} else {
+			// fallback
 			err = errors.Configuration
+
+			// TODO determine error priority, may solved with error_handler
+			// on roundtrip panic the context label is missing atm
+			// pick the first err from beresps
+			for _, br := range beresps {
+				if br != nil && br.Err != nil {
+					err = br.Err
+					break
+				}
+			}
 		}
 	}
 
@@ -111,6 +123,9 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
 				serveErr = errors.EndpointProxyConnect
 			}
+		case producer.ResultPanic:
+			serveErr = errors.Server
+			e.log.WithField("uid", req.Context().Value(request.UID)).Error(err)
 		}
 		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
 		return
@@ -187,25 +202,27 @@ func (e *Endpoint) newRedirect() *http.Response {
 }
 
 func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
+	i := 0
 	for r := range requestResults { // collect resps
+		i++
 		if r == nil {
-			panic("implement nil result handling")
+			continue
 		}
 
-		if r.Beresp != nil {
+		var name string
+
+		if r.Beresp != nil && r.Beresp.Request != nil {
 			ctx := r.Beresp.Request.Context()
-			var name string
+
 			if n, ok := ctx.Value(request.RoundTripName).(string); ok && n != "" {
 				name = n
 			}
-			// fallback
-			if name == "" {
-				if id, ok := ctx.Value(request.UID).(string); ok {
-					name = id
-				}
-			}
-			beresps[name] = r
 		}
+		// fallback
+		if name == "" { // error case or panic
+			name = strconv.Itoa(i)
+		}
+		beresps[name] = r
 	}
 }
 
