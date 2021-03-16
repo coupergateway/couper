@@ -275,8 +275,7 @@ func NewServerConfiguration(
 
 func newBackend(
 	evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	ignoreProxyEnv bool, memStore *cache.MemoryStore,
-) (http.RoundTripper, error) {
+	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
 		return nil, diags
@@ -324,8 +323,25 @@ func newBackend(
 	}
 	backend := transport.NewBackend(backendCtx, tc, options, log)
 
-	if beConf.OAuth2 != nil {
-		authBackend, authErr := newBackend(evalCtx, beConf.OAuth2.Remain, log, ignoreProxyEnv, memStore)
+	// TODO: partialContent with merged backendCtx fails !!!
+	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
+	if oauthContent == nil {
+		return backend, nil
+	}
+
+	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
+		beConf.OAuth2 = &config.OAuth2{}
+
+		if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
+			return nil, diags
+		}
+
+		innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
+		authBackend, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, memStore)
 		if authErr != nil {
 			return nil, authErr
 		}

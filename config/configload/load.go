@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -23,6 +24,7 @@ import (
 
 const (
 	backend     = "backend"
+	oauth2      = "oauth2"
 	definitions = "definitions"
 	nameLabel   = "name"
 	proxy       = "proxy"
@@ -34,6 +36,11 @@ const (
 )
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+var envContext *hcl.EvalContext
+
+func init() {
+	envContext = eval.NewContext(nil).HCLContext()
+}
 
 func LoadFile(filePath string) (*config.Couper, error) {
 	_, err := startup.SetWorkingDirectory(filePath)
@@ -59,8 +66,6 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 
 	return LoadConfig(hclBody, src, filename)
 }
-
-var envContext *hcl.EvalContext
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
@@ -466,13 +471,27 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline, url string
 					r := inlineConfig.HCLBody().MissingItemRange()
 					return nil, hcl.Diagnostics{&hcl.Diagnostic{
 						Subject: &r,
-						Summary: "The origin of 'url' and 'backend.origin' must be equal",
+						Summary: "The host of 'url' and 'backend.origin' must be equal",
 					}}
 				}
 			}
 
 			bend = MergeBodies([]hcl.Body{bend, body})
 		}
+	}
+
+	oauth2Backend, err := newOAuthBackend(definedBackends, bend)
+	if err != nil {
+		return nil, err
+	}
+
+	if oauth2Backend != nil {
+		wrapped := hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{
+			{Type: oauth2, Body: hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{
+				{Type: backend, Body: oauth2Backend},
+			}})},
+		}})
+		bend = MergeBodies([]hcl.Body{bend, wrapped})
 	}
 
 	if err = validateOrigin(bend); err != nil {
@@ -486,6 +505,50 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline, url string
 	return bend, nil
 }
 
+func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error) {
+	innerContent, err := contentByType(oauth2, parent)
+	if err != nil {
+		return nil, err
+	}
+
+	oauthBlocks := innerContent.Blocks.OfType(oauth2)
+	if len(oauthBlocks) == 0 {
+		return nil, nil
+	}
+
+	attrContent, _, diags := oauthBlocks[0].Body.PartialContent(config.OAuthEndpointSchema)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	var endpointURL string
+	if attr, ok := attrContent.Attributes[config.OAuthEndpointSchema.Attributes[0].Name]; ok {
+		value, diags := attr.Expr.Value(envContext)
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		endpointURL = value.AsString()
+	}
+
+	backendContent, err := contentByType(backend, oauthBlocks[0].Body)
+	if err != nil {
+		return nil, err
+	}
+
+	oauthBackend, err := mergeBackendBodies(definedBackends, &config.Backend{Remain: hclbody.New(backendContent)})
+	b, err := newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
+		Blocks: []*hcl.Block{
+			{Type: backend, Body: oauthBackend},
+		},
+	})}, endpointURL)
+	if err != nil {
+		diags := err.(hcl.Diagnostics)
+		if strings.HasPrefix(diags[0].Summary, "The host of 'url'") {
+			diags[0].Summary = strings.Replace(diags[0].Summary, "The host of 'url'", "The host of 'token_endpoint'", 1)
+		}
+	}
+	return b, err
+}
+
 func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -497,7 +560,9 @@ func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
 	attributes := map[string]*hcl.Attribute{
 		"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
 		"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
-		"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}},
+	}
+	if u.Path != "" {
+		attributes["path"] = &hcl.Attribute{Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}}
 	}
 
 	if len(u.Query()) > 0 {

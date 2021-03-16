@@ -7,12 +7,26 @@ import (
 
 var _ Inline = &OAuth2{}
 
+var OAuthEndpointSchema = &hcl.BodySchema{
+	Attributes: []hcl.AttributeSchema{
+		{Name: "token_endpoint"},
+	},
+}
+
+var OAuthBlockSchema = &hcl.BodySchema{
+	Blocks: []hcl.BlockHeaderSchema{
+		{
+			Type: "oauth2",
+		},
+	},
+}
+
 // OAuth2 represents the <OAuth2> object.
 type OAuth2 struct {
 	BackendName   string   `hcl:"backend,optional"`
 	GrantType     string   `hcl:"grant_type"`
 	Remain        hcl.Body `hcl:",remain"`
-	TokenEndpoint string   `hcl:"token_endpoint"`
+	TokenEndpoint string   `hcl:"token_endpoint,optional"`
 }
 
 // HCLBody implements the <Inline> interface.
