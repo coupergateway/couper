@@ -29,6 +29,9 @@ func stripSecureCookies(header http.Header) {
 	}
 }
 
+// parseSetCookieHeader splits the given Set-Cookie HTTP header field value
+// and always removes the <Secure> flag. If the <Secure> flag was present, the
+// second return value is set to <true>, otherwise to <false>.
 func parseSetCookieHeader(setCookie string) ([]string, bool) {
 	var parts []string
 	var isSecure bool
