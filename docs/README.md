@@ -39,6 +39,7 @@
     * [Basic Auth Block](#basic-auth-block)
     * [JWT Block](#jwt-block)
     * [JWT Signing Profile Block](#jwt-signing-profile-block)
+    * [SAML Block](#saml-block)
   * [Settings Block](#settings-block)
   * [Health-Check](#health-check)
 * [Examples](#examples)
@@ -165,7 +166,9 @@ settings { ... }
 * [Definitions Block](#definitions-block)
   * [Backend Block](#backend-block)
   * [JWT Block(s)](#jwt-block)
+  * [JWT Signing Profile Block(s)](#jwt-signing-profile-block)
   * [Basic Auth Block(s)](#basic-auth-block)
+  * [SAML Block(s)](#saml-block)
 * [Settings Block](#settings-block)
 
 ### Variables
@@ -203,7 +206,7 @@ since these references get evaluated at start.
 | `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
 | `post.<name>`             | Post form parameter |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
-| `ctx.<name>.<claim_name>` | Request context containing claims from JWT used for [Access Control](#access-control), `<name>` being the [JWT Block's](#jwt-block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 
 #### `bereq` (modified backend request) variable
 
@@ -216,7 +219,7 @@ since these references get evaluated at start.
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
 | `post.<name>`             | Post form parameter |
-| `ctx.<name>.<claim_name>` | Request context containing claims from JWT used for [Access Control](#access-control), `<name>` being the [JWT Block's](#jwt-block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 | `url`                     | Backend origin URL |
 
 #### `bereqs` (modified backend requests) variable
@@ -291,6 +294,7 @@ context.
 | `json_encode`      | Returns a JSON serialization of the given value. |
 | `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [`jwt_signing_profile` block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
 | `merge`            | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
+| `saml_sso_url`     | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [`saml` block](#saml-block). |
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
@@ -321,6 +325,8 @@ merge([1], 2)                              // -> error: cannot mix tuple with pr
 
 token = jwt_sign("MyJwt", {"sub": "abc12345"})
 
+saml_sso_url("MySaml")
+
 definitions {
   jwt_signing_profile "MyJwt" {
     signature_algorithm = "RS256"
@@ -329,6 +335,12 @@ definitions {
     claims = {
       iss = "The_Issuer"
     }
+  }
+  saml "MySaml" {
+    idp_metadata_file = "idp-metadata.xml"
+    sp_acs_url = "https://the-sp.com/api/saml/acs"
+    sp_entity_id = "the-sp-entity-id"
+    array_attributes = ["memberOf"]
   }
 }
 ```
@@ -711,7 +723,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 #### Basic Auth Block
 
-The `basic_auth` block let you configure basic auth for your gateway. Like all
+The `basic_auth` block lets you configure basic auth for your gateway. Like all
 [Access Control](#access-control) types, the `Basic Auth` block is defined in the
 [Definitions Block](#definitions-block) and can be referenced in all configuration
 blocks by its mandatory *label*.
@@ -733,7 +745,7 @@ by `htpasswd_file` otherwise.
 
 #### JWT Block
 
-The `jwt` block let you configure JSON Web Token access control for your gateway.
+The `jwt` block lets you configure JSON Web Token access control for your gateway.
 Like all [Access Control](#access-control) types, the `jwt` block is defined in
 the `definitions` block and can be referenced in all configuration blocks by its
 mandatory *label*.
@@ -752,7 +764,6 @@ mandatory *label*.
 | **`claims`**               | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
 | **`required_claims`**      | <ul><li>Optional.</li><li>List of claims that must be given for a valid token</li></ul> |
 
-
 #### JWT Signing Profile Block
 
 The `jwt_signing_profile` block lets you configure a JSON Web Token signing
@@ -769,6 +780,30 @@ by its mandatory *label*.
 | `signature_algorithm`     | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |
 | `ttl`                     | <ul><li>Optional.</li><li>The token's time-to-live (creates the `exp` claim).</li></ul> |
 | **`claims`**              | <ul><li>Optional.</li><li>Default claims for the JWT payload.</li></ul> |
+
+#### SAML Block
+
+The `saml` block lets you configure the `saml_sso_url()` [function](#functions) and an access
+control for a SAML Assertion Consumer Service (ACS) endpoint.
+Like all [Access Control](#access-control) types, the `saml` block is defined in
+the `definitions` block and can be referenced in all configuration blocks by its
+mandatory *label*.
+
+| Block                      | Description |
+|:---------------------------|:------------|
+| *context*                  | [Definitions Block](#definitions-block). |
+| *label*                    | &#9888; Mandatory. |
+| **Attributes**             | **Description** |
+| `idp_metadata_file`        | <ul><li>&#9888; Mandatory.</li><li>File reference to the Identity Provider metadata XML file.</li></ul> |
+| `sp_acs_url`               | <ul><li>&#9888; Mandatory.</li><li>The URL of the Service Provider's ACS endpoint.</li></ul> |
+| `sp_entity_id`             | <ul><li>&#9888; Mandatory.</li><li>The Service Provider's entity ID.</li></ul> |
+| `array_attributes`         | <ul><li>Optional.</li><li>A list of assertion attributes that may have several values.</li></ul> |
+
+Some information from the assertion consumed at the ACS endpoint is provided in the context at `req.ctx.<label>`:
+
+* the `NameID` of the assertion's `Subject` (`req.ctx.<label>.sub`)
+* the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `req.ctx.<label>.exp`)
+* the attributes (`req.ctx.<label>.attributes.<name>`)
 
 ### Settings Block
 
