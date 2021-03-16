@@ -1250,19 +1250,21 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		path   string
 		header http.Header
 		status int
+		ct     string
 	}
 
 	for _, tc := range []testCase{
-		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK},
+		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
 		// TODO: Can a disabled auth being enabled again?
-		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK},
-		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized},
-		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized},
-		{"/v3", http.Header{}, http.StatusOK},
-		{"/status", http.Header{}, http.StatusOK},
-		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized},
+		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
+		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
+		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json"}, // minimum ':'
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json"},
+		{"/v3", http.Header{}, http.StatusOK, "application/json"},
+		{"/status", http.Header{}, http.StatusOK, "application/json"},
+		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json"},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -1281,8 +1283,12 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 				return
 			}
 
-			if ct := res.Header.Get("Content-Type"); ct != "application/json" {
-				t.Errorf("%q: unexpected content-type: %q", tc.path, ct)
+			if ct := res.Header.Get("Content-Type"); ct != tc.ct {
+				t.Errorf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
+				return
+			}
+
+			if tc.ct == "text/html" {
 				return
 			}
 
