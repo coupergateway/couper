@@ -654,7 +654,6 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			Path: "/",
 		}},
 	} {
-		tc := tc
 		t.Run("_"+tc.query, func(subT *testing.T) {
 			helper := test.New(subT)
 
@@ -668,6 +667,65 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			req.Header.Set("aeb", "aeb")
 			req.Header.Set("def", "def")
 			req.Header.Set("xyz", "xyz")
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+	}
+}
+
+func TestHTTPServer_PathPrefix(t *testing.T) {
+	client := newClient()
+
+	type expectation struct {
+		Path string
+	}
+
+	type testCase struct {
+		path string
+		exp  expectation
+	}
+
+	for _, tc := range []testCase{
+		{"/", expectation{
+			Path: "/xxx/xxx/",
+		}},
+		{"/uuu/foo", expectation{
+			Path: "/xxx/xxx/api/foo",
+		}},
+		{"/vvv/foo", expectation{
+			Path: "/xxx/xxx/api/foo",
+		}},
+		{"/yyy", expectation{
+			Path: "/yyy",
+		}},
+		{"/zzz", expectation{
+			Path: "/zzz/zzz",
+		}},
+	} {
+		t.Run("_"+tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			shutdown, _ := newCouper("testdata/integration/api/06_couper.hcl", helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
 
 			res, err := client.Do(req)
 			helper.Must(err)
