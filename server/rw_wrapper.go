@@ -131,6 +131,8 @@ func (w *RWWrapper) configureHeader() {
 
 	if w.secureCookies == SecureCookiesStrip {
 		stripSecureCookies(w.rw.Header())
+	} else if w.secureCookies == SecureCookiesEnforce {
+		enforceSecureCookies(w.rw.Header())
 	}
 }
 

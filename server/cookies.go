@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	SecureCookiesStrip = "strip"
-	SecureCookieAV     = "Secure"
-	setCookieHeader    = "Set-Cookie"
+	SecureCookiesStrip   = "strip"
+	SecureCookiesEnforce = "enforce"
+	SecureCookieAV       = "Secure"
+	setCookieHeader      = "Set-Cookie"
 )
 
 var regexSplitSetCookie = regexp.MustCompile(`([^;]+);?`)
@@ -25,6 +26,23 @@ func stripSecureCookies(header http.Header) {
 			header.Add(setCookieHeader, original) // Unchanged
 		} else {
 			header.Add(setCookieHeader, strings.Join(parts, "; "))
+		}
+	}
+}
+
+func enforceSecureCookies(header http.Header) {
+	list := header.Values(setCookieHeader)
+	header.Del(setCookieHeader)
+
+	for _, original := range list {
+		parts, isSecure := parseSetCookieHeader(original)
+
+		if isSecure {
+			header.Add(setCookieHeader, original) // Unchanged
+		} else {
+			header.Add(
+				setCookieHeader, strings.Join(append(parts, SecureCookieAV), "; "),
+			)
 		}
 	}
 }

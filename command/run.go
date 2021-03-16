@@ -33,14 +33,15 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 	set.BoolVar(&config.Settings.XForwardedHost, "xfh", config.Settings.XForwardedHost, "-xfh")
 	set.BoolVar(&config.Settings.NoProxyFromEnv, "no-proxy-from-env", config.Settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&config.Settings.RequestIDFormat, "request-id-format", config.Settings.RequestIDFormat, "-request-id-format uuid4")
-	set.StringVar(&config.Settings.SecureCookies, "secure-cookies", config.Settings.SecureCookies, "-secure-cookies strip")
+	set.StringVar(&config.Settings.SecureCookies, "secure-cookies", config.Settings.SecureCookies, "-secure-cookies strip|enforce")
 	if err := set.Parse(args.Filter(set)); err != nil {
 		return err
 	}
 
 	if config.Settings.SecureCookies != "" &&
-		config.Settings.SecureCookies != server.SecureCookiesStrip {
-		return fmt.Errorf("Invalid value for the -secure-cookies flag given. Only 'strip' is allowed.")
+		config.Settings.SecureCookies != server.SecureCookiesStrip &&
+		config.Settings.SecureCookies != server.SecureCookiesEnforce {
+		return fmt.Errorf("Invalid value for the -secure-cookies flag given. Only 'strip' or 'enforce' is allowed.")
 	}
 
 	env.Decode(config.Settings)
