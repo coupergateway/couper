@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 
 	hclbody "github.com/avenga/couper/config/body"
 )
@@ -191,40 +192,48 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 
 		if len(thisContent.Blocks) != 0 {
 			for _, thisContentBlock := range thisContent.Blocks {
-				if len(thisContentBlock.Labels) == 0 {
-					// assume a block definition without a label could not exist twice. Merge attrs.
-					var contentBlockType string
-					for _, contentBlock := range content.Blocks {
-						if contentBlock.Type == thisContentBlock.Type {
-							contentBlockType = contentBlock.Type
-							contentAttrs, contentAttrsDiags := contentBlock.Body.JustAttributes()
-							if contentAttrsDiags.HasErrors() {
-								diags = append(diags, contentAttrsDiags...)
-								break
-							}
-							thisContentAttrs, thisContentAttrsDiags := thisContentBlock.Body.JustAttributes()
-							if thisContentAttrsDiags.HasErrors() {
-								diags = append(diags, thisContentAttrsDiags...)
-								break
-							}
-							for name, attr := range thisContentAttrs {
-								contentAttrs[name] = attr
-							}
-							contentBlock.Body = hclbody.New(&hcl.BodyContent{
-								Attributes:       contentAttrs,
-								MissingItemRange: thisContentBlock.DefRange,
-							})
+				if len(thisContentBlock.Labels) > 0 {
+					content.Blocks = append(content.Blocks, thisContentBlock)
+					continue
+				}
+				// assume a block definition without a label could not exist twice. Merge attrs.
+				var contentBlockType string
+				for _, contentBlock := range content.Blocks {
+					if contentBlock.Type == thisContentBlock.Type {
+						contentBlockType = contentBlock.Type
+						contentAttrs, contentAttrsDiags := contentBlock.Body.JustAttributes()
+						if contentAttrsDiags.HasErrors() {
+							diags = append(diags, contentAttrsDiags...)
+							break
 						}
+						thisContentAttrs, thisContentAttrsDiags := thisContentBlock.Body.JustAttributes()
+						if thisContentAttrsDiags.HasErrors() {
+							diags = append(diags, thisContentAttrsDiags...)
+							break
+						}
+						for name, attr := range thisContentAttrs {
+							if envContext != nil { // do not replace left side with empty values
+								val, _ := attr.Expr.Value(envContext)
+								if val.IsWhollyKnown() { // check at least for strings
+									if val.Type() == cty.String && val.AsString() == "" {
+										continue
+									}
+								}
+							}
+							contentAttrs[name] = attr
+						}
+						contentBlock.Body = hclbody.New(&hcl.BodyContent{
+							Attributes:       contentAttrs,
+							MissingItemRange: thisContentBlock.DefRange,
+						})
 					}
-					if contentBlockType == "" { // nothing found
-						content.Blocks = append(content.Blocks, thisContentBlock)
-					}
-				} else {
+				}
+				if contentBlockType == "" { // nothing found
 					content.Blocks = append(content.Blocks, thisContentBlock)
 				}
 			}
-			//content.Blocks = append(content.Blocks, thisContent.Blocks...)
 		}
+		//content.Blocks = append(content.Blocks, thisContent.Blocks...)
 	}
 
 	// Finally, we check for required attributes.
