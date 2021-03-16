@@ -26,7 +26,7 @@ docker run --rm -p 8080:8080 -v `pwd`:/htdocs avenga/couper
 | COUPER_HEALTH_PATH    | `/healthz`   | Path for health-check requests for all servers and ports.   |
 | COUPER_NO_PROXY_FROM_ENV | `false` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |
 | COUPER_REQUEST_ID_FORMAT    | `common`   | If set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields.   |
-| COUPER_SECURE_COOKIES | `""` | If set to `"strip"`, the `Secure` flag of all `Set-Cookie` HTTP header fileds are removed. |
+| COUPER_SECURE_COOKIES | `""` | If set to `"strip"`, the `Secure` flag of all `Set-Cookie` HTTP header fields are removed. If set to `"enforce"` the `Secure` flag is added to all `Set-Cookie` HTTP header fields (if not already included). |
 | COUPER_ACCESS_LOG_PARENT_FIELD | `""`  | An option for `json` log format to add all log fields as child properties. |
 | COUPER_ACCESS_LOG_TYPE_VALUE | `couper_access`  | Value for the log field `type`. |
 | COUPER_ACCESS_LOG_REQUEST_HEADERS | `User-Agent, Accept, Referer`  | A comma separated list of header names whose values should be logged. |
