@@ -168,9 +168,18 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			var corsOptions *middleware.CORSOptions
 			var errTpl *errors.Template
 
+			if endpointConf.ErrorFile != "" {
+				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile)
+				if err != nil {
+					return nil, err
+				}
+			} else if parentAPI != nil {
+				errTpl = serverOptions.APIErrTpl[parentAPI]
+			} else {
+				errTpl = serverOptions.ServerErrTpl
+			}
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePath[parentAPI]
-				errTpl = serverOptions.APIErrTpl[parentAPI]
 
 				cors, err := middleware.NewCORSOptions(
 					getCORS(srvConf.CORS, parentAPI.CORS),
@@ -181,7 +190,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 				corsOptions = cors
 			} else {
 				basePath = serverOptions.SrvBasePath
-				errTpl = serverOptions.ServerErrTpl
 
 				cors, err := middleware.NewCORSOptions(
 					getCORS(nil, srvConf.CORS),
@@ -487,6 +495,20 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 			}
 
 			accessControls[name] = ac.ValidateFunc(j.Validate)
+		}
+
+		for _, saml := range conf.Definitions.SAML {
+			name, err := validateACName(accessControls, saml.Name, "saml")
+			if err != nil {
+				return nil, err
+			}
+
+			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
+			if err != nil {
+				return nil, fmt.Errorf("loading saml %q definition failed: %s", name, err)
+			}
+
+			accessControls[name] = ac.ValidateFunc(s.Validate)
 		}
 	}
 
