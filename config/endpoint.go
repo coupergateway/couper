@@ -13,6 +13,7 @@ var _ Inline = &Endpoint{}
 type Endpoint struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
+	ErrorFile            string    `hcl:"error_file,optional"`
 	Pattern              string    `hcl:"pattern,label"`
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`

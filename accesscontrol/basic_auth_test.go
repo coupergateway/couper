@@ -45,7 +45,7 @@ func Test_NewBasicAuth(t *testing.T) {
 	}
 }
 
-func Test_Validate(t *testing.T) {
+func Test_BA_Validate(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -87,7 +87,7 @@ func Test_Validate(t *testing.T) {
 	}
 }
 
-func Test_ValidateEmptyUser(t *testing.T) {
+func Test_BA_ValidateEmptyUser(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -123,7 +123,7 @@ func Test_ValidateEmptyUser(t *testing.T) {
 	}
 }
 
-func Test_ValidateEmptyPassword(t *testing.T) {
+func Test_BA_ValidateEmptyPassword(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -159,7 +159,7 @@ func Test_ValidateEmptyPassword(t *testing.T) {
 	}
 }
 
-func Test_ValidateEmptyUserPassword(t *testing.T) {
+func Test_BA_ValidateEmptyUserPassword(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
