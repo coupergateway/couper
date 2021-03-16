@@ -786,7 +786,7 @@ gateway instance.
 | `log_format`        | Switch for tab/field based colored view or json log lines | `common` |
 | `xfh`               | Option to use the `X-Forwarded-Host` header as the request host | `false` |
 | `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
-| `secure_cookies`    | If set to `"strip"`, the `Secure` flag of all `Set-Cookie` HTTP header fields are removed. If set to `"enforce"` the `Secure` flag is added to all `Set-Cookie` HTTP header fields (if not already included). | `""` |
+| `secure_cookies`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. If set to `"enforce"` the `Secure` flag is added to all `Set-Cookie` HTTP header fields (if not already included). | `""` |
 
 ### Health-Check
 
