@@ -40,6 +40,7 @@
     * [Basic Auth Block](#basic-auth-block)
     * [JWT Block](#jwt-block)
     * [JWT Signing Profile Block](#jwt-signing-profile-block)
+    * [SAML Block](#saml-block)
   * [Settings Block](#settings-block)
   * [Health-Check](#health-check)
 * [Examples](#examples)
@@ -166,7 +167,9 @@ settings { ... }
 * [Definitions Block](#definitions-block)
   * [Backend Block](#backend-block)
   * [JWT Block(s)](#jwt-block)
+  * [JWT Signing Profile Block(s)](#jwt-signing-profile-block)
   * [Basic Auth Block(s)](#basic-auth-block)
+  * [SAML Block(s)](#saml-block)
 * [Settings Block](#settings-block)
 
 ### Variables
@@ -204,7 +207,7 @@ since these references get evaluated at start.
 | `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
 | `post.<name>`             | Post form parameter |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
-| `ctx.<name>.<claim_name>` | Request context containing claims from JWT used for [Access Control](#access-control), `<name>` being the [JWT Block's](#jwt-block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 
 #### `bereq` (modified backend request) variable
 
@@ -217,7 +220,7 @@ since these references get evaluated at start.
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
 | `post.<name>`             | Post form parameter |
-| `ctx.<name>.<claim_name>` | Request context containing claims from JWT used for [Access Control](#access-control), `<name>` being the [JWT Block's](#jwt-block) label and `claim_name` being the claim's name |
+| `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 | `url`                     | Backend origin URL |
 
 #### `bereqs` (modified backend requests) variable
@@ -290,8 +293,9 @@ context.
 | `coalesce`         | Returns the first of the given arguments that is not null. |
 | `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
 | `json_encode`      | Returns a JSON serialization of the given value. |
-| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [`jwt_signing_profile` block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
+| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
 | `merge`            | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
+| `saml_sso_url`     | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block). |
 | `to_lower`         | Converts a given string to lowercase. |
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
@@ -322,6 +326,8 @@ merge([1], 2)                              // -> error: cannot mix tuple with pr
 
 token = jwt_sign("MyJwt", {"sub": "abc12345"})
 
+saml_sso_url("MySaml")
+
 definitions {
   jwt_signing_profile "MyJwt" {
     signature_algorithm = "RS256"
@@ -330,6 +336,12 @@ definitions {
     claims = {
       iss = "The_Issuer"
     }
+  }
+  saml "MySaml" {
+    idp_metadata_file = "idp-metadata.xml"
+    sp_acs_url = "https://the-sp.com/api/saml/acs"
+    sp_entity_id = "the-sp-entity-id"
+    array_attributes = ["memberOf"]
   }
 }
 ```
@@ -345,6 +357,7 @@ The `server` block is the main configuration block of Couper's configuration fil
 | *context*                            | Root of the configuration file. |
 | *label*                              | &#9888; Mandatory. |
 | **Nested blocks**                    | **Description** |
+| [CORS Block](#cors-block)            | Configures CORS behavior for [Files Block](#files-block), [SPA Block](#spa-block) and [API Block(s)](#api-block) contexts. |
 | [Files Block](#files-block)          | Configures the file serving. |
 | [SPA Block](#spa-block)              | Configures web serving for SPA assets. |
 | [API Block(s)](#api-block)           | Configures routing and communication with backend(s). |
@@ -359,29 +372,33 @@ The `server` block is the main configuration block of Couper's configuration fil
 
 The `files` block configures the file serving.
 
-| Block            | Description |
-|:-----------------|:------------|
-| *context*        | [Server Block](#server-block). |
-| *label*          | Not implemented. |
-| **Attributes**   | **Description** |
-| `base_path`      | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/files"`</li></ul> |
-| `document_root`  | <ul><li>&#9888; Mandatory.</li><li>Location of the document root.</li><li>*Example:* `document_root = "./htdocs"`</li></ul> |
-| `error_file`     | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
-| `access_control` | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
+| Block                     | Description |
+|:--------------------------|:------------|
+| *context*                 | [Server Block](#server-block). |
+| *label*                   | Not implemented. |
+| **Nested blocks**         | **Description** |
+| [CORS Block](#cors-block) | Configures CORS behavior for the current `Files Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
+| **Attributes**            | **Description** |
+| `base_path`               | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/files"`</li></ul> |
+| `document_root`           | <ul><li>&#9888; Mandatory.</li><li>Location of the document root.</li><li>*Example:* `document_root = "./htdocs"`</li></ul> |
+| `error_file`              | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
+| `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul>  |
 
 ### SPA Block
 
 The `spa` block configures the web serving for SPA assets.
 
-| Block            | Description |
-|:-----------------|:------------|
-| *context*        | [Server Block](#server-block). |
-| *label*          | Not implemented. |
-| **Attributes**   | **Description** |
-| `base_path`      | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/assets"`</li></ul> |
-| `bootstrap_file` | <ul><li>&#9888; Mandatory.</li><li>Location of the bootstrap file.</li><li>*Example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
-| `paths`          | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
-| `access_control` | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
+| Block                     | Description |
+|:--------------------------|:------------|
+| *context*                 | [Server Block](#server-block). |
+| *label*                   | Not implemented. |
+| **Nested blocks**         | **Description** |
+| [CORS Block](#cors-block) | Configures CORS behavior for the current `SPA Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
+| **Attributes**            | **Description** |
+| `base_path`               | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/assets"`</li></ul> |
+| `bootstrap_file`          | <ul><li>&#9888; Mandatory.</li><li>Location of the bootstrap file.</li><li>*Example:* `bootstrap_file = "./htdocs/index.html"`</li></ul>|
+| `paths`                   | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
+| `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 
 ### API Block
 
@@ -397,7 +414,7 @@ as json error with an error body payload. This can be customized via `error_file
 | *label*                              | Optional. |
 | **Nested blocks**                    | **Description** |
 | [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `API Block` context. |
-| [CORS Block](#cors-block)            | Configures CORS behavior for current `API Block` context. |
+| [CORS Block](#cors-block)            | Configures CORS behavior for the current `API Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
 | **Attributes**                       | **Description** |
 | `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/v1"`</li></ul> |
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_body.json"`</li></ul> |
@@ -492,7 +509,8 @@ as reference.
 | `basic_auth`                    | <ul><li>Optional.</li><li>Basic auth for the upstream request in format `username:password`.</li></ul> |
 | `hostname`                      | <ul><li>Optional.</li><li>Value of the HTTP host header field for the origin request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.</li></ul> |
 | `origin`                        | <ul><li>&#9888; Mandatory.</li><li>URL to connect to for backend requests.</li><li>&#9888; Must start with the scheme `http://...`.</li></ul> |
-| `path`                          | <ul><li>&#9888; Mandatory, if not defined in parent blocks.</li><li>Changeable part of upstream URL.</li></ul> |
+| `path`                          | <ul><li>Optional.</li><li>Changeable part of upstream URL.</li></ul> |
+| `path_prefix`                   | <ul><li>Optional.</li><li>Prefixes all backend request paths with the given prefix.</li><li>Relative prefixes are prefixed with a slash `/`.</li></ul>
 | [Modifier](#modifier)           | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
 #### Transport Settings Attributes
@@ -582,11 +600,12 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 
 | Block               | Description |
 |:--------------------|:------------|
-| *context*           | [API Block](#api-block). |
+| *context*           | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block). |
 | *label*             | Not implemented. |
 | **Attributes**      | **Description** |
 | `allowed_origins`   | <ul><li>&#9888; Mandatory.</li><li>A list of allowed origin(s).</li><li>Can be either of:<br/><ul><li>a string with a single specific origin (e.g. `"https://www.example.com"`).</li><li>`"*"` (all origins are allowed).</li><li>an array of specific origins (e.g. `["https://www.example.com", "https://www.another.host.org"]`).</li></ul></li></ul> |
 | `allow_credentials` | <ul><li>Optional.</li><li>Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).</li><li>Default `false`.</li></ul> |
+| `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul> |
 | `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
 
 ### OAuth2 Block
@@ -722,7 +741,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 #### Basic Auth Block
 
-The `basic_auth` block let you configure basic auth for your gateway. Like all
+The `basic_auth` block lets you configure basic auth for your gateway. Like all
 [Access Control](#access-control) types, the `Basic Auth` block is defined in the
 [Definitions Block](#definitions-block) and can be referenced in all configuration
 blocks by its mandatory *label*.
@@ -744,7 +763,7 @@ by `htpasswd_file` otherwise.
 
 #### JWT Block
 
-The `jwt` block let you configure JSON Web Token access control for your gateway.
+The `jwt` block lets you configure JSON Web Token access control for your gateway.
 Like all [Access Control](#access-control) types, the `jwt` block is defined in
 the `definitions` block and can be referenced in all configuration blocks by its
 mandatory *label*.
@@ -763,7 +782,6 @@ mandatory *label*.
 | **`claims`**               | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
 | **`required_claims`**      | <ul><li>Optional.</li><li>List of claims that must be given for a valid token</li></ul> |
 
-
 #### JWT Signing Profile Block
 
 The `jwt_signing_profile` block lets you configure a JSON Web Token signing
@@ -781,6 +799,30 @@ by its mandatory *label*.
 | `ttl`                     | <ul><li>Optional.</li><li>The token's time-to-live (creates the `exp` claim).</li></ul> |
 | **`claims`**              | <ul><li>Optional.</li><li>Default claims for the JWT payload.</li></ul> |
 
+#### SAML Block
+
+The `saml` block lets you configure the `saml_sso_url()` [function](#functions) and an access
+control for a SAML Assertion Consumer Service (ACS) endpoint.
+Like all [Access Control](#access-control) types, the `saml` block is defined in
+the `definitions` block and can be referenced in all configuration blocks by its
+mandatory *label*.
+
+| Block                      | Description |
+|:---------------------------|:------------|
+| *context*                  | [Definitions Block](#definitions-block). |
+| *label*                    | &#9888; Mandatory. |
+| **Attributes**             | **Description** |
+| `idp_metadata_file`        | <ul><li>&#9888; Mandatory.</li><li>File reference to the Identity Provider metadata XML file.</li></ul> |
+| `sp_acs_url`               | <ul><li>&#9888; Mandatory.</li><li>The URL of the Service Provider's ACS endpoint.</li></ul> |
+| `sp_entity_id`             | <ul><li>&#9888; Mandatory.</li><li>The Service Provider's entity ID.</li></ul> |
+| `array_attributes`         | <ul><li>Optional.</li><li>A list of assertion attributes that may have several values.</li></ul> |
+
+Some information from the assertion consumed at the ACS endpoint is provided in the context at `req.ctx.<label>`:
+
+* the `NameID` of the assertion's `Subject` (`req.ctx.<label>.sub`)
+* the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `req.ctx.<label>.exp`)
+* the attributes (`req.ctx.<label>.attributes.<name>`)
+
 ### Settings Block
 
 The `settings` block let you configure the more basic and global behavior of your
@@ -791,12 +833,13 @@ gateway instance.
 | *context*           | Root of the configuration file. | |
 | *label*             | Not impplemented. | |
 | **Attributes**      | **Description** | **Default** |
-| `health_path`       | health path which is available for all configured server and ports | `/healthz` |
+| `health_path`       | Health path which is available for all configured server and ports | `/healthz` |
 | `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). | `false` |
-| `default_port`      | port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
-| `log_format`        | switch for tab/field based colored view or json log lines | `common` |
-| `xfh`               | option to use the `X-Forwarded-Host` header as the request host | `false` |
-| `request_id_format` | if set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
+| `default_port`      | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
+| `log_format`        | Switch for tab/field based colored view or json log lines | `common` |
+| `xfh`               | Option to use the `X-Forwarded-Host` header as the request host | `false` |
+| `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
+| `secure_cookies`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. | `""` |
 
 ### Health-Check
 

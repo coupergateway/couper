@@ -175,6 +175,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		transport.ReClientSupportsGZ.MatchString(
 			req.Header.Get(transport.AcceptEncodingHeader),
 		),
+		s.settings.SecureCookies,
 	)
 	rw = w
 

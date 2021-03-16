@@ -16,7 +16,7 @@ import (
 	"github.com/avenga/couper/config/request"
 )
 
-func TestJWT_Validate(t *testing.T) {
+func Test_JWT_Validate(t *testing.T) {
 	type fields struct {
 		algorithm      ac.Algorithm
 		claims         map[string]interface{}

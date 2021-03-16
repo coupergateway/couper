@@ -43,6 +43,17 @@ server "acs" {
     }
   }
 
+  api {
+    base_path = "/v4"
+    access_control = ["ba2"]
+    endpoint "/**" {
+      error_file = "../server_error.html" # error_file in endpoint
+      proxy {
+        backend = "test"
+      }
+    }
+  }
+
   endpoint "/status" {
     disable_access_control = ["ba1"]
     proxy {

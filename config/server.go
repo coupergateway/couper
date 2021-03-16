@@ -1,11 +1,12 @@
 package config
 
-// Server represents the HCL <server> block.
+// Server represents the <Server> object.
 type Server struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
-	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	APIs                 APIs      `hcl:"api,block"`
 	BasePath             string    `hcl:"base_path,optional"`
+	CORS                 *CORS     `hcl:"cors,block"`
+	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	Endpoints            Endpoints `hcl:"endpoint,block"`
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Files                *Files    `hcl:"files,block"`
