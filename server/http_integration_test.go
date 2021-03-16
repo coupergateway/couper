@@ -705,6 +705,12 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 		{"/", expectation{
 			Path: "/xxx/xxx/",
 		}},
+		{"/uuu/foo", expectation{
+			Path: "/xxx/xxx/api/foo",
+		}},
+		{"/vvv/foo", expectation{
+			Path: "/xxx/xxx/api/foo",
+		}},
 		{"/yyy", expectation{
 			Path: "/yyy",
 		}},
