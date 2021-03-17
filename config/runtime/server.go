@@ -381,7 +381,6 @@ func newBackend(
 	}
 	backend := transport.NewBackend(backendCtx, tc, options, log)
 
-	// TODO: partialContent with merged backendCtx fails !!!
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent == nil {
 		return backend, nil

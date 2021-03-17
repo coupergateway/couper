@@ -74,15 +74,6 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	tc := b.evalTransport(req)
-
-	// FIXME: Move to configload.
-	if url, ok := req.Context().Value(request.TokenEndpoint).(string); ok && url != "" {
-		err := reconfigureTC(tc, url)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	t := Get(tc)
 
 	deadlineErr := b.withTimeout(req)

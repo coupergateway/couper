@@ -1,7 +1,6 @@
 package configload_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -46,15 +45,33 @@ func TestMergeBodies(t *testing.T) {
 	// could be done with hclmock package, but for example purposes encode and read
 	target := hclwrite.NewEmptyFile()
 	gohcl.EncodeIntoBody(bodies, target.Body())
-	buf := &bytes.Buffer{}
-	_, _ = target.WriteTo(buf)
-	conf, diags := hclsyntax.ParseConfig(buf.Bytes(), "testcase.hcl", hcl.InitialPos)
+	// write config reference
+	//buf := &bytes.Buffer{}
+	//_, _ = target.WriteTo(buf)
+
+	configBytes := []byte(`
+block {
+
+  oauth2 {
+    backend        = "test"
+    grant_type     = "no_creds"
+    token_endpoint = "http://this"
+  }
+}
+block {
+
+  oauth2 {
+    token_endpoint = "http://that"
+  }
+}`)
+
+	conf, diags := hclsyntax.ParseConfig(configBytes, "testcase.hcl", hcl.InitialPos)
 	if diags.HasErrors() {
 		t.Error(diags)
 	}
 	defer func() {
 		if t.Failed() {
-			println(buf.String())
+			println(string(configBytes))
 		}
 	}()
 

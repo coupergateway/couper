@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/avenga/couper/cache"
@@ -32,14 +31,7 @@ type OAuth2 struct {
 func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 	backend, next http.RoundTripper) (http.RoundTripper, error) {
 	if config.GrantType != "client_credentials" {
-		return nil, fmt.Errorf("The grant_type has to be set to 'client_credentials'")
-	} else if config.TokenEndpoint == "" {
-		return nil, fmt.Errorf("Missing 'token_endpoint'")
-	}
-
-	_, err := url.Parse(config.TokenEndpoint)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("the grant_type has to be set to 'client_credentials'")
 	}
 
 	return &OAuth2{
