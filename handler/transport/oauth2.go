@@ -27,6 +27,12 @@ type OAuth2 struct {
 	next     http.RoundTripper
 }
 
+type OAuth2Credentials struct {
+	ClientID     string
+	ClientSecret string
+	StorageKey   string
+}
+
 // NewOAuth2 creates a new <http.RoundTripper> object.
 func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 	backend, next http.RoundTripper) (http.RoundTripper, error) {
@@ -44,13 +50,13 @@ func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
-	clientID, clientSecret, key, err := oa.getCredentials(req)
+	credentials, err := oa.getCredentials(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if data := oa.memStore.Get(key); data != "" {
-		token, err := oa.getAccessToken(data, key, nil)
+	if data := oa.memStore.Get(credentials.StorageKey); data != "" {
+		token, err := oa.getAccessToken(data, credentials.StorageKey, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +74,7 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	auth := base64.StdEncoding.EncodeToString([]byte(clientID + ":" + clientSecret))
+	auth := base64.StdEncoding.EncodeToString([]byte(credentials.ClientID + ":" + credentials.ClientSecret))
 	outreq.Header.Set("Authorization", "Basic "+auth)
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -90,7 +96,7 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	token, err := oa.getAccessToken(string(resBody), key, oa.memStore)
+	token, err := oa.getAccessToken(string(resBody), credentials.StorageKey, oa.memStore)
 	if err != nil {
 		return nil, err
 	}
@@ -100,18 +106,16 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 	res, err := oa.next.RoundTrip(req)
 
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
-		oa.memStore.Del(key)
+		oa.memStore.Del(credentials.StorageKey)
 	}
 
 	return res, err
 }
 
-func (oa *OAuth2) getCredentials(req *http.Request) (string, string, string, error) {
-	content, _, diags := oa.config.Remain.PartialContent(
-		oa.config.Schema(true),
-	)
+func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) {
+	content, _, diags := oa.config.Remain.PartialContent(oa.config.Schema(true))
 	if diags.HasErrors() {
-		return "", "", "", diags
+		return nil, diags
 	}
 
 	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
@@ -125,12 +129,16 @@ func (oa *OAuth2) getCredentials(req *http.Request) (string, string, string, err
 	clientSecret := seetie.ValueToString(secretv)
 
 	if !idOK || !secretOK {
-		return "", "", "", couperErr.MissingOAuth2Credentials
+		return nil, couperErr.MissingOAuth2Credentials
 	}
 
-	key := oa.config.TokenEndpoint + "|" + clientID + "|" + clientSecret
-
-	return clientID, clientSecret, key, nil
+	return &OAuth2Credentials{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		// Backend is build up via config and token_endpoint will configure the backend,
+		// use the backend memory location here.
+		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.backend, clientID, clientSecret),
+	}, nil
 }
 
 func (oa *OAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryStore) (string, error) {
