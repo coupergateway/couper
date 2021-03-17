@@ -81,7 +81,8 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	}
 
 	type Inline struct {
-		Body string `hcl:"body,optional"`
+		Body   string `hcl:"body,optional"`
+		Method string `hcl:"method,optional"`
 	}
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
@@ -98,6 +99,15 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 			}
 
 			req.Body = ioutil.NopCloser(strings.NewReader(seetie.ValueToString(val)))
+		}
+
+		if v, ok := content.Attributes["method"]; ok {
+			val, diags := v.Expr.Value(httpCtx)
+			if diags.HasErrors() {
+				return diags
+			}
+
+			req.Method = strings.ToUpper(seetie.ValueToString(val))
 		}
 	}
 

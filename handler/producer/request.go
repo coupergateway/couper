@@ -15,7 +15,6 @@ import (
 type Request struct {
 	Backend http.RoundTripper
 	Context hcl.Body
-	Method  string
 	Name    string // label
 	URL     string
 }
@@ -32,7 +31,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	}()
 
 	for _, or := range r {
-		outreq, err := http.NewRequest(or.Method, or.URL, nil)
+		outreq, err := http.NewRequest(http.MethodGet, or.URL, nil)
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
