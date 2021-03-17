@@ -1,9 +1,10 @@
-package handler
+package ac
 
 import (
 	"net/http"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
 
@@ -47,6 +48,9 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				default:
 					code = errors.AuthorizationFailed
 				}
+			}
+			if ctx, ok := req.Context().Value(request.AccessControl).(*AccessControlContext); ok {
+				ctx.errors = append(ctx.errors, err)
 			}
 			a.errorTpl.ServeError(code).ServeHTTP(rw, req)
 			return

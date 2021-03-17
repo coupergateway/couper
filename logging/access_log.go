@@ -11,6 +11,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler/ac"
 )
 
 type RoundtripHandlerFunc http.HandlerFunc
@@ -35,11 +36,18 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	statusRecorder := NewStatusRecorder(rw)
 	rw = statusRecorder
 
+	oCtx, acContext := ac.NewWithContext(req.Context())
+	*req = *req.WithContext(oCtx)
+
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
 	fields := Fields{
 		"proto": req.Proto,
+	}
+
+	if acErrors := acContext.Errors(); len(acErrors) > 0 {
+		fields["access_control"] = acErrors
 	}
 
 	backendName, _ := req.Context().Value(request.BackendName).(string)

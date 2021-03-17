@@ -27,6 +27,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	hac "github.com/avenga/couper/handler/ac"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
@@ -550,7 +551,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 		acList = append(acList, m[acName])
 	}
 	if len(acList) > 0 {
-		return handler.NewAccessControl(h, errTpl, acList...)
+		return hac.NewAccessControl(h, errTpl, acList...)
 	}
 	return h
 }
