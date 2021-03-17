@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/meta"
@@ -79,17 +80,18 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		httpCtx = c.eval
 	}
 
-	content, _, _ := body.PartialContent(meta.AttributesSchema)
+	type Inline struct {
+		Body string `hcl:"body,optional"`
+	}
+	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	headerCtx := req.Header
-
-	justAttrs, diags := body.JustAttributes()
+	content, _, diags := body.PartialContent(schema)
 	if diags.HasErrors() {
 		return diags
 	}
 
-	if justAttrs != nil {
-		if v, ok := justAttrs["body"]; ok {
+	if content != nil {
+		if v, ok := content.Attributes["body"]; ok {
 			val, diags := v.Expr.Value(httpCtx)
 			if diags.HasErrors() {
 				return diags
@@ -98,6 +100,13 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 			req.Body = ioutil.NopCloser(strings.NewReader(seetie.ValueToString(val)))
 		}
 	}
+
+	content, _, diags = body.PartialContent(meta.AttributesSchema)
+	if diags.HasErrors() {
+		return diags
+	}
+
+	headerCtx := req.Header
 
 	// map to name
 	// TODO: sorted data structure on load
