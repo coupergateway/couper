@@ -8,14 +8,17 @@ import (
 )
 
 func TestCache_All(t *testing.T) {
-	ms := cache.New()
+	ms := cache.New(nil, nil)
 
 	if v := ms.Get("key"); v != "" {
 		t.Errorf("Empty string expected, given %q", v)
 	}
 
-	ms.Set("key", "val", 2)
-	ms.Set("del", "del", 30)
+	go ms.Set("key", "val", 2)
+	go ms.Set("del", "del", 30)
+	go func() {
+		ms.Get("key")
+	}()
 
 	time.Sleep(300 * time.Millisecond)
 
