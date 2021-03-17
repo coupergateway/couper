@@ -3,7 +3,6 @@ package producer
 import (
 	"context"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
@@ -33,7 +32,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	}()
 
 	for _, or := range r {
-		outreq, err := http.NewRequest(or.Method, or.URL, strings.NewReader(""))
+		outreq, err := http.NewRequest(or.Method, or.URL, nil)
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()

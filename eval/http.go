@@ -83,13 +83,19 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 
 	headerCtx := req.Header
 
-	justAttrs, _ := body.JustAttributes()
+	justAttrs, diags := body.JustAttributes()
+	if diags.HasErrors() {
+		return diags
+	}
+
 	if justAttrs != nil {
 		if v, ok := justAttrs["body"]; ok {
-			val, _ := v.Expr.Value(httpCtx)
-			b := seetie.ValueToString(val)
+			val, diags := v.Expr.Value(httpCtx)
+			if diags.HasErrors() {
+				return diags
+			}
 
-			req.Body = ioutil.NopCloser(strings.NewReader(b))
+			req.Body = ioutil.NopCloser(strings.NewReader(seetie.ValueToString(val)))
 		}
 	}
 
