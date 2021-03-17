@@ -222,22 +222,6 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname)
 }
 
-func reconfigureTC(tc *Config, tokenEndpoint string) error {
-	u, err := url.Parse(tokenEndpoint)
-	if err != nil {
-		return err
-	}
-
-	// TODO: Check tokenEndpoint.Host vs. backend.Origin
-
-	newTC := tc.With(u.Scheme, u.Host, u.Host)
-	newTC.BackendName = "oauth2-" + tokenEndpoint
-
-	*tc = *newTC
-
-	return nil
-}
-
 func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {
 	attr := body.Attributes
 	if _, ok := attr[name]; !ok {
