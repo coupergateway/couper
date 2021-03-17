@@ -56,7 +56,7 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if data := oa.memStore.Get(credentials.StorageKey); data != "" {
-		token, err := oa.getAccessToken(data, credentials.StorageKey, nil)
+		token, err := oa.readAccessToken(data)
 		if err != nil {
 			return nil, err
 		}
@@ -66,37 +66,26 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 		return oa.next.RoundTrip(req)
 	}
 
-	post := "grant_type=" + oa.config.GrantType
-	body := ioutil.NopCloser(strings.NewReader(post))
-
-	outreq, err := http.NewRequest("POST", oa.config.TokenEndpoint, body)
+	tokenReq, err := oa.newTokenRequest(req.Context(), credentials)
 	if err != nil {
 		return nil, err
 	}
 
-	auth := base64.StdEncoding.EncodeToString([]byte(credentials.ClientID + ":" + credentials.ClientSecret))
-	outreq.Header.Set("Authorization", "Basic "+auth)
-	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	outCtx := context.WithValue(outreq.Context(), request.TokenEndpoint, oa.config.TokenEndpoint)
-	outCtx = context.WithValue(outCtx, request.UID, req.Context().Value(request.UID))
-	*outreq = *outreq.WithContext(outCtx)
-
-	outRes, err := oa.backend.RoundTrip(outreq)
+	tokenRes, err := oa.backend.RoundTrip(tokenReq)
 	if err != nil {
 		return nil, err
 	}
 
-	if outRes.StatusCode != http.StatusOK {
+	if tokenRes.StatusCode != http.StatusOK {
 		return nil, couperErr.TokenRequestFailed
 	}
 
-	resBody, err := ioutil.ReadAll(outRes.Body)
+	resBody, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := oa.getAccessToken(string(resBody), credentials.StorageKey, oa.memStore)
+	token, err := oa.updateAccessToken(string(resBody), credentials.StorageKey)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +130,42 @@ func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) 
 	}, nil
 }
 
-func (oa *OAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryStore) (string, error) {
+func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials) (*http.Request, error)  {
+	post := "grant_type=" + oa.config.GrantType
+	body := ioutil.NopCloser(strings.NewReader(post))
+
+	outreq, err := http.NewRequest("POST", oa.config.TokenEndpoint, body)
+	if err != nil {
+		return nil, err
+	}
+
+	auth := base64.StdEncoding.EncodeToString([]byte(creds.ClientID + ":" + creds.ClientSecret))
+	outreq.Header.Set("Authorization", "Basic "+auth)
+	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
+	return outreq.WithContext(outCtx), nil
+}
+
+func (oa *OAuth2) readAccessToken(data string) (string, error) {
+	var jData map[string]interface{}
+
+	err := json.Unmarshal([]byte(data), &jData)
+	if err != nil {
+		return "", err
+	}
+
+	var token string
+	if t, ok := jData["access_token"].(string); ok {
+		token = t
+	} else {
+		return "", couperErr.MissingOAuth2AccessToken
+	}
+
+	return token, nil
+}
+
+func (oa *OAuth2) updateAccessToken(jsonString, key string) (string, error) {
 	var jData map[string]interface{}
 
 	err := json.Unmarshal([]byte(jsonString), &jData)
@@ -156,13 +180,13 @@ func (oa *OAuth2) getAccessToken(jsonString, key string, memStore *cache.MemoryS
 		return "", couperErr.MissingOAuth2AccessToken
 	}
 
-	if memStore != nil {
+	if oa.memStore != nil {
 		var ttl int64
 		if t, ok := jData["expires_in"].(float64); ok {
 			ttl = (int64)(t * 0.9)
 		}
 
-		memStore.Set(key, jsonString, ttl)
+		oa.memStore.Set(key, jsonString, ttl)
 	}
 
 	return token, nil
