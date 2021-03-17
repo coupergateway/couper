@@ -15,7 +15,6 @@ import (
 // Request represents the producer <Request> object.
 type Request struct {
 	Backend http.RoundTripper
-	Body    string
 	Context hcl.Body
 	Method  string
 	Name    string // label
@@ -34,7 +33,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	}()
 
 	for _, or := range r {
-		outreq, err := http.NewRequest(or.Method, or.URL, strings.NewReader(or.Body))
+		outreq, err := http.NewRequest(or.Method, or.URL, strings.NewReader(""))
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()

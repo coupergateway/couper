@@ -258,7 +258,6 @@ func NewServerConfiguration(
 				}
 				requests = append(requests, &producer.Request{
 					Backend: backend,
-					Body:    requestConf.Body,
 					Context: requestConf.Remain,
 					Method:  method,
 					Name:    requestConf.Name,

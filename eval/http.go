@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,6 +82,16 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	content, _, _ := body.PartialContent(meta.AttributesSchema)
 
 	headerCtx := req.Header
+
+	justAttrs, _ := body.JustAttributes()
+	if justAttrs != nil {
+		if v, ok := justAttrs["body"]; ok {
+			val, _ := v.Expr.Value(httpCtx)
+			b := seetie.ValueToString(val)
+
+			req.Body = ioutil.NopCloser(strings.NewReader(b))
+		}
+	}
 
 	// map to name
 	// TODO: sorted data structure on load
