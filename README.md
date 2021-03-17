@@ -1,6 +1,7 @@
 # Couper
 
 ![Go](https://github.com/avenga/couper/workflows/Go/badge.svg)
+[![Go Report](https://goreportcard.com/badge/github.com/avenga/couper)](https://goreportcard.com/report/github.com/avenga/couper)
 ![Docker](https://github.com/avenga/couper/workflows/Docker/badge.svg)
 
 Couper is designed to support developers building and operating API-driven Web
@@ -25,8 +26,6 @@ component.
 * Operation and **observability**:
   * Timeout handling
   * Logging access and upstream requests as tab fields or json format
-  * Metrics endpoint (soon)
-  * Health probes for backends (soon)
 * Centralized **Access-Control** layer:
   * Basic-Auth
   * JWT
