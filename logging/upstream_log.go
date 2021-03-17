@@ -104,6 +104,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	requestFields["proto"] = req.Proto
 	requestFields["scheme"] = req.URL.Scheme
 
+	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
+		fields["token_request"] = tr
+	}
+
 	fields["realtime"] = roundMS(rtDone.Sub(rtStart))
 
 	fields["status"] = 0

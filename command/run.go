@@ -5,9 +5,9 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/avenga/couper/config/env"
-
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/server"
 	"github.com/sirupsen/logrus"
@@ -49,7 +49,7 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 	env.Decode(&timings)
 
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvMux, err := runtime.NewServerConfiguration(config, logEntry)
+	srvMux, err := runtime.NewServerConfiguration(config, logEntry, cache.New(logEntry, r.context.Done()))
 	if err != nil {
 		return err
 	}

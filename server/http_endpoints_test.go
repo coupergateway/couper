@@ -3,9 +3,12 @@ package server_test
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/avenga/couper/internal/test"
 )
@@ -116,5 +119,61 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 
 	if v := jsonResult.Headers.Get("X-Forwarded-For"); v != "1.2.3.4" {
 		t.Errorf("Unexpected XFF header given '%s'", v)
+	}
+}
+
+func TestEndpoints_OAuth2(t *testing.T) {
+	helper := test.New(t)
+	seenCh := make(chan struct{})
+
+	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/oauth2" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+			return
+		}
+
+		if req.URL.Path == "/resource" {
+			if req.Header.Get("Authorization") == "Bearer abcdef0123456789" {
+				rw.WriteHeader(http.StatusNoContent)
+
+				go func() {
+					seenCh <- struct{}{}
+				}()
+
+				return
+			}
+		}
+
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	ln, err := net.Listen("tcp4", testProxyAddr[7:])
+	helper.Must(err)
+	origin.Listener = ln
+	origin.Start()
+	defer origin.Close()
+	confPath := "testdata/endpoints/04_couper.hcl"
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	_, err = newClient().Do(req)
+	helper.Must(err)
+
+	timer := time.NewTimer(time.Second)
+	select {
+	case <-timer.C:
+		t.Error("OAuth2 request failed")
+	case <-seenCh:
 	}
 }

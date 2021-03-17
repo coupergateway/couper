@@ -25,6 +25,9 @@ type Backend struct {
 	Remain                 hcl.Body `hcl:",remain"`
 	TTFBTimeout            string   `hcl:"ttfb_timeout,optional"`
 	Timeout                string   `hcl:"timeout,optional"`
+
+	// explicit configuration on load
+	OAuth2 *OAuth2
 }
 
 // HCLBody implements the <Inline> interface.

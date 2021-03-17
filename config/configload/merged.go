@@ -6,9 +6,8 @@ package configload
 import (
 	"fmt"
 
-	"github.com/hashicorp/hcl/v2"
-
 	hclbody "github.com/avenga/couper/config/body"
+	"github.com/hashicorp/hcl/v2"
 )
 
 // reportDuplicates is the global switch to handle force merges.
@@ -94,27 +93,12 @@ func (mb mergedBodies) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
 	for _, body := range mb {
 		thisAttrs, thisDiags := body.JustAttributes()
 
-		if len(thisDiags) != 0 {
+		if len(thisDiags) > 0 {
 			diags = append(diags, thisDiags...)
 		}
 
 		if thisAttrs != nil {
-			for name, attr := range thisAttrs {
-				if existing := attrs[name]; reportDuplicates && existing != nil {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Duplicate argument",
-						Detail: fmt.Sprintf(
-							"Argument %q was already set at %s",
-							name, existing.NameRange.String(),
-						),
-						Subject: &attr.NameRange,
-					})
-					continue
-				}
-
-				attrs[name] = attr
-			}
+			diags = append(diags, mergeAttributes(attrs, thisAttrs)...)
 		}
 	}
 
@@ -167,64 +151,57 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 		if thisLeftovers != nil {
 			mergedLeftovers = append(mergedLeftovers, thisLeftovers)
 		}
-		if len(thisDiags) != 0 {
+		if len(thisDiags) > 0 {
 			diags = append(diags, thisDiags...)
 		}
 
 		if thisContent.Attributes != nil {
-			for name, attr := range thisContent.Attributes {
-				if existing := content.Attributes[name]; reportDuplicates && existing != nil {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Duplicate argument",
-						Detail: fmt.Sprintf(
-							"Argument %q was already set at %s",
-							name, existing.NameRange.String(),
-						),
-						Subject: &attr.NameRange,
-					})
-					continue
-				}
-				content.Attributes[name] = attr
-			}
+			diags = append(diags, mergeAttributes(content.Attributes, thisContent.Attributes)...)
 		}
 
 		if len(thisContent.Blocks) != 0 {
 			for _, thisContentBlock := range thisContent.Blocks {
-				if len(thisContentBlock.Labels) == 0 {
-					// assume a block definition without a label could not exist twice. Merge attrs.
-					var contentBlockType string
-					for _, contentBlock := range content.Blocks {
-						if contentBlock.Type == thisContentBlock.Type {
-							contentBlockType = contentBlock.Type
-							contentAttrs, contentAttrsDiags := contentBlock.Body.JustAttributes()
-							if contentAttrsDiags.HasErrors() {
-								diags = append(diags, contentAttrsDiags...)
-								break
-							}
-							thisContentAttrs, thisContentAttrsDiags := thisContentBlock.Body.JustAttributes()
-							if thisContentAttrsDiags.HasErrors() {
-								diags = append(diags, thisContentAttrsDiags...)
-								break
-							}
-							for name, attr := range thisContentAttrs {
-								contentAttrs[name] = attr
-							}
-							contentBlock.Body = hclbody.New(&hcl.BodyContent{
-								Attributes:       contentAttrs,
-								MissingItemRange: thisContentBlock.DefRange,
-							})
-						}
-					}
-					if contentBlockType == "" { // nothing found
-						content.Blocks = append(content.Blocks, thisContentBlock)
-					}
-				} else {
+				if len(thisContentBlock.Labels) > 0 {
 					content.Blocks = append(content.Blocks, thisContentBlock)
+					continue
 				}
+				// assume a block definition without a label could not exist twice. Merge attrs.
+				var contentBlockType string
+				var idx = 0
+				for i, contentBlock := range content.Blocks {
+					if contentBlock.Type == thisContentBlock.Type {
+						contentBlockType = contentBlock.Type
+						idx = i
+						break
+					}
+				}
+
+				if contentBlockType == "" { // nothing found
+					content.Blocks = append(content.Blocks, thisContentBlock)
+					continue
+				}
+
+				contentAttrs, contentAttrsDiags := content.Blocks[idx].Body.JustAttributes()
+				if contentAttrsDiags.HasErrors() {
+					diags = append(diags, contentAttrsDiags...)
+				}
+				thisContentAttrs, thisContentAttrsDiags := thisContentBlock.Body.JustAttributes()
+				if thisContentAttrsDiags.HasErrors() {
+					diags = append(diags, thisContentAttrsDiags...)
+				}
+
+				diags = append(diags, mergeAttributes(contentAttrs, thisContentAttrs)...)
+
+				content.Blocks[idx].Body = MergeBodies([]hcl.Body{
+					thisContentBlock.Body, // keep child blocks
+					hclbody.New(&hcl.BodyContent{
+						Attributes:       contentAttrs,
+						MissingItemRange: thisContentBlock.DefRange,
+					}),
+				})
 			}
-			//content.Blocks = append(content.Blocks, thisContent.Blocks...)
 		}
+		//content.Blocks = append(content.Blocks, thisContent.Blocks...)
 	}
 
 	// Finally, we check for required attributes.
@@ -274,4 +251,23 @@ func (mb mergedBodies) JustAllAttributesWithName(name string) []hcl.Attributes {
 		}
 	}
 	return result
+}
+
+func mergeAttributes(left, right hcl.Attributes) (diags hcl.Diagnostics) {
+	for name, attr := range right {
+		if existing := left[name]; reportDuplicates && existing != nil {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Duplicate argument",
+				Detail: fmt.Sprintf(
+					"Argument %q was already set at %s",
+					name, existing.NameRange.String(),
+				),
+				Subject: &attr.NameRange,
+			})
+			continue
+		}
+		left[name] = attr
+	}
+	return diags
 }

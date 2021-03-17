@@ -17,10 +17,9 @@ type Request struct {
 	Backend http.RoundTripper
 	Body    string
 	Context hcl.Body
-	// Dispatch bool
-	Method string
-	Name   string // label
-	URL    string
+	Method  string
+	Name    string // label
+	URL     string
 }
 
 // Requests represents the producer <Requests> object.

@@ -27,6 +27,7 @@
     * [Endpoint Block](#endpoint-block)
     * [Backend Block](#backend-block)
       * [OpenAPI Block](#openapi-block)
+      * [OAuth2 Block](#oauth2-block)
       * [Transport Settings Attributes](#transport-settings-attributes)
     * [CORS Block](#cors-block)
     * [Access Control](#access-control)
@@ -503,6 +504,7 @@ as reference.
 | *label*                         | &#9888; Mandatory in the [Definitions Block](#definitions-block). |
 | **Nested blocks**               | **Description** |
 | [OpenAPI Block](#openapi-block) | <ul><li>Optional.</li><li>Definition for validating outgoing requests to the origin and incoming responses from the origin.</li></ul> |
+| [OAuth2 Block](#oauth2-block)   | <ul><li>Optional.</li><li>OAuth2 configuration block.</li></ul>
 | **Attributes**                  | **Description** |
 | `basic_auth`                    | <ul><li>Optional.</li><li>Basic auth for the upstream request in format `username:password`.</li></ul> |
 | `hostname`                      | <ul><li>Optional.</li><li>Value of the HTTP host header field for the origin request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.</li></ul> |
@@ -605,6 +607,21 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `allow_credentials` | <ul><li>Optional.</li><li>Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).</li><li>Default `false`.</li></ul> |
 | `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul> |
 | `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
+
+### OAuth2 Block
+
+| Block                           | Description |
+|:--------------------------------|:------------|
+| *context*                       | [Backend Block](#backend-block). |
+| *label*                         | Not implemented. |
+| **Nested blocks**               | **Description** |
+| [Backend Block](#backend-block) | Optional. |
+| **Attributes**                  | **Description** |
+| `backend`                       | <ul><li>Optional.</li><li>[Backend Block Reference](#backend-block-reference).</li></ul> |
+| `grant_type`                    | <ul><li>&#9888; Mandatory.</li><li>Available values: `client_credentials`.</li></ul> |
+| `token_endpoint`                | <ul><li>&#9888; Mandatory.</li><li>URL of the token endpoint at the authorization server.</li></ul> |
+| `client_id`                     | <ul><li>&#9888; Mandatory.</li><li>The client identifier.</li></ul> |
+| `client_secret`                 | <ul><li>&#9888; Mandatory.</li><li>The client password.</li></ul> |
 
 ### Modifier
 

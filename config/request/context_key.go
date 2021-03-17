@@ -13,6 +13,7 @@ const (
 	RoundTripName
 	RoundTripProxy
 	ServerName
+	TokenRequest
 	Wildcard
 	XFF
 )
