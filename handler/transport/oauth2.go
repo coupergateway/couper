@@ -80,12 +80,12 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, couperErr.TokenRequestFailed
 	}
 
-	resBody, err := ioutil.ReadAll(tokenRes.Body)
+	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := oa.updateAccessToken(string(resBody), credentials.StorageKey)
+	token, err := oa.updateAccessToken(string(tokenResBytes), credentials.StorageKey)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) 
 	}, nil
 }
 
-func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials) (*http.Request, error)  {
+func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials) (*http.Request, error) {
 	post := "grant_type=" + oa.config.GrantType
 	body := ioutil.NopCloser(strings.NewReader(post))
 
