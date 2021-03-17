@@ -160,7 +160,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 	origin.Listener = ln
 	origin.Start()
 	defer origin.Close()
-	confPath := "testdata/endpoints/03_couper.hcl"
+	confPath := "testdata/endpoints/04_couper.hcl"
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
