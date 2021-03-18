@@ -52,14 +52,15 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		if method == "" {
 			method = http.MethodGet
-		}
-		if len(body) > 0 {
-			method = http.MethodPost
+
+			if len(body) > 0 {
+				method = http.MethodPost
+			}
 		}
 
 		// The real URL is configured later in the backend,
 		// see <go roundtrip()> on the end of current for-loop.
-		outreq, err := http.NewRequest(method, "https://", strings.NewReader(body))
+		outreq, err := http.NewRequest(strings.ToUpper(method), "https://", strings.NewReader(body))
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()

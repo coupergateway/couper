@@ -1019,6 +1019,64 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_DynamicRequest(t *testing.T) {
+	client := newClient()
+
+	configFile := "testdata/integration/endpoint_eval/13_couper.hcl"
+
+	type expectation struct {
+		Body   string
+		Method string
+		Path   string
+		Query  url.Values
+	}
+
+	type testCase struct {
+		exp expectation
+	}
+
+	for _, tc := range []testCase{
+		{expectation{
+			Body:   "body",
+			Method: "PUT",
+			Path:   "/anything",
+			Query: url.Values{
+				"q": []string{"query"},
+			},
+		}},
+	} {
+		t.Run("Dynamic request", func(subT *testing.T) {
+			helper := test.New(subT)
+
+			shutdown, _ := newCouper(configFile, helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?method=put", nil)
+			helper.Must(err)
+
+			req.Header.Set("Body", "body")
+			req.Header.Set("Query", "query")
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+			}
+		})
+	}
+}
+
 func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 	client := newClient()
 
