@@ -134,7 +134,7 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 	post := "grant_type=" + oa.config.GrantType
 	body := ioutil.NopCloser(strings.NewReader(post))
 
-	outreq, err := http.NewRequest("POST", oa.config.TokenEndpoint, body)
+	outreq, err := http.NewRequest(http.MethodPost, oa.config.TokenEndpoint, body)
 	if err != nil {
 		return nil, err
 	}
