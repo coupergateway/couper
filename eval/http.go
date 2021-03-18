@@ -232,6 +232,36 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 	return nil
 }
 
+func GetContextAttribute(context hcl.Body, req *http.Request, name string) (string, error) {
+	ctx, ok := req.Context().Value(ContextType).(*Context)
+	if !ok {
+		return "", nil
+	}
+	evalCtx := ctx.HCLContext()
+
+	schema := &hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: name}}}
+	content, _, _ := context.PartialContent(schema)
+	if content == nil || len(content.Attributes) == 0 {
+		return "", nil
+	}
+
+	return GetAttribute(evalCtx, content, name)
+}
+
+func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (string, error) {
+	attr := content.Attributes
+	if _, ok := attr[name]; !ok {
+		return "", nil
+	}
+
+	val, diags := attr[name].Expr.Value(ctx)
+	if diags.HasErrors() {
+		return "", diags
+	}
+
+	return seetie.ValueToString(val), nil
+}
+
 func SetHeader(val cty.Value, headerCtx http.Header) {
 	expMap := seetie.ValueToMap(val)
 	for key, v := range expMap {
