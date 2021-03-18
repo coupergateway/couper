@@ -309,7 +309,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			proxyConfig.Remain = proxyBlock.Body
 
 			var err error
-			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig, "")
+			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -349,7 +349,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			reqConfig.Remain = hclbody.New(content)
 
 			var err error
-			reqConfig.Backend, err = newBackend(definedBackends, reqConfig, "")
+			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 			if err != nil {
 				return err
 			}
@@ -451,7 +451,7 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 	return content, nil
 }
 
-func newBackend(definedBackends Backends, inlineConfig config.Inline, url string) (hcl.Body, error) {
+func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body, error) {
 	bend, err := mergeBackendBodies(definedBackends, inlineConfig)
 	if err != nil {
 		return nil, err
@@ -566,7 +566,7 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
 		},
-	})}, "")
+	})})
 	if err != nil {
 		diags := err.(hcl.Diagnostics)
 		if strings.HasPrefix(diags[0].Summary, "The host of 'url'") {
