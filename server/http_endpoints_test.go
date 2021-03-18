@@ -91,6 +91,7 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
 	helper.Must(err)
 
+	req.Header.Set("X-User", "user")
 	req.Header.Set("X-Forwarded-For", "1.2.3.4")
 
 	res, err := client.Do(req)

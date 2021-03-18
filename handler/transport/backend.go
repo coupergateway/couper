@@ -19,7 +19,6 @@ import (
 	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/utils"
 )
@@ -90,11 +89,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if b.options != nil && b.options.BasicAuth != "" {
-		auth := base64.StdEncoding.EncodeToString([]byte(b.options.BasicAuth))
-		req.Header.Set("Authorization", "Basic "+auth)
-	}
-
 	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
 
@@ -123,12 +117,11 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
+	b.withBasicAuth(req)
+	b.withPathPrefix(req)
+
 	setUserAgent(req)
 	req.Close = false
-
-	if b.options != nil && b.options.PathPrefix != "" {
-		req.URL.Path = utils.JoinPath("/", b.options.PathPrefix, req.URL.Path)
-	}
 
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
@@ -173,6 +166,27 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
+func (b *Backend) withPathPrefix(req *http.Request) {
+	if pathPrefix := b.getAttribute(req, "path_prefix"); pathPrefix != "" {
+		req.URL.Path = utils.JoinPath("/", pathPrefix, req.URL.Path)
+	}
+}
+
+func (b *Backend) withBasicAuth(req *http.Request) {
+	if creds := b.getAttribute(req, "basic_auth"); creds != "" {
+		auth := base64.StdEncoding.EncodeToString([]byte(creds))
+		req.Header.Set("Authorization", "Basic "+auth)
+	}
+}
+
+func (b *Backend) getAttribute(req *http.Request, name string) string {
+	attrVal, err := eval.GetContextAttribute(b.context, req, name)
+	if err != nil {
+		b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
+	}
+	return attrVal
+}
+
 func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	errCh := make(chan error, 1)
 	if b.transportConf.Timeout <= 0 {
@@ -201,17 +215,28 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 		httpContext = httpCtx.HCLContext()
 	}
 
+	log := b.upstreamLog.LogEntry().WithField("hcl", "backend")
+
 	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
-		b.upstreamLog.LogEntry().Error(diags)
+		log.Error(diags)
 	}
 
-	var origin, hostname string
-	if o := getAttribute(httpContext, "origin", content); o != "" {
-		origin = o
+	var origin, hostname, proxyURL string
+	type pair struct {
+		attrName string
+		target   *string
 	}
-	if h := getAttribute(httpContext, "hostname", content); h != "" {
-		hostname = h
+	for _, p := range []pair{
+		{"origin", &origin},
+		{"hostname", &hostname},
+		{"proxy", &proxyURL},
+	} {
+		if v, err := eval.GetAttribute(httpContext, content, p.attrName); err != nil {
+			log.Error(err)
+		} else if v != "" {
+			*p.target = v
+		}
 	}
 
 	originURL, _ := url.Parse(origin)
@@ -219,16 +244,7 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 		hostname = originURL.Host
 	}
 
-	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname)
-}
-
-func getAttribute(ctx *hcl.EvalContext, name string, body *hcl.BodyContent) string {
-	attr := body.Attributes
-	if _, ok := attr[name]; !ok {
-		return ""
-	}
-	originValue, _ := attr[name].Expr.Value(ctx)
-	return seetie.ValueToString(originValue)
+	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL)
 }
 
 // setUserAgent sets an empty one if none is present or empty

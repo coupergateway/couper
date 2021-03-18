@@ -727,6 +727,11 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
 
+			// Test dynamic values in conf
+			if strings.HasPrefix(tc.exp.Path, "/xxx") {
+				req.Header.Set("X-Val", "xxx")
+			}
+
 			res, err := client.Do(req)
 			helper.Must(err)
 

@@ -108,7 +108,7 @@ func Get(conf *Config) *http.Transport {
 	return nil
 }
 
-func (c *Config) With(scheme, origin, hostname string) *Config {
+func (c *Config) With(scheme, origin, hostname, proxyURL string) *Config {
 	const defaultScheme = "http"
 	conf := *c
 	if scheme != "" {
@@ -132,6 +132,10 @@ func (c *Config) With(scheme, origin, hostname string) *Config {
 		} else {
 			conf.Origin += ":" + tlsPort
 		}
+	}
+
+	if proxyURL != "" {
+		conf.Proxy = proxyURL
 	}
 
 	return &conf

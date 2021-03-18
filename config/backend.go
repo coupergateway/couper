@@ -12,7 +12,6 @@ var BackendInlineSchema = Backend{}.Schema(true)
 
 // Backend represents the <Backend> object.
 type Backend struct {
-	BasicAuth              string   `hcl:"basic_auth,optional"`
 	ConnectTimeout         string   `hcl:"connect_timeout,optional"`
 	DisableCertValidation  bool     `hcl:"disable_certificate_validation,optional"`
 	DisableConnectionReuse bool     `hcl:"disable_connection_reuse,optional"`
@@ -20,8 +19,6 @@ type Backend struct {
 	MaxConnections         int      `hcl:"max_connections,optional"`
 	Name                   string   `hcl:"name,label"`
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
-	PathPrefix             string   `hcl:"path_prefix,optional"`
-	Proxy                  string   `hcl:"proxy,optional"`
 	Remain                 hcl.Body `hcl:",remain"`
 	TTFBTimeout            string   `hcl:"ttfb_timeout,optional"`
 	Timeout                string   `hcl:"timeout,optional"`
@@ -49,8 +46,11 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		meta.Attributes
-		Hostname string `hcl:"hostname,optional"`
-		Origin   string `hcl:"origin,optional"`
+		BasicAuth  string `hcl:"basic_auth,optional"`
+		Hostname   string `hcl:"hostname,optional"`
+		Origin     string `hcl:"origin,optional"`
+		PathPrefix string `hcl:"path_prefix,optional"`
+		ProxyURL   string `hcl:"proxy,optional"`
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})

@@ -353,7 +353,6 @@ func newBackend(
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         ignoreProxyEnv,
-		Proxy:                  beConf.Proxy,
 		MaxConnections:         beConf.MaxConnections,
 	}
 
@@ -375,9 +374,7 @@ func newBackend(
 	}
 
 	options := &transport.BackendOptions{
-		BasicAuth:  beConf.BasicAuth,
-		OpenAPI:    openAPIopts,
-		PathPrefix: beConf.PathPrefix,
+		OpenAPI: openAPIopts,
 	}
 	backend := transport.NewBackend(backendCtx, tc, options, log)
 
