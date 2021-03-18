@@ -1,10 +1,8 @@
 package configload
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -19,7 +17,6 @@ import (
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -312,7 +309,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			proxyConfig.Remain = proxyBlock.Body
 
 			var err error
-			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig, proxyConfig.URL)
+			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig, "")
 			if err != nil {
 				return err
 			}
@@ -336,7 +333,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			reqConfig.Remain = reqBlock.Body
 
 			var err error
-			reqConfig.Backend, err = newBackend(definedBackends, reqConfig, reqConfig.URL)
+			reqConfig.Backend, err = newBackend(definedBackends, reqConfig, "")
 			if err != nil {
 				return err
 			}
@@ -444,41 +441,55 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline, url string
 		return nil, err
 	}
 
-	if url != "" {
-		body, urlOrigin, err := newBackendFromURL(url)
-		if err != nil {
-			return nil, err
-		}
-
-		if bend == nil {
-			bend = body
-		} else {
-			content, _, diags := bend.PartialContent(
-				&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}},
-			)
-			if diags.HasErrors() {
-				return nil, diags
-			}
-
-			if attr, ok := content.Attributes["origin"]; ok {
-				val, err := attr.Expr.Value(envContext)
-				if err != nil {
-					return nil, err
-				}
-				beOrigin := seetie.ValueToString(val)
-
-				if urlOrigin != beOrigin {
-					r := inlineConfig.HCLBody().MissingItemRange()
-					return nil, hcl.Diagnostics{&hcl.Diagnostic{
-						Subject: &r,
-						Summary: "The host of 'url' and 'backend.origin' must be equal",
-					}}
-				}
-			}
-
-			bend = MergeBodies([]hcl.Body{bend, body})
-		}
+	if bend == nil {
+		// Create a default backend
+		bend = hclbody.New(&hcl.BodyContent{
+			Attributes: map[string]*hcl.Attribute{
+				"name": {
+					Name: "name",
+					Expr: &hclsyntax.LiteralValueExpr{
+						Val: cty.StringVal(defaultNameLabel),
+					},
+				},
+			},
+		})
 	}
+
+	// if url != "" {
+	// 	body, urlOrigin, err := newBackendFromURL(url)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	if bend == nil {
+	// 		bend = body
+	// 	} else {
+	// 		content, _, diags := bend.PartialContent(
+	// 			&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}},
+	// 		)
+	// 		if diags.HasErrors() {
+	// 			return nil, diags
+	// 		}
+
+	// 		if attr, ok := content.Attributes["origin"]; ok {
+	// 			val, err := attr.Expr.Value(envContext)
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
+	// 			beOrigin := seetie.ValueToString(val)
+
+	// 			if urlOrigin != beOrigin {
+	// 				r := inlineConfig.HCLBody().MissingItemRange()
+	// 				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+	// 					Subject: &r,
+	// 					Summary: "The host of 'url' and 'backend.origin' must be equal",
+	// 				}}
+	// 			}
+	// 		}
+
+	// 		bend = MergeBodies([]hcl.Body{bend, body})
+	// 	}
+	// }
 
 	oauth2Backend, err := newOAuthBackend(definedBackends, bend)
 	if err != nil {
@@ -494,13 +505,13 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline, url string
 		bend = MergeBodies([]hcl.Body{bend, wrapped})
 	}
 
-	if err = validateOrigin(bend); err != nil {
-		r := inlineConfig.HCLBody().MissingItemRange()
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &r,
-			Summary: err.Error(),
-		}}
-	}
+	// if err = validateOrigin(bend); err != nil {
+	// 	r := inlineConfig.HCLBody().MissingItemRange()
+	// 	return nil, hcl.Diagnostics{&hcl.Diagnostic{
+	// 		Subject: &r,
+	// 		Summary: err.Error(),
+	// 	}}
+	// }
 
 	return bend, nil
 }
@@ -516,18 +527,18 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		return nil, nil
 	}
 
-	attrContent, _, diags := oauthBlocks[0].Body.PartialContent(config.OAuthEndpointSchema)
-	if diags.HasErrors() {
-		return nil, diags
-	}
-	var endpointURL string
-	if attr, ok := attrContent.Attributes[config.OAuthEndpointSchema.Attributes[0].Name]; ok {
-		value, diags := attr.Expr.Value(envContext)
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		endpointURL = value.AsString()
-	}
+	// attrContent, _, diags := oauthBlocks[0].Body.PartialContent(config.OAuthEndpointSchema)
+	// if diags.HasErrors() {
+	// 	return nil, diags
+	// }
+	// var endpointURL string
+	// if attr, ok := attrContent.Attributes[config.OAuthEndpointSchema.Attributes[0].Name]; ok {
+	// 	value, diags := attr.Expr.Value(envContext)
+	// 	if diags.HasErrors() {
+	// 		return nil, diags
+	// 	}
+	// 	endpointURL = value.AsString()
+	// }
 
 	backendContent, err := contentByType(backend, oauthBlocks[0].Body)
 	if err != nil {
@@ -539,7 +550,7 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
 		},
-	})}, endpointURL)
+	})}, "")
 	if err != nil {
 		diags := err.(hcl.Diagnostics)
 		if strings.HasPrefix(diags[0].Summary, "The host of 'url'") {
@@ -549,60 +560,60 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 	return b, err
 }
 
-func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return nil, "", err
-	}
+// func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
+// 	u, err := url.Parse(rawURL)
+// 	if err != nil {
+// 		return nil, "", err
+// 	}
 
-	origin := u.Scheme + "://" + u.Host
+// 	origin := u.Scheme + "://" + u.Host
 
-	attributes := map[string]*hcl.Attribute{
-		"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
-		"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
-	}
-	if u.Path != "" {
-		attributes["path"] = &hcl.Attribute{Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}}
-	}
+// 	attributes := map[string]*hcl.Attribute{
+// 		"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
+// 		"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
+// 	}
+// 	if u.Path != "" {
+// 		attributes["path"] = &hcl.Attribute{Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}}
+// 	}
 
-	if len(u.Query()) > 0 {
-		attributes["set_query_params"] = &hcl.Attribute{
-			Name: "set_query_params",
-			Expr: &hclsyntax.LiteralValueExpr{Val: seetie.ValuesMapToValue(u.Query())},
-		}
-	}
+// 	if len(u.Query()) > 0 {
+// 		attributes["set_query_params"] = &hcl.Attribute{
+// 			Name: "set_query_params",
+// 			Expr: &hclsyntax.LiteralValueExpr{Val: seetie.ValuesMapToValue(u.Query())},
+// 		}
+// 	}
 
-	return hclbody.New(&hcl.BodyContent{
-		Attributes: attributes,
-	}), origin, nil
-}
+// 	return hclbody.New(&hcl.BodyContent{
+// 		Attributes: attributes,
+// 	}), origin, nil
+// }
 
 // validateOrigin checks at least for an origin attribute definition.
-func validateOrigin(merged hcl.Body) error {
-	if merged == nil {
-		return fmt.Errorf("missing backend reference or definition")
-	}
+// func validateOrigin(merged hcl.Body) error {
+// 	if merged == nil {
+// 		return fmt.Errorf("missing backend reference or definition")
+// 	}
 
-	content, _, diags := merged.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}})
-	if diags.HasErrors() {
-		return diags
-	}
+// 	content, _, diags := merged.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}})
+// 	if diags.HasErrors() {
+// 		return diags
+// 	}
 
-	err := errors.New("missing backend.origin attribute")
-	if content == nil {
-		return err
-	}
+// 	err := errors.New("missing backend.origin attribute")
+// 	if content == nil {
+// 		return err
+// 	}
 
-	_, ok := content.Attributes["origin"]
-	if !ok {
-		bodyRange := merged.MissingItemRange()
-		if bodyRange.Filename == "<empty>" {
-			return err
-		}
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &bodyRange,
-			Summary: err.Error(),
-		}}
-	}
-	return nil
-}
+// 	_, ok := content.Attributes["origin"]
+// 	if !ok {
+// 		bodyRange := merged.MissingItemRange()
+// 		if bodyRange.Filename == "<empty>" {
+// 			return err
+// 		}
+// 		return hcl.Diagnostics{&hcl.Diagnostic{
+// 			Subject: &bodyRange,
+// 			Summary: err.Error(),
+// 		}}
+// 	}
+// 	return nil
+// }

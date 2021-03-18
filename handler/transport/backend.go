@@ -72,7 +72,16 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	tc := b.evalTransport(req)
+	err := eval.ApplyRequestContext(req.Context(), b.context, req)
+	if err != nil {
+		return nil, err
+	}
+
+	tc, err := b.evalTransport(req)
+	if err != nil {
+		return nil, err
+	}
+
 	t := Get(tc)
 
 	deadlineErr := b.withTimeout(req)
@@ -83,11 +92,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	req.URL.Host = tc.Origin
 	req.Host = tc.Hostname
-
-	err := eval.ApplyRequestContext(req.Context(), b.context, req)
-	if err != nil {
-		return nil, err
-	}
 
 	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
@@ -209,7 +213,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(req *http.Request) *Config {
+func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	var httpContext *hcl.EvalContext
 	if httpCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
 		httpContext = httpCtx.HCLContext()
@@ -239,12 +243,40 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 		}
 	}
 
-	originURL, _ := url.Parse(origin)
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
+	}
+
+	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
+		urlAttr, err := url.Parse(rawURL)
+		if err != nil {
+			b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
+		}
+
+		if origin != "" && urlAttr.Scheme+"://"+urlAttr.Host != origin {
+			b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(
+				"The host of 'url' and 'backend.origin' must be equal",
+			)
+
+			return nil, fmt.Errorf("The host of 'url' and 'backend.origin' must be equal")
+		}
+
+		originURL.Host = urlAttr.Host
+		originURL.Scheme = urlAttr.Scheme
+		req.URL.Scheme = urlAttr.Scheme
+		req.URL.Path = urlAttr.Path // TODO: evalURLPath()???
+
+		if urlAttr.RawQuery != "" {
+			req.URL.RawQuery = urlAttr.RawQuery
+		}
+	}
+
 	if hostname == "" {
 		hostname = originURL.Host
 	}
 
-	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL)
+	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil
 }
 
 // setUserAgent sets an empty one if none is present or empty
