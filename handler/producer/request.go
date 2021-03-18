@@ -31,23 +31,31 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	}()
 
 	for _, or := range r {
+		outCtx := withRoundTripName(ctx, or.Name)
+
 		method, err := eval.GetContextAttribute(or.Context, req, "method")
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
+
 		body, err := eval.GetContextAttribute(or.Context, req, "body")
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
+
 		url, err := eval.GetContextAttribute(or.Context, req, "url")
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
+		}
+
+		if url != "" {
+			outCtx = context.WithValue(outCtx, request.URLAttribute, url)
 		}
 
 		if method == "" {
@@ -59,7 +67,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		}
 
 		// The real URL is configured later in the backend,
-		// see <go roundtrip()> on the end of current for-loop.
+		// see <go roundtrip()> at the end of current for-loop.
 		outreq, err := http.NewRequest(strings.ToUpper(method), "https://", strings.NewReader(body))
 		if err != nil {
 			results <- &Result{Err: err}
@@ -67,19 +75,14 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 			continue
 		}
 
-		outCtx := withRoundTripName(ctx, or.Name)
-		err = eval.ApplyRequestContext(req.Context(), or.Context, outreq)
+		*outreq = *outreq.WithContext(outCtx)
+		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
 
-		if url != "" {
-			outCtx = context.WithValue(outCtx, request.URLAttribute, url)
-		}
-
-		*outreq = *outreq.WithContext(outCtx)
 		go roundtrip(or.Backend, outreq, results, wg)
 	}
 }

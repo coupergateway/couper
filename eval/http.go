@@ -75,10 +75,13 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 
 	var httpCtx *hcl.EvalContext
 	if c, ok := ctx.Value(ContextType).(*Context); ok {
-		httpCtx = c.eval
+		httpCtx = c.HCLContext()
 	}
 
-	content, _, _ := body.PartialContent(meta.AttributesSchema)
+	content, _, diags := body.PartialContent(meta.AttributesSchema)
+	if diags.HasErrors() {
+		return diags
+	}
 
 	headerCtx := req.Header
 

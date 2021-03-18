@@ -330,7 +330,23 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				reqConfig.Name = defaultNameLabel
 			}
 
-			reqConfig.Remain = reqBlock.Body
+			// remap request specific names for headers and query to well known ones
+			content, _, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
+			if diags.HasErrors() {
+				return diags
+			}
+			if headers, ok := content.Attributes["headers"]; ok {
+				headers.Name = "set_request_headers"
+				content.Attributes["set_request_headers"] = headers
+				delete(content.Attributes, "headers")
+			}
+			if queryParams, ok := content.Attributes["query_params"]; ok {
+				queryParams.Name = "set_query_params"
+				content.Attributes["set_query_params"] = queryParams
+				delete(content.Attributes, "query_params")
+			}
+
+			reqConfig.Remain = hclbody.New(content)
 
 			var err error
 			reqConfig.Backend, err = newBackend(definedBackends, reqConfig, "")
