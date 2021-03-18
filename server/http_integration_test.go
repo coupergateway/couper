@@ -1025,10 +1025,11 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 	configFile := "testdata/integration/endpoint_eval/13_couper.hcl"
 
 	type expectation struct {
-		Body   string
-		Method string
-		Path   string
-		Query  url.Values
+		Body    string
+		Headers http.Header
+		Method  string
+		Path    string
+		Query   url.Values
 	}
 
 	type testCase struct {
@@ -1043,6 +1044,10 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			Query: url.Values{
 				"q": []string{"query"},
 			},
+			Headers: http.Header{
+				"Content-Length": []string{"4"},
+				"Test":           []string{"header"},
+			},
 		}},
 	} {
 		t.Run("Dynamic request", func(subT *testing.T) {
@@ -1056,6 +1061,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 
 			req.Header.Set("Body", "body")
 			req.Header.Set("Query", "query")
+			req.Header.Set("Test", "header")
 
 			res, err := client.Do(req)
 			helper.Must(err)
