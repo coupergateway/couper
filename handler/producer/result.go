@@ -6,13 +6,15 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
 
 // Result represents the producer <Result> object.
 type Result struct {
-	Beresp *http.Response
-	Err    error
+	Beresp        *http.Response
+	Err           error
+	RoundTripName string
 	// TODO: trace
 }
 
@@ -39,6 +41,8 @@ func (rm ResultMap) List() []*http.Response {
 }
 
 func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, wg *sync.WaitGroup) {
+	rtn := req.Context().Value(request.RoundTripName).(string)
+
 	defer func() {
 		if rp := recover(); rp != nil {
 			var err error
@@ -50,12 +54,18 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 					stack: debug.Stack(),
 				}
 			}
-			results <- &Result{Err: err}
+			results <- &Result{
+				Err:           err,
+				RoundTripName: rtn,
+			}
 		}
 		wg.Done()
 	}()
 
-	// TODO: apply evals here with context?
 	beresp, err := rt.RoundTrip(req)
-	results <- &Result{Beresp: beresp, Err: err}
+	results <- &Result{
+		Beresp:        beresp,
+		Err:           err,
+		RoundTripName: rtn,
+	}
 }
