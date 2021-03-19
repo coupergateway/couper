@@ -72,22 +72,25 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	tc := b.evalTransport(req)
-	t := Get(tc)
-
-	deadlineErr := b.withTimeout(req)
-
-	if req.URL.Scheme == "" {
-		req.URL.Scheme = tc.Scheme
-	}
-
-	req.URL.Host = tc.Origin
-	req.Host = tc.Hostname
-
+	// Execute before <b.evalTransport()> due to right
+	// handling of query-params in the URL attribute.
 	err := eval.ApplyRequestContext(req.Context(), b.context, req)
 	if err != nil {
 		return nil, err
 	}
+
+	tc, err := b.evalTransport(req)
+	if err != nil {
+		return nil, err
+	}
+
+	t := Get(tc)
+
+	deadlineErr := b.withTimeout(req)
+
+	req.URL.Host = tc.Origin
+	req.URL.Scheme = tc.Scheme
+	req.Host = tc.Hostname
 
 	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
@@ -180,7 +183,7 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 }
 
 func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := eval.GetContextAttribute(b.context, req, name)
+	attrVal, err := eval.GetContextAttribute(b.context, req.Context(), name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
 	}
@@ -209,7 +212,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(req *http.Request) *Config {
+func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	var httpContext *hcl.EvalContext
 	if httpCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
 		httpContext = httpCtx.HCLContext()
@@ -239,12 +242,45 @@ func (b *Backend) evalTransport(req *http.Request) *Config {
 		}
 	}
 
-	originURL, _ := url.Parse(origin)
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
+		urlAttr, err := url.Parse(rawURL)
+		if err != nil {
+			log.Error(err)
+		}
+
+		if origin != "" && urlAttr.Scheme+"://"+urlAttr.Host != origin {
+			errctx := "url"
+			if tr := req.Context().Value(request.TokenRequest); tr != nil {
+				errctx = "token_endpoint"
+			}
+			return nil, fmt.Errorf(
+				"backend: the host of '%s': %q and 'backend.origin': %q must be equal",
+				errctx, urlAttr.Host, origin)
+		}
+
+		originURL.Host = urlAttr.Host
+		originURL.Scheme = urlAttr.Scheme
+		req.URL.Scheme = urlAttr.Scheme
+
+		if urlAttr.Path != "" {
+			req.URL.Path = urlAttr.Path
+		}
+
+		if urlAttr.RawQuery != "" {
+			req.URL.RawQuery = urlAttr.RawQuery
+		}
+	}
+
 	if hostname == "" {
 		hostname = originURL.Host
 	}
 
-	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL)
+	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil
 }
 
 // setUserAgent sets an empty one if none is present or empty

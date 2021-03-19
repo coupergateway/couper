@@ -8,9 +8,11 @@ server "api" {
 
     endpoint "/" {
       proxy {
+        url = "${env.COUPER_TEST_BACKEND_ADDR}/proxy"
         backend = "proxy"
       }
       request "request" {
+        url = "${env.COUPER_TEST_BACKEND_ADDR}/request"
         backend = "request"
       }
       response {
@@ -25,11 +27,11 @@ server "api" {
 definitions {
   # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "proxy" {
-    path = "/proxy"
+    path = "/override/me"
     origin = env.COUPER_TEST_BACKEND_ADDR
   }
   backend "request" {
-    path = "/request"
+    path = "/override/me"
     origin = env.COUPER_TEST_BACKEND_ADDR
   }
 }

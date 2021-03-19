@@ -7,16 +7,33 @@ server "api" {
     endpoint "/" {
       proxy {
         backend {
-          origin = "http://example.com"
+          origin = "${req.headers.x-origin}"
 		  path   = "/resource"
 
 		  oauth2 {
-            token_endpoint = "http://example.com/oauth2"
+            token_endpoint = "${req.headers.x-token-endpoint}/oauth2"
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
+          }
+        }
+      }
+    }
 
-            backend {}
+    endpoint "/2nd" {
+      proxy {
+        backend {
+          origin = "${req.headers.x-origin}"
+          path   = "/resource"
+
+          oauth2 {
+            client_id      = "user"
+            client_secret  = "pass"
+            grant_type     = "client_credentials"
+            backend {
+              origin = "${req.headers.x-token-endpoint}"
+              path = "/oauth2"
+            }
           }
         }
       }
@@ -24,10 +41,6 @@ server "api" {
   }
 }
 
-definitions {
-  # backend origin within a definition block gets replaced with the integration test "anything" server.
-  backend "anything" {
-    path = "/anything"
-    origin = env.COUPER_TEST_BACKEND_ADDR
-  }
+settings {
+  no_proxy_from_env = true
 }
