@@ -1,25 +1,26 @@
-package handler
+package ac
 
 import (
 	"net/http"
 
-	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
 
 var (
-	_ http.Handler         = &AccessControl{}
-	_ errors.ErrorTemplate = &AccessControl{}
-	_ ac.ProtectedHandler  = &AccessControl{}
+	_ http.Handler                   = &AccessControl{}
+	_ errors.ErrorTemplate           = &AccessControl{}
+	_ accesscontrol.ProtectedHandler = &AccessControl{}
 )
 
 type AccessControl struct {
-	ac        ac.List
+	ac        accesscontrol.List
 	errorTpl  *errors.Template
 	protected http.Handler
 }
 
-func NewAccessControl(protected http.Handler, errTpl *errors.Template, list ...ac.AccessControl) *AccessControl {
+func NewAccessControl(protected http.Handler, errTpl *errors.Template, list ...accesscontrol.AccessControl) *AccessControl {
 	return &AccessControl{
 		ac:        list,
 		errorTpl:  errTpl,
@@ -31,7 +32,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, control := range a.ac {
 		if err := control.Validate(req); err != nil {
 			var code errors.Code
-			if authError, ok := err.(*ac.BasicAuthError); ok {
+			if authError, ok := err.(*accesscontrol.BasicAuthError); ok {
 				code = errors.BasicAuthFailed
 				wwwAuthenticateValue := "Basic"
 				if authError.Realm != "" {
@@ -40,13 +41,16 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				rw.Header().Set("WWW-Authenticate", wwwAuthenticateValue)
 			} else {
 				switch err {
-				case ac.ErrorNotConfigured:
+				case accesscontrol.ErrorNotConfigured:
 					code = errors.Configuration
-				case ac.ErrorEmptyToken:
+				case accesscontrol.ErrorEmptyToken:
 					code = errors.AuthorizationRequired
 				default:
 					code = errors.AuthorizationFailed
 				}
+			}
+			if ctx, ok := req.Context().Value(request.AccessControl).(*AccessControlContext); ok {
+				ctx.errors = append(ctx.errors, err)
 			}
 			a.errorTpl.ServeError(code).ServeHTTP(rw, req)
 			return
