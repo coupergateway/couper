@@ -3,7 +3,6 @@ package server_test
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -125,9 +124,9 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 
 func TestEndpoints_OAuth2(t *testing.T) {
 	helper := test.New(t)
-	seenCh := make(chan struct{})
+	var seenCh, tokenSeenCh chan struct{}
 
-	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/oauth2" {
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
@@ -139,42 +138,66 @@ func TestEndpoints_OAuth2(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
+			close(tokenSeenCh)
 			return
 		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
 
+	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/resource" {
 			if req.Header.Get("Authorization") == "Bearer abcdef0123456789" {
 				rw.WriteHeader(http.StatusNoContent)
-
-				go func() {
-					seenCh <- struct{}{}
-				}()
-
+				close(seenCh)
 				return
 			}
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 
-		rw.WriteHeader(http.StatusBadRequest)
+		rw.WriteHeader(http.StatusNotFound)
 	}))
-	ln, err := net.Listen("tcp4", testProxyAddr[7:])
-	helper.Must(err)
-	origin.Listener = ln
-	origin.Start()
-	defer origin.Close()
+	defer ResourceOrigin.Close()
+
 	confPath := "testdata/endpoints/04_couper.hcl"
-	shutdown, _ := newCouper(confPath, test.New(t))
-	defer shutdown()
+	shutdown, hook := newCouper(confPath, test.New(t))
+	defer func() {
+		if t.Failed() {
+			for _, e := range hook.Entries {
+				println(e.String())
+			}
+		}
+		shutdown()
+	}()
 
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 	helper.Must(err)
 
-	_, err = newClient().Do(req)
-	helper.Must(err)
+	req.Header.Set("X-Token-Endpoint", oauthOrigin.URL)
+	req.Header.Set("X-Origin", ResourceOrigin.URL)
 
-	timer := time.NewTimer(time.Second)
-	select {
-	case <-timer.C:
-		t.Error("OAuth2 request failed")
-	case <-seenCh:
+	for _, p := range []string{"/", "/2nd"} {
+		hook.Reset()
+
+		seenCh = make(chan struct{})
+		tokenSeenCh = make(chan struct{})
+
+		req.URL.Path = p
+		res, err := newClient().Do(req)
+		helper.Must(err)
+
+		if res.StatusCode != http.StatusNoContent {
+			t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+			return
+		}
+
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-timer.C:
+			t.Error("OAuth2 request failed")
+		case <-tokenSeenCh:
+			<-seenCh
+		}
 	}
 }

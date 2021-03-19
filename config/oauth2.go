@@ -7,12 +7,6 @@ import (
 
 var _ Inline = &OAuth2{}
 
-var OAuthEndpointSchema = &hcl.BodySchema{
-	Attributes: []hcl.AttributeSchema{
-		{Name: "token_endpoint"},
-	},
-}
-
 var OAuthBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
 		{
@@ -23,10 +17,9 @@ var OAuthBlockSchema = &hcl.BodySchema{
 
 // OAuth2 represents the <OAuth2> object.
 type OAuth2 struct {
-	BackendName   string   `hcl:"backend,optional"`
-	GrantType     string   `hcl:"grant_type"`
-	Remain        hcl.Body `hcl:",remain"`
-	TokenEndpoint string   `hcl:"token_endpoint,optional"`
+	BackendName string   `hcl:"backend,optional"`
+	GrantType   string   `hcl:"grant_type"`
+	Remain      hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Inline> interface.
@@ -47,9 +40,10 @@ func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend      *Backend `hcl:"backend,block"`
-		ClientID     string   `hcl:"client_id"`
-		ClientSecret string   `hcl:"client_secret"`
+		Backend       *Backend `hcl:"backend,block"`
+		ClientID      string   `hcl:"client_id"`
+		ClientSecret  string   `hcl:"client_secret"`
+		TokenEndpoint string   `hcl:"token_endpoint,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

@@ -253,15 +253,10 @@ func NewServerConfiguration(
 				if berr != nil {
 					return nil, berr
 				}
-				method := http.MethodGet
-				if requestConf.Method != "" {
-					method = requestConf.Method
-				}
+
 				requests = append(requests, &producer.Request{
 					Backend: backend,
-					Body:    requestConf.Body,
 					Context: requestConf.Remain,
-					Method:  method,
 					Name:    requestConf.Name,
 				})
 			}
