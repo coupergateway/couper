@@ -86,11 +86,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	deadlineErr := b.withTimeout(req)
 
-	if req.URL.Scheme == "" {
-		req.URL.Scheme = tc.Scheme
-	}
-
 	req.URL.Host = tc.Origin
+	req.URL.Scheme = tc.Scheme
 	req.Host = tc.Hostname
 
 	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
