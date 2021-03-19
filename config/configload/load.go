@@ -1,12 +1,11 @@
 package configload
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -18,11 +17,11 @@ import (
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
 	backend     = "backend"
+	oauth2      = "oauth2"
 	definitions = "definitions"
 	nameLabel   = "name"
 	proxy       = "proxy"
@@ -34,6 +33,11 @@ const (
 )
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+var envContext *hcl.EvalContext
+
+func init() {
+	envContext = eval.NewContext(nil).HCLContext()
+}
 
 func LoadFile(filePath string) (*config.Couper, error) {
 	_, err := startup.SetWorkingDirectory(filePath)
@@ -59,8 +63,6 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 
 	return LoadConfig(hclBody, src, filename)
 }
-
-var envContext *hcl.EvalContext
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
@@ -307,7 +309,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			proxyConfig.Remain = proxyBlock.Body
 
 			var err error
-			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig, proxyConfig.URL)
+			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -328,10 +330,18 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				reqConfig.Name = defaultNameLabel
 			}
 
-			reqConfig.Remain = reqBlock.Body
+			// remap request specific names for headers and query to well known ones
+			content, leftOvers, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
+			if diags.HasErrors() {
+				return diags
+			}
+			renameAttribute(content, "headers", "set_request_headers")
+			renameAttribute(content, "query_params", "set_query_params")
+
+			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
 
 			var err error
-			reqConfig.Backend, err = newBackend(definedBackends, reqConfig, reqConfig.URL)
+			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 			if err != nil {
 				return err
 			}
@@ -433,111 +443,78 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 	return content, nil
 }
 
-func newBackend(definedBackends Backends, inlineConfig config.Inline, url string) (hcl.Body, error) {
+func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body, error) {
 	bend, err := mergeBackendBodies(definedBackends, inlineConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	if url != "" {
-		body, urlOrigin, err := newBackendFromURL(url)
-		if err != nil {
-			return nil, err
-		}
-
-		if bend == nil {
-			bend = body
-		} else {
-			content, _, diags := bend.PartialContent(
-				&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}},
-			)
-			if diags.HasErrors() {
-				return nil, diags
-			}
-
-			if attr, ok := content.Attributes["origin"]; ok {
-				val, err := attr.Expr.Value(envContext)
-				if err != nil {
-					return nil, err
-				}
-				beOrigin := seetie.ValueToString(val)
-
-				if urlOrigin != beOrigin {
-					r := inlineConfig.HCLBody().MissingItemRange()
-					return nil, hcl.Diagnostics{&hcl.Diagnostic{
-						Subject: &r,
-						Summary: "The origin of 'url' and 'backend.origin' must be equal",
-					}}
-				}
-			}
-
-			bend = MergeBodies([]hcl.Body{bend, body})
-		}
+	if bend == nil {
+		// Create a default backend
+		bend = hclbody.New(&hcl.BodyContent{
+			Attributes: map[string]*hcl.Attribute{
+				"name": {
+					Name: "name",
+					Expr: &hclsyntax.LiteralValueExpr{
+						Val: cty.StringVal(defaultNameLabel),
+					},
+				},
+			},
+		})
 	}
 
-	if err = validateOrigin(bend); err != nil {
-		r := inlineConfig.HCLBody().MissingItemRange()
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &r,
-			Summary: err.Error(),
-		}}
+	oauth2Backend, err := newOAuthBackend(definedBackends, bend)
+	if err != nil {
+		return nil, err
+	}
+
+	if oauth2Backend != nil {
+		wrapped := hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{
+			{Type: oauth2, Body: hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{
+				{Type: backend, Body: oauth2Backend},
+			}})},
+		}})
+		bend = MergeBodies([]hcl.Body{bend, wrapped})
 	}
 
 	return bend, nil
 }
 
-func newBackendFromURL(rawURL string) (hcl.Body, string, error) {
-	u, err := url.Parse(rawURL)
+func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error) {
+	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	origin := u.Scheme + "://" + u.Host
-
-	attributes := map[string]*hcl.Attribute{
-		"name":   {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(defaultNameLabel)}},
-		"origin": {Name: "origin", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin)}},
-		"path":   {Name: "path", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(u.Path)}},
+	oauthBlocks := innerContent.Blocks.OfType(oauth2)
+	if len(oauthBlocks) == 0 {
+		return nil, nil
 	}
 
-	if len(u.Query()) > 0 {
-		attributes["set_query_params"] = &hcl.Attribute{
-			Name: "set_query_params",
-			Expr: &hclsyntax.LiteralValueExpr{Val: seetie.ValuesMapToValue(u.Query())},
+	backendContent, err := contentByType(backend, oauthBlocks[0].Body)
+	if err != nil {
+		return nil, err
+	}
+
+	oauthBackend, err := mergeBackendBodies(definedBackends, &config.Backend{Remain: hclbody.New(backendContent)})
+	b, err := newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
+		Blocks: []*hcl.Block{
+			{Type: backend, Body: oauthBackend},
+		},
+	})})
+	if err != nil {
+		diags := err.(hcl.Diagnostics)
+		if strings.HasPrefix(diags[0].Summary, "The host of 'url'") {
+			diags[0].Summary = strings.Replace(diags[0].Summary, "The host of 'url'", "The host of 'token_endpoint'", 1)
 		}
 	}
-
-	return hclbody.New(&hcl.BodyContent{
-		Attributes: attributes,
-	}), origin, nil
+	return b, err
 }
 
-// validateOrigin checks at least for an origin attribute definition.
-func validateOrigin(merged hcl.Body) error {
-	if merged == nil {
-		return fmt.Errorf("missing backend reference or definition")
+func renameAttribute(content *hcl.BodyContent, old, new string) {
+	if attr, ok := content.Attributes[old]; ok {
+		attr.Name = new
+		content.Attributes[new] = attr
+		delete(content.Attributes, old)
 	}
-
-	content, _, diags := merged.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: "origin"}}})
-	if diags.HasErrors() {
-		return diags
-	}
-
-	err := errors.New("missing backend.origin attribute")
-	if content == nil {
-		return err
-	}
-
-	_, ok := content.Attributes["origin"]
-	if !ok {
-		bodyRange := merged.MissingItemRange()
-		if bodyRange.Filename == "<empty>" {
-			return err
-		}
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &bodyRange,
-			Summary: err.Error(),
-		}}
-	}
-	return nil
 }

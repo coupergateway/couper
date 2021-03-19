@@ -21,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -64,7 +65,9 @@ type endpointMap map[*config.Endpoint]*config.API
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfiguration, error) {
+func NewServerConfiguration(
+	conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore,
+) (ServerConfiguration, error) {
 	defaultPort := conf.Settings.DefaultPort
 
 	// confCtx is created to evaluate request / response related configuration errors on start.
@@ -232,7 +235,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			//var redirect producer.Redirect
 
 			for _, proxyConf := range endpointConf.Proxies {
-				backend, berr := newBackend(confCtx, proxyConf.Backend, log, conf.Settings.NoProxyFromEnv)
+				backend, berr := newBackend(confCtx, proxyConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 				if berr != nil {
 					return nil, berr
 				}
@@ -245,19 +248,14 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 			}
 
 			for _, requestConf := range endpointConf.Requests {
-				backend, berr := newBackend(confCtx, requestConf.Backend, log, conf.Settings.NoProxyFromEnv)
+				backend, berr := newBackend(confCtx, requestConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 				if berr != nil {
 					return nil, berr
 				}
-				method := http.MethodGet
-				if requestConf.Method != "" {
-					method = requestConf.Method
-				}
+
 				requests = append(requests, &producer.Request{
 					Backend: backend,
-					Body:    requestConf.Body,
 					Context: requestConf.Remain,
-					Method:  method,
 					Name:    requestConf.Name,
 				})
 			}
@@ -328,7 +326,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry) (ServerConfi
 	return serverConfiguration, nil
 }
 
-func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry, ignoreProxyEnv bool) (http.RoundTripper, error) {
+func newBackend(
+	evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
+	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
 		return nil, diags
@@ -348,7 +348,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         ignoreProxyEnv,
-		Proxy:                  beConf.Proxy,
 		MaxConnections:         beConf.MaxConnections,
 	}
 
@@ -370,11 +369,34 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	options := &transport.BackendOptions{
-		BasicAuth:  beConf.BasicAuth,
-		OpenAPI:    openAPIopts,
-		PathPrefix: beConf.PathPrefix,
+		OpenAPI: openAPIopts,
 	}
 	backend := transport.NewBackend(backendCtx, tc, options, log)
+
+	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
+	if oauthContent == nil {
+		return backend, nil
+	}
+
+	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
+		beConf.OAuth2 = &config.OAuth2{}
+
+		if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
+			return nil, diags
+		}
+
+		innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
+		authBackend, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, memStore)
+		if authErr != nil {
+			return nil, authErr
+		}
+
+		return transport.NewOAuth2(beConf.OAuth2, memStore, authBackend, backend)
+	}
 
 	return backend, nil
 }

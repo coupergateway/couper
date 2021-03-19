@@ -1,0 +1,46 @@
+server "api" {
+  error_file = "./../integration/server_error.html"
+
+  api {
+    error_file = "./../integration/api_error.json"
+
+    endpoint "/" {
+      proxy {
+        backend {
+          origin = "${req.headers.x-origin}"
+		  path   = "/resource"
+
+		  oauth2 {
+            token_endpoint = "${req.headers.x-token-endpoint}/oauth2"
+            client_id      = "user"
+            client_secret  = "pass"
+            grant_type     = "client_credentials"
+          }
+        }
+      }
+    }
+
+    endpoint "/2nd" {
+      proxy {
+        backend {
+          origin = "${req.headers.x-origin}"
+          path   = "/resource"
+
+          oauth2 {
+            client_id      = "user"
+            client_secret  = "pass"
+            grant_type     = "client_credentials"
+            backend {
+              origin = "${req.headers.x-token-endpoint}"
+              path = "/oauth2"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+settings {
+  no_proxy_from_env = true
+}

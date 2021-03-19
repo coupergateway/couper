@@ -75,10 +75,13 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 
 	var httpCtx *hcl.EvalContext
 	if c, ok := ctx.Value(ContextType).(*Context); ok {
-		httpCtx = c.eval
+		httpCtx = c.HCLContext()
 	}
 
-	content, _, _ := body.PartialContent(meta.AttributesSchema)
+	content, _, diags := body.PartialContent(meta.AttributesSchema)
+	if diags.HasErrors() {
+		return diags
+	}
 
 	headerCtx := req.Header
 
@@ -230,6 +233,36 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 		}
 	}
 	return nil
+}
+
+func GetContextAttribute(context hcl.Body, httpContext context.Context, name string) (string, error) {
+	ctx, ok := httpContext.Value(ContextType).(*Context)
+	if !ok {
+		return "", nil
+	}
+	evalCtx := ctx.HCLContext()
+
+	schema := &hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: name}}}
+	content, _, _ := context.PartialContent(schema)
+	if content == nil || len(content.Attributes) == 0 {
+		return "", nil
+	}
+
+	return GetAttribute(evalCtx, content, name)
+}
+
+func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (string, error) {
+	attr := content.Attributes
+	if _, ok := attr[name]; !ok {
+		return "", nil
+	}
+
+	val, diags := attr[name].Expr.Value(ctx)
+	if diags.HasErrors() {
+		return "", diags
+	}
+
+	return seetie.ValueToString(val), nil
 }
 
 func SetHeader(val cty.Value, headerCtx http.Header) {

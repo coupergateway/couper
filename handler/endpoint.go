@@ -182,6 +182,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
 			e.log.Errorf("endpoint eval error: %v", err)
+			return nil, err
 		}
 
 		r := strings.NewReader(seetie.ValueToString(val))
@@ -209,17 +210,10 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps producer
 			continue
 		}
 
-		var name string
+		name := r.RoundTripName
 
-		if r.Beresp != nil && r.Beresp.Request != nil {
-			ctx := r.Beresp.Request.Context()
-
-			if n, ok := ctx.Value(request.RoundTripName).(string); ok && n != "" {
-				name = n
-			}
-		}
 		// fallback
-		if name == "" { // error case or panic
+		if name == "" { // panic case
 			name = strconv.Itoa(i)
 		}
 		beresps[name] = r

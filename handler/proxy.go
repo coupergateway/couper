@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -9,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 )
@@ -47,6 +49,15 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
 		return nil, err // TODO: log only
+	}
+
+	url, err := eval.GetContextAttribute(p.context, req.Context(), "url")
+	if err != nil {
+		return nil, err
+	}
+	if url != "" {
+		ctx := context.WithValue(req.Context(), request.URLAttribute, url)
+		*req = *req.WithContext(ctx)
 	}
 
 	rec := transport.NewRecorder()

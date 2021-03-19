@@ -727,6 +727,11 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
 
+			// Test dynamic values in conf
+			if strings.HasPrefix(tc.exp.Path, "/xxx") {
+				req.Header.Set("X-Val", "xxx")
+			}
+
 			res, err := client.Do(req)
 			helper.Must(err)
 
@@ -1000,6 +1005,70 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			helper.Must(err)
 
 			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+			}
+		})
+	}
+}
+
+func TestHTTPServer_DynamicRequest(t *testing.T) {
+	client := newClient()
+
+	configFile := "testdata/integration/endpoint_eval/13_couper.hcl"
+
+	type expectation struct {
+		Body    string
+		Headers http.Header
+		Method  string
+		Path    string
+		Query   url.Values
+	}
+
+	type testCase struct {
+		exp expectation
+	}
+
+	for _, tc := range []testCase{
+		{expectation{
+			Body:   "body",
+			Method: "PUT",
+			Path:   "/anything",
+			Query: url.Values{
+				"q": []string{"query"},
+			},
+			Headers: http.Header{
+				"Content-Length": []string{"4"},
+				"Test":           []string{"header"},
+			},
+		}},
+	} {
+		t.Run("Dynamic request", func(subT *testing.T) {
+			helper := test.New(subT)
+
+			shutdown, _ := newCouper(configFile, helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?method=put", nil)
+			helper.Must(err)
+
+			req.Header.Set("Body", "body")
+			req.Header.Set("Query", "query")
+			req.Header.Set("Test", "header")
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			res.Body.Close()
 
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
