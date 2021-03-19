@@ -201,7 +201,6 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 				})
 			}
 		}
-		//content.Blocks = append(content.Blocks, thisContent.Blocks...)
 	}
 
 	// Finally, we check for required attributes.

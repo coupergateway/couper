@@ -135,7 +135,7 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 	body := ioutil.NopCloser(strings.NewReader(post))
 
 	// url will be configured via backend roundtrip
-	outreq, err := http.NewRequest("POST", "", body)
+	outreq, err := http.NewRequest(http.MethodPost, "", body)
 	if err != nil {
 		return nil, err
 	}
