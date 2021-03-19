@@ -1248,31 +1248,34 @@ func TestConfigBodyContentBackends(t *testing.T) {
 func TestConfigBodyContentAccessControl(t *testing.T) {
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
 	defer shutdown()
 
 	type testCase struct {
-		path   string
-		header http.Header
-		status int
-		ct     string
+		path       string
+		header     http.Header
+		status     int
+		ct         string
+		wantErrLog string
 	}
 
 	for _, tc := range []testCase{
-		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
+		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json", ""},
 		// TODO: Can a disabled auth being enabled again?
 		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
 		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
-		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json"}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json"},
-		{"/v3", http.Header{}, http.StatusOK, "application/json"},
-		{"/status", http.Header{}, http.StatusOK, "application/json"},
-		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json"},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json"},
-		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html"},
+		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json", ""}, // minimum ':'
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "missing credentials"},
+		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
+		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
+		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "missing credentials"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "missing credentials"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
+			hook.Reset()
+
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
@@ -1282,6 +1285,24 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 			res, err := client.Do(req)
 			helper.Must(err)
+
+			acEntries := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if len(acEntries) > 0 {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			} else {
+				var found bool
+				for _, valMsg := range acEntries {
+					if strings.HasPrefix(valMsg, tc.wantErrLog) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			}
 
 			if res.StatusCode != tc.status {
 				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
@@ -1321,23 +1342,26 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 func TestJWTAccessControl(t *testing.T) {
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
 	defer shutdown()
 
 	type testCase struct {
-		name   string
-		path   string
-		header http.Header
-		status int
+		name       string
+		path       string
+		header     http.Header
+		status     int
+		wantErrLog string
 	}
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden},
-		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "empty token"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "token is expired by "},
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
+			hook.Reset()
+
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
@@ -1353,6 +1377,24 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 
+			acEntries := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if len(acEntries) > 0 {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			} else {
+				var found bool
+				for _, valMsg := range acEntries {
+					if strings.HasPrefix(valMsg, tc.wantErrLog) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			}
+
 			if res.StatusCode != http.StatusOK {
 				return
 			}
@@ -1362,6 +1404,20 @@ func TestJWTAccessControl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getAccessControlMessages(hook *logrustest.Hook) []string {
+	var acEntries []string
+	for _, entry := range hook.Entries {
+		if valEntry, ok := entry.Data["access_control"]; ok {
+			if list, ok := valEntry.([]string); ok {
+				for _, valMsg := range list {
+					acEntries = append(acEntries, valMsg)
+				}
+			}
+		}
+	}
+	return acEntries
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
