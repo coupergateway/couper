@@ -183,7 +183,7 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 }
 
 func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := eval.GetContextAttribute(b.context, req, name)
+	attrVal, err := eval.GetContextAttribute(b.context, req.Context(), name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
 	}
@@ -244,21 +244,21 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 
 	originURL, err := url.Parse(origin)
 	if err != nil {
-		b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
+		log.Error(err)
 	}
 
 	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
 		urlAttr, err := url.Parse(rawURL)
 		if err != nil {
-			b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
+			log.Error(err)
 		}
 
 		if origin != "" && urlAttr.Scheme+"://"+urlAttr.Host != origin {
-			b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(
+			log.Error(
 				"The host of 'url' and 'backend.origin' must be equal",
 			)
 
-			return nil, fmt.Errorf("The host of 'url' and 'backend.origin' must be equal")
+			return nil, fmt.Errorf("backend: the host of 'url' and 'backend.origin' must be equal")
 		}
 
 		originURL.Host = urlAttr.Host

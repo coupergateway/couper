@@ -235,8 +235,8 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 	return nil
 }
 
-func GetContextAttribute(context hcl.Body, req *http.Request, name string) (string, error) {
-	ctx, ok := req.Context().Value(ContextType).(*Context)
+func GetContextAttribute(context hcl.Body, httpContext context.Context, name string) (string, error) {
+	ctx, ok := httpContext.Value(ContextType).(*Context)
 	if !ok {
 		return "", nil
 	}

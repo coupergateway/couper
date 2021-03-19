@@ -33,21 +33,21 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	for _, or := range r {
 		outCtx := withRoundTripName(ctx, or.Name)
 
-		method, err := eval.GetContextAttribute(or.Context, req, "method")
+		method, err := eval.GetContextAttribute(or.Context, outCtx, "method")
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
 
-		body, err := eval.GetContextAttribute(or.Context, req, "body")
+		body, err := eval.GetContextAttribute(or.Context, outCtx, "body")
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
 			continue
 		}
 
-		url, err := eval.GetContextAttribute(or.Context, req, "url")
+		url, err := eval.GetContextAttribute(or.Context, outCtx, "url")
 		if err != nil {
 			results <- &Result{Err: err}
 			wg.Done()
