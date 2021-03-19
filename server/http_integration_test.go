@@ -1473,6 +1473,48 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 	}
 }
 
+func TestAccessControl_Files_SPA(t *testing.T) {
+	shutdown, _ := newCouper("testdata/file_serving/conf_ac.hcl", test.New(t))
+	defer shutdown()
+
+	client := newClient()
+
+	type testCase struct {
+		path      string
+		password  string
+		expStatus int
+	}
+
+	for _, tc := range []testCase{
+		{"/favicon.ico", "", http.StatusUnauthorized},
+		{"/robots.txt", "", http.StatusUnauthorized},
+		{"/app", "", http.StatusUnauthorized},
+		{"/app/1", "", http.StatusUnauthorized},
+		{"/favicon.ico", "hans", http.StatusNotFound},
+		{"/robots.txt", "hans", http.StatusOK},
+		{"/app", "hans", http.StatusOK},
+		{"/app/1", "hans", http.StatusOK},
+	} {
+		t.Run(tc.path[1:], func(st *testing.T) {
+			helper := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://protect.me:8080"+tc.path, nil)
+			helper.Must(err)
+
+			if tc.password != "" {
+				req.SetBasicAuth("", tc.password)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+		})
+	}
+}
+
 func TestHTTPServer_MultiAPI(t *testing.T) {
 	client := newClient()
 
