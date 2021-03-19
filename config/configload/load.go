@@ -335,16 +335,8 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			if diags.HasErrors() {
 				return diags
 			}
-			if headers, ok := content.Attributes["headers"]; ok {
-				headers.Name = "set_request_headers"
-				content.Attributes["set_request_headers"] = headers
-				delete(content.Attributes, "headers")
-			}
-			if queryParams, ok := content.Attributes["query_params"]; ok {
-				queryParams.Name = "set_query_params"
-				content.Attributes["set_query_params"] = queryParams
-				delete(content.Attributes, "query_params")
-			}
+			renameAttribute(content, "headers", "set_request_headers")
+			renameAttribute(content, "query_params", "set_query_params")
 
 			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
 
@@ -517,4 +509,12 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		}
 	}
 	return b, err
+}
+
+func renameAttribute(content *hcl.BodyContent, old, new string) {
+	if attr, ok := content.Attributes[old]; ok {
+		attr.Name = new
+		content.Attributes[new] = attr
+		delete(content.Attributes, old)
+	}
 }
