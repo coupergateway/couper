@@ -11,12 +11,10 @@ server "api" {
 		  path   = "/resource"
 
 		  oauth2 {
-            token_endpoint = "http://example.com/oauth2"
+            token_endpoint = "${req.headers.token-endpoint}"
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
-
-            backend {}
           }
         }
       }

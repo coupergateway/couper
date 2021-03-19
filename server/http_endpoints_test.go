@@ -168,6 +168,8 @@ func TestEndpoints_OAuth2(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 	helper.Must(err)
 
+	req.Header.Set("Token-Endpoint", "http://example.com/oauth2")
+
 	_, err = newClient().Do(req)
 	helper.Must(err)
 

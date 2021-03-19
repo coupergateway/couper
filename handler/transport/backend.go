@@ -72,6 +72,8 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Execute before <b.evalTransport()> due to right
+	// handling of query-params in the URL attribute.
 	err := eval.ApplyRequestContext(req.Context(), b.context, req)
 	if err != nil {
 		return nil, err
@@ -262,7 +264,10 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		originURL.Host = urlAttr.Host
 		originURL.Scheme = urlAttr.Scheme
 		req.URL.Scheme = urlAttr.Scheme
-		req.URL.Path = urlAttr.Path // TODO: evalURLPath()???
+
+		if urlAttr.Path != "" {
+			req.URL.Path = urlAttr.Path
+		}
 
 		if urlAttr.RawQuery != "" {
 			req.URL.RawQuery = urlAttr.RawQuery
