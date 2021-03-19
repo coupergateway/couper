@@ -335,6 +335,17 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			if diags.HasErrors() {
 				return diags
 			}
+
+			_, existsBody := content.Attributes["body"]
+			_, existsJsonBody := content.Attributes["json_body"]
+			if existsBody && existsJsonBody {
+				return hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "request can only have one of body or json_body attributes",
+					Subject:  &content.Attributes["body"].Range,
+				}}
+			}
+
 			renameAttribute(content, "headers", "set_request_headers")
 			renameAttribute(content, "query_params", "set_query_params")
 
@@ -347,6 +358,19 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 
 			endpoint.Requests = append(endpoint.Requests, reqConfig)
+		}
+
+		if endpoint.Response != nil {
+			content, _, _ := endpoint.Response.HCLBody().PartialContent(config.ResponseInlineSchema)
+			_, existsBody := content.Attributes["body"]
+			_, existsJsonBody := content.Attributes["json_body"]
+			if existsBody && existsJsonBody {
+				return hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "response can only have one of body or json_body attributes",
+					Subject:  &content.Attributes["body"].Range,
+				}}
+			}
 		}
 
 		names := map[string]struct{}{}

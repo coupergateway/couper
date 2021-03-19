@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 )
@@ -24,7 +25,7 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(ctx context.Context, _ *http.Request, results chan<- *Result) {
+func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 
@@ -40,22 +41,32 @@ func (r Requests) Produce(ctx context.Context, _ *http.Request, results chan<- *
 		}
 	}()
 
+	evalctx := ctx.Value(eval.ContextType).(*eval.Context)
+	updated := evalctx.WithClientRequest(req)
+
 	for _, or := range r {
 		outCtx := withRoundTripName(ctx, or.Name)
 
-		method, err := eval.GetContextAttribute(or.Context, outCtx, "method")
+		content, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
+		if diags.HasErrors() {
+			results <- &Result{Err: diags}
+			wg.Done()
+			continue
+		}
+
+		method, err := eval.GetAttribute(updated.HCLContext(), content, "method")
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
-		body, err := eval.GetContextAttribute(or.Context, outCtx, "body")
+		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), content)
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
-		url, err := eval.GetContextAttribute(or.Context, outCtx, "url")
+		url, err := eval.GetAttribute(updated.HCLContext(), content, "url")
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
@@ -79,6 +90,10 @@ func (r Requests) Produce(ctx context.Context, _ *http.Request, results chan<- *
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
+		}
+
+		if defaultContentType != "" {
+			outreq.Header.Set("Content-Type", defaultContentType)
 		}
 
 		*outreq = *outreq.WithContext(outCtx)

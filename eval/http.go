@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
@@ -263,6 +264,35 @@ func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (
 	}
 
 	return seetie.ValueToString(val), nil
+}
+
+func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
+	attr, ok := content.Attributes["json_body"]
+	if ok {
+		val, err := attr.Expr.Value(ctx)
+		if err != nil {
+			return "", "", err
+		}
+
+		val, err1 := stdlib.JSONEncodeFunc.Call([]cty.Value{val})
+		if err1 != nil {
+			return "", "", err1
+		}
+
+		return val.AsString(), "application/json", nil
+	}
+
+	attr, ok = content.Attributes["body"]
+	if ok {
+		val, err := attr.Expr.Value(ctx)
+		if err != nil {
+			return "", "", err
+		}
+
+		return seetie.ValueToString(val), "", nil
+	}
+
+	return "", "", nil
 }
 
 func SetHeader(val cty.Value, headerCtx http.Header) {
