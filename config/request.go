@@ -11,11 +11,8 @@ var _ Inline = &Request{}
 // Request represents the <Request> object.
 type Request struct {
 	BackendName string   `hcl:"backend,optional"`
-	Body        string   `hcl:"body,optional"`
-	Method      string   `hcl:"method,optional"`
 	Name        string   `hcl:"name,label"`
 	Remain      hcl.Body `hcl:",remain"`
-	URL         string   `hcl:"url,optional"`
 	// Internally used
 	Backend hcl.Body
 }
@@ -42,8 +39,11 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		Backend     *Backend             `hcl:"backend,block"`
+		Body        string               `hcl:"body,optional"`
 		Headers     map[string]string    `hcl:"headers,optional"`
+		Method      string               `hcl:"method,optional"`
 		QueryParams map[string]cty.Value `hcl:"query_params,optional"`
+		URL         string               `hcl:"url,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

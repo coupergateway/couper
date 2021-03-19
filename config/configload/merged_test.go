@@ -25,19 +25,17 @@ func TestMergeBodies(t *testing.T) {
 
 	bodies := &container{[]*expectedBody{
 		{OAuth2: &config.OAuth2{
-			BackendName:   "test",
-			GrantType:     "no_creds",
-			TokenEndpoint: "http://this",
+			BackendName: "test",
+			GrantType:   "override_me",
 		}},
 		{OAuth2: &config.OAuth2{
-			TokenEndpoint: "http://that",
+			GrantType: "no_creds",
 		}},
 	}}
 
 	expectedAttributes := map[string]*hcl.Attribute{
-		"backend":        {Name: "backend", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("test")}},
-		"grant_type":     {Name: "grant_type", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("no_creds")}},
-		"token_endpoint": {Name: "token_endpoint", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("http://that")}},
+		"backend":    {Name: "backend", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("test")}},
+		"grant_type": {Name: "grant_type", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("no_creds")}},
 	}
 
 	var hclBodies []hcl.Body
