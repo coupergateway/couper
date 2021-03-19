@@ -257,6 +257,10 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, *server.Options,
 		}
 	}
 
+	if fh, ok := fileHandler.(handler.HasResponse); ok {
+		return fileHandler, srvCtxOpts, fh.HasResponse(req)
+	}
+
 	return fileHandler, srvCtxOpts, false
 }
 
