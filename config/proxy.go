@@ -13,7 +13,6 @@ var _ Inline = &Proxy{}
 type Proxy struct {
 	BackendName string   `hcl:"backend,optional"`
 	Name        string   `hcl:"name,label"`
-	URL         string   `hcl:"url,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 	// internally used
 	Backend hcl.Body
@@ -42,6 +41,7 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	type Inline struct {
 		meta.Attributes
 		Backend *Backend `hcl:"backend,block"`
+		URL     string   `hcl:"url,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

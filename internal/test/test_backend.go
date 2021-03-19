@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -47,6 +48,7 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 	return func(rw http.ResponseWriter, req *http.Request) {
 		type anything struct {
 			Args, Query                        url.Values
+			Body                               string
 			Headers                            http.Header
 			Host                               string
 			RawQuery                           string
@@ -57,8 +59,11 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 
 		_ = req.ParseForm()
 
+		body, _ := ioutil.ReadAll(req.Body)
+
 		resp := &anything{
 			Args:           req.Form,
+			Body:           string(body),
 			Headers:        req.Header.Clone(),
 			Host:           req.Host,
 			Method:         req.Method,

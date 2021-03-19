@@ -134,7 +134,8 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 	post := "grant_type=" + oa.config.GrantType
 	body := ioutil.NopCloser(strings.NewReader(post))
 
-	outreq, err := http.NewRequest("POST", oa.config.TokenEndpoint, body)
+	// url will be configured via backend roundtrip
+	outreq, err := http.NewRequest("POST", "", body)
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +145,16 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
+
+	url, err := eval.GetContextAttribute(oa.config.Remain, outCtx, "token_endpoint")
+	if err != nil {
+		return nil, err
+	}
+
+	if url != "" {
+		outCtx = context.WithValue(outCtx, request.URLAttribute, url)
+	}
+
 	return outreq.WithContext(outCtx), nil
 }
 
