@@ -254,11 +254,9 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		}
 
 		if origin != "" && urlAttr.Scheme+"://"+urlAttr.Host != origin {
-			log.Error(
-				"The host of 'url' and 'backend.origin' must be equal",
-			)
-
-			return nil, fmt.Errorf("backend: the host of 'url' and 'backend.origin' must be equal")
+			return nil, fmt.Errorf(
+				"backend: the host of 'url': %s and 'backend.origin': %s must be equal",
+				urlAttr.Host, origin)
 		}
 
 		originURL.Host = urlAttr.Host
