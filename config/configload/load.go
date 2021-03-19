@@ -331,7 +331,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 
 			// remap request specific names for headers and query to well known ones
-			content, _, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
+			content, leftOvers, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
 			if diags.HasErrors() {
 				return diags
 			}
@@ -346,7 +346,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				delete(content.Attributes, "query_params")
 			}
 
-			reqConfig.Remain = hclbody.New(content)
+			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
 
 			var err error
 			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
