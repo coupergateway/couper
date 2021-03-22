@@ -1,5 +1,3 @@
-//+build gofuzz
-
 package server
 
 import (
@@ -7,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -41,7 +40,7 @@ func init() {
 
 			request "sidekick" {
 				url = "http://%s/anything/"
-				body
+				body = req.headers.x-data
 			}
 			
 			# default
@@ -52,6 +51,7 @@ func init() {
 
 			add_response_headers = {
 				y-fuzz = req.headers.x-data
+				x-sidekick = beresps.sidekick.json_body
 			}
 		}
 }`, upstream.Addr(), upstream.Addr())
@@ -73,7 +73,7 @@ func init() {
 	cmdCtx := command.ContextWithSignal(context.Background())
 	config, err := couperruntime.NewServerConfiguration(configFile, log, cache.New(log, cmdCtx.Done()))
 	if err != nil {
-		panic(err)
+		panic("init error: " + err.Error())
 	}
 
 	servers, fn := server.NewServerList(cmdCtx, configFile.Context, log, configFile.Settings, &couperruntime.DefaultTimings, config)
@@ -82,45 +82,53 @@ func init() {
 	}
 	go fn()
 
+	d := &net.Dialer{Timeout: time.Second}
 	client = &http.Client{
 		Timeout: time.Second * 30,
 		Transport: &http.Transport{
 			MaxIdleConns:    10,
 			IdleConnTimeout: time.Second,
 			MaxConnsPerHost: 0,
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return d.DialContext(ctx, "tcp4", "127.0.0.1:8080")
+			},
 		},
 	}
 }
 
 func Fuzz(data []byte) int {
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
-	if err != nil {
-		panic(err)
-	}
-
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
 	req.URL.Path += string(data)
 
 	req.Header.Set("X-Data", string(data))
+	req.URL.Query().Add("X-Data", string(data))
+
 	res, err := client.Do(req)
 	if err != nil {
 		if strings.Contains(err.Error(), "net/http: invalid") {
-			panic(err)
 			return 0 // useless input, invalid http
 		}
+		panic(err)
 		return 1 // useful input
-	}
-
-	if res.StatusCode > 499 { // useful fuzz input
-		return 1
 	}
 
 	logData, err := ioutil.ReadAll(logs)
 	if err != nil {
-		panic(err)
+		panic("reading log-data:" + err.Error())
+	}
+
+	if res.Header.Get("y-fuzz") != string(data) {
+		panic("request / response data are not equal:\n" + string(logData))
+		return 1
+	}
+
+	if res.StatusCode > 499 { // useful fuzz input
+		panic("server error: " + res.Status + "\n" + string(logData))
+		return 1
 	}
 
 	if strings.Contains(string(logData), "panic:") {
-		panic("couper panic")
+		panic("couper panic: " + string(logData))
 		return 1
 	}
 
