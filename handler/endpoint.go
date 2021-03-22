@@ -94,6 +94,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if e.redirect != nil {
 		clientres = e.newRedirect()
 	} else if e.response != nil {
+		// TODO: refactor with error_handler, catch at least panics for now
+		for _, b := range beresps {
+			if b.Err == nil {
+				continue
+			}
+			switch b.Err.(type) {
+			case producer.ResultPanic:
+				e.log.WithField("uid", req.Context().Value(request.UID)).Error(b.Err)
+			}
+		}
 		clientres, err = e.newResponse(req, evalContext)
 	} else {
 		if result, ok := beresps["default"]; ok {

@@ -2,7 +2,9 @@ package producer
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -23,11 +25,29 @@ type Request struct {
 type Requests []*Request
 
 func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
+	var currentName string
+	var roundtrips int
 	wg := &sync.WaitGroup{}
-	wg.Add(len(r))
-	go func() {
-		wg.Wait()
-		close(results)
+
+	defer func() {
+		if rp := recover(); rp != nil {
+			results <- &Result{
+				Err: ResultPanic{
+					err:   fmt.Errorf("%v", rp),
+					stack: debug.Stack(),
+				},
+				RoundTripName: currentName,
+			}
+		}
+
+		if roundtrips == 0 {
+			close(results)
+		} else {
+			go func() {
+				wg.Wait()
+				close(results)
+			}()
+		}
 	}()
 
 	for _, or := range r {
@@ -36,21 +56,18 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		method, err := eval.GetContextAttribute(or.Context, outCtx, "method")
 		if err != nil {
 			results <- &Result{Err: err}
-			wg.Done()
 			continue
 		}
 
 		body, err := eval.GetContextAttribute(or.Context, outCtx, "body")
 		if err != nil {
 			results <- &Result{Err: err}
-			wg.Done()
 			continue
 		}
 
 		url, err := eval.GetContextAttribute(or.Context, outCtx, "url")
 		if err != nil {
 			results <- &Result{Err: err}
-			wg.Done()
 			continue
 		}
 
@@ -71,7 +88,6 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		outreq, err := http.NewRequest(strings.ToUpper(method), "", strings.NewReader(body))
 		if err != nil {
 			results <- &Result{Err: err}
-			wg.Done()
 			continue
 		}
 
@@ -79,10 +95,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}
-			wg.Done()
 			continue
 		}
 
+		roundtrips++
 		go roundtrip(or.Backend, outreq, results, wg)
 	}
 }
