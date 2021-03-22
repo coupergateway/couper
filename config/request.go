@@ -40,6 +40,7 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 	type Inline struct {
 		Backend     *Backend             `hcl:"backend,block"`
 		Body        string               `hcl:"body,optional"`
+		FormBody    string               `hcl:"form_body,optional"`
 		JsonBody    string               `hcl:"json_body,optional"`
 		Headers     map[string]string    `hcl:"headers,optional"`
 		Method      string               `hcl:"method,optional"`

@@ -3,8 +3,10 @@ package eval
 import (
 	"bytes"
 	"context"
+	er "errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -280,6 +282,27 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 		}
 
 		return val.AsString(), "application/json", nil
+	}
+
+	attr, ok = content.Attributes["form_body"]
+	if ok {
+		val, err := attr.Expr.Value(ctx)
+		if err != nil {
+			return "", "", err
+		}
+
+		if valType := val.Type(); !(valType.IsObjectType() || valType.IsMapType()) {
+			return "", "", er.New("value of form_body must be object")
+		}
+
+		data := url.Values{}
+		for k, v := range val.AsValueMap() {
+			for _, sv := range seetie.ValueToStringSlice(v) {
+				data.Add(k, sv)
+			}
+		}
+
+		return data.Encode(), "application/x-www-form-urlencoded", nil
 	}
 
 	attr, ok = content.Attributes["body"]
