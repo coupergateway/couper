@@ -4,3 +4,9 @@
 
 #binary
 /couper
+
+#go-fuzz
+/fuzz/**/corpus
+/fuzz/**/crashers
+/fuzz/**/suppressions
+/**/*-fuzz.zip
