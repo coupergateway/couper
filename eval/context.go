@@ -57,7 +57,9 @@ func NewContext(src []byte) *Context {
 		eval: &hcl.EvalContext{
 			Variables: variables,
 			Functions: newFunctionsMap(),
-		}}
+		},
+		inner: context.TODO(), // usually replaced with request context
+	}
 }
 
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
@@ -83,10 +85,14 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx := &Context{
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
+		inner:        c.inner,
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
-	ctx.inner = context.WithValue(req.Context(), ContextType, ctx)
+
+	if rc := req.Context(); rc != nil {
+		ctx.inner = context.WithValue(rc, ContextType, ctx)
+	}
 
 	ctxMap := ContextMap{}
 	if endpoint, ok := ctx.inner.Value(request.Endpoint).(string); ok {
@@ -123,6 +129,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx := &Context{
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
+		inner:        c.inner,
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
