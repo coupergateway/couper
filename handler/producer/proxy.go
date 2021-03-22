@@ -18,28 +18,18 @@ type Proxy struct {
 type Proxies []*Proxy
 
 func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results chan<- *Result) {
-	var currentName string
-	var roundtrips int
+	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 
 	defer func() {
 		if rp := recover(); rp != nil {
-			results <- &Result{
+			sendResult(ctx, results, &Result{
 				Err: ResultPanic{
 					err:   fmt.Errorf("%v", rp),
 					stack: debug.Stack(),
 				},
 				RoundTripName: currentName,
-			}
-		}
-
-		if roundtrips == 0 {
-			close(results)
-		} else {
-			go func() {
-				wg.Wait()
-				close(results)
-			}()
+			})
 		}
 	}()
 
@@ -48,7 +38,13 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 		outCtx := withRoundTripName(ctx, proxy.Name)
 		outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
 		outReq := clientReq.WithContext(outCtx)
-		roundtrips++
+
+		wg.Add(1)
 		go roundtrip(proxy.RoundTrip, outReq, results, wg)
 	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 }

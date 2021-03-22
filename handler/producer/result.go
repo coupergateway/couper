@@ -41,7 +41,7 @@ func (rm ResultMap) List() []*http.Response {
 }
 
 func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, wg *sync.WaitGroup) {
-	wg.Add(1)
+	defer wg.Done()
 
 	rtn := req.Context().Value(request.RoundTripName).(string)
 
@@ -56,18 +56,17 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 					stack: debug.Stack(),
 				}
 			}
-			results <- &Result{
+			sendResult(req.Context(), results, &Result{
 				Err:           err,
 				RoundTripName: rtn,
-			}
+			})
 		}
-		wg.Done()
 	}()
 
 	beresp, err := rt.RoundTrip(req)
-	results <- &Result{
+	sendResult(req.Context(), results, &Result{
 		Beresp:        beresp,
 		Err:           err,
 		RoundTripName: rtn,
-	}
+	})
 }

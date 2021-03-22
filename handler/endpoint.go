@@ -81,8 +81,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	beresps := make(producer.ResultMap)
 	// TODO: read parallel, proxy first for now
-	e.readResults(proxyResults, beresps)
-	e.readResults(requestResults, beresps)
+	e.readResults(subCtx, proxyResults, beresps)
+	e.readResults(subCtx, requestResults, beresps)
 
 	var clientres *http.Response
 	var err error
@@ -146,8 +146,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		e.log.Error(err)
 	}
 
+	select {
+	case ctxErr := <-req.Context().Done():
+		e.log.Errorf("endpoint write: %v", ctxErr)
+	default:
+	}
+
 	if err = clientres.Write(rw); err != nil {
-		e.log.Errorf("endpoint write error: %v", err)
+		e.log.Errorf("endpoint write: %v", err)
 	}
 }
 
@@ -212,21 +218,26 @@ func (e *Endpoint) newRedirect() *http.Response {
 	}
 }
 
-func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
+func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
 	i := 0
-	for r := range requestResults { // collect resps
-		i++
-		if r == nil {
-			continue
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case r, more := <-requestResults:
+			if !more {
+				return
+			}
 
-		name := r.RoundTripName
+			i++
+			name := r.RoundTripName
 
-		// fallback
-		if name == "" { // panic case
-			name = strconv.Itoa(i)
+			// fallback
+			if name == "" { // panic case
+				name = strconv.Itoa(i)
+			}
+			beresps[name] = r
 		}
-		beresps[name] = r
 	}
 }
 

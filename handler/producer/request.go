@@ -24,29 +24,19 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
-	var currentName string
-	var roundtrips int
+func (r Requests) Produce(ctx context.Context, _ *http.Request, results chan<- *Result) {
+	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 
 	defer func() {
 		if rp := recover(); rp != nil {
-			results <- &Result{
+			sendResult(ctx, results, &Result{
 				Err: ResultPanic{
 					err:   fmt.Errorf("%v", rp),
 					stack: debug.Stack(),
 				},
 				RoundTripName: currentName,
-			}
-		}
-
-		if roundtrips == 0 {
-			close(results)
-		} else {
-			go func() {
-				wg.Wait()
-				close(results)
-			}()
+			})
 		}
 	}()
 
@@ -55,19 +45,19 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		method, err := eval.GetContextAttribute(or.Context, outCtx, "method")
 		if err != nil {
-			results <- &Result{Err: err}
+			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
 		body, err := eval.GetContextAttribute(or.Context, outCtx, "body")
 		if err != nil {
-			results <- &Result{Err: err}
+			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
 		url, err := eval.GetContextAttribute(or.Context, outCtx, "url")
 		if err != nil {
-			results <- &Result{Err: err}
+			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
@@ -87,20 +77,25 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		// see <go roundtrip()> at the end of current for-loop.
 		outreq, err := http.NewRequest(strings.ToUpper(method), "", strings.NewReader(body))
 		if err != nil {
-			results <- &Result{Err: err}
+			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
 		*outreq = *outreq.WithContext(outCtx)
 		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
 		if err != nil {
-			results <- &Result{Err: err}
+			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
-		roundtrips++
+		wg.Add(1)
 		go roundtrip(or.Backend, outreq, results, wg)
 	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 }
 
 func withRoundTripName(ctx context.Context, name string) context.Context {
