@@ -29,11 +29,6 @@ func (p Proxy) HCLBody() hcl.Body {
 	return p.Remain
 }
 
-// Reference implements the <Inline> interface.
-func (p Proxy) Reference() string {
-	return p.BackendName
-}
-
 // Schema implements the <Inline> interface.
 func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	if !inline {

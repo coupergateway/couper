@@ -1,0 +1,3 @@
+//+build generate
+
+package main

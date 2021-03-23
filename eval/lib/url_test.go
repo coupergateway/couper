@@ -3,6 +3,8 @@ package lib_test
 import (
 	"testing"
 
+	"github.com/avenga/couper/eval"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
@@ -15,8 +17,10 @@ func TestUrlEncode(t *testing.T) {
 	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
+	hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
 	s := "ABC123abc\n :/?#[]@!$&'()*+,;=%"
-	encodedV, err := cf.Context.HCLContext().Functions["url_encode"].Call([]cty.Value{cty.StringVal(s)})
+	encodedV, err := hclContext.Functions["url_encode"].Call([]cty.Value{cty.StringVal(s)})
 	helper.Must(err)
 
 	if !cty.String.Equals(encodedV.Type()) {

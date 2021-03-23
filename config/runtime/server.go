@@ -94,7 +94,8 @@ func NewServerConfiguration(
 	noopReq, _ := http.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
-	confCtx := conf.Context.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
+	evalContext := conf.Context.Value(eval.ContextType).(*eval.Context)
+	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
 	accessControls, err := configureAccessControls(conf, confCtx)
 	if err != nil {
@@ -269,15 +270,12 @@ func NewServerConfiguration(
 					protectedHandler = errTpl.ServeError(errors.APIRouteNotFound)
 				}
 
-				endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, errTpl, accessControl,
+				var confErr error
+				endpointHandlers[endpointConf], confErr = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 					protectedHandler)
 
-				if err != nil {
-					return err
-				}
-
-				return nil
+				return confErr
 			}
 
 			var response *producer.Response
@@ -371,8 +369,7 @@ func NewServerConfiguration(
 				h = epHandler
 			}
 
-			err = setACHandlerFn(h)
-			if err != nil {
+			if err = setACHandlerFn(h); err != nil {
 				return nil, err
 			}
 
@@ -587,7 +584,7 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
 	}
 	if len(acList) > 0 {
-		return hac.NewAccessControl(h, errTpl, acList), nil
+		return hac.NewAccessControl(h, nil, acList), nil
 	}
 	return h, nil
 }

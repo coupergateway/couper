@@ -10,13 +10,13 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 
-	cs "github.com/avenga/couper/config/saml"
+	"github.com/avenga/couper/config"
 )
 
 const FnSamlSsoUrl = "saml_sso_url"
 
-func NewSamlSsoUrlFunction(samlConfigs []*cs.SAML) function.Function {
-	samls := make(map[string]*cs.SAML)
+func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
+	samls := make(map[string]*config.SAML)
 	for _, s := range samlConfigs {
 		samls[s.Name] = s
 	}

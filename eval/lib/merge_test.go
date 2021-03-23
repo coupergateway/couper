@@ -6,6 +6,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -262,9 +263,11 @@ func TestMerge(t *testing.T) {
 		},
 	}
 
+	hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mergedV, err := cf.Context.HCLContext().Functions["merge"].Call(tt.args)
+			mergedV, err := hclContext.Functions["merge"].Call(tt.args)
 			helper.Must(err)
 
 			if !mergedV.RawEquals(tt.want) {
@@ -451,13 +454,15 @@ func TestMergeErrors(t *testing.T) {
 		},
 	}
 
+	hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := cf.Context.HCLContext().Functions["merge"].Call(tt.args)
+			_, err := hclContext.Functions["merge"].Call(tt.args)
 			if err == nil {
 				t.Error("Error expected")
 			}
-			if err.Error() != tt.wantErr {
+			if err != nil && err.Error() != tt.wantErr {
 				t.Errorf("Wrong error message; expected %#v, got: %#v", tt.wantErr, err.Error())
 			}
 		})

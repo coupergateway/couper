@@ -1,27 +1,20 @@
 package config
 
 import (
+	"github.com/avenga/couper/config/meta"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ Inline = &ErrorHandler{}
-
 // ErrorHandler represents the <ErrorHandler> object.
 type ErrorHandler struct {
-	Name     string    `hcl:"name,label"`
-	Remain   hcl.Body  `hcl:",remain"`
-	Response *Response `hcl:"response,block"`
+	Kinds  []string
+	Remain hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Inline> interface.
 func (e ErrorHandler) HCLBody() hcl.Body {
 	return e.Remain
-}
-
-// Reference implements the <Inline> interface.
-func (e ErrorHandler) Reference() string {
-	return e.Name
 }
 
 // Schema implements the <Inline> interface.
@@ -32,9 +25,8 @@ func (e ErrorHandler) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
-		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
-		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
+		meta.ResponseAttributes
+		Response *Response `hcl:"response,block"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

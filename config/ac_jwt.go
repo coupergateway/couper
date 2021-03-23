@@ -1,4 +1,4 @@
-package jwt
+package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
@@ -7,6 +7,7 @@ import (
 type Claims hcl.Expression
 
 type JWT struct {
+	AccessControlSetter
 	Claims             Claims   `hcl:"claims,optional"`
 	ClaimsRequired     []string `hcl:"required_claims,optional"`
 	Cookie             string   `hcl:"cookie,optional"`
@@ -16,5 +17,10 @@ type JWT struct {
 	Name               string   `hcl:"name,label"`
 	PostParam          string   `hcl:"post_param,optional"`
 	QueryParam         string   `hcl:"query_param,optional"`
+	Remain             hcl.Body `hcl:",remain"`
 	SignatureAlgorithm string   `hcl:"signature_algorithm"`
+}
+
+func (j *JWT) HCLBody() hcl.Body {
+	return j.Remain
 }

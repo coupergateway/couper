@@ -32,10 +32,6 @@ func init() {
 	}
 }
 
-type ErrorTemplate interface {
-	Template() *Template
-}
-
 type Template struct {
 	log  *logrus.Entry
 	mime string

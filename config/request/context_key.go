@@ -10,6 +10,7 @@ const (
 	BackendURL
 	Endpoint
 	EndpointKind
+	ErrorKind
 	OpenAPI
 	PathParams
 	RoundTripName

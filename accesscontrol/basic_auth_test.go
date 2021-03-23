@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	acerrors "github.com/avenga/couper/errors/accesscontrol/basic_auth"
 )
 
 func Test_NewBasicAuth(t *testing.T) {
@@ -49,7 +50,7 @@ func Test_BA_Validate(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthNotConfigured {
+	if err := ba.Validate(req); err != acerrors.NotConfigured {
 		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 
@@ -91,7 +92,7 @@ func Test_BA_ValidateEmptyUser(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthNotConfigured {
+	if err := ba.Validate(req); err != acerrors.NotConfigured {
 		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 
@@ -127,7 +128,7 @@ func Test_BA_ValidateEmptyPassword(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthNotConfigured {
+	if err := ba.Validate(req); err != acerrors.NotConfigured {
 		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 
@@ -163,7 +164,7 @@ func Test_BA_ValidateEmptyUserPassword(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
-	if err := ba.Validate(req); err != ac.ErrorBasicAuthNotConfigured {
+	if err := ba.Validate(req); err != acerrors.NotConfigured {
 		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 

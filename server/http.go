@@ -42,9 +42,9 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(
-	cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings,
+func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
+
 	var list []*HTTPServer
 
 	for port, hosts := range srvConf {
@@ -60,8 +60,7 @@ func NewServerList(
 }
 
 // New creates a configured HTTP server.
-func New(
-	cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings,
+func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
 	var uidFn func() string
 	if settings.RequestIDFormat == "uuid4" {
@@ -89,7 +88,7 @@ func New(
 	}
 
 	httpSrv := &HTTPServer{
-		evalCtx:    evalCtx,
+		evalCtx:    evalCtx.Value(eval.ContextType).(*eval.Context),
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,

@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	backend     = "backend"
-	oauth2      = "oauth2"
-	definitions = "definitions"
-	nameLabel   = "name"
-	proxy       = "proxy"
-	request     = "request"
-	server      = "server"
-	settings    = "settings"
+	backend      = "backend"
+	definitions  = "definitions"
+	errorHandler = "error_handler"
+	nameLabel    = "name"
+	oauth2       = "oauth2"
+	proxy        = "proxy"
+	request      = "request"
+	server       = "server"
+	settings     = "settings"
 	// defaultNameLabel maps the the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )
@@ -35,6 +36,10 @@ const (
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 var envContext *hcl.EvalContext
 var configBytes []byte
+
+type AccessControlSetter interface {
+	Set(labels []string, body hcl.Body)
+}
 
 func init() {
 	envContext = eval.NewContext(nil).HCLContext()
@@ -68,15 +73,17 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
 
+	evalContext := eval.NewContext(src)
+	envContext = evalContext.HCLContext()
+
 	couperConfig := &config.Couper{
 		Bytes:       src,
-		Context:     eval.NewContext(src),
+		Context:     evalContext,
 		Definitions: &config.Definitions{},
 		Filename:    filename,
 		Settings:    &defaults,
 	}
 
-	envContext = couperConfig.Context.HCLContext()
 	configBytes = src[:]
 
 	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
@@ -92,34 +99,71 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
+			innerSchema, _ := gohcl.ImpliedBodySchema(couperConfig.Definitions)
+			innerContent, diags := outerBlock.Body.Content(innerSchema)
 			if diags.HasErrors() {
 				return nil, diags
 			}
 
-			if backendContent != nil {
-				for _, be := range backendContent.Blocks {
-					name := be.Labels[0]
-					ref, _ := definedBackends.WithName(name)
-					if ref != nil {
-						return nil, hcl.Diagnostics{&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  fmt.Sprintf("duplicate backend name: %q", name),
-							Subject:  &be.LabelRanges[0],
-						}}
+			leftOvers := outerBlock.Body
+
+			for _, innerBlock := range innerContent.Blocks {
+				switch innerBlock.Type {
+				case backend:
+					blockContent, leftOver, diags := leftOvers.PartialContent(backendBlockSchema)
+					if diags.HasErrors() {
+						return nil, diags
 					}
 
-					if err := uniqueAttributeKey(be.Body); err != nil {
-						return nil, err
-					}
+					if blockContent != nil {
+						for _, be := range blockContent.Blocks {
+							name := be.Labels[0]
+							ref, _ := definedBackends.WithName(name)
+							if ref != nil {
+								return nil, hcl.Diagnostics{&hcl.Diagnostic{
+									Severity: hcl.DiagError,
+									Summary:  fmt.Sprintf("duplicate backend name: %q", name),
+									Subject:  &be.LabelRanges[0],
+								}}
+							}
 
-					definedBackends = append(definedBackends, NewBackend(name, be.Body))
+							if err := uniqueAttributeKey(be.Body); err != nil {
+								return nil, err
+							}
+							definedBackends = append(definedBackends, NewBackend(name, be.Body))
+						}
+					}
+					leftOvers = leftOver
 				}
 			}
 
-			if diags = gohcl.DecodeBody(leftOver, envContext, couperConfig.Definitions); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(leftOvers, envContext, couperConfig.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
+
+			// access control - error_handler
+			var acErrorHandler []AccessControlSetter
+			for _, acConfig := range couperConfig.Definitions.BasicAuth {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.JWT {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.SAML {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+
+			for _, ac := range acErrorHandler {
+				acBody, ok := ac.(config.Body)
+				if !ok {
+					continue
+				}
+				acContent := bodyToContent(acBody.HCLBody())
+				for _, block := range acContent.Blocks.OfType(errorHandler) {
+					ac.Set(block.Labels, block.Body)
+				}
+			}
+
 		case settings:
 			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
@@ -128,7 +172,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 
 	// Prepare dynamic functions
-	couperConfig.Context = couperConfig.Context.WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).WithSAML(couperConfig.Definitions.SAML)
+	couperConfig.Context = evalContext.
+		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
+		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
