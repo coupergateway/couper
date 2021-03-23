@@ -178,9 +178,10 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
 			e.log.Errorf("endpoint eval error: %v", err)
+			statusCode = http.StatusInternalServerError
+		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
+			statusCode = statusValue
 		}
-
-		statusCode = int(seetie.ValueToInt(val))
 	}
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)

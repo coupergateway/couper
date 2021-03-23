@@ -211,6 +211,9 @@ func ValueToString(v cty.Value) string {
 }
 
 func ValueToInt(v cty.Value) int64 {
+	if !v.IsWhollyKnown() {
+		return 0
+	}
 	n := v.AsBigFloat()
 	ni, _ := n.Int64()
 	return ni
