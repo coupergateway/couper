@@ -86,6 +86,13 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 		rw.Header().Set("Remove-Me-1", "r1")
 		rw.Header().Set("Remove-Me-2", "r2")
 
+		if delay := req.URL.Query().Get("delay"); delay != "" {
+			delayDuration, _ := time.ParseDuration(delay)
+			if delayDuration > 0 {
+				time.Sleep(delayDuration)
+			}
+		}
+
 		rw.WriteHeader(status)
 		_, _ = rw.Write(respContent)
 	}
