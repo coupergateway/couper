@@ -99,45 +99,30 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			innerSchema, _ := gohcl.ImpliedBodySchema(couperConfig.Definitions)
-			innerContent, diags := outerBlock.Body.Content(innerSchema)
+			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 			if diags.HasErrors() {
 				return nil, diags
 			}
 
-			leftOvers := outerBlock.Body
-
-			for _, innerBlock := range innerContent.Blocks {
-				switch innerBlock.Type {
-				case backend:
-					blockContent, leftOver, diags := leftOvers.PartialContent(backendBlockSchema)
-					if diags.HasErrors() {
-						return nil, diags
+			if backendContent != nil {
+				for _, be := range backendContent.Blocks {
+					name := be.Labels[0]
+					ref, _ := definedBackends.WithName(name)
+					if ref != nil {
+						return nil, hcl.Diagnostics{&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  fmt.Sprintf("duplicate backend name: %q", name),
+							Subject:  &be.LabelRanges[0],
+						}}
 					}
 
-					if blockContent != nil {
-						for _, be := range blockContent.Blocks {
-							name := be.Labels[0]
-							ref, _ := definedBackends.WithName(name)
-							if ref != nil {
-								return nil, hcl.Diagnostics{&hcl.Diagnostic{
-									Severity: hcl.DiagError,
-									Summary:  fmt.Sprintf("duplicate backend name: %q", name),
-									Subject:  &be.LabelRanges[0],
-								}}
-							}
-
-							if err := uniqueAttributeKey(be.Body); err != nil {
+					if err := uniqueAttributeKey(be.Body); err != nil {
 								return nil, err
-							}
-							definedBackends = append(definedBackends, NewBackend(name, be.Body))
-						}
-					}
-					leftOvers = leftOver
+							}definedBackends = append(definedBackends, NewBackend(name, be.Body))
 				}
 			}
 
-			if diags = gohcl.DecodeBody(leftOvers, envContext, couperConfig.Definitions); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(leftOver, envContext, couperConfig.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
 
