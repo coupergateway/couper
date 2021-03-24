@@ -61,7 +61,7 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, proxies producer.Prox
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Bind some values for logging purposes
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
-	reqCtx = context.WithValue(req.Context(), request.EndpointKind, e.opts.LogHandlerKind)
+	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
 	*req = *req.WithContext(reqCtx)
 
 	// subCtx is handled by this endpoint handler and should not be attached to req

@@ -29,7 +29,7 @@ type UpstreamLog struct {
 func NewUpstreamLog(log *logrus.Entry, next http.RoundTripper, ignoreProxyEnv bool) *UpstreamLog {
 	logConf := *DefaultConfig
 	logConf.NoProxyFromEnv = ignoreProxyEnv
-	logConf.TypeFieldKey = "couper_upstream"
+	logConf.TypeFieldKey = "couper_backend"
 	env.DecodeWithPrefix(&logConf, "UPSTREAM_")
 	return &UpstreamLog{
 		config: &logConf,
@@ -94,6 +94,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		if requestFields["port"] == "" {
 			delete(requestFields, "port")
 		}
+	}
+
+	if u, ok := req.Context().Value(request.BackendURL).(string); ok {
+		fields["url"] = u
 	}
 
 	if req.URL.User != nil && req.URL.User.Username() != "" {
