@@ -53,6 +53,8 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	logEntry := log
 	if tc.BackendName != "" {
 		logEntry = log.WithField("backend", tc.BackendName)
+	} else {
+		logEntry = log.WithField("backend", "default")
 	}
 
 	var openAPI *validation.OpenAPI
@@ -125,6 +127,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	setUserAgent(req)
 	req.Close = false
+
+	ctx := context.WithValue(req.Context(), request.BackendURL, req.URL.String())
+	*req = *req.WithContext(ctx)
 
 	beresp, err := t.RoundTrip(req)
 	if err != nil {
