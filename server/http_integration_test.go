@@ -829,6 +829,50 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_LogFields(t *testing.T) {
+	client := newClient()
+	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, logHook := newCouper(config, helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+	helper.Must(err)
+
+	logHook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	if l := len(logHook.Entries); l != 2 {
+		t.Fatalf("Unexpected number of log lines: %d", l)
+	}
+
+	backendLog := logHook.Entries[0]
+	accessLog := logHook.Entries[1]
+
+	if tp, ok := backendLog.Data["type"]; !ok || tp != "couper_backend" {
+		t.Fatalf("Unexpected log type: %s", tp)
+	}
+	if tp, ok := accessLog.Data["type"]; !ok || tp != "couper_access" {
+		t.Fatalf("Unexpected log type: %s", tp)
+	}
+
+	if u, ok := backendLog.Data["url"]; !ok || u == "" {
+		t.Fatalf("Unexpected URL: %s", u)
+	}
+	if u, ok := accessLog.Data["url"]; !ok || u == "" {
+		t.Fatalf("Unexpected URL: %s", u)
+	}
+
+	if b, ok := backendLog.Data["backend"]; !ok || b != "anything" {
+		t.Fatalf("Unexpected backend name: %s", b)
+	}
+	if e, ok := accessLog.Data["endpoint"]; !ok || e != "/" {
+		t.Fatalf("Unexpected endpoint: %s", e)
+	}
+}
+
 func TestHTTPServer_QueryEncoding(t *testing.T) {
 	client := newClient()
 
