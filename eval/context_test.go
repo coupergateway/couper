@@ -44,7 +44,7 @@ func TestNewHTTPContext(t *testing.T) {
 		want      http.Header
 	}{
 		{"Variables / POST", http.MethodPost, http.Header{"Content-Type": {"application/x-www-form-urlencoded"}}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
-					post = req.post.user[0]
+					post = req.form_body.user[0]
 					method = req.method
 		`, http.Header{"post": {"hans"}, "method": {http.MethodPost}}},
 		{"Variables / Query", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "?name=peter", baseCtx, `
