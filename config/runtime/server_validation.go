@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/avenga/couper/config"
 	ac "github.com/avenga/couper/accesscontrol"
 )
 
@@ -28,7 +29,7 @@ func validateHosts(serverName string, hosts []string, isHostsMandatory bool) err
 	return nil
 }
 
-func validateACName(accessControls ac.Map, name, acType string) (string, error) {
+func validateACName(accessControls ACDefinitions, name, acType string) (string, error) {
 	name = strings.TrimSpace(name)
 
 	if name == "" {

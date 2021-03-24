@@ -493,8 +493,8 @@ func getCORS(parent, curr *config.CORS) *config.CORS {
 	return curr
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.Map, error) {
-	accessControls := make(ac.Map)
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACDefinitions, error) {
+	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
 		for _, ba := range conf.Definitions.BasicAuth {
@@ -508,7 +508,10 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, err
 			}
 
-			accessControls[name] = ac.ValidateFunc(basicAuth.Validate)
+			accessControls[name] = &AccessControl{
+				ValidateFn:   ac.ValidateFunc(basicAuth.Validate),
+				ErrorHandler: ba.ErrorHandler,
+			}
 		}
 
 		for _, jwt := range conf.Definitions.JWT {
@@ -517,7 +520,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, err
 			}
 
-			jwtSource := ac.Unknown
+			jwtSource := ac.Invalid
 			var jwtKey string
 			if jwt.Cookie != "" {
 				jwtSource = ac.Cookie
@@ -554,7 +557,10 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, fmt.Errorf("loading jwt %q definition failed: %s", name, err)
 			}
 
-			accessControls[name] = ac.ValidateFunc(j.Validate)
+			accessControls[name] = &AccessControl{
+				ValidateFn:   ac.ValidateFunc(j.Validate),
+				ErrorHandler: jwt.ErrorHandler,
+			}
 		}
 
 		for _, saml := range conf.Definitions.SAML {
@@ -568,25 +574,36 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, fmt.Errorf("loading saml %q definition failed: %s", name, err)
 			}
 
-			accessControls[name] = ac.ValidateFunc(s.Validate)
+			accessControls[name] = &AccessControl{
+				ValidateFn:   ac.ValidateFunc(s.Validate),
+				ErrorHandler: saml.ErrorHandler,
+			}
 		}
 	}
 
 	return accessControls, nil
 }
 
-func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) (http.Handler, error) {
-	var acList ac.List
+func configureProtectedHandler(m ACDefinitions, errTpl *errors.Template,
+	parentAC, handlerAC config.AccessControl, h http.Handler) (http.Handler, error) {
+	var list ac.List
+	var names []string
 	for _, acName := range parentAC.Merge(handlerAC).List() {
-		if err := m.Exist(acName); err != nil {
-			return nil, err
+		if e := m.MustExist(acName); e != nil {
+			return nil, e
 		}
-		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
+		names = append(names, acName)
+		list = append(list, ac.ListItem{Func: m[acName].ValidateFn, Name: acName})
 	}
-	if len(acList) > 0 {
-		return hac.NewAccessControl(h, nil, acList), nil
+	if len(list) > 0 {
+		return hac.NewAccessControl(h, newErrorHandler(errTpl, m, names...), list), nil
 	}
 	return h, nil
+}
+
+func newErrorHandler(tpl *errors.Template, defs ACDefinitions, references ...string) http.Handler {
+	eh := handler.NewErrorHandler(tpl)
+	return eh
 }
 
 func setRoutesFromHosts(

@@ -19,10 +19,10 @@ type AccessControl struct {
 	protected    http.Handler
 }
 
-func NewAccessControl(protected, error http.Handler, list accesscontrol.List) *AccessControl {
+func NewAccessControl(protected, errorHandler http.Handler, list accesscontrol.List) *AccessControl {
 	return &AccessControl{
 		acl:           list,
-		errorHandler: error,
+		errorHandler: errorHandler,
 		protected:    protected,
 	}
 }

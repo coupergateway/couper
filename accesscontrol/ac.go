@@ -9,11 +9,6 @@ import (
 
 var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
 
-type ListItem struct {
-	Func AccessControl
-	Name string
-}
-
 func (i ListItem) Validate(req *http.Request) error {
 	return i.Func.Validate(req)
 }
@@ -21,9 +16,12 @@ func (i ListItem) Validate(req *http.Request) error {
 type (
 	Map  map[string]AccessControl
 	List []ListItem
+	ListItem struct {
+		Func AccessControl
+		Name string
+	}
+	ValidateFunc func(*http.Request) error
 )
-
-type ValidateFunc func(*http.Request) error
 
 type AccessControl interface {
 	Validate(req *http.Request) error
@@ -41,17 +39,5 @@ func (f ValidateFunc) Validate(req *http.Request) error {
 	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
 		*req = *req.WithContext(evalCtx.WithClientRequest(req))
 	}
-	return nil
-}
-
-func (m Map) Exist(name string) error {
-	if m == nil {
-		panic("no accessControl configuration")
-	}
-
-	if _, ok := m[name]; !ok {
-		return fmt.Errorf("accessControl is not defined: " + name)
-	}
-
 	return nil
 }
