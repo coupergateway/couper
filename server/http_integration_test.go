@@ -871,6 +871,9 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	if e, ok := accessLog.Data["endpoint"]; !ok || e != "/" {
 		t.Fatalf("Unexpected endpoint: %s", e)
 	}
+	if b, ok := accessLog.Data["bytes"]; !ok || b != 482 {
+		t.Fatalf("Unexpected number of bytes: %d", b)
+	}
 }
 
 func TestHTTPServer_QueryEncoding(t *testing.T) {
