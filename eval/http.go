@@ -312,7 +312,7 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 			return "", "", err
 		}
 
-		return seetie.ValueToString(val), "", nil
+		return seetie.ValueToString(val), "text/plain", nil
 	}
 
 	return "", "", nil

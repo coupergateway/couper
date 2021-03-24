@@ -1046,6 +1046,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			},
 			Headers: http.Header{
 				"Content-Length": []string{"4"},
+				"Content-Type":   []string{"text/plain"},
 				"Test":           []string{"header"},
 			},
 		}},
