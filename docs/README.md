@@ -474,7 +474,9 @@ The `request` block creates and executes a request to a backend service.
 | **Attributes**                                      | **Description** |
 | [Backend Block Reference](#backend-block-reference) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
 | `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
-| `body`                                              | <ul><li>String.</li><li>Optional.</li></ul> |
+| `body`                                              | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul> |
+| `json_body`                                         | <ul><li>Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul> |
+| `form_body`                                         | <ul><li>Object.</li><li>Optional. Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.</li></ul> |
 | `method`                                            | <ul><li>String.</li><li>Optional.</li><li>Default `GET`.</li></ul> |
 | `headers`                                           | <ul><li>Optional.</li><li>Same as `set_request_headers` in [Request Header](#request-header).</li></ul> |
 | `query_params`                                      | <ul><li>Optional.</li><li>Same as `set_query_params` in [Query Parameter](#query-parameter).</li></ul> |
@@ -488,7 +490,8 @@ The `response` block creates and sends a client response.
 | *context*      | [Endpoint Block](#endpoint-block). |
 | *label*        | Not implemented. |
 | **Attributes** | **Description** |
-| `body`         | <ul><li>String.</li><li>Optional.</li></ul> |
+| `body`         | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul> |
+| `json_body`    | <ul><li>Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul> |
 | `status`       | <ul><li>HTTP status code.</li><li>Optional.</li><li>Default `200`.</li></ul> |
 | `headers`      | <ul><li>Optional.</li><li>Same as `set_response_headers` in [Request Header](#response-header).</li></ul> |
 
