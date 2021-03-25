@@ -602,7 +602,20 @@ func configureProtectedHandler(m ACDefinitions, errTpl *errors.Template,
 }
 
 func newErrorHandler(tpl *errors.Template, defs ACDefinitions, references ...string) http.Handler {
-	eh := handler.NewErrorHandler(tpl)
+	// TODO: strict, data-structure / draft
+	kindHandler := map[string]hcl.Body{}
+	for _, ref := range references {
+		for _, h := range defs[ref].ErrorHandler {
+			for _, k := range h.Kinds {
+				if _, exist := kindHandler[k]; exist {
+					panic("error kind handler exists already: " + k)
+				}
+				kindHandler[k] = h.HCLBody()
+			}
+			// TODO: register all kinds
+		}
+	}
+	eh := handler.NewErrorHandler(kindHandler, tpl)
 	return eh
 }
 

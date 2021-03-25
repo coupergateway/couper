@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/avenga/couper/config/meta"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 // ErrorHandler represents the <ErrorHandler> object.
