@@ -199,13 +199,15 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	)
 	rw = w
 
-	if err := s.setGetBody(h, req); err != nil {
+	clientReq := req.Clone(ctx)
+
+	if err := s.setGetBody(h, clientReq); err != nil {
 		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
 	ctx = s.evalCtx.WithClientRequest(req)
-	clientReq := req.Clone(ctx)
+	*clientReq = *clientReq.WithContext(ctx)
 
 	s.accessLog.ServeHTTP(rw, clientReq, h, startTime)
 
