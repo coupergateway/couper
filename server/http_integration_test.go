@@ -1133,6 +1133,20 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			},
 		},
 		{
+			"/request/json_body/null",
+			"",
+			"",
+			expectation{
+				Body:   "null",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
 			"/request/json_body/boolean",
 			"",
 			"",
@@ -1400,6 +1414,13 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			expectation{
 				Body:        "foo",
 				ContentType: "application/foo",
+			},
+		},
+		{
+			"/response/json_body/null",
+			expectation{
+				Body:        "null",
+				ContentType: "application/json",
 			},
 		},
 		{

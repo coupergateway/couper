@@ -22,6 +22,16 @@ server "bodies" {
       }
     }
   }
+  endpoint "/request/json_body/null" {
+    request {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+      json_body = null
+
+      backend {
+        origin = env.COUPER_TEST_BACKEND_ADDR
+      }
+    }
+  }
   endpoint "/request/json_body/boolean" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -147,6 +157,11 @@ server "bodies" {
         content-type = "application/foo"
       }
       body = "foo"
+    }
+  }
+  endpoint "/response/json_body/null" {
+    response {
+      json_body = null
     }
   }
   endpoint "/response/json_body/boolean" {
