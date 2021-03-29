@@ -64,7 +64,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	helper.Must(err)
 	conf.Settings.DefaultPort = 0
 
-	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil), nil)
+	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 	helper.Must(err)
 
 	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
@@ -160,7 +160,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil), nil)
+	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 	helper.Must(err)
 
 	couper := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf[0])

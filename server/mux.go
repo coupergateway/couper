@@ -25,7 +25,6 @@ type Mux struct {
 	endpointRoot *pathpattern.Node
 	fileRoot     *pathpattern.Node
 	opts         *runtime.MuxOptions
-	router       *openapi3filter.Router
 	spaRoot      *pathpattern.Node
 }
 

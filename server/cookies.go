@@ -39,7 +39,7 @@ func parseSetCookieHeader(setCookie string) ([]string, bool) {
 	for _, m := range regexSplitSetCookie.FindAllStringSubmatch(setCookie, -1) {
 		part := strings.TrimSpace(m[1])
 
-		if strings.ToLower(part) == strings.ToLower(SecureCookieAV) {
+		if strings.EqualFold(part, SecureCookieAV) {
 			isSecure = true
 
 			continue
