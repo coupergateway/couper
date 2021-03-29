@@ -49,7 +49,7 @@ const serverOptionsKey = "serverContextOptions"
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
-		opts = runtime.NewMuxOptions(errors.DefaultHTML, nil)
+		opts = runtime.NewMuxOptions(errors.DefaultHTML)
 	}
 
 	mux := &Mux{
@@ -127,6 +127,7 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 			}},
 		}
 	}
+
 	return m
 }
 
@@ -197,48 +198,43 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 }
 
 func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, *server.Options, []string) {
-	hostPath := pathpattern.PathFromHost(req.Host, false)
-	matchHostPath := req.Method + " " + utils.JoinPath(hostPath, req.URL.Path)
-	node, paramValues := root.Match(matchHostPath)
-	if _, ok := m.opts.Hosts[req.Host]; !ok && node == nil { // no specific hosts found, lookup for general path matches
-		matchPath := req.Method + " " + req.URL.Path
-		node, paramValues = root.Match(matchPath)
-	}
+	matchPath := req.Method + " " + req.URL.Path
+	node, paramValues := root.Match(matchPath)
 
-	var srvCtxOpts *server.Options
+	// var srvCtxOpts *server.Options
 
-	if node == nil { // still no match, try to obtain some server configuration from suffixList
-		hostPathIdx := strings.IndexByte(matchHostPath, '/')
-	pathLoop:
-		for _, matchPath := range []string{matchHostPath[:hostPathIdx], req.Method + " "} {
-			for _, suffix := range root.Suffixes {
-				if suffix.Pattern == matchPath {
-					if len(suffix.Node.Suffixes) > 0 {
-						// FIXME some improvement, filter health routes, nested search etc. maybe mark on route.add
-						for i := len(suffix.Node.Suffixes[0].Node.Suffixes); i > 0; i-- {
-							srvCtxOpts = unwrapServerOptions(suffix.Node.Suffixes[0].Node.Suffixes[i-1])
-							if srvCtxOpts != nil {
-								break
-							}
-						}
-					} else {
-						srvCtxOpts = unwrapServerOptions(pathpattern.Suffix{Node: suffix.Node})
-					}
-					break pathLoop
-				}
-			}
-		}
-	}
+	// if node == nil { // still no match, try to obtain some server configuration from suffixList
+	// 	hostPathIdx := strings.IndexByte(matchHostPath, '/')
+	// pathLoop:
+	// 	for _, matchPath := range []string{matchHostPath[:hostPathIdx], req.Method + " "} {
+	// 		for _, suffix := range root.Suffixes {
+	// 			if suffix.Pattern == matchPath {
+	// 				if len(suffix.Node.Suffixes) > 0 {
+	// 					// FIXME some improvement, filter health routes, nested search etc. maybe mark on route.add
+	// 					for i := len(suffix.Node.Suffixes[0].Node.Suffixes); i > 0; i-- {
+	// 						srvCtxOpts = unwrapServerOptions(suffix.Node.Suffixes[0].Node.Suffixes[i-1])
+	// 						if srvCtxOpts != nil {
+	// 							break
+	// 						}
+	// 					}
+	// 				} else {
+	// 					srvCtxOpts = unwrapServerOptions(pathpattern.Suffix{Node: suffix.Node})
+	// 				}
+	// 				break pathLoop
+	// 			}
+	// 		}
+	// 	}
+	// }
 
-	if node != nil && node.Value != nil {
-		srvCtxOpts = unwrapServerOptions(pathpattern.Suffix{Node: node})
-	}
+	// if node != nil && node.Value != nil {
+	// 	srvCtxOpts = unwrapServerOptions(pathpattern.Suffix{Node: node})
+	// }
 
-	if srvCtxOpts != nil {
-		*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, srvCtxOpts.ServerName))
-	}
+	// if srvCtxOpts != nil {
+	// 	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, srvCtxOpts.ServerName))
+	// }
 
-	return node, srvCtxOpts, paramValues
+	return node, nil, paramValues
 }
 
 func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, *server.Options, bool) {
