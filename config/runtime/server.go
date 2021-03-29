@@ -110,12 +110,12 @@ func NewServerConfiguration(
 	)
 
 	for _, srvConf := range conf.Servers {
-		if err := validateHosts(srvConf.Name, srvConf.Hosts, isHostsMandatory); err != nil {
+		serverOptions, err := server.NewServerOptions(srvConf)
+		if err != nil {
 			return nil, err
 		}
 
-		serverOptions, err := server.NewServerOptions(srvConf)
-		if err != nil {
+		if err := validateHosts(srvConf.Name, srvConf.Hosts, isHostsMandatory); err != nil {
 			return nil, err
 		}
 
@@ -135,7 +135,13 @@ func NewServerConfiguration(
 				}
 
 				serverConfiguration[port][host] = muxOpts
-				serverConfiguration[port][host].ErrorTpl = serverOptions.ServerErrTpl
+				serverConfiguration[port][host].ServerName = serverOptions.ServerName
+				serverConfiguration[port][host].APIErrorTpls = serverOptions.APIErrTpl
+				serverConfiguration[port][host].ServerErrorTpl = serverOptions.ServerErrTpl
+				serverConfiguration[port][host].FilesErrorTpl = serverOptions.FileErrTpl
+				serverConfiguration[port][host].APIBasePaths = serverOptions.APIBasePath
+				serverConfiguration[port][host].FilesBasePath = serverOptions.FileBasePath
+				serverConfiguration[port][host].SPABasePath = serverOptions.SPABasePath
 			}
 		}
 
@@ -622,7 +628,7 @@ func getPortsHostsList(hosts []string, defaultPort int, muxOpts *MuxOptions) (Po
 			portsHosts[Port(port)] = make(Hosts)
 		}
 
-		portsHosts[Port(port)][host] = muxOpts
+		portsHosts[Port(port)][host] = NewMuxOptions(errors.DefaultHTML)
 	}
 
 	return portsHosts, nil
