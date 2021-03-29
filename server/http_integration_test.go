@@ -366,7 +366,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 					}
 				}
 
-				if rc.exp.body != nil && bytes.Compare(resBytes, rc.exp.body) != 0 {
+				if rc.exp.body != nil && !bytes.Equal(resBytes, rc.exp.body) {
 					t.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
 				}
 
@@ -405,7 +405,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html lang="en">index B</html>` != string(resBytes) {
+	if string(resBytes) != `<html lang="en">index B</html>` {
 		t.Errorf("%s", resBytes)
 	}
 }
@@ -431,7 +431,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html>1002</html>` != string(resBytes) {
+	if string(resBytes) != `<html>1002</html>` {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -468,7 +468,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html lang="en">index B</html>` != string(resBytes) {
+	if string(resBytes) != `<html lang="en">index B</html>` {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -1287,6 +1287,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			}
 
 			b, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
 			type payload struct {
 				Query url.Values
@@ -1383,6 +1384,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			}
 
 			b, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
 			type payload struct {
 				Headers http.Header
@@ -1475,9 +1477,7 @@ func getAccessControlMessages(hook *logrustest.Hook) []string {
 	for _, entry := range hook.Entries {
 		if valEntry, ok := entry.Data["access_control"]; ok {
 			if list, ok := valEntry.([]string); ok {
-				for _, valMsg := range list {
-					acEntries = append(acEntries, valMsg)
-				}
+				acEntries = append(acEntries, list...)
 			}
 		}
 	}

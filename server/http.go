@@ -141,22 +141,21 @@ func (s *HTTPServer) Close() error {
 }
 
 func (s *HTTPServer) listenForCtx() {
-	select {
-	case <-s.commandCtx.Done():
-		logFields := logrus.Fields{
-			"delay":    s.timings.ShutdownDelay.String(),
-			"deadline": s.timings.ShutdownTimeout.String(),
-		}
+	<-s.commandCtx.Done()
 
-		s.log.WithFields(logFields).Warn("shutting down")
-		close(s.shutdownCh)
+	logFields := logrus.Fields{
+		"delay":    s.timings.ShutdownDelay.String(),
+		"deadline": s.timings.ShutdownTimeout.String(),
+	}
 
-		time.Sleep(s.timings.ShutdownDelay)
-		ctx, cancel := context.WithTimeout(context.Background(), s.timings.ShutdownTimeout)
-		defer cancel()
-		if err := s.srv.Shutdown(ctx); err != nil {
-			s.log.WithFields(logFields).Error(err)
-		}
+	s.log.WithFields(logFields).Warn("shutting down")
+	close(s.shutdownCh)
+
+	time.Sleep(s.timings.ShutdownDelay)
+	ctx, cancel := context.WithTimeout(context.Background(), s.timings.ShutdownTimeout)
+	defer cancel()
+	if err := s.srv.Shutdown(ctx); err != nil {
+		s.log.WithFields(logFields).Error(err)
 	}
 }
 
@@ -198,7 +197,7 @@ func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
 		outer = inner.Child()
 	}
 
-	if limitHandler, ok := h.(handler.EndpointLimit); ok {
+	if limitHandler, ok := outer.(handler.EndpointLimit); ok {
 		if err := eval.SetGetBody(req, limitHandler.RequestLimit()); err != nil {
 			return err
 		}
