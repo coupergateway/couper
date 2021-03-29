@@ -155,7 +155,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		node, paramValues = m.match(m.spaRoot, req)
 
 		if node == nil {
-			if isConfigured(m.opts.FilesBasePath) && isFileError(m.opts.FilesBasePath, req.URL.Path) {
+			if isConfigured(m.opts.FilesBasePath) && matchesPath(m.opts.FilesBasePath, req.URL.Path) {
 				return m.opts.FilesErrorTpl.ServeError(errors.FilesRouteNotFound)
 			}
 
@@ -234,17 +234,7 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) *errors.Template {
 // isAPIError checks the path w/ and w/o the
 // trailing slash against the request path.
 func isAPIError(apiPath, filesBasePath, spaBasePath, reqPath string) bool {
-	p1 := apiPath
-	p2 := apiPath
-
-	if p1 != "/" && !strings.HasSuffix(p1, "/") {
-		p1 += "/"
-	}
-	if p2 != "/" && strings.HasSuffix(p2, "/") {
-		p2 = p2[:len(p2)-len("/")]
-	}
-
-	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
+	if matchesPath(apiPath, reqPath) {
 		if isConfigured(filesBasePath) && apiPath == filesBasePath {
 			return false
 		}
@@ -258,11 +248,11 @@ func isAPIError(apiPath, filesBasePath, spaBasePath, reqPath string) bool {
 	return false
 }
 
-// isFileError checks the path w/ and w/o the
+// matchesPath checks the path w/ and w/o the
 // trailing slash against the request path.
-func isFileError(filesBasePath, reqPath string) bool {
-	p1 := filesBasePath
-	p2 := filesBasePath
+func matchesPath(path, reqPath string) bool {
+	p1 := path
+	p2 := path
 
 	if p1 != "/" && !strings.HasSuffix(p1, "/") {
 		p1 += "/"
