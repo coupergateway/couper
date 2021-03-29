@@ -104,7 +104,6 @@ func NewServerConfiguration(
 	var (
 		serverConfiguration ServerConfiguration = make(ServerConfiguration)
 		defaultPort         int                 = conf.Settings.DefaultPort
-		muxOpts             *MuxOptions         = NewMuxOptions(errors.DefaultHTML)
 		endpointHandlers    endpointHandler     = make(endpointHandler)
 		isHostsMandatory    bool                = len(conf.Servers) > 1
 	)
@@ -119,7 +118,7 @@ func NewServerConfiguration(
 			return nil, err
 		}
 
-		portsHosts, err := getPortsHostsList(srvConf.Hosts, defaultPort, muxOpts)
+		portsHosts, err := getPortsHostsList(srvConf.Hosts, defaultPort)
 		if err != nil {
 			return nil, err
 		}
@@ -605,7 +604,7 @@ func setRoutesFromHosts(
 	return nil
 }
 
-func getPortsHostsList(hosts []string, defaultPort int, muxOpts *MuxOptions) (Ports, error) {
+func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
 	if len(hosts) == 0 {
 		hosts = append(hosts, fmt.Sprintf("*:%d", defaultPort))
 	}
@@ -628,7 +627,7 @@ func getPortsHostsList(hosts []string, defaultPort int, muxOpts *MuxOptions) (Po
 			portsHosts[Port(port)] = make(Hosts)
 		}
 
-		portsHosts[Port(port)][host] = NewMuxOptions(errors.DefaultHTML)
+		portsHosts[Port(port)][host] = NewMuxOptions()
 	}
 
 	return portsHosts, nil

@@ -20,11 +20,10 @@ type MuxOptions struct {
 	ServerName     string
 }
 
-func NewMuxOptions(errorTpl *errors.Template) *MuxOptions {
+func NewMuxOptions() *MuxOptions {
 	return &MuxOptions{
 		EndpointRoutes: make(map[string]http.Handler),
 		FileRoutes:     make(map[string]http.Handler),
 		SPARoutes:      make(map[string]http.Handler),
-		ServerErrorTpl: errorTpl,
 	}
 }

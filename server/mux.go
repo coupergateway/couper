@@ -49,7 +49,7 @@ const serverOptionsKey = "serverContextOptions"
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
-		opts = runtime.NewMuxOptions(errors.DefaultHTML)
+		opts = runtime.NewMuxOptions()
 	}
 
 	mux := &Mux{
