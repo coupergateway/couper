@@ -5,5 +5,5 @@ server "log-format-common" {
 }
 
 settings {
-  log_format = "common"
+  request_id_format = "common"
 }

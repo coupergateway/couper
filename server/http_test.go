@@ -263,79 +263,34 @@ func TestHTTPServer_UUID_Common(t *testing.T) {
 	}
 }
 
-// FIXME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-// One of the following tests must not fail!
+func TestHTTPServer_UUID_uuid4(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
 
-// func TestHTTPServer_UUID_uuid4(t *testing.T) {
-// 	helper := test.New(t)
-// 	client := newClient()
+	confPath := "testdata/settings/03_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
 
-// 	confPath := "testdata/settings/03_couper.hcl"
-// 	shutdown, logHook := newCouper(confPath, test.New(t))
-// 	defer shutdown()
+	logHook.Reset()
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
 
-// 	logHook.Reset()
-// 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-// 	helper.Must(err)
+	_, err = client.Do(req)
+	helper.Must(err)
 
-// 	_, err = client.Do(req)
-// 	helper.Must(err)
+	// Wait for log
+	time.Sleep(300 * time.Millisecond)
 
-// 	// Wait for log
-// 	time.Sleep(300 * time.Millisecond)
+	e := logHook.LastEntry()
+	if e == nil {
+		t.Fatalf("Missing log line")
+	}
 
-// 	e := logHook.LastEntry()
-// 	if e == nil {
-// 		t.Fatalf("Missing log line")
-// 	}
-
-// 	regexCheck := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
-// 	if !regexCheck.MatchString(e.Data["uid"].(string)) {
-// 		t.Errorf("Expected a uuid4 uid format, got %#v", e.Data["uid"])
-// 	}
-// }
-
-// func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
-// 	helper := test.New(t)
-
-// 	type testCase struct {
-// 		formatOption string
-// 		expRegex     *regexp.Regexp
-// 	}
-
-// 	for _, testcase := range []testCase{
-// 		{"common", regexp.MustCompile(`^[0123456789abcdefghijklmnopqrstuv]{20}$`)},
-// 		{"uuid4", regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)},
-// 	} {
-// 		t.Run(testcase.formatOption, func(subT *testing.T) {
-// 			srvConf := make(runtime.ServerConfiguration)
-
-// 			log, hook := logrustest.NewNullLogger()
-// 			settings := config.DefaultSettings
-// 			settings.RequestIDFormat = testcase.formatOption
-// 			srv := server.New(context.Background(), eval.NewContext(nil), log, &settings, &runtime.DefaultTimings, 0, srvConf[0])
-// 			srv.Listen()
-// 			defer srv.Close()
-// 			req := httptest.NewRequest(http.MethodGet, "http://"+srv.Addr()+"/", nil)
-// 			req.RequestURI = ""
-
-// 			hook.Reset()
-
-// 			_, err := test.NewHTTPClient().Do(req)
-// 			helper.Must(err)
-// 			time.Sleep(time.Millisecond * 10) // log hook needs some time?
-
-// 			if entry := hook.LastEntry(); entry == nil {
-// 				t.Error("Expected a log entry")
-// 			} else if !testcase.expRegex.MatchString(entry.Data["uid"].(string)) {
-// 				t.Errorf("Expected a %q uid format, got %#v", testcase.formatOption, entry.Data["uid"])
-// 			}
-// 		})
-// 	}
-// }
-
-// One of the tests above must not fail!
-// FIXME <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	regexCheck := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	if !regexCheck.MatchString(e.Data["uid"].(string)) {
+		t.Errorf("Expected a uuid4 uid format, got %#v", e.Data["uid"])
+	}
+}
 
 func TestHTTPServer_ServeProxyAbortHandler(t *testing.T) {
 	configFile := `

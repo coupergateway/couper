@@ -5,5 +5,5 @@ server "log-format-common" {
 }
 
 settings {
-  log_format = "uuid4"
+  request_id_format = "uuid4"
 }
