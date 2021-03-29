@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
@@ -178,14 +179,14 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
-		// TODO XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+		errors.DefaultHTML.ServeError(errors.InvalidRequest).ServeHTTP(rw, req)
 	}
 
 	mux, ok := s.muxes[host]
 	if !ok {
 		mux, ok = s.muxes["*"]
 		if !ok {
-			// TODO XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+			errors.DefaultHTML.ServeError(errors.Configuration).ServeHTTP(rw, req)
 		}
 	}
 
