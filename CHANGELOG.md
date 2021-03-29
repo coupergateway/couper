@@ -1,5 +1,42 @@
 # Couper Changelog
 
+<a name="0.7.0"></a>
+## [0.7.0](https://github.com/avenga/couper/compare/0.6.1...0.7.0)
+
+> 2021-03-23
+
+### Bug Fixes
+
+* Recover from possible request/proxy related panics ([#157](https://github.com/avenga/couper/pull/157)) ([#145](https://github.com/avenga/couper/pull/145))
+* Configuration related hcl merge with an empty attributes and nested blocks
+
+### Change
+
+* `backend` block attributes `basic_auth`, `path_prefix` and `proxy` hcl evaluation during runtime
+* `request` attributes hcl evaluation during runtime ([#152](https://github.com/avenga/couper/pull/152))
+* Change configuration in combination with URL and backend.origin ([#144](https://github.com/avenga/couper/issues/144))
+  * `request` and `proxy` block can use the `url` attribute instead of define or reference a `backend`
+  * same applies to `oauth2.token_endpoint`
+* no `X-Forwarded-For` header enrichment from couper `proxy` ([#139](https://github.com/avenga/couper/pull/139))
+* more log context for access control related errors ([#154](https://github.com/avenga/couper/issues/154))
+
+### Features
+
+* `saml` 2.0 `access_control` support ([#113](https://github.com/avenga/couper/issues/113))
+* Add new `strip-secure-cookies` setting ([#147](https://github.com/avenga/couper/issues/147))
+  * removes `Secure` flag from all `Set-Cookie` header
+* CORS support (`server`, `files`, `spa`) ([#134](https://github.com/avenga/couper/issues/134))
+  * previously `api` only
+* `error_file` attribute for `endpoint` block
+* hcl functions:
+  * `merge`
+  * `url_encode`
+* `backend`
+  * OAuth2 support ([#130](https://github.com/avenga/couper/issues/130))
+    * grant_type: `client_credentials`
+    * `token` memory storage with ttl
+  * `path_prefix` attribute ([#138](https://github.com/avenga/couper/issues/138))
+
 <a name="0.6.1"></a>
 ## [0.6.1](https://github.com/avenga/couper/compare/0.6...0.6.1)
 
