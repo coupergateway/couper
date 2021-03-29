@@ -2,18 +2,18 @@ image:
 	docker build -t avenga/couper:latest .
 
 test:
-	go test -v -short -race -timeout 90s ./...
+	go test -v -short -race -timeout 120s ./...
 
 test-docker:
-	docker run --rm -v $(CURDIR):/go/app -w /go/app  golang sh -c "go test -short -count 10 -v -timeout 90s -race ./..."
+	docker run --rm -v $(CURDIR):/go/app -w /go/app  golang sh -c "go test -short -count 10 -v -timeout 120s -race ./..."
 
 test-coverage:
-	go test -short -timeout 90s -covermode=count -coverprofile=ac.coverage ./accesscontrol
-	go test -short -timeout 90s -covermode=count -coverprofile=eval.coverage ./eval
-	go test -short -timeout 90s -covermode=count -coverprofile=config.coverage ./config
-	go test -short -timeout 90s -covermode=count -coverprofile=handler.coverage ./handler
-	go test -short -timeout 90s -covermode=count -coverprofile=server.coverage ./server
-	go test -short -timeout 90s -covermode=count -coverprofile=main.coverage ./
+	go test -short -timeout 120s -covermode=count -coverprofile=ac.coverage ./accesscontrol
+	go test -short -timeout 120s -covermode=count -coverprofile=eval.coverage ./eval
+	go test -short -timeout 120s -covermode=count -coverprofile=config.coverage ./config
+	go test -short -timeout 120s -covermode=count -coverprofile=handler.coverage ./handler
+	go test -short -timeout 120s -covermode=count -coverprofile=server.coverage ./server
+	go test -short -timeout 120s -covermode=count -coverprofile=main.coverage ./
 	$(MAKE) test-coverage-show
 
 test-coverage-show:
