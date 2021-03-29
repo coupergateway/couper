@@ -11,19 +11,13 @@ type MuxOptions struct {
 	FileRoutes     map[string]http.Handler
 	SPARoutes      map[string]http.Handler
 	ErrorTpl       *errors.Template
-	Hosts          hosts
 }
 
-func NewMuxOptions(errorTpl *errors.Template, hostsMap hosts) *MuxOptions {
-	if hostsMap == nil {
-		hostsMap = make(hosts)
-	}
-
+func NewMuxOptions(errorTpl *errors.Template) *MuxOptions {
 	return &MuxOptions{
 		EndpointRoutes: make(map[string]http.Handler),
 		FileRoutes:     make(map[string]http.Handler),
 		SPARoutes:      make(map[string]http.Handler),
 		ErrorTpl:       errorTpl,
-		Hosts:          hostsMap,
 	}
 }
