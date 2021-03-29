@@ -497,6 +497,10 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 	}
 
 	oauthBackend, err := mergeBackendBodies(definedBackends, &config.Backend{Remain: hclbody.New(backendContent)})
+	if err != nil {
+		return nil, err
+	}
+
 	b, err := newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
