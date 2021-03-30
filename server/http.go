@@ -23,7 +23,7 @@ import (
 	"github.com/avenga/couper/logging"
 )
 
-type muxes map[string]*Mux
+type muxers map[string]*Mux
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
@@ -32,7 +32,7 @@ type HTTPServer struct {
 	evalCtx    *eval.Context
 	listener   net.Listener
 	log        logrus.FieldLogger
-	muxes      muxes
+	muxers     muxers
 	port       string
 	settings   *config.Settings
 	shutdownCh chan struct{}
@@ -80,12 +80,12 @@ func New(
 
 	shutdownCh := make(chan struct{})
 
-	muxesList := make(muxes)
+	muxersList := make(muxers)
 	for host, muxOpts := range hosts {
 		mux := NewMux(muxOpts)
 		mux.MustAddRoute(http.MethodGet, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
 
-		muxesList[host] = mux
+		muxersList[host] = mux
 	}
 
 	httpSrv := &HTTPServer{
@@ -93,7 +93,7 @@ func New(
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
-		muxes:      muxesList,
+		muxers:     muxersList,
 		port:       p.String(),
 		settings:   settings,
 		shutdownCh: shutdownCh,
@@ -182,9 +182,9 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		errors.DefaultHTML.ServeError(errors.InvalidRequest).ServeHTTP(rw, req)
 	}
 
-	mux, ok := s.muxes[host]
+	mux, ok := s.muxers[host]
 	if !ok {
-		mux, ok = s.muxes["*"]
+		mux, ok = s.muxers["*"]
 		if !ok {
 			errors.DefaultHTML.ServeError(errors.Configuration).ServeHTTP(rw, req)
 		}
