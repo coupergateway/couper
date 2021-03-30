@@ -72,7 +72,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil {
-		f.srvOptions.FileErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -96,7 +96,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil || info.IsDir() {
-		f.srvOptions.FileErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -160,7 +160,7 @@ func (f *File) removeBasePath(reqPath string) string {
 }
 
 func (f *File) Template() *errors.Template {
-	return f.srvOptions.FileErrTpl
+	return f.srvOptions.FilesErrTpl
 }
 
 func (f *File) Options() *server.Options {

@@ -134,13 +134,7 @@ func NewServerConfiguration(
 				}
 
 				serverConfiguration[port][host] = muxOpts
-				serverConfiguration[port][host].ServerName = serverOptions.ServerName
-				serverConfiguration[port][host].APIErrorTpls = serverOptions.APIErrTpl
-				serverConfiguration[port][host].ServerErrorTpl = serverOptions.ServerErrTpl
-				serverConfiguration[port][host].FilesErrorTpl = serverOptions.FileErrTpl
-				serverConfiguration[port][host].APIBasePaths = serverOptions.APIBasePath
-				serverConfiguration[port][host].FilesBasePath = serverOptions.FileBasePath
-				serverConfiguration[port][host].SPABasePath = serverOptions.SPABasePath
+				serverConfiguration[port][host].ServerOptions = serverOptions
 			}
 		}
 
@@ -177,7 +171,7 @@ func NewServerConfiguration(
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, err := handler.NewFile(serverOptions.FileBasePath, srvConf.Files.DocumentRoot, serverOptions)
+			fileHandler, err := handler.NewFile(serverOptions.FilesBasePath, srvConf.Files.DocumentRoot, serverOptions)
 			if err != nil {
 				return nil, err
 			}
@@ -195,11 +189,11 @@ func NewServerConfiguration(
 				h = fileHandler
 			}
 
-			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FileErrTpl,
+			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FilesErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), h)
 
-			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FileBasePath, protectedFileHandler, files)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, protectedFileHandler, files)
 			if err != nil {
 				return nil, err
 			}
@@ -218,12 +212,12 @@ func NewServerConfiguration(
 					return nil, err
 				}
 			} else if parentAPI != nil {
-				errTpl = serverOptions.APIErrTpl[parentAPI]
+				errTpl = serverOptions.APIErrTpls[parentAPI]
 			} else {
 				errTpl = serverOptions.ServerErrTpl
 			}
 			if parentAPI != nil {
-				basePath = serverOptions.APIBasePath[parentAPI]
+				basePath = serverOptions.APIBasePaths[parentAPI]
 
 				cors, err := middleware.NewCORSOptions(
 					getCORS(srvConf.CORS, parentAPI.CORS),

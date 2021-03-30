@@ -151,12 +151,12 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		node, paramValues = m.match(m.spaRoot, req)
 
 		if node == nil {
-			if isConfigured(m.opts.FilesBasePath) && matchesPath(m.opts.FilesBasePath, req.URL.Path) {
-				return m.opts.FilesErrorTpl.ServeError(errors.FilesRouteNotFound)
+			if isConfigured(m.opts.ServerOptions.FilesBasePath) && matchesPath(m.opts.ServerOptions.FilesBasePath, req.URL.Path) {
+				return m.opts.ServerOptions.FilesErrTpl.ServeError(errors.FilesRouteNotFound)
 			}
 
 			// Fallback
-			return m.opts.ServerErrorTpl.ServeError(errors.Configuration)
+			return m.opts.ServerOptions.ServerErrTpl.ServeError(errors.Configuration)
 		}
 	}
 
@@ -187,7 +187,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 }
 
 func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
-	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerName))
+	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
 
 	return root.Match(req.Method + " " + req.URL.Path)
 }
@@ -214,13 +214,13 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 }
 
 func (m *Mux) getAPIErrorTemplate(reqPath string) *errors.Template {
-	for api, path := range m.opts.APIBasePaths {
+	for api, path := range m.opts.ServerOptions.APIBasePaths {
 		if !isConfigured(path) {
 			continue
 		}
 
-		if isAPIError(path, m.opts.FilesBasePath, m.opts.SPABasePath, reqPath) {
-			return m.opts.APIErrorTpls[api]
+		if isAPIError(path, m.opts.ServerOptions.FilesBasePath, m.opts.ServerOptions.SPABasePath, reqPath) {
+			return m.opts.ServerOptions.APIErrTpls[api]
 		}
 	}
 
