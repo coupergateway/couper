@@ -134,10 +134,6 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	var route *openapi3filter.Route
 
-	if m.endpointRoot == nil {
-		return m.opts.ServerErrorTpl.ServeError(errors.Configuration)
-	}
-
 	node, paramValues := m.match(m.endpointRoot, req)
 	if node == nil {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
