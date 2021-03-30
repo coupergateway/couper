@@ -31,7 +31,7 @@ type File struct {
 	srvOptions *server.Options
 }
 
-func NewFile(basePath, docRoot string, srvOpts *server.Options) (*File, error) {
+func NewFile(docRoot string, srvOpts *server.Options) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func NewFile(basePath, docRoot string, srvOpts *server.Options) (*File, error) {
 	}
 
 	f := &File{
-		basePath:   basePath,
+		basePath:   srvOpts.FilesBasePath,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
 	}

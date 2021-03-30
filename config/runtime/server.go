@@ -171,7 +171,7 @@ func NewServerConfiguration(
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, err := handler.NewFile(serverOptions.FilesBasePath, srvConf.Files.DocumentRoot, serverOptions)
+			fileHandler, err := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions)
 			if err != nil {
 				return nil, err
 			}
