@@ -16,12 +16,12 @@ var (
 
 func validateHosts(serverName string, hosts []string, isHostsMandatory bool) error {
 	if isHostsMandatory && len(hosts) == 0 {
-		return fmt.Errorf("the <hosts> attribute is mandatory for multiple servers: %q", serverName)
+		return fmt.Errorf("the hosts attribute is mandatory for multiple servers: %q", serverName)
 	}
 
 	for _, host := range hosts {
 		if !reValidFormat.MatchString(host) {
-			return fmt.Errorf("the <host> format is invalid: %q", host)
+			return fmt.Errorf("the host format is invalid: %q", host)
 		}
 	}
 
