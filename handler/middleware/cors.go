@@ -100,21 +100,29 @@ func (c *CORS) isCorsPreflightRequest(req *http.Request) bool {
 
 func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 	if !c.isCorsRequest(req) {
+		headers.Add("Vary", "Origin")
 		return
 	}
+
 	requestOrigin := req.Header.Get("Origin")
 	if !c.options.AllowsOrigin(requestOrigin) {
+		headers.Add("Vary", "Origin")
 		return
 	}
+
 	// see https://fetch.spec.whatwg.org/#http-responses
-	if c.options.AllowsOrigin("*") && !c.isCredentialed(req.Header) {
+	if !c.options.AllowsOrigin("*") {
+		headers.Set("Access-Control-Allow-Origin", requestOrigin)
+		headers.Add("Vary", "Origin")
+	} else if !c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Origin", "*")
-	} else {
+	} else if requestOrigin != "" {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
 
 	if c.options.AllowCredentials == true {
 		headers.Set("Access-Control-Allow-Credentials", "true")
+		headers.Add("Vary", "Origin")
 	}
 
 	if c.isCorsPreflightRequest(req) {
@@ -131,15 +139,9 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		if c.options.MaxAge != "" {
 			headers.Set("Access-Control-Max-Age", c.options.MaxAge)
 		}
-	} else if c.options.NeedsVary() {
-		headers.Add("Vary", "Origin")
 	}
 }
 
 func (c *CORS) isCorsRequest(req *http.Request) bool {
 	return req.Header.Get("Origin") != ""
-}
-
-func (c *CORS) isCredentialed(headers http.Header) bool {
-	return headers.Get("Cookie") != "" || headers.Get("Authorization") != "" || headers.Get("Proxy-Authorization") != ""
 }
