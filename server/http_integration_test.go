@@ -366,7 +366,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 					}
 				}
 
-				if rc.exp.body != nil && bytes.Compare(resBytes, rc.exp.body) != 0 {
+				if rc.exp.body != nil && !bytes.Equal(resBytes, rc.exp.body) {
 					t.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
 				}
 
@@ -405,7 +405,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html lang="en">index B</html>` != string(resBytes) {
+	if string(resBytes) != `<html lang="en">index B</html>` {
 		t.Errorf("%s", resBytes)
 	}
 }
@@ -431,7 +431,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html>1002</html>` != string(resBytes) {
+	if string(resBytes) != `<html>1002</html>` {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -468,7 +468,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html lang="en">index B</html>` != string(resBytes) {
+	if string(resBytes) != `<html lang="en">index B</html>` {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -826,6 +826,53 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
+	}
+}
+
+func TestHTTPServer_LogFields(t *testing.T) {
+	client := newClient()
+	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, logHook := newCouper(config, helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+	helper.Must(err)
+
+	logHook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	if l := len(logHook.Entries); l != 2 {
+		t.Fatalf("Unexpected number of log lines: %d", l)
+	}
+
+	backendLog := logHook.Entries[0]
+	accessLog := logHook.Entries[1]
+
+	if tp, ok := backendLog.Data["type"]; !ok || tp != "couper_backend" {
+		t.Fatalf("Unexpected log type: %s", tp)
+	}
+	if tp, ok := accessLog.Data["type"]; !ok || tp != "couper_access" {
+		t.Fatalf("Unexpected log type: %s", tp)
+	}
+
+	if u, ok := backendLog.Data["url"]; !ok || u == "" {
+		t.Fatalf("Unexpected URL: %s", u)
+	}
+	if u, ok := accessLog.Data["url"]; !ok || u == "" {
+		t.Fatalf("Unexpected URL: %s", u)
+	}
+
+	if b, ok := backendLog.Data["backend"]; !ok || b != "anything" {
+		t.Fatalf("Unexpected backend name: %s", b)
+	}
+	if e, ok := accessLog.Data["endpoint"]; !ok || e != "/" {
+		t.Fatalf("Unexpected endpoint: %s", e)
+	}
+	if b, ok := accessLog.Data["bytes"]; !ok || b != 482 {
+		t.Fatalf("Unexpected number of bytes: %d", b)
 	}
 }
 
@@ -1287,6 +1334,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			}
 
 			b, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
 			type payload struct {
 				Query url.Values
@@ -1312,31 +1360,34 @@ func TestConfigBodyContentBackends(t *testing.T) {
 func TestConfigBodyContentAccessControl(t *testing.T) {
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
 	defer shutdown()
 
 	type testCase struct {
-		path   string
-		header http.Header
-		status int
-		ct     string
+		path       string
+		header     http.Header
+		status     int
+		ct         string
+		wantErrLog string
 	}
 
 	for _, tc := range []testCase{
-		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
+		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json", ""},
 		// TODO: Can a disabled auth being enabled again?
 		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
 		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
-		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json"}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json"},
-		{"/v3", http.Header{}, http.StatusOK, "application/json"},
-		{"/status", http.Header{}, http.StatusOK, "application/json"},
-		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json"},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json"},
-		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html"},
+		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json", ""}, // minimum ':'
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "missing credentials"},
+		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
+		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
+		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "missing credentials"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "missing credentials"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
+			hook.Reset()
+
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
@@ -1346,6 +1397,24 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 			res, err := client.Do(req)
 			helper.Must(err)
+
+			acEntries := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if len(acEntries) > 0 {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			} else {
+				var found bool
+				for _, valMsg := range acEntries {
+					if strings.HasPrefix(valMsg, tc.wantErrLog) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			}
 
 			if res.StatusCode != tc.status {
 				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
@@ -1362,6 +1431,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			}
 
 			b, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
 			type payload struct {
 				Headers http.Header
@@ -1385,23 +1455,26 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 func TestJWTAccessControl(t *testing.T) {
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
 	defer shutdown()
 
 	type testCase struct {
-		name   string
-		path   string
-		header http.Header
-		status int
+		name       string
+		path       string
+		header     http.Header
+		status     int
+		wantErrLog string
 	}
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden},
-		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "empty token"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "token is expired by "},
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
+			hook.Reset()
+
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
@@ -1417,6 +1490,24 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 
+			acEntries := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if len(acEntries) > 0 {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			} else {
+				var found bool
+				for _, valMsg := range acEntries {
+					if strings.HasPrefix(valMsg, tc.wantErrLog) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				}
+			}
+
 			if res.StatusCode != http.StatusOK {
 				return
 			}
@@ -1426,6 +1517,18 @@ func TestJWTAccessControl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getAccessControlMessages(hook *logrustest.Hook) []string {
+	var acEntries []string
+	for _, entry := range hook.Entries {
+		if valEntry, ok := entry.Data["access_control"]; ok {
+			if list, ok := valEntry.([]string); ok {
+				acEntries = append(acEntries, list...)
+			}
+		}
+	}
+	return acEntries
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
@@ -1470,6 +1573,49 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 
 	if !bytes.Equal(p, []byte("pong")) {
 		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestAccessControl_Files_SPA(t *testing.T) {
+	shutdown, _ := newCouper("testdata/file_serving/conf_ac.hcl", test.New(t))
+	defer shutdown()
+
+	client := newClient()
+
+	type testCase struct {
+		path      string
+		password  string
+		expStatus int
+	}
+
+	for _, tc := range []testCase{
+		// FIXME: https://github.com/avenga/couper/issues/143
+		// {"/favicon.ico", "", http.StatusUnauthorized},
+		// {"/robots.txt", "", http.StatusUnauthorized},
+		// {"/app", "", http.StatusUnauthorized},
+		// {"/app/1", "", http.StatusUnauthorized},
+		{"/favicon.ico", "hans", http.StatusNotFound},
+		{"/robots.txt", "hans", http.StatusOK},
+		{"/app", "hans", http.StatusOK},
+		{"/app/1", "hans", http.StatusOK},
+	} {
+		t.Run(tc.path[1:], func(st *testing.T) {
+			helper := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://protect.me:8080"+tc.path, nil)
+			helper.Must(err)
+
+			if tc.password != "" {
+				req.SetBasicAuth("", tc.password)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+		})
 	}
 }
 

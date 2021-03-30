@@ -25,7 +25,6 @@ type Mux struct {
 	endpointRoot *pathpattern.Node
 	fileRoot     *pathpattern.Node
 	opts         *runtime.MuxOptions
-	router       *openapi3filter.Router
 	spaRoot      *pathpattern.Node
 }
 
@@ -251,8 +250,10 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, *server.Options,
 	route := node.Value.(*openapi3filter.Route)
 	fileHandler := route.Handler
 	if p, isProtected := fileHandler.(ac.ProtectedHandler); isProtected {
-		fileHandler = p.Child()
 		srvCtxOpts = p.Child().(server.Context).Options()
+		if fh, ok := p.Child().(handler.HasResponse); ok {
+			return fileHandler, srvCtxOpts, fh.HasResponse(req)
+		}
 	}
 
 	if fh, ok := fileHandler.(handler.HasResponse); ok {

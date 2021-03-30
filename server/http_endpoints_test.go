@@ -1,11 +1,14 @@
 package server_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,6 +47,69 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 
 	if string(resBytes) != "808" {
 		t.Errorf("Expected body 808, given %s", resBytes)
+	}
+}
+
+func TestEndpoints_ProxyReqResCancel(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, logHook := newCouper(path.Join(testdataPath, "01_couper.hcl"), helper)
+	defer shutdown()
+
+	defer func() {
+		if t.Failed() {
+			for _, e := range logHook.Entries {
+				println(e.String())
+				if d, ok := e.Data["panic"]; ok {
+					println(d)
+				}
+			}
+		}
+	}()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1?delay=5s", nil)
+	helper.Must(err)
+
+	ctx, cancel := context.WithCancel(req.Context())
+	*req = *req.WithContext(ctx)
+
+	logHook.Reset()
+
+	go func() {
+		time.Sleep(time.Second / 2)
+		cancel()
+	}()
+
+	_, err = client.Do(req)
+	if err == nil {
+		t.Error("expected a cancel error")
+	} else {
+		if cancelErr := errors.Unwrap(err); cancelErr != context.Canceled {
+			t.Error("expected a cancel error")
+		}
+	}
+}
+
+func TestEndpoints_RequestLimit(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "06_couper.hcl"), helper)
+	defer shutdown()
+
+	body := strings.NewReader(`{"foo" = "bar"}`)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", body)
+	helper.Must(err)
+
+	req.SetBasicAuth("", "qwertz")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected status 413, given %d", res.StatusCode)
 	}
 }
 

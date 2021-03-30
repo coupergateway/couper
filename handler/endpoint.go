@@ -61,7 +61,7 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, proxies producer.Prox
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Bind some values for logging purposes
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
-	reqCtx = context.WithValue(req.Context(), request.EndpointKind, e.opts.LogHandlerKind)
+	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
 	*req = *req.WithContext(reqCtx)
 
 	// subCtx is handled by this endpoint handler and should not be attached to req
@@ -81,8 +81,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	beresps := make(producer.ResultMap)
 	// TODO: read parallel, proxy first for now
-	e.readResults(proxyResults, beresps)
-	e.readResults(requestResults, beresps)
+	e.readResults(subCtx, proxyResults, beresps)
+	e.readResults(subCtx, requestResults, beresps)
 
 	var clientres *http.Response
 	var err error
@@ -94,6 +94,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if e.redirect != nil {
 		clientres = e.newRedirect()
 	} else if e.response != nil {
+		// TODO: refactor with error_handler, catch at least panics for now
+		for _, b := range beresps {
+			if b.Err == nil {
+				continue
+			}
+			switch b.Err.(type) {
+			case producer.ResultPanic:
+				e.log.WithField("uid", req.Context().Value(request.UID)).Error(b.Err)
+			}
+		}
 		clientres, err = e.newResponse(req, evalContext)
 	} else {
 		if result, ok := beresps["default"]; ok {
@@ -136,8 +146,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		e.log.Error(err)
 	}
 
+	select {
+	case ctxErr := <-req.Context().Done():
+		e.log.Errorf("endpoint write: %v", ctxErr)
+	default:
+	}
+
 	if err = clientres.Write(rw); err != nil {
-		e.log.Errorf("endpoint write error: %v", err)
+		e.log.Errorf("endpoint write: %v", err)
 	}
 }
 
@@ -162,9 +178,10 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
 			e.log.Errorf("endpoint eval error: %v", err)
+			statusCode = http.StatusInternalServerError
+		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
+			statusCode = statusValue
 		}
-
-		statusCode = int(seetie.ValueToInt(val))
 	}
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)
@@ -202,21 +219,26 @@ func (e *Endpoint) newRedirect() *http.Response {
 	}
 }
 
-func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
+func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
 	i := 0
-	for r := range requestResults { // collect resps
-		i++
-		if r == nil {
-			continue
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case r, more := <-requestResults:
+			if !more {
+				return
+			}
 
-		name := r.RoundTripName
+			i++
+			name := r.RoundTripName
 
-		// fallback
-		if name == "" { // panic case
-			name = strconv.Itoa(i)
+			// fallback
+			if name == "" { // panic case
+				name = strconv.Itoa(i)
+			}
+			beresps[name] = r
 		}
-		beresps[name] = r
 	}
 }
 
