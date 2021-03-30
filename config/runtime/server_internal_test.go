@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/eval"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -78,5 +79,123 @@ func TestServer_getEndpointsList(t *testing.T) {
 		if !exist {
 			t.Errorf("Expected an endpoint for path pattern: %q", pattern)
 		}
+	}
+}
+
+func TestServer_validatePortHosts(t *testing.T) {
+	type args struct {
+		conf           *config.Couper
+		configuredPort int
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			"Same host/port in one server",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"*", "*", "*:9090", "*:9090", "*:8080"}},
+					},
+				}, 8080,
+			},
+			false,
+		},
+		{
+			"Same host/port in two servers with *",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"*"}},
+						{Hosts: []string{"*"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same host/port in two servers with *:<port>",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"*:8080"}},
+						{Hosts: []string{"*:8080"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same host/port in two servers with example.com",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"example.com", "couper.io"}},
+						{Hosts: []string{"example.com", "couper.io"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same host/port in two servers with example.com:<port>",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"example.com:9090"}},
+						{Hosts: []string{"example.com:9090"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Same port w/ different host in two servers",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"*", "example.com:9090"}},
+						{Hosts: []string{"couper.io:9090"}},
+					},
+				}, 8080,
+			},
+			false,
+		},
+		{
+			"Host is mandatory for multiple servers",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"*"}},
+						{},
+					},
+				}, 8080,
+			},
+			true,
+		},
+		{
+			"Host is optional for single server",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{},
+					},
+				}, 8080,
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.conf.Context = eval.NewContext(nil)
+			tt.args.conf.Settings = &config.DefaultSettings
+
+			if _, err := NewServerConfiguration(tt.args.conf, nil, nil); (err != nil) != tt.wantErr {
+				t.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
