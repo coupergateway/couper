@@ -73,7 +73,11 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 		case string:
 			val.Field(i).SetString(mapVal)
 		case []string:
-			val.Field(i).Set(reflect.ValueOf(strings.Split(mapVal, ",")))
+			slice := strings.Split(mapVal, ",")
+			for idx, v := range slice {
+				slice[idx] = strings.TrimSpace(v)
+			}
+			val.Field(i).Set(reflect.ValueOf(slice))
 		case time.Duration:
 			parsedDuration, err := time.ParseDuration(mapVal)
 			if err == nil {

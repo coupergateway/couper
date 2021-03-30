@@ -13,7 +13,7 @@ func filterHeader(list []string, src http.Header) map[string]string {
 	header := make(map[string]string)
 	for _, key := range list {
 		ck := http.CanonicalHeaderKey(key)
-		val, ok := src[http.CanonicalHeaderKey(ck)]
+		val, ok := src[ck]
 		if !ok || len(val) == 0 || val[0] == "" {
 			continue
 		}
