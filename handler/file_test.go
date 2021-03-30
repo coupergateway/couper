@@ -43,7 +43,9 @@ func TestFile_ServeHTTP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, err := NewFile(tt.fields.basePath, path.Join(wd, tt.fields.docRootDir), srvOpts)
+			srvOpts.FilesBasePath = tt.fields.basePath
+
+			f, err := NewFile(path.Join(wd, tt.fields.docRootDir), srvOpts)
 			if err != nil {
 				t.Fatal(err)
 			}

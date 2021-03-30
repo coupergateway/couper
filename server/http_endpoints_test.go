@@ -267,3 +267,25 @@ func TestEndpoints_OAuth2(t *testing.T) {
 		}
 	}
 }
+
+func TestEndpoints_Muxing(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "05_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	if string(resBytes) != "s1" {
+		t.Errorf("Expected body 's1', given %s", resBytes)
+	}
+}

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
-	"github.com/getkin/kin-openapi/pathpattern"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
@@ -36,25 +35,6 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-var DefaultBackendConf = &config.Backend{
-	ConnectTimeout: "10s",
-	TTFBTimeout:    "60s",
-	Timeout:        "300s",
-}
-
-type Port int
-
-func (p Port) String() string {
-	return strconv.Itoa(int(p))
-}
-
-type ServerConfiguration map[Port]*MuxOptions
-
-type hosts map[string]bool
-type ports map[Port]hosts
-
-type HandlerKind uint8
-
 const (
 	api HandlerKind = iota
 	endpoint
@@ -62,46 +42,100 @@ const (
 	spa
 )
 
-type endpointMap map[*config.Endpoint]*config.API
+var DefaultBackendConf = &config.Backend{
+	ConnectTimeout: "10s",
+	TTFBTimeout:    "60s",
+	Timeout:        "300s",
+}
+
+type (
+	Port                int
+	Hosts               map[string]*MuxOptions
+	Ports               map[Port]Hosts
+	ServerConfiguration Ports
+	HandlerKind         uint8
+	endpointMap         map[*config.Endpoint]*config.API
+	endpointHandler     map[*config.Endpoint]http.Handler
+)
+
+func (p Port) String() string {
+	return strconv.Itoa(int(p))
+}
+
+func GetHostPort(hostPort string) (string, int, error) {
+	var host string
+	var port int
+
+	h, p, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return "", -1, err
+	}
+
+	host = strings.TrimRight(h, ".")
+
+	if p == "" || p == "*" {
+		port = -1
+	} else {
+		port, err = strconv.Atoi(p)
+		if err != nil {
+			return "", -1, err
+		}
+	}
+
+	return host, port, nil
+}
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
 func NewServerConfiguration(
 	conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore,
 ) (ServerConfiguration, error) {
-	defaultPort := conf.Settings.DefaultPort
-
 	// confCtx is created to evaluate request / response related configuration errors on start.
 	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
 	confCtx := conf.Context.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
-	validPortMap, hostsMap, err := validatePortHosts(conf, defaultPort)
-	if err != nil {
-		return nil, err
-	}
-
 	accessControls, err := configureAccessControls(conf, confCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	serverConfiguration := make(ServerConfiguration)
-	if len(validPortMap) == 0 {
-		serverConfiguration[Port(defaultPort)] = NewMuxOptions(errors.DefaultHTML, hostsMap)
-	} else {
-		for p := range validPortMap {
-			serverConfiguration[p] = NewMuxOptions(errors.DefaultHTML, hostsMap)
-		}
-	}
-
-	endpointHandlers := make(map[*config.Endpoint]http.Handler)
+	var (
+		serverConfiguration ServerConfiguration = make(ServerConfiguration)
+		defaultPort         int                 = conf.Settings.DefaultPort
+		endpointHandlers    endpointHandler     = make(endpointHandler)
+		isHostsMandatory    bool                = len(conf.Servers) > 1
+	)
 
 	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf)
 		if err != nil {
 			return nil, err
+		}
+
+		if err := validateHosts(srvConf.Name, srvConf.Hosts, isHostsMandatory); err != nil {
+			return nil, err
+		}
+
+		portsHosts, err := getPortsHostsList(srvConf.Hosts, defaultPort)
+		if err != nil {
+			return nil, err
+		}
+
+		for port, hosts := range portsHosts {
+			for host, muxOpts := range hosts {
+				if serverConfiguration[port] == nil {
+					serverConfiguration[port] = make(Hosts)
+				}
+
+				if _, ok := serverConfiguration[port][host]; ok {
+					return nil, fmt.Errorf("conflict: host %q already defined for port: %d", host, port)
+				}
+
+				serverConfiguration[port][host] = muxOpts
+				serverConfiguration[port][host].ServerOptions = serverOptions
+			}
 		}
 
 		var spaHandler http.Handler
@@ -129,7 +163,7 @@ func NewServerConfiguration(
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), h)
 
 			for _, spaPath := range srvConf.Spa.Paths {
-				err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
+				err = setRoutesFromHosts(serverConfiguration, portsHosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
 				if err != nil {
 					return nil, err
 				}
@@ -137,7 +171,7 @@ func NewServerConfiguration(
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, err := handler.NewFile(serverOptions.FileBasePath, srvConf.Files.DocumentRoot, serverOptions)
+			fileHandler, err := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions)
 			if err != nil {
 				return nil, err
 			}
@@ -155,11 +189,11 @@ func NewServerConfiguration(
 				h = fileHandler
 			}
 
-			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FileErrTpl,
+			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FilesErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), h)
 
-			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, serverOptions.FileBasePath, protectedFileHandler, files)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, protectedFileHandler, files)
 			if err != nil {
 				return nil, err
 			}
@@ -178,12 +212,12 @@ func NewServerConfiguration(
 					return nil, err
 				}
 			} else if parentAPI != nil {
-				errTpl = serverOptions.APIErrTpl[parentAPI]
+				errTpl = serverOptions.APIErrTpls[parentAPI]
 			} else {
 				errTpl = serverOptions.ServerErrTpl
 			}
 			if parentAPI != nil {
-				basePath = serverOptions.APIBasePath[parentAPI]
+				basePath = serverOptions.APIBasePaths[parentAPI]
 
 				cors, err := middleware.NewCORSOptions(
 					getCORS(srvConf.CORS, parentAPI.CORS),
@@ -317,7 +351,7 @@ func NewServerConfiguration(
 
 			setACHandlerFn(h)
 
-			err = setRoutesFromHosts(serverConfiguration, serverOptions.ServerErrTpl, defaultPort, srvConf.Hosts, pattern, endpointHandlers[endpointConf], kind)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
 				return nil, err
 			}
@@ -431,31 +465,6 @@ func getCORS(parent, curr *config.CORS) *config.CORS {
 	return curr
 }
 
-func splitWildcardHostPort(host string, configuredPort int) (string, Port, error) {
-	if !strings.Contains(host, ":") {
-		return host, Port(configuredPort), nil
-	}
-
-	ho := host
-	po := configuredPort
-	h, p, err := net.SplitHostPort(host)
-	if err != nil {
-		return "", -1, err
-	}
-	ho = h
-	if p != "" && p != "*" {
-		if !rePortCheck.MatchString(p) {
-			return "", -1, fmt.Errorf("invalid port given: %s", p)
-		}
-		po, err = strconv.Atoi(p)
-		if err != nil {
-			return "", -1, err
-		}
-	}
-
-	return ho, Port(po), nil
-}
-
 func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.Map, error) {
 	accessControls := make(ac.Map)
 
@@ -551,49 +560,71 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	return h
 }
 
-func setRoutesFromHosts(srvConf ServerConfiguration, srvErrHandler *errors.Template, defaultPort int, hosts []string, path string, handler http.Handler, kind HandlerKind) error {
-	hostList := hosts
-	if len(hostList) == 0 {
-		hostList = []string{"*"}
+func setRoutesFromHosts(
+	srvConf ServerConfiguration, portsHosts Ports,
+	path string, handler http.Handler, kind HandlerKind,
+) error {
+	path = utils.JoinPath("/", path)
+
+	for port, hosts := range portsHosts {
+		check := make(map[string]struct{})
+
+		for host := range hosts {
+			var routes map[string]http.Handler
+
+			switch kind {
+			case api:
+				fallthrough
+			case endpoint:
+				routes = srvConf[port][host].EndpointRoutes
+			case files:
+				routes = srvConf[port][host].FileRoutes
+			case spa:
+				routes = srvConf[port][host].SPARoutes
+			default:
+				return fmt.Errorf("unknown route kind")
+			}
+
+			key := fmt.Sprintf("%d:%s:%s\n", port, host, path)
+			if _, exist := check[key]; exist {
+				return fmt.Errorf("duplicate route found on port %q: %q", port, path)
+			}
+
+			routes[path] = handler
+			check[key] = struct{}{}
+		}
 	}
 
-	for _, h := range hostList {
-		joinedPath := utils.JoinPath("/", path)
-		host, listenPort, err := splitWildcardHostPort(h, defaultPort)
-		if err != nil {
-			return err
-		}
-
-		if host != "*" {
-			joinedPath = utils.JoinPath(
-				pathpattern.PathFromHost(
-					net.JoinHostPort(host, listenPort.String()), false), "/", path)
-		}
-
-		srvConf[listenPort].ErrorTpl = srvErrHandler
-
-		var routes map[string]http.Handler
-
-		switch kind {
-		case api:
-			fallthrough
-		case endpoint:
-			routes = srvConf[listenPort].EndpointRoutes
-		case files:
-			routes = srvConf[listenPort].FileRoutes
-		case spa:
-			routes = srvConf[listenPort].SPARoutes
-		default:
-			return fmt.Errorf("unknown route kind")
-		}
-
-		if _, exist := routes[joinedPath]; exist {
-			return fmt.Errorf("duplicate route found on port %q: %q", listenPort.String(), path)
-		}
-
-		routes[joinedPath] = handler
-	}
 	return nil
+}
+
+func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
+	if len(hosts) == 0 {
+		hosts = append(hosts, fmt.Sprintf("*:%d", defaultPort))
+	}
+
+	portsHosts := make(Ports)
+
+	for _, hp := range hosts {
+		if !strings.Contains(hp, ":") {
+			hp += fmt.Sprintf(":%d", defaultPort)
+		}
+
+		host, port, err := GetHostPort(hp)
+		if err != nil {
+			return nil, err
+		} else if port == -1 {
+			port = defaultPort
+		}
+
+		if portsHosts[Port(port)] == nil {
+			portsHosts[Port(port)] = make(Hosts)
+		}
+
+		portsHosts[Port(port)][host] = NewMuxOptions()
+	}
+
+	return portsHosts, nil
 }
 
 func newEndpointMap(srvConf *config.Server) endpointMap {
