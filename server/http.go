@@ -199,7 +199,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	)
 	rw = w
 
-	clientReq := req.Clone(ctx)
+	clientReq := req.Clone(req.Context())
 
 	if err := s.setGetBody(h, clientReq); err != nil {
 		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(rw, req)
