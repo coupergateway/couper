@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
 )
 
@@ -53,7 +54,8 @@ func TestServer_getEndpointsList(t *testing.T) {
 		},
 	}
 
-	endpoints, _ := newEndpointMap(srvConf)
+	serverOptions, _ := server.NewServerOptions(nil)
+	endpoints, _ := newEndpointMap(srvConf, serverOptions)
 	if l := len(endpoints); l != 4 {
 		t.Fatalf("Expected 4 endpointes, given %d", l)
 	}

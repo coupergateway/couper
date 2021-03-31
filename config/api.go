@@ -8,6 +8,8 @@ type API struct {
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	Endpoints            Endpoints `hcl:"endpoint,block"`
 	ErrorFile            string    `hcl:"error_file,optional"`
+	// internally used
+	CatchAllEndpoint *Endpoint
 }
 
 // APIs represents a list of <API> objects.
