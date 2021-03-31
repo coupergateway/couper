@@ -232,7 +232,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			if err != nil {
 				subT.Fatal(err)
 			}
-			content := helper.NewProxyContext(`
+			content := helper.NewInlineContext(`
 				origin = "` + origin.URL + `"
 			`)
 
@@ -311,7 +311,7 @@ func TestBackend_director(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hclContext := helper.NewProxyContext(tt.inlineCtx)
+			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
 			backend := transport.NewBackend(hclContext, &transport.Config{
 				Timeout: time.Second,
@@ -400,7 +400,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 
 			backend := transport.NewBackend(configload.MergeBodies([]hcl.Body{
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-				helper.NewProxyContext(tc.remain),
+				helper.NewInlineContext(tc.remain),
 			}), &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: newOptions(),
 			}, nullLog)
