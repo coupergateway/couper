@@ -53,7 +53,7 @@ func TestServer_getEndpointsList(t *testing.T) {
 		},
 	}
 
-	endpoints := newEndpointMap(srvConf)
+	endpoints, _ := newEndpointMap(srvConf)
 	if l := len(endpoints); l != 4 {
 		t.Fatalf("Expected 4 endpointes, given %d", l)
 	}

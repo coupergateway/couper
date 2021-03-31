@@ -200,8 +200,12 @@ func NewServerConfiguration(
 		}
 
 		endpointsPatterns := make(map[string]bool)
+		endpointsMap, err := newEndpointMap(srvConf)
+		if err != nil {
+			return nil, err
+		}
 
-		for endpointConf, parentAPI := range newEndpointMap(srvConf) {
+		for endpointConf, parentAPI := range endpointsMap {
 			var basePath string
 			var corsOptions *middleware.CORSOptions
 			var errTpl *errors.Template
@@ -627,10 +631,21 @@ func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
 	return portsHosts, nil
 }
 
-func newEndpointMap(srvConf *config.Server) endpointMap {
+func newEndpointMap(srvConf *config.Server) (endpointMap, error) {
 	endpoints := make(endpointMap)
 
+	apiBasePaths := make(map[string]struct{})
+
 	for _, api := range srvConf.APIs {
+		// Enforce leading, normalize multiple and remove trailing slash
+		basePath := path.Join("/", api.BasePath)
+
+		if _, ok := apiBasePaths[basePath]; ok {
+			return nil, fmt.Errorf("API paths must be unique")
+		}
+
+		apiBasePaths[basePath] = struct{}{}
+
 		for _, endpoint := range api.Endpoints {
 			endpoints[endpoint] = api
 		}
@@ -640,7 +655,7 @@ func newEndpointMap(srvConf *config.Server) endpointMap {
 		endpoints[endpoint] = nil
 	}
 
-	return endpoints
+	return endpoints, nil
 }
 
 // parseDuration sets the target value if the given duration string is not empty.

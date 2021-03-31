@@ -1,5 +1,7 @@
 server "multi-api" {
   api {
+    base_path = "/v1"
+
     endpoint "/" {
       proxy {
         backend {
@@ -29,6 +31,8 @@ server "multi-api" {
   }
 
   api {
+    base_path = "/v2"
+
     endpoint "/yyy" {
       proxy {
         backend {
@@ -40,6 +44,8 @@ server "multi-api" {
   }
 
   api {
+    base_path = "/v3"
+
     endpoint "/zzz" {
       proxy {
         backend {
