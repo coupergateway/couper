@@ -7,6 +7,7 @@ const (
 	AccessControl
 	AccessControls
 	BackendName
+	BackendURL
 	Endpoint
 	EndpointKind
 	OpenAPI

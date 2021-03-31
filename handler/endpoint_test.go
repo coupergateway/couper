@@ -133,16 +133,22 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 	defaultMethods := []string{
 		http.MethodGet,
-		//http.MethodHead,
-		//http.MethodPost,
-		//http.MethodPut,
-		//http.MethodPatch,
-		//http.MethodDelete,
-		//http.MethodConnect,
-		//http.MethodOptions,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodConnect,
+		http.MethodOptions,
 	}
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// reflect req headers
+		for k, v := range r.Header {
+			if !strings.HasPrefix(strings.ToLower(k), "x-") {
+				continue
+			}
+			rw.Header()[k] = v
+		}
 		rw.WriteHeader(http.StatusNoContent)
 	}))
 	defer origin.Close()
@@ -164,7 +170,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		origin = "` + origin.URL + `"
 		set_request_headers = {
 			x-test = req.json_body.foo
-		}`, []string{http.MethodTrace}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
+		}`, []string{http.MethodTrace, http.MethodHead}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
 		{"method /wo body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
@@ -182,7 +188,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				helper := test.New(subT)
 
 				backend := transport.NewBackend(
-					helper.NewProxyContext(tt.inlineCtx),
+					helper.NewInlineContext(tt.inlineCtx),
 					&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
@@ -208,11 +214,11 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				rw := server.NewRWWrapper(rec, false, "") // crucial for working ep due to res.Write()
 				ep.ServeHTTP(rw, req)
 				rec.Flush()
-				//res := rec.Result()
+				res := rec.Result()
 
 				for k, v := range tt.want.req {
-					if req.Header.Get(k) != v {
-						subT.Errorf("want: %q for key %q, got: %q", v, k, req.Header.Get(k))
+					if res.Header.Get(k) != v {
+						subT.Errorf("want: %q for key %q, got: %q", v, k, res.Header[k])
 					}
 				}
 			})
@@ -272,7 +278,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				Error:        errors.DefaultJSON,
-				Context:      helper.NewProxyContext(tc.remain),
+				Context:      helper.NewInlineContext(tc.remain),
 				ReqBodyLimit: 1024,
 			}, logger, producer.Proxies{
 				&producer.Proxy{Name: "default", RoundTrip: backend},

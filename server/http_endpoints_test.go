@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,8 +33,8 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	helper.Must(err)
 
 	entries := logHook.Entries
-	if l := len(entries); l != 3 {
-		t.Fatalf("Expected 3 log entries, given %d", l)
+	if l := len(entries); l != 5 {
+		t.Fatalf("Expected 5 log entries, given %d", l)
 	}
 
 	if res.StatusCode != http.StatusMethodNotAllowed {
@@ -44,8 +45,8 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	helper.Must(err)
 	res.Body.Close()
 
-	if string(resBytes) != "808" {
-		t.Errorf("Expected body 808, given %s", resBytes)
+	if string(resBytes) != "1616" {
+		t.Errorf("Expected body 1616, given %s", resBytes)
 	}
 }
 
@@ -87,6 +88,28 @@ func TestEndpoints_ProxyReqResCancel(t *testing.T) {
 		if cancelErr := errors.Unwrap(err); cancelErr != context.Canceled {
 			t.Error("expected a cancel error")
 		}
+	}
+}
+
+func TestEndpoints_RequestLimit(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "06_couper.hcl"), helper)
+	defer shutdown()
+
+	body := strings.NewReader(`{"foo" = "bar"}`)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", body)
+	helper.Must(err)
+
+	req.SetBasicAuth("", "qwertz")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected status 413, given %d", res.StatusCode)
 	}
 }
 
@@ -242,5 +265,27 @@ func TestEndpoints_OAuth2(t *testing.T) {
 		case <-tokenSeenCh:
 			<-seenCh
 		}
+	}
+}
+
+func TestEndpoints_Muxing(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "05_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	if string(resBytes) != "s1" {
+		t.Errorf("Expected body 's1', given %s", resBytes)
 	}
 }

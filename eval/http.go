@@ -64,7 +64,7 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 
 		bodyBytes := buf.Bytes()
 		req.GetBody = func() (io.ReadCloser, error) {
-			return NewReadCloser(bytes.NewBuffer(bodyBytes), req.Body), nil
+			return io.NopCloser(bytes.NewBuffer(bodyBytes)), nil
 		}
 	}
 

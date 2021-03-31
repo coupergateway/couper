@@ -366,7 +366,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 					}
 				}
 
-				if rc.exp.body != nil && bytes.Compare(resBytes, rc.exp.body) != 0 {
+				if rc.exp.body != nil && !bytes.Equal(resBytes, rc.exp.body) {
 					t.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
 				}
 
@@ -405,7 +405,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html lang="en">index B</html>` != string(resBytes) {
+	if string(resBytes) != `<html lang="en">index B</html>` {
 		t.Errorf("%s", resBytes)
 	}
 }
@@ -431,7 +431,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html>1002</html>` != string(resBytes) {
+	if string(resBytes) != `<html>1002</html>` {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -468,7 +468,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if `<html lang="en">index B</html>` != string(resBytes) {
+	if string(resBytes) != `<html lang="en">index B</html>` {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -826,6 +826,53 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
+	}
+}
+
+func TestHTTPServer_LogFields(t *testing.T) {
+	client := newClient()
+	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, logHook := newCouper(config, helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+	helper.Must(err)
+
+	logHook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	if l := len(logHook.Entries); l != 2 {
+		t.Fatalf("Unexpected number of log lines: %d", l)
+	}
+
+	backendLog := logHook.Entries[0]
+	accessLog := logHook.Entries[1]
+
+	if tp, ok := backendLog.Data["type"]; !ok || tp != "couper_backend" {
+		t.Fatalf("Unexpected log type: %s", tp)
+	}
+	if tp, ok := accessLog.Data["type"]; !ok || tp != "couper_access" {
+		t.Fatalf("Unexpected log type: %s", tp)
+	}
+
+	if u, ok := backendLog.Data["url"]; !ok || u == "" {
+		t.Fatalf("Unexpected URL: %s", u)
+	}
+	if u, ok := accessLog.Data["url"]; !ok || u == "" {
+		t.Fatalf("Unexpected URL: %s", u)
+	}
+
+	if b, ok := backendLog.Data["backend"]; !ok || b != "anything" {
+		t.Fatalf("Unexpected backend name: %s", b)
+	}
+	if e, ok := accessLog.Data["endpoint"]; !ok || e != "/" {
+		t.Fatalf("Unexpected endpoint: %s", e)
+	}
+	if b, ok := accessLog.Data["bytes"]; !ok || b != 482 {
+		t.Fatalf("Unexpected number of bytes: %d", b)
 	}
 }
 
@@ -1697,6 +1744,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			}
 
 			b, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
 			type payload struct {
 				Query url.Values
@@ -1793,6 +1841,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			}
 
 			b, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
 			type payload struct {
 				Headers http.Header
@@ -1885,9 +1934,7 @@ func getAccessControlMessages(hook *logrustest.Hook) []string {
 	for _, entry := range hook.Entries {
 		if valEntry, ok := entry.Data["access_control"]; ok {
 			if list, ok := valEntry.([]string); ok {
-				for _, valMsg := range list {
-					acEntries = append(acEntries, valMsg)
-				}
+				acEntries = append(acEntries, list...)
 			}
 		}
 	}
@@ -1936,6 +1983,49 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 
 	if !bytes.Equal(p, []byte("pong")) {
 		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestAccessControl_Files_SPA(t *testing.T) {
+	shutdown, _ := newCouper("testdata/file_serving/conf_ac.hcl", test.New(t))
+	defer shutdown()
+
+	client := newClient()
+
+	type testCase struct {
+		path      string
+		password  string
+		expStatus int
+	}
+
+	for _, tc := range []testCase{
+		// FIXME: https://github.com/avenga/couper/issues/143
+		// {"/favicon.ico", "", http.StatusUnauthorized},
+		// {"/robots.txt", "", http.StatusUnauthorized},
+		// {"/app", "", http.StatusUnauthorized},
+		// {"/app/1", "", http.StatusUnauthorized},
+		{"/favicon.ico", "hans", http.StatusNotFound},
+		{"/robots.txt", "hans", http.StatusOK},
+		{"/app", "hans", http.StatusOK},
+		{"/app/1", "hans", http.StatusOK},
+	} {
+		t.Run(tc.path[1:], func(st *testing.T) {
+			helper := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://protect.me:8080"+tc.path, nil)
+			helper.Must(err)
+
+			if tc.password != "" {
+				req.SetBasicAuth("", tc.password)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+		})
 	}
 }
 

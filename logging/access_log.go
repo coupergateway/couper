@@ -44,6 +44,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	fields := Fields{
 		"proto": req.Proto,
+		"bytes": statusRecorder.writtenBytes,
 	}
 
 	if acErrors := acContext.Errors(); len(acErrors) > 0 {

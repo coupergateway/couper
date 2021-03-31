@@ -17,10 +17,8 @@ import (
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/server"
 )
@@ -64,7 +62,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	helper.Must(err)
 	conf.Settings.DefaultPort = 0
 
-	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil), nil)
+	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 	helper.Must(err)
 
 	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
@@ -160,7 +158,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(nil), nil)
+	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 	helper.Must(err)
 
 	couper := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf[0])
@@ -236,41 +234,61 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
 }
 
-func TestHTTPServer_ServeHTTP_UUID_Option(t *testing.T) {
+func TestHTTPServer_UUID_Common(t *testing.T) {
 	helper := test.New(t)
+	client := newClient()
 
-	type testCase struct {
-		formatOption string
-		expRegex     *regexp.Regexp
+	confPath := "testdata/settings/02_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	logHook.Reset()
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	// Wait for log
+	time.Sleep(300 * time.Millisecond)
+
+	e := logHook.LastEntry()
+	if e == nil {
+		t.Fatalf("Missing log line")
 	}
 
-	for _, testcase := range []testCase{
-		{"common", regexp.MustCompile(`^[0123456789abcdefghijklmnopqrstuv]{20}$`)},
-		{"uuid4", regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)},
-	} {
-		t.Run(testcase.formatOption, func(subT *testing.T) {
-			log, hook := logrustest.NewNullLogger()
-			settings := config.DefaultSettings
-			settings.RequestIDFormat = testcase.formatOption
-			srv := server.New(context.Background(), eval.NewContext(nil), log, &settings, &runtime.DefaultTimings, 0, nil)
-			srv.Listen()
-			defer srv.Close()
+	regexCheck := regexp.MustCompile(`^[0-9a-v]{20}$`)
+	if !regexCheck.MatchString(e.Data["uid"].(string)) {
+		t.Errorf("Expected a common uid format, got %#v", e.Data["uid"])
+	}
+}
 
-			req := httptest.NewRequest(http.MethodGet, "http://"+srv.Addr()+"/", nil)
-			req.RequestURI = ""
+func TestHTTPServer_UUID_uuid4(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
 
-			hook.Reset()
+	confPath := "testdata/settings/03_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
 
-			_, err := test.NewHTTPClient().Do(req)
-			helper.Must(err)
-			time.Sleep(time.Millisecond * 10) // log hook needs some time?
+	logHook.Reset()
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
 
-			if entry := hook.LastEntry(); entry == nil {
-				t.Error("Expected a log entry")
-			} else if !testcase.expRegex.MatchString(entry.Data["uid"].(string)) {
-				t.Errorf("Expected a %q uid format, got %#v", testcase.formatOption, entry.Data["uid"])
-			}
-		})
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	// Wait for log
+	time.Sleep(300 * time.Millisecond)
+
+	e := logHook.LastEntry()
+	if e == nil {
+		t.Fatalf("Missing log line")
+	}
+
+	regexCheck := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	if !regexCheck.MatchString(e.Data["uid"].(string)) {
+		t.Errorf("Expected a uuid4 uid format, got %#v", e.Data["uid"])
 	}
 }
 

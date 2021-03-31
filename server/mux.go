@@ -25,7 +25,6 @@ type Mux struct {
 	endpointRoot *pathpattern.Node
 	fileRoot     *pathpattern.Node
 	opts         *runtime.MuxOptions
-	router       *openapi3filter.Router
 	spaRoot      *pathpattern.Node
 }
 
@@ -50,7 +49,7 @@ const serverOptionsKey = "serverContextOptions"
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
 	if opts == nil {
-		opts = runtime.NewMuxOptions(errors.DefaultHTML, nil)
+		opts = runtime.NewMuxOptions()
 	}
 
 	mux := &Mux{
@@ -128,46 +127,36 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 			}},
 		}
 	}
+
 	return m
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	var route *openapi3filter.Route
 
-	node, srvCtxOpts, paramValues := m.match(m.endpointRoot, req)
+	node, paramValues := m.match(m.endpointRoot, req)
 	if node == nil {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
 		// Otherwise look for existing files or spa fallback.
-		if tpl := getAPIErrorTemplate(srvCtxOpts, req.URL.Path); tpl != nil {
+		if tpl := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
 			return tpl.ServeError(errors.APIRouteNotFound)
 		}
 
-		fileHandler, fileSrvCtxOpts, exist := m.hasFileResponse(req)
+		fileHandler, exist := m.hasFileResponse(req)
 		if exist {
 			return fileHandler
 		}
-		if fileSrvCtxOpts != nil && srvCtxOpts == nil {
-			srvCtxOpts = fileSrvCtxOpts
-		}
 
-		var spaSrvCtxOpts *server.Options
-		node, spaSrvCtxOpts, paramValues = m.match(m.spaRoot, req)
-		if spaSrvCtxOpts != nil && srvCtxOpts == nil {
-			srvCtxOpts = spaSrvCtxOpts
-		}
+		node, paramValues = m.match(m.spaRoot, req)
 
 		if node == nil {
-			// no spa path?
-			if fileSrvCtxOpts != nil && isConfigured(fileSrvCtxOpts.FileBasePath) && isFileError(srvCtxOpts, req.URL.Path) {
-				return fileSrvCtxOpts.FileErrTpl.ServeError(errors.FilesRouteNotFound)
+			if isConfigured(m.opts.ServerOptions.FilesBasePath) && matchesPath(m.opts.ServerOptions.FilesBasePath, req.URL.Path) {
+				return m.opts.ServerOptions.FilesErrTpl.ServeError(errors.FilesRouteNotFound)
 			}
 
-			if srvCtxOpts != nil {
-				return srvCtxOpts.ServerErrTpl.ServeError(errors.Configuration)
-			}
 			// Fallback
-			return m.opts.ErrorTpl.ServeError(errors.Configuration)
+			return m.opts.ServerOptions.ServerErrTpl.ServeError(errors.Configuration)
 		}
 	}
 
@@ -197,94 +186,41 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	return route.Handler
 }
 
-func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, *server.Options, []string) {
-	hostPath := pathpattern.PathFromHost(req.Host, false)
-	matchHostPath := req.Method + " " + utils.JoinPath(hostPath, req.URL.Path)
-	node, paramValues := root.Match(matchHostPath)
-	if _, ok := m.opts.Hosts[req.Host]; !ok && node == nil { // no specific hosts found, lookup for general path matches
-		matchPath := req.Method + " " + req.URL.Path
-		node, paramValues = root.Match(matchPath)
-	}
+func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
+	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
 
-	var srvCtxOpts *server.Options
-
-	if node == nil { // still no match, try to obtain some server configuration from suffixList
-		hostPathIdx := strings.IndexByte(matchHostPath, '/')
-	pathLoop:
-		for _, matchPath := range []string{matchHostPath[:hostPathIdx], req.Method + " "} {
-			for _, suffix := range root.Suffixes {
-				if suffix.Pattern == matchPath {
-					if len(suffix.Node.Suffixes) > 0 {
-						// FIXME some improvement, filter health routes, nested search etc. maybe mark on route.add
-						for i := len(suffix.Node.Suffixes[0].Node.Suffixes); i > 0; i-- {
-							srvCtxOpts = unwrapServerOptions(suffix.Node.Suffixes[0].Node.Suffixes[i-1])
-							if srvCtxOpts != nil {
-								break
-							}
-						}
-					} else {
-						srvCtxOpts = unwrapServerOptions(pathpattern.Suffix{Node: suffix.Node})
-					}
-					break pathLoop
-				}
-			}
-		}
-	}
-
-	if node != nil && node.Value != nil {
-		srvCtxOpts = unwrapServerOptions(pathpattern.Suffix{Node: node})
-	}
-
-	if srvCtxOpts != nil {
-		*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, srvCtxOpts.ServerName))
-	}
-
-	return node, srvCtxOpts, paramValues
+	return root.Match(req.Method + " " + req.URL.Path)
 }
 
-func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, *server.Options, bool) {
-	node, srvCtxOpts, _ := m.match(m.fileRoot, req)
+func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
+	node, _ := m.match(m.fileRoot, req)
 	if node == nil {
-		return nil, srvCtxOpts, false
+		return nil, false
 	}
 
 	route := node.Value.(*openapi3filter.Route)
 	fileHandler := route.Handler
 	if p, isProtected := fileHandler.(ac.ProtectedHandler); isProtected {
-		fileHandler = p.Child()
-		srvCtxOpts = p.Child().(server.Context).Options()
+		if fh, ok := p.Child().(handler.HasResponse); ok {
+			return fileHandler, fh.HasResponse(req)
+		}
 	}
 
 	if fh, ok := fileHandler.(handler.HasResponse); ok {
-		return fileHandler, srvCtxOpts, fh.HasResponse(req)
+		return fileHandler, fh.HasResponse(req)
 	}
 
-	return fileHandler, srvCtxOpts, false
+	return fileHandler, false
 }
 
-func unwrapServerOptions(suffix pathpattern.Suffix) *server.Options {
-	if suffix.Node.Value != nil {
-		if patternNode, ok := suffix.Node.Value.(*openapi3filter.Route); ok {
-			if patternNode.Server != nil {
-				return patternNode.Server.Variables[serverOptionsKey].Default.(*server.Options)
-			}
-		}
-	}
-	return unwrapServerOptions(suffix.Node.Suffixes[len(suffix.Node.Suffixes)-1]) // FIXME: check other more explicit suffixes?
-}
-
-func getAPIErrorTemplate(srvOptions *server.Options, reqPath string) *errors.Template {
-	if srvOptions == nil {
-		return nil
-	}
-
-	for api, path := range srvOptions.APIBasePath {
+func (m *Mux) getAPIErrorTemplate(reqPath string) *errors.Template {
+	for api, path := range m.opts.ServerOptions.APIBasePaths {
 		if !isConfigured(path) {
 			continue
 		}
 
-		if isAPIError(srvOptions, path, reqPath) {
-			return srvOptions.APIErrTpl[api]
+		if isAPIError(path, m.opts.ServerOptions.FilesBasePath, m.opts.ServerOptions.SPABasePath, reqPath) {
+			return m.opts.ServerOptions.APIErrTpls[api]
 		}
 	}
 
@@ -293,25 +229,12 @@ func getAPIErrorTemplate(srvOptions *server.Options, reqPath string) *errors.Tem
 
 // isAPIError checks the path w/ and w/o the
 // trailing slash against the request path.
-func isAPIError(srvOpts *server.Options, apiPath, reqPath string) bool {
-	if srvOpts == nil {
-		return false
-	}
-	p1 := apiPath
-	p2 := apiPath
-
-	if p1 != "/" && !strings.HasSuffix(p1, "/") {
-		p1 += "/"
-	}
-	if p2 != "/" && strings.HasSuffix(p2, "/") {
-		p2 = p2[:len(p2)-len("/")]
-	}
-
-	if strings.HasPrefix(reqPath, p1) || reqPath == p2 {
-		if isConfigured(srvOpts.FileBasePath) && apiPath == srvOpts.FileBasePath {
+func isAPIError(apiPath, filesBasePath, spaBasePath, reqPath string) bool {
+	if matchesPath(apiPath, reqPath) {
+		if isConfigured(filesBasePath) && apiPath == filesBasePath {
 			return false
 		}
-		if isConfigured(srvOpts.SPABasePath) && apiPath == srvOpts.SPABasePath {
+		if isConfigured(spaBasePath) && apiPath == spaBasePath {
 			return false
 		}
 
@@ -321,14 +244,11 @@ func isAPIError(srvOpts *server.Options, apiPath, reqPath string) bool {
 	return false
 }
 
-// isFileError checks the path w/ and w/o the
+// matchesPath checks the path w/ and w/o the
 // trailing slash against the request path.
-func isFileError(srvOpts *server.Options, reqPath string) bool {
-	if srvOpts == nil {
-		return false
-	}
-	p1 := srvOpts.FileBasePath
-	p2 := srvOpts.FileBasePath
+func matchesPath(path, reqPath string) bool {
+	p1 := path
+	p2 := path
 
 	if p1 != "/" && !strings.HasSuffix(p1, "/") {
 		p1 += "/"

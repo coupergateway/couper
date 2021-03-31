@@ -8,6 +8,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
+	rs "github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/server"
 )
@@ -19,6 +20,8 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 		rw.WriteHeader(http.StatusNoContent)
 	})
 
+	serverOptions, _ := rs.NewServerOptions(nil)
+
 	testOptions := &runtime.MuxOptions{
 		EndpointRoutes: map[string]http.Handler{
 			"/without":              http.NotFoundHandler(),
@@ -29,6 +32,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"/{section}/{project}":  noContent,
 			"/project/{project}/**": noContent,
 		},
+		ServerOptions: serverOptions,
 	}
 
 	newReq := func(path string) *http.Request {
