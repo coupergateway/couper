@@ -416,7 +416,7 @@ as json error with an error body payload. This can be customized via `error_file
 | [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `API Block` context. |
 | [CORS Block](#cors-block)            | Configures CORS behavior for the current `API Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block). |
 | **Attributes**                       | **Description** |
-| `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/v1"`</li></ul> |
+| `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>Must be unique if multiple API Blocks are defined.</li><li>*Example:* `base_path = "/v1"`</li></ul> |
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_body.json"`</li></ul> |
 | `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `API Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 

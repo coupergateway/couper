@@ -702,20 +702,20 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"/", expectation{
-			Path: "/xxx/xxx/",
+		{"/v1", expectation{
+			Path: "/xxx/xxx/v1",
 		}},
-		{"/uuu/foo", expectation{
+		{"/v1/uuu/foo", expectation{
 			Path: "/xxx/xxx/api/foo",
 		}},
-		{"/vvv/foo", expectation{
+		{"/v1/vvv/foo", expectation{
 			Path: "/xxx/xxx/api/foo",
 		}},
-		{"/yyy", expectation{
-			Path: "/yyy",
+		{"/v2/yyy", expectation{
+			Path: "/v2/yyy",
 		}},
-		{"/zzz", expectation{
-			Path: "/zzz/zzz",
+		{"/v3/zzz", expectation{
+			Path: "/zzz/v3/zzz",
 		}},
 	} {
 		t.Run("_"+tc.path, func(subT *testing.T) {
@@ -1635,14 +1635,14 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 	defer shutdown()
 
 	for _, tc := range []testCase{
-		{"/xxx", expectation{
-			Path: "/xxx",
+		{"/v1/xxx", expectation{
+			Path: "/v1/xxx",
 		}},
-		{"/yyy", expectation{
-			Path: "/yyy",
+		{"/v2/yyy", expectation{
+			Path: "/v2/yyy",
 		}},
-		{"/zzz", expectation{
-			Path: "/zzz",
+		{"/v3/zzz", expectation{
+			Path: "/v3/zzz",
 		}},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
