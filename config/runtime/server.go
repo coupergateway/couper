@@ -200,7 +200,7 @@ func NewServerConfiguration(
 		}
 
 		endpointsPatterns := make(map[string]bool)
-		endpointsMap, err := newEndpointMap(srvConf)
+		endpointsMap, err := newEndpointMap(srvConf, serverOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -251,11 +251,7 @@ func NewServerConfiguration(
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedHandler http.Handler) {
-				accessControl := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
-
-				if parentAPI != nil {
-					accessControl = accessControl.Merge(config.NewAccessControl(parentAPI.AccessControl, parentAPI.DisableAccessControl))
-				}
+				accessControl := getACL(srvConf, parentAPI)
 
 				endpointHandlers[endpointConf] = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
@@ -631,14 +627,23 @@ func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
 	return portsHosts, nil
 }
 
-func newEndpointMap(srvConf *config.Server) (endpointMap, error) {
+func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endpointMap, error) {
 	endpoints := make(endpointMap)
 
 	apiBasePaths := make(map[string]struct{})
 
 	for _, api := range srvConf.APIs {
-		// Enforce leading, normalize multiple and remove trailing slash
-		basePath := path.Join("/", api.BasePath)
+		basePath := serverOptions.APIBasePaths[api]
+
+		var filesBasePath, spaBasePath string
+		if serverOptions.FilesBasePath != "" {
+			filesBasePath = path.Join("/", serverOptions.FilesBasePath)
+		}
+		if serverOptions.SPABasePath != "" {
+			spaBasePath = path.Join("/", serverOptions.SPABasePath)
+		}
+
+		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
 
 		if _, ok := apiBasePaths[basePath]; ok {
 			return nil, fmt.Errorf("API paths must be unique")
@@ -648,6 +653,14 @@ func newEndpointMap(srvConf *config.Server) (endpointMap, error) {
 
 		for _, endpoint := range api.Endpoints {
 			endpoints[endpoint] = api
+
+			if endpoint.Pattern == "/**" {
+				isAPIBasePathUniqueToFilesAndSPA = false
+			}
+		}
+
+		if isAPIBasePathUniqueToFilesAndSPA && len(getACL(srvConf, api).List()) > 0 {
+			endpoints[api.CatchAllEndpoint] = api
 		}
 	}
 
@@ -675,4 +688,14 @@ func parseBodyLimit(limit string) (int64, error) {
 		requestBodyLimit = limit
 	}
 	return units.FromHumanSize(requestBodyLimit)
+}
+
+func getACL(srvConf *config.Server, api *config.API) config.AccessControl {
+	ac := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
+
+	if api != nil {
+		ac = ac.Merge(config.NewAccessControl(api.AccessControl, api.DisableAccessControl))
+	}
+
+	return ac
 }
