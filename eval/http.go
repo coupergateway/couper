@@ -66,6 +66,12 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 		req.GetBody = func() (io.ReadCloser, error) {
 			return io.NopCloser(bytes.NewBuffer(bodyBytes)), nil
 		}
+		// reset body initially, additional body reads which are not depending on http.Request
+		// internals like form parsing should just call GetBody() and use the returned reader.
+		req.Body, _ = req.GetBody()
+		// parsing form data now since they read/write request attributes which could be
+		// difficult with multiple routines later on.
+		parseForm(req)
 	}
 
 	return nil

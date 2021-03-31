@@ -214,12 +214,11 @@ const defaultMaxMemory = 32 << 20 // 32 MB
 // As Proxy we should not consume the request body.
 // Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
-	if r.GetBody == nil {
+	if r.GetBody == nil || r.Form != nil {
 		return r
 	}
 	switch r.Method {
 	case http.MethodPut, http.MethodPatch, http.MethodPost:
-		r.Body, _ = r.GetBody() // rewind
 		_ = r.ParseMultipartForm(defaultMaxMemory)
 		r.Body, _ = r.GetBody() // reset
 	}
@@ -253,9 +252,8 @@ func parseReqJSON(req *http.Request) map[string]interface{} {
 		return nil
 	}
 
-	req.Body, _ = req.GetBody() // rewind
-	result := parseJSON(req.Body)
-	req.Body, _ = req.GetBody() // reset
+	body, _ := req.GetBody()
+	result := parseJSON(body)
 	return result
 }
 
