@@ -1597,6 +1597,114 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/15_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodPost, "http://example.com:8080/req?foo=bar", strings.NewReader("s=abc123"))
+	helper.Must(err)
+	req.Header.Set("User-Agent", "")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	type Expectation struct {
+		FormBody url.Values  `json:"form_body"`
+		Headers  test.Header `json:"headers"`
+		Method   string      `json:"method"`
+		Query    url.Values  `json:"query"`
+		Url      string      `json:"url"`
+	}
+
+	var jsonResult Expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+	exp := Expectation{
+		Method: http.MethodPost,
+		FormBody: map[string][]string{
+			"s": {"abc123"},
+		},
+		Headers: map[string]string{
+			"content-length": "8",
+			"content-type":   "application/x-www-form-urlencoded",
+		},
+		Query: map[string][]string{
+			"foo": {"bar"},
+		},
+		Url: "/req",
+	}
+	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
+func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/15_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(`{"data": true}`))
+	helper.Must(err)
+	req.Header.Set("User-Agent", "")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	type Expectation struct {
+		JSONBody map[string]interface{} `json:"json_body"`
+		Headers  test.Header            `json:"headers"`
+		Method   string                 `json:"method"`
+		Query    url.Values             `json:"query"`
+		Url      string                 `json:"url"`
+	}
+
+	var jsonResult Expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+	exp := Expectation{
+		Method: http.MethodGet,
+		JSONBody: map[string]interface{}{
+			"data": true,
+		},
+		Headers: map[string]string{
+			"content-length": "14",
+			"content-type":   "application/json",
+		},
+		Query: map[string][]string{
+			"foo": {"bar"},
+		},
+		Url: "/req",
+	}
+	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
 func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 	client := newClient()
 
