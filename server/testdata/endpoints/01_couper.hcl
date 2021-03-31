@@ -10,15 +10,37 @@ server "api" {
       proxy {
         url = "${env.COUPER_TEST_BACKEND_ADDR}/proxy"
         backend = "proxy"
+        set_request_headers = {
+          x-inline = "test"
+        }
       }
-      request "request" {
+
+      proxy "p2" {
+        url = "${env.COUPER_TEST_BACKEND_ADDR}/proxy"
+        backend = "proxy"
+        set_request_headers = {
+          x-inline = "test"
+        }
+      }
+
+      request "r1" {
         url = "${env.COUPER_TEST_BACKEND_ADDR}/request"
         backend = "request"
       }
+
+      request "r2" {
+        url = "${env.COUPER_TEST_BACKEND_ADDR}/request"
+        backend = "request"
+      }
+
+      set_request_headers = {
+        x-ep-inline = "test"
+      }
+
       response {
         status = beresp.status + 1
-		# 404 + 404
-        body = beresps.request.status + beresps.default.status
+		# 404 + 404 + 404 + 404
+        body = beresps.r1.status + beresps.default.status + beresps.r2.status + beresps.p2.status
       }
     }
   }
@@ -29,9 +51,15 @@ definitions {
   backend "proxy" {
     path = "/override/me"
     origin = env.COUPER_TEST_BACKEND_ADDR
+    set_request_headers = {
+      x-data = "proxy-test"
+    }
   }
   backend "request" {
     path = "/override/me"
     origin = env.COUPER_TEST_BACKEND_ADDR
+    set_request_headers = {
+      x-data = "request-test"
+    }
   }
 }

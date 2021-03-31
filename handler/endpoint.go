@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -203,7 +204,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 		}
 
 		r := strings.NewReader(seetie.ValueToString(val))
-		clientres.Body = eval.NewReadCloser(r, nil)
+		clientres.Body = io.NopCloser(r)
 	}
 
 	return clientres, nil

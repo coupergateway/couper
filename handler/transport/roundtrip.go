@@ -6,8 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-
-	"github.com/avenga/couper/eval"
 )
 
 var (
@@ -55,8 +53,8 @@ func (r *Recorder) Read(p []byte) (n int, err error) {
 
 func (r *Recorder) Response(req *http.Request) (*http.Response, error) {
 	return &http.Response{
-		Body:       eval.NewReadCloser(r.body, nil),
-		Header:     r.Header(),
+		Body:       io.NopCloser(r.body),
+		Header:     r.Header().Clone(),
 		Proto:      req.Proto,
 		ProtoMajor: req.ProtoMajor,
 		ProtoMinor: req.ProtoMinor,

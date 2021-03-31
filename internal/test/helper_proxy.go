@@ -36,7 +36,7 @@ func (h *Helper) NewProxy(conf *transport.Config, backendContext, proxyContext h
 	return proxy
 }
 
-func (h *Helper) NewProxyContext(inlineHCL string) hcl.Body {
+func (h *Helper) NewInlineContext(inlineHCL string) hcl.Body {
 	type hclBody struct {
 		Inline hcl.Body `hcl:",remain"`
 	}

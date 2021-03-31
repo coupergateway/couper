@@ -33,8 +33,8 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	helper.Must(err)
 
 	entries := logHook.Entries
-	if l := len(entries); l != 3 {
-		t.Fatalf("Expected 3 log entries, given %d", l)
+	if l := len(entries); l != 5 {
+		t.Fatalf("Expected 5 log entries, given %d", l)
 	}
 
 	if res.StatusCode != http.StatusMethodNotAllowed {
@@ -45,8 +45,8 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	helper.Must(err)
 	res.Body.Close()
 
-	if string(resBytes) != "808" {
-		t.Errorf("Expected body 808, given %s", resBytes)
+	if string(resBytes) != "1616" {
+		t.Errorf("Expected body 1616, given %s", resBytes)
 	}
 }
 
