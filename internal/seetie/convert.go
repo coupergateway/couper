@@ -166,7 +166,7 @@ func CookiesToMapValue(cookies []*http.Cookie) cty.Value {
 
 func ValueToStringSlice(src cty.Value) []string {
 	var l []string
-	if !src.IsKnown() {
+	if !src.IsKnown() || src.IsNull() {
 		return l
 	}
 
