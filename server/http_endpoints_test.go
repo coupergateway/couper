@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,68 @@ import (
 )
 
 const testdataPath = "testdata/endpoints"
+
+func TestEndpoints_Protected404(t *testing.T) {
+	client := newClient()
+
+	type expectation struct {
+		Code           int
+		ResponseStatus int
+	}
+
+	type testCase struct {
+		auth string
+		path string
+		exp  expectation
+	}
+
+	shutdown, _ := newCouper("testdata/endpoints/07_couper.hcl", test.New(t))
+	defer shutdown()
+
+	for _, tc := range []testCase{
+		{"", "/v1/anything", expectation{
+			Code: 5002, ResponseStatus: 0,
+		}},
+		{"secret", "/v1/anything", expectation{
+			Code: 0, ResponseStatus: 200,
+		}},
+		{"", "/v1/xxx", expectation{
+			Code: 5002, ResponseStatus: 0,
+		}},
+		{"secret", "/v1/xxx", expectation{
+			Code: 0, ResponseStatus: 404,
+		}},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			if tc.auth != "" {
+				req.SetBasicAuth("", tc.auth)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+			}
+		})
+	}
+}
 
 func TestEndpoints_ProxyReqRes(t *testing.T) {
 	client := newClient()
