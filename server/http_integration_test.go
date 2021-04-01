@@ -1277,80 +1277,76 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 				},
 			},
 		},
-		/*
-			{
-				"/request/json_body/dyn",
-				"true",
-				"application/json",
-				expectation{
-					Body:   "true", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"4"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
-				},
-			},
-			{
-				"/request/json_body/dyn",
-				"1.23",
-				"application/json",
-				expectation{
-					Body:   "1.23", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"4"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
-				},
-			},
-			{
-				"/request/json_body/dyn",
-				"\"ab\"",
-				"application/json",
-				expectation{
-					Body:   "\"ab\"", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"4"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
-				},
-			},
-		*/
 		{
 			"/request/json_body/dyn",
-			"{\"a\":3}",
+			"true",
 			"application/json",
 			expectation{
-				Body:   "{\"a\":3}",
+				Body:   "true",
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"7"},
+					"Content-Length": []string{"4"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
 		},
-		/*
-			{
-				"/request/json_body/dyn",
-				"[0,1]",
-				"application/json",
-				expectation{
-					Body:   "[0,1]", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"5"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
+		{
+			"/request/json_body/dyn",
+			"1.23",
+			"application/json",
+			expectation{
+				Body:   "1.23",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
 				},
 			},
-		*/
+		},
+		{
+			"/request/json_body/dyn",
+			"\"ab\"",
+			"application/json",
+			expectation{
+				Body:   "\"ab\"",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"{\"a\":3,\"b\":[]}",
+			"application/json",
+			expectation{
+				Body:   "{\"a\":3,\"b\":[]}",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"14"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"[0,1]",
+			"application/json",
+			expectation{
+				Body:   "[0,1]",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"5"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
 		{
 			"/request/form_body",
 			"",
