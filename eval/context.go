@@ -3,7 +3,6 @@ package eval
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -18,6 +17,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/avenga/couper/config/jwt"
 	"github.com/avenga/couper/config/request"
@@ -106,7 +106,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
+		JsonBody:  parseReqJSON(req),
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
@@ -148,13 +148,13 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var jsonBody map[string]interface{}
+		var jsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
 			jsonBody = parseRespJSON(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
-			JsonBody:   seetie.MapToValue(jsonBody),
+			JsonBody:   jsonBody,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -230,40 +230,52 @@ func isJSONMediaType(contentType string) bool {
 	return m == "application/json"
 }
 
-func parseJSON(r io.Reader) map[string]interface{} {
+func parseJSON(r io.Reader) cty.Value {
 	if r == nil {
-		return nil
+		return cty.NilVal
 	}
-	var result map[string]interface{}
+
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return nil
+		return cty.NilVal
 	}
-	_ = json.Unmarshal(b, &result)
-	return result
+
+	impliedType, err := ctyjson.ImpliedType(b)
+	if err != nil {
+		return cty.NilVal
+	}
+
+	val, err := ctyjson.Unmarshal(b, impliedType)
+	if err != nil {
+		return cty.NilVal
+	}
+	return val
 }
 
-func parseReqJSON(req *http.Request) map[string]interface{} {
+func parseReqJSON(req *http.Request) cty.Value {
 	if req.GetBody == nil {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	if !isJSONMediaType(req.Header.Get("Content-Type")) {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	body, _ := req.GetBody()
-	result := parseJSON(body)
-	return result
+	return parseJSON(body)
 }
 
-func parseRespJSON(beresp *http.Response) map[string]interface{} {
+func parseRespJSON(beresp *http.Response) cty.Value {
 	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	buf := &bytes.Buffer{}
-	io.Copy(buf, beresp.Body) // TODO: err handling
+	_, err := io.Copy(buf, beresp.Body)
+	if err != nil {
+		return cty.EmptyObjectVal
+	}
+
 	// reset
 	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
 	return parseJSON(buf)

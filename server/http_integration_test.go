@@ -1277,80 +1277,76 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 				},
 			},
 		},
-		/*
-			{
-				"/request/json_body/dyn",
-				"true",
-				"application/json",
-				expectation{
-					Body:   "true", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"4"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
-				},
-			},
-			{
-				"/request/json_body/dyn",
-				"1.23",
-				"application/json",
-				expectation{
-					Body:   "1.23", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"4"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
-				},
-			},
-			{
-				"/request/json_body/dyn",
-				"\"ab\"",
-				"application/json",
-				expectation{
-					Body:   "\"ab\"", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"4"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
-				},
-			},
-		*/
 		{
 			"/request/json_body/dyn",
-			"{\"a\":3}",
+			"true",
 			"application/json",
 			expectation{
-				Body:   "{\"a\":3}",
+				Body:   "true",
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"7"},
+					"Content-Length": []string{"4"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
 		},
-		/*
-			{
-				"/request/json_body/dyn",
-				"[0,1]",
-				"application/json",
-				expectation{
-					Body:   "[0,1]", // currently: "{}"
-					Args:   url.Values{},
-					Method: "POST",
-					Headers: http.Header{
-						"Content-Length": []string{"5"}, // currently: "2"
-						"Content-Type":   []string{"application/json"},
-					},
+		{
+			"/request/json_body/dyn",
+			"1.23",
+			"application/json",
+			expectation{
+				Body:   "1.23",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
 				},
 			},
-		*/
+		},
+		{
+			"/request/json_body/dyn",
+			"\"ab\"",
+			"application/json",
+			expectation{
+				Body:   "\"ab\"",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"{\"a\":3,\"b\":[]}",
+			"application/json",
+			expectation{
+				Body:   "{\"a\":3,\"b\":[]}",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"14"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"[0,1]",
+			"application/json",
+			expectation{
+				Body:   "[0,1]",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"5"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
 		{
 			"/request/form_body",
 			"",
@@ -1701,6 +1697,68 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 		Url: "/req",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
+func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/15_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	content := `[1, 2, {"data": true}]`
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(content))
+	helper.Must(err)
+	req.Header.Set("User-Agent", "")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	type Expectation struct {
+		JSONBody interface{} `json:"json_body"`
+		Headers  test.Header `json:"headers"`
+		Method   string      `json:"method"`
+		Query    url.Values  `json:"query"`
+		Url      string      `json:"url"`
+	}
+
+	var jsonResult Expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+
+	exp := Expectation{
+		Method: http.MethodGet,
+		JSONBody: []interface{}{
+			1,
+			2,
+			map[string]interface{}{
+				"data": true,
+			},
+		},
+		Headers: map[string]string{
+			"content-length": strconv.Itoa(len(content)),
+			"content-type":   "application/json",
+		},
+		Query: map[string][]string{
+			"foo": {"bar"},
+		},
+		Url: "/req",
+	}
+
+	if fmt.Sprint(jsonResult) != fmt.Sprint(exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
 	}
 }
