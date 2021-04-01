@@ -6,38 +6,6 @@ import (
 	"testing"
 )
 
-func TestCORSOptions_NeedsVary(t *testing.T) {
-	tests := []struct {
-		name        string
-		corsOptions *CORSOptions
-		exp         bool
-	}{
-		{
-			"any origin",
-			&CORSOptions{AllowedOrigins: []string{"*"}},
-			false,
-		},
-		{
-			"one specific origin",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
-			true,
-		},
-		{
-			"several specific origins",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "http://www.another.host.com"}},
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			needed := tt.corsOptions.NeedsVary()
-			if needed != tt.exp {
-				subT.Errorf("Expected %t, got: %t", tt.exp, needed)
-			}
-		})
-	}
-}
-
 func TestCORSOptions_AllowsOrigin(t *testing.T) {
 	tests := []struct {
 		name        string

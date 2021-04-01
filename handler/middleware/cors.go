@@ -51,11 +51,6 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 	}, nil
 }
 
-// NeedsVary if a request with not allowed origin is ignored.
-func (c *CORSOptions) NeedsVary() bool {
-	return !c.AllowsOrigin("*")
-}
-
 func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	if c == nil {
 		return false
@@ -120,7 +115,7 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
 
-	if c.options.AllowCredentials == true {
+	if c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Credentials", "true")
 		headers.Add("Vary", "Origin")
 	}
