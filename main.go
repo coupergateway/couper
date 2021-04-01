@@ -53,13 +53,13 @@ func realmain(arguments []string) int {
 	set.BoolVar(&logPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
-		newLogger(logFormat, logPretty).WithFields(fields).Error(err)
+		newLogger(logFormat, logPretty).Error(err)
 		return 1
 	}
 
 	confFile, err := configload.LoadFile(filePath)
 	if err != nil {
-		newLogger(logFormat, logPretty).WithFields(fields).Error(err)
+		newLogger(logFormat, logPretty).Error(err)
 		return 1
 	}
 
@@ -71,11 +71,11 @@ func realmain(arguments []string) int {
 	if logPretty != config.DefaultSettings.LogPretty {
 		confFile.Settings.LogPretty = logPretty
 	}
-	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogPretty).WithFields(fields)
+	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogPretty)
 
 	wd, err := os.Getwd()
 	if err != nil {
-		logger.WithFields(fields).Error(err)
+		logger.Error(err)
 		return 1
 	}
 	logger.Infof("working directory: %s", wd)
@@ -90,7 +90,7 @@ func realmain(arguments []string) int {
 // newLogger creates a log instance with the configured formatter.
 // Since the format option may required to be correct in early states
 // we parse the env configuration on every call.
-func newLogger(format string, pretty bool) logrus.FieldLogger {
+func newLogger(format string, pretty bool) *logrus.Entry {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	if hook != nil {
@@ -113,5 +113,5 @@ func newLogger(format string, pretty bool) logrus.FieldLogger {
 		logger.SetFormatter(logging.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
 	}
 	logger.Level = logrus.DebugLevel
-	return logger.WithField("type", logConf.TypeFieldKey)
+	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
