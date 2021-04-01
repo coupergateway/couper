@@ -3,7 +3,6 @@ package eval
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -18,6 +17,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/avenga/couper/config/jwt"
 	"github.com/avenga/couper/config/request"
@@ -104,12 +104,12 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	}
 
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
+		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
+		JsonBody:  parseReqJSON(req),
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
-		Post:      seetie.ValuesMapToValue(parseForm(req).PostForm),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
@@ -141,20 +141,20 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			name = n
 		}
 		bereqs[name] = cty.ObjectVal(ContextMap{
-			Method: cty.StringVal(bereq.Method),
-			Path:   cty.StringVal(bereq.URL.Path),
-			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
-			Query:  seetie.ValuesMapToValue(bereq.URL.Query()),
-			URL:    cty.StringVal(newRawURL(bereq.URL).String()),
+			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+			Method:   cty.StringVal(bereq.Method),
+			Path:     cty.StringVal(bereq.URL.Path),
+			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
+			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var jsonBody map[string]interface{}
+		var jsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
 			jsonBody = parseRespJSON(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
-			JsonBody:   seetie.MapToValue(jsonBody),
+			JsonBody:   jsonBody,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -214,12 +214,11 @@ const defaultMaxMemory = 32 << 20 // 32 MB
 // As Proxy we should not consume the request body.
 // Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
-	if r.GetBody == nil {
+	if r.GetBody == nil || r.Form != nil {
 		return r
 	}
 	switch r.Method {
 	case http.MethodPut, http.MethodPatch, http.MethodPost:
-		r.Body, _ = r.GetBody() // rewind
 		_ = r.ParseMultipartForm(defaultMaxMemory)
 		r.Body, _ = r.GetBody() // reset
 	}
@@ -231,41 +230,52 @@ func isJSONMediaType(contentType string) bool {
 	return m == "application/json"
 }
 
-func parseJSON(r io.Reader) map[string]interface{} {
+func parseJSON(r io.Reader) cty.Value {
 	if r == nil {
-		return nil
+		return cty.NilVal
 	}
-	var result map[string]interface{}
+
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return nil
+		return cty.NilVal
 	}
-	_ = json.Unmarshal(b, &result)
-	return result
+
+	impliedType, err := ctyjson.ImpliedType(b)
+	if err != nil {
+		return cty.NilVal
+	}
+
+	val, err := ctyjson.Unmarshal(b, impliedType)
+	if err != nil {
+		return cty.NilVal
+	}
+	return val
 }
 
-func parseReqJSON(req *http.Request) map[string]interface{} {
+func parseReqJSON(req *http.Request) cty.Value {
 	if req.GetBody == nil {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	if !isJSONMediaType(req.Header.Get("Content-Type")) {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
-	req.Body, _ = req.GetBody() // rewind
-	result := parseJSON(req.Body)
-	req.Body, _ = req.GetBody() // reset
-	return result
+	body, _ := req.GetBody()
+	return parseJSON(body)
 }
 
-func parseRespJSON(beresp *http.Response) map[string]interface{} {
+func parseRespJSON(beresp *http.Response) cty.Value {
 	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	buf := &bytes.Buffer{}
-	io.Copy(buf, beresp.Body) // TODO: err handling
+	_, err := io.Copy(buf, beresp.Body)
+	if err != nil {
+		return cty.EmptyObjectVal
+	}
+
 	// reset
 	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
 	return parseJSON(buf)

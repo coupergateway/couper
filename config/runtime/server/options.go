@@ -13,19 +13,19 @@ type Context interface {
 }
 
 type Options struct {
-	APIErrTpl    map[*config.API]*errors.Template
-	FileErrTpl   *errors.Template
-	ServerErrTpl *errors.Template
-	APIBasePath  map[*config.API]string
-	FileBasePath string
-	SPABasePath  string
-	SrvBasePath  string
-	ServerName   string
+	APIErrTpls    map[*config.API]*errors.Template
+	FilesErrTpl   *errors.Template
+	ServerErrTpl  *errors.Template
+	APIBasePaths  map[*config.API]string
+	FilesBasePath string
+	SPABasePath   string
+	SrvBasePath   string
+	ServerName    string
 }
 
 func NewServerOptions(conf *config.Server) (*Options, error) {
 	options := &Options{
-		FileErrTpl:   errors.DefaultHTML,
+		FilesErrTpl:  errors.DefaultHTML,
 		ServerErrTpl: errors.DefaultHTML,
 	}
 
@@ -41,25 +41,25 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 			return nil, err
 		}
 		options.ServerErrTpl = tpl
-		options.FileErrTpl = tpl
+		options.FilesErrTpl = tpl
 	}
 
 	if len(conf.APIs) > 0 {
-		options.APIBasePath = make(map[*config.API]string)
-		options.APIErrTpl = make(map[*config.API]*errors.Template)
+		options.APIBasePaths = make(map[*config.API]string)
+		options.APIErrTpls = make(map[*config.API]*errors.Template)
 	}
 
 	for _, api := range conf.APIs {
-		options.APIBasePath[api] = path.Join(options.SrvBasePath, api.BasePath)
+		options.APIBasePaths[api] = path.Join(options.SrvBasePath, api.BasePath)
 
 		if api.ErrorFile != "" {
 			tpl, err := errors.NewTemplateFromFile(api.ErrorFile)
 			if err != nil {
 				return nil, err
 			}
-			options.APIErrTpl[api] = tpl
+			options.APIErrTpls[api] = tpl
 		} else {
-			options.APIErrTpl[api] = errors.DefaultJSON
+			options.APIErrTpls[api] = errors.DefaultJSON
 		}
 	}
 
@@ -69,10 +69,10 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 			if err != nil {
 				return nil, err
 			}
-			options.FileErrTpl = tpl
+			options.FilesErrTpl = tpl
 		}
 
-		options.FileBasePath = utils.JoinPath(options.SrvBasePath, conf.Files.BasePath)
+		options.FilesBasePath = utils.JoinPath(options.SrvBasePath, conf.Files.BasePath)
 	}
 
 	if conf.Spa != nil {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -186,6 +187,15 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)
 
+	body, ct, err := eval.GetBody(hclCtx, content)
+	if err != nil {
+		e.log.Errorf("endpoint eval error: %v", err)
+	}
+
+	if ct != "" {
+		clientres.Header.Set("Content-Type", ct)
+	}
+
 	if attr, ok := content.Attributes["headers"]; ok {
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
@@ -195,15 +205,9 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 		eval.SetHeader(val, clientres.Header)
 	}
 
-	if attr, ok := content.Attributes["body"]; ok {
-		val, err := attr.Expr.Value(hclCtx)
-		if err != nil {
-			e.log.Errorf("endpoint eval error: %v", err)
-			return nil, err
-		}
-
-		r := strings.NewReader(seetie.ValueToString(val))
-		clientres.Body = eval.NewReadCloser(r, nil)
+	if body != "" {
+		r := strings.NewReader(body)
+		clientres.Body = io.NopCloser(r)
 	}
 
 	return clientres, nil

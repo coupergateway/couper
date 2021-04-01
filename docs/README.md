@@ -205,7 +205,7 @@ since these references get evaluated at start.
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
 | `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
-| `post.<name>`             | Post form parameter |
+| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
 | `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 
@@ -219,7 +219,7 @@ since these references get evaluated at start.
 | `headers.<name>`          | HTTP request header value for requested lower-case key |
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
-| `post.<name>`             | Post form parameter |
+| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
 | `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 | `url`                     | Backend origin URL |
 
@@ -437,7 +437,7 @@ produce an explicit or implicit client response.
 | [Request Block(s)](#request-block) |  |
 | [Response Block](#response-block)  |  |
 | **Attributes**                     | **Description** |
-| `request_body_limit`               | <ul><li>Optional.</li><li>Configures the maximum buffer size while accessing `req.post` or `req.json_body` content.</li><li>Valid units are: `KiB, MiB, GiB`.</li><li>Default limit is `64MiB`.</li></ul> |
+| `request_body_limit`               | <ul><li>Optional.</li><li>Configures the maximum buffer size while accessing `req.form_body` or `req.json_body` content.</li><li>Valid units are: `KiB, MiB, GiB`.</li><li>Default limit is `64MiB`.</li></ul> |
 | `path`                             | <ul><li>Optional.</li><li>Changeable part of the upstream URL.</li><li>Changes the path suffix of the outgoing request.</li></ul> |
 | `access_control`                   | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Endpoint Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 | [Modifier](#modifier)              | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
@@ -474,7 +474,9 @@ The `request` block creates and executes a request to a backend service.
 | **Attributes**                                      | **Description** |
 | [Backend Block Reference](#backend-block-reference) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
 | `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
-| `body`                                              | <ul><li>String.</li><li>Optional.</li></ul> |
+| `body`                                              | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul> |
+| `json_body`                                         | <ul><li>null, Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul> |
+| `form_body`                                         | <ul><li>Object.</li><li>Optional. Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.</li></ul> |
 | `method`                                            | <ul><li>String.</li><li>Optional.</li><li>Default `GET`.</li></ul> |
 | `headers`                                           | <ul><li>Optional.</li><li>Same as `set_request_headers` in [Request Header](#request-header).</li></ul> |
 | `query_params`                                      | <ul><li>Optional.</li><li>Same as `set_query_params` in [Query Parameter](#query-parameter).</li></ul> |
@@ -488,7 +490,8 @@ The `response` block creates and sends a client response.
 | *context*      | [Endpoint Block](#endpoint-block). |
 | *label*        | Not implemented. |
 | **Attributes** | **Description** |
-| `body`         | <ul><li>String.</li><li>Optional.</li></ul> |
+| `body`         | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul> |
+| `json_body`    | <ul><li>null, Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul> |
 | `status`       | <ul><li>HTTP status code.</li><li>Optional.</li><li>Default `200`.</li></ul> |
 | `headers`      | <ul><li>Optional.</li><li>Same as `set_response_headers` in [Request Header](#response-header).</li></ul> |
 

@@ -44,7 +44,7 @@ func TestNewHTTPContext(t *testing.T) {
 		want      http.Header
 	}{
 		{"Variables / POST", http.MethodPost, http.Header{"Content-Type": {"application/x-www-form-urlencoded"}}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
-					post = req.post.user[0]
+					post = req.form_body.user[0]
 					method = req.method
 		`, http.Header{"post": {"hans"}, "method": {http.MethodPost}}},
 		{"Variables / Query", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "?name=peter", baseCtx, `
@@ -79,7 +79,7 @@ func TestNewHTTPContext(t *testing.T) {
 		{"Variables / GET /w json body & null value", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"json": null}`), "", baseCtx, `
 			method = req.method
 			title = req.json_body.json
-		`, http.Header{"method": {http.MethodGet}, "title": {""}}},
+		`, http.Header{"method": {http.MethodGet}, "title": nil}},
 	}
 
 	for _, tt := range tests {
@@ -116,7 +116,7 @@ func TestNewHTTPContext(t *testing.T) {
 
 				result := seetie.ValueToStringSlice(cv)
 				if !reflect.DeepEqual(v, result) {
-					t.Errorf("Expected %q, got: %#v", v, cv)
+					t.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
 				}
 			}
 		})

@@ -11,6 +11,7 @@ const (
 	Cookies          = "cookies"
 	Endpoint         = "endpoint"
 	Environment      = "env"
+	FormBody         = "form_body"
 	Headers          = "headers"
 	HttpStatus       = "status"
 	ID               = "id"
@@ -18,7 +19,6 @@ const (
 	Method           = "method"
 	Path             = "path"
 	PathParam        = "path_params"
-	Post             = "post"
 	Query            = "query"
 	URL              = "url"
 )

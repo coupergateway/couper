@@ -16,11 +16,14 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/logging"
 )
+
+type muxers map[string]*Mux
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
@@ -29,7 +32,7 @@ type HTTPServer struct {
 	evalCtx    *eval.Context
 	listener   net.Listener
 	log        logrus.FieldLogger
-	mux        *Mux
+	muxers     muxers
 	port       string
 	settings   *config.Settings
 	shutdownCh chan struct{}
@@ -44,8 +47,8 @@ func NewServerList(
 	timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
 	var list []*HTTPServer
 
-	for port, srvMux := range srvConf {
-		list = append(list, New(cmdCtx, evalCtx, log, settings, timings, port, srvMux))
+	for port, hosts := range srvConf {
+		list = append(list, New(cmdCtx, evalCtx, log, settings, timings, port, hosts))
 	}
 
 	handleShutdownFn := func() {
@@ -59,7 +62,7 @@ func NewServerList(
 // New creates a configured HTTP server.
 func New(
 	cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings,
-	timings *runtime.HTTPTimings, p runtime.Port, muxOpts *runtime.MuxOptions) *HTTPServer {
+	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
 	var uidFn func() string
 	if settings.RequestIDFormat == "uuid4" {
 		uidFn = func() string {
@@ -77,15 +80,20 @@ func New(
 
 	shutdownCh := make(chan struct{})
 
-	mux := NewMux(muxOpts)
-	mux.MustAddRoute(http.MethodGet, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
+	muxersList := make(muxers)
+	for host, muxOpts := range hosts {
+		mux := NewMux(muxOpts)
+		mux.MustAddRoute(http.MethodGet, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
+
+		muxersList[host] = mux
+	}
 
 	httpSrv := &HTTPServer{
 		evalCtx:    evalCtx,
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
-		mux:        mux,
+		muxers:     muxersList,
 		port:       p.String(),
 		settings:   settings,
 		shutdownCh: shutdownCh,
@@ -169,7 +177,20 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	req.Host = s.getHost(req)
 
-	h := s.mux.FindHandler(req)
+	host, _, err := runtime.GetHostPort(req.Host)
+	if err != nil {
+		errors.DefaultHTML.ServeError(errors.InvalidRequest).ServeHTTP(rw, req)
+	}
+
+	mux, ok := s.muxers[host]
+	if !ok {
+		mux, ok = s.muxers["*"]
+		if !ok {
+			errors.DefaultHTML.ServeError(errors.Configuration).ServeHTTP(rw, req)
+		}
+	}
+
+	h := mux.FindHandler(req)
 	w := NewRWWrapper(rw,
 		transport.ReClientSupportsGZ.MatchString(
 			req.Header.Get(transport.AcceptEncodingHeader),
@@ -178,13 +199,15 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	)
 	rw = w
 
-	if err := s.setGetBody(h, req); err != nil {
-		s.mux.opts.ErrorTpl.ServeError(err).ServeHTTP(rw, req)
+	clientReq := req.Clone(req.Context())
+
+	if err := s.setGetBody(h, clientReq); err != nil {
+		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
-	ctx = s.evalCtx.WithClientRequest(req)
-	clientReq := req.Clone(ctx)
+	ctx = s.evalCtx.WithClientRequest(clientReq)
+	*clientReq = *clientReq.WithContext(ctx)
 
 	s.accessLog.ServeHTTP(rw, clientReq, h, startTime)
 

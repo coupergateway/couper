@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -221,17 +220,11 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 // getBackendReference tries to fetch a backend from `definitions`
 // block by a reference name, e.g. `backend = "name"`.
 func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, error) {
-	content, _, diags := body.PartialContent(&hcl.BodySchema{
-		Attributes: []hcl.AttributeSchema{
-			{Name: backend},
-		}})
-	if diags.HasErrors() {
-		return nil, diags
-	}
+	content := bodyToContent(body)
 
 	// read out possible attribute reference
 	var name string
-	if attr, ok := content.Attributes["backend"]; ok {
+	if attr, ok := content.Attributes[backend]; ok {
 		val, valDiags := attr.Expr.Value(envContext)
 		if valDiags.HasErrors() {
 			return nil, valDiags
@@ -263,22 +256,7 @@ func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, err
 
 func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error {
 	for _, endpoint := range endpoints {
-		// try to obtain proxy and request block with a chicken-and-egg situation:
-		// hcl labels are required if set, to make them optional we must know the content
-		// which could not unwrapped without label errors. We will handle this by block type
-		// and may have to throw an error which hints the user to configure the file properly.
-		endpointContent := &hcl.BodyContent{Attributes: make(hcl.Attributes)}
-		for _, t := range []string{proxy, request} {
-			c, err := contentByType(t, endpoint.Remain)
-			if err != nil {
-				return err
-			}
-			endpointContent.MissingItemRange = c.MissingItemRange
-			endpointContent.Blocks = append(endpointContent.Blocks, c.Blocks...)
-			for n, attr := range c.Attributes { // possible same key and content override, it's ok.
-				endpointContent.Attributes[n] = attr
-			}
-		}
+		endpointContent := bodyToContent(endpoint.Remain)
 
 		proxies := endpointContent.Blocks.OfType(proxy)
 		requests := endpointContent.Blocks.OfType(request)
@@ -335,6 +313,22 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			if diags.HasErrors() {
 				return diags
 			}
+
+			_, existsBody := content.Attributes["body"]
+			_, existsFormBody := content.Attributes["form_body"]
+			_, existsJsonBody := content.Attributes["json_body"]
+			if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
+				rangeAttr := "body"
+				if !existsBody {
+					rangeAttr = "form_body"
+				}
+				return hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "request can only have one of body, form_body or json_body attributes",
+					Subject:  &content.Attributes[rangeAttr].Range,
+				}}
+			}
+
 			renameAttribute(content, "headers", "set_request_headers")
 			renameAttribute(content, "query_params", "set_query_params")
 
@@ -347,6 +341,19 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 
 			endpoint.Requests = append(endpoint.Requests, reqConfig)
+		}
+
+		if endpoint.Response != nil {
+			content, _, _ := endpoint.Response.HCLBody().PartialContent(config.ResponseInlineSchema)
+			_, existsBody := content.Attributes["body"]
+			_, existsJsonBody := content.Attributes["json_body"]
+			if existsBody && existsJsonBody {
+				return hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "response can only have one of body or json_body attributes",
+					Subject:  &content.Attributes["body"].Range,
+				}}
+			}
 		}
 
 		names := map[string]struct{}{}
@@ -420,6 +427,41 @@ func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) err
 	}
 	unique[name] = struct{}{}
 	return nil
+}
+
+func bodyToContent(body hcl.Body) *hcl.BodyContent {
+	content := &hcl.BodyContent{
+		MissingItemRange: body.MissingItemRange(),
+	}
+	b, ok := body.(*hclsyntax.Body)
+	if !ok {
+		return content
+	}
+
+	if len(b.Attributes) > 0 {
+		content.Attributes = make(hcl.Attributes)
+	}
+	for name, attr := range b.Attributes {
+		content.Attributes[name] = &hcl.Attribute{
+			Name:      attr.Name,
+			Expr:      attr.Expr,
+			Range:     attr.Range(),
+			NameRange: attr.NameRange,
+		}
+	}
+
+	for _, block := range b.Blocks {
+		content.Blocks = append(content.Blocks, &hcl.Block{
+			Body:        block.Body,
+			DefRange:    block.DefRange(),
+			LabelRanges: block.LabelRanges,
+			Labels:      block.Labels,
+			Type:        block.Type,
+			TypeRange:   block.TypeRange,
+		})
+	}
+
+	return content
 }
 
 func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
@@ -501,18 +543,11 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		return nil, err
 	}
 
-	b, err := newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
+	return newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
 		},
 	})})
-	if err != nil {
-		diags := err.(hcl.Diagnostics)
-		if strings.HasPrefix(diags[0].Summary, "The host of 'url'") {
-			diags[0].Summary = strings.Replace(diags[0].Summary, "The host of 'url'", "The host of 'token_endpoint'", 1)
-		}
-	}
-	return b, err
 }
 
 func renameAttribute(content *hcl.BodyContent, old, new string) {

@@ -1093,6 +1093,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			},
 			Headers: http.Header{
 				"Content-Length": []string{"4"},
+				"Content-Type":   []string{"text/plain"},
 				"Test":           []string{"header"},
 			},
 		}},
@@ -1125,6 +1126,411 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+			}
+		})
+	}
+}
+
+func TestHTTPServer_request_bodies(t *testing.T) {
+	client := newClient()
+
+	configFile := "testdata/integration/endpoint_eval/14_couper.hcl"
+
+	type expectation struct {
+		Body    string
+		Args    url.Values
+		Headers http.Header
+		Method  string
+	}
+
+	type testCase struct {
+		path              string
+		clientPayload     string
+		clientContentType string
+		exp               expectation
+	}
+
+	for _, tc := range []testCase{
+		{
+			"/request/body",
+			"",
+			"",
+			expectation{
+				Body:   "foo",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"3"},
+					"Content-Type":   []string{"text/plain"},
+				},
+			},
+		},
+		{
+			"/request/body/ct",
+			"",
+			"",
+			expectation{
+				Body:   "foo",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"3"},
+					"Content-Type":   []string{"application/foo"},
+				},
+			},
+		},
+		{
+			"/request/json_body/null",
+			"",
+			"",
+			expectation{
+				Body:   "null",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/boolean",
+			"",
+			"",
+			expectation{
+				Body:   "true",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/boolean/ct",
+			"",
+			"",
+			expectation{
+				Body:   "true",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/foo+json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/number",
+			"",
+			"",
+			expectation{
+				Body:   "1.2",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"3"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/string",
+			"",
+			"",
+			expectation{
+				Body:   "\"foo\"",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"5"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/object",
+			"",
+			"",
+			expectation{
+				Body:   "{\"foo\":\"bar\"}",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"13"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/array",
+			"",
+			"",
+			expectation{
+				Body:   "[0,1,2]",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"7"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"true",
+			"application/json",
+			expectation{
+				Body:   "true",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"1.23",
+			"application/json",
+			expectation{
+				Body:   "1.23",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"\"ab\"",
+			"application/json",
+			expectation{
+				Body:   "\"ab\"",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"4"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"{\"a\":3,\"b\":[]}",
+			"application/json",
+			expectation{
+				Body:   "{\"a\":3,\"b\":[]}",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"14"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/dyn",
+			"[0,1]",
+			"application/json",
+			expectation{
+				Body:   "[0,1]",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"5"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/form_body",
+			"",
+			"",
+			expectation{
+				Body: "",
+				Args: url.Values{
+					"foo": []string{"ab c"},
+					"bar": []string{",:/"},
+				},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"22"},
+					"Content-Type":   []string{"application/x-www-form-urlencoded"},
+				},
+			},
+		},
+		{
+			"/request/form_body/ct",
+			"",
+			"",
+			expectation{
+				Body:   "bar=%2C%3A%2F&foo=ab+c",
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"22"},
+					"Content-Type":   []string{"application/my-form-urlencoded"},
+				},
+			},
+		},
+		{
+			"/request/form_body/dyn",
+			"bar=%2C&foo=a",
+			"application/x-www-form-urlencoded",
+			expectation{
+				Body: "",
+				Args: url.Values{
+					"foo": []string{"a"},
+					"bar": []string{","},
+				},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"13"},
+					"Content-Type":   []string{"application/x-www-form-urlencoded"},
+				},
+			},
+		},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			shutdown, _ := newCouper(configFile, helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com:8080"+tc.path, strings.NewReader(tc.clientPayload))
+			helper.Must(err)
+
+			if tc.clientContentType != "" {
+				req.Header.Set("Content-Type", tc.clientContentType)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+			}
+		})
+	}
+}
+
+func TestHTTPServer_response_bodies(t *testing.T) {
+	client := newClient()
+
+	configFile := "testdata/integration/endpoint_eval/14_couper.hcl"
+
+	type expectation struct {
+		Body        string
+		ContentType string
+	}
+
+	type testCase struct {
+		path string
+		exp  expectation
+	}
+
+	for _, tc := range []testCase{
+		{
+			"/response/body",
+			expectation{
+				Body:        "foo",
+				ContentType: "text/plain",
+			},
+		},
+		{
+			"/response/body/ct",
+			expectation{
+				Body:        "foo",
+				ContentType: "application/foo",
+			},
+		},
+		{
+			"/response/json_body/null",
+			expectation{
+				Body:        "null",
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/boolean",
+			expectation{
+				Body:        "true",
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/boolean/ct",
+			expectation{
+				Body:        "true",
+				ContentType: "application/foo+json",
+			},
+		},
+		{
+			"/response/json_body/number",
+			expectation{
+				Body:        "1.2",
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/string",
+			expectation{
+				Body:        "\"foo\"",
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/object",
+			expectation{
+				Body:        "{\"foo\":\"bar\"}",
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/array",
+			expectation{
+				Body:        "[0,1,2]",
+				ContentType: "application/json",
+			},
+		},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			shutdown, _ := newCouper(configFile, helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			res.Body.Close()
+
+			if string(resBytes) != tc.exp.Body {
+				t.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
+			}
+
+			if ct := res.Header.Get("Content-Type"); ct != tc.exp.ContentType {
+				t.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
 			}
 		})
 	}
@@ -1184,6 +1590,176 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
+	}
+}
+
+func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/15_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodPost, "http://example.com:8080/req?foo=bar", strings.NewReader("s=abc123"))
+	helper.Must(err)
+	req.Header.Set("User-Agent", "")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	type Expectation struct {
+		FormBody url.Values  `json:"form_body"`
+		Headers  test.Header `json:"headers"`
+		Method   string      `json:"method"`
+		Query    url.Values  `json:"query"`
+		Url      string      `json:"url"`
+	}
+
+	var jsonResult Expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+	exp := Expectation{
+		Method: http.MethodPost,
+		FormBody: map[string][]string{
+			"s": {"abc123"},
+		},
+		Headers: map[string]string{
+			"content-length": "8",
+			"content-type":   "application/x-www-form-urlencoded",
+		},
+		Query: map[string][]string{
+			"foo": {"bar"},
+		},
+		Url: "/req",
+	}
+	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
+func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/15_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(`{"data": true}`))
+	helper.Must(err)
+	req.Header.Set("User-Agent", "")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	type Expectation struct {
+		JSONBody map[string]interface{} `json:"json_body"`
+		Headers  test.Header            `json:"headers"`
+		Method   string                 `json:"method"`
+		Query    url.Values             `json:"query"`
+		Url      string                 `json:"url"`
+	}
+
+	var jsonResult Expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+	exp := Expectation{
+		Method: http.MethodGet,
+		JSONBody: map[string]interface{}{
+			"data": true,
+		},
+		Headers: map[string]string{
+			"content-length": "14",
+			"content-type":   "application/json",
+		},
+		Query: map[string][]string{
+			"foo": {"bar"},
+		},
+		Url: "/req",
+	}
+	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
+func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/15_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	content := `[1, 2, {"data": true}]`
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(content))
+	helper.Must(err)
+	req.Header.Set("User-Agent", "")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	type Expectation struct {
+		JSONBody interface{} `json:"json_body"`
+		Headers  test.Header `json:"headers"`
+		Method   string      `json:"method"`
+		Query    url.Values  `json:"query"`
+		Url      string      `json:"url"`
+	}
+
+	var jsonResult Expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+
+	exp := Expectation{
+		Method: http.MethodGet,
+		JSONBody: []interface{}{
+			1,
+			2,
+			map[string]interface{}{
+				"data": true,
+			},
+		},
+		Headers: map[string]string{
+			"content-length": strconv.Itoa(len(content)),
+			"content-type":   "application/json",
+		},
+		Query: map[string][]string{
+			"foo": {"bar"},
+		},
+		Url: "/req",
+	}
+
+	if fmt.Sprint(jsonResult) != fmt.Sprint(exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
 	}
 }
 
