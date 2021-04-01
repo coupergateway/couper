@@ -3,13 +3,16 @@ package eval
 import (
 	"bytes"
 	"context"
+	er "errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
@@ -63,6 +66,12 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 		req.GetBody = func() (io.ReadCloser, error) {
 			return io.NopCloser(bytes.NewBuffer(bodyBytes)), nil
 		}
+		// reset body initially, additional body reads which are not depending on http.Request
+		// internals like form parsing should just call GetBody() and use the returned reader.
+		req.Body, _ = req.GetBody()
+		// parsing form data now since they read/write request attributes which could be
+		// difficult with multiple routines later on.
+		parseForm(req)
 	}
 
 	return nil
@@ -263,6 +272,56 @@ func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (
 	}
 
 	return seetie.ValueToString(val), nil
+}
+
+func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
+	attr, ok := content.Attributes["json_body"]
+	if ok {
+		val, err := attr.Expr.Value(ctx)
+		if err != nil {
+			return "", "", err
+		}
+
+		val, err1 := stdlib.JSONEncodeFunc.Call([]cty.Value{val})
+		if err1 != nil {
+			return "", "", err1
+		}
+
+		return val.AsString(), "application/json", nil
+	}
+
+	attr, ok = content.Attributes["form_body"]
+	if ok {
+		val, err := attr.Expr.Value(ctx)
+		if err != nil {
+			return "", "", err
+		}
+
+		if valType := val.Type(); !(valType.IsObjectType() || valType.IsMapType()) {
+			return "", "", er.New("value of form_body must be object")
+		}
+
+		data := url.Values{}
+		for k, v := range val.AsValueMap() {
+			for _, sv := range seetie.ValueToStringSlice(v) {
+				data.Add(k, sv)
+			}
+		}
+
+		return data.Encode(), "application/x-www-form-urlencoded", nil
+	}
+
+	attr, ok = content.Attributes["body"]
+	if ok {
+		val, err := attr.Expr.Value(ctx)
+		if err != nil {
+			return "", "", err
+		}
+
+		return seetie.ValueToString(val), "text/plain", nil
+	}
+
+	return "", "", nil
 }
 
 func SetHeader(val cty.Value, headerCtx http.Header) {

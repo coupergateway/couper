@@ -57,13 +57,13 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 		set_response_headers = {
 			X-Method = req.method
 		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}},
-		{"POST use req.post", `
+		{"POST use req.form_body", `
 		set_response_headers = {
 			X-Method = req.method
-			X-Post = req.post.foo
+			X-Form_Body = req.form_body.foo
 		}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
-			"X-Method": http.MethodPost,
-			"X-Post":   "bar",
+			"X-Method":    http.MethodPost,
+			"X-Form_Body": "bar",
 		}},
 	}
 
