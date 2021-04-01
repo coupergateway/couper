@@ -253,6 +253,10 @@ func NewServerConfiguration(
 			setACHandlerFn := func(protectedHandler http.Handler) {
 				accessControl := getACL(srvConf, parentAPI)
 
+				if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
+					protectedHandler = errTpl.ServeError(errors.APIRouteNotFound)
+				}
+
 				endpointHandlers[endpointConf] = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 					protectedHandler)
