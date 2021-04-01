@@ -3,7 +3,6 @@ package eval
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -18,6 +17,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/avenga/couper/config/jwt"
 	"github.com/avenga/couper/config/request"
@@ -230,20 +230,26 @@ func isJSONMediaType(contentType string) bool {
 	return m == "application/json"
 }
 
-func parseJSON(r io.Reader) interface{} {
+func parseJSON(r io.Reader) cty.Value {
 	if r == nil {
-		return nil
+		return cty.NilVal
 	}
 
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return nil
+		return cty.NilVal
 	}
 
-	var result interface{}
+	impliedType, err := ctyjson.ImpliedType(b)
+	if err != nil {
+		return cty.NilVal
+	}
 
-	_ = json.Unmarshal(b, &result)
-	return result
+	val, err := ctyjson.Unmarshal(b, impliedType)
+	if err != nil {
+		return cty.NilVal
+	}
+	return val
 }
 
 func parseReqJSON(req *http.Request) cty.Value {
@@ -256,9 +262,7 @@ func parseReqJSON(req *http.Request) cty.Value {
 	}
 
 	body, _ := req.GetBody()
-	result := parseJSON(body)
-
-	return jsonToValue(result)
+	return parseJSON(body)
 }
 
 func parseRespJSON(beresp *http.Response) cty.Value {
@@ -274,17 +278,7 @@ func parseRespJSON(beresp *http.Response) cty.Value {
 
 	// reset
 	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
-	return jsonToValue(parseJSON(buf))
-}
-
-func jsonToValue(result interface{}) cty.Value {
-	switch result.(type) {
-	case map[string]interface{}:
-		return seetie.MapToValue(result.(map[string]interface{}))
-	case []interface{}:
-		return seetie.ListToValue(result.([]interface{}))
-	}
-	return cty.EmptyObjectVal
+	return parseJSON(buf)
 }
 
 func newRawURL(u *url.URL) *url.URL {
