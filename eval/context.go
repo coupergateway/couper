@@ -106,7 +106,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
+		JsonBody:  parseReqJSON(req),
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
@@ -148,13 +148,13 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var jsonBody map[string]interface{}
+		var jsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
 			jsonBody = parseRespJSON(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
-			JsonBody:   seetie.MapToValue(jsonBody),
+			JsonBody:   jsonBody,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -230,43 +230,61 @@ func isJSONMediaType(contentType string) bool {
 	return m == "application/json"
 }
 
-func parseJSON(r io.Reader) map[string]interface{} {
+func parseJSON(r io.Reader) interface{} {
 	if r == nil {
 		return nil
 	}
-	var result map[string]interface{}
+
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil
 	}
+
+	var result interface{}
+
 	_ = json.Unmarshal(b, &result)
 	return result
 }
 
-func parseReqJSON(req *http.Request) map[string]interface{} {
+func parseReqJSON(req *http.Request) cty.Value {
 	if req.GetBody == nil {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	if !isJSONMediaType(req.Header.Get("Content-Type")) {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	body, _ := req.GetBody()
 	result := parseJSON(body)
-	return result
+
+	return jsonToValue(result)
 }
 
-func parseRespJSON(beresp *http.Response) map[string]interface{} {
+func parseRespJSON(beresp *http.Response) cty.Value {
 	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		return nil
+		return cty.EmptyObjectVal
 	}
 
 	buf := &bytes.Buffer{}
-	io.Copy(buf, beresp.Body) // TODO: err handling
+	_, err := io.Copy(buf, beresp.Body)
+	if err != nil {
+		return cty.EmptyObjectVal
+	}
+
 	// reset
 	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
-	return parseJSON(buf)
+	return jsonToValue(parseJSON(buf))
+}
+
+func jsonToValue(result interface{}) cty.Value {
+	switch result.(type) {
+	case map[string]interface{}:
+		return seetie.MapToValue(result.(map[string]interface{}))
+	case []interface{}:
+		return seetie.ListToValue(result.([]interface{}))
+	}
+	return cty.EmptyObjectVal
 }
 
 func newRawURL(u *url.URL) *url.URL {
