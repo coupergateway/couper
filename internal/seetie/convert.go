@@ -214,13 +214,23 @@ func ValueToString(v cty.Value) string {
 	}
 }
 
-func ValueToInt(v cty.Value) int64 {
+func ValueToInt(v cty.Value) (n int64) {
 	if !v.IsWhollyKnown() {
-		return 0
+		return n
 	}
-	n := v.AsBigFloat()
-	ni, _ := n.Int64()
-	return ni
+
+	switch v.Type() {
+	case cty.String:
+		i, err := strconv.Atoi(v.AsString())
+		if err == nil {
+			n = int64(i)
+		}
+	case cty.Number:
+		bn := v.AsBigFloat()
+		n, _ = bn.Int64()
+	}
+
+	return n
 }
 
 func SliceToString(sl []interface{}) string {
