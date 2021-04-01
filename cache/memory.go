@@ -81,8 +81,8 @@ func (ms *MemoryStore) gc() {
 	ticker := time.NewTicker(time.Second)
 
 	defer func() {
-		if rcv := recover(); rcv != nil {
-			ms.log.WithField("panic", debug.Stack()).Errorf("%v", rcv)
+		if rc := recover(); rc != nil {
+			ms.log.WithField("panic", string(debug.Stack())).Panic(rc)
 		}
 		ticker.Stop()
 	}()
