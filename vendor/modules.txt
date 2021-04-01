@@ -10,6 +10,9 @@ github.com/dgrijalva/jwt-go/v4
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
+# github.com/fatih/color v1.10.0
+## explicit
+github.com/fatih/color
 # github.com/getkin/kin-openapi v0.49.0
 ## explicit
 github.com/getkin/kin-openapi/jsoninfo
@@ -47,6 +50,10 @@ github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
 # github.com/mattermost/xml-roundtrip-validator v0.0.0-20201208211235-fe770d50d911
 github.com/mattermost/xml-roundtrip-validator
+# github.com/mattn/go-colorable v0.1.8
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.12
+github.com/mattn/go-isatty
 # github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7
 github.com/mitchellh/go-wordwrap
 # github.com/rs/xid v1.2.1
@@ -58,6 +65,7 @@ github.com/russellhaering/gosaml2
 github.com/russellhaering/gosaml2/types
 github.com/russellhaering/gosaml2/uuid
 # github.com/russellhaering/goxmldsig v1.1.0
+## explicit
 github.com/russellhaering/goxmldsig
 github.com/russellhaering/goxmldsig/etreeutils
 github.com/russellhaering/goxmldsig/types
