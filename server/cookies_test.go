@@ -76,7 +76,7 @@ func TestCookies_IntegrationEnforce(t *testing.T) {
 		time.Sleep(time.Second)
 	}()
 
-	confPath := "testdata/settings/02_couper.hcl"
+	confPath := "testdata/settings/04_couper.hcl"
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
