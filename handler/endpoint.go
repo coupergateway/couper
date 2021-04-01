@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -60,17 +61,33 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, proxies producer.Prox
 }
 
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	var (
+		clientres *http.Response
+		err       error
+		log       = e.log.WithField("uid", req.Context().Value(request.UID))
+	)
+
 	// Bind some values for logging purposes
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
 	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
 	*req = *req.WithContext(reqCtx)
+
+	defer func() {
+		rc := recover()
+		if rc != nil {
+			log.WithField("panic", string(debug.Stack())).Error(rc)
+			if clientres == nil {
+				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
+			}
+		}
+	}()
 
 	// subCtx is handled by this endpoint handler and should not be attached to req
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
 	if ee := eval.ApplyRequestContext(req.Context(), e.opts.Context, req); ee != nil {
-		e.log.Error(ee)
+		log.Error(ee)
 	}
 
 	proxyResults := make(producer.Results)
@@ -84,9 +101,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// TODO: read parallel, proxy first for now
 	e.readResults(subCtx, proxyResults, beresps)
 	e.readResults(subCtx, requestResults, beresps)
-
-	var clientres *http.Response
-	var err error
 
 	evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
@@ -102,7 +116,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 			switch b.Err.(type) {
 			case producer.ResultPanic:
-				e.log.WithField("uid", req.Context().Value(request.UID)).Error(b.Err)
+				log.Error(b.Err)
 			}
 		}
 		clientres, err = e.newResponse(req, evalContext)
@@ -136,7 +150,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 		case producer.ResultPanic:
 			serveErr = errors.Server
-			e.log.WithField("uid", req.Context().Value(request.UID)).Error(err)
+			log.Error(err)
 		}
 		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
 		return
@@ -144,17 +158,17 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// always apply before write: redirect, response
 	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
-		e.log.Error(err)
+		log.Error(err)
 	}
 
 	select {
 	case ctxErr := <-req.Context().Done():
-		e.log.Errorf("endpoint write: %v", ctxErr)
+		log.Errorf("endpoint write: %v", ctxErr)
 	default:
 	}
 
 	if err = clientres.Write(rw); err != nil {
-		e.log.Errorf("endpoint write: %v", err)
+		log.Errorf("endpoint write: %v", err)
 	}
 }
 
@@ -167,6 +181,8 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 		Request:    req,
 	}
 
+	log := e.log.WithField("uid", req.Context().Value(request.UID))
+
 	hclCtx := evalCtx.HCLContext()
 
 	content, _, diags := e.response.Context.PartialContent(config.ResponseInlineSchema)
@@ -178,7 +194,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 	if attr, ok := content.Attributes["status"]; ok {
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
-			e.log.Errorf("endpoint eval error: %v", err)
+			log.Errorf("endpoint eval error: %v", err)
 			statusCode = http.StatusInternalServerError
 		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
 			statusCode = statusValue
@@ -189,7 +205,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 
 	body, ct, err := eval.GetBody(hclCtx, content)
 	if err != nil {
-		e.log.Errorf("endpoint eval error: %v", err)
+		log.Errorf("endpoint eval error: %v", err)
 	}
 
 	if ct != "" {
@@ -199,7 +215,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 	if attr, ok := content.Attributes["headers"]; ok {
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
-			e.log.Errorf("endpoint eval error: %v", err)
+			log.Errorf("endpoint eval error: %v", err)
 		}
 
 		eval.SetHeader(val, clientres.Header)
