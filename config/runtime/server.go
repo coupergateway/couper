@@ -641,10 +641,10 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 
 		var filesBasePath, spaBasePath string
 		if serverOptions.FilesBasePath != "" {
-			filesBasePath = path.Join("/", serverOptions.FilesBasePath)
+			filesBasePath = serverOptions.FilesBasePath
 		}
 		if serverOptions.SPABasePath != "" {
-			spaBasePath = path.Join("/", serverOptions.SPABasePath)
+			spaBasePath = serverOptions.SPABasePath
 		}
 
 		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
