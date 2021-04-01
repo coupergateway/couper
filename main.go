@@ -14,11 +14,11 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/logging"
 )
 
 var (
 	fields = logrus.Fields{
-		"type":    "couper_daemon",
 		"build":   runtime.BuildName,
 		"version": runtime.VersionName,
 	}
@@ -46,18 +46,20 @@ func realmain(arguments []string) int {
 	}
 
 	var filePath, logFormat string
+	var logPretty bool
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
 	set.StringVar(&filePath, "f", config.DefaultFilename, "-f ./couper.hcl")
 	set.StringVar(&logFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
+	set.BoolVar(&logPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
-		newLogger(logFormat).WithFields(fields).Error(err)
+		newLogger(logFormat, logPretty).WithFields(fields).Error(err)
 		return 1
 	}
 
 	confFile, err := configload.LoadFile(filePath)
 	if err != nil {
-		newLogger(logFormat).WithFields(fields).Error(err)
+		newLogger(logFormat, logPretty).WithFields(fields).Error(err)
 		return 1
 	}
 
@@ -66,7 +68,10 @@ func realmain(arguments []string) int {
 	if logFormat != config.DefaultSettings.LogFormat {
 		confFile.Settings.LogFormat = logFormat
 	}
-	logger := newLogger(confFile.Settings.LogFormat).WithFields(fields)
+	if logPretty != config.DefaultSettings.LogPretty {
+		confFile.Settings.LogPretty = logPretty
+	}
+	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogPretty).WithFields(fields)
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -85,7 +90,7 @@ func realmain(arguments []string) int {
 // newLogger creates a log instance with the configured formatter.
 // Since the format option may required to be correct in early states
 // we parse the env configuration on every call.
-func newLogger(format string) logrus.FieldLogger {
+func newLogger(format string, pretty bool) logrus.FieldLogger {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	if hook != nil {
@@ -93,15 +98,20 @@ func newLogger(format string) logrus.FieldLogger {
 		logger.Out = ioutil.Discard
 	}
 
-	settings := &config.Settings{LogFormat: format}
+	settings := &config.Settings{
+		LogFormat: format,
+		LogPretty: pretty,
+	}
 	env.Decode(settings)
 
+	logConf := &logging.Config{
+		TypeFieldKey: "couper_daemon",
+	}
+	env.Decode(logConf)
+
 	if settings.LogFormat == "json" {
-		logger.Formatter = &logrus.JSONFormatter{FieldMap: logrus.FieldMap{
-			logrus.FieldKeyTime: "timestamp",
-			logrus.FieldKeyMsg:  "message",
-		}}
+		logger.SetFormatter(logging.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
 	}
 	logger.Level = logrus.DebugLevel
-	return logger
+	return logger.WithField("type", logConf.TypeFieldKey)
 }
