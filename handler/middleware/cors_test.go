@@ -311,6 +311,19 @@ func TestCORS_ServeHTTP(t *testing.T) {
 				"Vary":                             "Origin",
 			},
 		},
+		{
+			"origin mismatch, credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			map[string]string{
+				"Origin": "https://www.example.org",
+				"Cookie": "a=b",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "Origin",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -478,6 +491,22 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		{
 			"origin mismatch",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			map[string]string{
+				"Origin":                        "https://www.example.org",
+				"Access-Control-Request-Method": "POST",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "",
+				"Access-Control-Allow-Methods":     "",
+				"Access-Control-Allow-Headers":     "",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age":           "",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"origin mismatch, credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin":                        "https://www.example.org",
 				"Access-Control-Request-Method": "POST",
