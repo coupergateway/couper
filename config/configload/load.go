@@ -3,6 +3,7 @@ package configload
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"regexp"
 
@@ -141,6 +142,8 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			if err != nil {
 				return nil, err
 			}
+
+			apiBlock.CatchAllEndpoint = createCatchAllEndpoint()
 		}
 
 		// standalone endpoints
@@ -520,6 +523,26 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body,
 	}
 
 	return bend, nil
+}
+
+func createCatchAllEndpoint() *config.Endpoint {
+	responseBody := hclbody.New(&hcl.BodyContent{
+		Attributes: map[string]*hcl.Attribute{
+			"status": {
+				Name: "status",
+				Expr: &hclsyntax.LiteralValueExpr{
+					Val: cty.NumberIntVal(http.StatusNotFound),
+				},
+			},
+		},
+	})
+
+	return &config.Endpoint{
+		Remain: hclbody.New(&hcl.BodyContent{}),
+		Response: &config.Response{
+			Remain: responseBody,
+		},
+	}
 }
 
 func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error) {
