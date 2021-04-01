@@ -37,7 +37,8 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 		currentName = proxy.Name
 		outCtx := withRoundTripName(ctx, proxy.Name)
 		outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
-		outReq := clientReq.WithContext(outCtx)
+		// since proxy and backend may work on the "same" outReq this must be cloned.
+		outReq := clientReq.Clone(outCtx)
 
 		wg.Add(1)
 		go roundtrip(proxy.RoundTrip, outReq, results, wg)

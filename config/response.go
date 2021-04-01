@@ -31,9 +31,10 @@ func (r Response) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Body    string            `hcl:"body,optional"`
-		Headers map[string]string `hcl:"headers,optional"`
-		Status  int               `hcl:"status,optional"`
+		Body     string            `hcl:"body,optional"`
+		JsonBody string            `hcl:"json_body,optional"`
+		Headers  map[string]string `hcl:"headers,optional"`
+		Status   int               `hcl:"status,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

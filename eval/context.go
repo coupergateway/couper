@@ -104,12 +104,12 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	}
 
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
+		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
 		JsonBody:  seetie.MapToValue(parseReqJSON(req)),
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
-		Post:      seetie.ValuesMapToValue(parseForm(req).PostForm),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
@@ -141,11 +141,11 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			name = n
 		}
 		bereqs[name] = cty.ObjectVal(ContextMap{
-			Method: cty.StringVal(bereq.Method),
-			Path:   cty.StringVal(bereq.URL.Path),
-			Post:   seetie.ValuesMapToValue(parseForm(bereq).PostForm),
-			Query:  seetie.ValuesMapToValue(bereq.URL.Query()),
-			URL:    cty.StringVal(newRawURL(bereq.URL).String()),
+			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+			Method:   cty.StringVal(bereq.Method),
+			Path:     cty.StringVal(bereq.URL.Path),
+			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
+			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
 		var jsonBody map[string]interface{}
@@ -214,12 +214,11 @@ const defaultMaxMemory = 32 << 20 // 32 MB
 // As Proxy we should not consume the request body.
 // Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
-	if r.GetBody == nil {
+	if r.GetBody == nil || r.Form != nil {
 		return r
 	}
 	switch r.Method {
 	case http.MethodPut, http.MethodPatch, http.MethodPost:
-		r.Body, _ = r.GetBody() // rewind
 		_ = r.ParseMultipartForm(defaultMaxMemory)
 		r.Body, _ = r.GetBody() // reset
 	}
@@ -253,9 +252,8 @@ func parseReqJSON(req *http.Request) map[string]interface{} {
 		return nil
 	}
 
-	req.Body, _ = req.GetBody() // rewind
-	result := parseJSON(req.Body)
-	req.Body, _ = req.GetBody() // reset
+	body, _ := req.GetBody()
+	result := parseJSON(body)
 	return result
 }
 

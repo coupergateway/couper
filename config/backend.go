@@ -59,6 +59,10 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 }
 
 func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
+	if body == nil {
+		return schema
+	}
+
 	for i, block := range schema.Blocks {
 		// Inline backend block MAY have no label.
 		if block.Type == "backend" && len(block.LabelNames) > 0 {

@@ -30,7 +30,7 @@ func (i BufferOption) GoString() string {
 	return strings.Join(result, "|")
 }
 
-// MustBuffer determines if any of the hcl.bodies makes use of 'post' or 'json_body'.
+// MustBuffer determines if any of the hcl.bodies makes use of 'form_body' or 'json_body'.
 func MustBuffer(body hcl.Body) BufferOption {
 	result := BufferNone
 
@@ -52,16 +52,16 @@ func MustBuffer(body hcl.Body) BufferOption {
 			nameField := reflect.ValueOf(traversal[1]).FieldByName("Name")
 			name := nameField.String()
 			switch name {
+			case FormBody:
+				if rootName == ClientRequest {
+					result |= BufferRequest
+				}
 			case JsonBody:
 				switch rootName {
 				case ClientRequest:
 					result |= BufferRequest
 				case BackendResponse:
 					result |= BufferResponse
-				}
-			case Post:
-				if rootName == ClientRequest {
-					result |= BufferRequest
 				}
 			}
 		}
