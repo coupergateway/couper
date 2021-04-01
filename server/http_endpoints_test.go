@@ -87,6 +87,15 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	shutdown, logHook := newCouper(path.Join(testdataPath, "01_couper.hcl"), helper)
 	defer shutdown()
 
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range logHook.AllEntries() {
+			println(e.String())
+		}
+	}()
+
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
 	helper.Must(err)
 
@@ -100,8 +109,8 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 		t.Fatalf("Expected 5 log entries, given %d", l)
 	}
 
-	if res.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("Expected status 405, given %d", res.StatusCode)
+	if res.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status 404, given %d", res.StatusCode)
 	}
 
 	resBytes, err := ioutil.ReadAll(res.Body)

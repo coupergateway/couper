@@ -38,7 +38,7 @@ server "api" {
       }
 
       response {
-        status = beresp.status + 1
+        status = "${beresp.status}" # string type test
 		# 404 + 404 + 404 + 404
         body = beresps.r1.status + beresps.default.status + beresps.r2.status + beresps.p2.status
       }
