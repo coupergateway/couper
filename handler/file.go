@@ -86,6 +86,11 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.Request) {
+	if !f.HasResponse(req) {
+		f.srvOptions.FilesErrTpl.ServeError(errors.FilesRouteNotFound).ServeHTTP(rw, req)
+		return
+	}
+
 	if !strings.HasSuffix(reqPath, "/") {
 		rw.Header().Set("Location", utils.JoinPath(req.URL.Path, "/"))
 		rw.WriteHeader(http.StatusFound)
