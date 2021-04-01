@@ -49,8 +49,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		content, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
 		if diags.HasErrors() {
-			results <- &Result{Err: diags}
-			wg.Done()
+			sendResult(ctx, results, &Result{Err: diags})
 			continue
 		}
 
