@@ -5,7 +5,7 @@ server "backends" {
         backend {
           origin = env.COUPER_TEST_BACKEND_ADDR
 
-          basic_auth = "${req.headers.x-user}:pass"
+          basic_auth = "${request.headers.x-user}:pass"
         }
       }
     }

@@ -99,7 +99,7 @@ server "bodies" {
   endpoint "/request/json_body/dyn" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
-      json_body = req.json_body
+      json_body = request.json_body
 
       backend {
         origin = env.COUPER_TEST_BACKEND_ADDR
@@ -138,7 +138,7 @@ server "bodies" {
   endpoint "/request/form_body/dyn" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
-      form_body = req.form_body
+      form_body = request.form_body
 
       backend {
         origin = env.COUPER_TEST_BACKEND_ADDR

@@ -2,7 +2,7 @@ server "bodies" {
   endpoint "/req" {
     response {
       status = 200
-      json_body = req
+      json_body = request
     }
   }
 }

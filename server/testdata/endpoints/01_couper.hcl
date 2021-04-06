@@ -38,9 +38,9 @@ server "api" {
       }
 
       response {
-        status = "${beresp.status}" # string type test
+        status = "${backend_responses.default.status}" # string type test
 		# 404 + 404 + 404 + 404
-        body = beresps.r1.status + beresps.default.status + beresps.r2.status + beresps.p2.status
+        body = backend_responses.r1.status + backend_responses.default.status + backend_responses.r2.status + backend_responses.p2.status
       }
     }
   }

@@ -158,12 +158,6 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
-	if val, ok := bereqs[BackendDefault]; ok {
-		ctx.eval.Variables[BackendRequest] = val
-	}
-	if val, ok := resps[BackendDefault]; ok {
-		ctx.eval.Variables[BackendResponse] = val
-	}
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
 

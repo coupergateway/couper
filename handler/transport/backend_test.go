@@ -384,16 +384,16 @@ func TestProxy_BufferingOptions(t *testing.T) {
 
 	for i, tc := range []testCase{
 		{"no buffering", nil, `path = "/"`, eval.BufferNone},
-		{"req buffer json.body", nil, `path = "/${req.json_body.client}"`, eval.BufferRequest},
-		{"beresp buffer json.body", nil, `response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+		{"req buffer json.body", nil, `path = "/${request.json_body.client}"`, eval.BufferRequest},
+		{"beresp buffer json.body", nil, `response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferResponse},
 		{"bereq/beresp validation", newOptions(), `path = "/"`, eval.BufferRequest | eval.BufferResponse},
 		{"beresp validation", newOptions(), `path = "/"`, eval.BufferResponse},
 		{"bereq validation", newOptions(), `path = "/"`, eval.BufferRequest},
 		{"no validation", newOptions(), `path = "/"`, eval.BufferNone},
-		{"req buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"beresp buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"req buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${req.json_body.client}" }`, eval.BufferRequest},
-		{"beresp buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${beresp.json_body.origin}" }`, eval.BufferResponse},
+		{"req buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${request.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"beresp buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
+		{"req buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${request.json_body.client}" }`, eval.BufferRequest},
+		{"beresp buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferResponse},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)

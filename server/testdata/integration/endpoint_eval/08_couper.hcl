@@ -9,10 +9,10 @@ server "protected" {
       proxy {
         backend "anything" {
           path = "/anything"
-          origin = "http://${req.path_params.origin}"
-          hostname = req.path_params.hostname
+          origin = "http://${request.path_params.origin}"
+          hostname = request.path_params.hostname
           set_response_headers = {
-            x-origin = req.path_params.origin
+            x-origin = request.path_params.origin
           }
           openapi {
             file = "08_schema.yaml"

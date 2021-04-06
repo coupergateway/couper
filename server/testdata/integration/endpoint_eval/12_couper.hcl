@@ -3,26 +3,26 @@ server "api" {
     endpoint "/" {
       proxy {
         backend "anything" {
-          remove_request_headers = [ "aeb_del", "CaseIns", req.query.xyz[0] ]
+          remove_request_headers = [ "aeb_del", "CaseIns", request.query.xyz[0] ]
           set_request_headers = {
             aeb_string = "str"
             aeb_multi = ["str1", "str2"]
             aeb_a_and_b = "A&B"
-            aeb_noop = req.headers.noop
+            aeb_noop = request.headers.noop
             aeb_null = null
             aeb_empty = ""
             xxx = ["yyy", "xxx"]
             xxx = ["aaa", "bbb"]
-            "${req.query.aeb[0]}" = "aeb"
+            "${request.query.aeb[0]}" = "aeb"
           }
           add_request_headers = {
             aeb_string = "str"
            aeb_multi = ["str3", "str4"]
             aeb_a_and_b = "A&B"
-            aeb_noop = req.headers.noop
+            aeb_noop = request.headers.noop
             aeb_null = null
             aeb_empty = ""
-            "${req.query.aeb[0]}" = "aeb"
+            "${request.query.aeb[0]}" = "aeb"
           }
 
           remove_response_headers = [ "Remove-Me-2" ]
@@ -48,22 +48,22 @@ definitions {
       def_string = "str"
       def_multi = ["str1", "str2"]
       def_a_and_b = "A&B"
-      def_noop = req.headers.noop
+      def_noop = request.headers.noop
       def_null = null
       def_empty = ""
       xxx = "ddd"
-      "${req.query.def[0]}" = "def"
-      foo = req.query.foo[0]
+      "${request.query.def[0]}" = "def"
+      foo = request.query.foo[0]
     }
     add_request_headers = {
       def_string = "str"
       def_multi = ["str3", "str4"]
       def_a_and_b = "A&B"
-      def_noop = req.headers.noop
+      def_noop = request.headers.noop
       def_null = null
       def_empty = ""
       xxx = "eee"
-      "${req.query.def[0]}" = "def"
+      "${request.query.def[0]}" = "def"
     }
 
     remove_response_headers = [ "remove-me-1" ]
