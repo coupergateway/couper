@@ -251,7 +251,7 @@ func NewServerConfiguration(
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
 			setACHandlerFn := func(protectedHandler http.Handler) {
-				accessControl := getAC(srvConf, parentAPI)
+				accessControl := newAC(srvConf, parentAPI)
 
 				if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 					protectedHandler = errTpl.ServeError(errors.APIRouteNotFound)
@@ -663,7 +663,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 			}
 		}
 
-		if isAPIBasePathUniqueToFilesAndSPA && len(getAC(srvConf, api).List()) > 0 {
+		if isAPIBasePathUniqueToFilesAndSPA && len(newAC(srvConf, api).List()) > 0 {
 			endpoints[api.CatchAllEndpoint] = api
 		}
 	}
@@ -694,12 +694,12 @@ func parseBodyLimit(limit string) (int64, error) {
 	return units.FromHumanSize(requestBodyLimit)
 }
 
-func getAC(srvConf *config.Server, api *config.API) config.AccessControl {
-	ac := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
+func newAC(srvConf *config.Server, api *config.API) config.AccessControl {
+	accessControl := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
 
 	if api != nil {
-		ac = ac.Merge(config.NewAccessControl(api.AccessControl, api.DisableAccessControl))
+		accessControl = accessControl.Merge(config.NewAccessControl(api.AccessControl, api.DisableAccessControl))
 	}
 
-	return ac
+	return accessControl
 }
