@@ -2165,7 +2165,6 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		// FIXME: https://github.com/avenga/couper/issues/143
 		{"/favicon.ico", "", http.StatusUnauthorized},
 		{"/robots.txt", "", http.StatusUnauthorized},
 		{"/app", "", http.StatusUnauthorized},
