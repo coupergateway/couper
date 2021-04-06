@@ -121,7 +121,7 @@ func (f *File) HasResponse(req *http.Request) bool {
 	if info.IsDir() {
 		reqPath = path.Join(reqPath, "/", dirIndexFile)
 
-		file, info, err := f.openDocRootFile(reqPath)
+		file, info, err = f.openDocRootFile(reqPath)
 		if err != nil {
 			return false
 		}
