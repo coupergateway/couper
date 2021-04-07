@@ -1,5 +1,37 @@
 # Couper Changelog
 
+<a name="v0.8"></a>
+## [v0.8](https://github.com/avenga/couper/compare/0.7.0...v0.8)
+
+> 2021-04-06
+
+### Bug Fixes
+
+* Some possible race conditions in combination with multiple `proxy` and/or `request`
+  definitions are fixed ([#157](https://github.com/avenga/couper/issues/177)) ([#160](https://github.com/avenga/couper/issues/160))
+* Log endpoint related recovered panics
+* CORS behaviour: result is now only dependent on the config, not the actual request; fixed Vary headers ([#173](https://github.com/avenga/couper/issues/173))
+* Fix json type assumption ([#177](https://github.com/avenga/couper/issues/177))
+  * `req.json_body` result is an empty object for specific types ([#165](https://github.com/avenga/couper/issues/165))
+  * Empty json array encodes to `null`. ([#162](https://github.com/avenga/couper/issues/162))
+* Fix missing string conversion for evaluated number values ([#175](https://github.com/avenga/couper/issues/175))
+* Loading optional labels of same type
+* multiplexer behaviour with multiple servers and hosts ([#161](https://github.com/avenga/couper/issues/161))
+* Fix missing access_control for file handler ([#169](https://github.com/avenga/couper/issues/169))
+* 404 behaviour for access controlled endpoints:
+  deny instead of 404 if the request matches the related base_path ([#143](https://github.com/avenga/couper/issues/143))
+
+### Changes
+
+* Rename log type for backend requests: `couper_upstream` -> `couper_backend` ([#159](https://github.com/avenga/couper/pull/159)) ([#172](https://github.com/avenga/couper/pull/172))
+* Rename `post` variable to `form_body` ([#158](https://github.com/avenga/couper/pull/158))
+
+### Features
+
+* Add `json_body` attribute for `request` and `response` block ([#158](https://github.com/avenga/couper/issues/158))
+* `bytes` log field to represent the body size
+
+
 <a name="0.7.0"></a>
 ## [0.7.0](https://github.com/avenga/couper/compare/0.6.1...0.7.0)
 
