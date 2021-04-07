@@ -11,7 +11,6 @@ server "api" {
             aeb_noop = req.query.noop
             aeb_null = null
             aeb_empty = ""
-            xxx = ["yyy", "xxx"]
             xxx = ["aaa", "bbb"]
             "${req.headers.aeb}" = "aeb"
           }
