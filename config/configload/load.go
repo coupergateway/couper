@@ -299,7 +299,11 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			var err error
+			err := uniqueAttributeKey(proxyConfig.Remain)
+			if err != nil {
+				return err
+			}
+
 			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 			if err != nil {
 				return err
