@@ -215,9 +215,9 @@ since these references get evaluated at start.
 
 #### `backend_requests` (modified backend requests) variables
 
-`backend_requests.<label>` ist a list of all backend requests, and their variables.
-To access a specific request use the related label. Request and Proxy blocks without a label will be
-available as `default`.
+`backend_requests.<label>` is a list of all backend requests, and their variables.
+To access a specific request use the related label. [Request](#request-block) and
+[Proxy](#proxy-block) blocks without a label will be available as `default`.
 To access the HTTP method of the `default` request use `backend_requests.default.method` .
 
 | Variable                  | Description |
@@ -234,9 +234,9 @@ To access the HTTP method of the `default` request use `backend_requests.default
 
 #### `backend_responses` (non modified backend responses) variables
 
-`backend_responses.<label>` ist a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
+`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
 Use the related label to access a specific response.
-Request and Proxy blocks without a label will be available as `default`.
+[Request](#request-block) and [Proxy](#proxy-block) blocks without a label will be available as `default`.
 To access the HTTP status code of the `default` response use `backend_responses.default.status` .
 
 | Variable           | Description |
@@ -713,7 +713,7 @@ definitions {
 ### Path Parameter
 
 An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
-to access the named path parameter `section` and `project` via `request.path_param.*`.
+to access the named path parameter `section` and `project` via `request.path_params.*`.
 The values would map as following for the request path: `/app/nature/plant-a-tree/view`:
 
 | Variable                  | Value          |
