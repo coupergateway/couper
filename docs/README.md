@@ -11,11 +11,9 @@
     * [Nesting of configuration blocks and attributes](#nesting-of-configuration-blocks-and-attributes)
   * [Variables](#variables)
     * [`env`](#env-variable)
-    * [`req`](#req-client-request-variable)
-    * [`bereq`](#bereq-modified-backend-request-variable)
-    * [`bereqs`](#bereqs-modified-backend-requests-variable)
-    * [`beresp`](#beresp-original-backend-response-variable)
-    * [`beresps`](#beresps-original-backend-responses-variable)
+    * [`request`](#request-client-request-variable)
+    * [`backend_requests`](#backend_requests-modified-backend-requests-variables)
+    * [`backend_responses`](#backend_responses-non-modified-backend-responses-variables)
     * [Variable example](#variable-example)
   * [Expressions](#expressions)
   * [Functions](#functions)
@@ -101,27 +99,35 @@ For orientation compare the following example and the information below:
 
 ```hcl
 server "my_project" {
-  files { ... }
+  files { 
+    # ...
+  }
 
-  spa { ... }
+  spa {
+    # ...
+  }
 
   api {
     access_control = ["foo"]
     endpoint "/bar" {
       proxy {
-        backend { ... }
+        backend { }
       }
       request "sub-request" {
-        backend { ... }
+        backend { }
       }
-      response { ... }
+      response { }
     }
   }
 }
 
-definitions { ... }
+definitions {
+  # ...
+}
 
-settings { ... }
+settings {
+  # ...
+}
 ```
 
 * `server` main configuration block(s)
@@ -180,11 +186,9 @@ which is currently related to `env` and **function** usage. The second evaluatio
 will happen during the request/response handling.
 
 * `env` are the environment variables
-* `req` is the client request
-* `bereq` is the modified backend request
-* `bereqs` contains all modified backend requests
-* `beresp` is the original backend response from proxy or request block with label "default" (no label equals to label "default")
-* `beresps` contains all original backend responses
+* `request` is the client request
+* `backend_requests` contains all modified backend requests
+* `backend_responses` contains all original backend responses
 
 Most fields are self-explanatory (compare tables below).
 
@@ -193,7 +197,7 @@ Most fields are self-explanatory (compare tables below).
 Environment variables can be accessed everywhere within the configuration file
 since these references get evaluated at start.
 
-#### `req` (client request) variable
+#### `request` (client request) variable
 
 | Variable                  | Description |
 |:--------------------------|:------------|
@@ -207,9 +211,14 @@ since these references get evaluated at start.
 | `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
 | `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
-| `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
+| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 
-#### `bereq` (modified backend request) variable
+#### `backend_requests` (modified backend requests) variables
+
+`backend_requests.<label>` is a list of all backend requests, and their variables.
+To access a specific request use the related label. [Request](#request-block) and
+[Proxy](#proxy-block) blocks without a label will be available as `default`.
+To access the HTTP method of the `default` request use `backend_requests.default.method` .
 
 | Variable                  | Description |
 |:--------------------------|:------------|
@@ -220,15 +229,15 @@ since these references get evaluated at start.
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
 | `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
-| `ctx.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
+| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 | `url`                     | Backend origin URL |
 
-#### `bereqs` (modified backend requests) variable
+#### `backend_responses` (non modified backend responses) variables
 
-`bereqs` ist a list of all `bereq` variables with the access via label.
-To access the HTTP method of the `default` request use `beresps.default.method`
-
-#### `beresp` (original backend response) variable
+`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
+Use the related label to access a specific response.
+[Request](#request-block) and [Proxy](#proxy-block) blocks without a label will be available as `default`.
+To access the HTTP status code of the `default` response use `backend_responses.default.status` .
 
 | Variable           | Description |
 |:-------------------|:------------|
@@ -236,11 +245,6 @@ To access the HTTP method of the `default` request use `beresps.default.method`
 | `headers.<name>`   | HTTP response header value for requested lower-case key |
 | `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
 | `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
-
-#### `beresps` (original backend responses) variable
-
-`beresps` ist a list of all `beresp` variables with the access via label.
-To access the HTTP status code of the `default` response use `beresps.default.status`
 
 ##### Variable Example
 
@@ -255,8 +259,8 @@ server "variables-srv" {
         backend "my_backend_definition" {
           set_request_headers = {
             x-env-user = env.USER
-            user-agent = "myproxyClient/${req.headers.app-version}"
-            x-uuid = req.id
+            user-agent = "myproxyClient/${request.headers.app-version}"
+            x-uuid = request.id
           }
         }
       }
@@ -309,24 +313,24 @@ my_attribute = base64_decode("aGVsbG8gd29ybGQK")
 iat = unixtime()
 
 my_json = json_encode({
-  value-a: beresp.json_body.origin
+  value-a: backend_responses.default.json_body.origin
   value-b: ["item1", "item2"]
 })
 
-merge({"k1": 1}, null, {"k2": 2})          // -> {"k1": 1, "k2": 2}        merge object attributes
-merge({"k": [1]}, {"k": [2]})              // -> {"k": [1, 2]}             merge tuple values
-merge({"k": {"k1": 1]}}, {"k": {"k2": 2}}) // -> {"k": {"k1": 1, "k2": 2}} merge object attributes
-merge({"k": [1]}, {"k": null}, {"k": [2]}) // -> {"k": [2]}                remove value and set new value
-merge({"k": [1]}, {"k": 2})                // -> {"k": 2}                  set new value
-merge([1], null, [2, "3"], [true, false])  // -> [1, 2, "3", true, false]  merge tuple values
+x = merge({"k1": 1}, null, {"k2": 2})          // -> {"k1": 1, "k2": 2}        merge object attributes
+x = merge({"k": [1]}, {"k": [2]})              // -> {"k": [1, 2]}             merge tuple values
+x = merge({"k": {"k1": 1}}, {"k": {"k2": 2}})  // -> {"k": {"k1": 1, "k2": 2}} merge object attributes
+x = merge({"k": [1]}, {"k": null}, {"k": [2]}) // -> {"k": [2]}                remove value and set new value
+x = merge({"k": [1]}, {"k": 2})                // -> {"k": 2}                  set new value
+x = merge([1], null, [2, "3"], [true, false])  // -> [1, 2, "3", true, false]  merge tuple values
 
-merge({"k1": 1}, 2)                        // -> error: cannot mix object with primitive value
-merge({"k1": 1}, [2])                      // -> error: cannot mix object with tuple
-merge([1], 2)                              // -> error: cannot mix tuple with primitive value
+x = merge({"k1": 1}, 2)                        // -> error: cannot mix object with primitive value
+x = merge({"k1": 1}, [2])                      // -> error: cannot mix object with tuple
+x = merge([1], 2)                              // -> error: cannot mix tuple with primitive value
 
 token = jwt_sign("MyJwt", {"sub": "abc12345"})
 
-saml_sso_url("MySaml")
+url = saml_sso_url("MySaml")
 
 definitions {
   jwt_signing_profile "MyJwt" {
@@ -437,7 +441,7 @@ produce an explicit or implicit client response.
 | [Request Block(s)](#request-block) |  |
 | [Response Block](#response-block)  |  |
 | **Attributes**                     | **Description** |
-| `request_body_limit`               | <ul><li>Optional.</li><li>Configures the maximum buffer size while accessing `req.form_body` or `req.json_body` content.</li><li>Valid units are: `KiB, MiB, GiB`.</li><li>Default limit is `64MiB`.</li></ul> |
+| `request_body_limit`               | <ul><li>Optional.</li><li>Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.</li><li>Valid units are: `KiB, MiB, GiB`.</li><li>Default limit is `64MiB`.</li></ul> |
 | `path`                             | <ul><li>Optional.</li><li>Changeable part of the upstream URL.</li><li>Changes the path suffix of the outgoing request.</li></ul> |
 | `access_control`                   | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Endpoint Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 | [Modifier](#modifier)              | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
@@ -694,11 +698,11 @@ definitions {
     set_query_params = {
       string = "string"
       multi = ["foo", "bar"]
-      "${req.headers.example}" = "yes"
+      "${request.headers.example}" = "yes"
     }
 
     add_query_params = {
-      noop = req.headers.noop
+      noop = request.headers.noop
       null = null
       empty = ""
     }
@@ -709,13 +713,13 @@ definitions {
 ### Path Parameter
 
 An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
-to access the named path parameter `section` and `project` via `req.path_param.*`.
+to access the named path parameter `section` and `project` via `request.path_params.*`.
 The values would map as following for the request path: `/app/nature/plant-a-tree/view`:
 
 | Variable                  | Value          |
 |:--------------------------|:---------------|
-| `req.path_params.section` | `nature`       |
-| `req.path_params.project` | `plant-a-tree` |
+| `request.path_params.section` | `nature`       |
+| `request.path_params.project` | `plant-a-tree` |
 
 ### Access Control
 
@@ -820,11 +824,11 @@ mandatory *label*.
 | `sp_entity_id`             | <ul><li>&#9888; Mandatory.</li><li>The Service Provider's entity ID.</li></ul> |
 | `array_attributes`         | <ul><li>Optional.</li><li>A list of assertion attributes that may have several values.</li></ul> |
 
-Some information from the assertion consumed at the ACS endpoint is provided in the context at `req.ctx.<label>`:
+Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 
-* the `NameID` of the assertion's `Subject` (`req.ctx.<label>.sub`)
-* the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `req.ctx.<label>.exp`)
-* the attributes (`req.ctx.<label>.attributes.<name>`)
+* the `NameID` of the assertion's `Subject` (`request.context.<label>.sub`)
+* the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
+* the attributes (`request.context.<label>.attributes.<name>`)
 
 ### Settings Block
 
@@ -841,7 +845,7 @@ gateway instance.
 | `default_port`      | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
 | `log_format`        | Switch for tab/field based colored view or json log lines | `common` |
 | `xfh`               | Option to use the `X-Forwarded-Host` header as the request host | `false` |
-| `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `req.id` and related log fields | `common` |
+| `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields | `common` |
 | `secure_cookies`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. | `""` |
 
 ### Health-Check
@@ -905,7 +909,7 @@ api "my_api" {
         # outgoing request: http://accountservice:8080/user/brenda/info
         proxy {
           backend {
-            path = "/user/${req.param.id}/info"
+            path = "/user/${request.param.id}/info"
             origin = "http://accountservice:8080"
           }
         }
@@ -958,10 +962,10 @@ server "ac-example" {
 }
 
 definitions {
-  basic_auth "ac1" { ... }
-  jwt "ac2" { ... }
-  jwt "ac3" { ... }
-  jwt "ac4" { ... }
+  basic_auth "ac1" { }
+  jwt "ac2" { }
+  jwt "ac3" { }
+  jwt "ac4" { }
 }
 ```
 

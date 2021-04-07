@@ -53,14 +53,14 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 	logger := log.WithContext(context.Background())
 
 	tests := []testCase{
-		{"GET use req.Header", `
+		{"GET use request.Header", `
 		set_response_headers = {
-			X-Method = req.method
+			X-Method = request.method
 		}`, http.MethodGet, nil, header{"X-Method": http.MethodGet}},
-		{"POST use req.form_body", `
+		{"POST use request.form_body", `
 		set_response_headers = {
-			X-Method = req.method
-			X-Form_Body = req.form_body.foo
+			X-Method = request.method
+			X-Form_Body = request.form_body.foo
 		}`, http.MethodPost, strings.NewReader(`foo=bar`), header{
 			"X-Method":    http.MethodPost,
 			"X-Form_Body": "bar",
@@ -164,17 +164,17 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		{"method /w body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
-			x-test = req.json_body.foo
+			x-test = request.json_body.foo
 		}`, defaultMethods, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
 		{"method /w body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
-			x-test = req.json_body.foo
+			x-test = request.json_body.foo
 		}`, []string{http.MethodTrace, http.MethodHead}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
 		{"method /wo body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
-			x-test = req.json_body.foo
+			x-test = request.json_body.foo
 		}`, append(defaultMethods, http.MethodTrace),
 			test.Header{"Content-Type": "application/json"}, "", want{req: test.Header{"x-test": ""}}},
 	}
@@ -258,16 +258,16 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"no eval", `path = "/"`, test.Header{}},
-		{"json_body client field", `set_response_headers = { "x-client" = "my-val-x-${req.json_body.client}" }`,
+		{"json_body client field", `set_response_headers = { "x-client" = "my-val-x-${request.json_body.client}" }`,
 			test.Header{
 				"x-client": "my-val-x-true",
 			}},
 		{"json_body non existing field", `set_response_headers = {
-"${beresp.json_body.not-there}" = "my-val-0-${beresp.json_body.origin}"
-"${req.json_body.client}-my-val-a" = "my-val-b-${beresp.json_body.client}"
+"${backend_responses.default.json_body.not-there}" = "my-val-0-${backend_responses.default.json_body.origin}"
+"${request.json_body.client}-my-val-a" = "my-val-b-${backend_responses.default.json_body.client}"
 }`,
 			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
-		{"json_body null value", `set_response_headers = { "x-null" = "${beresp.json_body.nil}" }`, test.Header{"x-null": ""}},
+		{"json_body null value", `set_response_headers = { "x-null" = "${backend_responses.default.json_body.nil}" }`, test.Header{"x-null": ""}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)

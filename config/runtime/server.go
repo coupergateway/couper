@@ -329,7 +329,7 @@ func NewServerConfiguration(
 				}}
 			}
 
-			// TODO: determine req/beresp.body access in this context (all including backend) or for now:
+			// TODO: determine request/backend_responses.*.body access in this context (all including backend) or for now:
 			bufferOpts := eval.MustBuffer(endpointConf.Remain)
 			if len(proxies)+len(requests) > 1 { // also buffer with more possible results
 				bufferOpts |= eval.BufferResponse

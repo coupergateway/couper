@@ -44,41 +44,41 @@ func TestNewHTTPContext(t *testing.T) {
 		want      http.Header
 	}{
 		{"Variables / POST", http.MethodPost, http.Header{"Content-Type": {"application/x-www-form-urlencoded"}}, bytes.NewBufferString(`user=hans`), "", baseCtx, `
-					post = req.form_body.user[0]
-					method = req.method
+					post = request.form_body.user[0]
+					method = request.method
 		`, http.Header{"post": {"hans"}, "method": {http.MethodPost}}},
 		{"Variables / Query", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "?name=peter", baseCtx, `
-					query = req.query.name[0]
-					method = req.method
-					ua = req.headers.user-agent
+					query = request.query.name[0]
+					method = request.method
+					ua = request.headers.user-agent
 				`, http.Header{"query": {"peter"}, "method": {http.MethodGet}, "ua": {"test/v1"}}},
 		{"Variables / Headers", http.MethodGet, http.Header{"User-Agent": {"test/v1"}}, nil, "", baseCtx, `
-					ua = req.headers.user-agent
-					method = req.method
+					ua = request.headers.user-agent
+					method = request.method
 				`, http.Header{"ua": {"test/v1"}, "method": {http.MethodGet}}},
 		{"Variables / PATCH /w json body", http.MethodPatch, http.Header{"Content-Type": {"application/json;charset=utf-8"}}, bytes.NewBufferString(`{
 			"obj_slice": [
 				{"no_title": 123},
 				{"title": "success"}
 			]}`), "", baseCtx, `
-			method = req.method
-			title = req.json_body.obj_slice[1].title
+			method = request.method
+			title = request.json_body.obj_slice[1].title
 		`, http.Header{"title": {"success"}, "method": {http.MethodPatch}}},
 		{"Variables / PATCH /w json body /wo CT header", http.MethodPatch, nil, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
-			method = req.method
-			title = req.json_body.obj_slice
+			method = request.method
+			title = request.json_body.obj_slice
 		`, http.Header{"method": {http.MethodPatch}}},
 		{"Variables / GET /w json body", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
-			method = req.method
-			title = req.json_body.slice
+			method = request.method
+			title = request.json_body.slice
 		`, http.Header{"title": {"1", "2", "3"}, "method": {http.MethodGet}}},
 		{"Variables / GET /w json body & missing attribute", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"slice": [1, 2, 3]}`), "", baseCtx, `
-			method = req.method
-			title = req.json_body.slice.foo
+			method = request.method
+			title = request.json_body.slice.foo
 		`, http.Header{"method": {http.MethodGet}}},
 		{"Variables / GET /w json body & null value", http.MethodGet, http.Header{"Content-Type": {"application/json"}}, bytes.NewBufferString(`{"json": null}`), "", baseCtx, `
-			method = req.method
-			title = req.json_body.json
+			method = request.method
+			title = request.json_body.json
 		`, http.Header{"method": {http.MethodGet}, "title": nil}},
 	}
 

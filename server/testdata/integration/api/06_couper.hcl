@@ -6,7 +6,7 @@ server "multi-api" {
       proxy {
         backend {
           origin = env.COUPER_TEST_BACKEND_ADDR
-          path_prefix = "/${req.headers.x-val}/xxx/"
+          path_prefix = "/${request.headers.x-val}/xxx/"
         }
       }
     }
@@ -15,7 +15,7 @@ server "multi-api" {
       proxy {
         backend {
           origin = env.COUPER_TEST_BACKEND_ADDR
-          path_prefix = "/${req.headers.x-val}/xxx/"
+          path_prefix = "/${request.headers.x-val}/xxx/"
         }
       }
     }
@@ -24,7 +24,7 @@ server "multi-api" {
         backend {
           origin = env.COUPER_TEST_BACKEND_ADDR
           path = "/api/**"
-          path_prefix = "/${req.headers.x-val}/xxx/"
+          path_prefix = "/${request.headers.x-val}/xxx/"
         }
       }
     }
