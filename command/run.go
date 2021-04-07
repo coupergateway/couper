@@ -40,7 +40,7 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 
 	if config.Settings.SecureCookies != "" &&
 		config.Settings.SecureCookies != server.SecureCookiesStrip {
-		return fmt.Errorf("Invalid value for the -secure-cookies flag given. Only 'strip' is allowed.")
+		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
 	}
 
 	env.Decode(config.Settings)
