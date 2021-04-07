@@ -24,7 +24,7 @@ func NewJSONColorFormatter(parent string, pretty bool) logrus.Formatter {
 	}
 }
 
-var keyRegex = regexp.MustCompile(`"(\w+)":`)
+var keyRegex = regexp.MustCompile(`"([A-Za-z0-9-_]+)":`)
 
 func (jcf *JSONColorFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	b, err := jcf.inner.Format(entry)
