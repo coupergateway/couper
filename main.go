@@ -48,33 +48,40 @@ func realmain(arguments []string) int {
 		return 0
 	}
 
-	var filePath, logFormat string
-	var logPretty bool
-	var fileWatch bool
+	type globalFlags struct {
+		FilePath  string `env:"config_file"`
+		FileWatch bool   `env:"config_watch"`
+		LogFormat string `env:"log_format"`
+		LogPretty bool `env:"log_pretty"`
+	}
+	var flags globalFlags
+
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
-	set.StringVar(&filePath, "f", config.DefaultFilename, "-f ./couper.hcl")
-	set.StringVar(&logFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
-	set.BoolVar(&logPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
-	set.BoolVar(&fileWatch, "watch", fileWatch, "-watch")
+	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./couper.hcl")
+	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
+	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
+	set.BoolVar(&flags.LogPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
 	err := set.Parse(args.Filter(set))
 	if err != nil {
-		newLogger(logFormat, logPretty).Error(err)
+		newLogger(flags.LogFormat, flags.LogPretty).Error(err)
 		return 1
 	}
 
-	confFile, err := configload.LoadFile(filePath)
+	env.Decode(&flags)
+
+	confFile, err := configload.LoadFile(flags.FilePath)
 	if err != nil {
-		newLogger(logFormat, logPretty).Error(err)
+		newLogger(flags.LogFormat, flags.LogPretty).Error(err)
 		return 1
 	}
 
 	// The file gets initialized with the default settings, flag args are preferred over file settings.
 	// Only override file settings if the flag value differ from the default.
-	if logFormat != config.DefaultSettings.LogFormat {
-		confFile.Settings.LogFormat = logFormat
+	if flags.LogFormat != config.DefaultSettings.LogFormat {
+		confFile.Settings.LogFormat = flags.LogFormat
 	}
-	if logPretty != config.DefaultSettings.LogPretty {
-		confFile.Settings.LogPretty = logPretty
+	if flags.LogPretty != config.DefaultSettings.LogPretty {
+		confFile.Settings.LogPretty = flags.LogPretty
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogPretty)
 
@@ -85,71 +92,49 @@ func realmain(arguments []string) int {
 	}
 	logger.Infof("working directory: %s", wd)
 
-	if fileWatch {
-		logger.WithFields(fields).Info("watching configuration file")
-		errCh := make(chan error, 1)
-		reloadCh := make(chan struct{}, 1)
-		watchContext, cancelFn := context.WithCancel(ctx)
-		defer cancelFn()
-
-		go func() {
-			errCh <- command.NewCommand(watchContext, cmd).Execute(args, confFile, logger)
-		}()
-
-		go func() {
-			ticker := time.NewTicker(time.Second / 4)
-			defer ticker.Stop()
-			var lastChange time.Time
-			for {
-				<-ticker.C
-				fileInfo, fileErr := os.Stat(confFile.Filename)
-				if fileErr != nil {
-					logger.WithFields(fields).Error(fileErr)
-					continue
-				}
-
-				if lastChange.IsZero() { // first round
-					lastChange = fileInfo.ModTime()
-					continue
-				}
-
-				if fileInfo.ModTime().After(lastChange) {
-					reloadCh <- struct{}{}
-				}
-				lastChange = fileInfo.ModTime()
-			}
-		}()
-		for {
-			select {
-			case err = <-errCh:
-				if err != nil {
-					logger.Error(err)
-					return 1
-				}
-				return 0
-			case <-reloadCh:
-				logger.WithFields(fields).Info("reloading couper configuration")
-				cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
-				if reloadErr != nil {
-					logger.WithFields(fields).Errorf("reload failed: %v", reloadErr)
-					continue
-				}
-				confFile = cf
-				cancelFn()                                       // (hard) shutdown running couper
-				<-errCh                                          // drain current error due to cancel and ensure closed ports
-				watchContext, cancelFn = context.WithCancel(ctx) // replace previous pair
-				go func() {
-					errCh <- command.NewCommand(watchContext, cmd).Execute(args, confFile, logger)
-				}()
-			}
-		}
-	} else {
+	if !flags.FileWatch {
 		if err = command.NewCommand(ctx, cmd).Execute(args, confFile, logger); err != nil {
 			logger.Error(err)
 			return 1
 		}
+		return 0
 	}
-	return 0
+
+	logger.WithFields(fields).Info("watching configuration file")
+	errCh := make(chan error, 1)
+
+	execCmd, restartSignal := newRestartableCommand(ctx, cmd)
+	go func() {
+		errCh <- execCmd.Execute(args, confFile, logger)
+	}()
+
+	reloadCh := watchConfigFile(confFile.Filename, logger)
+	for {
+		select {
+		case err = <-errCh:
+			if err != nil {
+				logger.Error(err)
+				return 1
+			}
+			return 0
+		case <-reloadCh:
+			logger.WithFields(fields).Info("reloading couper configuration")
+			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
+			if reloadErr != nil {
+				logger.WithFields(fields).Errorf("reload failed: %v", reloadErr)
+				continue
+			}
+			confFile = cf
+			restartSignal <- struct{}{}                              // (hard) shutdown running couper
+			<-errCh                                                  // drain current error due to cancel and ensure closed ports
+			execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
+			go func() {
+				// logger settings update gets ignored at this point
+				// have to be locked for an update, skip this feature for now
+				errCh <- execCmd.Execute(args, confFile, logger)
+			}()
+		}
+	}
 }
 
 // newLogger creates a log instance with the configured formatter.
@@ -179,4 +164,42 @@ func newLogger(format string, pretty bool) *logrus.Entry {
 	}
 	logger.Level = logrus.DebugLevel
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
+}
+
+func watchConfigFile(name string, logger logrus.FieldLogger) <-chan struct{} {
+	reloadCh := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(time.Second / 4)
+		defer ticker.Stop()
+		var lastChange time.Time
+		for {
+			<-ticker.C
+			fileInfo, fileErr := os.Stat(name)
+			if fileErr != nil {
+				logger.WithFields(fields).Error(fileErr)
+				continue
+			}
+
+			if lastChange.IsZero() { // first round
+				lastChange = fileInfo.ModTime()
+				continue
+			}
+
+			if fileInfo.ModTime().After(lastChange) {
+				reloadCh <- struct{}{}
+			}
+			lastChange = fileInfo.ModTime()
+		}
+	}()
+	return reloadCh
+}
+
+func newRestartableCommand(ctx context.Context, cmd string) (command.Cmd, chan<- struct{}) {
+	signal := make(chan struct{})
+	watchContext, cancelFn := context.WithCancel(ctx)
+	go func() {
+		<-signal
+		cancelFn()
+	}()
+	return command.NewCommand(watchContext, cmd), signal
 }
