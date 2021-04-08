@@ -50,16 +50,20 @@ func realmain(arguments []string) int {
 	}
 
 	type globalFlags struct {
-		FilePath  string `env:"file"`
-		FileWatch bool   `env:"watch"`
-		LogFormat string `env:"log_format"`
-		LogPretty bool   `env:"log_pretty"`
+		FilePath            string        `env:"file"`
+		FileWatch           bool          `env:"watch"`
+		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
+		FileWatchRetries    int           `env:"watch_retries"`
+		LogFormat           string        `env:"log_format"`
+		LogPretty           bool          `env:"log_pretty"`
 	}
 	var flags globalFlags
 
 	set := flag.NewFlagSet("global", flag.ContinueOnError)
 	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./couper.hcl")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
+	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 500ms")
+	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 5")
 	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
 	set.BoolVar(&flags.LogPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
 	err := set.Parse(args.Filter(set))
@@ -101,8 +105,12 @@ func realmain(arguments []string) int {
 		return 0
 	}
 
-	logger.WithFields(fields).Info("watching configuration file")
+	logger.WithField("watch", logrus.Fields{
+		"retry-delay": flags.FileWatchRetryDelay.String(),
+		"max-retries": flags.FileWatchRetries,
+	}).Info("watching configuration file")
 	errCh := make(chan error, 1)
+	errRetries := 0
 
 	execCmd, restartSignal := newRestartableCommand(ctx, cmd)
 	go func() {
@@ -115,15 +123,21 @@ func realmain(arguments []string) int {
 		case err = <-errCh:
 			if err != nil {
 				if netErr, ok := err.(*net.OpError); ok {
-					if netErr.Op == "listen" {
-						logger.Errorf("retry due to listen error: %v", netErr)
+					if netErr.Op == "listen" && errRetries < flags.FileWatchRetries {
+						errRetries++
+						logger.Errorf("retry %d due to listen error: %v", errRetries, netErr)
+
 						// configuration load succeeded at this point, just restart the command
 						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
-						time.Sleep(time.Millisecond * 100)
+						time.Sleep(flags.FileWatchRetryDelay)
+
 						go func() {
 							errCh <- execCmd.Execute(args, confFile, logger)
 						}()
 						continue
+					} else if errRetries >= flags.FileWatchRetries {
+						logger.Errorf("giving up after %d retries: %v", errRetries, netErr)
+						return 1
 					}
 				}
 				logger.Error(err)
@@ -131,21 +145,25 @@ func realmain(arguments []string) int {
 			}
 			return 0
 		case <-reloadCh:
-			logger.WithFields(fields).Info("reloading couper configuration")
+			errRetries = 0 // reset
+			logger.Info("reloading couper configuration")
+
 			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
 			if reloadErr != nil {
-				logger.WithFields(fields).Errorf("reload failed: %v", reloadErr)
+				logger.Errorf("reload failed: %v", reloadErr)
+				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
 			// dry run configuration
 			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), nil)
 			if reloadErr != nil {
-				logger.WithFields(fields).Errorf("reload failed: %v", reloadErr)
+				logger.Errorf("reload failed: %v", reloadErr)
+				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
 
 			confFile = cf
-			restartSignal <- struct{}{}                              // (hard) shutdown running couper
+			restartSignal <- struct{}{}                              // shutdown running couper
 			<-errCh                                                  // drain current error due to cancel and ensure closed ports
 			execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
 			go func() {
