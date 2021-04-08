@@ -50,8 +50,8 @@ func realmain(arguments []string) int {
 	}
 
 	type globalFlags struct {
-		FilePath  string `env:"config_file"`
-		FileWatch bool   `env:"config_watch"`
+		FilePath  string `env:"file"`
+		FileWatch bool   `env:"watch"`
 		LogFormat string `env:"log_format"`
 		LogPretty bool `env:"log_pretty"`
 	}
