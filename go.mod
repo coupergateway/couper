@@ -5,10 +5,12 @@ go 1.16
 require (
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
+	github.com/fatih/color v1.10.0
 	github.com/getkin/kin-openapi v0.49.0
 	github.com/hashicorp/hcl/v2 v2.9.1
 	github.com/rs/xid v1.2.1
 	github.com/russellhaering/gosaml2 v0.6.0
+	github.com/russellhaering/goxmldsig v1.1.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/zclconf/go-cty v1.8.0

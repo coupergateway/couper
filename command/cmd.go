@@ -14,10 +14,10 @@ type Cmd interface {
 	Usage() string
 }
 
-func NewCommand(cmd string) Cmd {
+func NewCommand(ctx context.Context, cmd string) Cmd {
 	switch strings.ToLower(cmd) {
 	case "run":
-		return NewRun(ContextWithSignal(context.Background()))
+		return NewRun(ContextWithSignal(ctx))
 	case "version":
 		return NewVersion()
 	default:
