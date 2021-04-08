@@ -146,12 +146,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["timings"] = timingResults
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
-	var entry *logrus.Entry
-	if u.config.ParentFieldKey != "" {
-		entry = u.log.WithField(u.config.ParentFieldKey, fields)
-	} else {
-		entry = u.log.WithFields(logrus.Fields(fields))
-	}
+	entry := u.log.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
 
 	if (beresp != nil && beresp.StatusCode == http.StatusInternalServerError) || err != nil {

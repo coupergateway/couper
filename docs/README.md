@@ -844,6 +844,7 @@ gateway instance.
 | `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). | `false` |
 | `default_port`      | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list | `8080` |
 | `log_format`        | Switch for tab/field based colored view or json log lines | `common` |
+| `log_pretty`        | Global option for `json` log format which pretty prints with basic key coloring | `false` |
 | `xfh`               | Option to use the `X-Forwarded-Host` header as the request host | `false` |
 | `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields | `common` |
 | `secure_cookies`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. | `""` |

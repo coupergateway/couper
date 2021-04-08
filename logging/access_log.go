@@ -136,12 +136,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		fields["code"] = i
 	}
 
-	var entry *logrus.Entry
-	if log.conf.ParentFieldKey != "" {
-		entry = log.logger.WithField(log.conf.ParentFieldKey, fields)
-	} else {
-		entry = log.logger.WithFields(logrus.Fields(fields))
-	}
+	entry := log.logger.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
 
 	if statusRecorder.status == http.StatusInternalServerError || err != nil {
