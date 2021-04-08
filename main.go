@@ -53,7 +53,7 @@ func realmain(arguments []string) int {
 		FilePath  string `env:"file"`
 		FileWatch bool   `env:"watch"`
 		LogFormat string `env:"log_format"`
-		LogPretty bool `env:"log_pretty"`
+		LogPretty bool   `env:"log_pretty"`
 	}
 	var flags globalFlags
 
