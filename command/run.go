@@ -56,7 +56,9 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 
 	serverList, listenCmdShutdown := server.NewServerList(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
 	for _, srv := range serverList {
-		srv.Listen()
+		if listenErr := srv.Listen(); listenErr != nil {
+			return listenErr
+		}
 	}
 	listenCmdShutdown()
 	return nil

@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"io/ioutil"
+	"net"
 	"os"
 	"time"
 
@@ -113,6 +114,18 @@ func realmain(arguments []string) int {
 		select {
 		case err = <-errCh:
 			if err != nil {
+				if netErr, ok := err.(*net.OpError); ok {
+					if netErr.Op == "listen" {
+						logger.Errorf("retry due to listen error: %v", netErr)
+						// configuration load succeeded at this point, just restart the command
+						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
+						time.Sleep(time.Millisecond * 100)
+						go func() {
+							errCh <- execCmd.Execute(args, confFile, logger)
+						}()
+						continue
+					}
+				}
 				logger.Error(err)
 				return 1
 			}
