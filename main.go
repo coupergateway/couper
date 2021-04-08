@@ -125,7 +125,7 @@ func realmain(arguments []string) int {
 				if netErr, ok := err.(*net.OpError); ok {
 					if netErr.Op == "listen" && errRetries < flags.FileWatchRetries {
 						errRetries++
-						logger.Errorf("retry %d due to listen error: %v", errRetries, netErr)
+						logger.Errorf("retry %d/%d due to listen error: %v", errRetries, flags.FileWatchRetries, netErr)
 
 						// configuration load succeeded at this point, just restart the command
 						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
