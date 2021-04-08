@@ -122,13 +122,13 @@ func (s *HTTPServer) Addr() string {
 }
 
 // Listen initiates the configured http handler and start listing on given port.
-func (s *HTTPServer) Listen() {
+func (s *HTTPServer) Listen() error {
 	if s.srv.Addr == "" {
 		s.srv.Addr = ":http"
 	}
 	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
-		s.log.Fatal(err)
+		return err
 	}
 
 	s.listener = ln
@@ -141,6 +141,7 @@ func (s *HTTPServer) Listen() {
 			s.log.Errorf("%s: %v", ln.Addr().String(), err.Error())
 		}
 	}()
+	return nil
 }
 
 // Close closes the listener
