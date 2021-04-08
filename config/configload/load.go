@@ -34,6 +34,7 @@ const (
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 var envContext *hcl.EvalContext
+var configBytes []byte
 
 func init() {
 	envContext = eval.NewContext(nil).HCLContext()
@@ -76,6 +77,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 
 	envContext = couperConfig.Context.HCLContext()
+	configBytes = src[:]
 
 	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
 	content, diags := body.Content(schema)
@@ -105,6 +107,10 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 							Summary:  fmt.Sprintf("duplicate backend name: %q", name),
 							Subject:  &be.LabelRanges[0],
 						}}
+					}
+
+					if err := uniqueAttributeKey(be.Body); err != nil {
+						return nil, err
 					}
 
 					definedBackends = append(definedBackends, NewBackend(name, be.Body))
@@ -259,6 +265,10 @@ func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, err
 
 func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error {
 	for _, endpoint := range endpoints {
+		if err := uniqueAttributeKey(endpoint.Remain); err != nil {
+			return err
+		}
+
 		endpointContent := bodyToContent(endpoint.Remain)
 
 		proxies := endpointContent.Blocks.OfType(proxy)
@@ -289,7 +299,11 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			var err error
+			err := uniqueAttributeKey(proxyConfig.Remain)
+			if err != nil {
+				return err
+			}
+
 			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 			if err != nil {
 				return err
@@ -337,7 +351,11 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 
 			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
 
-			var err error
+			err := uniqueAttributeKey(reqConfig.Remain)
+			if err != nil {
+				return err
+			}
+
 			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 			if err != nil {
 				return err
@@ -399,36 +417,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		}
 	}
 
-	return nil
-}
-
-func validLabelName(name string, hr *hcl.Range) error {
-	if !regexProxyRequestLabel.MatchString(name) {
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "proxy or request label contains unallowed character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'",
-			Subject:  hr,
-		}}
-	}
-	return nil
-}
-
-func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
-	if _, exist := unique[name]; exist {
-		if name == defaultNameLabel {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "proxy and request labels are required and only one 'default' label is allowed",
-				Subject:  hr,
-			}}
-		}
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("proxy and request labels are required and must be unique: %q", name),
-			Subject:  hr,
-		}}
-	}
-	unique[name] = struct{}{}
 	return nil
 }
 
@@ -522,7 +510,8 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body,
 		bend = MergeBodies([]hcl.Body{bend, wrapped})
 	}
 
-	return bend, nil
+	diags := uniqueAttributeKey(bend)
+	return bend, diags
 }
 
 func createCatchAllEndpoint() *config.Endpoint {
