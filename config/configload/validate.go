@@ -20,11 +20,9 @@ func uniqueAttributeKey(body hcl.Body) error {
 		return nil
 	}
 
-	unique := make(map[string]hcl.Range)
-
 	for _, metaAttr := range meta.AttributesSchema.Attributes {
 		attr, ok := content.Attributes[metaAttr.Name]
-		if !strings.HasPrefix(metaAttr.Name, "set_") || !ok {
+		if !strings.HasPrefix(metaAttr.Name, "set_") && !strings.HasPrefix(metaAttr.Name, "add_") || !ok {
 			continue
 		}
 
@@ -32,6 +30,9 @@ func uniqueAttributeKey(body hcl.Body) error {
 		if !ok {
 			fmt.Printf("%#v", attr.Expr)
 		}
+
+		unique := make(map[string]hcl.Range)
+
 		for _, item := range expr.Items {
 			keyRange := item.KeyExpr.Range()
 			if keyRange.CanSliceBytes(configBytes) {
