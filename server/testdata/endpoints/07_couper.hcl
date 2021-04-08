@@ -7,7 +7,7 @@ server "protected" {
     endpoint "/{path}" {
       proxy {
         backend {
-          path   = req.path_params.path
+          path   = request.path_params.path
           origin = env.COUPER_TEST_BACKEND_ADDR
         }
       }

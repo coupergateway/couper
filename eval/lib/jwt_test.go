@@ -371,8 +371,8 @@ func TestJwtSignDynamic(t *testing.T) {
 					key = "$3cRe4"
 					ttl = "1h"
 					claims = {
-						x-method = req.method
-						x-status = beresp.status
+						x-method = request.method
+						x-status = backend_responses.default.status
 						exp = 1234567890
 					}
 				}
@@ -394,8 +394,8 @@ func TestJwtSignDynamic(t *testing.T) {
 					key = "$3cRe4"
 					ttl = "60.6s"
 					claims = {
-						x-method = req.method
-						x-status = beresp.status
+						x-method = request.method
+						x-status = backend_responses.default.status
 					}
 				}
 			}

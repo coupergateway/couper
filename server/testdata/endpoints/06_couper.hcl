@@ -9,7 +9,7 @@ server "request-limit" {
       request_body_limit = "1"
       response {
         status = 204
-        body = req.json_body
+        body = request.json_body
       }
     }
   }

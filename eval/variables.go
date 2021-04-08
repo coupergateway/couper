@@ -1,13 +1,11 @@
 package eval
 
 const (
-	BackendRequest   = "bereq"
-	BackendResponse  = "beresp"
-	BackendRequests  = "bereqs"
-	BackendResponses = "beresps"
+	BackendRequests  = "backend_requests"
+	BackendResponses = "backend_responses"
 	BackendDefault   = "default"
-	ClientRequest    = "req"
-	CTX              = "ctx"
+	ClientRequest    = "request"
+	CTX              = "context"
 	Cookies          = "cookies"
 	Endpoint         = "endpoint"
 	Environment      = "env"

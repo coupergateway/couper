@@ -45,7 +45,7 @@ func MustBuffer(body hcl.Body) BufferOption {
 			}
 
 			rootName := traversal.RootName()
-			if rootName != ClientRequest && rootName != BackendResponse {
+			if rootName != ClientRequest && rootName != BackendResponses {
 				continue
 			}
 
@@ -60,7 +60,7 @@ func MustBuffer(body hcl.Body) BufferOption {
 				switch rootName {
 				case ClientRequest:
 					result |= BufferRequest
-				case BackendResponse:
+				case BackendResponses:
 					result |= BufferResponse
 				}
 			}

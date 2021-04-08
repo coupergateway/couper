@@ -24,7 +24,7 @@ server "acs" {
         backend "test" {
           set_request_headers = {
             auth = ["ba1", "ba2"]
-            Authorization = req.headers.authorization # proxy blacklist
+            Authorization = request.headers.authorization # proxy blacklist
           }
         }
       }
@@ -67,7 +67,7 @@ server "acs" {
       backend "test" {
         set_request_headers = {
           auth = ["ba1", "ba4"]
-          Authorization = req.headers.authorization # proxy blacklist
+          Authorization = request.headers.authorization # proxy blacklist
         }
       }
     }
@@ -78,7 +78,7 @@ server "acs" {
     access_control = ["JWTToken"]
     response {
       headers = {
-        x-jwt-sub = req.ctx.JWTToken.sub
+        x-jwt-sub = request.context.JWTToken.sub
       }
     }
   }
@@ -107,7 +107,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
     path = "/anything"
     set_request_headers = {
-      Authorization: req.headers.authorization
+      Authorization: request.headers.authorization
     }
   }
 }
