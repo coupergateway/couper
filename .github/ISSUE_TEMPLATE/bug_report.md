@@ -13,10 +13,18 @@ A clear and concise description of what the bug is.
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Which Couper version? Run `couper version` or `docker run --entrypoint=/couper avenga/couper version`
+
 2. Provide your configuration file `*.hcl`. Remove sensitive data.
+
+```hcl
+
+```
+
 3. Provide a `curl` call for reproduction
   3.1 You may use your browsers developer console and hit `copy as curl`.
+
 4. See an error response or error log.
+
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.

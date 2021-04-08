@@ -1,7 +1,36 @@
 # Couper Changelog
 
-<a name="v0.8"></a>
-## [v0.8](https://github.com/avenga/couper/compare/0.7.0...v0.8)
+<a name="0.9"></a>
+## [0.9](https://github.com/avenga/couper/compare/0.8...0.9)
+
+> 2021-04-08
+
+### Bug Fixes
+
+* Log option for `json` formatted logs: ([#176](https://github.com/avenga/couper/issues/176))
+  * configured parent key applies to (almost) all log fields 
+
+### Change
+
+* Change variable names to more user-friendly ones ([#180](https://github.com/avenga/couper/issues/180)):
+  * `req` -> `request`
+  * `ctx` -> `context`
+  * `bereq` -> *removed*
+  * `beresp` -> *removed*
+  * `bereqs` -> `backend_requests`
+  * `beresps` -> `backend_responses`
+* Log option for parent fields are 'global' now ([#176](https://github.com/avenga/couper/issues/176))
+  * `COUPER_ACCESS_LOG_PARENT_FIELD`, `COUPER_BACKEND_LOG_PARENT_FIELD` -> `COUPER_LOG_PARENT_FIELD`
+
+### Features
+
+* watch option for given Couper configuration file ([#24](https://github.com/avenga/couper/issues/24))
+  * use `-watch` or via environment `COUPER_WATCH=true` to watch for file changes
+* log option pretty print for `json` log-format ([#179](https://github.com/avenga/couper/pull/179))
+  * `-log-pretty` to enable formatted and key colored logs
+
+<a name="0.8"></a>
+## [0.8](https://github.com/avenga/couper/compare/0.7.0...v0.8)
 
 > 2021-04-06
 
