@@ -137,6 +137,13 @@ func realmain(arguments []string) int {
 				logger.WithFields(fields).Errorf("reload failed: %v", reloadErr)
 				continue
 			}
+			// dry run configuration
+			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), nil)
+			if reloadErr != nil {
+				logger.WithFields(fields).Errorf("reload failed: %v", reloadErr)
+				continue
+			}
+
 			confFile = cf
 			restartSignal <- struct{}{}                              // (hard) shutdown running couper
 			<-errCh                                                  // drain current error due to cancel and ensure closed ports
