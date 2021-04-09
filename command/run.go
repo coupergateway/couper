@@ -18,23 +18,31 @@ var _ Cmd = &Run{}
 // Run starts the frontend gateway server and listen
 // for requests on the configured hosts and ports.
 type Run struct {
-	context context.Context
+	context  context.Context
+	flagSet  *flag.FlagSet
+	settings *config.Settings
 }
 
 func NewRun(ctx context.Context) *Run {
-	return &Run{context: ctx}
+	settings := config.DefaultSettings
+	set := flag.NewFlagSet("run", flag.ContinueOnError)
+	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
+	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
+	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
+	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
+	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
+	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
+	return &Run{
+		context:  ctx,
+		flagSet:  set,
+		settings: &settings,
+	}
 }
 
 func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
-	// TODO: Extract and execute flagSet & env handling in a more generic way for future commands.
-	set := flag.NewFlagSet("settings", flag.ContinueOnError)
-	set.StringVar(&config.Settings.HealthPath, "health-path", config.Settings.HealthPath, "-health-path /healthz")
-	set.IntVar(&config.Settings.DefaultPort, "p", config.Settings.DefaultPort, "-p 8080")
-	set.BoolVar(&config.Settings.XForwardedHost, "xfh", config.Settings.XForwardedHost, "-xfh")
-	set.BoolVar(&config.Settings.NoProxyFromEnv, "no-proxy-from-env", config.Settings.NoProxyFromEnv, "-no-proxy-from-env")
-	set.StringVar(&config.Settings.RequestIDFormat, "request-id-format", config.Settings.RequestIDFormat, "-request-id-format uuid4")
-	set.StringVar(&config.Settings.SecureCookies, "secure-cookies", config.Settings.SecureCookies, "-secure-cookies strip")
-	if err := set.Parse(args.Filter(set)); err != nil {
+	*r.settings = *config.Settings
+
+	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
 		return err
 	}
 
@@ -43,7 +51,9 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
 	}
 
-	env.Decode(config.Settings)
+	// Some remapping due to flag set pre-definition
+	env.Decode(r.settings)
+	config.Settings = r.settings
 
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
@@ -64,6 +74,6 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 	return nil
 }
 
-func (r Run) Usage() string {
-	panic("implement me")
+func (r Run) Usage() {
+	r.flagSet.Usage()
 }

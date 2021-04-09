@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/command"
@@ -36,19 +37,6 @@ func realmain(arguments []string) int {
 	args := command.NewArgs(arguments)
 	ctx := context.Background()
 
-	if len(args) == 0 || command.NewCommand(ctx, args[0]) == nil {
-		command.Help()
-		return 1
-	}
-
-	cmd := args[0]
-	args = args[1:]
-
-	if cmd == "version" { // global options are not required, fast exit.
-		_ = command.NewCommand(ctx, cmd).Execute(args, nil, nil)
-		return 0
-	}
-
 	type globalFlags struct {
 		FilePath            string        `env:"file"`
 		FileWatch           bool          `env:"watch"`
@@ -59,19 +47,38 @@ func realmain(arguments []string) int {
 	}
 	var flags globalFlags
 
-	set := flag.NewFlagSet("global", flag.ContinueOnError)
-	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./couper.hcl")
+	set := flag.NewFlagSet("global options", flag.ContinueOnError)
+	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./my-path/couper.hcl")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
-	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 500ms")
-	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 5")
-	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=common")
+	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
+	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
+	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=json")
 	set.BoolVar(&flags.LogPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
+
+	if len(args) == 0 || command.NewCommand(ctx, args[0]) == nil {
+		command.Synopsis()
+		set.Usage()
+		return 1
+	}
+
+	cmd := args[0]
+	args = args[1:]
+
+	if cmd != "run" { // global options are not required atm, fast exit.
+		err := command.NewCommand(ctx, cmd).Execute(args, nil, nil)
+		if err != nil {
+			set.Usage()
+			color.Red("\n%v", err)
+			return 1
+		}
+		return 0
+	}
+
 	err := set.Parse(args.Filter(set))
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogPretty).Error(err)
 		return 1
 	}
-
 	env.Decode(&flags)
 
 	confFile, err := configload.LoadFile(flags.FilePath)

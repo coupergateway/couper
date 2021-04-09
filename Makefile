@@ -1,3 +1,6 @@
+build:
+	go build -race -v -o couper main.go
+
 image:
 	docker build -t avenga/couper:latest .
 

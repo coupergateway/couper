@@ -20,6 +20,6 @@ func (v Version) Execute(_ Args, _ *config.Couper, _ *logrus.Entry) error {
 	return nil
 }
 
-func (v Version) Usage() string {
-	return "couper version"
+func (v Version) Usage() {
+	println("Usage of version:\n  version	Print current version and build information.")
 }
