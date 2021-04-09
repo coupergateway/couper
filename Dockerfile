@@ -23,4 +23,5 @@ WORKDIR /conf
 ENV COUPER_LOG_FORMAT=json
 EXPOSE 8080
 USER 1000:1000
-ENTRYPOINT ["/couper", "run"]
+ENTRYPOINT ["/couper"]
+CMD ["run"]
