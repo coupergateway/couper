@@ -258,7 +258,7 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 			log.Error(err)
 		}
 
-		if origin != "" && urlAttr.Scheme+"://"+urlAttr.Host != origin {
+		if origin != "" && urlAttr.Host != originURL.Host {
 			errctx := "url"
 			if tr := req.Context().Value(request.TokenRequest); tr != nil {
 				errctx = "token_endpoint"
@@ -283,6 +283,10 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 
 	if hostname == "" {
 		hostname = originURL.Host
+	}
+
+	if !originURL.IsAbs() || originURL.Hostname() == "" {
+		return nil, fmt.Errorf("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
 	}
 
 	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil
