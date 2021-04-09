@@ -4,24 +4,30 @@
 [![Go Report](https://goreportcard.com/badge/github.com/avenga/couper)](https://goreportcard.com/report/github.com/avenga/couper)
 ![Docker](https://github.com/avenga/couper/workflows/Docker/badge.svg)
 
-Couper is designed to support developers building and operating API-driven Web
-projects by offering security and observability functionality in a frontend gateway
-component.
+![Couper](docs/couper-logo.svg)
 
-* [Examples](https://github.com/avenga/couper-examples)
-* [Documentation](https://github.com/avenga/couper/tree/master/docs)
+**Couper** is a lightweight API gateway designed to support developers in building and operating API-driven Web projects.
 
-## Couper
+## Getting started
+
+* Check out our [examples](https://github.com/avenga/couper-examples) for a first glance.
+* The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
+* Continue with the [documentation](https://github.com/avenga/couper/tree/master/docs).
+
+
+## Features
+
+Couper …
 
 * is a proxy component connecting clients with (micro) services
 * adds security and observability to the project
 * needs no special development skills
 * is easy to configure & integrate
-* runs on Linux, Mac OS X, FreeBSD and Windows.
+* runs on Linux, Mac OS X, Windows, Docker and Kubernetes.
 
-## Key features
+Key features are
 
-* An **easy configuration** powered by [HCL 2](https://github.com/hashicorp/hcl/tree/hcl2)
+* **Easy configuration** powered by [HCL 2](https://github.com/hashicorp/hcl/tree/hcl2)
 * Exposes local and remote backend services in a consolidated frontend API
 * Operation and **observability**:
   * Timeout handling
@@ -32,14 +38,13 @@ component.
     * RS/HS 256,386,512 algorithms
     * Custom claim validation
     * pass claim values to upstream services
+   * Single Sign On with SAML2
 * Uniform **error handling** with custom templates across different backend services
   * api endpoints serving a json error response, defaults to html otherwise
-  * **SPA** support with configurable path fallbacks
+* **SPA** support with configurable path fallbacks
 
-## Quick Start
+The full list of features of Couper 1.0 is [here](FEATURES.md).
 
-* [Docker image](https://hub.docker.com/r/avenga/couper)
-* [Binary installation](https://github.com/avenga/couper/releases)
 
 ## Contributing
 
