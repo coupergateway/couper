@@ -14,14 +14,17 @@ var _ Cmd = &Help{}
 func Synopsis() { // TODO: generate from command and options list
 	println(`
 Couper usage:
-
   couper <cmd> <options>
 
 Available commands:
-
   run		Start the server with given configuration file.
-  help		Usage for given command.
   version	Print the current version and build information.
+  help		Usage for given command.
+
+Examples:
+  couper run
+  couper run -f couper.hcl
+  couper run -watch -log-format json -log-pretty -p 3000
 `)
 }
 
