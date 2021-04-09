@@ -12,7 +12,8 @@ var _ Cmd = &Help{}
 
 // Synopsis shows available commands and options.
 func Synopsis() { // TODO: generate from command and options list
-	println(`Couper usage:
+	println(`
+Couper usage:
 
   couper <cmd> <options>
 
@@ -33,15 +34,19 @@ func NewHelp(ctx context.Context) *Help {
 }
 
 func (h Help) Execute(args Args, _ *config.Couper, _ *logrus.Entry) error {
+	defer Synopsis()
 	if len(args) == 0 {
 		h.Usage()
 		return fmt.Errorf("missing command argument")
 	}
-	NewCommand(h.ctx, args[0]).Usage()
+	cmd := NewCommand(h.ctx, args[0])
+	if cmd == nil {
+		return fmt.Errorf("unknown command: %s", args[0])
+	}
+	cmd.Usage()
 	return nil
 }
 
 func (h Help) Usage() {
 	println("Usage of help:\n  help <command>	Print usage information of given command.")
-	Synopsis()
 }

@@ -67,7 +67,8 @@ func realmain(arguments []string) int {
 	if cmd != "run" { // global options are not required atm, fast exit.
 		err := command.NewCommand(ctx, cmd).Execute(args, nil, nil)
 		if err != nil {
-			color.Red("%v", err)
+			set.Usage()
+			color.Red("\n%v", err)
 			return 1
 		}
 		return 0
