@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         # build and publish in parallel: */amd64, */arm64
-        goos: [linux, darwin, freebsd, openbsd, windows]
+        goos: [linux, darwin, windows]
         goarch: [amd64, arm64]
         exclude:
           - goarch: arm64
