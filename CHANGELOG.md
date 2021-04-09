@@ -1,5 +1,24 @@
 # Couper Changelog
 
+<a name="1.0"></a> 🍾
+## [1.0](https://github.com/avenga/couper/compare/0.9...1.0)
+
+> 2021-04-09
+
+### Features
+
+* `couper help` and usage documentation ([#187](https://github.com/avenga/couper/issues/187))
+
+### Changes
+
+* Ensure unique keys for set_* and add_* attributes ([#183](https://github.com/avenga/couper/pull/183))
+* split docker entrypoint and command ([#192](https://github.com/avenga/couper/issues/192))
+
+### Bug Fixes
+
+* Fix missing `backend.origin` attribute url validation ([#191](https://github.com/avenga/couper/issues/191))
+
+
 <a name="0.9"></a>
 ## [0.9](https://github.com/avenga/couper/compare/0.8...0.9)
 
