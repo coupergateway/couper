@@ -333,6 +333,12 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
 			},
 		}},
+		{"endpoint_eval/16_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusInternalServerError, []byte("<html>1000</html>"), http.Header{"Couper-Error": {`1000 - "Server error"`}}, ""},
+			},
+		}},
 	} {
 		confPath := path.Join("testdata/integration", testcase.fileName)
 		t.Logf("#%.2d: Create Couper: %q", i+1, confPath)
