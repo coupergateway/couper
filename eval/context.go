@@ -50,7 +50,7 @@ type Context struct {
 func NewContext(src []byte) *Context {
 	envKeys := decodeEnvironmentRefs(src)
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(envKeys)
+	variables[Environment] = newCtyEnvObject(envKeys)
 
 	return &Context{
 		bufferOption: BufferRequest | BufferResponse, // TODO: eval per endpoint body route
@@ -322,17 +322,22 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(envKeys []string) cty.Value {
+func newCtyEnvObject(envKeys []string) cty.Value {
 	if len(envKeys) == 0 {
-		return cty.MapValEmpty(cty.String)
+		return cty.EmptyObjectVal
 	}
-	ctyMap := make(map[string]cty.Value)
+
+	attrs := make(map[string]cty.Value)
 	for _, key := range envKeys {
-		if _, ok := ctyMap[key]; !ok {
-			ctyMap[key] = cty.StringVal(os.Getenv(key))
+		if _, ok := attrs[key]; !ok {
+			if keyValue, exist := os.LookupEnv(key); exist {
+				attrs[key] = cty.StringVal(keyValue)
+				continue
+			}
+			attrs[key] = cty.NullVal(cty.String)
 		}
 	}
-	return cty.MapVal(ctyMap)
+	return cty.ObjectVal(attrs)
 }
 
 // Functions
@@ -356,7 +361,7 @@ func decodeEnvironmentRefs(src []byte) []string {
 	if diags.HasErrors() {
 		panic(diags)
 	}
-	needle := []byte("env")
+	needle := []byte(Environment)
 	var keys []string
 	for i, token := range tokens {
 		if token.Type == hclsyntax.TokenDot && i > 0 &&

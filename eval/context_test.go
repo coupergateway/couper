@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"testing"
 
@@ -18,6 +19,11 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 )
+
+func init() {
+	_ = os.Setenv("COUPER_TEST_VAR_SET", "")
+	_ = os.Setenv("COUPER_TEST_VAR_VALUE_SET", "value")
+}
 
 func TestNewHTTPContext(t *testing.T) {
 	newBeresp := func(br *http.Request) *http.Response {
@@ -120,5 +126,33 @@ func TestNewHTTPContext(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestEnvironmentVarMap(t *testing.T) {
+	src := []byte(`
+server {
+	endpoint "/" {
+		path = env.COUPER_TEST_VAR_SET
+		set_response_headers {
+			x-test-value = "${env.COUPER_TEST_VAR_VALUE_SET}"
+			x-test-nil = env.COUPER_TEST_VAR_NOT_SET
+		}
+	}
+}
+`)
+	evalContext := eval.NewContext(src).HCLContext()
+	envMap := evalContext.Variables[eval.Environment].AsValueMap()
+
+	if isType := envMap["COUPER_TEST_VAR_SET"].Type(); isType != cty.String {
+		t.Errorf("Expected string type for set but empty env, got: %v", isType)
+	}
+
+	if isType := envMap["COUPER_TEST_VAR_VALUE_SET"].Type(); isType != cty.String {
+		t.Errorf("Expected string type for set non empty env, got: %v", isType)
+	}
+
+	if isType := envMap["COUPER_TEST_VAR_NOT_SET"].Type(); isType != cty.String || !envMap["COUPER_TEST_VAR_NOT_SET"].IsNull() {
+		t.Errorf("Expected null(string type) for referenced but not set env, got: %v", isType)
 	}
 }
