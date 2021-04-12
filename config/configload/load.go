@@ -170,7 +170,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 // mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
 func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
-	reference, err := getBackendReference(definedBackends, inline.HCLBody())
+	reference, err := getBackendReference(definedBackends, inline)
 	if err != nil {
 		return nil, err
 	}
@@ -228,18 +228,8 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 
 // getBackendReference tries to fetch a backend from `definitions`
 // block by a reference name, e.g. `backend = "name"`.
-func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, error) {
-	content := bodyToContent(body)
-
-	// read out possible attribute reference
-	var name string
-	if attr, ok := content.Attributes[backend]; ok {
-		val, valDiags := attr.Expr.Value(envContext)
-		if valDiags.HasErrors() {
-			return nil, valDiags
-		}
-		name = val.AsString()
-	}
+func getBackendReference(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
+	name := inline.Reference()
 
 	// backend string attribute just not set
 	if name == "" {
@@ -252,7 +242,7 @@ func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, err
 	}
 
 	// a name is given but we have no definition
-	if reference == nil {
+	if body := inline.HCLBody(); reference == nil && body != nil {
 		r := body.MissingItemRange()
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &r,
@@ -326,7 +316,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 
 			// remap request specific names for headers and query to well known ones
-			content, leftOvers, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
+			content, _, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
 			if diags.HasErrors() {
 				return diags
 			}
@@ -349,7 +339,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			renameAttribute(content, "headers", "set_request_headers")
 			renameAttribute(content, "query_params", "set_query_params")
 
-			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
+			reqConfig.Remain = MergeBodies([]hcl.Body{reqBlock.Body, hclbody.New(content)})
 
 			err := uniqueAttributeKey(reqConfig.Remain)
 			if err != nil {
