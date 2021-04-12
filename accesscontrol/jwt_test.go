@@ -16,6 +16,98 @@ import (
 	"github.com/avenga/couper/config/request"
 )
 
+func Test_JWT_NewJWT_RSA(t *testing.T) {
+	type fields struct {
+		algorithm      string
+		claims         map[string]interface{}
+		claimsRequired []string
+		source         ac.Source
+		sourceKey      string
+		pubKey         []byte
+	}
+
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	bytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+	pubKeyBytesPKIX := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: bytes,
+	})
+	pubKeyBytesPKCS1 := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: x509.MarshalPKCS1PublicKey(&privKey.PublicKey),
+	})
+	privKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privKey),
+	})
+	// created using
+	// openssl req -new -newkey rsa:1024 -days 100000 -nodes -x509
+	certBytes := []byte(`-----BEGIN CERTIFICATE-----
+MIICaDCCAdGgAwIBAgIUZe+V/eBcYEaoORX8mfsyR8LqY/kwDQYJKoZIhvcNAQEL
+BQAwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoM
+GEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAgFw0yMTA0MTIxMzI1MzRaGA8yMjk1
+MDEyNjEzMjUzNFowRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUx
+ITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDCBnzANBgkqhkiG9w0B
+AQEFAAOBjQAwgYkCgYEA2m79uRP+f/L6YgCuQoAiY6Qs5pccKR4DNfb+vQOsO+xx
+ZxWrY3RLSLOYKCBybHClz0JLT61duq7yfOl+03lYE6wTdy5XN1PGoijITj3cA6g1
+Eah6/CirrDVqEVIng+5lsw/Qws1gOOkHaCdfkL85Trm4AWqppgFgIc/wafHZjekC
+AwEAAaNTMFEwHQYDVR0OBBYEFCAUN20ma8sVaz1KZttyofv6tDZdMB8GA1UdIwQY
+MBaAFCAUN20ma8sVaz1KZttyofv6tDZdMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZI
+hvcNAQELBQADgYEADyu05JNvWly50lvUksx85QwEMb7oZha6aov/9eslJnHD10Zu
+QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
+1T2dX1uHaAWl3pCmkRH1Dmpsx2sHllN/yizHpve2rrVpM9ZMXEdPxnzNNFE=
+-----END CERTIFICATE-----`)
+
+	for _, signingMethod := range []jwt.SigningMethod{
+		jwt.SigningMethodRS256, jwt.SigningMethodRS384, jwt.SigningMethodRS512,
+	} {
+		alg := signingMethod.Alg()
+		tests := []struct {
+			name    string
+			fields  fields
+			wantErr string
+		}{
+			{"missing key", fields{}, "either key_file or key must be specified"},
+			{"PKIX", fields{
+				algorithm: alg,
+				pubKey:    pubKeyBytesPKIX,
+			}, ""},
+			{"PKCS1", fields{
+				algorithm: alg,
+				pubKey:    pubKeyBytesPKCS1,
+			}, ""},
+			{"Cert", fields{
+				algorithm: alg,
+				pubKey:    certBytes,
+			}, ""},
+			{"Priv", fields{
+				algorithm: alg,
+				pubKey:    privKeyBytes,
+			}, "key is not a valid RSA public key"},
+		}
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("%v / %s", signingMethod, tt.name), func(t *testing.T) {
+				j, err := ac.NewJWT(tt.fields.algorithm, "test_ac", tt.fields.claims, tt.fields.claimsRequired, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
+				if err != nil {
+					if tt.wantErr != err.Error() {
+						t.Errorf("error: %v, want: %v", err, tt.wantErr)
+					}
+				} else if tt.wantErr != "" {
+					t.Errorf("error expected: %v", tt.wantErr)
+				}
+				if tt.wantErr == "" {
+					if j == nil {
+						t.Errorf("JWT struct expected")
+					}
+				}
+			})
+		}
+	}
+}
+
 func Test_JWT_Validate(t *testing.T) {
 	type fields struct {
 		algorithm      ac.Algorithm
