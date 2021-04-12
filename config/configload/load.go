@@ -170,9 +170,13 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 // mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
 func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
-	reference, err := getBackendReference(definedBackends, inline)
-	if err != nil {
-		return nil, err
+	var reference hcl.Body
+	if beRef, ok := inline.(config.BackendReference); ok {
+		r, err := getBackendReference(definedBackends, beRef)
+		if err != nil {
+			return nil, err
+		}
+		reference = r
 	}
 
 	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
@@ -228,8 +232,8 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 
 // getBackendReference tries to fetch a backend from `definitions`
 // block by a reference name, e.g. `backend = "name"`.
-func getBackendReference(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
-	name := inline.Reference()
+func getBackendReference(definedBackends Backends, be config.BackendReference) (hcl.Body, error) {
+	name := be.Reference()
 
 	// backend string attribute just not set
 	if name == "" {
@@ -242,12 +246,14 @@ func getBackendReference(definedBackends Backends, inline config.Inline) (hcl.Bo
 	}
 
 	// a name is given but we have no definition
-	if body := inline.HCLBody(); reference == nil && body != nil {
-		r := body.MissingItemRange()
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &r,
-			Summary: fmt.Sprintf("backend reference '%s' is not defined", name),
-		}}
+	if body, ok := be.(config.Inline); ok {
+		if b := body.HCLBody(); reference == nil && b != nil {
+			r := b.MissingItemRange()
+			return nil, hcl.Diagnostics{&hcl.Diagnostic{
+				Subject: &r,
+				Summary: fmt.Sprintf("backend reference '%s' is not defined", name),
+			}}
+		}
 	}
 
 	return reference, nil
@@ -316,7 +322,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 
 			// remap request specific names for headers and query to well known ones
-			content, _, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
+			content, leftOvers, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
 			if diags.HasErrors() {
 				return diags
 			}
@@ -339,7 +345,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			renameAttribute(content, "headers", "set_request_headers")
 			renameAttribute(content, "query_params", "set_query_params")
 
-			reqConfig.Remain = MergeBodies([]hcl.Body{reqBlock.Body, hclbody.New(content)})
+			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
 
 			err := uniqueAttributeKey(reqConfig.Remain)
 			if err != nil {

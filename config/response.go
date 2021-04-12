@@ -18,11 +18,6 @@ func (r Response) HCLBody() hcl.Body {
 	return r.Remain
 }
 
-// Reference implements the <Inline> interface.
-func (r Response) Reference() string {
-	return "resp"
-}
-
 // Schema implements the <Inline> interface.
 func (r Response) Schema(inline bool) *hcl.BodySchema {
 	if !inline {

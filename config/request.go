@@ -6,7 +6,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var _ Inline = &Request{}
+var (
+	_ BackendReference = &Request{}
+	_ Inline           = &Request{}
+)
 
 // Request represents the <Request> object.
 type Request struct {
