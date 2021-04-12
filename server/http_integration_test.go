@@ -1959,12 +1959,12 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
 		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
 		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json", ""}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "missing credentials"},
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "error from 'ba1' access control: missing credentials"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "missing credentials"},
-		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "missing credentials"},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "error from 'ba1' access control: missing credentials"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "error from 'ba1' access control: missing credentials"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -1980,21 +1980,14 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			acEntries := getAccessControlMessages(hook)
+			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
-				if len(acEntries) > 0 {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				if message != "" {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
-				var found bool
-				for _, valMsg := range acEntries {
-					if strings.HasPrefix(valMsg, tc.wantErrLog) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				if message != tc.wantErrLog {
+					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			}
 
@@ -2049,8 +2042,8 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "empty token"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "token is expired by "},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "error from 'JWTToken' access control: empty token"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "error from 'JWTToken' access control: token is expired by "},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
@@ -2072,21 +2065,14 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 
-			acEntries := getAccessControlMessages(hook)
+			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
-				if len(acEntries) > 0 {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				if message != "" {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
-				var found bool
-				for _, valMsg := range acEntries {
-					if strings.HasPrefix(valMsg, tc.wantErrLog) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, acEntries)
+				if !strings.HasPrefix(message, tc.wantErrLog) {
+					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			}
 
@@ -2101,16 +2087,14 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 }
 
-func getAccessControlMessages(hook *logrustest.Hook) []string {
-	var acEntries []string
+func getAccessControlMessages(hook *logrustest.Hook) string {
 	for _, entry := range hook.Entries {
-		if valEntry, ok := entry.Data["access_control"]; ok {
-			if list, ok := valEntry.([]string); ok {
-				acEntries = append(acEntries, list...)
-			}
+		if entry.Message != "" {
+			return entry.Message
 		}
 	}
-	return acEntries
+
+	return ""
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
