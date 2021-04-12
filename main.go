@@ -151,7 +151,10 @@ func realmain(arguments []string) int {
 				return 1
 			}
 			return 0
-		case <-reloadCh:
+		case _, more := <-reloadCh:
+			if !more {
+				return 1
+			}
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
@@ -222,7 +225,8 @@ func watchConfigFile(name string, logger logrus.FieldLogger) <-chan struct{} {
 			fileInfo, fileErr := os.Stat(name)
 			if fileErr != nil {
 				logger.WithFields(fields).Error(fileErr)
-				continue
+				close(reloadCh)
+				return
 			}
 
 			if lastChange.IsZero() { // first round
