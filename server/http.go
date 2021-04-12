@@ -161,8 +161,13 @@ func (s *HTTPServer) listenForCtx() {
 	close(s.shutdownCh)
 
 	time.Sleep(s.timings.ShutdownDelay)
-	ctx, cancel := context.WithTimeout(context.Background(), s.timings.ShutdownTimeout)
-	defer cancel()
+	ctx := context.Background()
+	if s.timings.ShutdownTimeout > 0 {
+		c, cancel := context.WithTimeout(ctx, s.timings.ShutdownTimeout)
+		defer cancel()
+		ctx = c
+	}
+
 	if err := s.srv.Shutdown(ctx); err != nil {
 		s.log.WithFields(logFields).Error(err)
 	}
