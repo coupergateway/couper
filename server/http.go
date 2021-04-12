@@ -137,8 +137,12 @@ func (s *HTTPServer) Listen() error {
 	go s.listenForCtx()
 
 	go func() {
-		if err := s.srv.Serve(ln); err != nil {
-			s.log.Errorf("%s: %v", ln.Addr().String(), err.Error())
+		if serveErr := s.srv.Serve(ln); serveErr != nil {
+			if serveErr == http.ErrServerClosed {
+				s.log.Infof("%v: %s", serveErr, ln.Addr().String())
+			} else {
+				s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+			}
 		}
 	}()
 	return nil
