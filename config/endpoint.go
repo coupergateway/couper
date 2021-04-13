@@ -31,11 +31,6 @@ func (e Endpoint) HCLBody() hcl.Body {
 	return e.Remain
 }
 
-// Reference implements the <Inline> interface.
-func (e Endpoint) Reference() string {
-	return e.Pattern
-}
-
 // Schema implements the <Inline> interface.
 func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 	if !inline {

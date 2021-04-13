@@ -115,7 +115,8 @@ func (t *Template) ServeError(err error) http.Handler {
 			}
 			DefaultHTML.ServeError(errCode).ServeHTTP(rw, req)
 		} else if err != nil {
-			panic(err)
+			// FIXME: at least log those errors (maybe netOP, brokenPipe etc)
+			println(err.Error())
 		}
 	})
 }

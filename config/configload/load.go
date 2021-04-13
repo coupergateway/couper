@@ -170,9 +170,13 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 // mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
 func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Body, error) {
-	reference, err := getBackendReference(definedBackends, inline.HCLBody())
-	if err != nil {
-		return nil, err
+	var reference hcl.Body
+	if beRef, ok := inline.(config.BackendReference); ok {
+		r, err := getBackendReference(definedBackends, beRef)
+		if err != nil {
+			return nil, err
+		}
+		reference = r
 	}
 
 	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
@@ -228,18 +232,8 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 
 // getBackendReference tries to fetch a backend from `definitions`
 // block by a reference name, e.g. `backend = "name"`.
-func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, error) {
-	content := bodyToContent(body)
-
-	// read out possible attribute reference
-	var name string
-	if attr, ok := content.Attributes[backend]; ok {
-		val, valDiags := attr.Expr.Value(envContext)
-		if valDiags.HasErrors() {
-			return nil, valDiags
-		}
-		name = val.AsString()
-	}
+func getBackendReference(definedBackends Backends, be config.BackendReference) (hcl.Body, error) {
+	name := be.Reference()
 
 	// backend string attribute just not set
 	if name == "" {
@@ -252,12 +246,14 @@ func getBackendReference(definedBackends Backends, body hcl.Body) (hcl.Body, err
 	}
 
 	// a name is given but we have no definition
-	if reference == nil {
-		r := body.MissingItemRange()
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Subject: &r,
-			Summary: fmt.Sprintf("backend reference '%s' is not defined", name),
-		}}
+	if body, ok := be.(config.Inline); ok {
+		if b := body.HCLBody(); reference == nil && b != nil {
+			r := b.MissingItemRange()
+			return nil, hcl.Diagnostics{&hcl.Diagnostic{
+				Subject: &r,
+				Summary: fmt.Sprintf("backend reference '%s' is not defined", name),
+			}}
+		}
 	}
 
 	return reference, nil

@@ -7,7 +7,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &Proxy{}
+var (
+	_ BackendReference = &Proxy{}
+	_ Inline           = &Proxy{}
+)
 
 // Proxy represents the <Proxy> object.
 type Proxy struct {
