@@ -31,16 +31,16 @@ func init() {
 	configFileContent := fmt.Sprintf(`server "fuzz" {
 		endpoint "/**" {
 			add_request_headers = {
-				x-fuzz = req.headers.x-data
+				x-fuzz = request.headers.x-data
 			}
 
 			add_query_params = {
-				x-quzz = req.headers.x-data
+				x-quzz = request.headers.x-data
 			}
 
 			request "sidekick" {
 				url = "http://%s/anything/"
-				body = req.headers.x-data
+				body = request.headers.x-data
 			}
 			
 			# default
@@ -50,8 +50,8 @@ func init() {
 			}
 
 			add_response_headers = {
-				y-fuzz = req.headers.x-data
-				x-sidekick = beresps.sidekick.json_body
+				y-fuzz = request.headers.x-data
+				x-sidekick = backend_responses.sidekick.json_body
 			}
 		}
 }`, upstream.Addr(), upstream.Addr())
@@ -78,7 +78,9 @@ func init() {
 
 	servers, fn := server.NewServerList(cmdCtx, configFile.Context, log, configFile.Settings, &couperruntime.DefaultTimings, config)
 	for _, s := range servers {
-		s.Listen()
+		if err = s.Listen(); err != nil {
+			panic("init error: " + err.Error())
+		}
 	}
 	go fn()
 
