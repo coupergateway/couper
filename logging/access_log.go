@@ -47,10 +47,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		"bytes": statusRecorder.writtenBytes,
 	}
 
-	if acErrors := acContext.Errors(); len(acErrors) > 0 {
-		fields["access_control"] = acErrors
-	}
-
 	backendName, _ := req.Context().Value(request.BackendName).(string)
 	if backendName == "" {
 		endpointName, _ := req.Context().Value(request.Endpoint).(string)
@@ -138,6 +134,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	entry := log.logger.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
+
+	if acError := acContext.Error(); acError != "" {
+		err = fmt.Errorf("access control: %s: %s", acContext.Name(), acError)
+	}
 
 	if statusRecorder.status == http.StatusInternalServerError || err != nil {
 		if err != nil {
