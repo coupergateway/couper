@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -88,21 +87,10 @@ func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []s
 	}
 
 	pubKey, err := parsePublicPEMKey(key)
-	if err != nil && (err != jwt.ErrKeyMustBePEMEncoded || err != jwt.ErrNotRSAPublicKey) {
-		cert, err := x509.ParseCertificate(key)
-		if err != nil {
-			decKey, err := base64.StdEncoding.DecodeString(string(key))
-			if err != nil {
-				return nil, ErrorNotSupported
-			}
-			cert, err = x509.ParseCertificate(decKey)
-			if err != nil {
-				return nil, err
-			}
-		}
-		rsaPubKey, _ := cert.PublicKey.(*rsa.PublicKey)
-		pubKey = &rsa.PublicKey{N: rsaPubKey.N, E: rsaPubKey.E}
+	if err != nil {
+		return nil, err
 	}
+
 	jwtObj.pubKey = pubKey
 	return jwtObj, err
 }
@@ -252,14 +240,7 @@ func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, erro
 func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 	pemBlock, _ := pem.Decode(key)
 	if pemBlock == nil {
-		decKey, err := base64.StdEncoding.DecodeString(string(key))
-		if err != nil {
-			return nil, ErrorNotSupported
-		}
-		pemBlock, _ = pem.Decode(decKey)
-		if pemBlock == nil {
-			return nil, jwt.ErrKeyMustBePEMEncoded
-		}
+		return nil, jwt.ErrKeyMustBePEMEncoded
 	}
 	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
 	if pubErr != nil {
