@@ -8,9 +8,18 @@ import (
 
 var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
 
+type ListItem struct {
+	Func AccessControl
+	Name string
+}
+
+func (i ListItem) Validate(req *http.Request) error {
+	return i.Func.Validate(req)
+}
+
 type (
 	Map  map[string]AccessControl
-	List []AccessControl
+	List []ListItem
 )
 
 type ValidateFunc func(*http.Request) error

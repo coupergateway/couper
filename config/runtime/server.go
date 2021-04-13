@@ -556,10 +556,10 @@ func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, hand
 	for _, acName := range parentAC.
 		Merge(handlerAC).List() {
 		m.MustExist(acName)
-		acList = append(acList, m[acName])
+		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
 	}
 	if len(acList) > 0 {
-		return hac.NewAccessControl(h, errTpl, acList...)
+		return hac.NewAccessControl(h, errTpl, acList)
 	}
 	return h
 }

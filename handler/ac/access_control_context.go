@@ -7,7 +7,8 @@ import (
 )
 
 type AccessControlContext struct {
-	errors []error
+	error error
+	name  string
 }
 
 func NewWithContext(ctx context.Context) (context.Context, *AccessControlContext) {
@@ -15,13 +16,14 @@ func NewWithContext(ctx context.Context) (context.Context, *AccessControlContext
 	return context.WithValue(ctx, request.AccessControl, octx), octx
 }
 
-func (o *AccessControlContext) Errors() []string {
-	if len(o.errors) == 0 {
-		return nil
+func (o *AccessControlContext) Name() string {
+	return o.name
+}
+
+func (o *AccessControlContext) Error() string {
+	if o.error == nil {
+		return ""
 	}
-	var result []string
-	for _, e := range o.errors {
-		result = append(result, e.Error())
-	}
-	return result
+
+	return o.error.Error()
 }

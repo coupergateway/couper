@@ -15,21 +15,21 @@ var (
 )
 
 type AccessControl struct {
-	ac        accesscontrol.List
+	acl       accesscontrol.List
 	errorTpl  *errors.Template
 	protected http.Handler
 }
 
-func NewAccessControl(protected http.Handler, errTpl *errors.Template, list ...accesscontrol.AccessControl) *AccessControl {
+func NewAccessControl(protected http.Handler, errTpl *errors.Template, list accesscontrol.List) *AccessControl {
 	return &AccessControl{
-		ac:        list,
+		acl:       list,
 		errorTpl:  errTpl,
 		protected: protected,
 	}
 }
 
 func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	for _, control := range a.ac {
+	for _, control := range a.acl {
 		if err := control.Validate(req); err != nil {
 			var code errors.Code
 			if authError, ok := err.(*accesscontrol.BasicAuthError); ok {
@@ -50,7 +50,8 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				}
 			}
 			if ctx, ok := req.Context().Value(request.AccessControl).(*AccessControlContext); ok {
-				ctx.errors = append(ctx.errors, err)
+				ctx.error = err
+				ctx.name = control.Name
 			}
 			a.errorTpl.ServeError(code).ServeHTTP(rw, req)
 			return
