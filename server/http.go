@@ -137,8 +137,12 @@ func (s *HTTPServer) Listen() error {
 	go s.listenForCtx()
 
 	go func() {
-		if err := s.srv.Serve(ln); err != nil {
-			s.log.Errorf("%s: %v", ln.Addr().String(), err.Error())
+		if serveErr := s.srv.Serve(ln); serveErr != nil {
+			if serveErr == http.ErrServerClosed {
+				s.log.Infof("%v: %s", serveErr, ln.Addr().String())
+			} else {
+				s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+			}
 		}
 	}()
 	return nil
@@ -161,8 +165,13 @@ func (s *HTTPServer) listenForCtx() {
 	close(s.shutdownCh)
 
 	time.Sleep(s.timings.ShutdownDelay)
-	ctx, cancel := context.WithTimeout(context.Background(), s.timings.ShutdownTimeout)
-	defer cancel()
+	ctx := context.Background()
+	if s.timings.ShutdownTimeout > 0 {
+		c, cancel := context.WithTimeout(ctx, s.timings.ShutdownTimeout)
+		defer cancel()
+		ctx = c
+	}
+
 	if err := s.srv.Shutdown(ctx); err != nil {
 		s.log.WithFields(logFields).Error(err)
 	}
