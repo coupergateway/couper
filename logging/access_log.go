@@ -136,7 +136,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	entry.Time = startTime
 
 	if acError := acContext.Error(); acError != "" {
-		err = fmt.Errorf("error from '%s' access control: %s", acContext.Name(), acError)
+		err = fmt.Errorf("access control: %s: %s", acContext.Name(), acError)
 	}
 
 	if statusRecorder.status == http.StatusInternalServerError || err != nil {
