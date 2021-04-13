@@ -124,7 +124,7 @@ func realmain(arguments []string) int {
 		errCh <- execCmd.Execute(args, confFile, logger)
 	}()
 
-	reloadCh := watchConfigFile(confFile.Filename, logger)
+	reloadCh := watchConfigFile(confFile.Filename, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
 	for {
 		select {
 		case err = <-errCh:
@@ -151,7 +151,10 @@ func realmain(arguments []string) int {
 				return 1
 			}
 			return 0
-		case <-reloadCh:
+		case _, more := <-reloadCh:
+			if !more {
+				return 1
+			}
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
@@ -211,17 +214,26 @@ func newLogger(format string, pretty bool) *logrus.Entry {
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
 
-func watchConfigFile(name string, logger logrus.FieldLogger) <-chan struct{} {
+func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
 	reloadCh := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(time.Second / 4)
 		defer ticker.Stop()
 		var lastChange time.Time
+		var errors int
 		for {
 			<-ticker.C
 			fileInfo, fileErr := os.Stat(name)
 			if fileErr != nil {
-				logger.WithFields(fields).Error(fileErr)
+				errors++
+				if errors >= maxRetries {
+					logger.Errorf("giving up after %d retries: %v", errors, fileErr)
+					close(reloadCh)
+					return
+				} else {
+					logger.WithFields(fields).Error(fileErr)
+				}
+				time.Sleep(retryDelay)
 				continue
 			}
 
@@ -234,6 +246,7 @@ func watchConfigFile(name string, logger logrus.FieldLogger) <-chan struct{} {
 				reloadCh <- struct{}{}
 			}
 			lastChange = fileInfo.ModTime()
+			errors = 0
 		}
 	}()
 	return reloadCh
