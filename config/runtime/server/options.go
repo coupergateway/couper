@@ -3,6 +3,8 @@ package server
 import (
 	"path"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/utils"
@@ -23,7 +25,7 @@ type Options struct {
 	ServerName    string
 }
 
-func NewServerOptions(conf *config.Server) (*Options, error) {
+func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, error) {
 	options := &Options{
 		FilesErrTpl:  errors.DefaultHTML,
 		ServerErrTpl: errors.DefaultHTML,
@@ -36,7 +38,7 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 	options.SrvBasePath = path.Join("/", conf.BasePath)
 
 	if conf.ErrorFile != "" {
-		tpl, err := errors.NewTemplateFromFile(conf.ErrorFile)
+		tpl, err := errors.NewTemplateFromFile(conf.ErrorFile, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +55,7 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 		options.APIBasePaths[api] = path.Join(options.SrvBasePath, api.BasePath)
 
 		if api.ErrorFile != "" {
-			tpl, err := errors.NewTemplateFromFile(api.ErrorFile)
+			tpl, err := errors.NewTemplateFromFile(api.ErrorFile, logger)
 			if err != nil {
 				return nil, err
 			}
@@ -65,7 +67,7 @@ func NewServerOptions(conf *config.Server) (*Options, error) {
 
 	if conf.Files != nil {
 		if conf.Files.ErrorFile != "" {
-			tpl, err := errors.NewTemplateFromFile(conf.Files.ErrorFile)
+			tpl, err := errors.NewTemplateFromFile(conf.Files.ErrorFile, logger)
 			if err != nil {
 				return nil, err
 			}

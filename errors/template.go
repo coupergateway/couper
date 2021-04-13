@@ -7,6 +7,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/avenga/couper/assets"
 	"github.com/avenga/couper/config/request"
 )
@@ -20,11 +22,11 @@ const HeaderErrorCode = "Couper-Error"
 
 func init() {
 	var err error
-	DefaultHTML, err = NewTemplate("text/html", "default.html", assets.Assets.MustOpen("error.html").Bytes())
+	DefaultHTML, err = NewTemplate("text/html", "default.html", assets.Assets.MustOpen("error.html").Bytes(), nil)
 	if err != nil {
 		panic(err)
 	}
-	DefaultJSON, err = NewTemplate("application/json", "default.json", assets.Assets.MustOpen("error.json").Bytes())
+	DefaultJSON, err = NewTemplate("application/json", "default.json", assets.Assets.MustOpen("error.json").Bytes(), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -35,12 +37,13 @@ type ErrorTemplate interface {
 }
 
 type Template struct {
-	raw  []byte
+	log  *logrus.Entry
 	mime string
+	raw  []byte
 	tpl  *template.Template
 }
 
-func NewTemplateFromFile(path string) (*Template, error) {
+func NewTemplateFromFile(path string, logger *logrus.Entry) (*Template, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -56,16 +59,23 @@ func NewTemplateFromFile(path string) (*Template, error) {
 	}
 
 	_, fileName := filepath.Split(path)
-	return NewTemplate(mime, fileName, tplFile)
+	return NewTemplate(mime, fileName, tplFile, logger)
 }
 
-func NewTemplate(mime, name string, src []byte) (*Template, error) {
+// SetLogger updates the default templates with the configured "daemon" logger.
+func SetLogger(log *logrus.Entry) {
+	DefaultJSON.log = log
+	DefaultHTML.log = log
+}
+
+func NewTemplate(mime, name string, src []byte, logger *logrus.Entry) (*Template, error) {
 	tpl, err := template.New(name).Parse(string(src))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Template{
+		log:  logger,
 		mime: mime,
 		raw:  src,
 		tpl:  tpl,
@@ -101,22 +111,21 @@ func (t *Template) ServeError(err error) http.Handler {
 			"path":        req.URL.EscapedPath(),
 			"request_id":  escapeValue(t.mime, reqID),
 		}
-		err := t.tpl.Execute(rw, data)
+		tplErr := t.tpl.Execute(rw, data)
 
 		// FIXME: If the fallback triggers, maybe we set
 		// different/double headers on the top of this method
 		// (recursive call)
 
 		// fallback behaviour, execute internal template once
-		if err != nil && (t != DefaultHTML && t != DefaultJSON) {
+		if tplErr != nil && (t != DefaultHTML && t != DefaultJSON) {
 			if !strings.Contains(t.mime, "text/html") {
 				DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
 				return
 			}
 			DefaultHTML.ServeError(errCode).ServeHTTP(rw, req)
-		} else if err != nil {
-			// FIXME: at least log those errors (maybe netOP, brokenPipe etc)
-			println(err.Error())
+		} else if tplErr != nil && t.log != nil {
+			t.log.WithFields(data).Error(tplErr)
 		}
 	})
 }

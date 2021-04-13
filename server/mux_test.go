@@ -14,13 +14,12 @@ import (
 )
 
 func TestMux_FindHandler_PathParamContext(t *testing.T) {
-
 	type noContentHandler http.Handler
 	var noContent noContentHandler = http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNoContent)
 	})
 
-	serverOptions, _ := rs.NewServerOptions(nil)
+	serverOptions, _ := rs.NewServerOptions(nil, nil)
 
 	testOptions := &runtime.MuxOptions{
 		EndpointRoutes: map[string]http.Handler{

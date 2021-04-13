@@ -109,7 +109,7 @@ func NewServerConfiguration(
 	)
 
 	for _, srvConf := range conf.Servers {
-		serverOptions, err := server.NewServerOptions(srvConf)
+		serverOptions, err := server.NewServerOptions(srvConf, log)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +211,7 @@ func NewServerConfiguration(
 			var errTpl *errors.Template
 
 			if endpointConf.ErrorFile != "" {
-				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile)
+				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile, log)
 				if err != nil {
 					return nil, err
 				}
