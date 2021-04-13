@@ -13,6 +13,10 @@ type ListItem struct {
 	Name string
 }
 
+func (i ListItem) Validate(req *http.Request) error {
+	return i.Func.Validate(req)
+}
+
 type (
 	Map  map[string]AccessControl
 	List []ListItem

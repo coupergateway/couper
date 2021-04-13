@@ -29,8 +29,8 @@ func NewAccessControl(protected http.Handler, errTpl *errors.Template, list acce
 }
 
 func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	for _, ac := range a.acl {
-		if err := ac.Func.Validate(req); err != nil {
+	for _, control := range a.acl {
+		if err := control.Validate(req); err != nil {
 			var code errors.Code
 			if authError, ok := err.(*accesscontrol.BasicAuthError); ok {
 				code = errors.BasicAuthFailed
@@ -51,7 +51,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 			if ctx, ok := req.Context().Value(request.AccessControl).(*AccessControlContext); ok {
 				ctx.error = err
-				ctx.name = ac.Name
+				ctx.name = control.Name
 			}
 			a.errorTpl.ServeError(code).ServeHTTP(rw, req)
 			return
