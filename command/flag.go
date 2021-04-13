@@ -30,7 +30,13 @@ func (a Args) Filter(set *flag.FlagSet) Args {
 						continue
 					}
 				}
-				args = append(args, a[i:i+2]...)
+
+				if len(a[i:]) > 1 {
+					args = append(args, a[i:i+2]...)
+				} else {
+					args = append(args, a[i:i+1]...)
+				}
+
 				continue
 			}
 			args = append(args, a[i])
