@@ -12,7 +12,7 @@ import (
 
 func TestAccessControl_ServeHTTP(t *testing.T) {
 	type fields struct {
-		ac        []accesscontrol.AccessControl
+		ac        accesscontrol.List
 		protected http.Handler
 	}
 
@@ -43,35 +43,35 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusNoContent, ""},
 
-		{"with access control valid req", fields{[]accesscontrol.AccessControl{accesscontrol.ListItem{Func: accesscontrol.ValidateFunc(func(r *http.Request) error {
+		{"with access control valid req", fields{accesscontrol.List{{Func: accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return nil // valid
 		}), Name: ""}}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusNoContent, ""},
 
-		{"with access control invalid req/empty token", fields{[]accesscontrol.AccessControl{accesscontrol.ListItem{Func: accesscontrol.ValidateFunc(func(r *http.Request) error {
+		{"with access control invalid req/empty token", fields{accesscontrol.List{{Func: accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return jwt.TokenRequired
 		}), Name: ""}}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusUnauthorized, ""},
 
-		{"with access control invalid req", fields{[]accesscontrol.AccessControl{accesscontrol.ListItem{Func: accesscontrol.ValidateFunc(func(r *http.Request) error {
+		{"with access control invalid req", fields{accesscontrol.List{{Func: accesscontrol.ValidateFunc(func(r *http.Request) error {
 			return fmt.Errorf("no! ")
 		}), Name: ""}}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusForbidden, ""},
 
-		{"basic_auth", fields{[]accesscontrol.AccessControl{accesscontrol.ListItem{Func: newBasicAuth("hans", "", ""),
+		{"basic_auth", fields{accesscontrol.List{{Func: newBasicAuth("hans", "", ""),
 			Name: ""}}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized, "Basic"},
 
-		{"basic_auth /wo authorization header", fields{[]accesscontrol.AccessControl{accesscontrol.ListItem{Func: newBasicAuth("hans", "", ""),
+		{"basic_auth /wo authorization header", fields{accesscontrol.List{{Func: newBasicAuth("hans", "", ""),
 			Name: ""}}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, newReq("GET", "http://ac.test/")("Authorization", ""), http.StatusUnauthorized, "Basic"},
 
-		{"basic_auth /w realm", fields{[]accesscontrol.AccessControl{accesscontrol.ListItem{Func: newBasicAuth("hans", "", "My-Realm"),
+		{"basic_auth /w realm", fields{accesscontrol.List{{Func: newBasicAuth("hans", "", "My-Realm"),
 			Name: ""}}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized, "Basic realm=My-Realm"},

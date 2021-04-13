@@ -117,8 +117,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					}
 
 					if err := uniqueAttributeKey(be.Body); err != nil {
-								return nil, err
-							}definedBackends = append(definedBackends, NewBackend(name, be.Body))
+						return nil, err
+					}
+					definedBackends = append(definedBackends, NewBackend(name, be.Body))
 				}
 			}
 

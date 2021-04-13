@@ -7,20 +7,15 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
-var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
-
-func (i ListItem) Validate(req *http.Request) error {
-	return i.Func.Validate(req)
-}
-
 type (
-	Map  map[string]AccessControl
-	List []ListItem
+	Map          map[string]AccessControl
+	ValidateFunc func(*http.Request) error
+
+	List     []ListItem
 	ListItem struct {
 		Func AccessControl
 		Name string
 	}
-	ValidateFunc func(*http.Request) error
 )
 
 type AccessControl interface {
@@ -29,6 +24,12 @@ type AccessControl interface {
 
 type ProtectedHandler interface {
 	Child() http.Handler
+}
+
+var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
+
+func (i ListItem) Validate(req *http.Request) error {
+	return i.Func.Validate(req)
 }
 
 func (f ValidateFunc) Validate(req *http.Request) error {

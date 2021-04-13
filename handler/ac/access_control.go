@@ -14,14 +14,14 @@ var (
 )
 
 type AccessControl struct {
-	acl           accesscontrol.List
+	acl          accesscontrol.List
 	errorHandler http.Handler
 	protected    http.Handler
 }
 
 func NewAccessControl(protected, errorHandler http.Handler, list accesscontrol.List) *AccessControl {
 	return &AccessControl{
-		acl:           list,
+		acl:          list,
 		errorHandler: errorHandler,
 		protected:    protected,
 	}

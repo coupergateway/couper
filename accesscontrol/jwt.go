@@ -44,7 +44,7 @@ type JWT struct {
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
 	if len(key) == 0 {
-		return nil,  errors.KeyRequired
+		return nil, errors.KeyRequired
 	}
 
 	if src == Invalid {

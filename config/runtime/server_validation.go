@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/avenga/couper/config"
-	ac "github.com/avenga/couper/accesscontrol"
 )
 
 var (
