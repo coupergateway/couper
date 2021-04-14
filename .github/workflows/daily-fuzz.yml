@@ -48,7 +48,9 @@ jobs:
         working-directory: fuzz/server
         continue-on-error: true # runs until job timeout, which would result as step error, skip and upload the result
 
-      - uses: actions/upload-artifact@v2
+      - name: uploading current state
+        if: always() # even on previous timeout or cancel
+        uses: actions/upload-artifact@v2
         with:
           name: fuzz-results
           path: |
