@@ -27,6 +27,7 @@ jobs:
         with:
           name: fuzz-results
           path: fuzz/server
+        continue-on-error: true # may not exist on first run or previous upload err
 
       - name: Display structure of downloaded files
         run: ls -R
