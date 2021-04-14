@@ -39,7 +39,7 @@ func TestFile_ServeHTTP(t *testing.T) {
 		{"not found /w errorFile HEAD", fields{errFile: "testdata/file_err_doc.html"}, httptest.NewRequest(http.MethodHead, "http://domain.test/", nil), http.StatusNotFound},
 	}
 
-	srvOpts, _ := server.NewServerOptions(&config.Server{})
+	srvOpts, _ := server.NewServerOptions(&config.Server{}, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

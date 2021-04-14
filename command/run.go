@@ -10,6 +10,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/server"
 	"github.com/sirupsen/logrus"
 )
@@ -72,6 +73,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	if err != nil {
 		return err
 	}
+	errors.SetLogger(logEntry)
 
 	serverList, listenCmdShutdown := server.NewServerList(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
 	for _, srv := range serverList {
