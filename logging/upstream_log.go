@@ -111,6 +111,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
+
+		if repeats, ok := req.Context().Value(request.TokenRequestRepeats).(int); ok && repeats > 0 {
+			fields["token_request_repeat"] = repeats
+		}
 	}
 
 	fields["realtime"] = roundMS(rtDone.Sub(rtStart))

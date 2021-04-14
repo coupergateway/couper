@@ -96,6 +96,17 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
 		oa.memStore.Del(credentials.StorageKey)
+
+		ctx := req.Context()
+		// TODO: Make the number of the repeats configureable.
+		if repeats, ok := ctx.Value(request.TokenRequestRepeats).(int); !ok || repeats < 1 {
+			ctx = context.WithValue(ctx, request.TokenRequestRepeats, repeats+1)
+
+			req.Header.Del("Authorization")
+			*req = *req.WithContext(ctx)
+
+			return oa.RoundTrip(req)
+		}
 	}
 
 	return res, err
