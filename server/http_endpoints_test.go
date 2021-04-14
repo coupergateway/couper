@@ -278,6 +278,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 			_, werr := rw.Write(body)
 			helper.Must(werr)
 
+			// retries must be equal with the number of retries in the `testdata/endpoints/04_couper.hcl`
 			if retries == 2 {
 				close(tokenSeenCh)
 			}
@@ -290,6 +291,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 
 	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/resource" {
+			// retries must be equal with the number of retries in the `testdata/endpoints/04_couper.hcl`
 			if req.Header.Get("Authorization") == "Bearer abcdef0123456789" && retries == 2 {
 				rw.WriteHeader(http.StatusNoContent)
 				close(seenCh)

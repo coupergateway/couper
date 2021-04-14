@@ -43,6 +43,9 @@ func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 	if config.Retries == nil {
 		one := 1
 		config.Retries = &one
+	} else if *config.Retries < 0 {
+		zero := 0
+		config.Retries = &zero
 	}
 
 	return &OAuth2{
