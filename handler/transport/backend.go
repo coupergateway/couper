@@ -33,14 +33,13 @@ const (
 
 var _ http.RoundTripper = &Backend{}
 
-var BackendDeadlineExceeded = fmt.Errorf("backend deadline exceeded")
+var errBackendDeadlineExceeded = fmt.Errorf("backend deadline exceeded")
 
 var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
-	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
 	transportConf    *Config
@@ -208,7 +207,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 		deadline := time.After(b.transportConf.Timeout)
 		select {
 		case <-deadline:
-			ec <- BackendDeadlineExceeded
+			ec <- errBackendDeadlineExceeded
 			return
 		case <-c.Done():
 			return

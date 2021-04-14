@@ -276,7 +276,7 @@ func TestBackend_director(t *testing.T) {
 	helper := test.New(t)
 
 	log, _ := logrustest.NewNullLogger()
-	nullLog := log.WithContext(nil)
+	nullLog := log.WithContext(context.TODO())
 
 	bgCtx := context.Background()
 
@@ -380,7 +380,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 	}
 
 	log, _ := logrustest.NewNullLogger()
-	nullLog := log.WithContext(nil)
+	nullLog := log.WithContext(context.TODO())
 
 	for i, tc := range []testCase{
 		{"no buffering", nil, `path = "/"`, eval.BufferNone},
