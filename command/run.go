@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"sync"
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
@@ -22,6 +23,10 @@ type Run struct {
 	context  context.Context
 	flagSet  *flag.FlagSet
 	settings *config.Settings
+
+	// required for testing purposes
+	// TODO: provide a testable interface
+	settingsMu sync.Mutex
 }
 
 func NewRun(ctx context.Context) *Run {
@@ -40,8 +45,10 @@ func NewRun(ctx context.Context) *Run {
 	}
 }
 
-func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
+func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
+	r.settingsMu.Lock()
 	*r.settings = *config.Settings
+	r.settingsMu.Unlock()
 
 	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
 		return err
@@ -54,7 +61,9 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 
 	// Some remapping due to flag set pre-definition
 	env.Decode(r.settings)
+	r.settingsMu.Lock()
 	config.Settings = r.settings
+	r.settingsMu.Unlock()
 
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
@@ -76,6 +85,6 @@ func (r Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) e
 	return nil
 }
 
-func (r Run) Usage() {
+func (r *Run) Usage() {
 	r.flagSet.Usage()
 }

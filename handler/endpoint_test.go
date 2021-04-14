@@ -165,7 +165,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		origin = "` + origin.URL + `"
 		set_request_headers = {
 			x-test = request.json_body.foo
-		}`, defaultMethods, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
+		}`, defaultMethods, test.Header{"Content-Type": "applicAtion/foo+jsOn"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
 		{"method /w body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {

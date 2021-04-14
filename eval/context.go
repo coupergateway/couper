@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -228,7 +229,8 @@ func parseForm(r *http.Request) *http.Request {
 
 func isJSONMediaType(contentType string) bool {
 	m, _, _ := mime.ParseMediaType(contentType)
-	return m == "application/json"
+	mParts := strings.Split(m, "/")
+	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
 }
 
 func parseJSON(r io.Reader) cty.Value {

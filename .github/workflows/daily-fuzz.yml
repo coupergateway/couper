@@ -27,6 +27,7 @@ jobs:
         with:
           name: fuzz-results
           path: fuzz/server
+        continue-on-error: true # may not exist on first run or previous upload err
 
       - name: Display structure of downloaded files
         run: ls -R
@@ -35,7 +36,7 @@ jobs:
       - name: install go-fuzz
         run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
       - name: vendor go-fuzz
-        run: go mod vendor && git clone git@github.com:dvyukov/go-fuzz.git vendor/github.com/dvyukov/go-fuzz
+        run: go mod vendor && git clone https://github.com/dvyukov/go-fuzz.git vendor/github.com/dvyukov/go-fuzz
 
       - name: fuzz-simple-server
         run: cd fuzz/server && go-fuzz-build && go-fuzz

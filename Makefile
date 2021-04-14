@@ -13,6 +13,7 @@ test-docker:
 test-coverage:
 	go test -short -timeout 300s -covermode=count -coverprofile=ac.coverage ./accesscontrol
 	go test -short -timeout 300s -covermode=count -coverprofile=eval.coverage ./eval
+	go test -short -timeout 300s -covermode=count -coverprofile=command.coverage ./command
 	go test -short -timeout 300s -covermode=count -coverprofile=config.coverage ./config
 	go test -short -timeout 300s -covermode=count -coverprofile=handler.coverage ./handler
 	go test -short -timeout 300s -covermode=count -coverprofile=server.coverage ./server
@@ -22,6 +23,7 @@ test-coverage:
 test-coverage-show:
 	go tool cover -html=ac.coverage
 	go tool cover -html=eval.coverage
+	go tool cover -html=command.coverage
 	go tool cover -html=config.coverage
 	go tool cover -html=handler.coverage
 	go tool cover -html=server.coverage
