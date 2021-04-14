@@ -40,6 +40,11 @@ func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 		return nil, fmt.Errorf("the grant_type has to be set to 'client_credentials'")
 	}
 
+	if config.Retries == nil {
+		one := 1
+		config.Retries = &one
+	}
+
 	return &OAuth2{
 		backend:  backend,
 		config:   config,
@@ -98,9 +103,8 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 		oa.memStore.Del(credentials.StorageKey)
 
 		ctx := req.Context()
-		// TODO: Make the number of the repeats configureable.
-		if repeats, ok := ctx.Value(request.TokenRequestRepeats).(int); !ok || repeats < 1 {
-			ctx = context.WithValue(ctx, request.TokenRequestRepeats, repeats+1)
+		if retries, ok := ctx.Value(request.TokenRequestRetries).(int); !ok || retries < *oa.config.Retries {
+			ctx = context.WithValue(ctx, request.TokenRequestRetries, retries+1)
 
 			req.Header.Del("Authorization")
 			*req = *req.WithContext(ctx)

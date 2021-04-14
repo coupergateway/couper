@@ -16,7 +16,7 @@ const (
 	RoundTripProxy
 	ServerName
 	TokenRequest
-	TokenRequestRepeats
+	TokenRequestRetries
 	URLAttribute
 	Wildcard
 	XFF

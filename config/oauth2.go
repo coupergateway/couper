@@ -23,6 +23,7 @@ type OAuth2 struct {
 	BackendName string   `hcl:"backend,optional"`
 	GrantType   string   `hcl:"grant_type"`
 	Remain      hcl.Body `hcl:",remain"`
+	Retries     *int     `hcl:"retries,optional"`
 }
 
 // HCLBody implements the <Inline> interface.

@@ -8,13 +8,14 @@ server "api" {
       proxy {
         backend {
           origin = "${request.headers.x-origin}"
-		  path   = "/resource"
+          path   = "/resource"
 
-		  oauth2 {
+          oauth2 {
             token_endpoint = "${request.headers.x-token-endpoint}/oauth2"
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
+            retries        = 2
           }
         }
       }
@@ -30,6 +31,7 @@ server "api" {
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
+            retries        = 2
             backend {
               origin = "${request.headers.x-token-endpoint}"
               path = "/oauth2"

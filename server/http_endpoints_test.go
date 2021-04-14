@@ -263,7 +263,7 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 func TestEndpoints_OAuth2(t *testing.T) {
 	helper := test.New(t)
 	var seenCh, tokenSeenCh chan struct{}
-	repeats := 0
+	retries := 0
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/oauth2" {
@@ -278,7 +278,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 			_, werr := rw.Write(body)
 			helper.Must(werr)
 
-			if repeats > 0 {
+			if retries == 2 {
 				close(tokenSeenCh)
 			}
 
@@ -290,13 +290,13 @@ func TestEndpoints_OAuth2(t *testing.T) {
 
 	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/resource" {
-			if req.Header.Get("Authorization") == "Bearer abcdef0123456789" && repeats > 0 {
+			if req.Header.Get("Authorization") == "Bearer abcdef0123456789" && retries == 2 {
 				rw.WriteHeader(http.StatusNoContent)
 				close(seenCh)
 				return
 			}
 
-			repeats++
+			retries++
 
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
