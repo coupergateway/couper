@@ -3,6 +3,9 @@ name: Go
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - '**/README.md'
+      - '.github/workflows/daily-fuzz.yml'
   pull_request:
 
 jobs:
