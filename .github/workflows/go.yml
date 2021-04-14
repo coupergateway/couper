@@ -27,7 +27,7 @@ jobs:
       run: test -z $(go fmt ./...)
 
     - name: Source-Code analysis
-      run: go vet ./...
+      run: go list ./... | grep -v 'fuzz\/.*' | xargs go vet
 
     - name: Test
       run: go test -v -timeout 300s -race ./...

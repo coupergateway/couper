@@ -91,7 +91,7 @@ func NewServerConfiguration(
 	conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore,
 ) (ServerConfiguration, error) {
 	// confCtx is created to evaluate request / response related configuration errors on start.
-	noopReq := httptest.NewRequest(http.MethodGet, "https://couper.io", nil)
+	noopReq, _ := http.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
 	confCtx := conf.Context.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
