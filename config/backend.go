@@ -7,8 +7,12 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &Backend{}
-var BackendInlineSchema = Backend{}.Schema(true)
+var (
+	_ Inline           = &Backend{}
+	_ BackendReference = &Backend{}
+
+	BackendInlineSchema = Backend{}.Schema(true)
+)
 
 // Backend represents the <Backend> object.
 type Backend struct {

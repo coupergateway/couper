@@ -921,10 +921,10 @@ func TestHTTPServer_QueryEncoding(t *testing.T) {
 func TestHTTPServer_Backends(t *testing.T) {
 	client := newClient()
 
-	config := "testdata/integration/config/02_couper.hcl"
+	configPath := "testdata/integration/config/02_couper.hcl"
 
 	helper := test.New(t)
-	shutdown, _ := newCouper(config, helper)
+	shutdown, _ := newCouper(configPath, helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
@@ -936,6 +936,26 @@ func TestHTTPServer_Backends(t *testing.T) {
 	exp := []string{"1", "4"}
 	if !reflect.DeepEqual(res.Header.Values("Foo"), exp) {
 		t.Errorf("\nwant: \n%#v\ngot: \n%#v", exp, res.Header.Values("Foo"))
+	}
+}
+
+func TestHTTPServer_Backends_Reference(t *testing.T) {
+	client := newClient()
+
+	configPath := "testdata/integration/config/04_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, _ := newCouper(configPath, helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.Header.Get("proxy") != "a" || res.Header.Get("request") != "b" {
+		t.Errorf("Expected proxy:a and request:b header values, got: %v", res.Header)
 	}
 }
 

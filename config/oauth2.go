@@ -5,7 +5,10 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ Inline = &OAuth2{}
+var (
+	_ BackendReference = &OAuth2{}
+	_ Inline           = &OAuth2{}
+)
 
 var OAuthBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
@@ -29,7 +32,7 @@ func (oa OAuth2) HCLBody() hcl.Body {
 
 // Reference implements the <Inline> interface.
 func (oa OAuth2) Reference() string {
-	return "OAuth2"
+	return oa.BackendName
 }
 
 // Schema implements the <Inline> interface.
