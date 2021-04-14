@@ -38,8 +38,15 @@ jobs:
       - name: vendor go-fuzz
         run: go mod vendor && git clone https://github.com/dvyukov/go-fuzz.git vendor/github.com/dvyukov/go-fuzz
 
+      - name: prepare corpus # a basic starting point
+        run: echo "/" > corpus/da39a3ee5e6b4b0d3255bfef95601890afd80709
+        working-directory: fuzz/server
+        continue-on-error: true
+
       - name: fuzz-simple-server
-        run: cd fuzz/server && go-fuzz-build && go-fuzz
+        run: go-fuzz-build && go-fuzz
+        working-directory: fuzz/server
+        continue-on-error: true # runs until job timeout, which would result as step error, skip and upload the result
 
       - uses: actions/upload-artifact@v2
         with:
