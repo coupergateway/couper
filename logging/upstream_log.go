@@ -112,7 +112,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
 
-		if retries, ok := req.Context().Value(request.TokenRequestRetries).(int); ok && retries > 0 {
+		if retries, ok := req.Context().Value(request.TokenRequestRetries).(uint8); ok && retries > 0 {
 			fields["token_request_retry"] = retries
 		}
 	}
