@@ -493,7 +493,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 				return nil, err
 			}
 
-			var jwtSource ac.Source
+			jwtSource := ac.Unknown
 			var jwtKey string
 			if jwt.Cookie != "" {
 				jwtSource = ac.Cookie

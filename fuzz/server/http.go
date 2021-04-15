@@ -28,33 +28,40 @@ var logs io.Reader
 func init() {
 	upstream := test.NewBackend()
 
-	configFileContent := fmt.Sprintf(`server "fuzz" {
-		endpoint "/**" {
-			add_request_headers = {
-				x-fuzz = request.headers.x-data
-			}
-
-			add_query_params = {
-				x-quzz = request.headers.x-data
-			}
-
-			request "sidekick" {
-				url = "http://%s/anything/"
-				body = request.headers.x-data
-			}
-			
-			# default
-			proxy {
-				path = "/anything"
-				url = "http://%s"
-			}
-
-			add_response_headers = {
-				y-fuzz = request.headers.x-data
-				x-sidekick = backend_responses.sidekick.json_body
-			}
+	configFileContent := fmt.Sprintf(`
+server "fuzz" {
+	endpoint "/**" {
+		add_request_headers = {
+			x-fuzz = request.headers.x-data
 		}
-}`, upstream.Addr(), upstream.Addr())
+
+		add_query_params = {
+			x-quzz = request.headers.x-data
+		}
+
+		request "sidekick" {
+			url = "http://%s/anything/"
+			body = request.headers.x-data
+		}
+		
+		# default
+		proxy {
+			path = "/anything"
+			url = "http://%s"
+		}
+
+		add_response_headers = {
+			y-fuzz = request.headers.x-data
+			x-sidekick = backend_responses.sidekick.json_body
+		}
+	}
+}
+
+settings {
+  default_port = 0
+  no_proxy_from_env = true
+}
+`, upstream.Addr(), upstream.Addr())
 
 	configFile, err := configload.LoadBytes([]byte(configFileContent), "fuzz_http.hcl")
 	if err != nil {
@@ -76,13 +83,15 @@ func init() {
 		panic("init error: " + err.Error())
 	}
 
-	servers, fn := server.NewServerList(cmdCtx, configFile.Context, log, configFile.Settings, &couperruntime.DefaultTimings, config)
+	servers, _ := server.NewServerList(cmdCtx, configFile.Context, log, configFile.Settings, &couperruntime.DefaultTimings, config)
+	var addr string
 	for _, s := range servers {
 		if err = s.Listen(); err != nil {
 			panic("init error: " + err.Error())
 		}
+		addr = s.Addr()
+		break // support just one server
 	}
-	go fn()
 
 	d := &net.Dialer{Timeout: time.Second}
 	client = &http.Client{
@@ -92,7 +101,7 @@ func init() {
 			IdleConnTimeout: time.Second,
 			MaxConnsPerHost: 0,
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return d.DialContext(ctx, "tcp4", "127.0.0.1:8080")
+				return d.DialContext(ctx, "tcp4", addr)
 			},
 		},
 	}

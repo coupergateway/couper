@@ -1,8 +1,8 @@
 name: Daily-Fuzz
 
 on:
-#  schedule:
-#    - cron: '0 9,15 * * *'
+  schedule:
+    - cron: '0 9,15 * * *'
   workflow_dispatch:
 
 jobs:
