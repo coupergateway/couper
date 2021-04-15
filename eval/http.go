@@ -340,13 +340,13 @@ func deleteHeader(val cty.Value, headerCtx http.Header) {
 }
 
 func toSlice(val interface{}) []string {
-	switch val.(type) {
+	switch val := val.(type) {
 	case float64:
-		return []string{strconv.FormatFloat(val.(float64), 'f', 0, 64)}
+		return []string{strconv.FormatFloat(val, 'f', 0, 64)}
 	case string:
-		return []string{val.(string)}
+		return []string{val}
 	case []string:
-		return val.([]string)
+		return val
 	}
 	return []string{}
 }

@@ -27,7 +27,9 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-const ContextType = "evalContextType"
+type ContextKey uint8
+
+const ContextType ContextKey = iota
 
 var _ context.Context = &Context{}
 
@@ -136,8 +138,8 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	}
 	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
 
-	resps := make(ContextMap, 0)
-	bereqs := make(ContextMap, 0)
+	resps := make(ContextMap)
+	bereqs := make(ContextMap)
 	for _, beresp := range beresps {
 		if beresp == nil {
 			continue
@@ -163,6 +165,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
 			JsonBody:   jsonBody,
+			Body:       parseBody(beresp),
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -231,6 +234,22 @@ func isJSONMediaType(contentType string) bool {
 	m, _, _ := mime.ParseMediaType(contentType)
 	mParts := strings.Split(m, "/")
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
+}
+
+func parseBody(beresp *http.Response) cty.Value {
+	if beresp == nil || beresp.Body == nil {
+		return cty.NilVal
+	}
+
+	buf := &bytes.Buffer{}
+	_, err := io.Copy(buf, beresp.Body)
+	if err != nil {
+		return cty.EmptyObjectVal
+	}
+
+	// reset
+	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
+	return cty.StringVal(buf.String())
 }
 
 func parseJSON(r io.Reader) cty.Value {
