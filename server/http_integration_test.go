@@ -2107,6 +2107,22 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 }
 
+func TestJWTAccessControlSourceConfig(t *testing.T) {
+	helper := test.New(t)
+	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	helper.Must(err)
+
+	log, _ := logrustest.NewNullLogger()
+	ctx := context.TODO()
+
+	expectedMsg := `loading jwt "missing-source" definition failed: unknown source definition`
+
+	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
+	if err == nil || err.Error() != expectedMsg {
+		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, err)
+	}
+}
+
 func getAccessControlMessages(hook *logrustest.Hook) string {
 	for _, entry := range hook.Entries {
 		if entry.Message != "" {
