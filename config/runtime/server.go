@@ -559,8 +559,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 
 func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {
 	var acList ac.List
-	for _, acName := range parentAC.
-		Merge(handlerAC).List() {
+	for _, acName := range parentAC.Merge(handlerAC).List() {
 		m.MustExist(acName)
 		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
 	}
