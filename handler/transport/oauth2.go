@@ -40,11 +40,6 @@ func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 		return nil, fmt.Errorf("the grant_type has to be set to 'client_credentials'")
 	}
 
-	if config.Retries == nil {
-		var one uint8 = 1
-		config.Retries = &one
-	}
-
 	return &OAuth2{
 		backend:  backend,
 		config:   config,
