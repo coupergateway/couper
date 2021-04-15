@@ -21,6 +21,10 @@ type Proxy struct {
 	Backend hcl.Body
 }
 
+func (p Proxy) Reference() string {
+	return p.BackendName
+}
+
 // Proxies represents a list of <Proxy> objects.
 type Proxies []*Proxy
 

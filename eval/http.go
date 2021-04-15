@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -59,7 +60,7 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 		}
 
 		if n > bodyLimit {
-			return errors.EndpointReqBodySizeExceeded
+			return errors.ClientRequest.Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
 		bodyBytes := buf.Bytes()
@@ -209,9 +210,12 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 	}
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
-	err := applyHeaderOps(attrs,
-		[]string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}, httpCtx, beresp.Header)
-	return err
+	headers := []string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}
+	err := applyHeaderOps(attrs, headers, httpCtx, beresp.Header)
+	if err != nil {
+		return errors.Evaluation.With(err)
+	}
+	return nil
 }
 
 func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hcl.EvalContext, headers ...http.Header) error {

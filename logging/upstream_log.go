@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
-	"strconv"
 	"sync"
 	"time"
 
@@ -97,8 +96,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	requestFields["headers"] = filterHeader(u.config.RequestHeaders, req.Header)
 
-	if u, ok := req.Context().Value(request.BackendURL).(string); ok {
-		fields["url"] = u
+	if burl, ok := req.Context().Value(request.BackendURL).(string); ok {
+		fields["url"] = burl
 	}
 
 	if req.URL.User != nil && req.URL.User.Username() != "" {
@@ -129,12 +128,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 			"tls":     beresp.TLS != nil,
 		}
 		fields["response"] = responseFields
-
-		if couperErr := beresp.Header.Get(errors.HeaderErrorCode); couperErr != "" {
-			i, _ := strconv.Atoi(couperErr[:4])
-			err = errors.Code(i) // TODO: override original one??
-			fields["code"] = i
-		}
 	}
 
 	if validationErrors := openAPIContext.Errors(); len(validationErrors) > 0 {
@@ -155,7 +148,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if (beresp != nil && beresp.StatusCode == http.StatusInternalServerError) || err != nil {
 		if err != nil {
-			entry.Error(err)
+			entry.Error(err.(errors.GoError).GoError())
 			return beresp, err
 		}
 		entry.Error()

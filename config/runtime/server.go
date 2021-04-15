@@ -267,7 +267,7 @@ func NewServerConfiguration(
 				accessControl := newAC(srvConf, parentAPI)
 
 				if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-					protectedHandler = errTpl.ServeError(errors.APIRouteNotFound)
+					protectedHandler = errTpl.ServeError(errors.RouteNotFound)
 				}
 
 				var confErr error

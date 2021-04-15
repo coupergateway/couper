@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler/ac"
 )
 
 type RoundtripHandlerFunc http.HandlerFunc
@@ -28,7 +26,6 @@ type AccessLog struct {
 type RecorderInfo interface {
 	StatusCode() int
 	WrittenBytes() int
-	ErrorHeader() string // TODO: drop in favour of new error-handling
 }
 
 func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
@@ -39,9 +36,6 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 }
 
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler, startTime time.Time) {
-	oCtx, acContext := ac.NewWithContext(req.Context())
-	*req = *req.WithContext(oCtx)
-
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
@@ -101,11 +95,9 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	var statusCode int
 	var writtenBytes int
-	var couperErr string
 	if recorder, ok := rw.(RecorderInfo); ok {
 		statusCode = recorder.StatusCode()
 		writtenBytes = recorder.WrittenBytes()
-		couperErr = recorder.ErrorHeader()
 	}
 
 	fields["realtime"] = roundMS(serveDone.Sub(startTime))
@@ -136,24 +128,19 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	fields["url"] = fields["scheme"].(string) + "://" + req.Host + path.String()
 
-	var err error
+	var err errors.GoError
 	fields["client_ip"], _ = splitHostPort(req.RemoteAddr)
-	if couperErr != "" {
-		i, _ := strconv.Atoi(couperErr[:4])
-		err = errors.Code(i)
-		fields["code"] = i
-	}
 
 	entry := log.logger.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
 
-	if acError := acContext.Error(); acError != "" {
-		err = fmt.Errorf("access control: %s: %s", acContext.Name(), acError)
+	if ctxErr, ok := req.Context().Value(request.ErrorKind).(errors.GoError); ok {
+		err = ctxErr
 	}
 
 	if statusCode == http.StatusInternalServerError || err != nil {
 		if err != nil {
-			entry.Error(err)
+			entry.Error(err.GoError())
 			return
 		}
 		entry.Error()

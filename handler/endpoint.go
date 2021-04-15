@@ -144,12 +144,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		serveErr := err
 		switch err.(type) { // TODO proper err mapping and handling
 		case net.Error:
-			serveErr = errors.EndpointConnect
+			serveErr = errors.Request.With(err)
 			if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
-				serveErr = errors.EndpointProxyConnect
+				serveErr = errors.Proxy.With(err)
 			}
 		case producer.ResultPanic:
-			serveErr = errors.Server
+			serveErr = errors.Server.With(err)
 			log.Error(err)
 		}
 		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
@@ -194,7 +194,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 	if attr, ok := content.Attributes["status"]; ok {
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
-			log.Errorf("endpoint eval error: %v", err)
+			log.Error(errors.Evaluation.With(err).GoError())
 			statusCode = http.StatusInternalServerError
 		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
 			statusCode = statusValue
@@ -203,9 +203,9 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)
 
-	body, ct, err := eval.GetBody(hclCtx, content)
-	if err != nil {
-		log.Errorf("endpoint eval error: %v", err)
+	body, ct, bodyErr := eval.GetBody(hclCtx, content)
+	if bodyErr != nil {
+		log.Error(errors.Evaluation.With(bodyErr).GoError())
 	}
 
 	if ct != "" {
@@ -215,7 +215,7 @@ func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.
 	if attr, ok := content.Attributes["headers"]; ok {
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
-			log.Errorf("endpoint eval error: %v", err)
+			log.Error(errors.Evaluation.With(err).GoError())
 		}
 
 		eval.SetHeader(val, clientres.Header)

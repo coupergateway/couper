@@ -11,6 +11,7 @@ import (
 	"github.com/getkin/kin-openapi/pathpattern"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/config/runtime/server"
@@ -139,8 +140,8 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
 		// Otherwise look for existing files or spa fallback.
-		if tpl := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
-			return tpl.ServeError(errors.APIRouteNotFound)
+		if tpl, api := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
+			return tpl.ServeError(errors.RouteNotFound.Label(api.BasePath)) // TODO: api label
 		}
 
 		fileHandler, exist := m.hasFileResponse(req)
@@ -156,7 +157,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			}
 
 			if isConfigured(m.opts.ServerOptions.FilesBasePath) && matchesPath(m.opts.ServerOptions.FilesBasePath, req.URL.Path) {
-				return m.opts.ServerOptions.FilesErrTpl.ServeError(errors.FilesRouteNotFound)
+				return m.opts.ServerOptions.FilesErrTpl.ServeError(errors.RouteNotFound)
 			}
 
 			// Fallback
@@ -217,18 +218,18 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 	return fileHandler, false
 }
 
-func (m *Mux) getAPIErrorTemplate(reqPath string) *errors.Template {
+func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API) {
 	for api, path := range m.opts.ServerOptions.APIBasePaths {
 		if !isConfigured(path) {
 			continue
 		}
 
 		if isAPIError(path, m.opts.ServerOptions.FilesBasePath, m.opts.ServerOptions.SPABasePath, reqPath) {
-			return m.opts.ServerOptions.APIErrTpls[api]
+			return m.opts.ServerOptions.APIErrTpls[api], api
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 // isAPIError checks the path w/ and w/o the

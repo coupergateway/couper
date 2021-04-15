@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -82,28 +83,26 @@ func (t *Template) ServeError(err error) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
 
-		errCode, ok := err.(Code)
+		goErr, ok := err.(GoError)
 		if !ok {
-			errCode = Server
+			goErr = Server.With(err)
 		}
 
-		SetHeader(rw, errCode)
+		rw.Header().Set(HeaderErrorCode, fmt.Sprintf(err.Error()))
 
-		status := httpStatus(errCode)
-		rw.WriteHeader(status)
+		rw.WriteHeader(goErr.GoStatus())
 
 		if req.Method == http.MethodHead { // Its fine to send CT
 			return
 		}
 
 		var reqID string
-		if r, ok := req.Context().Value(request.UID).(string); ok {
+		if r, valOk := req.Context().Value(request.UID).(string); valOk {
 			reqID = r // could be nil within (unit) test cases
 		}
 		data := map[string]interface{}{
-			"http_status": status,
+			"http_status": goErr.GoStatus(),
 			"message":     err.Error(),
-			"error_code":  int(errCode),
 			"path":        req.URL.EscapedPath(),
 			"request_id":  escapeValue(t.mime, reqID),
 		}
@@ -116,10 +115,10 @@ func (t *Template) ServeError(err error) http.Handler {
 		// fallback behaviour, execute internal template once
 		if tplErr != nil && (t != DefaultHTML && t != DefaultJSON) {
 			if !strings.Contains(t.mime, "text/html") {
-				DefaultJSON.ServeError(errCode).ServeHTTP(rw, req)
+				DefaultJSON.ServeError(goErr).ServeHTTP(rw, req)
 				return
 			}
-			DefaultHTML.ServeError(errCode).ServeHTTP(rw, req)
+			DefaultHTML.ServeError(goErr).ServeHTTP(rw, req)
 		} else if tplErr != nil && t.log != nil {
 			t.log.WithFields(data).Error(tplErr)
 		}

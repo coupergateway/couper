@@ -16,7 +16,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	couperErr "github.com/avenga/couper/errors"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
@@ -33,13 +33,12 @@ const (
 
 var _ http.RoundTripper = &Backend{}
 
-var errBackendDeadlineExceeded = fmt.Errorf("backend deadline exceeded")
-
 var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
+	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
 	transportConf    *Config
@@ -109,7 +108,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateRequest(req); err != nil {
-			return nil, couperErr.UpstreamRequestValidationFailed
+			return nil, errors.Backend.Label(b.name).With(err).Message("request validation failed")
 		}
 	}
 
@@ -144,7 +143,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
-			return nil, couperErr.UpstreamResponseValidationFailed
+			return nil, errors.Backend.Label(b.name).With(err).Message("response validation failed")
 		}
 	}
 
@@ -207,7 +206,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 		deadline := time.After(b.transportConf.Timeout)
 		select {
 		case <-deadline:
-			ec <- errBackendDeadlineExceeded
+			ec <- errors.Timeout.Label(b.name).Message("deadline exceeded")
 			return
 		case <-c.Done():
 			return

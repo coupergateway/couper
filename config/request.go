@@ -20,6 +20,10 @@ type Request struct {
 	Backend hcl.Body
 }
 
+func (r Request) Reference() string {
+	return r.BackendName
+}
+
 // Requests represents a list of <Requests> objects.
 type Requests []*Request
 

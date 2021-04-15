@@ -188,7 +188,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
-		errors.DefaultHTML.ServeError(errors.InvalidRequest).ServeHTTP(rw, req)
+		errors.DefaultHTML.ServeError(errors.ClientRequest).ServeHTTP(rw, req)
 	}
 
 	mux, ok := s.muxers[host]

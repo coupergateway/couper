@@ -40,10 +40,6 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 			*req = *req.WithContext(context.WithValue(req.Context(), request.ErrorKind, err))
 
-			if ctx, ok := req.Context().Value(request.AccessControl).(*AccessControlContext); ok {
-				ctx.error = err
-				ctx.name = control.Name
-			}
 			a.errorHandler.ServeHTTP(rw, req)
 			return
 		}

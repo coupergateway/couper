@@ -45,7 +45,7 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// TODO: more generic fallback, may fit for access control
-	e.template.ServeError(errors.AuthorizationFailed).ServeHTTP(rw, req)
+	e.template.ServeError(errors.AccessControl).ServeHTTP(rw, req)
 }
 
 // copy from endpoint, TODO: refactor and combine
