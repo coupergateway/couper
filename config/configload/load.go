@@ -523,7 +523,8 @@ func createCatchAllEndpoint() *config.Endpoint {
 	})
 
 	return &config.Endpoint{
-		Remain: hclbody.New(&hcl.BodyContent{}),
+		Pattern: "/**",
+		Remain:  hclbody.New(&hcl.BodyContent{}),
 		Response: &config.Response{
 			Remain: responseBody,
 		},
