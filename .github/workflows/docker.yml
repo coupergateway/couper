@@ -3,6 +3,9 @@ name: Docker
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - '**/README.md'
+      - '.github/workflows/daily-fuzz.yml'
   release:
     types: [ published ]
 jobs:

@@ -165,7 +165,20 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		origin = "` + origin.URL + `"
 		set_request_headers = {
 			x-test = request.json_body.foo
-		}`, defaultMethods, test.Header{"Content-Type": "applicAtion/foo+jsOn"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}}},
+		}`, defaultMethods, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}},
+		},
+		{"method /w body +json content-type", `
+		origin = "` + origin.URL + `"
+		set_request_headers = {
+			x-test = request.json_body.foo
+		}`, defaultMethods, test.Header{"Content-Type": "applicAtion/foo+jsOn"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": "bar"}},
+		},
+		{"method /w body wrong content-type", `
+		origin = "` + origin.URL + `"
+		set_request_headers = {
+			x-test = request.json_body.foo
+		}`, defaultMethods, test.Header{"Content-Type": "application/fooson"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}},
+		},
 		{"method /w body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
@@ -233,6 +246,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 	type testCase struct {
 		name       string
 		remain     string
+		ct         string
 		expHeaders test.Header
 	}
 
@@ -248,7 +262,11 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			return
 		}
 
-		rw.Header().Set("Content-Type", "application/json")
+		if ct := r.Header.Get("Content-Type"); ct != "" {
+			rw.Header().Set("Content-Type", ct)
+		} else {
+			rw.Header().Set("Content-Type", "application/json")
+		}
 		_, err = rw.Write(originPayload)
 		helper.Must(err)
 	}))
@@ -257,17 +275,33 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 	logger := log.WithContext(context.Background())
 
 	for _, tc := range []testCase{
-		{"no eval", `path = "/"`, test.Header{}},
-		{"json_body client field", `set_response_headers = { "x-client" = "my-val-x-${request.json_body.client}" }`,
+		{"no eval", `path = "/"`, "", test.Header{}},
+		{"json_body client field", `set_response_headers = { "x-client" = "my-val-x-${request.json_body.client}" }`, "",
 			test.Header{
 				"x-client": "my-val-x-true",
+			}},
+		{"json_body request/response", `set_response_headers = {
+				x-client = "my-val-x-${request.json_body.client}"
+				x-origin = "my-val-y-${backend_responses.default.json_body.origin}"
+			}`, "",
+			test.Header{
+				"x-client": "my-val-x-true",
+				"x-origin": "my-val-y-true",
+			}},
+		{"json_body request/response json variant", `set_response_headers = {
+				x-client = "my-val-x-${request.json_body.client}"
+				x-origin = "my-val-y-${backend_responses.default.json_body.origin}"
+			}`, "application/foo+json",
+			test.Header{
+				"x-client": "my-val-x-true",
+				"x-origin": "my-val-y-true",
 			}},
 		{"json_body non existing field", `set_response_headers = {
 "${backend_responses.default.json_body.not-there}" = "my-val-0-${backend_responses.default.json_body.origin}"
 "${request.json_body.client}-my-val-a" = "my-val-b-${backend_responses.default.json_body.client}"
-}`,
+}`, "",
 			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
-		{"json_body null value", `set_response_headers = { "x-null" = "${backend_responses.default.json_body.nil}" }`, test.Header{"x-null": ""}},
+		{"json_body null value", `set_response_headers = { "x-null" = "${backend_responses.default.json_body.nil}" }`, "", test.Header{"x-null": ""}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
@@ -285,7 +319,11 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			}, nil, nil)
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
-			req.Header.Set("Content-Type", "application/json")
+			if tc.ct != "" {
+				req.Header.Set("Content-Type", tc.ct)
+			} else {
+				req.Header.Set("Content-Type", "application/json")
+			}
 
 			helper.Must(eval.SetGetBody(req, 1024))
 			ctx := eval.NewContext(nil).WithClientRequest(req)
@@ -310,7 +348,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 
 			for k, v := range tc.expHeaders {
 				if res.Header.Get(k) != v {
-					t.Errorf("Expected header %q value: %q, got: %q", k, v, res.Header.Get(k))
+					t.Errorf("%q: Expected header %q value: %q, got: %q", tc.name, k, v, res.Header.Get(k))
 				}
 			}
 		})
