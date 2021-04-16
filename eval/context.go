@@ -112,10 +112,12 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		pathParams = params
 	}
 
+	body, jsonBody := parseReqBody(req)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		JsonBody:  parseReqJSON(req),
+		Body:      body,
+		JsonBody:  jsonBody,
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
@@ -236,6 +238,24 @@ func isJSONMediaType(contentType string) bool {
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
 }
 
+func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
+	if req == nil || req.GetBody == nil {
+		return cty.NilVal, cty.NilVal
+	}
+
+	body, _ := req.GetBody()
+	b, err := ioutil.ReadAll(body)
+	if err != nil {
+		return cty.NilVal, cty.NilVal
+	}
+
+	jsonBody := cty.EmptyObjectVal
+	if isJSONMediaType(req.Header.Get("Content-Type")) {
+		jsonBody = parseJSONBytes(b)
+	}
+	return cty.StringVal(string(b)), jsonBody
+}
+
 func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 	if beresp == nil || beresp.Body == nil {
 		return cty.NilVal, cty.NilVal
@@ -266,32 +286,6 @@ func parseJSONBytes(b []byte) cty.Value {
 		return cty.NilVal
 	}
 	return val
-}
-
-func parseJSON(r io.Reader) cty.Value {
-	if r == nil {
-		return cty.NilVal
-	}
-
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return cty.NilVal
-	}
-
-	return parseJSONBytes(b)
-}
-
-func parseReqJSON(req *http.Request) cty.Value {
-	if req.GetBody == nil {
-		return cty.EmptyObjectVal
-	}
-
-	if !isJSONMediaType(req.Header.Get("Content-Type")) {
-		return cty.EmptyObjectVal
-	}
-
-	body, _ := req.GetBody()
-	return parseJSON(body)
 }
 
 func newRawURL(u *url.URL) *url.URL {
