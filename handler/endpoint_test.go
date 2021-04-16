@@ -283,10 +283,12 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 		{"json_body request/response", `set_response_headers = {
 				x-client = "my-val-x-${request.json_body.client}"
 				x-origin = "my-val-y-${backend_responses.default.json_body.origin}"
+				x-origin2 = backend_responses.default.body
 			}`, "",
 			test.Header{
-				"x-client": "my-val-x-true",
-				"x-origin": "my-val-y-true",
+				"x-client":  "my-val-x-true",
+				"x-origin":  "my-val-y-true",
+				"x-origin2": `{ "client": false, "origin": true, "nil": null }`,
 			}},
 		{"json_body request/response json variant", `set_response_headers = {
 				x-client = "my-val-x-${request.json_body.client}"
