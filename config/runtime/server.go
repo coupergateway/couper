@@ -210,6 +210,10 @@ func NewServerConfiguration(
 			var corsOptions *middleware.CORSOptions
 			var errTpl *errors.Template
 
+			if endpointConf.Pattern == "" { // could happen for internally registered endpoints
+				return nil, fmt.Errorf("endpoint path pattern required")
+			}
+
 			if endpointConf.ErrorFile != "" {
 				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile, log)
 				if err != nil {
