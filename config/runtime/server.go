@@ -434,6 +434,12 @@ func newBackend(
 			return nil, authErr
 		}
 
+		// Set default value
+		if beConf.OAuth2.Retries == nil {
+			var one uint8 = 1
+			beConf.OAuth2.Retries = &one
+		}
+
 		return transport.NewOAuth2(beConf.OAuth2, memStore, authBackend, backend)
 	}
 

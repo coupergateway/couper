@@ -655,6 +655,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `token_endpoint`                | <ul><li>&#9888; Mandatory.</li><li>URL of the token endpoint at the authorization server.</li></ul> |
 | `client_id`                     | <ul><li>&#9888; Mandatory.</li><li>The client identifier.</li></ul> |
 | `client_secret`                 | <ul><li>&#9888; Mandatory.</li><li>The client password.</li></ul> |
+| `retries`                       | <ul><li>Optional.</li><li>The number of retries to get the token und resource, if the resource-request responses with `401 Forbidden` HTTP status code.</li><li>Default: `1`.</li></ul> |
 
 ### Modifier
 
