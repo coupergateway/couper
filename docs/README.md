@@ -235,6 +235,7 @@ since these references get evaluated at start.
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
 | `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
+| `body`                    | The request message body |
 | `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
 | `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
 | `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
