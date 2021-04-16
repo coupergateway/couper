@@ -266,7 +266,10 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		}
 
 		if endpoint.Pattern == "" {
-			r := endpoint.Remain.MissingItemRange()
+			var r hcl.Range
+			if endpoint.Remain != nil {
+				r = endpoint.Remain.MissingItemRange()
+			}
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "endpoint: missing path pattern",
