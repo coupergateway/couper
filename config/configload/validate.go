@@ -28,7 +28,7 @@ func uniqueAttributeKey(body hcl.Body) error {
 
 		expr, ok := attr.Expr.(*hclsyntax.ObjectConsExpr)
 		if !ok {
-			fmt.Printf("%#v", attr.Expr)
+			continue
 		}
 
 		unique := make(map[string]hcl.Range)
