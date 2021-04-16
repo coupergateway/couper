@@ -1,11 +1,17 @@
 package runtime
 
 import (
+	"fmt"
+	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
+
+	ac "github.com/avenga/couper/accesscontrol"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -189,6 +195,17 @@ func TestServer_validatePortHosts(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"Invalid host format",
+			args{
+				&config.Couper{
+					Servers: []*config.Server{
+						{Hosts: []string{"_"}},
+					},
+				}, 8080,
+			},
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -199,5 +216,130 @@ func TestServer_validatePortHosts(t *testing.T) {
 				t.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestServer_ValidateACName(t *testing.T) {
+	acMap := make(ac.Map)
+
+	name, err := validateACName(acMap, " ", "Type")
+	if err == nil {
+		t.Error("Unexpected NIL-error given")
+	} else if !strings.Contains(fmt.Sprintf("%#v", err), `"access control: label required: 'Type'"`) {
+		t.Errorf("Unexpected error message given: %#v", err)
+	}
+	if name != "" {
+		t.Errorf("Unexpected ac name given: %s", name)
+	}
+
+	acMap["test"] = nil
+	name, err = validateACName(acMap, "test", "Type")
+	if err == nil {
+		t.Error("Unexpected NIL-error given")
+	} else if !strings.Contains(fmt.Sprintf("%#v", err), `"access control: 'test' already exists"`) {
+		t.Errorf("Unexpected error message given: %#v", err)
+	}
+	if name != "test" {
+		t.Errorf("Unexpected ac name given: %s", name)
+	}
+
+	name, err = validateACName(acMap, "new", "Type")
+	if err != nil {
+		t.Errorf("Unexpected error given: %#v", err)
+	}
+	if name != "new" {
+		t.Errorf("Unexpected ac name given: %s", name)
+	}
+}
+
+func TestServer_GetCORS(t *testing.T) {
+	parent := &config.CORS{MaxAge: "123"}
+	curr := &config.CORS{MaxAge: "321"}
+
+	if got := getCORS(parent, nil); got != parent {
+		t.Errorf("Unexpected CORS given: %#v", got)
+	}
+
+	if got := getCORS(parent, curr); got != curr {
+		t.Errorf("Unexpected CORS given: %#v", got)
+	}
+
+	curr.Disable = true
+
+	if got := getCORS(parent, curr); got != nil {
+		t.Errorf("Unexpected CORS given: %#v", got)
+	}
+}
+
+func TestServer_ParseDuration(t *testing.T) {
+	var target time.Duration
+
+	if err := parseDuration("non-duration", &target); err == nil {
+		t.Error("Unexpected NIL-error given")
+	}
+	if target != 0 {
+		t.Errorf("Unexpected duration given: %#v", target)
+	}
+
+	if err := parseDuration("1ms", &target); err != nil {
+		t.Errorf("Unexpected error given: %#v", err)
+	}
+	if target != 1000000 {
+		t.Errorf("Unexpected duration given: %#v", target)
+	}
+}
+
+func TestServer_ParseBodyLimit(t *testing.T) {
+	i, err := parseBodyLimit("non-size")
+	if err == nil {
+		t.Error("Unexpected NIL-error given")
+	}
+	if i != -1 {
+		t.Errorf("Unexpected size given: %#v", i)
+	}
+
+	i, err = parseBodyLimit("")
+	if err != nil {
+		t.Error("Unexpected error given")
+	}
+	if i != 64000000 {
+		t.Errorf("Unexpected size given: %#v", i)
+	}
+
+	i, err = parseBodyLimit("1K")
+	if err != nil {
+		t.Error("Unexpected error given")
+	}
+	if i != 1000 {
+		t.Errorf("Unexpected size given: %#v", i)
+	}
+}
+
+func TestServer_NewAC(t *testing.T) {
+	srvConf := &config.Server{
+		AccessControl:        []string{"s1", "s2"},
+		DisableAccessControl: []string{"s1"},
+	}
+	apiConf := &config.API{
+		AccessControl:        []string{"a1", "a2"},
+		DisableAccessControl: []string{"a1"},
+	}
+
+	got := newAC(srvConf, nil)
+	exp := config.AccessControl{
+		AccessControl:        []string{"s1", "s2"},
+		DisableAccessControl: []string{"s1"},
+	}
+	if !reflect.DeepEqual(got, exp) {
+		t.Errorf("want\n%#v\ngot\n%#v", exp, got)
+	}
+
+	got = newAC(srvConf, apiConf)
+	exp = config.AccessControl{
+		AccessControl:        []string{"s1", "s2", "a1", "a2"},
+		DisableAccessControl: []string{"s1", "a1"},
+	}
+	if !reflect.DeepEqual(got, exp) {
+		t.Errorf("want\n%#v\ngot\n%#v", exp, got)
 	}
 }
