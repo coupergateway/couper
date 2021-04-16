@@ -265,6 +265,15 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			return err
 		}
 
+		if endpoint.Pattern == "" {
+			r := endpoint.Remain.MissingItemRange()
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "endpoint: missing path pattern",
+				Subject:  &r,
+			}}
+		}
+
 		endpointContent := bodyToContent(endpoint.Remain)
 
 		proxies := endpointContent.Blocks.OfType(proxy)
