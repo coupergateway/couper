@@ -15,9 +15,11 @@ options:
      title_maps:
        feat: Features
        Add: Features
+       add: Features
+       change: Changes
        Fix: Bug Fixes
        Fixup: Bug Fixes
-#       perf: Performance Improvements
+       perf: Performance Improvements
        refactor: Code Refactoring
   header:
     pattern: "^((\\w+)\\s.*)$"
