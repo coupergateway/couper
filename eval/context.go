@@ -243,12 +243,12 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 
 	b, err := ioutil.ReadAll(beresp.Body)
 	if err != nil {
-		return cty.EmptyObjectVal, cty.EmptyObjectVal
+		return cty.NilVal, cty.NilVal
 	}
 
 	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
 
-	jsonBody := cty.EmptyObjectVal
+	jsonBody := cty.NilVal
 	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
