@@ -158,14 +158,14 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var jsonBody cty.Value
+		var body, jsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
-			jsonBody = parseRespJSON(beresp)
+			body, jsonBody = parseRespBody(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
 			JsonBody:   jsonBody,
-			Body:       parseBody(beresp),
+			Body:       body,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -236,20 +236,36 @@ func isJSONMediaType(contentType string) bool {
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
 }
 
-func parseBody(beresp *http.Response) cty.Value {
+func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 	if beresp == nil || beresp.Body == nil {
+		return cty.NilVal, cty.NilVal
+	}
+
+	b, err := ioutil.ReadAll(beresp.Body)
+	if err != nil {
+		return cty.EmptyObjectVal, cty.EmptyObjectVal
+	}
+
+	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
+
+	jsonBody := cty.EmptyObjectVal
+	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
+		jsonBody = parseJSONBytes(b)
+	}
+	return cty.StringVal(string(b)), jsonBody
+}
+
+func parseJSONBytes(b []byte) cty.Value {
+	impliedType, err := ctyjson.ImpliedType(b)
+	if err != nil {
 		return cty.NilVal
 	}
 
-	buf := &bytes.Buffer{}
-	_, err := io.Copy(buf, beresp.Body)
+	val, err := ctyjson.Unmarshal(b, impliedType)
 	if err != nil {
-		return cty.EmptyObjectVal
+		return cty.NilVal
 	}
-
-	// reset
-	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
-	return cty.StringVal(buf.String())
+	return val
 }
 
 func parseJSON(r io.Reader) cty.Value {
@@ -262,16 +278,7 @@ func parseJSON(r io.Reader) cty.Value {
 		return cty.NilVal
 	}
 
-	impliedType, err := ctyjson.ImpliedType(b)
-	if err != nil {
-		return cty.NilVal
-	}
-
-	val, err := ctyjson.Unmarshal(b, impliedType)
-	if err != nil {
-		return cty.NilVal
-	}
-	return val
+	return parseJSONBytes(b)
 }
 
 func parseReqJSON(req *http.Request) cty.Value {
@@ -285,22 +292,6 @@ func parseReqJSON(req *http.Request) cty.Value {
 
 	body, _ := req.GetBody()
 	return parseJSON(body)
-}
-
-func parseRespJSON(beresp *http.Response) cty.Value {
-	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		return cty.EmptyObjectVal
-	}
-
-	buf := &bytes.Buffer{}
-	_, err := io.Copy(buf, beresp.Body)
-	if err != nil {
-		return cty.EmptyObjectVal
-	}
-
-	// reset
-	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
-	return parseJSON(buf)
 }
 
 func newRawURL(u *url.URL) *url.URL {
