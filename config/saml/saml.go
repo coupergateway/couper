@@ -1,5 +1,6 @@
 package saml
 
+// SAML represents the <SAML> object.
 type SAML struct {
 	ArrayAttributes []string `hcl:"array_attributes,optional"`
 	IdpMetadataFile string   `hcl:"idp_metadata_file"`
