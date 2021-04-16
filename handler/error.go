@@ -1,10 +1,8 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
-	"unicode"
 
 	"github.com/hashicorp/hcl/v2"
 
@@ -36,16 +34,15 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	kind := typeToKind(errKind)
-	if eh, ok := e.kindContext[kind]; ok {
+	gerr := errKind.(errors.GoError)
+	if eh, defined := e.kindContext[gerr.Type()]; defined {
 		resp := newResponse(eh, req)
 		eval.ApplyResponseContext(req.Context(), eh, resp)
 		resp.Write(rw)
 		return
 	}
 
-	// TODO: more generic fallback, may fit for access control
-	e.template.ServeError(errors.AccessControl).ServeHTTP(rw, req)
+	e.template.ServeError(errKind).ServeHTTP(rw, req)
 }
 
 // copy from endpoint, TODO: refactor and combine
@@ -94,24 +91,4 @@ func newResponse(context hcl.Body, req *http.Request) *http.Response {
 	}
 
 	return clientres
-}
-
-func typeToKind(err error) string {
-	str := err.Error()
-	if es, ok := err.(fmt.Stringer); ok {
-		str = es.String()
-	}
-	var result []rune
-	for i, c := range str {
-		if i == 0 {
-			result = append(result, unicode.ToLower(c))
-			continue
-		}
-		if unicode.IsUpper(c) {
-			result = append(result, append([]rune{'_'}, unicode.ToLower(c))...)
-			continue
-		}
-		result = append(result, c)
-	}
-	return string(result)
 }

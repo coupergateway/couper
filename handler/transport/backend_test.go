@@ -21,6 +21,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
@@ -248,8 +249,8 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.expectedErr != "" && (err == nil || err.Error() != tt.expectedErr) {
-				subT.Errorf("Expected error %s, got: %v", tt.expectedErr, err)
+			if tt.expectedErr != "" && (err == nil || err.(errors.GoError).GoError() != tt.expectedErr) {
+				subT.Errorf("\nwant:\t%s\ngot:\t%v", tt.expectedErr, err)
 				subT.Log(hook.LastEntry().Message)
 			}
 

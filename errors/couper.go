@@ -7,7 +7,7 @@ var (
 	Backend        = &Error{synopsis: "backend error", httpStatus: http.StatusBadGateway}
 	ClientRequest  = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
 	Evaluation     = &Error{synopsis: "expression evaluation error"}
-	Configuration  = &Error{synopsis: "configuration error", httpStatus: http.StatusConflict}
+	Configuration  = &Error{synopsis: "configuration error", httpStatus: http.StatusInternalServerError}
 	Proxy          = &Error{synopsis: "proxy error", httpStatus: http.StatusBadGateway}
 	Request        = &Error{synopsis: "request error", httpStatus: http.StatusBadGateway}
 	RouteNotFound  = &Error{synopsis: "route not found error", httpStatus: http.StatusNotFound}

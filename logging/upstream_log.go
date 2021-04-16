@@ -148,6 +148,9 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if (beresp != nil && beresp.StatusCode == http.StatusInternalServerError) || err != nil {
 		if err != nil {
+			if _, ok := err.(errors.GoError); !ok {
+				err = errors.Backend.With(err)
+			}
 			entry.Error(err.(errors.GoError).GoError())
 			return beresp, err
 		}

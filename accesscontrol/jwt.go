@@ -13,16 +13,20 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/config/request"
-	errors "github.com/avenga/couper/errors/accesscontrol/jwt"
+	"github.com/avenga/couper/errors"
 )
 
 const (
 	Invalid Source = iota - 1
 	Cookie
 	Header
+
+	jwtErrorKind = "jwt"
 )
 
 var _ AccessControl = &JWT{}
+
+var JWTError = errors.AccessControl.Kind(jwtErrorKind)
 
 type (
 	Algorithm int
@@ -43,22 +47,23 @@ type JWT struct {
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
+	confErr := errors.Configuration.Label(name)
 	if len(key) == 0 {
-		return nil, errors.KeyRequired
+		return nil, confErr.Message("key required")
 	}
 
 	if src == Invalid {
-		return nil, errors.SourceInvalid
+		return nil, confErr.Message("token source is invalid")
 	}
 
 	algo := NewAlgorithm(algorithm)
 	if algo == AlgorithmUnknown {
-		return nil, errors.AlgorithmNotSupported
+		return nil, confErr.Message("algorithm is not supported")
 	}
 
 	parser, err := newParser(algo, claims)
 	if err != nil {
-		return nil, err
+		return nil, confErr.With(err)
 	}
 
 	jwtObj := &JWT{
@@ -78,37 +83,53 @@ func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []s
 
 	pubKey, err := parsePublicPEMKey(key)
 	if err != nil {
-		return nil, err
+		return nil, confErr.With(err)
 	}
 
 	jwtObj.pubKey = pubKey
-	return jwtObj, err
+	return jwtObj, nil
 }
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
+	// TODO: refactor to more generic validateFunc location with Kind interface for kind prefix
+	err := j.validate(req)
+
+	if j == nil { // we could not obtain the label
+		return err
+	}
+
+	switch err.(type) {
+	case nil:
+		return nil
+	case *errors.Error:
+		return err.(*errors.Error).Label(j.name)
+	default:
+		return JWTError.Label(j.name).With(err)
+	}
+}
+
+func (j *JWT) validate(req *http.Request) error {
 	var tokenValue string
 	var err error
 
 	if j == nil {
-		return errors.NotConfigured
+		return errors.Configuration
 	}
 
 	switch j.source {
 	case Cookie:
-		if cookie, err := req.Cookie(j.sourceKey); err != nil && err != http.ErrNoCookie {
-			return err
+		if cookie, cerr := req.Cookie(j.sourceKey); cerr != nil && cerr != http.ErrNoCookie {
+			return cerr
 		} else if cookie != nil {
 			tokenValue = cookie.Value
 		}
 	case Header:
 		if j.sourceKey == "Authorization" {
-			if tokenValue = req.Header.Get(j.sourceKey); tokenValue == "" {
-				return errors.TokenRequired
-			}
-
-			if tokenValue, err = getBearer(tokenValue); err != nil {
-				return err
+			if tokenValue = req.Header.Get(j.sourceKey); tokenValue != "" {
+				if tokenValue, err = getBearer(tokenValue); err != nil {
+					return err
+				}
 			}
 		} else {
 			tokenValue = req.Header.Get(j.sourceKey)
@@ -117,7 +138,7 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
-		return errors.TokenRequired
+		return JWTError.Message("token required").Status(http.StatusUnauthorized)
 	}
 
 	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
@@ -149,8 +170,8 @@ func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
 		return j.pubKey, nil
 	case AlgorithmHMAC256, AlgorithmHMAC384, AlgorithmHMAC512:
 		return j.hmacSecret, nil
-	default:
-		return nil, errors.AlgorithmNotSupported
+	default: // this error case gets normally caught on configuration level
+		return nil, errors.Configuration.Message("algorithm is not supported")
 	}
 }
 
@@ -160,13 +181,14 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 		tokenClaims = tc
 	}
 
+	const claimErrKind = jwtErrorKind + "_claims_"
 	if tokenClaims == nil {
-		return nil, &jwt.InvalidClaimsError{Message: "token claims has to be a map type"}
+		return nil, JWTError.Kind(claimErrKind + "invalid").Message("token claims has to be a map type")
 	}
 
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return nil, &jwt.InvalidClaimsError{Message: "required claim is missing: " + key}
+			return nil, JWTError.Kind(claimErrKind + "missing").Message("required claim is missing: " + key)
 		}
 	}
 
@@ -178,11 +200,11 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 
 		val, exist := tokenClaims[k]
 		if !exist {
-			return nil, errors.ClaimRequired
+			return nil, JWTError.Kind(claimErrKind + "required").Message("missing claim: " + k)
 		}
 
 		if val != v {
-			return nil, errors.ClaimValueInvalid
+			return nil, JWTError.Kind(claimErrKind+"invalid_value").Messagef("invalid claim value: %s", val)
 		}
 	}
 	return tokenClaims, nil
@@ -193,7 +215,7 @@ func getBearer(val string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(val), bearer) {
 		return strings.Trim(val[len(bearer):], " "), nil
 	}
-	return "", errors.BearerRequired
+	return "", fmt.Errorf("bearer required")
 }
 
 func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
@@ -213,6 +235,7 @@ func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, erro
 		}
 		options = append(options, jwt.WithIssuer(iss.(string)))
 	}
+
 	if aud, ok := claims["aud"]; ok {
 		if err := isStringType(aud); err != nil {
 			return nil, fmt.Errorf("aud: %w", err)
@@ -259,6 +282,6 @@ func isStringType(val interface{}) error {
 	case string:
 		return nil
 	default:
-		return errors.ClaimValueInvalidType
+		return fmt.Errorf("invalid value type")
 	}
 }

@@ -1,17 +1,23 @@
 package errors
 
+import "fmt"
+
 type Error struct {
+	// client: label synopsis
+	// log: label message inner(Error())
 	httpStatus int
-	inner      error // details
+	inner      error  // log details
+	kind       string // error_handler "event"
 	label      string
-	message    string // log message
-	synopsis   string // client message
+	message    string // log
+	synopsis   string // client
 }
 
 type GoError interface {
 	error
 	GoStatus() int
 	GoError() string
+	Type() string
 }
 
 var _ GoError = &Error{}
@@ -26,9 +32,15 @@ func (e *Error) Status(s int) *Error {
 	return &err
 }
 
-func (e *Error) Label(lbl string) *Error {
+func (e *Error) Kind(name string) *Error {
 	err := *e
-	err.label = lbl
+	err.kind = name
+	return &err
+}
+
+func (e *Error) Label(name string) *Error {
+	err := *e
+	err.label = name
 	return &err
 }
 
@@ -38,6 +50,10 @@ func (e *Error) Message(msg string) *Error {
 	return &err
 }
 
+func (e *Error) Messagef(msg string, args ...interface{}) *Error {
+	return e.Message(fmt.Sprintf(msg, args...))
+}
+
 func (e *Error) With(inner error) *Error {
 	err := *e
 	err.inner = inner
@@ -45,30 +61,38 @@ func (e *Error) With(inner error) *Error {
 }
 
 func (e *Error) Error() string {
-	var msg string
-	if e.label != "" {
-		msg += e.label + ": "
-	}
-	if e.synopsis != "" {
-		msg += e.synopsis
-	}
-	return msg
+	return appendMsg(e.label, e.synopsis)
+}
+
+func (e *Error) Unwrap() error {
+	return e.inner
 }
 
 func (e *Error) GoError() string {
-	var msg string
-	if e.label != "" {
-		msg += e.label + ": "
-	}
-	if e.message != "" {
-		msg += e.message
-	}
+	msg := appendMsg(e.label, e.message)
+
 	if e.inner != nil {
-		msg += ": " + e.inner.Error()
+		appendMsg(msg, e.inner.Error())
 	}
 	return msg
 }
 
 func (e *Error) GoStatus() int {
 	return e.httpStatus
+}
+
+func (e *Error) Type() string {
+	return e.kind
+}
+
+// appendMsg chains the given strings with ": " as separator.
+func appendMsg(target string, messages ...string) string {
+	result := target
+	for _, m := range messages {
+		if result != "" && m != "" {
+			result += ": "
+		}
+		result += m
+	}
+	return result
 }

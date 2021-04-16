@@ -30,13 +30,14 @@ func NewAccessControl(protected, errorHandler http.Handler, list accesscontrol.L
 func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, control := range a.acl {
 		if err := control.Validate(req); err != nil {
-			if authError, ok := err.(*accesscontrol.BasicAuthError); ok {
-				wwwAuthenticateValue := "Basic"
-				if authError.Realm != "" {
-					wwwAuthenticateValue += " realm=" + authError.Realm
-				}
-				rw.Header().Set("WWW-Authenticate", wwwAuthenticateValue)
-			}
+			// TODO: register basic auth error handler
+			//if authError, ok := err.(*accesscontrol.BasicAuthError); ok {
+			//	wwwAuthenticateValue := "Basic"
+			//	if authError.Realm != "" {
+			//		wwwAuthenticateValue += " realm=" + authError.Realm
+			//	}
+			//	rw.Header().Set("WWW-Authenticate", wwwAuthenticateValue)
+			//}
 
 			*req = *req.WithContext(context.WithValue(req.Context(), request.ErrorKind, err))
 
