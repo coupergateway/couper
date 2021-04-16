@@ -270,6 +270,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `status`           | HTTP status code |
 | `headers.<name>`   | HTTP response header value for requested lower-case key |
 | `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
+| `body`             | The response message body |
 | `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
 
 ##### Variable Example
