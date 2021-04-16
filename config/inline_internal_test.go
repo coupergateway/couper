@@ -213,6 +213,7 @@ func TestInline_OAuth2(t *testing.T) {
 		Attributes: []hcl.AttributeSchema{
 			{Name: "backend", Required: false},
 			{Name: "grant_type", Required: true},
+			{Name: "retries", Required: false},
 		},
 	}
 
