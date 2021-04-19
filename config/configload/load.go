@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
-	"github.com/avenga/couper/config/startup"
 	"github.com/avenga/couper/eval"
 )
 
@@ -45,8 +45,17 @@ func init() {
 	envContext = eval.NewContext(nil).HCLContext()
 }
 
+// SetWorkingDirectory sets the working directory to the given configuration file path.
+func SetWorkingDirectory(configFile string) (string, error) {
+	if err := os.Chdir(filepath.Dir(configFile)); err != nil {
+		return "", err
+	}
+
+	return os.Getwd()
+}
+
 func LoadFile(filePath string) (*config.Couper, error) {
-	_, err := startup.SetWorkingDirectory(filePath)
+	_, err := SetWorkingDirectory(filePath)
 	if err != nil {
 		return nil, err
 	}
