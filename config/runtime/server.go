@@ -4,12 +4,10 @@ package runtime
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -497,86 +495,52 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
-		for _, ba := range conf.Definitions.BasicAuth {
-			name, err := validateACName(accessControls, ba.Name, "basic_auth")
+		for _, baConf := range conf.Definitions.BasicAuth {
+			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File, baConf.Realm)
 			if err != nil {
 				return nil, err
 			}
 
-			basicAuth, err := ac.NewBasicAuth(name, ba.User, ba.Pass, ba.File, ba.Realm)
-			if err != nil {
+			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
 				return nil, err
-			}
-
-			accessControls[name] = &AccessControl{
-				ValidateFn:   ac.ValidateFunc(basicAuth.Validate),
-				ErrorHandler: ba.ErrorHandler,
 			}
 		}
 
-		for _, jwt := range conf.Definitions.JWT {
-			name, err := validateACName(accessControls, jwt.Name, "jwt")
-			if err != nil {
-				return nil, err
-			}
-
-			jwtSource := ac.Invalid
-			var jwtKey string
-			if jwt.Cookie != "" {
-				jwtSource = ac.Cookie
-				jwtKey = jwt.Cookie
-			} else if jwt.Header != "" {
-				jwtSource = ac.Header
-				jwtKey = jwt.Header
-			}
-			var key []byte
-			if jwt.KeyFile != "" {
-				p, err := filepath.Abs(jwt.KeyFile)
-				if err != nil {
-					return nil, err
-				}
-				content, err := ioutil.ReadFile(p)
-				if err != nil {
-					return nil, err
-				}
-				key = content
-			} else if jwt.Key != "" {
-				key = []byte(jwt.Key)
-			}
-
+		for _, jwtConf := range conf.Definitions.JWT {
 			var claims map[string]interface{}
-			if jwt.Claims != nil {
-				c, diags := seetie.ExpToMap(confCtx, jwt.Claims)
+			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
+				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
 				if diags.HasErrors() {
 					return nil, diags
 				}
 				claims = c
 			}
-			j, err := ac.NewJWT(jwt.SignatureAlgorithm, name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
+			jwt, err := ac.NewJWT(&ac.JWTOptions{
+				Algorithm:      jwtConf.SignatureAlgorithm,
+				Claims:         claims,
+				ClaimsRequired: jwtConf.ClaimsRequired,
+				Key:            jwtConf.Key,
+				KeyFile:        jwtConf.KeyFile,
+				Name:           jwtConf.Name,
+				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+			})
 			if err != nil {
-				return nil, fmt.Errorf("loading jwt %q definition failed: %s", name, err)
+				return nil, fmt.Errorf("loading jwt %q definition failed: %s", jwtConf, err)
 			}
 
-			accessControls[name] = &AccessControl{
-				ValidateFn:   ac.ValidateFunc(j.Validate),
-				ErrorHandler: jwt.ErrorHandler,
+			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+				return nil, err
 			}
 		}
 
 		for _, saml := range conf.Definitions.SAML {
-			name, err := validateACName(accessControls, saml.Name, "saml")
+			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
+				return nil, fmt.Errorf("loading saml %q definition failed: %s", saml.Name, err)
+			}
+
+			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
 				return nil, err
-			}
-
-			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
-			if err != nil {
-				return nil, fmt.Errorf("loading saml %q definition failed: %s", name, err)
-			}
-
-			accessControls[name] = &AccessControl{
-				ValidateFn:   ac.ValidateFunc(s.Validate),
-				ErrorHandler: saml.ErrorHandler,
 			}
 		}
 	}

@@ -6,7 +6,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,7 +19,7 @@ import (
 )
 
 const (
-	Invalid Source = iota - 1
+	Invalid JWTSourceType = iota
 	Cookie
 	Header
 
@@ -29,56 +31,100 @@ var _ AccessControl = &JWT{}
 var JWTError = errors.AccessControl.Kind(jwtErrorKind)
 
 type (
-	Algorithm int
-	Source    int
+	Algorithm     int
+	JWTSourceType uint8
+	JWTSource     struct {
+		Name string
+		Type JWTSourceType
+	}
 )
 
 type JWT struct {
 	algorithm      Algorithm
 	claims         map[string]interface{}
 	claimsRequired []string
-	source         Source
-	sourceKey      string
+	source         JWTSource
 	hmacSecret     []byte
 	name           string
 	parser         *jwt.Parser
 	pubKey         *rsa.PublicKey
 }
 
+type JWTOptions struct {
+	Algorithm      string
+	Claims         map[string]interface{}
+	ClaimsRequired []string
+	Name           string // TODO: more generic (validate)
+	Source         JWTSource
+	Key            string
+	KeyFile        string
+}
+
+func NewJWTSource(cookie, header string) JWTSource {
+	if cookie != "" && header != "" { // invalid
+		return JWTSource{}
+	}
+
+	if cookie != "" {
+		return JWTSource{
+			Name: cookie,
+			Type: Cookie,
+		}
+	} else if header != "" {
+		return JWTSource{
+			Name: header,
+			Type: Header,
+		}
+	}
+	return JWTSource{}
+}
+
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []string, src Source, srcKey string, key []byte) (*JWT, error) {
-	confErr := errors.Configuration.Label(name)
+func NewJWT(options *JWTOptions) (*JWT, error) {
+	confErr := errors.Configuration.Label(options.Name)
+
+	jwtAC := &JWT{
+		algorithm:      NewAlgorithm(options.Algorithm),
+		claims:         options.Claims,
+		claimsRequired: options.ClaimsRequired,
+		name:           options.Name,
+		source:         options.Source,
+	}
+
+	if options.Key != "" && options.KeyFile != "" {
+		return nil, confErr.Message("key and keyFile provided")
+	}
+
+	key := []byte(options.Key)
+	if options.KeyFile != "" {
+		k, err := readKeyFile(options.KeyFile)
+		if err != nil {
+			return nil, confErr.With(err)
+		}
+		key = k
+	}
+
 	if len(key) == 0 {
 		return nil, confErr.Message("key required")
 	}
 
-	if src == Invalid {
+	if jwtAC.source.Type == Invalid {
 		return nil, confErr.Message("token source is invalid")
 	}
 
-	algo := NewAlgorithm(algorithm)
-	if algo == AlgorithmUnknown {
+	if jwtAC.algorithm == AlgorithmUnknown {
 		return nil, confErr.Message("algorithm is not supported")
 	}
 
-	parser, err := newParser(algo, claims)
+	parser, err := newParser(jwtAC.algorithm, jwtAC.claims)
 	if err != nil {
 		return nil, confErr.With(err)
 	}
+	jwtAC.parser = parser
 
-	jwtObj := &JWT{
-		algorithm:      algo,
-		claims:         claims,
-		claimsRequired: reqClaims,
-		hmacSecret:     key,
-		name:           name,
-		parser:         parser,
-		source:         src,
-		sourceKey:      srcKey,
-	}
-
-	if algo.IsHMAC() {
-		return jwtObj, nil
+	if jwtAC.algorithm.IsHMAC() {
+		jwtAC.hmacSecret = key
+		return jwtAC, nil
 	}
 
 	pubKey, err := parsePublicPEMKey(key)
@@ -86,8 +132,8 @@ func NewJWT(algorithm, name string, claims map[string]interface{}, reqClaims []s
 		return nil, confErr.With(err)
 	}
 
-	jwtObj.pubKey = pubKey
-	return jwtObj, nil
+	jwtAC.pubKey = pubKey
+	return jwtAC, nil
 }
 
 // Validate reading the token from configured source and validates against the key.
@@ -117,22 +163,22 @@ func (j *JWT) validate(req *http.Request) error {
 		return errors.Configuration
 	}
 
-	switch j.source {
+	switch j.source.Type {
 	case Cookie:
-		if cookie, cerr := req.Cookie(j.sourceKey); cerr != nil && cerr != http.ErrNoCookie {
+		if cookie, cerr := req.Cookie(j.source.Name); cerr != nil && cerr != http.ErrNoCookie {
 			return cerr
 		} else if cookie != nil {
 			tokenValue = cookie.Value
 		}
 	case Header:
-		if j.sourceKey == "Authorization" {
-			if tokenValue = req.Header.Get(j.sourceKey); tokenValue != "" {
+		if j.source.Name == "Authorization" {
+			if tokenValue = req.Header.Get(j.source.Name); tokenValue != "" {
 				if tokenValue, err = getBearer(tokenValue); err != nil {
 					return err
 				}
 			}
 		} else {
-			tokenValue = req.Header.Get(j.sourceKey)
+			tokenValue = req.Header.Get(j.source.Name)
 		}
 	}
 
@@ -275,6 +321,17 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 		}
 	}
 	return pubKey, nil
+}
+
+func readKeyFile(filePath string) ([]byte, error) {
+	if filePath != "" {
+		p, err := filepath.Abs(filePath)
+		if err != nil {
+			return nil, err
+		}
+		return ioutil.ReadFile(p)
+	}
+	return nil, nil
 }
 
 func isStringType(val interface{}) error {
