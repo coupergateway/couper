@@ -1,5 +1,34 @@
 # Couper Changelog
 
+<a name="1.1"></a>
+## [1.1](https://github.com/avenga/couper/compare/1.0...1.1)
+
+> 2021-04-16
+
+### Bug Fixes
+
+* allow more +json mime types ([#207](https://github.com/avenga/couper/pull/207))
+  * determines if ja request/response body gets parsed and provided as `json_body` variable
+* missing check for empty endpoint path patterns ([#211](https://github.com/avenga/couper/pull/211))
+* protected API (base)paths returns status 401 instead of 404 if a protected route was not found ([#211](https://github.com/avenga/couper/pull/211))
+* jwt source config definition ([#210](https://github.com/avenga/couper/issues/210))
+* missing inner context on context copy
+* possible panic for unhandled error template write errors ([#205](https://github.com/avenga/couper/pull/205))
+* backend reference usage with string label ([#189](https://github.com/avenga/couper/issues/189))
+* cli argument filtering ([#204](https://github.com/avenga/couper/issues/204))
+* misleading jwt rsa key error ([#203](https://github.com/avenga/couper/issues/203))
+* watch handling on stat errors ([#202](https://github.com/avenga/couper/pull/202))
+
+### Change
+
+* Change access control validation logging ([#199](https://github.com/avenga/couper/issues/199))
+  * log the first occurred error instead of an array
+
+### Features
+
+* Add OAuth2 token request retry option  ([#167](https://github.com/avenga/couper/issues/167)) ([#209](https://github.com/avenga/couper/issues/209))
+
+
 <a name="1.0"></a> 🍾
 ## [1.0](https://github.com/avenga/couper/compare/0.9...1.0)
 

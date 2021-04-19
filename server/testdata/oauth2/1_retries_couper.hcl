@@ -8,9 +8,9 @@ server "api" {
       proxy {
         backend {
           origin = "${request.headers.x-origin}"
-		  path   = "/resource"
+          path   = "/resource"
 
-		  oauth2 {
+          oauth2 {
             token_endpoint = "${request.headers.x-token-endpoint}/oauth2"
             client_id      = "user"
             client_secret  = "pass"

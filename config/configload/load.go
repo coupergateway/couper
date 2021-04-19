@@ -265,6 +265,18 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			return err
 		}
 
+		if endpoint.Pattern == "" {
+			var r hcl.Range
+			if endpoint.Remain != nil {
+				r = endpoint.Remain.MissingItemRange()
+			}
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "endpoint: missing path pattern",
+				Subject:  &r,
+			}}
+		}
+
 		endpointContent := bodyToContent(endpoint.Remain)
 
 		proxies := endpointContent.Blocks.OfType(proxy)
@@ -523,7 +535,8 @@ func createCatchAllEndpoint() *config.Endpoint {
 	})
 
 	return &config.Endpoint{
-		Remain: hclbody.New(&hcl.BodyContent{}),
+		Pattern: "/**",
+		Remain:  hclbody.New(&hcl.BodyContent{}),
 		Response: &config.Response{
 			Remain: responseBody,
 		},

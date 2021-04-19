@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"path"
 	"reflect"
 	"strings"
@@ -293,86 +292,6 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 
 	if v := jsonResult.Headers.Get("X-Forwarded-For"); v != "1.2.3.4" {
 		t.Errorf("Unexpected XFF header given '%s'", v)
-	}
-}
-
-func TestEndpoints_OAuth2(t *testing.T) {
-	helper := test.New(t)
-	var seenCh, tokenSeenCh chan struct{}
-
-	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/oauth2" {
-			rw.Header().Set("Content-Type", "application/json")
-			rw.WriteHeader(http.StatusOK)
-
-			body := []byte(`{
-				"access_token": "abcdef0123456789",
-				"token_type": "bearer",
-				"expires_in": 100
-			}`)
-			_, werr := rw.Write(body)
-			helper.Must(werr)
-			close(tokenSeenCh)
-			return
-		}
-		rw.WriteHeader(http.StatusBadRequest)
-	}))
-	defer oauthOrigin.Close()
-
-	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/resource" {
-			if req.Header.Get("Authorization") == "Bearer abcdef0123456789" {
-				rw.WriteHeader(http.StatusNoContent)
-				close(seenCh)
-				return
-			}
-			rw.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		rw.WriteHeader(http.StatusNotFound)
-	}))
-	defer ResourceOrigin.Close()
-
-	confPath := "testdata/endpoints/04_couper.hcl"
-	shutdown, hook := newCouper(confPath, test.New(t))
-	defer func() {
-		if t.Failed() {
-			for _, e := range hook.Entries {
-				println(e.String())
-			}
-		}
-		shutdown()
-	}()
-
-	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-	helper.Must(err)
-
-	req.Header.Set("X-Token-Endpoint", oauthOrigin.URL)
-	req.Header.Set("X-Origin", ResourceOrigin.URL)
-
-	for _, p := range []string{"/", "/2nd"} {
-		hook.Reset()
-
-		seenCh = make(chan struct{})
-		tokenSeenCh = make(chan struct{})
-
-		req.URL.Path = p
-		res, err := newClient().Do(req)
-		helper.Must(err)
-
-		if res.StatusCode != http.StatusNoContent {
-			t.Errorf("expected status NoContent, got: %d", res.StatusCode)
-			return
-		}
-
-		timer := time.NewTimer(time.Second)
-		select {
-		case <-timer.C:
-			t.Error("OAuth2 request failed")
-		case <-tokenSeenCh:
-			<-seenCh
-		}
 	}
 }
 

@@ -11,6 +11,10 @@ import (
 )
 
 func uniqueAttributeKey(body hcl.Body) error {
+	if body == nil {
+		return nil
+	}
+
 	content, _, diags := body.PartialContent(meta.AttributesSchema)
 	if diags.HasErrors() {
 		return diags

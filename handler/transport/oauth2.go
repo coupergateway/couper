@@ -96,6 +96,16 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
 		oa.memStore.Del(credentials.StorageKey)
+
+		ctx := req.Context()
+		if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
+			ctx = context.WithValue(ctx, request.TokenRequestRetries, retries+1)
+
+			req.Header.Del("Authorization")
+			*req = *req.WithContext(ctx)
+
+			return oa.RoundTrip(req)
+		}
 	}
 
 	return res, err

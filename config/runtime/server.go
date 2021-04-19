@@ -210,6 +210,10 @@ func NewServerConfiguration(
 			var corsOptions *middleware.CORSOptions
 			var errTpl *errors.Template
 
+			if endpointConf.Pattern == "" { // could happen for internally registered endpoints
+				return nil, fmt.Errorf("endpoint path pattern required")
+			}
+
 			if endpointConf.ErrorFile != "" {
 				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile, log)
 				if err != nil {
@@ -434,6 +438,12 @@ func newBackend(
 			return nil, authErr
 		}
 
+		// Set default value
+		if beConf.OAuth2.Retries == nil {
+			var one uint8 = 1
+			beConf.OAuth2.Retries = &one
+		}
+
 		return transport.NewOAuth2(beConf.OAuth2, memStore, authBackend, backend)
 	}
 
@@ -553,8 +563,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 
 func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {
 	var acList ac.List
-	for _, acName := range parentAC.
-		Merge(handlerAC).List() {
+	for _, acName := range parentAC.Merge(handlerAC).List() {
 		m.MustExist(acName)
 		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
 	}
