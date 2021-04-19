@@ -53,8 +53,7 @@
 
 ## Introduction
 
-Couper is a frontend gateway especially designed to support building and running
-API-driven web projects. Acting as a proxy component it connects clients with (micro)
+Couper is a lightweight open source API gateway designed to support developers in building and running API-driven Web projects. Acting as a proxy component it connects clients with (micro)
 services and adds access control and observability to the project. Couper does not
 need any special development skills and offers easy configuration and integration.
 
