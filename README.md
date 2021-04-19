@@ -10,7 +10,7 @@
 
 ## Getting started
 
-* Check out our [examples](https://github.com/avenga/couper-examples) for a first glance.
+* Check out our [example repository](https://github.com/avenga/couper-examples) for a first glance.
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
 * Continue with the [documentation](https://github.com/avenga/couper/tree/master/docs).
 
@@ -20,12 +20,12 @@
 Couper …
 
 * is a proxy component connecting clients with (micro) services
-* adds security and observability to the project
+* adds access control and observability to the project
 * needs no special development skills
 * is easy to configure & integrate
 * runs on Linux, Mac OS X, Windows, Docker and Kubernetes.
 
-Key features are
+Key features are:
 
 * **Easy configuration** powered by [HCL 2](https://github.com/hashicorp/hcl/tree/hcl2)
 * Exposes local and remote backend services in a consolidated frontend API
