@@ -138,24 +138,6 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
-	// TODO: refactor to more generic validateFunc location with Kind interface for kind prefix
-	err := j.validate(req)
-
-	if j == nil { // we could not obtain the label
-		return err
-	}
-
-	switch err.(type) {
-	case nil:
-		return nil
-	case *errors.Error:
-		return err.(*errors.Error).Label(j.name)
-	default:
-		return JWTError.Label(j.name).With(err)
-	}
-}
-
-func (j *JWT) validate(req *http.Request) error {
 	var tokenValue string
 	var err error
 

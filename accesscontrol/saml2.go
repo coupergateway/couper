@@ -19,13 +19,13 @@ import (
 	"github.com/avenga/couper/config/request"
 )
 
-type SAML2ACS struct {
+type Saml2 struct {
 	arrayAttributes []string
 	name            string
 	sp              *saml2.SAMLServiceProvider
 }
 
-func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId string, arrayAttributes []string) (*SAML2ACS, error) {
+func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId string, arrayAttributes []string) (*Saml2, error) {
 	p, err := filepath.Abs(metadataFile)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId str
 	if arrayAttributes != nil {
 		sort.Strings(arrayAttributes)
 	}
-	samlObj := &SAML2ACS{
+	samlObj := &Saml2{
 		arrayAttributes: arrayAttributes,
 		name:            name,
 		sp:              sp,
@@ -87,7 +87,7 @@ func contains(s []string, searchterm string) bool {
 	return i < len(s) && s[i] == searchterm
 }
 
-func (s *SAML2ACS) Validate(req *http.Request) error {
+func (s *Saml2) Validate(req *http.Request) error {
 	err := req.ParseForm()
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (s *SAML2ACS) Validate(req *http.Request) error {
 	return nil
 }
 
-func (s *SAML2ACS) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error {
+func (s *Saml2) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error {
 	if assertionInfo.WarningInfo.NotInAudience {
 		return errors.New("Audience mismatch")
 	}
@@ -128,7 +128,7 @@ func (s *SAML2ACS) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) err
 	return nil
 }
 
-func (s *SAML2ACS) GetAssertionData(assertionInfo *saml2.AssertionInfo) map[string]interface{} {
+func (s *Saml2) GetAssertionData(assertionInfo *saml2.AssertionInfo) map[string]interface{} {
 	attributes := make(map[string]interface{})
 	for _, attribute := range assertionInfo.Values {
 		if !contains(s.arrayAttributes, attribute.Name) {
@@ -136,7 +136,7 @@ func (s *SAML2ACS) GetAssertionData(assertionInfo *saml2.AssertionInfo) map[stri
 				attributes[attribute.Name] = attributeValue.Value
 			}
 		} else {
-			attributeValues := []string{}
+			var attributeValues []string
 			for _, attributeValue := range attribute.Values {
 				attributeValues = append(attributeValues, attributeValue.Value)
 			}

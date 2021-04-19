@@ -11,11 +11,9 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-const basicAuthErrKind = "basic_auth"
-
 var _ AccessControl = &BasicAuth{}
 
-var BasicAuthError = errors.AccessControl.Kind(basicAuthErrKind).Status(http.StatusUnauthorized)
+var BasicAuthError = errors.AccessControl.Status(http.StatusUnauthorized)
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
@@ -110,14 +108,13 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 		return errors.Configuration
 	}
 
-	baErr := BasicAuthError.Label(ba.name) // TODO: move to validate interface calls; generic
 	if ba.pass == "" {
-		return baErr
+		return BasicAuthError
 	}
 
 	user, pass, ok := req.BasicAuth()
 	if !ok {
-		return baErr.Kind(basicAuthErrKind + "_missing_credentials").
+		return BasicAuthError.Kind("missing_credentials").
 			Message("missing credentials").Status(http.StatusUnauthorized)
 	}
 
@@ -125,12 +122,12 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 		if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
 			return nil
 		}
-		return baErr
+		return BasicAuthError
 	}
 
 	if validateAccessData(user, pass, ba.htFile) {
 		return nil
 	}
 
-	return baErr
+	return BasicAuthError
 }

@@ -36,7 +36,7 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	gerr := errKind.(errors.GoError)
 	if eh, defined := e.kindContext[gerr.Type()]; defined {
-		resp := newResponse(eh, req)
+		resp := newResponse(eh, req, gerr.GoStatus())
 		eval.ApplyResponseContext(req.Context(), eh, resp)
 		resp.Write(rw)
 		return
@@ -46,7 +46,7 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 // copy from endpoint, TODO: refactor and combine
-func newResponse(context hcl.Body, req *http.Request) *http.Response {
+func newResponse(context hcl.Body, req *http.Request, status int) *http.Response {
 	clientres := &http.Response{
 		Header:     make(http.Header),
 		Proto:      req.Proto,
@@ -64,7 +64,7 @@ func newResponse(context hcl.Body, req *http.Request) *http.Response {
 		content, _, _ = resps[0].Body.PartialContent(config.ResponseInlineSchema)
 	}
 
-	statusCode := http.StatusOK
+	statusCode := status
 	if attr, ok := content.Attributes["status"]; ok {
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {

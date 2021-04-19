@@ -12,7 +12,7 @@ import (
 type ACDefinitions map[string]*AccessControl
 
 type AccessControl struct {
-	ValidateFn   accesscontrol.AccessControl
+	Control      accesscontrol.AccessControl
 	ErrorHandler []*config.ErrorHandler
 }
 
@@ -23,7 +23,7 @@ func (m ACDefinitions) Add(name string, ac accesscontrol.AccessControl, eh []*co
 	}
 
 	m[n] = &AccessControl{
-		ValidateFn:   accesscontrol.ValidateFunc(ac.Validate),
+		Control:      ac,
 		ErrorHandler: eh,
 	}
 	return nil

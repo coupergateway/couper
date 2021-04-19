@@ -38,6 +38,16 @@ func (e *Error) Kind(name string) *Error {
 	return &err
 }
 
+func (e *Error) PrefixKind(name string) *Error {
+	err := *e
+	if err.kind != "" {
+		err.kind = name + "_" + err.kind
+	} else {
+		err.kind = name
+	}
+	return &err
+}
+
 func (e *Error) Label(name string) *Error {
 	err := *e
 	err.label = name
