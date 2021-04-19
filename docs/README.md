@@ -53,9 +53,11 @@
 
 ## Introduction
 
-Couper is a lightweight open source API gateway designed to support developers in building and running API-driven Web projects. Acting as a proxy component it connects clients with (micro)
-services and adds access control and observability to the project. Couper does not
-need any special development skills and offers easy configuration and integration.
+Couper is a lightweight open source API gateway designed to support developers in
+building and running API-driven Web projects. Acting as a proxy component it connects
+clients with (micro) services and adds access control and observability to the project.
+Couper does not need any special development skills and offers easy configuration
+and integration.
 
 ## Core concepts
 
@@ -64,7 +66,7 @@ need any special development skills and offers easy configuration and integratio
 | Concept / Feature  | Description |
 |:-------------------|:------------|
 | Client(s)          | Browser, App or API Client that sends requests to Couper. |
-| Web Serving        | Couper supports file serving and web serving for SPA assets. |
+| Web Serving        | Couper supports file serving and Web serving for SPA assets. |
 | API                | Configuration block that bundles endpoints under a certain base path. |
 | Access Control     | Couper handles access control for incoming client requests and outgoing backend requests. |
 | Endpoint           | Configuration block that specifies how (and if) requests are sent to backend service(s) after they reach Couper. |
@@ -117,7 +119,7 @@ changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
 ### Basic file structure
 
 Couper's configuration file consists of nested configuration blocks that configure
-web serving and routing of the gateway. Access control is controlled by an
+Web serving and routing of the gateway. Access control is controlled by an
 [Access Control](#access-control) attribute that can be set for many blocks.
 
 For orientation compare the following example and the information below:
@@ -157,7 +159,7 @@ settings {
 
 * `server` main configuration block(s)
   * `files` configuration block for file serving
-  * `spa` configuration block for web serving (SPA assets)
+  * `spa` configuration block for Web serving (SPA assets)
   * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
   * `access_control` attribute that sets access control for a block context
   * `endpoint` configuration block for Couper's entry points
@@ -388,7 +390,7 @@ The `server` block is the main configuration block of Couper's configuration fil
 | **Nested blocks**                    | **Description** |
 | [CORS Block](#cors-block)            | Configures CORS behavior for [Files Block](#files-block), [SPA Block](#spa-block) and [API Block(s)](#api-block) contexts. |
 | [Files Block](#files-block)          | Configures the file serving. |
-| [SPA Block](#spa-block)              | Configures web serving for SPA assets. |
+| [SPA Block](#spa-block)              | Configures the Web serving for SPA assets. |
 | [API Block(s)](#api-block)           | Configures routing and communication with backend(s). |
 | [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `Server Block` context. |
 | **Attributes**                       | **Description** |
@@ -415,7 +417,7 @@ The `files` block configures the file serving.
 
 ### SPA Block
 
-The `spa` block configures the web serving for SPA assets.
+The `spa` block configures the Web serving for SPA assets.
 
 | Block                     | Description |
 |:--------------------------|:------------|
