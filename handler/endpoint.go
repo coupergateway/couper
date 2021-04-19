@@ -2,23 +2,19 @@ package handler
 
 import (
 	"context"
-	"io"
 	"net"
 	"net/http"
 	"runtime/debug"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 var _ http.Handler = &Endpoint{}
@@ -119,7 +115,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				log.Error(b.Err)
 			}
 		}
-		clientres, err = e.newResponse(req, evalContext)
+		clientres, err = producer.NewResponse(req, e.response.Context, evalContext, http.StatusOK)
 	} else {
 		if result, ok := beresps["default"]; ok {
 			clientres = result.Beresp
@@ -170,63 +166,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if err = clientres.Write(rw); err != nil {
 		log.Errorf("endpoint write: %v", err)
 	}
-}
-
-func (e *Endpoint) newResponse(req *http.Request, evalCtx *eval.Context) (*http.Response, error) {
-	clientres := &http.Response{
-		Header:     make(http.Header),
-		Proto:      req.Proto,
-		ProtoMajor: req.ProtoMajor,
-		ProtoMinor: req.ProtoMinor,
-		Request:    req,
-	}
-
-	log := e.log.WithField("uid", req.Context().Value(request.UID))
-
-	hclCtx := evalCtx.HCLContext()
-
-	content, _, diags := e.response.Context.PartialContent(config.ResponseInlineSchema)
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	statusCode := http.StatusOK
-	if attr, ok := content.Attributes["status"]; ok {
-		val, err := attr.Expr.Value(hclCtx)
-		if err != nil {
-			log.Error(errors.Evaluation.With(err).GoError())
-			statusCode = http.StatusInternalServerError
-		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
-			statusCode = statusValue
-		}
-	}
-	clientres.StatusCode = statusCode
-	clientres.Status = http.StatusText(clientres.StatusCode)
-
-	body, ct, bodyErr := eval.GetBody(hclCtx, content)
-	if bodyErr != nil {
-		log.Error(errors.Evaluation.With(bodyErr).GoError())
-	}
-
-	if ct != "" {
-		clientres.Header.Set("Content-Type", ct)
-	}
-
-	if attr, ok := content.Attributes["headers"]; ok {
-		val, err := attr.Expr.Value(hclCtx)
-		if err != nil {
-			log.Error(errors.Evaluation.With(err).GoError())
-		}
-
-		eval.SetHeader(val, clientres.Header)
-	}
-
-	if body != "" {
-		r := strings.NewReader(body)
-		clientres.Body = io.NopCloser(r)
-	}
-
-	return clientres, nil
 }
 
 func (e *Endpoint) newRedirect() *http.Response {
