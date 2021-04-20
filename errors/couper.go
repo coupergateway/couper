@@ -27,11 +27,13 @@ func TypeToSnake(t interface{}) string {
 		typeStr = strings.Split(typeStr, ".")[1]
 	}
 	var result []rune
+	var previous rune
 	for i, r := range typeStr {
-		if i > 0 && unicode.IsUpper(r) {
+		if i > 0 && unicode.IsUpper(r) && unicode.IsLower(previous) {
 			result = append(result, '_')
 		}
 		result = append(result, unicode.ToLower(r))
+		previous = r
 	}
 
 	return string(result)
