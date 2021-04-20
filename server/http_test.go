@@ -85,14 +85,14 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<html><body><h1>1002: Configuration failed: My custom error template</h1></body></html>"), http.StatusInternalServerError},
-		{"/apps/", []byte("<html><body><h1>1002: Configuration failed: My custom error template</h1></body></html>"), http.StatusInternalServerError},
-		{"/apps/shiny-product/", []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>"), http.StatusNotFound},
-		{"/apps/shiny-product/assets/", []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>"), http.StatusNotFound},
+		{"/", []byte("<html><body><h1>configuration error: My custom error template</h1></body></html>"), http.StatusInternalServerError},
+		{"/apps/", []byte("<html><body><h1>configuration error: My custom error template</h1></body></html>"), http.StatusInternalServerError},
+		{"/apps/shiny-product/", []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>"), http.StatusNotFound},
+		{"/apps/shiny-product/assets/", []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>"), http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
-		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"code": 4001}`), 404},
+		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"message": "/api: route not found error" }`), 404},
 	} {
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
 		helper.Must(err)
@@ -154,7 +154,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_fileserving.hcl")
 	helper.Must(err)
 
-	error404Content := []byte("<html><body><h1>3001: Files route not found: My custom error template</h1></body></html>")
+	error404Content := []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>")
 	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 

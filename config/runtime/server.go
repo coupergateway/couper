@@ -524,7 +524,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("loading jwt %q definition failed: %s", jwtConf.Name, err)
+				return nil, fmt.Errorf("loading jwt definition failed: %s", err)
 			}
 
 			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
@@ -535,7 +535,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		for _, saml := range conf.Definitions.SAML {
 			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
-				return nil, fmt.Errorf("loading saml %q definition failed: %s", saml.Name, err)
+				return nil, fmt.Errorf("loading saml definition failed: %s", err)
 			}
 
 			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {

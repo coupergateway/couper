@@ -22,7 +22,6 @@ func TestEndpoints_Protected404(t *testing.T) {
 	client := newClient()
 
 	type expectation struct {
-		Code           int
 		ResponseStatus int
 	}
 
@@ -36,18 +35,10 @@ func TestEndpoints_Protected404(t *testing.T) {
 	defer shutdown()
 
 	for _, tc := range []testCase{
-		{"", "/v1/anything", expectation{
-			Code: 5002, ResponseStatus: 0,
-		}},
-		{"secret", "/v1/anything", expectation{
-			Code: 0, ResponseStatus: 200,
-		}},
-		{"", "/v1/xxx", expectation{
-			Code: 5002, ResponseStatus: 0,
-		}},
-		{"secret", "/v1/xxx", expectation{
-			Code: 0, ResponseStatus: 404,
-		}},
+		{"", "/v1/anything", expectation{}},
+		{"secret", "/v1/anything", expectation{http.StatusOK}},
+		{"", "/v1/xxx", expectation{}},
+		{"secret", "/v1/xxx", expectation{http.StatusNotFound}},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)

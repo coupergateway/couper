@@ -47,6 +47,11 @@ func (i ListItem) Validate(req *http.Request) error {
 		}
 		return errors.AccessControl.Label(i.label).Kind(i.kind).With(err)
 	}
+
+	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+		*req = *req.WithContext(evalCtx.WithClientRequest(req))
+	}
+
 	return nil
 }
 
@@ -55,12 +60,5 @@ func (i ListItem) ErrorHandler() http.Handler {
 }
 
 func (f ValidateFunc) Validate(req *http.Request) error {
-	if err := f(req); err != nil {
-		return err
-	}
-
-	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
-		*req = *req.WithContext(evalCtx.WithClientRequest(req))
-	}
-	return nil
+	return f(req)
 }

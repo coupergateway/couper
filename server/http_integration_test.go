@@ -195,7 +195,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/app"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 		}},
 		{"files/01_couper.hcl", []requestCase{
@@ -215,7 +215,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), nil, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), nil, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/b"},
@@ -223,7 +223,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), nil, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), nil, ""},
 			},
 		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{
@@ -239,7 +239,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		{"api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1"},
@@ -251,21 +251,21 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "/v1: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"}, // in this case proxyconnect fails
-				expectation{http.StatusBadGateway, []byte(`{"code": 7001}`), http.Header{"Content-Type": {"application/json"}}, "api"},
+				expectation{http.StatusBadGateway, []byte(`{"message": "backend error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, "api"},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1x"},
-				expectation{http.StatusInternalServerError, []byte(`<html>1002</html>`), http.Header{"Content-Type": {"text/html"}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Content-Type": {"text/html"}}, ""},
 			},
 		}},
 		{"api/02_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v2/"},
@@ -281,21 +281,21 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v2/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "/v2: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/v2/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "/v2: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "/v3: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 		}},
 		{"vhosts/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/notfound"},
-				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
@@ -331,13 +331,13 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://v-server3.com:8080/spa2"},
-				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 		}},
 		{"endpoint_eval/16_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1000</html>"), http.Header{"Couper-Error": {`1000 - "Server error"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 		}},
 	} {
@@ -365,6 +365,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 
 				if res.StatusCode != rc.exp.status {
 					t.Errorf("Expected statusCode %d, got %d", rc.exp.status, res.StatusCode)
+					subT.Logf("Failed: %s|%s", testcase.fileName, rc.req.url)
 				}
 
 				for k, v := range rc.exp.header {
@@ -438,7 +439,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if string(resBytes) != `<html>1002</html>` {
+	if string(resBytes) != "<html>configuration error</html>\n" {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -2121,7 +2122,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := `loading jwt "missing-source" definition failed: unknown source definition`
+	expectedMsg := "loading jwt definition failed: missing-source: configuration error"
 
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	if err == nil || err.Error() != expectedMsg {

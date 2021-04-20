@@ -14,9 +14,8 @@ var (
 )
 
 type AccessControl struct {
-	acl          accesscontrol.List
-	errorHandler http.Handler
-	protected    http.Handler
+	acl       accesscontrol.List
+	protected http.Handler
 }
 
 func NewAccessControl(protected http.Handler, list accesscontrol.List) *AccessControl {

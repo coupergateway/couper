@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -245,9 +244,9 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		}
 	}
 
-	originURL, err := url.Parse(origin)
-	if err != nil {
-		log.Error(err)
+	originURL, parseErr := url.Parse(origin)
+	if parseErr != nil {
+		log.Error(parseErr)
 	}
 
 	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
@@ -261,9 +260,9 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 			if tr := req.Context().Value(request.TokenRequest); tr != nil {
 				errctx = "token_endpoint"
 			}
-			return nil, fmt.Errorf(
-				"backend: the host of '%s': %q and 'backend.origin': %q must be equal",
-				errctx, urlAttr.Host, origin)
+			return nil, errors.Configuration.Label(b.name).Kind(errctx).PrefixKind("backend").
+				Messagef("the host '%s' must be equal to 'backend.origin': %q",
+					urlAttr.Host, origin)
 		}
 
 		originURL.Host = urlAttr.Host
@@ -284,7 +283,8 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	}
 
 	if !originURL.IsAbs() || originURL.Hostname() == "" {
-		return nil, fmt.Errorf("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
+		return nil, errors.Configuration.Label(b.name).
+			Messagef("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
 	}
 
 	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil
