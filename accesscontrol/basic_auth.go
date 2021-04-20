@@ -21,17 +21,15 @@ type BasicAuth struct {
 	name   string
 	user   string
 	pass   string
-	realm  string
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
-func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
+func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 	ba := &BasicAuth{
 		htFile: make(htData),
 		name:   name,
 		user:   user,
 		pass:   pass,
-		realm:  realm,
 	}
 
 	if file == "" {

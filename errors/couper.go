@@ -1,6 +1,11 @@
 package errors
 
-import "net/http"
+import (
+	"net/http"
+	"reflect"
+	"strings"
+	"unicode"
+)
 
 var (
 	AccessControl  = &Error{synopsis: "access control error", httpStatus: http.StatusForbidden}
@@ -15,3 +20,19 @@ var (
 	ServerShutdown = &Error{synopsis: "server shutdown error", httpStatus: http.StatusInternalServerError}
 	Timeout        = &Error{synopsis: "timeout server error", httpStatus: http.StatusGatewayTimeout}
 )
+
+func TypeToSnake(t interface{}) string {
+	typeStr := reflect.TypeOf(t).String()
+	if strings.Contains(typeStr, ".") { // package name removal
+		typeStr = strings.Split(typeStr, ".")[1]
+	}
+	var result []rune
+	for i, r := range typeStr {
+		if i > 0 && unicode.IsUpper(r) {
+			result = append(result, '_')
+		}
+		result = append(result, unicode.ToLower(r))
+	}
+
+	return string(result)
+}

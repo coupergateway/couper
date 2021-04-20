@@ -21,26 +21,26 @@ func Test_NewBasicAuth(t *testing.T) {
 	}
 
 	type testCase struct {
-		name, user, pass, file, realm string
-		expErrMsg                     string
-		shouldFail                    bool
+		name, user, pass, file string
+		expErrMsg              string
+		shouldFail             bool
 	}
 
 	for _, tc := range []testCase{
-		{"name", "user", "pass", "", "Basic", "", false},
-		{"name", "user", "", "", "Basic", "", false},
-		{"name", "", "pass", "", "Basic", "", false},
-		{"name", "", "", "", "Basic", "", false},
-		{"name", "user", "pass", "testdata/htpasswd", "Basic", "", false},
-		{"name", "john", "pass", "testdata/htpasswd", "Basic", "", false},
-		{"name", "user", "pass", "file", "Basic", "name: open file: no such file or directory", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "Basic", "name: parse error: invalid line: 1", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "Basic", "name: parse error: line length exceeded: 255", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_malformed", "Basic", `name: parse error: malformed password for user: foo`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_multi", "Basic", `name: multiple user: foo`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "Basic", "name: parse error: algorithm not supported", true},
+		{"name", "user", "pass", "", "", false},
+		{"name", "user", "", "", "", false},
+		{"name", "", "pass", "", "", false},
+		{"name", "", "", "", "", false},
+		{"name", "user", "pass", "testdata/htpasswd", "", false},
+		{"name", "john", "pass", "testdata/htpasswd", "", false},
+		{"name", "user", "pass", "file", "name: open file: no such file or directory", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "name: parse error: invalid line: 1", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "name: parse error: line length exceeded: 255", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `name: parse error: malformed password for user: foo`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_multi", `name: multiple user: foo`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "name: parse error: algorithm not supported", true},
 	} {
-		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, tc.realm)
+		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file)
 		if tc.shouldFail && ba != nil {
 			t.Error("Expected no successful basic auth creation")
 		}
@@ -60,8 +60,8 @@ func Test_NewBasicAuth(t *testing.T) {
 	}
 }
 
-func Test_BA_Validate(t *testing.T) {
-	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", "Basic")
+func Test_BasicAuth_Validate(t *testing.T) {
+	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd")
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -86,7 +86,7 @@ func Test_BA_Validate(t *testing.T) {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", testcase.headerValue)
-			err := ba.Validate(req)
+			err = ba.Validate(req)
 			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
 				t.Errorf("Expected Unauthorized error, got: %v", err)
 			}
@@ -94,7 +94,7 @@ func Test_BA_Validate(t *testing.T) {
 	}
 }
 
-func Test_BA_ValidateEmptyUser(t *testing.T) {
+func Test_BasicAuth_ValidateEmptyUser(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -102,7 +102,7 @@ func Test_BA_ValidateEmptyUser(t *testing.T) {
 		t.Errorf("Expected configuration error, got: %v", err)
 	}
 
-	ba, err := ac.NewBasicAuth("name", "", "pass", "", "Basic")
+	ba, err := ac.NewBasicAuth("name", "", "pass", "")
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -128,7 +128,7 @@ func Test_BA_ValidateEmptyUser(t *testing.T) {
 	}
 }
 
-func Test_BA_ValidateEmptyPassword(t *testing.T) {
+func Test_BasicAuth_ValidateEmptyPassword(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -136,7 +136,7 @@ func Test_BA_ValidateEmptyPassword(t *testing.T) {
 		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 
-	ba, err := ac.NewBasicAuth("name", "user", "", "", "Basic")
+	ba, err := ac.NewBasicAuth("name", "user", "", "")
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -162,7 +162,7 @@ func Test_BA_ValidateEmptyPassword(t *testing.T) {
 	}
 }
 
-func Test_BA_ValidateEmptyUserPassword(t *testing.T) {
+func Test_BasicAuth_ValidateEmptyUserPassword(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -170,7 +170,7 @@ func Test_BA_ValidateEmptyUserPassword(t *testing.T) {
 		t.Errorf("Expected NotConfigured error, got: %v", err)
 	}
 
-	ba, err := ac.NewBasicAuth("name", "", "", "", "Basic")
+	ba, err := ac.NewBasicAuth("name", "", "", "")
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}

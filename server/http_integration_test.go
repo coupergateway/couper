@@ -1987,7 +1987,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "ba1: missing credentials"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
-		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control: ba1: missing credentials"},
+		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "ba1: missing credentials"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
 		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "ba1: missing credentials"},
 		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "ba1: missing credentials"},

@@ -82,7 +82,7 @@ func (e *Error) GoError() string {
 	msg := appendMsg(e.label, e.message)
 
 	if e.inner != nil {
-		appendMsg(msg, e.inner.Error())
+		msg = appendMsg(msg, e.inner.Error())
 	}
 	return msg
 }

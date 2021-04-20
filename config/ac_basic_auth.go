@@ -1,6 +1,11 @@
 package config
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+
+	"github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/internal/seetie"
+)
 
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
@@ -15,4 +20,16 @@ type BasicAuth struct {
 
 func (b *BasicAuth) HCLBody() hcl.Body {
 	return b.Remain
+}
+
+func (b *BasicAuth) DefaultErrorHandler() ([]string, hcl.Body) {
+	wwwAuthenticateValue := "Basic"
+	if b.Realm != "" {
+		wwwAuthenticateValue += " realm=" + b.Realm
+	}
+	return []string{"basic_auth"},
+		body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+			"headers": {Name: "headers", Expr: hcl.StaticExpr(seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue,
+			}), hcl.Range{Filename: "default_basic_auth_error_handler"})}}})
 }

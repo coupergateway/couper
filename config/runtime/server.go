@@ -24,7 +24,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
-	hac "github.com/avenga/couper/handler/ac"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
@@ -496,7 +495,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 
 	if conf.Definitions != nil {
 		for _, baConf := range conf.Definitions.BasicAuth {
-			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File, baConf.Realm)
+			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
 				return nil, err
 			}
@@ -525,7 +524,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("loading jwt %q definition failed: %s", jwtConf, err)
+				return nil, fmt.Errorf("loading jwt %q definition failed: %s", jwtConf.Name, err)
 			}
 
 			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
@@ -551,22 +550,20 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 func configureProtectedHandler(m ACDefinitions, errTpl *errors.Template,
 	parentAC, handlerAC config.AccessControl, h http.Handler) (http.Handler, error) {
 	var list ac.List
-	var names []string
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		names = append(names, acName)
-		list = append(list, ac.NewItem(acName, m[acName].Control))
+		list = append(list, ac.NewItem(acName, m[acName].Control, newErrorHandler(errTpl, m, acName)))
 	}
+
 	if len(list) > 0 {
-		return hac.NewAccessControl(h, newErrorHandler(errTpl, m, names...), list), nil
+		return handler.NewAccessControl(h, list), nil
 	}
 	return h, nil
 }
 
 func newErrorHandler(tpl *errors.Template, defs ACDefinitions, references ...string) http.Handler {
-	// TODO: strict, data-structure / draft
 	kindHandler := map[string]hcl.Body{}
 	for _, ref := range references {
 		for _, h := range defs[ref].ErrorHandler {
@@ -576,11 +573,9 @@ func newErrorHandler(tpl *errors.Template, defs ACDefinitions, references ...str
 				}
 				kindHandler[k] = h.HCLBody()
 			}
-			// TODO: register all kinds
 		}
 	}
-	eh := handler.NewErrorHandler(kindHandler, tpl)
-	return eh
+	return handler.NewErrorHandler(kindHandler, tpl)
 }
 
 func setRoutesFromHosts(

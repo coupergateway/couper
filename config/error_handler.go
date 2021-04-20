@@ -13,6 +13,10 @@ type ErrorHandler struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
+type ErrorHandlerGetter interface {
+	DefaultErrorHandler() (kinds []string, context hcl.Body)
+}
+
 // HCLBody implements the <Inline> interface.
 func (e ErrorHandler) HCLBody() hcl.Body {
 	return e.Remain

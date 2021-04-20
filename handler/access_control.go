@@ -1,4 +1,4 @@
-package ac
+package handler
 
 import (
 	"context"
@@ -19,29 +19,18 @@ type AccessControl struct {
 	protected    http.Handler
 }
 
-func NewAccessControl(protected, errorHandler http.Handler, list accesscontrol.List) *AccessControl {
+func NewAccessControl(protected http.Handler, list accesscontrol.List) *AccessControl {
 	return &AccessControl{
-		acl:          list,
-		errorHandler: errorHandler,
-		protected:    protected,
+		acl:       list,
+		protected: protected,
 	}
 }
 
 func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, control := range a.acl {
 		if err := control.Validate(req); err != nil {
-			// TODO: register basic auth error handler
-			//if authError, ok := err.(*accesscontrol.BasicAuthError); ok {
-			//	wwwAuthenticateValue := "Basic"
-			//	if authError.Realm != "" {
-			//		wwwAuthenticateValue += " realm=" + authError.Realm
-			//	}
-			//	rw.Header().Set("WWW-Authenticate", wwwAuthenticateValue)
-			//}
-
 			*req = *req.WithContext(context.WithValue(req.Context(), request.ErrorKind, err))
-
-			a.errorHandler.ServeHTTP(rw, req)
+			control.ErrorHandler().ServeHTTP(rw, req)
 			return
 		}
 	}

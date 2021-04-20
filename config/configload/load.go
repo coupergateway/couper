@@ -154,8 +154,22 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					continue
 				}
 				acContent := bodyToContent(acBody.HCLBody())
+				configuredLabels := map[string]struct{}{}
 				for _, block := range acContent.Blocks.OfType(errorHandler) {
+					for _, l := range block.Labels {
+						configuredLabels[l] = struct{}{}
+					}
 					ac.Set(block.Labels, block.Body)
+				}
+
+				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
+					defaultKinds, defaultContent := acDefault.DefaultErrorHandler()
+					for _, kindLabel := range defaultKinds {
+						if _, configured := configuredLabels[kindLabel]; configured {
+							continue
+						}
+						ac.Set([]string{kindLabel}, defaultContent)
+					}
 				}
 			}
 

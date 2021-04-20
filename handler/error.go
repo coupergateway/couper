@@ -32,7 +32,13 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	gerr := errKind.(errors.GoError)
+	gerr, ok := errKind.(errors.GoError)
+
+	if e.kindContext == nil || !ok {
+		e.template.ServeError(errKind).ServeHTTP(rw, req)
+		return
+	}
+
 	if eh, defined := e.kindContext[gerr.Type()]; defined {
 		evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
 		resp, err := producer.NewResponse(req, eh, evalContext, gerr.GoStatus())
