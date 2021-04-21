@@ -28,6 +28,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 var (
@@ -2312,6 +2313,74 @@ func TestFunctions(t *testing.T) {
 				if v1 := res.Header.Get(k); v1 != v {
 					t.Errorf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
 					return
+				}
+			}
+		})
+	}
+}
+
+func TestEndpoint_Response(t *testing.T) {
+	client := newClient()
+	var redirSeen bool
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		redirSeen = true
+		return fmt.Errorf("do not follow")
+	}
+
+	shutdown, logHook := newCouper("testdata/integration/endpoint_eval/17_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path          string
+		expStatusCode int
+	}
+
+	for _, tc := range []testCase{
+		{"/200", http.StatusOK},
+		{"/200/this-is-my-resp-body", http.StatusOK},
+		{"/204", http.StatusNoContent},
+		{"/301", http.StatusMovedPermanently},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			if tc.expStatusCode == http.StatusMovedPermanently {
+				if !redirSeen {
+					t.Errorf("expected a redirect response")
+				}
+
+				resp := logHook.LastEntry().Data["response"]
+				fields := resp.(logging.Fields)
+				headers := fields["headers"].(map[string]string)
+				if headers["location"] != "https://couper.io/" {
+					t.Errorf("expected location header log")
+				}
+			} else {
+				helper.Must(err)
+			}
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != tc.expStatusCode {
+				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
+				return
+			}
+
+			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
+				t.Logf("%v", logHook.LastEntry())
+				t.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+			}
+
+			if len(resBytes) > 0 {
+				b, exist := logHook.LastEntry().Data["bytes"]
+				if !exist || b != len(resBytes) {
+					t.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
 			}
 		})
