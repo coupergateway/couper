@@ -10,13 +10,16 @@ import (
 	"net/textproto"
 	"strconv"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/logging"
 )
 
 var (
-	_ http.Flusher        = &RWWrapper{}
-	_ http.Hijacker       = &RWWrapper{}
-	_ http.ResponseWriter = &RWWrapper{}
+	_ http.Flusher         = &RWWrapper{}
+	_ http.Hijacker        = &RWWrapper{}
+	_ http.ResponseWriter  = &RWWrapper{}
+	_ logging.RecorderInfo = &RWWrapper{}
 )
 
 // RWWrapper wraps the <http.ResponseWriter>.
@@ -28,6 +31,10 @@ type RWWrapper struct {
 	httpLineDelim []byte
 	secureCookies string
 	statusWritten bool
+	// logging info
+	statusCode      int
+	rawBytesWritten int
+	bytesWritten    int
 }
 
 // NewRWWrapper creates a new RWWrapper object.
@@ -52,10 +59,18 @@ func (w *RWWrapper) Header() http.Header {
 
 // Write wraps the Write method of the <http.ResponseWriter>.
 func (w *RWWrapper) Write(p []byte) (int, error) {
+	l := len(p)
+	w.rawBytesWritten += l
 	if !w.statusWritten {
 		if len(w.httpStatus) == 0 {
 			w.httpStatus = p[:]
-			return len(p), nil
+			// required for short writes without any additional header
+			// to detect EOH chunk later on
+			if l >= 2 {
+				w.httpLineDelim = p[l-2 : l]
+			}
+
+			return l, nil
 		}
 
 		// End-of-header
@@ -69,18 +84,21 @@ func (w *RWWrapper) Write(p []byte) (int, error) {
 			w.WriteHeader(w.parseStatusCode(w.httpStatus))
 		}
 
-		l := len(p)
 		if l >= 2 {
 			w.httpLineDelim = p[l-2 : l]
 		}
 		return w.headerBuffer.Write(p)
 	}
 
+	var n int
+	var writeErr error
 	if w.gz != nil {
-		return w.gz.Write(p)
+		n, writeErr = w.gz.Write(p)
+	} else {
+		n, writeErr = w.rw.Write(p)
 	}
-
-	return w.rw.Write(p)
+	w.bytesWritten += n
+	return n, writeErr
 }
 
 func (w *RWWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
@@ -118,6 +136,7 @@ func (w *RWWrapper) WriteHeader(statusCode int) {
 	w.configureHeader()
 	w.rw.WriteHeader(statusCode)
 	w.statusWritten = true
+	w.statusCode = statusCode
 }
 
 func (w *RWWrapper) configureHeader() {
@@ -140,4 +159,16 @@ func (w *RWWrapper) parseStatusCode(p []byte) int {
 	}
 	code, _ := strconv.Atoi(string(p[9:12]))
 	return code
+}
+
+func (w *RWWrapper) StatusCode() int {
+	return w.statusCode
+}
+
+func (w *RWWrapper) WrittenBytes() int {
+	return w.bytesWritten
+}
+
+func (w *RWWrapper) ErrorHeader() string {
+	return w.Header().Get(errors.HeaderErrorCode)
 }
