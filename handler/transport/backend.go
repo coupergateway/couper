@@ -107,7 +107,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateRequest(req); err != nil {
-			return nil, errors.Backend.Label(b.name).With(err).Message("request validation failed")
+			return nil, errors.BackendValidation.Label(b.name).With(err)
 		}
 	}
 
@@ -136,13 +136,13 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 				return nil, derr
 			}
 		default:
-			return nil, err
+			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
-			return nil, errors.Backend.Label(b.name).With(err).Message("response validation failed")
+			return nil, errors.BackendValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
 		}
 	}
 
@@ -205,7 +205,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 		deadline := time.After(b.transportConf.Timeout)
 		select {
 		case <-deadline:
-			ec <- errors.Timeout.Label(b.name).Message("deadline exceeded")
+			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
 			return
 		case <-c.Done():
 			return

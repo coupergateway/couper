@@ -60,7 +60,9 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 		}
 
 		if n > bodyLimit {
-			return errors.ClientRequest.Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
+			return errors.ClientRequest.
+				Status(http.StatusRequestEntityTooLarge).
+				Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
 		bodyBytes := buf.Bytes()

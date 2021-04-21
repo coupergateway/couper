@@ -356,8 +356,8 @@ server "zipzip" {
 	res, err = newClient().Do(req)
 	helper.Must(err)
 
-	if res.StatusCode != http.StatusInternalServerError {
-		t.Errorf("Expected status %d, got: %d", http.StatusInternalServerError, res.StatusCode)
+	if res.StatusCode != http.StatusBadGateway {
+		t.Errorf("Expected status %d, got: %d", http.StatusBadGateway, res.StatusCode)
 		for _, entry := range loghook.AllEntries() {
 			t.Log(entry.String())
 		}

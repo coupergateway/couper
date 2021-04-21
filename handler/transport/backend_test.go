@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avenga/couper/errors"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -21,7 +23,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
@@ -47,7 +48,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 		expectedErr string
 	}{
 		{"with zero timings", test.NewRemainContext("origin", origin.URL), &transport.Config{}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
-		{"with overall timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{Timeout: time.Second / 2, ConnectTimeout: time.Minute}, httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "backend deadline exceeded"},
+		{"with overall timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{Timeout: time.Second / 2, ConnectTimeout: time.Minute}, httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
 		{"with connect timeout", test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), &transport.Config{ConnectTimeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
 		{"with ttfb timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
@@ -68,8 +69,10 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 				return
 			}
 
+			gerr, isErr := err.(errors.GoError)
+
 			if tt.expectedErr != "" &&
-				(err == nil || !strings.HasSuffix(err.Error(), tt.expectedErr)) {
+				(err == nil || !isErr || !strings.HasSuffix(gerr.GoError(), tt.expectedErr)) {
 				t.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
 			}
 		})
@@ -193,7 +196,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodPost,
 			"/get",
-			"Upstream request validation failed",
+			"backend validation error",
 			"request validation: 'POST /get': Path doesn't support the HTTP method",
 		},
 		{
@@ -209,7 +212,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/get?404",
-			"Upstream response validation failed",
+			"backend validation error",
 			"response validation: status is not supported",
 		},
 		{
@@ -249,7 +252,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.expectedErr != "" && (err == nil || err.(errors.GoError).GoError() != tt.expectedErr) {
+			if tt.expectedErr != "" && (err == nil || err.Error() != tt.expectedErr) {
 				subT.Errorf("\nwant:\t%s\ngot:\t%v", tt.expectedErr, err)
 				subT.Log(hook.LastEntry().Message)
 			}

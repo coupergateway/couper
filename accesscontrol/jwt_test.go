@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/avenga/couper/errors"
+
 	"github.com/dgrijalva/jwt-go/v4"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -72,7 +74,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			fields  fields
 			wantErr string
 		}{
-			{"missing key", fields{}, "missing key"},
+			{"missing key", fields{}, "test_ac: key required"},
 			{"PKIX", fields{
 				algorithm: alg,
 				pubKey:    pubKeyBytesPKIX,
@@ -88,7 +90,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			{"Priv", fields{
 				algorithm: alg,
 				pubKey:    privKeyBytes,
-			}, "key is not a valid RSA public key"},
+			}, "test_ac: key is not a valid RSA public key"},
 		}
 
 		for _, tt := range tests {
@@ -99,10 +101,12 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 					ClaimsRequired: tt.fields.claimsRequired,
 					Name:           "test_ac",
 					Key:            string(tt.fields.pubKey),
+					Source:         ac.NewJWTSource("", "Authorization"),
 				})
 				if jerr != nil {
-					if tt.wantErr != jerr.Error() {
-						t.Errorf("error: %v, want: %v", jerr, tt.wantErr)
+					gerr := jerr.(errors.GoError)
+					if tt.wantErr != gerr.GoError() {
+						t.Errorf("error: %v, want: %v", gerr.GoError(), tt.wantErr)
 					}
 				} else if tt.wantErr != "" {
 					t.Errorf("error expected: %v", tt.wantErr)
