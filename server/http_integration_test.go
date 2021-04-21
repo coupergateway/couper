@@ -837,22 +837,26 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 
 func TestHTTPServer_LogFields(t *testing.T) {
 	client := newClient()
-	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+	conf := "testdata/integration/endpoint_eval/10_couper.hcl"
 
 	helper := test.New(t)
-	shutdown, logHook := newCouper(config, helper)
+	shutdown, logHook := newCouper(conf, helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
 	helper.Must(err)
 
 	logHook.Reset()
-	_, err = client.Do(req)
+	res, err := client.Do(req)
 	helper.Must(err)
 
 	if l := len(logHook.Entries); l != 2 {
 		t.Fatalf("Unexpected number of log lines: %d", l)
 	}
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
 
 	backendLog := logHook.Entries[0]
 	accessLog := logHook.Entries[1]
@@ -877,22 +881,22 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	if e, ok := accessLog.Data["endpoint"]; !ok || e != "/" {
 		t.Fatalf("Unexpected endpoint: %s", e)
 	}
-	if b, ok := accessLog.Data["bytes"]; !ok || b != 482 {
-		t.Fatalf("Unexpected number of bytes: %d", b)
+	if b, ok := accessLog.Data["bytes"]; !ok || b != len(resBytes) {
+		t.Fatalf("Unexpected number of bytes: %d\npayload: %s", b, string(resBytes))
 	}
 }
 
 func TestHTTPServer_QueryEncoding(t *testing.T) {
 	client := newClient()
 
-	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+	conf := "testdata/integration/endpoint_eval/10_couper.hcl"
 
 	type expectation struct {
 		RawQuery string
 	}
 
 	helper := test.New(t)
-	shutdown, _ := newCouper(config, helper)
+	shutdown, _ := newCouper(conf, helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?a=a%20a&x=x+x", nil)
@@ -1044,7 +1048,7 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 func TestHTTPServer_TrailingSlash(t *testing.T) {
 	client := newClient()
 
-	config := "testdata/integration/endpoint_eval/11_couper.hcl"
+	conf := "testdata/integration/endpoint_eval/11_couper.hcl"
 
 	type expectation struct {
 		Path string
@@ -1065,7 +1069,7 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 	} {
 		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
-			shutdown, _ := newCouper(config, helper)
+			shutdown, _ := newCouper(conf, helper)
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)

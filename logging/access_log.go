@@ -117,6 +117,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	fields["response"] = responseFields
 
 	if writtenBytes > 0 {
+		fields["bytes"] = writtenBytes
 		responseFields["bytes"] = writtenBytes
 	}
 
