@@ -163,7 +163,6 @@ func Test_JWT_Validate(t *testing.T) {
 			req     *http.Request
 			wantErr bool
 		}{
-			{"not configured", fields{}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
@@ -228,6 +227,10 @@ func Test_JWT_Validate(t *testing.T) {
 					Source:         tt.fields.source,
 					Key:            string(tt.fields.pubKey),
 				})
+				if err != nil {
+					t.Error(err)
+					return
+				}
 
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)

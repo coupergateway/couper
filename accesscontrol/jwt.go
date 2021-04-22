@@ -141,10 +141,6 @@ func (j *JWT) Validate(req *http.Request) error {
 	var tokenValue string
 	var err error
 
-	if j == nil {
-		return errors.Configuration
-	}
-
 	switch j.source.Type {
 	case Cookie:
 		if cookie, cerr := req.Cookie(j.source.Name); cerr != nil && cerr != http.ErrNoCookie {
