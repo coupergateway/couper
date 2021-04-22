@@ -72,7 +72,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 			gerr, isErr := err.(errors.GoError)
 
 			if tt.expectedErr != "" &&
-				(err == nil || !isErr || !strings.HasSuffix(gerr.GoError(), tt.expectedErr)) {
+				(err == nil || !isErr || !strings.HasSuffix(gerr.LogError(), tt.expectedErr)) {
 				t.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
 			}
 		})

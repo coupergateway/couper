@@ -42,8 +42,8 @@ var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
 
 func (i ListItem) Validate(req *http.Request) error {
 	if err := i.control.Validate(req); err != nil {
-		if gerr, ok := err.(*errors.Error); ok {
-			return gerr.Label(i.label).PrefixKind(i.kind)
+		if e, ok := err.(*errors.Error); ok {
+			return e.Label(i.label)
 		}
 		return errors.AccessControl.Label(i.label).Kind(i.kind).With(err)
 	}

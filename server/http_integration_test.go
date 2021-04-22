@@ -251,7 +251,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"message": "/v1: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"}, // in this case proxyconnect fails
@@ -281,15 +281,15 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v2/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"message": "/v2: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/v2/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"message": "/v2: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"message": "/v3: route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 		}},
 		{"vhosts/01_couper.hcl", []requestCase{
@@ -1985,13 +1985,13 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
 		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
 		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json", ""}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "ba1: missing credentials"},
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: missing credentials"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
-		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "ba1: missing credentials"},
+		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: missing credentials"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "ba1: missing credentials"},
-		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "ba1: missing credentials"},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: missing credentials"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control error: ba1: missing credentials"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -2069,8 +2069,8 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "JWTToken: token required"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "JWTToken: token is expired by "},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "access control error: JWTToken: token required"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "access control error: JWTToken: token is expired by "},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
@@ -2122,7 +2122,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := "loading jwt definition failed: missing-source: configuration error"
+	expectedMsg := "loading jwt definition failed: configuration error"
 
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	if err == nil || err.Error() != expectedMsg {

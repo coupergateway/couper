@@ -74,7 +74,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			fields  fields
 			wantErr string
 		}{
-			{"missing key", fields{}, "test_ac: key required"},
+			{"missing key", fields{}, "configuration error: test_ac: key required"},
 			{"PKIX", fields{
 				algorithm: alg,
 				pubKey:    pubKeyBytesPKIX,
@@ -90,7 +90,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			{"Priv", fields{
 				algorithm: alg,
 				pubKey:    privKeyBytes,
-			}, "test_ac: key is not a valid RSA public key"},
+			}, "configuration error: test_ac: key is not a valid RSA public key"},
 		}
 
 		for _, tt := range tests {
@@ -105,8 +105,8 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 				})
 				if jerr != nil {
 					gerr := jerr.(errors.GoError)
-					if tt.wantErr != gerr.GoError() {
-						t.Errorf("error: %v, want: %v", gerr.GoError(), tt.wantErr)
+					if tt.wantErr != gerr.LogError() {
+						t.Errorf("error: %v, want: %v", gerr.LogError(), tt.wantErr)
 					}
 				} else if tt.wantErr != "" {
 					t.Errorf("error expected: %v", tt.wantErr)

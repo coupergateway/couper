@@ -92,7 +92,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
 		{"/apps/shiny-product/app/sub", spaContent, http.StatusOK},
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
-		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"message": "/api: route not found error" }`), 404},
+		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"message": "route not found error" }`), 404},
 	} {
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
 		helper.Must(err)

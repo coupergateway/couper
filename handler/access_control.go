@@ -28,7 +28,7 @@ func NewAccessControl(protected http.Handler, list accesscontrol.List) *AccessCo
 func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, control := range a.acl {
 		if err := control.Validate(req); err != nil {
-			*req = *req.WithContext(context.WithValue(req.Context(), request.ErrorKind, err))
+			*req = *req.WithContext(context.WithValue(req.Context(), request.Error, err))
 			control.ErrorHandler().ServeHTTP(rw, req)
 			return
 		}

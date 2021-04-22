@@ -22,13 +22,11 @@ const (
 	Invalid JWTSourceType = iota
 	Cookie
 	Header
-
-	jwtErrorKind = "jwt"
 )
 
 var _ AccessControl = &JWT{}
 
-var JWTError = errors.AccessControl.Kind(jwtErrorKind)
+var JWTError = errors.AccessControl.Kind("jwt")
 
 type (
 	Algorithm     int
@@ -143,9 +141,8 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	switch j.source.Type {
 	case Cookie:
-		if cookie, cerr := req.Cookie(j.source.Name); cerr != nil && cerr != http.ErrNoCookie {
-			return cerr
-		} else if cookie != nil {
+		cookie, cerr := req.Cookie(j.source.Name)
+		if cerr != http.ErrNoCookie && cookie != nil {
 			tokenValue = cookie.Value
 		}
 	case Header:
@@ -162,7 +159,7 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
-		return JWTError.Message("token required").Status(http.StatusUnauthorized)
+		return JWTError.Kind("jwt_token_required").Message("token required").Status(http.StatusUnauthorized)
 	}
 
 	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
@@ -205,14 +202,13 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 		tokenClaims = tc
 	}
 
-	const claimErrKind = jwtErrorKind + "_claims_"
 	if tokenClaims == nil {
-		return nil, JWTError.Kind(claimErrKind + "invalid").Message("token claims has to be a map type")
+		return nil, JWTError.Kind("jwt_claims_invalid").Message("token claims has to be a map type")
 	}
 
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return nil, JWTError.Kind(claimErrKind + "missing").Message("required claim is missing: " + key)
+			return nil, JWTError.Kind("jwt_claims_missing").Message("required claim is missing: " + key)
 		}
 	}
 
@@ -224,11 +220,11 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 
 		val, exist := tokenClaims[k]
 		if !exist {
-			return nil, JWTError.Kind(claimErrKind + "required").Message("missing claim: " + k)
+			return nil, JWTError.Kind("jwt_claims_required").Message("missing claim: " + k)
 		}
 
 		if val != v {
-			return nil, JWTError.Kind(claimErrKind+"invalid_value").Messagef("invalid claim value: %s", val)
+			return nil, JWTError.Kind("jwt_claims_invalid_value").Messagef("invalid claim value: %s", val)
 		}
 	}
 	return tokenClaims, nil
@@ -239,7 +235,7 @@ func getBearer(val string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(val), bearer) {
 		return strings.Trim(val[len(bearer):], " "), nil
 	}
-	return "", fmt.Errorf("bearer required")
+	return "", JWTError.Kind("jwt_bearer_required").Message("bearer required with authorization header")
 }
 
 func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {

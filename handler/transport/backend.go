@@ -260,8 +260,8 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 			if tr := req.Context().Value(request.TokenRequest); tr != nil {
 				errctx = "token_endpoint"
 			}
-			return nil, errors.Configuration.Label(b.name).Kind(errctx).PrefixKind("backend").
-				Messagef("the host '%s' must be equal to 'backend.origin': %q",
+			return nil, errors.Configuration.Label(b.name).Kind(errctx).
+				Messagef("backend: the host '%s' must be equal to 'backend.origin': %q",
 					urlAttr.Host, origin)
 		}
 

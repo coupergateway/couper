@@ -20,8 +20,8 @@ func Test_SetGetBody_LimitBody(t *testing.T) {
 
 	for _, testcase := range []testCase{
 		{"/w well sized limit", 1024, "content", ""},
-		{"/w zero limit", 0, "01", "body size exceeded: 0B"},
-		{"/w limit /w oversize body", 4, "12345", "body size exceeded: 4B"},
+		{"/w zero limit", 0, "01", "client request error: body size exceeded: 0B"},
+		{"/w limit /w oversize body", 4, "12345", "client request error: body size exceeded: 4B"},
 	} {
 		t.Run(testcase.name, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
@@ -32,8 +32,8 @@ func Test_SetGetBody_LimitBody(t *testing.T) {
 			}
 
 			e := err.(errors.GoError)
-			if e.GoError() != testcase.wantErrMsg {
-				t.Errorf("\nWant:\t%s\nGot:\t%s", testcase.wantErrMsg, e.GoError())
+			if e.LogError() != testcase.wantErrMsg {
+				t.Errorf("\nWant:\t%s\nGot:\t%s", testcase.wantErrMsg, e.LogError())
 			}
 		})
 	}

@@ -3,21 +3,20 @@ package errors
 import "fmt"
 
 type Error struct {
-	// client: label synopsis
-	// log: label message inner(Error())
+	// client: synopsis
+	// log: synopsis label message inner(Error())
 	httpStatus int
-	inner      error  // log details
-	kind       string // error_handler "event"
-	label      string
-	message    string // log
-	synopsis   string // client
+	inner      error    // wrapped error
+	kinds      []string // error_handler "event" names and relation
+	label      string   // mostly the user configured label for e.g. access_control or backend
+	message    string   // additional custom message
+	synopsis   string   // seen by client
 }
 
 type GoError interface {
 	error
-	GoStatus() int
-	GoError() string
-	Type() string
+	HTTPStatus() int
+	LogError() string
 }
 
 var _ GoError = &Error{}
@@ -26,38 +25,42 @@ func New() *Error {
 	return Server
 }
 
+// Status configures the http status-code which will be
+// written along with this error.
 func (e *Error) Status(s int) *Error {
-	err := *e
+	err := e.clone()
 	err.httpStatus = s
-	return &err
+	return err
 }
 
+// Kind appends the given kind name to the existing ones.
+// Latest added should be the more specific ones.
 func (e *Error) Kind(name string) *Error {
-	err := *e
-	err.kind = name
-	return &err
+	err := e.clone()
+	err.kinds = append(err.kinds, name)
+	return err
 }
 
-func (e *Error) PrefixKind(name string) *Error {
-	err := *e
-	if err.kind != "" {
-		err.kind = name + "_" + err.kind
-	} else {
-		err.kind = name
+// Kinds returns all configured kinds in reversed order so the
+// most specific one gets evaluated first.
+func (e *Error) Kinds() []string {
+	var reversed []string
+	for i := len(e.kinds); i > 0; i-- {
+		reversed = append(reversed, e.kinds[i-1])
 	}
-	return &err
+	return reversed
 }
 
 func (e *Error) Label(name string) *Error {
-	err := *e
+	err := e.clone()
 	err.label = name
-	return &err
+	return err
 }
 
 func (e *Error) Message(msg string) *Error {
-	err := *e
+	err := e.clone()
 	err.message = msg
-	return &err
+	return err
 }
 
 func (e *Error) Messagef(msg string, args ...interface{}) *Error {
@@ -65,21 +68,28 @@ func (e *Error) Messagef(msg string, args ...interface{}) *Error {
 }
 
 func (e *Error) With(inner error) *Error {
-	err := *e
+	err := e.clone()
 	err.inner = inner
+	return err
+}
+
+func (e *Error) clone() *Error {
+	err := *e
+	err.kinds = e.kinds[:]
 	return &err
 }
 
 func (e *Error) Error() string {
-	return appendMsg(e.label, e.synopsis)
+	return e.synopsis
 }
 
 func (e *Error) Unwrap() error {
 	return e.inner
 }
 
-func (e *Error) GoError() string {
-	msg := appendMsg(e.label, e.message)
+// LogError contains additional context which should be used for logging purposes only.
+func (e *Error) LogError() string {
+	msg := appendMsg(e.synopsis, e.label, e.message)
 
 	if e.inner != nil {
 		msg = appendMsg(msg, e.inner.Error())
@@ -87,12 +97,9 @@ func (e *Error) GoError() string {
 	return msg
 }
 
-func (e *Error) GoStatus() int {
+// HTTPStatus returns the configured http status code this error should be served with.
+func (e *Error) HTTPStatus() int {
 	return e.httpStatus
-}
-
-func (e *Error) Type() string {
-	return e.kind
 }
 
 // appendMsg chains the given strings with ": " as separator.

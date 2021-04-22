@@ -90,7 +90,7 @@ func (t *Template) ServeError(err error) http.Handler {
 
 		rw.Header().Set(HeaderErrorCode, fmt.Sprintf(err.Error()))
 
-		rw.WriteHeader(goErr.GoStatus())
+		rw.WriteHeader(goErr.HTTPStatus())
 
 		if req.Method == http.MethodHead { // Its fine to send CT
 			return
@@ -101,7 +101,7 @@ func (t *Template) ServeError(err error) http.Handler {
 			reqID = r // could be nil within (unit) test cases
 		}
 		data := map[string]interface{}{
-			"http_status": goErr.GoStatus(),
+			"http_status": goErr.HTTPStatus(),
 			"message":     err.Error(),
 			"path":        req.URL.EscapedPath(),
 			"request_id":  escapeValue(t.mime, reqID),

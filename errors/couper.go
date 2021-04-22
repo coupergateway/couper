@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	AccessControl     = &Error{synopsis: "access control error", httpStatus: http.StatusForbidden}
+	AccessControl     = &Error{synopsis: "access control error", kinds: []string{"access_control"}, httpStatus: http.StatusForbidden}
 	Backend           = &Error{synopsis: "backend error", httpStatus: http.StatusBadGateway}
 	BackendTimeout    = &Error{synopsis: "backend timeout error", httpStatus: http.StatusGatewayTimeout}
 	BackendValidation = &Error{synopsis: "backend validation error", httpStatus: http.StatusBadRequest}

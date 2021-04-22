@@ -26,24 +26,26 @@ func NewErrorHandler(kindContext map[string]hcl.Body, tpl *errors.Template) *Err
 }
 
 func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	errKind, ok := req.Context().Value(request.ErrorKind).(error)
-	if !ok {
+	err, ok := req.Context().Value(request.Error).(*errors.Error)
+	if !ok { // all errors within this context should have this type, otherwise an implementation error
 		e.template.ServeError(errors.Server).ServeHTTP(rw, req)
 		return
 	}
 
-	gerr, ok := errKind.(errors.GoError)
-
-	if e.kindContext == nil || !ok {
-		e.template.ServeError(errKind).ServeHTTP(rw, req)
+	if e.kindContext == nil { // nothing defined, just serve err with template
+		e.template.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
-	if eh, defined := e.kindContext[gerr.Type()]; defined {
+	for _, kind := range err.Kinds() {
+		eh, defined := e.kindContext[kind]
+		if !defined {
+			continue
+		}
 		evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
-		resp, err := producer.NewResponse(req, eh, evalContext, gerr.GoStatus())
-		if err != nil {
-			e.template.ServeError(err).ServeHTTP(rw, req)
+		resp, respErr := producer.NewResponse(req, eh, evalContext, err.HTTPStatus())
+		if respErr != nil {
+			e.template.ServeError(respErr).ServeHTTP(rw, req)
 			return
 		}
 		eval.ApplyResponseContext(req.Context(), eh, resp)
@@ -51,5 +53,6 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	e.template.ServeError(errKind).ServeHTTP(rw, req)
+	// fallback with no matching error handler
+	e.template.ServeError(err).ServeHTTP(rw, req)
 }

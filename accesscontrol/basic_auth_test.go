@@ -33,12 +33,12 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "", "", "", "", false},
 		{"name", "user", "pass", "testdata/htpasswd", "", false},
 		{"name", "john", "pass", "testdata/htpasswd", "", false},
-		{"name", "user", "pass", "file", "name: open file: no such file or directory", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "name: parse error: invalid line: 1", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "name: parse error: line length exceeded: 255", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `name: parse error: malformed password for user: foo`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_multi", `name: multiple user: foo`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "name: parse error: algorithm not supported", true},
+		{"name", "user", "pass", "file", "configuration error: name: open file: no such file or directory", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "configuration error: name: parse error: invalid line: 1", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "configuration error: name: parse error: line length exceeded: 255", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `configuration error: name: parse error: malformed password for user: foo`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_multi", `configuration error: name: multiple user: foo`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "configuration error: name: parse error: algorithm not supported", true},
 	} {
 		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file)
 		if tc.shouldFail && ba != nil {
@@ -51,8 +51,8 @@ func Test_NewBasicAuth(t *testing.T) {
 			}
 			gerr := err.(couperErr.GoError)
 
-			if gerr.GoError() != tc.expErrMsg {
-				t.Errorf("Expected error message: %q, got: %q", tc.expErrMsg, gerr.GoError())
+			if gerr.LogError() != tc.expErrMsg {
+				t.Errorf("Expected error message: %q, got: %q", tc.expErrMsg, gerr.LogError())
 			}
 		} else if err != nil {
 			t.Error(err)
