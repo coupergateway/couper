@@ -28,6 +28,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 var (
@@ -837,22 +838,26 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 
 func TestHTTPServer_LogFields(t *testing.T) {
 	client := newClient()
-	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+	conf := "testdata/integration/endpoint_eval/10_couper.hcl"
 
 	helper := test.New(t)
-	shutdown, logHook := newCouper(config, helper)
+	shutdown, logHook := newCouper(conf, helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
 	helper.Must(err)
 
 	logHook.Reset()
-	_, err = client.Do(req)
+	res, err := client.Do(req)
 	helper.Must(err)
 
 	if l := len(logHook.Entries); l != 2 {
 		t.Fatalf("Unexpected number of log lines: %d", l)
 	}
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
 
 	backendLog := logHook.Entries[0]
 	accessLog := logHook.Entries[1]
@@ -877,22 +882,22 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	if e, ok := accessLog.Data["endpoint"]; !ok || e != "/" {
 		t.Fatalf("Unexpected endpoint: %s", e)
 	}
-	if b, ok := accessLog.Data["bytes"]; !ok || b != 482 {
-		t.Fatalf("Unexpected number of bytes: %d", b)
+	if b, ok := accessLog.Data["bytes"]; !ok || b != len(resBytes) {
+		t.Fatalf("Unexpected number of bytes: %d\npayload: %s", b, string(resBytes))
 	}
 }
 
 func TestHTTPServer_QueryEncoding(t *testing.T) {
 	client := newClient()
 
-	config := "testdata/integration/endpoint_eval/10_couper.hcl"
+	conf := "testdata/integration/endpoint_eval/10_couper.hcl"
 
 	type expectation struct {
 		RawQuery string
 	}
 
 	helper := test.New(t)
-	shutdown, _ := newCouper(config, helper)
+	shutdown, _ := newCouper(conf, helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?a=a%20a&x=x+x", nil)
@@ -1044,7 +1049,7 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 func TestHTTPServer_TrailingSlash(t *testing.T) {
 	client := newClient()
 
-	config := "testdata/integration/endpoint_eval/11_couper.hcl"
+	conf := "testdata/integration/endpoint_eval/11_couper.hcl"
 
 	type expectation struct {
 		Path string
@@ -1065,7 +1070,7 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 	} {
 		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
-			shutdown, _ := newCouper(config, helper)
+			shutdown, _ := newCouper(conf, helper)
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -2308,6 +2313,74 @@ func TestFunctions(t *testing.T) {
 				if v1 := res.Header.Get(k); v1 != v {
 					t.Errorf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
 					return
+				}
+			}
+		})
+	}
+}
+
+func TestEndpoint_Response(t *testing.T) {
+	client := newClient()
+	var redirSeen bool
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		redirSeen = true
+		return fmt.Errorf("do not follow")
+	}
+
+	shutdown, logHook := newCouper("testdata/integration/endpoint_eval/17_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path          string
+		expStatusCode int
+	}
+
+	for _, tc := range []testCase{
+		{"/200", http.StatusOK},
+		{"/200/this-is-my-resp-body", http.StatusOK},
+		{"/204", http.StatusNoContent},
+		{"/301", http.StatusMovedPermanently},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			if tc.expStatusCode == http.StatusMovedPermanently {
+				if !redirSeen {
+					t.Errorf("expected a redirect response")
+				}
+
+				resp := logHook.LastEntry().Data["response"]
+				fields := resp.(logging.Fields)
+				headers := fields["headers"].(map[string]string)
+				if headers["location"] != "https://couper.io/" {
+					t.Errorf("expected location header log")
+				}
+			} else {
+				helper.Must(err)
+			}
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != tc.expStatusCode {
+				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
+				return
+			}
+
+			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
+				t.Logf("%v", logHook.LastEntry())
+				t.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+			}
+
+			if len(resBytes) > 0 {
+				b, exist := logHook.LastEntry().Data["bytes"]
+				if !exist || b != len(resBytes) {
+					t.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
 			}
 		})
