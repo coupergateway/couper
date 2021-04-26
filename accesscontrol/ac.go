@@ -1,7 +1,6 @@
 package accesscontrol
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/errors"

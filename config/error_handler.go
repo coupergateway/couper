@@ -7,14 +7,19 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-// ErrorHandler represents the <ErrorHandler> object.
+// ErrorHandler represents a subset of Endpoint.
 type ErrorHandler struct {
-	Kinds  []string
-	Remain hcl.Body `hcl:",remain"`
+	Kinds     []string
+	ErrorFile string    `hcl:"error_file,optional"`
+	Remain    hcl.Body  `hcl:",remain"`
+	Response  *Response `hcl:"response,block"`
+	// internally configured due to multi-label options
+	Proxies  Proxies
+	Requests Requests
 }
 
 type ErrorHandlerGetter interface {
-	DefaultErrorHandler() (kinds []string, context hcl.Body)
+	DefaultErrorHandler() *ErrorHandler
 }
 
 // HCLBody implements the <Inline> interface.
@@ -31,7 +36,8 @@ func (e ErrorHandler) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		meta.ResponseAttributes
-		Response *Response `hcl:"response,block"`
+		Proxies  Proxies  `hcl:"proxy,block"`
+		Requests Requests `hcl:"request,block"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

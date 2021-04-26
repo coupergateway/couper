@@ -1,14 +1,9 @@
 package config
 
-import "github.com/hashicorp/hcl/v2"
-
 type AccessControlSetter struct {
-	ErrorHandler []*ErrorHandler
+	ErrorHandler []*ErrorHandler `hcl:"error_handler"`
 }
 
-func (acs *AccessControlSetter) Set(kinds []string, body hcl.Body) {
-	acs.ErrorHandler = append(acs.ErrorHandler, &ErrorHandler{
-		Kinds:  kinds,
-		Remain: body,
-	})
+func (acs *AccessControlSetter) Set(ehConf *ErrorHandler) {
+	acs.ErrorHandler = append(acs.ErrorHandler, ehConf)
 }

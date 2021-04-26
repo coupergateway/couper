@@ -24,10 +24,6 @@ type Endpoint struct {
 	log            *logrus.Entry
 	logHandlerKind string
 	opts           *EndpointOptions
-	proxies        producer.Roundtrips
-	redirect       *producer.Redirect
-	requests       producer.Roundtrips
-	response       *producer.Response
 }
 
 type EndpointOptions struct {
@@ -38,21 +34,22 @@ type EndpointOptions struct {
 	ReqBodyLimit   int64
 	ReqBufferOpts  eval.BufferOption
 	ServerOpts     *server.Options
+
+	Proxies  producer.Roundtrips
+	Redirect *producer.Redirect
+	Requests producer.Roundtrips
+	Response *producer.Response
 }
 
 type EndpointLimit interface {
 	RequestLimit() int64
 }
 
-func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, proxies producer.Proxies,
-	requests producer.Requests, resp *producer.Response) *Endpoint {
+func NewEndpoint(opts *EndpointOptions, log *logrus.Entry) *Endpoint {
 	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
-		log:      log.WithField("handler", opts.LogHandlerKind),
-		opts:     opts,
-		proxies:  proxies,
-		requests: requests,
-		response: resp,
+		log:  log.WithField("handler", opts.LogHandlerKind),
+		opts: opts,
 	}
 }
 
@@ -90,8 +87,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	requestResults := make(producer.Results)
 
 	// go for it due to chan write on error
-	go e.proxies.Produce(subCtx, req, proxyResults)
-	go e.requests.Produce(subCtx, req, requestResults)
+	go e.opts.Proxies.Produce(subCtx, req, proxyResults)
+	go e.opts.Requests.Produce(subCtx, req, requestResults)
 
 	beresps := make(producer.ResultMap)
 	// TODO: read parallel, proxy first for now
@@ -102,9 +99,9 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
 	// assume prio or err on conf load if set with response
-	if e.redirect != nil {
+	if e.opts.Redirect != nil {
 		clientres = e.newRedirect()
-	} else if e.response != nil {
+	} else if e.opts.Response != nil {
 		// TODO: refactor with error_handler, catch at least panics for now
 		for _, b := range beresps {
 			if b.Err == nil {
@@ -115,7 +112,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				log.Error(b.Err)
 			}
 		}
-		clientres, err = producer.NewResponse(req, e.response.Context, evalContext, http.StatusOK)
+		clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
 	} else {
 		if result, ok := beresps["default"]; ok {
 			clientres = result.Beresp

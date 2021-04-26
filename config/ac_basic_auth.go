@@ -29,7 +29,7 @@ func (b *BasicAuth) DefaultErrorHandler() ([]string, hcl.Body) {
 	}
 	return []string{"basic_auth"},
 		body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
-			"headers": {Name: "headers", Expr: hcl.StaticExpr(seetie.MapToValue(map[string]interface{}{
+			"set_response_headers": {Name: "set_response_headers", Expr: hcl.StaticExpr(seetie.MapToValue(map[string]interface{}{
 				"Www-Authenticate": wwwAuthenticateValue,
 			}), hcl.Range{Filename: "default_basic_auth_error_handler"})}}})
 }

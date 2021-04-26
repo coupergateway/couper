@@ -66,6 +66,9 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 }
 
 func NewCORSHandler(opts *CORSOptions, nextHandler http.Handler) http.Handler {
+	if opts == nil {
+		return nextHandler
+	}
 	return &CORS{
 		options:     opts,
 		nextHandler: nextHandler,

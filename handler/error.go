@@ -3,25 +3,21 @@ package handler
 import (
 	"net/http"
 
-	"github.com/hashicorp/hcl/v2"
-
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/producer"
 )
 
 var _ http.Handler = &Error{}
 
 type Error struct {
-	kindContext map[string]hcl.Body
-	template    *errors.Template
+	kindsHandler map[string]http.Handler
+	template     *errors.Template
 }
 
-func NewErrorHandler(kindContext map[string]hcl.Body, tpl *errors.Template) *Error {
+func NewErrorHandler(kindsHandler map[string]http.Handler, errTpl *errors.Template) *Error {
 	return &Error{
-		kindContext: kindContext,
-		template:    tpl,
+		kindsHandler: kindsHandler,
+		template:     errTpl,
 	}
 }
 
@@ -32,24 +28,17 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if e.kindContext == nil { // nothing defined, just serve err with template
+	if e.kindsHandler == nil { // nothing defined, just serve err with template
 		e.template.ServeError(err).ServeHTTP(rw, req)
 		return
 	}
 
 	for _, kind := range err.Kinds() {
-		eh, defined := e.kindContext[kind]
+		ep, defined := e.kindsHandler[kind]
 		if !defined {
 			continue
 		}
-		evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
-		resp, respErr := producer.NewResponse(req, eh, evalContext, err.HTTPStatus())
-		if respErr != nil {
-			e.template.ServeError(respErr).ServeHTTP(rw, req)
-			return
-		}
-		eval.ApplyResponseContext(req.Context(), eh, resp)
-		resp.Write(rw)
+		ep.ServeHTTP(rw, req)
 		return
 	}
 

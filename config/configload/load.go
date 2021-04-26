@@ -38,7 +38,7 @@ var envContext *hcl.EvalContext
 var configBytes []byte
 
 type AccessControlSetter interface {
-	Set(labels []string, body hcl.Body)
+	Set(handler *config.ErrorHandler)
 }
 
 func init() {
@@ -159,17 +159,17 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					for _, l := range block.Labels {
 						configuredLabels[l] = struct{}{}
 					}
-					ac.Set(block.Labels, block.Body)
+
+					errHandlerConf, err := newErrorHandlerConf(block.Labels, block.Body, definedBackends)
+					if err != nil {
+						return nil, err
+					}
+
+					ac.Set(errHandlerConf)
 				}
 
 				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
-					defaultKinds, defaultContent := acDefault.DefaultErrorHandler()
-					for _, kindLabel := range defaultKinds {
-						if _, configured := configuredLabels[kindLabel]; configured {
-							continue
-						}
-						ac.Set([]string{kindLabel}, defaultContent)
-					}
+					ac.Set(acDefault.DefaultErrorHandler())
 				}
 			}
 
@@ -631,6 +631,29 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 			{Type: backend, Body: oauthBackend},
 		},
 	})})
+}
+
+func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
+	errHandlerConf := &config.ErrorHandler{Kinds: kindLabels}
+	if d := gohcl.DecodeBody(body, envContext, errHandlerConf); d.HasErrors() {
+		return nil, d
+	}
+
+	ep := &config.Endpoint{
+		Pattern:   errorHandler, // must not be empty
+		ErrorFile: errHandlerConf.ErrorFile,
+		Response:  errHandlerConf.Response,
+		Remain:    body,
+	}
+
+	if err := refineEndpoints(definedBackends, config.Endpoints{ep}); err != nil {
+		return nil, err
+	}
+
+	errHandlerConf.Requests = ep.Requests
+	errHandlerConf.Proxies = ep.Proxies
+
+	return errHandlerConf, nil
 }
 
 func renameAttribute(content *hcl.BodyContent, old, new string) {
