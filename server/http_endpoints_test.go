@@ -122,7 +122,7 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	}
 }
 
-func TestEndpoints_Body(t *testing.T) {
+func TestEndpoints_BerespBody(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -158,6 +158,48 @@ func TestEndpoints_Body(t *testing.T) {
 
 	if val := res.Header.Get("x-body"); !strings.HasPrefix(val, "%PDF-1.6") {
 		t.Errorf("Expected PDF file content, got: %q", val)
+	}
+}
+
+func TestEndpoints_ReqBody(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, logHook := newCouper(path.Join(testdataPath, "08_couper.hcl"), helper)
+	defer shutdown()
+
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range logHook.AllEntries() {
+			println(e.String())
+		}
+	}()
+
+	req, err := http.NewRequest(http.MethodPost, "http://example.com:8080/post", bytes.NewBufferString("content"))
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, given %d", res.StatusCode)
+	}
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	type result struct {
+		Body string
+	}
+
+	r := &result{}
+	helper.Must(json.Unmarshal(resBytes, r))
+
+	if r.Body != "content" {
+		t.Errorf("Want: content, got: %v", r.Body)
 	}
 }
 
