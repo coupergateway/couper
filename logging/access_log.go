@@ -25,6 +25,12 @@ type AccessLog struct {
 	logger logrus.FieldLogger
 }
 
+type RecorderInfo interface {
+	StatusCode() int
+	WrittenBytes() int
+	ErrorHeader() string // TODO: drop in favour of new error-handling
+}
+
 func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	return &AccessLog{
 		conf:   c,
@@ -33,9 +39,6 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 }
 
 func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler, startTime time.Time) {
-	statusRecorder := NewStatusRecorder(rw)
-	rw = statusRecorder
-
 	oCtx, acContext := ac.NewWithContext(req.Context())
 	*req = *req.WithContext(oCtx)
 
@@ -44,7 +47,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	fields := Fields{
 		"proto": req.Proto,
-		"bytes": statusRecorder.writtenBytes,
 	}
 
 	backendName, _ := req.Context().Value(request.BackendName).(string)
@@ -97,16 +99,26 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		fields["auth_user"] = user
 	}
 
+	var statusCode int
+	var writtenBytes int
+	var couperErr string
+	if recorder, ok := rw.(RecorderInfo); ok {
+		statusCode = recorder.StatusCode()
+		writtenBytes = recorder.WrittenBytes()
+		couperErr = recorder.ErrorHeader()
+	}
+
 	fields["realtime"] = roundMS(serveDone.Sub(startTime))
-	fields["status"] = statusRecorder.status
+	fields["status"] = statusCode
 
 	responseFields := Fields{
 		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
 	}
 	fields["response"] = responseFields
 
-	if statusRecorder.writtenBytes > 0 {
-		responseFields["bytes"] = statusRecorder.writtenBytes
+	if writtenBytes > 0 {
+		fields["bytes"] = writtenBytes
+		responseFields["bytes"] = writtenBytes
 	}
 
 	requestFields["tls"] = req.TLS != nil
@@ -126,7 +138,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	var err error
 	fields["client_ip"], _ = splitHostPort(req.RemoteAddr)
-	if couperErr := statusRecorder.Header().Get(errors.HeaderErrorCode); couperErr != "" {
+	if couperErr != "" {
 		i, _ := strconv.Atoi(couperErr[:4])
 		err = errors.Code(i)
 		fields["code"] = i
@@ -139,7 +151,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		err = fmt.Errorf("access control: %s: %s", acContext.Name(), acError)
 	}
 
-	if statusRecorder.status == http.StatusInternalServerError || err != nil {
+	if statusCode == http.StatusInternalServerError || err != nil {
 		if err != nil {
 			entry.Error(err)
 			return

@@ -1,5 +1,15 @@
 # Couper Changelog
 
+<a name="1.1.1"></a>
+## [1.1.1](https://github.com/avenga/couper/compare/1.1...1.1.1)
+
+> 2021-04-21
+
+### Bug Fixes
+
+* Endpoint responses are written and logged with correct status-code ([#216](https://github.com/avenga/couper/issues/216))
+  * affected: a plain `response` without any additional headers or body configuration
+
 <a name="1.1"></a>
 ## [1.1](https://github.com/avenga/couper/compare/1.0...1.1)
 

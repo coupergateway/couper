@@ -25,7 +25,7 @@
 
 ## Security
 
-* Upstream OpenAPI3 schema validation
+* Upstream OpenAPI 3 schema validation
 * CORS
 * Request size limiting
 
