@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -634,7 +635,11 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 }
 
 func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
-	errHandlerConf := &config.ErrorHandler{Kinds: kindLabels}
+	var allKinds []string // Support for all events within one label separated by space
+	for _, kinds := range kindLabels {
+		allKinds = append(allKinds, strings.Split(kinds, " ")...)
+	}
+	errHandlerConf := &config.ErrorHandler{Kinds: allKinds}
 	if d := gohcl.DecodeBody(body, envContext, errHandlerConf); d.HasErrors() {
 		return nil, d
 	}
