@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -121,13 +122,17 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			// fallback
 			err = errors.Configuration
 
-			// TODO determine error priority, may solved with error_handler
-			// on roundtrip panic the context label is missing atm
-			// pick the first err from beresps
-			for _, br := range beresps {
-				if br != nil && br.Err != nil {
-					err = br.Err
-					break
+			if strings.HasPrefix(e.opts.LogHandlerKind, "error_") { // weak ref
+				err = req.Context().Value(request.Error).(*errors.Error)
+			} else {
+				// TODO determine error priority, may solved with error_handler
+				// on roundtrip panic the context label is missing atm
+				// pick the first err from beresps
+				for _, br := range beresps {
+					if br != nil && br.Err != nil {
+						err = br.Err
+						break
+					}
 				}
 			}
 		}

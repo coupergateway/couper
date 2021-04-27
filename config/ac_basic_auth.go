@@ -22,14 +22,16 @@ func (b *BasicAuth) HCLBody() hcl.Body {
 	return b.Remain
 }
 
-func (b *BasicAuth) DefaultErrorHandler() ([]string, hcl.Body) {
+func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {
 	wwwAuthenticateValue := "Basic"
 	if b.Realm != "" {
 		wwwAuthenticateValue += " realm=" + b.Realm
 	}
-	return []string{"basic_auth"},
-		body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+	return &ErrorHandler{
+		Kinds: []string{"basic_auth"},
+		Remain: body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
 			"set_response_headers": {Name: "set_response_headers", Expr: hcl.StaticExpr(seetie.MapToValue(map[string]interface{}{
 				"Www-Authenticate": wwwAuthenticateValue,
-			}), hcl.Range{Filename: "default_basic_auth_error_handler"})}}})
+			}), hcl.Range{Filename: "default_basic_auth_error_handler"})}}}),
+	}
 }

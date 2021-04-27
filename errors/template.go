@@ -34,10 +34,11 @@ func init() {
 }
 
 type Template struct {
-	log  *logrus.Entry
-	mime string
-	raw  []byte
-	tpl  *template.Template
+	ctxHandler http.HandlerFunc
+	log        *logrus.Entry
+	mime       string
+	raw        []byte
+	tpl        *template.Template
 }
 
 func NewTemplateFromFile(path string, logger *logrus.Entry) (*Template, error) {
@@ -79,6 +80,13 @@ func NewTemplate(mime, name string, src []byte, logger *logrus.Entry) (*Template
 	}, nil
 }
 
+func (t *Template) WithContextFunc(fn http.HandlerFunc) *Template {
+	tpl := *t
+	tpl.ctxHandler = fn
+	return &tpl
+
+}
+
 func (t *Template) ServeError(err error) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
@@ -89,6 +97,10 @@ func (t *Template) ServeError(err error) http.Handler {
 		}
 
 		rw.Header().Set(HeaderErrorCode, fmt.Sprintf(err.Error()))
+
+		if t.ctxHandler != nil {
+			t.ctxHandler.ServeHTTP(rw, req)
+		}
 
 		rw.WriteHeader(goErr.HTTPStatus())
 

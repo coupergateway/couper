@@ -199,7 +199,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 		// Read api blocks and merge backends with server and definitions backends.
 		for _, apiBlock := range serverConfig.APIs {
-			err := refineEndpoints(definedBackends, apiBlock.Endpoints)
+			err := refineEndpoints(definedBackends, apiBlock.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
@@ -208,7 +208,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// standalone endpoints
-		err := refineEndpoints(definedBackends, serverConfig.Endpoints)
+		err := refineEndpoints(definedBackends, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
@@ -314,13 +314,13 @@ func getBackendReference(definedBackends Backends, be config.BackendReference) (
 	return reference, nil
 }
 
-func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error {
+func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check bool) error {
 	for _, endpoint := range endpoints {
 		if err := uniqueAttributeKey(endpoint.Remain); err != nil {
 			return err
 		}
 
-		if endpoint.Pattern == "" {
+		if check && endpoint.Pattern == "" {
 			var r hcl.Range
 			if endpoint.Remain != nil {
 				r = endpoint.Remain.MissingItemRange()
@@ -337,7 +337,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		proxies := endpointContent.Blocks.OfType(proxy)
 		requests := endpointContent.Blocks.OfType(request)
 
-		if len(proxies)+len(requests) == 0 && endpoint.Response == nil {
+		if check && len(proxies)+len(requests) == 0 && endpoint.Response == nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "missing 'default' proxy or request block, or a response definition",
@@ -460,7 +460,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 		}
 
-		if _, ok := names[defaultNameLabel]; !ok && endpoint.Response == nil {
+		if _, ok := names[defaultNameLabel]; check && !ok && endpoint.Response == nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Missing a 'default' proxy or request definition, or a response block",
@@ -640,13 +640,12 @@ func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Bac
 	}
 
 	ep := &config.Endpoint{
-		Pattern:   errorHandler, // must not be empty
 		ErrorFile: errHandlerConf.ErrorFile,
 		Response:  errHandlerConf.Response,
 		Remain:    body,
 	}
 
-	if err := refineEndpoints(definedBackends, config.Endpoints{ep}); err != nil {
+	if err := refineEndpoints(definedBackends, config.Endpoints{ep}, false); err != nil {
 		return nil, err
 	}
 
