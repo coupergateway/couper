@@ -89,6 +89,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
 				},
+				Requests: make(producer.Requests, 0),
 			}, logger)
 
 			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
@@ -212,6 +213,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 					Proxies: producer.Proxies{
 						&producer.Proxy{Name: "default", RoundTrip: backend},
 					},
+					Requests: make(producer.Requests, 0),
 				}, logger)
 
 				var body io.Reader
@@ -323,6 +325,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
 				},
+				Requests: make(producer.Requests, 0),
 			}, logger)
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))

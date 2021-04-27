@@ -501,7 +501,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				}
 
 				epOpts, _ := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
-				if epOpts.Error == nil {
+				if epOpts.Error == nil || h.ErrorFile == "" {
 					epOpts.Error = opts.epOpts.Error
 				}
 
