@@ -27,9 +27,9 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-type ContextKey uint8
+type contextKey uint8
 
-const ContextType ContextKey = iota
+const ContextType contextKey = iota
 
 var _ context.Context = &Context{}
 
