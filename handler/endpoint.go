@@ -10,12 +10,15 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var _ http.Handler = &Endpoint{}
@@ -123,7 +126,15 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			err = errors.Configuration
 
 			if strings.HasPrefix(e.opts.LogHandlerKind, "error_") { // weak ref
-				err = req.Context().Value(request.Error).(*errors.Error)
+				gerr := req.Context().Value(request.Error).(*errors.Error)
+				content, _, _ := e.opts.Context.PartialContent(config.ErrorHandler{}.Schema(true))
+				if attr, exist := content.Attributes["set_response_status"]; exist {
+					val, _ := attr.Expr.Value(req.Context().Value(eval.ContextType).(*eval.Context).HCLContext())
+					if val.IsWhollyKnown() && val.Type() == cty.Number {
+						gerr = gerr.Status(int(seetie.ValueToInt64(val)))
+					}
+				}
+				err = gerr
 			} else {
 				// TODO determine error priority, may solved with error_handler
 				// on roundtrip panic the context label is missing atm

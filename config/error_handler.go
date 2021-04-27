@@ -36,8 +36,9 @@ func (e ErrorHandler) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		meta.Attributes
-		Proxies  Proxies  `hcl:"proxy,block"`
-		Requests Requests `hcl:"request,block"`
+		ResponseStatus int      `hcl:"set_response_status"`
+		Proxies        Proxies  `hcl:"proxy,block"`
+		Requests       Requests `hcl:"request,block"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

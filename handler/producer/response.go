@@ -38,7 +38,7 @@ func NewResponse(req *http.Request, resp hcl.Body, evalCtx *eval.Context, status
 		val, err := attr.Expr.Value(hclCtx)
 		if err != nil {
 			statusCode = http.StatusInternalServerError
-		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
+		} else if statusValue := int(seetie.ValueToInt64(val)); statusValue > 0 {
 			statusCode = statusValue
 		}
 	}
