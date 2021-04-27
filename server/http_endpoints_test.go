@@ -155,6 +155,10 @@ func TestEndpoints_Body(t *testing.T) {
 	if !bytes.HasPrefix(resBytes, []byte("%PDF-1.6")) {
 		t.Errorf("Expected PDF file, given %s", resBytes)
 	}
+
+	if val := res.Header.Get("x-body"); !strings.HasPrefix(val, "%PDF-1.6") {
+		t.Errorf("Expected PDF file content, got: %q", val)
+	}
 }
 
 func TestEndpoints_ProxyReqResCancel(t *testing.T) {
