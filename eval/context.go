@@ -239,17 +239,17 @@ func isJSONMediaType(contentType string) bool {
 }
 
 func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
+	jsonBody := cty.EmptyObjectVal
 	if req == nil || req.GetBody == nil {
-		return cty.NilVal, cty.NilVal
+		return cty.NilVal, jsonBody
 	}
 
 	body, _ := req.GetBody()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return cty.NilVal, cty.NilVal
+		return cty.NilVal, jsonBody
 	}
 
-	jsonBody := cty.EmptyObjectVal
 	if isJSONMediaType(req.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
@@ -257,18 +257,19 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 }
 
 func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
+	jsonBody := cty.EmptyObjectVal
+
 	if beresp == nil || beresp.Body == nil {
-		return cty.NilVal, cty.NilVal
+		return cty.NilVal, jsonBody
 	}
 
 	b, err := ioutil.ReadAll(beresp.Body)
 	if err != nil {
-		return cty.NilVal, cty.NilVal
+		return cty.NilVal, jsonBody
 	}
 
 	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
 
-	jsonBody := cty.NilVal
 	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
@@ -278,12 +279,12 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 func parseJSONBytes(b []byte) cty.Value {
 	impliedType, err := ctyjson.ImpliedType(b)
 	if err != nil {
-		return cty.NilVal
+		return cty.EmptyObjectVal
 	}
 
 	val, err := ctyjson.Unmarshal(b, impliedType)
 	if err != nil {
-		return cty.NilVal
+		return cty.EmptyObjectVal
 	}
 	return val
 }
