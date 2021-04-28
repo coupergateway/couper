@@ -233,7 +233,7 @@ func getBearer(val string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(val), bearer) {
 		return strings.Trim(val[len(bearer):], " "), nil
 	}
-	return "", errors.Types["jwt_bearer_required"].Message("bearer required with authorization header")
+	return "", errors.Types["jwt_token_required"].Message("bearer required with authorization header")
 }
 
 func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {

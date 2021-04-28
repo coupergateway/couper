@@ -12,7 +12,6 @@ var Types = typeDefinitions{
 
 	"jwt":                      AccessControl.Kind("jwt"),
 	"jwt_token_required":       AccessControl.Kind("jwt_token_required"),
-	"jwt_bearer_required":      AccessControl.Kind("jwt_bearer_required"),
 	"jwt_claims_invalid":       AccessControl.Kind("jwt_claims_invalid"),
 	"jwt_claims_required":      AccessControl.Kind("jwt_claims_required"),
 	"jwt_claims_invalid_value": AccessControl.Kind("jwt_claims_invalid_value"),
