@@ -17,6 +17,7 @@ import (
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
 
@@ -170,6 +171,15 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 								Subject:  &block.LabelRanges[0],
 							}}
 						}
+
+						if !errors.Types.IsKnown(k) {
+							return nil, hcl.Diagnostics{&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  fmt.Sprintf("error type is unknown: %q", k),
+								Subject:  &block.LabelRanges[0],
+							}}
+						}
+
 						configuredLabels[k] = struct{}{}
 					}
 

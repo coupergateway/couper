@@ -13,7 +13,7 @@ import (
 
 var _ AccessControl = &BasicAuth{}
 
-var BasicAuthError = errors.AccessControl.Status(http.StatusUnauthorized).Kind("basic_auth")
+var BasicAuthError = errors.Types["basic_auth"].Status(http.StatusUnauthorized)
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
@@ -112,7 +112,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 
 	user, pass, ok := req.BasicAuth()
 	if !ok {
-		return BasicAuthError.Kind("basic_auth_missing_credentials").
+		return errors.Types["basic_auth_missing_credentials"].
 			Message("missing credentials").Status(http.StatusUnauthorized)
 	}
 

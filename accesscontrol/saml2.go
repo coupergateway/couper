@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 )
 
 type Saml2 struct {
@@ -122,7 +122,7 @@ func (s *Saml2) Validate(req *http.Request) error {
 
 func (s *Saml2) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error {
 	if assertionInfo.WarningInfo.NotInAudience {
-		return errors.New("Audience mismatch")
+		return errors.Types["saml2_audience_required"]
 	}
 
 	return nil
