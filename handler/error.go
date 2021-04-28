@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/avenga/couper/config/request"
@@ -26,6 +27,10 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if !ok { // all errors within this context should have this type, otherwise an implementation error
 		e.template.ServeError(errors.Server).ServeHTTP(rw, req)
 		return
+	}
+
+	if kinds := err.Kinds(); len(kinds) > 0 {
+		*req = *req.WithContext(context.WithValue(req.Context(), request.ErrorKind, kinds[0]))
 	}
 
 	if e.kindsHandler == nil { // nothing defined, just serve err with template

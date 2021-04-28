@@ -11,6 +11,7 @@ const (
 	Endpoint
 	EndpointKind
 	Error
+	ErrorKind
 	OpenAPI
 	PathParams
 	RoundTripName
