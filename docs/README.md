@@ -236,8 +236,9 @@ since these references get evaluated at start.
 | `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
 | `query.<name>`            | Query parameter values (&#9888; last wins!) |
 | `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
+| `body`                    | The request message body |
 | `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
-| `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json`. |
+| `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
 | `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
 
 #### `backend_requests` (modified backend requests) variables
@@ -271,7 +272,8 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `status`           | HTTP status code |
 | `headers.<name>`   | HTTP response header value for requested lower-case key |
 | `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
-| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json`. |
+| `body`             | The response message body |
+| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
 
 ##### Variable Example
 

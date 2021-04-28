@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -28,6 +30,7 @@ func NewBackend() *Backend {
 	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
 	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
 	b.mux.HandleFunc("/ws", echo)
+	b.mux.HandleFunc("/pdf", pdf)
 
 	return b
 }
@@ -122,7 +125,7 @@ func echo(rw http.ResponseWriter, req *http.Request) {
 	// Clear deadlines
 	conn.SetDeadline(time.Time{})
 
-	_, err = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"))
+	_, _ = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"))
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -141,4 +144,22 @@ func echo(rw http.ResponseWriter, req *http.Request) {
 	}(conn)
 
 	wg.Wait()
+}
+
+func pdf(rw http.ResponseWriter, req *http.Request) {
+	_, currFile, _, _ := runtime.Caller(0)
+	rootDir := http.Dir(path.Join(path.Dir(currFile), "testdata"))
+
+	file, err := rootDir.Open("blank.pdf")
+	if err != nil {
+		return
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return
+	}
+
+	http.ServeContent(rw, req, "/blank.pdf", info.ModTime(), file)
 }

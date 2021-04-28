@@ -4,6 +4,7 @@ const (
 	BackendRequests  = "backend_requests"
 	BackendResponses = "backend_responses"
 	BackendDefault   = "default"
+	Body             = "body"
 	ClientRequest    = "request"
 	CTX              = "context"
 	Cookies          = "cookies"

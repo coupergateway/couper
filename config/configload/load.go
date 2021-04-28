@@ -339,19 +339,8 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 				return diags
 			}
 
-			_, existsBody := content.Attributes["body"]
-			_, existsFormBody := content.Attributes["form_body"]
-			_, existsJsonBody := content.Attributes["json_body"]
-			if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
-				rangeAttr := "body"
-				if !existsBody {
-					rangeAttr = "form_body"
-				}
-				return hcl.Diagnostics{&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "request can only have one of body, form_body or json_body attributes",
-					Subject:  &content.Attributes[rangeAttr].Range,
-				}}
+			if err := verifyBodyAttributes(content); err != nil {
+				return err
 			}
 
 			renameAttribute(content, "headers", "set_request_headers")
@@ -425,6 +414,24 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		}
 	}
 
+	return nil
+}
+
+func verifyBodyAttributes(content *hcl.BodyContent) error {
+	_, existsBody := content.Attributes["body"]
+	_, existsFormBody := content.Attributes["form_body"]
+	_, existsJsonBody := content.Attributes["json_body"]
+	if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
+		rangeAttr := "body"
+		if !existsBody {
+			rangeAttr = "form_body"
+		}
+		return hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "request can only have one of body, form_body or json_body attributes",
+			Subject:  &content.Attributes[rangeAttr].Range,
+		}}
+	}
 	return nil
 }
 

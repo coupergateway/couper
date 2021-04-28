@@ -27,7 +27,9 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-const ContextType = "evalContextType"
+type contextKey uint8
+
+const ContextType contextKey = iota
 
 var _ context.Context = &Context{}
 
@@ -110,10 +112,12 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		pathParams = params
 	}
 
+	body, jsonBody := parseReqBody(req)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		JsonBody:  parseReqJSON(req),
+		Body:      body,
+		JsonBody:  jsonBody,
 		Method:    cty.StringVal(req.Method),
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
@@ -136,8 +140,8 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	}
 	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
 
-	resps := make(ContextMap, 0)
-	bereqs := make(ContextMap, 0)
+	resps := make(ContextMap)
+	bereqs := make(ContextMap)
 	for _, beresp := range beresps {
 		if beresp == nil {
 			continue
@@ -156,13 +160,14 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var jsonBody cty.Value
+		var body, jsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
-			jsonBody = parseRespJSON(beresp)
+			body, jsonBody = parseRespBody(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
 			JsonBody:   jsonBody,
+			Body:       body,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -233,55 +238,55 @@ func isJSONMediaType(contentType string) bool {
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
 }
 
-func parseJSON(r io.Reader) cty.Value {
-	if r == nil {
-		return cty.NilVal
+func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
+	jsonBody := cty.EmptyObjectVal
+	if req == nil || req.GetBody == nil {
+		return cty.NilVal, jsonBody
 	}
 
-	b, err := ioutil.ReadAll(r)
+	body, _ := req.GetBody()
+	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return cty.NilVal
+		return cty.NilVal, jsonBody
 	}
 
+	if isJSONMediaType(req.Header.Get("Content-Type")) {
+		jsonBody = parseJSONBytes(b)
+	}
+	return cty.StringVal(string(b)), jsonBody
+}
+
+func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
+	jsonBody := cty.EmptyObjectVal
+
+	if beresp == nil || beresp.Body == nil {
+		return cty.NilVal, jsonBody
+	}
+
+	b, err := ioutil.ReadAll(beresp.Body)
+	if err != nil {
+		return cty.NilVal, jsonBody
+	}
+
+	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
+
+	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
+		jsonBody = parseJSONBytes(b)
+	}
+	return cty.StringVal(string(b)), jsonBody
+}
+
+func parseJSONBytes(b []byte) cty.Value {
 	impliedType, err := ctyjson.ImpliedType(b)
 	if err != nil {
-		return cty.NilVal
+		return cty.EmptyObjectVal
 	}
 
 	val, err := ctyjson.Unmarshal(b, impliedType)
 	if err != nil {
-		return cty.NilVal
+		return cty.EmptyObjectVal
 	}
 	return val
-}
-
-func parseReqJSON(req *http.Request) cty.Value {
-	if req.GetBody == nil {
-		return cty.EmptyObjectVal
-	}
-
-	if !isJSONMediaType(req.Header.Get("Content-Type")) {
-		return cty.EmptyObjectVal
-	}
-
-	body, _ := req.GetBody()
-	return parseJSON(body)
-}
-
-func parseRespJSON(beresp *http.Response) cty.Value {
-	if !isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		return cty.EmptyObjectVal
-	}
-
-	buf := &bytes.Buffer{}
-	_, err := io.Copy(buf, beresp.Body)
-	if err != nil {
-		return cty.EmptyObjectVal
-	}
-
-	// reset
-	beresp.Body = NewReadCloser(bytes.NewBuffer(buf.Bytes()), beresp.Body)
-	return parseJSON(buf)
 }
 
 func newRawURL(u *url.URL) *url.URL {
