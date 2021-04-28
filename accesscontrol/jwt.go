@@ -168,7 +168,6 @@ func (j *JWT) Validate(req *http.Request) error {
 		default:
 			return err
 		}
-		return err
 	}
 
 	tokenClaims, err := j.validateClaims(token)
