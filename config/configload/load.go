@@ -177,7 +177,17 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 
 				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
-					ac.Set(acDefault.DefaultErrorHandler())
+					defaultHandler := acDefault.DefaultErrorHandler()
+					var exist bool
+					for _, kind := range defaultHandler.Kinds {
+						_, exist = configuredLabels[kind]
+						if exist {
+							break
+						}
+					}
+					if !exist {
+						ac.Set(acDefault.DefaultErrorHandler())
+					}
 				}
 			}
 
