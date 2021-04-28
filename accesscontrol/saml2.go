@@ -122,7 +122,7 @@ func (s *Saml2) Validate(req *http.Request) error {
 
 func (s *Saml2) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error {
 	if assertionInfo.WarningInfo.NotInAudience {
-		return errors.Types["saml2_audience_required"]
+		return errors.Types["saml2"].Message("wrong audience")
 	}
 
 	return nil

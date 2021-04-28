@@ -17,8 +17,7 @@ var Types = typeDefinitions{
 	"jwt_claims_required":      AccessControl.Kind("jwt").Kind("jwt_claims_required"),
 	"jwt_claims_invalid_value": AccessControl.Kind("jwt").Kind("jwt_claims_invalid_value"),
 
-	"saml2":                   AccessControl.Kind("saml2"),
-	"saml2_audience_required": AccessControl.Kind("saml2").Kind("saml2_audience_required"),
+	"saml2": AccessControl.Kind("saml2"),
 }
 
 // IsKnown tells the configuration callee if Couper
