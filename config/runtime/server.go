@@ -487,8 +487,10 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 					panic("error kind handler exists already: " + k)
 				}
 
+				contextBody := h.HCLBody()
+
 				epConf := &config.Endpoint{
-					Remain:    h.HCLBody(),
+					Remain:    contextBody,
 					Proxies:   h.Proxies,
 					ErrorFile: h.ErrorFile,
 					Requests:  h.Requests,
@@ -507,7 +509,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 
 				epOpts.Error = epOpts.Error.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
 					beresp := &http.Response{Header: rw.Header()}
-					_ = eval.ApplyResponseContext(r.Context(), h.HCLBody(), beresp)
+					_ = eval.ApplyResponseContext(r.Context(), contextBody, beresp)
 				})
 
 				if epOpts.Response != nil && reflect.DeepEqual(epOpts.Response.Context, emptyBody) {
