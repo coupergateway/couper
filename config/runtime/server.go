@@ -484,7 +484,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 		for _, h := range defs[ref].ErrorHandler {
 			for _, k := range h.Kinds {
 				if _, exist := kindsHandler[k]; exist {
-					panic("error kind handler exists already: " + k)
+					log.Fatal("error type handler exists already: " + k)
 				}
 
 				contextBody := h.HCLBody()

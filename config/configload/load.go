@@ -157,13 +157,20 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				acContent := bodyToContent(acBody.HCLBody())
 				configuredLabels := map[string]struct{}{}
 				for _, block := range acContent.Blocks.OfType(errorHandler) {
-					for _, l := range block.Labels {
-						configuredLabels[l] = struct{}{}
-					}
-
 					errHandlerConf, err := newErrorHandlerConf(block.Labels, block.Body, definedBackends)
 					if err != nil {
 						return nil, err
+					}
+
+					for _, k := range errHandlerConf.Kinds {
+						if _, exist := configuredLabels[k]; exist {
+							return nil, hcl.Diagnostics{&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  fmt.Sprintf("duplicate error type registration: %q", k),
+								Subject:  &block.LabelRanges[0],
+							}}
+						}
+						configuredLabels[k] = struct{}{}
 					}
 
 					ac.Set(errHandlerConf)
