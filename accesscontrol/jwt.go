@@ -162,6 +162,12 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
 	if err != nil {
+		switch err.(type) {
+		case *jwt.TokenExpiredError:
+			return errors.Types["jwt_token_expired"].With(err)
+		default:
+			return err
+		}
 		return err
 	}
 

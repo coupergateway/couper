@@ -11,13 +11,14 @@ var Types = typeDefinitions{
 	"basic_auth_missing_credentials": AccessControl.Kind("basic_auth").Kind("basic_auth_missing_credentials"),
 
 	"jwt":                      AccessControl.Kind("jwt"),
-	"jwt_token_required":       AccessControl.Kind("jwt_token_required"),
-	"jwt_claims_invalid":       AccessControl.Kind("jwt_claims_invalid"),
-	"jwt_claims_required":      AccessControl.Kind("jwt_claims_required"),
-	"jwt_claims_invalid_value": AccessControl.Kind("jwt_claims_invalid_value"),
+	"jwt_token_expired":        AccessControl.Kind("jwt").Kind("jwt_token_expired"),
+	"jwt_token_required":       AccessControl.Kind("jwt").Kind("jwt_token_required"),
+	"jwt_claims_invalid":       AccessControl.Kind("jwt").Kind("jwt_claims_invalid"),
+	"jwt_claims_required":      AccessControl.Kind("jwt").Kind("jwt_claims_required"),
+	"jwt_claims_invalid_value": AccessControl.Kind("jwt").Kind("jwt_claims_invalid_value"),
 
 	"saml2":                   AccessControl.Kind("saml2"),
-	"saml2_audience_required": AccessControl.Kind("saml2_audience_required"),
+	"saml2_audience_required": AccessControl.Kind("saml2").Kind("saml2_audience_required"),
 }
 
 // IsKnown tells the configuration callee if Couper
