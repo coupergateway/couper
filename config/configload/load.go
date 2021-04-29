@@ -671,11 +671,12 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 
 func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
 	var allKinds []string // Support for all events within one label separated by space
+
 	for _, kinds := range kindLabels {
 		all := strings.Split(kinds, " ")
 		for _, a := range all {
 			if a == "" {
-				return nil, errors.Configuration.Messagef("unexpected space: %v", kindLabels)
+				return nil, errors.Configuration.Messagef("invalid format: %v", kindLabels)
 			}
 		}
 		allKinds = append(allKinds, all...)
