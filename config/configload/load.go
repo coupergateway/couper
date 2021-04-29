@@ -172,12 +172,17 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 							}}
 						}
 
-						if !errors.Types.IsKnown(k) {
-							return nil, hcl.Diagnostics{&hcl.Diagnostic{
+						if k != errors.Wildcard && !errors.Types.IsKnown(k) {
+							subjRange := block.DefRange
+							if len(block.LabelRanges) > 0 {
+								subjRange = block.LabelRanges[0]
+							}
+							diag := &hcl.Diagnostic{
 								Severity: hcl.DiagError,
 								Summary:  fmt.Sprintf("error type is unknown: %q", k),
-								Subject:  &block.LabelRanges[0],
-							}}
+								Subject:  &subjRange,
+							}
+							return nil, hcl.Diagnostics{diag}
 						}
 
 						configuredLabels[k] = struct{}{}
@@ -188,13 +193,16 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
 					defaultHandler := acDefault.DefaultErrorHandler()
-					var exist bool
-					for _, kind := range defaultHandler.Kinds {
-						_, exist = configuredLabels[kind]
-						if exist {
-							break
+					_, exist := configuredLabels[errors.Wildcard]
+					if !exist {
+						for _, kind := range defaultHandler.Kinds {
+							_, exist = configuredLabels[kind]
+							if exist {
+								break
+							}
 						}
 					}
+
 					if !exist {
 						ac.Set(acDefault.DefaultErrorHandler())
 					}
@@ -666,6 +674,10 @@ func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Bac
 	for _, kinds := range kindLabels {
 		allKinds = append(allKinds, strings.Split(kinds, " ")...)
 	}
+	if len(allKinds) == 0 {
+		allKinds = append(allKinds, errors.Wildcard)
+	}
+
 	errHandlerConf := &config.ErrorHandler{Kinds: allKinds}
 	if d := gohcl.DecodeBody(body, envContext, errHandlerConf); d.HasErrors() {
 		return nil, d

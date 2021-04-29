@@ -7,6 +7,8 @@ import (
 	"unicode"
 )
 
+const Wildcard = "*"
+
 var (
 	AccessControl     = &Error{synopsis: "access control error", kinds: []string{"access_control"}, httpStatus: http.StatusForbidden}
 	Backend           = &Error{synopsis: "backend error", httpStatus: http.StatusBadGateway}

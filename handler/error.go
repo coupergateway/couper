@@ -47,6 +47,11 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if ep, defined := e.kindsHandler[errors.Wildcard]; defined {
+		ep.ServeHTTP(rw, req)
+		return
+	}
+
 	// fallback with no matching error handler
 	e.template.ServeError(err).ServeHTTP(rw, req)
 }

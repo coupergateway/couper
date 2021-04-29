@@ -78,3 +78,27 @@ func TestAccessControl_ErrorHandler_BasicAuth_Default(t *testing.T) {
 		t.Errorf("Expected header: www-authenticate with value: %s, got: %s", "Basic realm=protected", www)
 	}
 }
+
+func TestAccessControl_ErrorHandler_BasicAuth_Wildcard(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/02_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
+		return
+	}
+
+	if www := res.Header.Get("www-authenticate"); www != "" {
+		t.Errorf("Expected no www-authenticate header: %s", www)
+	}
+}
