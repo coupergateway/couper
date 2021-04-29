@@ -57,18 +57,19 @@ type JWTOptions struct {
 }
 
 func NewJWTSource(cookie, header string) JWTSource {
-	if cookie != "" && header != "" { // invalid
+	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
+	if c != "" && h != "" { // both are invalid
 		return JWTSource{}
 	}
 
-	if cookie != "" {
+	if c != "" {
 		return JWTSource{
-			Name: cookie,
+			Name: c,
 			Type: Cookie,
 		}
-	} else if header != "" {
+	} else if h != "" {
 		return JWTSource{
-			Name: header,
+			Name: h,
 			Type: Header,
 		}
 	}
