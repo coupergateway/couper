@@ -133,21 +133,13 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	if ctxErr, ok := req.Context().Value(request.Error).(errors.GoError); ok {
 		err = ctxErr
-
-		if kind, k := req.Context().Value(request.ErrorKind).(string); k {
-			fields["error_type"] = kind
-		}
 	}
 
 	entry := log.logger.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
 
 	if statusCode == http.StatusInternalServerError || err != nil {
-		if err != nil {
-			entry.Error(err.LogError())
-			return
-		}
-		entry.Error()
+		entry.WithError(err).Error()
 	} else {
 		entry.Info()
 	}

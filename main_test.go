@@ -12,7 +12,7 @@ import (
 
 func Test_realmain(t *testing.T) {
 	testhook := &logrustest.Hook{}
-	hook = testhook
+	testHook = testhook
 
 	base := "server/testdata/settings"
 	wd, _ := os.Getwd()

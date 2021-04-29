@@ -18,6 +18,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
 )
 
@@ -26,7 +27,7 @@ var (
 		"build":   runtime.BuildName,
 		"version": runtime.VersionName,
 	}
-	hook logrus.Hook
+	testHook logrus.Hook
 )
 
 func main() {
@@ -83,7 +84,7 @@ func realmain(arguments []string) int {
 
 	confFile, err := configload.LoadFile(flags.FilePath)
 	if err != nil {
-		newLogger(flags.LogFormat, flags.LogPretty).Error(err)
+		newLogger(flags.LogFormat, flags.LogPretty).WithError(err).Error()
 		return 1
 	}
 
@@ -106,7 +107,7 @@ func realmain(arguments []string) int {
 
 	if !flags.FileWatch {
 		if err = command.NewCommand(ctx, cmd).Execute(args, confFile, logger); err != nil {
-			logger.Error(err)
+			logger.WithError(err).Error()
 			return 1
 		}
 		return 0
@@ -147,7 +148,7 @@ func realmain(arguments []string) int {
 						return 1
 					}
 				}
-				logger.Error(err)
+				logger.WithError(err).Error()
 				return 1
 			}
 			return 0
@@ -160,14 +161,14 @@ func realmain(arguments []string) int {
 
 			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
 			if reloadErr != nil {
-				logger.Errorf("reload failed: %v", reloadErr)
+				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
 			// dry run configuration
 			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), nil)
 			if reloadErr != nil {
-				logger.Errorf("reload failed: %v", reloadErr)
+				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
@@ -191,10 +192,12 @@ func realmain(arguments []string) int {
 func newLogger(format string, pretty bool) *logrus.Entry {
 	logger := logrus.New()
 	logger.Out = os.Stdout
-	if hook != nil {
-		logger.AddHook(hook)
+	if testHook != nil {
+		logger.AddHook(testHook)
 		logger.Out = ioutil.Discard
 	}
+
+	logger.AddHook(&errors.LogHook{})
 
 	settings := &config.Settings{
 		LogFormat: format,

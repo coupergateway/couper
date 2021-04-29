@@ -27,6 +27,7 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
@@ -88,8 +89,10 @@ func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.H
 }
 
 func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
-
-	log, hook := logrustest.NewNullLogger()
+	log := logrus.New()
+	log.Out = ioutil.Discard
+	log.AddHook(&errors.LogHook{})
+	hook := logrustest.NewLocal(log)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancelFn := func() {
@@ -116,8 +119,6 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			panic("port is still in use")
 		}
 	}
-
-	//log.Out = os.Stdout
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {

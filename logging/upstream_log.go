@@ -151,10 +151,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 			if _, ok := err.(errors.GoError); !ok {
 				err = errors.Backend.With(err)
 			}
-			entry.Error(err.(errors.GoError).LogError())
-			return beresp, err
 		}
-		entry.Error()
+		entry.WithError(err).Error()
 	} else {
 		entry.Info()
 	}

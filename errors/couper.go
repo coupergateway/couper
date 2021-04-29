@@ -15,8 +15,8 @@ var (
 	BackendTimeout    = &Error{synopsis: "backend timeout error", httpStatus: http.StatusGatewayTimeout}
 	BackendValidation = &Error{synopsis: "backend validation error", httpStatus: http.StatusBadRequest}
 	ClientRequest     = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
-	Evaluation        = &Error{synopsis: "expression evaluation error"}
-	Configuration     = &Error{synopsis: "configuration error", httpStatus: http.StatusInternalServerError}
+	Evaluation        = &Error{synopsis: "expression evaluation error", kinds: []string{"evaluation"}}
+	Configuration     = &Error{synopsis: "configuration error", kinds: []string{"configuration"}, httpStatus: http.StatusInternalServerError}
 	Proxy             = &Error{synopsis: "proxy error", httpStatus: http.StatusBadGateway}
 	Request           = &Error{synopsis: "request error", httpStatus: http.StatusBadGateway}
 	RouteNotFound     = &Error{synopsis: "route not found error", httpStatus: http.StatusNotFound}
