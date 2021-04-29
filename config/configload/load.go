@@ -672,7 +672,13 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
 	var allKinds []string // Support for all events within one label separated by space
 	for _, kinds := range kindLabels {
-		allKinds = append(allKinds, strings.Split(kinds, " ")...)
+		all := strings.Split(kinds, " ")
+		for _, a := range all {
+			if a == "" {
+				return nil, errors.Configuration.Messagef("unexpected space: %v", kindLabels)
+			}
+		}
+		allKinds = append(allKinds, all...)
 	}
 	if len(allKinds) == 0 {
 		allKinds = append(allKinds, errors.Wildcard)
