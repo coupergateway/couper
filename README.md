@@ -11,6 +11,7 @@
 ## Getting started
 
 * Check out our [example repository](https://github.com/avenga/couper-examples) for a first glance.
+* Read more about our use-cases on [couper.io](https://couper.io).
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
 * Continue with the [documentation](https://github.com/avenga/couper/tree/master/docs).
 
