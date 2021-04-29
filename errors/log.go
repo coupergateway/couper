@@ -1,6 +1,8 @@
 package errors
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,6 +24,7 @@ func (l *LogHook) Fire(entry *logrus.Entry) error {
 
 	gerr, ok := err.(*Error)
 	if !ok {
+		entry.Message = appendMsg(entry.Message, fmt.Sprintf("%v", err))
 		return nil
 	}
 
@@ -29,11 +32,7 @@ func (l *LogHook) Fire(entry *logrus.Entry) error {
 		entry.Data["error_type"] = kinds[0]
 	}
 
-	if len(entry.Message) > 0 {
-		entry.Message += ": " + gerr.LogError()
-	} else {
-		entry.Message = gerr.LogError()
-	}
+	entry.Message = appendMsg(entry.Message, gerr.LogError())
 
 	return nil
 }
