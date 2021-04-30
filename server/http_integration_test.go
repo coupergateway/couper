@@ -27,7 +27,6 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
@@ -89,10 +88,7 @@ func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.H
 }
 
 func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
-	log := logrus.New()
-	log.Out = ioutil.Discard
-	log.AddHook(&errors.LogHook{})
-	hook := logrustest.NewLocal(log)
+	log, hook := test.NewLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancelFn := func() {

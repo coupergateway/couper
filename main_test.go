@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config/env"
-
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+
+	"github.com/avenga/couper/config/env"
 )
 
 func Test_realmain(t *testing.T) {
-	testhook := &logrustest.Hook{}
-	testHook = testhook
+	localHook := &logrustest.Hook{}
+	testHook = localHook
 
 	base := "server/testdata/settings"
 	wd, _ := os.Getwd()
@@ -48,7 +48,7 @@ func Test_realmain(t *testing.T) {
 			}
 			env.OsEnviron = os.Environ
 
-			entry, _ := testhook.LastEntry().String()
+			entry, _ := localHook.LastEntry().String()
 			//println(entry)
 			if tt.wantLog != "" && !strings.Contains(entry, tt.wantLog) {
 				t.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)

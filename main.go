@@ -192,12 +192,13 @@ func realmain(arguments []string) int {
 func newLogger(format string, pretty bool) *logrus.Entry {
 	logger := logrus.New()
 	logger.Out = os.Stdout
+
+	logger.AddHook(&errors.LogHook{})
+
 	if testHook != nil {
 		logger.AddHook(testHook)
 		logger.Out = ioutil.Discard
 	}
-
-	logger.AddHook(&errors.LogHook{})
 
 	settings := &config.Settings{
 		LogFormat: format,
