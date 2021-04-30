@@ -145,7 +145,7 @@ func (j *JWT) Validate(req *http.Request) error {
 			tokenValue = cookie.Value
 		}
 	case Header:
-		if j.source.Name == "Authorization" {
+		if strings.ToLower(j.source.Name) == "authorization" {
 			if tokenValue = req.Header.Get(j.source.Name); tokenValue != "" {
 				if tokenValue, err = getBearer(tokenValue); err != nil {
 					return err
