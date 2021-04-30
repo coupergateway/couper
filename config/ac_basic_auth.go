@@ -18,6 +18,7 @@ type BasicAuth struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
+// HCLBody implements the <Inline> interface.
 func (b *BasicAuth) HCLBody() hcl.Body {
 	return b.Remain
 }

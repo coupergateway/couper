@@ -20,6 +20,7 @@ type Request struct {
 	Backend hcl.Body
 }
 
+// Reference implements the <Inline> interface.
 func (r Request) Reference() string {
 	return r.BackendName
 }

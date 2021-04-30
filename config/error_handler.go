@@ -7,6 +7,8 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
+var _ Inline = &ErrorHandler{}
+
 // ErrorHandler represents a subset of Endpoint.
 type ErrorHandler struct {
 	Kinds     []string
@@ -18,6 +20,7 @@ type ErrorHandler struct {
 	Requests Requests
 }
 
+// ErrorHandlerGetter defines the <ErrorHandlerGetter> interface.
 type ErrorHandlerGetter interface {
 	DefaultErrorHandler() *ErrorHandler
 }

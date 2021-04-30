@@ -21,6 +21,7 @@ type Proxy struct {
 	Backend hcl.Body
 }
 
+// Reference implements the <Inline> interface.
 func (p Proxy) Reference() string {
 	return p.BackendName
 }
