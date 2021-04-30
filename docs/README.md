@@ -31,6 +31,7 @@
       * [Transport Settings Attributes](#transport-settings-attributes)
     * [CORS Block](#cors-block)
     * [Access Control](#access-control)
+      * [Error Handler](#error-handler)
   * [Modifier](#modifier)
     * [Query Parameter](#query-parameter)
     * [Request Header](#request-header)
@@ -761,6 +762,10 @@ You can also disable `access_control` for blocks. By typing `disable_access_cont
 the `access_control` type `bar` will be disabled for the corresponding block context.
 
 Compare the `access_control` [example](#access_control-configuration-example) for details.
+
+#### Error Handler
+
+All access controls have an option to handle related errors. Please refer to [Errors](ERRORS.md).
 
 ### Definitions Block
 
