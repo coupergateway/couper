@@ -44,10 +44,12 @@ func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend       *Backend `hcl:"backend,block"`
-		ClientID      string   `hcl:"client_id"`
-		ClientSecret  string   `hcl:"client_secret"`
-		TokenEndpoint string   `hcl:"token_endpoint,optional"`
+		Backend                 *Backend `hcl:"backend,block"`
+		ClientID                string   `hcl:"client_id"`
+		ClientSecret            string   `hcl:"client_secret"`
+		Scope                   *string  `hcl:"scope,optional"`
+		TokenEndpoint           string   `hcl:"token_endpoint,optional"`
+		TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
