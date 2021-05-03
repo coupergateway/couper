@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -32,12 +33,15 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 		return nil, nil
 	}
 
-	dur, err := time.ParseDuration(cors.MaxAge)
-	if err != nil {
-		return nil, err
+	var corsMaxAge string
+	if cors.MaxAge != "" {
+		dur, err := time.ParseDuration(cors.MaxAge)
+		if err != nil {
+			return nil, errors.Configuration.With(err).Message("cors max_age")
+		}
+		corsMaxAge = strconv.Itoa(int(math.Floor(dur.Seconds())))
 	}
 
-	corsMaxAge := strconv.Itoa(int(math.Floor(dur.Seconds())))
 	allowedOrigins := seetie.ValueToStringSlice(cors.AllowedOrigins)
 
 	for i, a := range allowedOrigins {

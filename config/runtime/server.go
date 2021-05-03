@@ -144,7 +144,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
 			if cerr != nil {
-				return nil, err
+				return nil, cerr
 			}
 			h := middleware.NewCORSHandler(corsOptions, spaHandler)
 
@@ -178,7 +178,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, ferr
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.CORS))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
 			if cerr != nil {
 				return nil, cerr
 			}

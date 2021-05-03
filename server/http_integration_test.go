@@ -2384,3 +2384,50 @@ func TestEndpoint_Response(t *testing.T) {
 		})
 	}
 }
+
+func TestCORS_Configuration(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/config/06_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path             string
+		origin           string
+		expAllowedOrigin bool
+	}
+
+	for _, tc := range []testCase{
+		{"/06_couper.hcl", "a.com", true},
+		{"/spa/", "b.com", true},
+		{"/api/", "c.com", true},
+		{"/06_couper.hcl", "no.com", false},
+		{"/spa/", "", false},
+		{"/api/", "no.com", false},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodOptions, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header.Set("Access-Control-Request-Method", "GET")
+			req.Header.Set("Access-Control-Request-Headers", "origin")
+			req.Header.Set("Origin", tc.origin)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != http.StatusNoContent {
+				t.Errorf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
+				return
+			}
+
+			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
+				t.Errorf("Expected allowed origin resp, got: %v", val)
+			}
+		})
+	}
+}
