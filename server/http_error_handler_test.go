@@ -21,8 +21,8 @@ func TestAccessControl_ErrorHandler(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"catch all", test.Header{"Authorization": "Basic aGFuczpoYW5z"}, "access control error: ba", http.StatusNotFound},
-		{"catch specific", nil, "access control error: ba: missing credentials", http.StatusBadGateway},
+		{"catch all", test.Header{"Authorization": "Basic aGFuczpoYW5z"}, "access control error: ba: credential mismatch", http.StatusNotFound},
+		{"catch specific", nil, "access control error: ba: credentials required", http.StatusBadGateway},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)

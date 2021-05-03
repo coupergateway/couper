@@ -1978,17 +1978,14 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json", ""},
-		// TODO: Can a disabled auth being enabled again?
-		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
-		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
 		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json", ""}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: missing credentials"},
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
-		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: missing credentials"},
+		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: missing credentials"},
-		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control error: ba1: missing credentials"},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control error: ba1: credentials required"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
