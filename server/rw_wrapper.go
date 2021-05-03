@@ -112,14 +112,14 @@ func (w *RWWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // Close closes the GZ writer.
 func (w *RWWrapper) Close() {
 	if w.gz != nil {
-		w.gz.Close()
+		_ = w.gz.Close()
 	}
 }
 
 // Flush implements the <http.Flusher> interface.
 func (w *RWWrapper) Flush() {
 	if w.gz != nil {
-		w.gz.Flush()
+		_ = w.gz.Flush()
 	}
 
 	if rw, ok := w.rw.(http.Flusher); ok {

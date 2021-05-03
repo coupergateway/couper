@@ -1,11 +1,15 @@
-package handler
+package handler_test
 
 import (
+	"compress/gzip"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/server"
 )
 
 func TestHealth_Match(t *testing.T) {
@@ -15,17 +19,15 @@ func TestHealth_Match(t *testing.T) {
 		req  *http.Request
 		want bool
 	}{
-		{"request w/o health url", healthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/features", nil), false},
-		{"request w health url", healthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/healthz", nil), true},
-		{"request w health url & query", healthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/healthz?ingress=nginx", nil), true},
-		{"request w reconfigured non health url", healthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthz", nil), false},
-		{"request w reconfigured health url", healthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthzzz", nil), true},
+		{"request w/o health url", handler.DefaultHealthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/features", nil), false},
+		{"request w health url", handler.DefaultHealthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/healthz", nil), true},
+		{"request w health url & query", handler.DefaultHealthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/healthz?ingress=nginx", nil), true},
+		{"request w reconfigured non health url", handler.DefaultHealthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthz", nil), false},
+		{"request w reconfigured health url", handler.DefaultHealthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthzzz", nil), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &Health{
-				path: tt.path,
-			}
+			h := handler.NewHealthCheck(tt.path, nil)
 			if got := h.Match(tt.req); got != tt.want {
 				t.Errorf("Match() = %v, want %v", got, tt.want)
 			}
@@ -37,6 +39,7 @@ func TestHealth_ServeHTTP(t *testing.T) {
 	type fields struct {
 		path       string
 		shutdownCh chan struct{}
+		gzip       bool
 	}
 
 	tests := []struct {
@@ -47,50 +50,63 @@ func TestHealth_ServeHTTP(t *testing.T) {
 	}{
 		{"healthy check", fields{shutdownCh: make(chan struct{})}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
 		{"healthy check /w nil chan", fields{}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
+		{"healthy check /w gzip", fields{shutdownCh: make(chan struct{}), gzip: true}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
 		{"unhealthy check", fields{shutdownCh: make(chan struct{})}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := NewHealthCheck(tt.fields.path, tt.fields.shutdownCh)
+		t.Run(tt.name, func(subT *testing.T) {
+			h := handler.NewHealthCheck(tt.fields.path, tt.fields.shutdownCh)
 			rec := httptest.NewRecorder()
+			rw := server.NewRWWrapper(rec, tt.fields.gzip, "")
 			if tt.wantStatus >= 500 {
 				close(tt.fields.shutdownCh)
 			}
-			h.ServeHTTP(rec, tt.req)
 
-			if !rec.Flushed {
-				rec.Flush()
+			if tt.fields.gzip {
+				tt.req.Header.Set("Accept-Encoding", "gzip")
 			}
 
+			h.ServeHTTP(rw, tt.req)
+			rw.Close()
+
+			rec.Flush()
 			res := rec.Result()
 
-			if res.StatusCode != tt.wantStatus {
-				t.Errorf("Expected statusCode: %d, got: %d", tt.wantStatus, res.StatusCode)
+			if rw.StatusCode() != tt.wantStatus {
+				subT.Errorf("Expected statusCode: %d, got: %d", tt.wantStatus, rw.StatusCode())
 			}
 
-			if res.Header.Get("Cache-Control") != "no-store" {
-				t.Error("Expected Cache-Control header with 'no-store' value")
+			if rw.Header().Get("Cache-Control") != "no-store" {
+				subT.Error("Expected Cache-Control header with 'no-store' value")
 			}
 
-			if res.Header.Get("Content-Type") != "text/plain" {
-				t.Error("Expected Content-Type header with 'text/plain' value")
+			if rw.Header().Get("Content-Type") != "text/plain" {
+				subT.Error("Expected Content-Type header with 'text/plain' value")
 			}
 
-			body, err := ioutil.ReadAll(res.Body)
+			if tt.fields.gzip && rw.Header().Get("Content-Encoding") != "gzip" {
+				subT.Error("Expected gzip response")
+			}
+			body := res.Body
+			if tt.fields.gzip {
+				b, err := gzip.NewReader(body)
+				if err != nil {
+					subT.Error(err)
+					return
+				}
+				body = b
+			}
+			bytes, err := ioutil.ReadAll(body)
 			if err != nil {
-				t.Error(err)
-			}
-			err = res.Body.Close()
-			if err != nil {
-				t.Error(err)
+				subT.Error(err)
 			}
 
 			if tt.wantStatus == http.StatusOK {
-				if string(body) != "healthy" {
-					t.Errorf("Expected 'healthy' body content, got %q", string(body))
+				if string(bytes) != "healthy" {
+					subT.Errorf("Expected 'healthy' body content, got %q", string(bytes))
 				}
-			} else if string(body) != "server shutting down" {
-				t.Errorf("Expected 'server shutting down' body content, got %q", string(body))
+			} else if string(bytes) != "server shutting down" {
+				subT.Errorf("Expected 'server shutting down' body content, got %q", string(bytes))
 			}
 		})
 	}
@@ -107,16 +123,16 @@ func TestNewHealthCheck(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *Health
+		want *handler.Health
 	}{
-		{"/w given path", args{"/myhealth", shutdownChan}, &Health{"/myhealth", shutdownChan}},
-		{"/w given path w/o leading slash", args{"myhealth", shutdownChan}, &Health{"/myhealth", shutdownChan}},
-		{"w/o given path", args{"", shutdownChan}, &Health{healthPath, shutdownChan}},
-		{"w/o given path & chan", args{"", nil}, &Health{healthPath, nil}},
+		{"/w given path", args{"/myhealth", shutdownChan}, handler.NewHealthCheck("/myhealth", shutdownChan)},
+		{"/w given path w/o leading slash", args{"myhealth", shutdownChan}, handler.NewHealthCheck("/myhealth", shutdownChan)},
+		{"w/o given path", args{"", shutdownChan}, handler.NewHealthCheck(handler.DefaultHealthPath, shutdownChan)},
+		{"w/o given path & chan", args{"", nil}, handler.NewHealthCheck(handler.DefaultHealthPath, nil)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewHealthCheck(tt.args.path, tt.args.shutdownCh); !reflect.DeepEqual(got, tt.want) {
+			if got := handler.NewHealthCheck(tt.args.path, tt.args.shutdownCh); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewHealthCheck() = %v, want %v", got, tt.want)
 			}
 		})
