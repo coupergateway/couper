@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -95,6 +96,7 @@ func (t *Template) ServeError(err error) http.Handler {
 		if !ok {
 			goErr = Server.With(err)
 		}
+		*req = *req.WithContext(context.WithValue(req.Context(), request.Error, goErr))
 
 		rw.Header().Set(HeaderErrorCode, fmt.Sprintf(err.Error()))
 
