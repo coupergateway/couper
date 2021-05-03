@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/avenga/couper/cache"
@@ -28,9 +29,11 @@ type OAuth2 struct {
 }
 
 type OAuth2Credentials struct {
-	ClientID     string
-	ClientSecret string
-	StorageKey   string
+	ClientID                string
+	ClientSecret            string
+	Scope                   *string
+	StorageKey              string
+	TokenEndpointAuthMethod *string
 }
 
 // NewOAuth2 creates a new <http.RoundTripper> object.
@@ -131,18 +134,50 @@ func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) 
 		return nil, couperErr.MissingOAuth2Credentials
 	}
 
+	var scope, teAuthMethod *string
+
+	if v, ok := content.Attributes["scope"]; ok {
+		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
+		scope = &strVal
+	}
+
+	if v, ok := content.Attributes["token_endpoint_auth_method"]; ok {
+		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
+		teAuthMethod = &strVal
+	}
+
+	if teAuthMethod != nil {
+		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
+			return nil, fmt.Errorf("unsupported 'token_endpoint_auth_method': %s", *teAuthMethod)
+		}
+	}
+
 	return &OAuth2Credentials{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
+		Scope:        scope,
 		// Backend is build up via config and token_endpoint will configure the backend,
 		// use the backend memory location here.
-		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.backend, clientID, clientSecret),
+		StorageKey:              fmt.Sprintf("%p|%s|%s", &oa.backend, clientID, clientSecret),
+		TokenEndpointAuthMethod: teAuthMethod,
 	}, nil
 }
 
 func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials) (*http.Request, error) {
-	post := "grant_type=" + oa.config.GrantType
-	body := ioutil.NopCloser(strings.NewReader(post))
+	post := url.Values{}
+	post.Set("grant_type", oa.config.GrantType)
+
+	if creds.Scope != nil {
+		post.Set("scope", *creds.Scope)
+	}
+	if creds.TokenEndpointAuthMethod != nil && *creds.TokenEndpointAuthMethod == "client_secret_post" {
+		post.Set("client_id", creds.ClientID)
+		post.Set("client_secret", creds.ClientSecret)
+	}
+
+	body := ioutil.NopCloser(strings.NewReader(post.Encode()))
 
 	// url will be configured via backend roundtrip
 	outreq, err := http.NewRequest(http.MethodPost, "", body)
@@ -150,9 +185,13 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 		return nil, err
 	}
 
-	auth := base64.StdEncoding.EncodeToString([]byte(creds.ClientID + ":" + creds.ClientSecret))
-	outreq.Header.Set("Authorization", "Basic "+auth)
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if creds.TokenEndpointAuthMethod == nil || *creds.TokenEndpointAuthMethod == "client_secret_basic" {
+		auth := base64.StdEncoding.EncodeToString([]byte(creds.ClientID + ":" + creds.ClientSecret))
+
+		outreq.Header.Set("Authorization", "Basic "+auth)
+	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
