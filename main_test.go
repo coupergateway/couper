@@ -33,6 +33,7 @@ func Test_realmain(t *testing.T) {
 		// TODO: format from file currently not possible due to the server error
 		{"json log format via env /w file", []string{"couper", "run", "-f", base + "/log_common.hcl"}, []string{"COUPER_LOG_FORMAT=json"}, `{"build":"dev","level":"error","message":"configuration error: missing server definition"`, 1},
 		{"-f w/o file", []string{"couper", "run", "-f"}, nil, `level=error msg="flag needs an argument: -f" build=dev`, 1},
+		{"undefined AC", []string{"couper", "run", "-f", base + "/04_couper.hcl"}, nil, `level=error msg="accessControl is not defined: undefined" build=dev`, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
