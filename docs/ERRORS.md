@@ -40,7 +40,7 @@ error_handler "error-type-a" "error-type-b" {
 | Type                              | Description |
 |:----------------------------------|:------------|
 | `basic_auth`                      | All `basic_auth` related errors |
-| `basic_auth_missing_credentials`  | Client does not provide any credentials |
+| `basic_auth_credentials_required` | Client does not provide any credentials |
 | `jwt`                             | All `jwt` related errors |
 | `jwt_token_required`              | No token provided with configured token source  |
 | `jwt_token_expired`               | Given token is valid but expired |

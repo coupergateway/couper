@@ -7,8 +7,8 @@ type typeDefinitions map[string]*Error
 // Types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var Types = typeDefinitions{
-	"basic_auth":                     AccessControl.Kind("basic_auth"),
-	"basic_auth_missing_credentials": AccessControl.Kind("basic_auth").Kind("basic_auth_missing_credentials"),
+	"basic_auth":                      AccessControl.Kind("basic_auth"),
+	"basic_auth_credentials_required": AccessControl.Kind("basic_auth").Kind("basic_auth_credentials_required"),
 
 	"jwt":                AccessControl.Kind("jwt"),
 	"jwt_token_expired":  AccessControl.Kind("jwt").Kind("jwt_token_expired"),

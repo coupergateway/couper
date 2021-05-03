@@ -112,7 +112,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 
 	user, pass, ok := req.BasicAuth()
 	if !ok {
-		return errors.Types["basic_auth_missing_credentials"].
+		return errors.Types["basic_auth_credentials_required"].
 			Message("missing credentials").Status(http.StatusUnauthorized)
 	}
 
