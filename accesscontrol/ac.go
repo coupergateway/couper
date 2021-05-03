@@ -1,6 +1,7 @@
 package accesscontrol
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/eval"
@@ -43,12 +44,14 @@ func (f ValidateFunc) Validate(req *http.Request) error {
 	return nil
 }
 
-func (m Map) MustExist(name string) {
+func (m Map) Exist(name string) error {
 	if m == nil {
 		panic("no accessControl configuration")
 	}
 
 	if _, ok := m[name]; !ok {
-		panic("accessControl is not defined: " + name)
+		return fmt.Errorf("accessControl is not defined: " + name)
 	}
+
+	return nil
 }

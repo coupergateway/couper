@@ -158,9 +158,13 @@ func NewServerConfiguration(
 				h = spaHandler
 			}
 
-			spaHandler = configureProtectedHandler(accessControls, serverOptions.ServerErrTpl,
+			spaHandler, err = configureProtectedHandler(accessControls, serverOptions.ServerErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), h)
+
+			if err != nil {
+				return nil, err
+			}
 
 			for _, spaPath := range srvConf.Spa.Paths {
 				err = setRoutesFromHosts(serverConfiguration, portsHosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
@@ -189,9 +193,13 @@ func NewServerConfiguration(
 				h = fileHandler
 			}
 
-			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FilesErrTpl,
+			protectedFileHandler, err := configureProtectedHandler(accessControls, serverOptions.FilesErrTpl,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), h)
+
+			if err != nil {
+				return nil, err
+			}
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, protectedFileHandler, files)
 			if err != nil {
@@ -254,16 +262,22 @@ func NewServerConfiguration(
 			endpointsPatterns[cleanPattern] = true
 
 			// setACHandlerFn individual wrap for access_control configuration per endpoint
-			setACHandlerFn := func(protectedHandler http.Handler) {
+			setACHandlerFn := func(protectedHandler http.Handler) error {
 				accessControl := newAC(srvConf, parentAPI)
 
 				if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 					protectedHandler = errTpl.ServeError(errors.APIRouteNotFound)
 				}
 
-				endpointHandlers[endpointConf] = configureProtectedHandler(accessControls, errTpl, accessControl,
+				endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, errTpl, accessControl,
 					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 					protectedHandler)
+
+				if err != nil {
+					return err
+				}
+
+				return nil
 			}
 
 			var response *producer.Response
@@ -357,7 +371,10 @@ func NewServerConfiguration(
 				h = epHandler
 			}
 
-			setACHandlerFn(h)
+			err = setACHandlerFn(h)
+			if err != nil {
+				return nil, err
+			}
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
@@ -561,16 +578,18 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.
 	return accessControls, nil
 }
 
-func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {
+func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) (http.Handler, error) {
 	var acList ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
-		m.MustExist(acName)
+		if err := m.Exist(acName); err != nil {
+			return nil, err
+		}
 		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
 	}
 	if len(acList) > 0 {
-		return hac.NewAccessControl(h, errTpl, acList)
+		return hac.NewAccessControl(h, errTpl, acList), nil
 	}
-	return h
+	return h, nil
 }
 
 func setRoutesFromHosts(
