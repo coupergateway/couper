@@ -28,6 +28,12 @@ To do so every access-control definition of `basic_auth`, `jwt` or `saml2` can d
 ### `error_handler` specification
 
 This handler behaves like an [endpoint](README.md#endpoint-block) and almost the same attributes are available.
+
+Except the following *endpoint* attributes are not available for `error_handler`: 
+* `access_control`
+* `disable_access_control`
+* `request_body_limit`
+
 Also, the [modifier](README.md#modifier) and [query params](README.md#query-parameter) can be configured.
 The label can be omitted to catch all errors which are related to this access control definition.
 To react for a specific [error-type](#error-types) list them per label.
