@@ -1,5 +1,7 @@
 package errors
 
+import "net/http"
+
 // typeDefinitions holds all related error definitions which are
 // catchable with an error_handler definition.
 type typeDefinitions map[string]*Error
@@ -8,11 +10,11 @@ type typeDefinitions map[string]*Error
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var Types = typeDefinitions{
 	"basic_auth":                      AccessControl.Kind("basic_auth"),
-	"basic_auth_credentials_required": AccessControl.Kind("basic_auth").Kind("basic_auth_credentials_required"),
+	"basic_auth_credentials_required": AccessControl.Kind("basic_auth").Kind("basic_auth_credentials_required").Status(http.StatusUnauthorized),
 
 	"jwt":                AccessControl.Kind("jwt"),
 	"jwt_token_expired":  AccessControl.Kind("jwt").Kind("jwt_token_expired"),
-	"jwt_token_required": AccessControl.Kind("jwt").Kind("jwt_token_required"),
+	"jwt_token_required": AccessControl.Kind("jwt").Kind("jwt_token_required").Status(http.StatusUnauthorized),
 	"jwt_claims":         AccessControl.Kind("jwt").Kind("jwt_claims"),
 
 	"saml2": AccessControl.Kind("saml2"),

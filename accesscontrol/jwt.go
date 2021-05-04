@@ -158,7 +158,7 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
-		return errors.Types["jwt_token_required"].Message("token required").Status(http.StatusUnauthorized)
+		return errors.Types["jwt_token_required"].Message("token required")
 	}
 
 	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
