@@ -19,7 +19,7 @@ func TestDocs_Links(t *testing.T) {
 		regexLinks := regexp.MustCompile(`]\(#([^)]+)\)`)
 		links := regexLinks.FindAllStringSubmatch(string(raw), -1)
 
-		regexAnchors := regexp.MustCompile(`\n#+ (.*)\n`)
+		regexAnchors := regexp.MustCompile(`(?m)^#+ (.+)$`)
 		anchors := regexAnchors.FindAllStringSubmatch(string(raw), -1)
 
 		prepareAnchor := func(anchor string) string {
