@@ -72,16 +72,16 @@ func Test_BasicAuth_Validate(t *testing.T) {
 	}
 
 	for _, testcase := range []testCase{
-		{"", ac.BasicAuthError},
-		{"Foo", ac.BasicAuthError},
-		{"Basic X", ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")), ac.BasicAuthError},
+		{"", couperErr.BasicAuth},
+		{"Foo", couperErr.BasicAuth},
+		{"Basic X", couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")), couperErr.BasicAuth},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), nil},
 		{"bAsIc   " + b64.StdEncoding.EncodeToString([]byte("user:pass")), nil},
 		{"Asdfg " + b64.StdEncoding.EncodeToString([]byte("user:bass")), nil},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:bass")), ac.BasicAuthError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:bass")), couperErr.BasicAuth},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-pass")), nil},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), ac.BasicAuthError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), couperErr.BasicAuth},
 	} {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -113,10 +113,10 @@ func Test_BasicAuth_ValidateEmptyUser(t *testing.T) {
 	}
 
 	for _, testcase := range []testCase{
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), ac.BasicAuthError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), nil},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), ac.BasicAuthError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
 	} {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)
@@ -147,10 +147,10 @@ func Test_BasicAuth_ValidateEmptyPassword(t *testing.T) {
 	}
 
 	for _, testcase := range []testCase{
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), ac.BasicAuthError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
 	} {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)
@@ -181,10 +181,10 @@ func Test_BasicAuth_ValidateEmptyUserPassword(t *testing.T) {
 	}
 
 	for _, testcase := range []testCase{
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), ac.BasicAuthError},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), ac.BasicAuthError},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
 	} {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)

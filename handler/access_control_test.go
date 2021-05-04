@@ -51,7 +51,7 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusNoContent},
 
 		{"with access control invalid req/empty token", fields{ac.List{ac.NewItem("", ac.ValidateFunc(func(r *http.Request) error {
-			return errors.Types["jwt"].Status(http.StatusUnauthorized)
+			return errors.Jwt.Status(http.StatusUnauthorized)
 		}), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusGone)
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusUnauthorized},
@@ -62,17 +62,17 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 			rw.WriteHeader(http.StatusGone)
 		})}, newReq("GET", "http://ac.test/")("", ""), http.StatusForbidden},
 
-		{"basic_auth", fields{ac.List{ac.NewItem("", newBasicAuth("hans", ""), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		{"basic_auth", fields{ac.List{ac.NewItem("", newBasicAuth("hans", "word"), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
-		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized},
+		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusForbidden},
 
-		{"basic_auth /wo authorization header", fields{ac.List{ac.NewItem("", newBasicAuth("hans", ""), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		{"basic_auth /wo authorization header", fields{ac.List{ac.NewItem("", newBasicAuth("hans", "word"), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
 		})}, newReq("GET", "http://ac.test/")("Authorization", ""), http.StatusUnauthorized},
 
-		{"basic_auth /w realm", fields{ac.List{ac.NewItem("", newBasicAuth("hans", ""), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		{"basic_auth /w realm", fields{ac.List{ac.NewItem("", newBasicAuth("hans", "word"), defaultErrHandler)}, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusNoContent)
-		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized},
+		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

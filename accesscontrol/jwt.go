@@ -158,14 +158,14 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
-		return errors.Types["jwt_token_required"].Message("token required")
+		return errors.JwtTokenRequired.Message("token required")
 	}
 
 	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
 	if err != nil {
 		switch err.(type) {
 		case *jwt.TokenExpiredError:
-			return errors.Types["jwt_token_expired"].With(err)
+			return errors.JwtTokenExpired.With(err)
 		default:
 			return err
 		}
@@ -207,12 +207,12 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 	}
 
 	if tokenClaims == nil {
-		return nil, errors.Types["jwt_claims"].Message("token has no claims")
+		return nil, errors.JwtClaims.Message("token has no claims")
 	}
 
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return nil, errors.Types["jwt_claims"].Message("required claim is missing: " + key)
+			return nil, errors.JwtClaims.Message("required claim is missing: " + key)
 		}
 	}
 
@@ -224,11 +224,11 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 
 		val, exist := tokenClaims[k]
 		if !exist {
-			return nil, errors.Types["jwt_claims"].Message("required claim is missing: " + k)
+			return nil, errors.JwtClaims.Message("required claim is missing: " + k)
 		}
 
 		if val != v {
-			return nil, errors.Types["jwt_claims"].Messagef("unexpected value for claim %s: %s", k, val)
+			return nil, errors.JwtClaims.Messagef("unexpected value for claim %s: %s", k, val)
 		}
 	}
 	return tokenClaims, nil
@@ -239,7 +239,7 @@ func getBearer(val string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(val), bearer) {
 		return strings.Trim(val[len(bearer):], " "), nil
 	}
-	return "", errors.Types["jwt_token_required"].Message("bearer required with authorization header")
+	return "", errors.JwtTokenExpired.Message("bearer required with authorization header")
 }
 
 func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {

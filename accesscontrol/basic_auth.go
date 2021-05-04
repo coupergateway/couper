@@ -13,8 +13,6 @@ import (
 
 var _ AccessControl = &BasicAuth{}
 
-var BasicAuthError = errors.Types["basic_auth"].Status(http.StatusUnauthorized)
-
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
 	htFile htData
@@ -109,31 +107,31 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	if ba.pass == "" {
 		// prevent granting access if password is no set
 		// or evaluated to an empty string.
-		return BasicAuthError.Message("no password configured")
+		return errors.BasicAuth.Message("no password configured")
 	}
 
 	user, pass, ok := req.BasicAuth()
 	if !ok { // false is unspecific, determine if credentials are set
 		const prefix = "Basic "
 		if val := req.Header.Get("Authorization"); val == "" || !strings.HasPrefix(val, prefix) {
-			return errors.Types["basic_auth_credentials_required"].Message("credentials required")
+			return errors.BasicAuthCredentialsRequired.Message("credentials required")
 		}
-		return BasicAuthError.Message("reading authorization failed")
+		return errors.BasicAuth.Message("reading authorization failed")
 	}
 
 	if ba.user == user {
 		if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
 			return nil
 		}
-		return BasicAuthError.Message("credential mismatch")
+		return errors.BasicAuth.Message("credential mismatch")
 	}
 
 	if len(ba.htFile) > 0 {
 		if validateAccessData(user, pass, ba.htFile) {
 			return nil
 		}
-		return BasicAuthError.Message("file: credential mismatch")
+		return errors.BasicAuth.Message("file: credential mismatch")
 	}
 
-	return BasicAuthError.Message("credential mismatch")
+	return errors.BasicAuth.Message("credential mismatch")
 }

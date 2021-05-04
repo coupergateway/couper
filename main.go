@@ -1,4 +1,6 @@
 //go:generate go run assets/generate/generate.go
+//go:generate go run errors/generate/types.go
+//go:generate go fmt errors/types_generated.go
 
 package main
 

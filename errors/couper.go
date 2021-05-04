@@ -42,3 +42,25 @@ func TypeToSnake(t interface{}) string {
 
 	return string(result)
 }
+
+func SnakeToCamel(str string) string {
+	var result []rune
+	if len(str) == 0 {
+		return str
+	}
+	result = append(result, unicode.ToUpper(rune(str[0])))
+	var upperNext bool
+	for _, r := range str[1:] {
+		if r == '_' {
+			upperNext = true
+			continue
+		}
+		if upperNext {
+			result = append(result, unicode.ToUpper(r))
+		} else {
+			result = append(result, unicode.ToLower(r))
+		}
+		upperNext = false
+	}
+	return string(result)
+}

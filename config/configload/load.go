@@ -172,7 +172,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 							}}
 						}
 
-						if k != errors.Wildcard && !errors.Types.IsKnown(k) {
+						if k != errors.Wildcard && !errors.IsKnown(k) {
 							subjRange := block.DefRange
 							if len(block.LabelRanges) > 0 {
 								subjRange = block.LabelRanges[0]
