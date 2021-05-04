@@ -26,6 +26,7 @@ func TestDocs_Links(t *testing.T) {
 			anchor = strings.TrimSpace(anchor)
 			anchor = strings.ToLower(anchor)
 			anchor = strings.ReplaceAll(anchor, "`", "")
+			anchor = strings.ReplaceAll(anchor, ".", "")
 			anchor = strings.ReplaceAll(anchor, "(", "")
 			anchor = strings.ReplaceAll(anchor, ")", "")
 			anchor = strings.ReplaceAll(anchor, " ", "-")
