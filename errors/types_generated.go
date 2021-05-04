@@ -3,13 +3,13 @@
 package errors
 
 var (
-	BasicAuth                    = Definitions[0]
-	BasicAuthCredentialsRequired = Definitions[1]
-	Jwt                          = Definitions[2]
-	JwtTokenExpired              = Definitions[3]
-	JwtTokenRequired             = Definitions[4]
-	JwtClaims                    = Definitions[5]
-	Saml2                        = Definitions[6]
+	BasicAuth                   = Definitions[0]
+	BasicAuthCredentialsMissing = Definitions[1]
+	Jwt                         = Definitions[2]
+	JwtTokenExpired             = Definitions[3]
+	JwtTokenMissing             = Definitions[4]
+	JwtClaims                   = Definitions[5]
+	Saml2                       = Definitions[6]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -19,13 +19,13 @@ type typeDefinitions map[string]*Error
 // types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var types = typeDefinitions{
-	"basic_auth":                      BasicAuth,
-	"basic_auth_credentials_required": BasicAuthCredentialsRequired,
-	"jwt":                             Jwt,
-	"jwt_token_expired":               JwtTokenExpired,
-	"jwt_token_required":              JwtTokenRequired,
-	"jwt_claims":                      JwtClaims,
-	"saml2":                           Saml2,
+	"basic_auth":                     BasicAuth,
+	"basic_auth_credentials_missing": BasicAuthCredentialsMissing,
+	"jwt":                            Jwt,
+	"jwt_token_expired":              JwtTokenExpired,
+	"jwt_token_missing":              JwtTokenMissing,
+	"jwt_claims":                     JwtClaims,
+	"saml2":                          Saml2,
 }
 
 // IsKnown tells the configuration callee if Couper

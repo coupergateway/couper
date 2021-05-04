@@ -52,9 +52,9 @@ error_handler "error-type" "additional-type" {
 | Type                              | Description                                           | Default handling |
 |:----------------------------------|:------------------------------------------------------|:-----------------|
 | `basic_auth`                      | All `basic_auth` related errors, e.g. unknown user or wrong password. | Send error template with status `401` and `Www-Authenticate: Basic` header. |
-| `basic_auth_credentials_required` | Client does not provide any credentials. | Send error template with status `401` and `Www-Authenticate: Basic` header. |
+| `basic_auth_credentials_missing`  | Client does not provide any credentials. | Send error template with status `401` and `Www-Authenticate: Basic` header. |
 | `jwt`                             | All `jwt` related errors. | Send error template with status `403`. |
-| `jwt_token_required`              | No token provided with configured token source.  | Send error template with status `401`. |
+| `jwt_token_missing`               | No token provided with configured token source.  | Send error template with status `401`. |
 | `jwt_token_expired`               | Given token is valid but expired. | Send error template with status `403`. |
 | `jwt_claims`                      | Claim related errors like missing claims or unexpected values. | Send error template with status `403`. |
 | `saml2`                           | All `saml2` related errors | Send error template with status `403`. |

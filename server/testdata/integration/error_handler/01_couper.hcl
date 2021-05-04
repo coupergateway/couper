@@ -25,7 +25,7 @@ definitions {
       }
     }
 
-    error_handler "basic_auth_credentials_required" {
+    error_handler "basic_auth_credentials_missing" {
       response {
         status = 502
       }

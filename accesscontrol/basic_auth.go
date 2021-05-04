@@ -114,7 +114,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	if !ok { // false is unspecific, determine if credentials are set
 		const prefix = "Basic "
 		if val := req.Header.Get("Authorization"); val == "" || !strings.HasPrefix(val, prefix) {
-			return errors.BasicAuthCredentialsRequired.Message("credentials required")
+			return errors.BasicAuthCredentialsMissing.Message("credentials required")
 		}
 		return errors.BasicAuth.Message("reading authorization failed")
 	}
