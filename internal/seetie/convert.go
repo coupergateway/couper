@@ -214,7 +214,7 @@ func ValueToString(v cty.Value) string {
 	}
 }
 
-func ValueToInt64(v cty.Value) (n int64) {
+func ValueToInt(v cty.Value) (n int64) {
 	if !v.IsWhollyKnown() {
 		return n
 	}
