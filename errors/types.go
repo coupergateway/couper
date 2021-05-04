@@ -13,7 +13,7 @@ var Types = typeDefinitions{
 	"jwt":                AccessControl.Kind("jwt"),
 	"jwt_token_expired":  AccessControl.Kind("jwt").Kind("jwt_token_expired"),
 	"jwt_token_required": AccessControl.Kind("jwt").Kind("jwt_token_required"),
-	"jwt_claims":         AccessControl.Kind("jwt").Kind("jwt_claims_invalid"),
+	"jwt_claims":         AccessControl.Kind("jwt").Kind("jwt_claims"),
 
 	"saml2": AccessControl.Kind("saml2"),
 }
