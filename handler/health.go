@@ -7,7 +7,7 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-const healthPath = "/healthz"
+const DefaultHealthPath = "/healthz"
 
 var _ http.Handler = &Health{}
 
@@ -19,7 +19,7 @@ type Health struct {
 func NewHealthCheck(path string, shutdownCh chan struct{}) *Health {
 	p := path
 	if p == "" {
-		p = healthPath
+		p = DefaultHealthPath
 	}
 
 	if !strings.HasPrefix(p, "/") {
@@ -42,6 +42,7 @@ func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		_, _ = rw.Write([]byte("server shutting down"))
 	default:
+		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte("healthy"))
 	}
 }
