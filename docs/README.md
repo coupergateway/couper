@@ -693,7 +693,7 @@ executed ordered as follows:
 | `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add response header to the client response. |
 | `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of response header to be removed from the client response. |
 
-All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend`.
+All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend` and `error_handler`.
 
 #### Query Parameter
 
@@ -707,7 +707,7 @@ executed ordered as follows:
 | `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add query parameters to the upstream request URL. |
 | `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of query parameters to be removed from the upstream request URL. |
 
-All `*_query_params` are executed from: `endpoint`, `proxy`, `backend`.
+All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
 ```hcl
 server "my_project" {
