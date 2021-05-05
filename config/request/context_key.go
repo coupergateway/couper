@@ -4,12 +4,12 @@ type ContextKey uint8
 
 const (
 	UID ContextKey = iota
-	AccessControl
 	AccessControls
 	BackendName
 	BackendURL
 	Endpoint
 	EndpointKind
+	Error
 	OpenAPI
 	PathParams
 	RoundTripName

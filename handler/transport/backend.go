@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,7 +15,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	couperErr "github.com/avenga/couper/errors"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
@@ -33,13 +32,12 @@ const (
 
 var _ http.RoundTripper = &Backend{}
 
-var errBackendDeadlineExceeded = fmt.Errorf("backend deadline exceeded")
-
 var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
+	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
 	transportConf    *Config
@@ -109,7 +107,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateRequest(req); err != nil {
-			return nil, couperErr.UpstreamRequestValidationFailed
+			return nil, errors.BackendValidation.Label(b.name).With(err)
 		}
 	}
 
@@ -138,13 +136,13 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 				return nil, derr
 			}
 		default:
-			return nil, err
+			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
-			return nil, couperErr.UpstreamResponseValidationFailed
+			return nil, errors.BackendValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
 		}
 	}
 
@@ -207,7 +205,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 		deadline := time.After(b.transportConf.Timeout)
 		select {
 		case <-deadline:
-			ec <- errBackendDeadlineExceeded
+			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
 			return
 		case <-c.Done():
 			return
@@ -246,9 +244,9 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		}
 	}
 
-	originURL, err := url.Parse(origin)
-	if err != nil {
-		log.Error(err)
+	originURL, parseErr := url.Parse(origin)
+	if parseErr != nil {
+		log.Error(parseErr)
 	}
 
 	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
@@ -262,9 +260,9 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 			if tr := req.Context().Value(request.TokenRequest); tr != nil {
 				errctx = "token_endpoint"
 			}
-			return nil, fmt.Errorf(
-				"backend: the host of '%s': %q and 'backend.origin': %q must be equal",
-				errctx, urlAttr.Host, origin)
+			return nil, errors.Configuration.Label(b.name).Kind(errctx).
+				Messagef("backend: the host '%s' must be equal to 'backend.origin': %q",
+					urlAttr.Host, origin)
 		}
 
 		originURL.Host = urlAttr.Host
@@ -285,7 +283,8 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	}
 
 	if !originURL.IsAbs() || originURL.Hostname() == "" {
-		return nil, fmt.Errorf("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
+		return nil, errors.Configuration.Label(b.name).
+			Messagef("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
 	}
 
 	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil

@@ -21,17 +21,17 @@ type Proxy struct {
 	Backend hcl.Body
 }
 
+// Reference implements the <Inline> interface.
+func (p Proxy) Reference() string {
+	return p.BackendName
+}
+
 // Proxies represents a list of <Proxy> objects.
 type Proxies []*Proxy
 
 // HCLBody implements the <Inline> interface.
 func (p Proxy) HCLBody() hcl.Body {
 	return p.Remain
-}
-
-// Reference implements the <Inline> interface.
-func (p Proxy) Reference() string {
-	return p.BackendName
 }
 
 // Schema implements the <Inline> interface.

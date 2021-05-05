@@ -20,17 +20,17 @@ type Request struct {
 	Backend hcl.Body
 }
 
+// Reference implements the <Inline> interface.
+func (r Request) Reference() string {
+	return r.BackendName
+}
+
 // Requests represents a list of <Requests> objects.
 type Requests []*Request
 
 // HCLBody implements the <Inline> interface.
 func (r Request) HCLBody() hcl.Body {
 	return r.Remain
-}
-
-// Reference implements the <Inline> interface.
-func (r Request) Reference() string {
-	return r.BackendName
 }
 
 // Schema implements the <Inline> interface.

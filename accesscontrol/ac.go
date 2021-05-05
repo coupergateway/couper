@@ -1,29 +1,33 @@
 package accesscontrol
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
 
-var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
-
-type ListItem struct {
-	Func AccessControl
-	Name string
-}
-
-func (i ListItem) Validate(req *http.Request) error {
-	return i.Func.Validate(req)
-}
-
 type (
-	Map  map[string]AccessControl
-	List []ListItem
+	Map          map[string]AccessControl
+	ValidateFunc func(*http.Request) error
+
+	List     []*ListItem
+	ListItem struct {
+		control           AccessControl
+		controlErrHandler http.Handler
+		kind              string
+		label             string
+	}
 )
 
-type ValidateFunc func(*http.Request) error
+func NewItem(nameLabel string, control AccessControl, errHandler http.Handler) *ListItem {
+	return &ListItem{
+		control:           control,
+		controlErrHandler: errHandler,
+		kind:              errors.TypeToSnake(control),
+		label:             nameLabel,
+	}
+}
 
 type AccessControl interface {
 	Validate(req *http.Request) error
@@ -33,25 +37,27 @@ type ProtectedHandler interface {
 	Child() http.Handler
 }
 
-func (f ValidateFunc) Validate(req *http.Request) error {
-	if err := f(req); err != nil {
-		return err
+var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
+
+func (i ListItem) Validate(req *http.Request) error {
+	if err := i.control.Validate(req); err != nil {
+		if e, ok := err.(*errors.Error); ok {
+			return e.Label(i.label)
+		}
+		return errors.AccessControl.Label(i.label).Kind(i.kind).With(err)
 	}
 
 	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
 		*req = *req.WithContext(evalCtx.WithClientRequest(req))
 	}
+
 	return nil
 }
 
-func (m Map) Exist(name string) error {
-	if m == nil {
-		panic("no accessControl configuration")
-	}
+func (i ListItem) ErrorHandler() http.Handler {
+	return i.controlErrHandler
+}
 
-	if _, ok := m[name]; !ok {
-		return fmt.Errorf("accessControl is not defined: " + name)
-	}
-
-	return nil
+func (f ValidateFunc) Validate(req *http.Request) error {
+	return f(req)
 }

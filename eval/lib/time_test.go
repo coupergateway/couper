@@ -7,6 +7,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -16,8 +17,10 @@ func TestUnixtime(t *testing.T) {
 	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
+	hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
 	expectedNow := time.Now().Unix()
-	now, err := cf.Context.HCLContext().Functions["unixtime"].Call([]cty.Value{})
+	now, err := hclContext.Functions["unixtime"].Call([]cty.Value{})
 	helper.Must(err)
 
 	if !cty.Number.Equals(now.Type()) {

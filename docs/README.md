@@ -2,54 +2,62 @@
 
 ## Table of contents
 
-* [Introduction](#introduction)
-* [Core concepts](#core-concepts)
-* [Command line interface](#command-line-interface)
-  * [Global options](#global-options)
-* [Configuration file](#configuration-file)
-  * [Syntax](#syntax)
-  * [File name](#file-name)
-  * [Basic file structure](#basic-file-structure)
-    * [Nesting of configuration blocks and attributes](#nesting-of-configuration-blocks-and-attributes)
-  * [Variables](#variables)
-    * [`env`](#env-variable)
-    * [`request`](#request-client-request-variable)
-    * [`backend_requests`](#backend_requests-modified-backend-requests-variables)
-    * [`backend_responses`](#backend_responses-non-modified-backend-responses-variables)
-    * [Variable example](#variable-example)
-  * [Expressions](#expressions)
-  * [Functions](#functions)
-* [Reference](#reference)
-  * [Server Block](#server-block)
+* [Couper Docs - Version 1.1](#couper-docs---version-11)
+  * [Table of contents](#table-of-contents)
+  * [Introduction](#introduction)
+  * [Core concepts](#core-concepts)
+  * [Command Line Interface](#command-line-interface)
+    * [Global Options](#global-options)
+  * [Configuration file](#configuration-file)
+    * [Syntax](#syntax)
+    * [File name](#file-name)
+    * [Basic file structure](#basic-file-structure)
+      * [Nesting of configuration blocks and attributes](#nesting-of-configuration-blocks-and-attributes)
+    * [Variables](#variables)
+      * [env variable](#env-variable)
+      * [request (client request) variable](#request-client-request-variable)
+      * [backend_requests (modified backend requests) variables](#backend_requests-modified-backend-requests-variables)
+      * [backend_responses (non modified backend responses) variables](#backend_responses-non-modified-backend-responses-variables)
+        * [Variable Example](#variable-example)
+    * [Expressions](#expressions)
+    * [Functions](#functions)
+  * [Reference](#reference)
+    * [Server Block](#server-block)
     * [Files Block](#files-block)
     * [SPA Block](#spa-block)
     * [API Block](#api-block)
     * [Endpoint Block](#endpoint-block)
+    * [Proxy Block](#proxy-block)
+    * [Request Block](#request-block)
+    * [Response Block](#response-block)
     * [Backend Block](#backend-block)
-      * [OpenAPI Block](#openapi-block)
-      * [OAuth2 Block](#oauth2-block)
       * [Transport Settings Attributes](#transport-settings-attributes)
+    * [Timings](#timings)
+    * [Backend Block Reference](#backend-block-reference)
+      * [OpenAPI Block](#openapi-block)
     * [CORS Block](#cors-block)
+    * [OAuth2 Block](#oauth2-block)
+    * [Modifier](#modifier)
+      * [Request Header](#request-header)
+      * [Response Header](#response-header)
+      * [Query Parameter](#query-parameter)
+    * [Path Parameter](#path-parameter)
     * [Access Control](#access-control)
-  * [Modifier](#modifier)
-    * [Query Parameter](#query-parameter)
-    * [Request Header](#request-header)
-    * [Response Header](#response-header)
-  * [Path parameter](#path-parameter)
-  * [Definitions Block](#definitions-block)
-    * [Basic Auth Block](#basic-auth-block)
-    * [JWT Block](#jwt-block)
-    * [JWT Signing Profile Block](#jwt-signing-profile-block)
-    * [SAML Block](#saml-block)
-  * [Settings Block](#settings-block)
-  * [Health-Check](#health-check)
-* [Examples](#examples)
-  * [Request routing](#request-routing-example)
-  * [Routing configuration](#routing-configuration-example)
-  * [Web serving configuration](#web-serving-configuration-example)
-  * [`access_control` configuration](#access_control-configuration-example)
-  * [`hosts` configuration](#hosts-configuration-example)
-  * [Referencing and overwriting](#referencing-and-overwriting-example)
+      * [Error Handler](#error-handler)
+    * [Definitions Block](#definitions-block)
+      * [Basic Auth Block](#basic-auth-block)
+      * [JWT Block](#jwt-block)
+      * [JWT Signing Profile Block](#jwt-signing-profile-block)
+      * [SAML Block](#saml-block)
+    * [Settings Block](#settings-block)
+    * [Health-Check](#health-check)
+  * [Examples](#examples)
+    * [Request routing example](#request-routing-example)
+    * [Routing configuration example](#routing-configuration-example)
+    * [Web serving configuration example](#web-serving-configuration-example)
+    * [access_control configuration example](#access_control-configuration-example)
+    * [hosts configuration example](#hosts-configuration-example)
+    * [Referencing and overwriting example](#referencing-and-overwriting-example)
 
 ## Introduction
 
@@ -692,7 +700,7 @@ executed ordered as follows:
 | `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add response header to the client response. |
 | `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of response header to be removed from the client response. |
 
-All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend`.
+All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend` and `error_handler`.
 
 #### Query Parameter
 
@@ -706,7 +714,7 @@ executed ordered as follows:
 | `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add query parameters to the upstream request URL. |
 | `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of query parameters to be removed from the upstream request URL. |
 
-All `*_query_params` are executed from: `endpoint`, `proxy`, `backend`.
+All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
 ```hcl
 server "my_project" {
@@ -762,6 +770,10 @@ the `access_control` type `bar` will be disabled for the corresponding block con
 
 Compare the `access_control` [example](#access_control-configuration-example) for details.
 
+#### Error Handler
+
+All access controls have an option to handle related errors. Please refer to [Errors](ERRORS.md).
+
 ### Definitions Block
 
 Use the `definitions` block to define configurations you want to reuse.
@@ -811,8 +823,7 @@ mandatory *label*.
 | *label*                    | &#9888; Mandatory. |
 | **Attributes**             | **Description** |
 | `cookie = "AccessToken"`   | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul> |
-| `header = "Authorization"` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` is used, otherwise any other header name can be used.</li></ul> |
-| `header = "API-Token"`     | <ul><li>Optional.</li><li>Alternative header source for our token.</li></ul> |
+| `header = "Authorization"` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.</li></ul> |
 | `key`                      | <ul><li>Optional.</li><li>Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
 | `key_file`                 | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul> |
 | `signature_algorithm`      | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul> |

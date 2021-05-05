@@ -1,4 +1,4 @@
-package jwt
+package config
 
 type JWTSigningProfile struct {
 	Claims             Claims `hcl:"claims,optional"`

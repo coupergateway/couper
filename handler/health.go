@@ -38,7 +38,7 @@ func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
 
 	select {
 	case <-h.shutdownCh:
-		errors.SetHeader(rw, errors.ServerShutdown)
+		rw.Header().Set(errors.HeaderErrorCode, errors.ServerShutdown.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		_, _ = rw.Write([]byte("server shutting down"))
 	default:

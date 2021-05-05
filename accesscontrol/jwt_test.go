@@ -10,27 +10,31 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/avenga/couper/errors"
+
 	"github.com/dgrijalva/jwt-go/v4"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/internal/test"
 )
 
 func Test_JWT_NewJWT_RSA(t *testing.T) {
+	helper := test.New(t)
+
 	type fields struct {
 		algorithm      string
 		claims         map[string]interface{}
 		claimsRequired []string
-		source         ac.Source
-		sourceKey      string
 		pubKey         []byte
 	}
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	helper.Must(err)
+
 	bytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-	if err != nil {
-		panic(err)
-	}
+	helper.Must(err)
+
 	pubKeyBytesPKIX := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: bytes,
@@ -70,7 +74,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			fields  fields
 			wantErr string
 		}{
-			{"missing key", fields{}, "either key_file or key must be specified"},
+			{"missing key", fields{}, "configuration error: test_ac: key required"},
 			{"PKIX", fields{
 				algorithm: alg,
 				pubKey:    pubKeyBytesPKIX,
@@ -86,14 +90,23 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			{"Priv", fields{
 				algorithm: alg,
 				pubKey:    privKeyBytes,
-			}, "key is not a valid RSA public key"},
+			}, "configuration error: test_ac: key is not a valid RSA public key"},
 		}
+
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v / %s", signingMethod, tt.name), func(t *testing.T) {
-				j, err := ac.NewJWT(tt.fields.algorithm, "test_ac", tt.fields.claims, tt.fields.claimsRequired, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
-				if err != nil {
-					if tt.wantErr != err.Error() {
-						t.Errorf("error: %v, want: %v", err, tt.wantErr)
+				j, jerr := ac.NewJWT(&ac.JWTOptions{
+					Algorithm:      tt.fields.algorithm,
+					Claims:         tt.fields.claims,
+					ClaimsRequired: tt.fields.claimsRequired,
+					Name:           "test_ac",
+					Key:            string(tt.fields.pubKey),
+					Source:         ac.NewJWTSource("", "Authorization"),
+				})
+				if jerr != nil {
+					gerr := jerr.(errors.GoError)
+					if tt.wantErr != gerr.LogError() {
+						t.Errorf("error: %v, want: %v", gerr.LogError(), tt.wantErr)
 					}
 				} else if tt.wantErr != "" {
 					t.Errorf("error expected: %v", tt.wantErr)
@@ -113,8 +126,7 @@ func Test_JWT_Validate(t *testing.T) {
 		algorithm      ac.Algorithm
 		claims         map[string]interface{}
 		claimsRequired []string
-		source         ac.Source
-		sourceKey      string
+		source         ac.JWTSource
 		pubKey         []byte
 	}
 
@@ -151,35 +163,29 @@ func Test_JWT_Validate(t *testing.T) {
 			req     *http.Request
 			wantErr bool
 		}{
-			{"not configured", fields{}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty bearer", fields{
 				algorithm: algo,
-				source:    ac.Header,
-				sourceKey: "Authorization",
+				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
 			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
-				source:    ac.Header,
-				sourceKey: "Authorization",
+				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w no cookie", fields{
 				algorithm: algo,
-				source:    ac.Cookie,
-				sourceKey: "token",
+				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
 			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
-				source:    ac.Cookie,
-				sourceKey: "token",
+				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), true},
 			{"src: header /w valid cookie", fields{
 				algorithm: algo,
-				source:    ac.Cookie,
-				sourceKey: "token",
+				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
 			{"src: header /w valid bearer & claims", fields{
@@ -189,8 +195,7 @@ func Test_JWT_Validate(t *testing.T) {
 					"test123": "value123",
 				},
 				claimsRequired: []string{"aud"},
-				source:         ac.Header,
-				sourceKey:      "Authorization",
+				source:         ac.NewJWTSource("", "Authorization"),
 				pubKey:         pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w valid bearer & w/o claims", fields{
@@ -199,9 +204,8 @@ func Test_JWT_Validate(t *testing.T) {
 					"aud":  "peter",
 					"cptn": "hook",
 				},
-				source:    ac.Header,
-				sourceKey: "Authorization",
-				pubKey:    pubKeyBytes,
+				source: ac.NewJWTSource("", "Authorization"),
+				pubKey: pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
 			{"src: header /w valid bearer & w/o required claims", fields{
 				algorithm: algo,
@@ -209,14 +213,24 @@ func Test_JWT_Validate(t *testing.T) {
 					"aud": "peter",
 				},
 				claimsRequired: []string{"exp"},
-				source:         ac.Header,
-				sourceKey:      "Authorization",
+				source:         ac.NewJWTSource("", "Authorization"),
 				pubKey:         pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
-				j, err := ac.NewJWT(tt.fields.algorithm.String(), "test_ac", tt.fields.claims, tt.fields.claimsRequired, tt.fields.source, tt.fields.sourceKey, tt.fields.pubKey)
+				j, err := ac.NewJWT(&ac.JWTOptions{
+					Algorithm:      tt.fields.algorithm.String(),
+					Claims:         tt.fields.claims,
+					ClaimsRequired: tt.fields.claimsRequired,
+					Name:           "test_ac",
+					Source:         tt.fields.source,
+					Key:            string(tt.fields.pubKey),
+				})
+				if err != nil {
+					t.Error(err)
+					return
+				}
 
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)

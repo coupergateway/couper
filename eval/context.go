@@ -20,9 +20,8 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
-	"github.com/avenga/couper/config/jwt"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/saml"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -46,8 +45,8 @@ type Context struct {
 	bufferOption BufferOption
 	eval         *hcl.EvalContext
 	inner        context.Context
-	profiles     []*jwt.JWTSigningProfile
-	saml         []*saml.SAML
+	profiles     []*config.JWTSigningProfile
+	saml         []*config.SAML
 }
 
 func NewContext(src []byte) *Context {
@@ -180,20 +179,20 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 }
 
 // WithJWTProfiles initially setup the lib.FnJWTSign function.
-func (c *Context) WithJWTProfiles(profiles []*jwt.JWTSigningProfile) *Context {
+func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context {
 	c.profiles = profiles
 	if c.profiles == nil {
-		c.profiles = make([]*jwt.JWTSigningProfile, 0)
+		c.profiles = make([]*config.JWTSigningProfile, 0)
 	}
 	updateFunctions(c)
 	return c
 }
 
 // WithSAML initially setup the lib.FnSamlSsoUrl function.
-func (c *Context) WithSAML(s []*saml.SAML) *Context {
+func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
 	if c.saml == nil {
-		c.saml = make([]*saml.SAML, 0)
+		c.saml = make([]*config.SAML, 0)
 	}
 	updateFunctions(c)
 	return c

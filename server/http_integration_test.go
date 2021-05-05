@@ -88,8 +88,7 @@ func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.H
 }
 
 func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
-
-	log, hook := logrustest.NewNullLogger()
+	log, hook := test.NewLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancelFn := func() {
@@ -116,8 +115,6 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			panic("port is still in use")
 		}
 	}
-
-	//log.Out = os.Stdout
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
@@ -195,7 +192,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/app"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 		}},
 		{"files/01_couper.hcl", []requestCase{
@@ -215,7 +212,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), nil, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), nil, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/b"},
@@ -223,7 +220,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), nil, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), nil, ""},
 			},
 		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{
@@ -239,7 +236,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		{"api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1"},
@@ -251,21 +248,21 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1/connect-error/"}, // in this case proxyconnect fails
-				expectation{http.StatusBadGateway, []byte(`{"code": 7001}`), http.Header{"Content-Type": {"application/json"}}, "api"},
+				expectation{http.StatusBadGateway, []byte(`{"message": "backend error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, "api"},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1x"},
-				expectation{http.StatusInternalServerError, []byte(`<html>1002</html>`), http.Header{"Content-Type": {"text/html"}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Content-Type": {"text/html"}}, ""},
 			},
 		}},
 		{"api/02_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1002</html>"), http.Header{"Couper-Error": {`1002 - "Configuration failed"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v2/"},
@@ -281,21 +278,21 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v2/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/v2/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/v3/not-found"},
-				expectation{http.StatusNotFound, []byte(`{"code": 4001}`), http.Header{"Content-Type": {"application/json"}}, ""},
+				expectation{http.StatusNotFound, []byte(`{"message": "route not found error" }` + "\n"), http.Header{"Content-Type": {"application/json"}}, ""},
 			},
 		}},
 		{"vhosts/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/notfound"},
-				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
@@ -331,13 +328,13 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://v-server3.com:8080/spa2"},
-				expectation{http.StatusNotFound, []byte("<html>3001</html>"), http.Header{"Couper-Error": {`3001 - "Files route not found"`}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 		}},
 		{"endpoint_eval/16_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>1000</html>"), http.Header{"Couper-Error": {`1000 - "Server error"`}}, ""},
+				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
 			},
 		}},
 	} {
@@ -365,6 +362,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 
 				if res.StatusCode != rc.exp.status {
 					t.Errorf("Expected statusCode %d, got %d", rc.exp.status, res.StatusCode)
+					subT.Logf("Failed: %s|%s", testcase.fileName, rc.req.url)
 				}
 
 				for k, v := range rc.exp.header {
@@ -438,7 +436,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if string(resBytes) != `<html>1002</html>` {
+	if string(resBytes) != "<html>configuration error</html>\n" {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -1980,17 +1978,14 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/v1", http.Header{"Auth": []string{"ba1"}}, http.StatusOK, "application/json", ""},
-		// TODO: Can a disabled auth being enabled again?
-		//{"/v1", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1"}}, http.StatusOK, "application/json"},
-		//{"/v1", http.Header{"Auth": []string{}}, http.StatusUnauthorized, "application/json"},
 		{"/v2", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba2"}}, http.StatusOK, "application/json", ""}, // minimum ':'
-		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control: ba1: missing credentials"},
+		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
-		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control: ba1: missing credentials"},
+		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
-		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control: ba1: missing credentials"},
-		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control: ba1: missing credentials"},
+		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
+		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control error: ba1: credentials required"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -2068,8 +2063,8 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "access control: JWTToken: empty toke"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "access control: JWTToken: token is expired by "},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "access control error: JWTToken: token required"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "access control error: JWTToken: token is expired by "},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
@@ -2121,7 +2116,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := `loading jwt "missing-source" definition failed: unknown source definition`
+	expectedMsg := "loading jwt definition failed: configuration error"
 
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	if err == nil || err.Error() != expectedMsg {
@@ -2382,6 +2377,53 @@ func TestEndpoint_Response(t *testing.T) {
 				if !exist || b != len(resBytes) {
 					t.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
+			}
+		})
+	}
+}
+
+func TestCORS_Configuration(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/config/06_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path             string
+		origin           string
+		expAllowedOrigin bool
+	}
+
+	for _, tc := range []testCase{
+		{"/06_couper.hcl", "a.com", true},
+		{"/spa/", "b.com", true},
+		{"/api/", "c.com", true},
+		{"/06_couper.hcl", "no.com", false},
+		{"/spa/", "", false},
+		{"/api/", "no.com", false},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodOptions, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header.Set("Access-Control-Request-Method", "GET")
+			req.Header.Set("Access-Control-Request-Headers", "origin")
+			req.Header.Set("Origin", tc.origin)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != http.StatusNoContent {
+				t.Errorf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
+				return
+			}
+
+			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
+				t.Errorf("Expected allowed origin resp, got: %v", val)
 			}
 		})
 	}

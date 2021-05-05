@@ -3,54 +3,15 @@ package accesscontrol
 import (
 	"bufio"
 	"crypto/subtle"
-	"errors"
-	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+
+	"github.com/avenga/couper/errors"
 )
 
 var _ AccessControl = &BasicAuth{}
-
-var (
-	ErrorBasicAuthMissingCredentials = errors.New("missing credentials")
-	ErrorBasicAuthNotConfigured      = errors.New("handler not configured")
-	ErrorBasicAuthUnauthorized       = errors.New("unauthorized")
-)
-
-type BasicAuthError struct {
-	error
-	Realm string
-}
-
-const (
-	InvalidLine uint8 = iota
-	LineTooLong
-	MalformedPassword
-	MultipleUser
-	NotSupported
-)
-
-type BasicAuthHTParseError struct {
-	error
-	code uint8
-}
-
-var basicAuthErrors = map[uint8]string{
-	InvalidLine:       "invalidLine",
-	LineTooLong:       "lineTooLong",
-	MalformedPassword: "malformedPassword",
-	MultipleUser:      "multipleUser",
-	NotSupported:      "notSupported",
-}
-
-func (e *BasicAuthHTParseError) Error() string {
-	return fmt.Sprintf("basic auth ht parse error: %s: %s", basicAuthErrors[e.code], e.error)
-}
-
-func (e BasicAuthError) Error() string {
-	return e.error.Error()
-}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
@@ -58,17 +19,15 @@ type BasicAuth struct {
 	name   string
 	user   string
 	pass   string
-	realm  string
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
-func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
+func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 	ba := &BasicAuth{
 		htFile: make(htData),
 		name:   name,
 		user:   user,
 		pass:   pass,
-		realm:  realm,
 	}
 
 	if file == "" {
@@ -77,7 +36,7 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 
 	fp, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return nil, errors.Configuration.Label(name).With(err)
 	}
 	defer fp.Close()
 
@@ -91,19 +50,21 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 		}
 
 		if len(line) > 255 {
-			return nil, &BasicAuthHTParseError{code: LineTooLong, error: fmt.Errorf("%s:%d", file, lineNr)}
+			return nil, errors.Configuration.Label(name).Message("parse error: line length exceeded: 255")
 		}
 
 		up := strings.SplitN(line, ":", 2)
 		if len(up) != 2 {
-			return nil, &BasicAuthHTParseError{code: InvalidLine, error: fmt.Errorf("%s:%d", file, lineNr)}
+			return nil, errors.Configuration.Label(name).Message("parse error: invalid line: " + strconv.Itoa(lineNr))
 		}
 
-		if _, ok := ba.htFile[up[0]]; ok {
-			return nil, &BasicAuthHTParseError{code: MultipleUser, error: fmt.Errorf("%s:%d: %q", file, lineNr, up[0])}
+		username, password := up[0], up[1]
+
+		if _, ok := ba.htFile[username]; ok {
+			return nil, errors.Configuration.Label(name).Message("multiple user: " + username)
 		}
 
-		switch pwdType := getPwdType(up[1]); pwdType {
+		switch pwdType := getPwdType(password); pwdType {
 		case pwdTypeApr1:
 			fallthrough
 		case pwdTypeMD5:
@@ -112,27 +73,24 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 				prefix = pwdPrefixMD5
 			}
 
-			parts := strings.Split(strings.TrimPrefix(up[1], prefix), "$")
+			parts := strings.Split(strings.TrimPrefix(password, prefix), "$")
 			if len(parts) != 2 {
-				return nil, &BasicAuthHTParseError{code: MalformedPassword, error: fmt.Errorf("%s:%d: user %q", file, lineNr, up[0])}
+				return nil, errors.Configuration.Label(name).Message("parse error: malformed password for user: " + username)
 			}
 
-			ba.htFile[up[0]] = pwd{
-				pwdOrig:   []byte(up[1]),
+			ba.htFile[username] = pwd{
+				pwdOrig:   []byte(password),
 				pwdPrefix: prefix,
 				pwdSalt:   parts[0],
 				pwdType:   pwdType,
 			}
 		case pwdTypeBcrypt:
-			ba.htFile[up[0]] = pwd{
-				pwdOrig: []byte(up[1]),
+			ba.htFile[username] = pwd{
+				pwdOrig: []byte(password),
 				pwdType: pwdType,
 			}
 		default:
-			return nil, &BasicAuthHTParseError{
-				code:  NotSupported,
-				error: fmt.Errorf("%s:%d: unknown password algorithm", file, lineNr),
-			}
+			return nil, errors.Configuration.Label(name).Message("parse error: algorithm not supported")
 		}
 	}
 
@@ -143,28 +101,37 @@ func NewBasicAuth(name, user, pass, file, realm string) (*BasicAuth, error) {
 // Validate implements the AccessControl interface
 func (ba *BasicAuth) Validate(req *http.Request) error {
 	if ba == nil {
-		return ErrorBasicAuthNotConfigured
+		return errors.Configuration
 	}
 
 	if ba.pass == "" {
-		return &BasicAuthError{error: ErrorBasicAuthUnauthorized, Realm: ba.realm}
+		// prevent granting access if password is no set
+		// or evaluated to an empty string.
+		return errors.BasicAuth.Message("no password configured")
 	}
 
 	user, pass, ok := req.BasicAuth()
-	if !ok {
-		return &BasicAuthError{error: ErrorBasicAuthMissingCredentials, Realm: ba.realm}
+	if !ok { // false is unspecific, determine if credentials are set
+		const prefix = "Basic "
+		if val := req.Header.Get("Authorization"); val == "" || !strings.HasPrefix(val, prefix) {
+			return errors.BasicAuthCredentialsMissing.Message("credentials required")
+		}
+		return errors.BasicAuth.Message("reading authorization failed")
 	}
 
 	if ba.user == user {
 		if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
 			return nil
 		}
-		return &BasicAuthError{error: ErrorBasicAuthUnauthorized, Realm: ba.realm}
+		return errors.BasicAuth.Message("credential mismatch")
 	}
 
-	if validateAccessData(user, pass, ba.htFile) {
-		return nil
+	if len(ba.htFile) > 0 {
+		if validateAccessData(user, pass, ba.htFile) {
+			return nil
+		}
+		return errors.BasicAuth.Message("file: credential mismatch")
 	}
 
-	return &BasicAuthError{error: ErrorBasicAuthUnauthorized, Realm: ba.realm}
+	return errors.BasicAuth.Message("credential mismatch")
 }

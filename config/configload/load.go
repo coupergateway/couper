@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -15,19 +17,20 @@ import (
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
-	"github.com/avenga/couper/config/startup"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
 
 const (
-	backend     = "backend"
-	oauth2      = "oauth2"
-	definitions = "definitions"
-	nameLabel   = "name"
-	proxy       = "proxy"
-	request     = "request"
-	server      = "server"
-	settings    = "settings"
+	backend      = "backend"
+	definitions  = "definitions"
+	errorHandler = "error_handler"
+	nameLabel    = "name"
+	oauth2       = "oauth2"
+	proxy        = "proxy"
+	request      = "request"
+	server       = "server"
+	settings     = "settings"
 	// defaultNameLabel maps the the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )
@@ -36,12 +39,25 @@ var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 var envContext *hcl.EvalContext
 var configBytes []byte
 
+type AccessControlSetter interface {
+	Set(handler *config.ErrorHandler)
+}
+
 func init() {
 	envContext = eval.NewContext(nil).HCLContext()
 }
 
+// SetWorkingDirectory sets the working directory to the given configuration file path.
+func SetWorkingDirectory(configFile string) (string, error) {
+	if err := os.Chdir(filepath.Dir(configFile)); err != nil {
+		return "", err
+	}
+
+	return os.Getwd()
+}
+
 func LoadFile(filePath string) (*config.Couper, error) {
-	_, err := startup.SetWorkingDirectory(filePath)
+	_, err := SetWorkingDirectory(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -68,15 +84,17 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
 
+	evalContext := eval.NewContext(src)
+	envContext = evalContext.HCLContext()
+
 	couperConfig := &config.Couper{
 		Bytes:       src,
-		Context:     eval.NewContext(src),
+		Context:     evalContext,
 		Definitions: &config.Definitions{},
 		Filename:    filename,
 		Settings:    &defaults,
 	}
 
-	envContext = couperConfig.Context.HCLContext()
 	configBytes = src[:]
 
 	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
@@ -112,7 +130,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					if err := uniqueAttributeKey(be.Body); err != nil {
 						return nil, err
 					}
-
 					definedBackends = append(definedBackends, NewBackend(name, be.Body))
 				}
 			}
@@ -120,6 +137,78 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			if diags = gohcl.DecodeBody(leftOver, envContext, couperConfig.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
+
+			// access control - error_handler
+			var acErrorHandler []AccessControlSetter
+			for _, acConfig := range couperConfig.Definitions.BasicAuth {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.JWT {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.SAML {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+
+			for _, ac := range acErrorHandler {
+				acBody, ok := ac.(config.Body)
+				if !ok {
+					continue
+				}
+				acContent := bodyToContent(acBody.HCLBody())
+				configuredLabels := map[string]struct{}{}
+				for _, block := range acContent.Blocks.OfType(errorHandler) {
+					errHandlerConf, err := newErrorHandlerConf(block.Labels, block.Body, definedBackends)
+					if err != nil {
+						return nil, err
+					}
+
+					for _, k := range errHandlerConf.Kinds {
+						if _, exist := configuredLabels[k]; exist {
+							return nil, hcl.Diagnostics{&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  fmt.Sprintf("duplicate error type registration: %q", k),
+								Subject:  &block.LabelRanges[0],
+							}}
+						}
+
+						if k != errors.Wildcard && !errors.IsKnown(k) {
+							subjRange := block.DefRange
+							if len(block.LabelRanges) > 0 {
+								subjRange = block.LabelRanges[0]
+							}
+							diag := &hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  fmt.Sprintf("error type is unknown: %q", k),
+								Subject:  &subjRange,
+							}
+							return nil, hcl.Diagnostics{diag}
+						}
+
+						configuredLabels[k] = struct{}{}
+					}
+
+					ac.Set(errHandlerConf)
+				}
+
+				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
+					defaultHandler := acDefault.DefaultErrorHandler()
+					_, exist := configuredLabels[errors.Wildcard]
+					if !exist {
+						for _, kind := range defaultHandler.Kinds {
+							_, exist = configuredLabels[kind]
+							if exist {
+								break
+							}
+						}
+					}
+
+					if !exist {
+						ac.Set(acDefault.DefaultErrorHandler())
+					}
+				}
+			}
+
 		case settings:
 			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
@@ -128,7 +217,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 
 	// Prepare dynamic functions
-	couperConfig.Context = couperConfig.Context.WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).WithSAML(couperConfig.Definitions.SAML)
+	couperConfig.Context = evalContext.
+		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
+		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range content.Blocks.OfType(server) {
@@ -144,7 +235,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 		// Read api blocks and merge backends with server and definitions backends.
 		for _, apiBlock := range serverConfig.APIs {
-			err := refineEndpoints(definedBackends, apiBlock.Endpoints)
+			err := refineEndpoints(definedBackends, apiBlock.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
@@ -153,7 +244,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// standalone endpoints
-		err := refineEndpoints(definedBackends, serverConfig.Endpoints)
+		err := refineEndpoints(definedBackends, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
@@ -259,13 +350,13 @@ func getBackendReference(definedBackends Backends, be config.BackendReference) (
 	return reference, nil
 }
 
-func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error {
+func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check bool) error {
 	for _, endpoint := range endpoints {
 		if err := uniqueAttributeKey(endpoint.Remain); err != nil {
 			return err
 		}
 
-		if endpoint.Pattern == "" {
+		if check && endpoint.Pattern == "" {
 			var r hcl.Range
 			if endpoint.Remain != nil {
 				r = endpoint.Remain.MissingItemRange()
@@ -282,7 +373,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 		proxies := endpointContent.Blocks.OfType(proxy)
 		requests := endpointContent.Blocks.OfType(request)
 
-		if len(proxies)+len(requests) == 0 && endpoint.Response == nil {
+		if check && len(proxies)+len(requests) == 0 && endpoint.Response == nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "missing 'default' proxy or request block, or a response definition",
@@ -405,7 +496,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints) error
 			}
 		}
 
-		if _, ok := names[defaultNameLabel]; !ok && endpoint.Response == nil {
+		if _, ok := names[defaultNameLabel]; check && !ok && endpoint.Response == nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Missing a 'default' proxy or request definition, or a response block",
@@ -576,6 +667,43 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 			{Type: backend, Body: oauthBackend},
 		},
 	})})
+}
+
+func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
+	var allKinds []string // Support for all events within one label separated by space
+
+	for _, kinds := range kindLabels {
+		all := strings.Split(kinds, " ")
+		for _, a := range all {
+			if a == "" {
+				return nil, errors.Configuration.Messagef("invalid format: %v", kindLabels)
+			}
+		}
+		allKinds = append(allKinds, all...)
+	}
+	if len(allKinds) == 0 {
+		allKinds = append(allKinds, errors.Wildcard)
+	}
+
+	errHandlerConf := &config.ErrorHandler{Kinds: allKinds}
+	if d := gohcl.DecodeBody(body, envContext, errHandlerConf); d.HasErrors() {
+		return nil, d
+	}
+
+	ep := &config.Endpoint{
+		ErrorFile: errHandlerConf.ErrorFile,
+		Response:  errHandlerConf.Response,
+		Remain:    body,
+	}
+
+	if err := refineEndpoints(definedBackends, config.Endpoints{ep}, false); err != nil {
+		return nil, err
+	}
+
+	errHandlerConf.Requests = ep.Requests
+	errHandlerConf.Proxies = ep.Proxies
+
+	return errHandlerConf, nil
 }
 
 func renameAttribute(content *hcl.BodyContent, old, new string) {
