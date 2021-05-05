@@ -2,35 +2,34 @@
 
 * [Errors](#errors)
     * [Introduction](#introduction)
-    * [Messages](#messages)
-    * [Access-Control error_handler](#access-control-error_handler)
+    * [Error messages](#messages)
+    * [Access control error_handler](#access-control-error_handler)
         * [error_handler specification](#error_handler-specification)
-        * [Error-Types](#error-types)
+        * [Error types](#error-types)
 
 ## Introduction
 
-Errors should be handled and could occur due to user input or issues on backend and network side.
-There are some generic categories like `configuration`, `server`, `backend` or `access_control`.
-Those categories will help you to identify the related issues faster.
+Errors can occur in various places: due to invalid client requests or problems on the backend and network side.
+Couper specifies some generic error categories (like `configuration`, `server`, `backend` or `access_control`) to help you indetify the occuring problems faster.
 
-## Messages
 
-Couper errors distinguish between the synopsis which will be sent to the client, and
-the log message with more error context to prevent accidentally exposing confidential data.
+## Error messages
 
-## Access-Control `error_handler`
+Error messages are only sent to the client as a summary.
+Detailed information is provided via log message. This way, all information can be viewed without accidentally revealing confidential information.
 
-Especially some access-control errors are expected to occur and may need special handling,
-e.g. sending a specific response for missing login credentials.
-To do so every access-control definition of `basic_auth`, `jwt` or `saml2` can define one or multiple
-`error_handler` with one or more defined error-type labels listed below.
+## Access control `error_handler`
+
+Access control errors in particular require special handling, e.g. sending a specific response for missing login credentials.
+For this purpose every access control definition of `basic_auth`, `jwt` or `saml2` can define one or multiple `error_handler` with one or more defined error type labels listed below.
+
 
 ### `error_handler` specification
 
 The error handler label specifies which [error type](#error-types)
 should be handled. Multiple labels are allowed. The label can be omitted to catch all errors which are related to this access control definition. This has the same behavior as the error type `*`, that catches all errors explicitly.
 
-This handler behaves like an [endpoint](README.md#endpoint-block). It can have the same attributes _except_ the following:
+This handler behaves like an [endpoint](README.md#endpoint-block). It can have the same attributes **except** the following:
 
 * `access_control`
 * `disable_access_control`
@@ -45,7 +44,7 @@ error_handler "jwt_token_missing" {
 }
 ```
 
-### Error-Types
+### Error types
 
 All errors have a specific type. You can find it in the log field `error_type`. Furthermore, errors can be associated with a list of less specific types. Your error handlers will be evaluated from the most to the least specific one. Only the first matching error handler is executed.
 
