@@ -207,12 +207,12 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 	}
 
 	if tokenClaims == nil {
-		return nil, errors.JwtClaims.Message("token has no claims")
+		return nil, errors.JwtTokenInvalid.Message("token has no claims")
 	}
 
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return nil, errors.JwtClaims.Message("required claim is missing: " + key)
+			return nil, errors.JwtTokenInvalid.Message("required claim is missing: " + key)
 		}
 	}
 
@@ -224,11 +224,11 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 
 		val, exist := tokenClaims[k]
 		if !exist {
-			return nil, errors.JwtClaims.Message("required claim is missing: " + k)
+			return nil, errors.JwtTokenInvalid.Message("required claim is missing: " + k)
 		}
 
 		if val != v {
-			return nil, errors.JwtClaims.Messagef("unexpected value for claim %s: %s", k, val)
+			return nil, errors.JwtTokenInvalid.Messagef("unexpected value for claim %s: %s", k, val)
 		}
 	}
 	return tokenClaims, nil

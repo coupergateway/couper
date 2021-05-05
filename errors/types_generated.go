@@ -8,7 +8,7 @@ var (
 	Jwt                         = Definitions[2]
 	JwtTokenExpired             = Definitions[3]
 	JwtTokenMissing             = Definitions[4]
-	JwtClaims                   = Definitions[5]
+	JwtTokenInvalid             = Definitions[5]
 	Saml2                       = Definitions[6]
 )
 
@@ -24,7 +24,7 @@ var types = typeDefinitions{
 	"jwt":                            Jwt,
 	"jwt_token_expired":              JwtTokenExpired,
 	"jwt_token_missing":              JwtTokenMissing,
-	"jwt_claims":                     JwtClaims,
+	"jwt_token_invalid":              JwtTokenInvalid,
 	"saml2":                          Saml2,
 }
 
