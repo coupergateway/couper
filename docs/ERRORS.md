@@ -27,34 +27,35 @@ To do so every access-control definition of `basic_auth`, `jwt` or `saml2` can d
 
 ### `error_handler` specification
 
-This handler behaves like an [endpoint](README.md#endpoint-block) and almost the same attributes are available.
+The error handler label specifies which [error type](#error-types)
+should be handled. Multiple labels are allowed. The label can be omitted to catch all errors which are related to this access control definition. This has the same behavior as the error type `*`, that catches all errors explicitly.
 
-Except the following *endpoint* attributes are not available for `error_handler`: 
+This handler behaves like an [endpoint](README.md#endpoint-block). It can have the same attributes _except_ the following:
+
 * `access_control`
 * `disable_access_control`
 * `request_body_limit`
 
-Also, the [modifier](README.md#modifier) and [query params](README.md#query-parameter) can be configured.
-The label can be omitted to catch all errors which are related to this access control definition.
-To react for a specific [error-type](#error-types) list them per label.
+Example:
 
 ```hcl
-error_handler "error-type" "additional-type" {
+error_handler "jwt_token_missing" {
   error_file = "my_custom_file.html"
   response {}
-  request {}
-  proxy {}
 }
 ```
 
 ### Error-Types
 
-| Type                              | Description                                           | Default handling |
+All errors have a specific type. You can find it in the log field `error_type`. Furthermore, errors can be associated with a list of less specific types. Your error handlers will be evaluated from the most to the least specific one. Only the first matching error handler is executed.
+
+
+| Type (and super types)            | Description                                           | Default handling |
 |:----------------------------------|:------------------------------------------------------|:-----------------|
-| `basic_auth`                      | All `basic_auth` related errors, e.g. unknown user or wrong password. | Send error template with status `401` and `Www-Authenticate: Basic` header. |
-| `basic_auth_credentials_missing`  | Client does not provide any credentials. | Send error template with status `401` and `Www-Authenticate: Basic` header. |
+| `basic_auth`                      | All `basic_auth` related errors, e.g. unknown user or wrong password. | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
+| `basic_auth_credentials_missing` (`basic_auth`) | Client does not provide any credentials. | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
 | `jwt`                             | All `jwt` related errors. | Send error template with status `403`. |
-| `jwt_token_missing`               | No token provided with configured token source.  | Send error template with status `401`. |
-| `jwt_token_expired`               | Given token is valid but expired. | Send error template with status `403`. |
-| `jwt_claims`                      | Claim related errors like missing claims or unexpected values. | Send error template with status `403`. |
+| `jwt_token_missing` (`jwt`)              | No token provided with configured token source.  | Send error template with status `401`. |
+| `jwt_token_expired` (`jwt`)              | Given token is valid but expired. | Send error template with status `403`. |
+| `jwt_token_invalid` (`jwt`)              | The token is not sufficient, e.g. because required claims are missing or have unexpected values. | Send error template with status `403`. |
 | `saml2`                           | All `saml2` related errors | Send error template with status `403`. |
