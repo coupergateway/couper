@@ -2,7 +2,7 @@
 
 * [Errors](#errors)
     * [Introduction](#introduction)
-    * [Error messages](#messages)
+    * [Error messages](#error-messages)
     * [Access control error_handler](#access-control-error_handler)
         * [error_handler specification](#error_handler-specification)
         * [Error types](#error-types)
