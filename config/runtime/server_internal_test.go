@@ -1,17 +1,13 @@
 package runtime
 
 import (
-	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
-
-	ac "github.com/avenga/couper/accesscontrol"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -219,54 +215,27 @@ func TestServer_validatePortHosts(t *testing.T) {
 	}
 }
 
-func TestServer_ValidateACName(t *testing.T) {
-	acMap := make(ac.Map)
-
-	name, err := validateACName(acMap, " ", "Type")
-	if err == nil {
-		t.Error("Unexpected NIL-error given")
-	} else if !strings.Contains(fmt.Sprintf("%#v", err), `"access control: label required: 'Type'"`) {
-		t.Errorf("Unexpected error message given: %#v", err)
-	}
-	if name != "" {
-		t.Errorf("Unexpected ac name given: %s", name)
-	}
-
-	acMap["test"] = nil
-	name, err = validateACName(acMap, "test", "Type")
-	if err == nil {
-		t.Error("Unexpected NIL-error given")
-	} else if !strings.Contains(fmt.Sprintf("%#v", err), `"access control: 'test' already exists"`) {
-		t.Errorf("Unexpected error message given: %#v", err)
-	}
-	if name != "test" {
-		t.Errorf("Unexpected ac name given: %s", name)
-	}
-
-	name, err = validateACName(acMap, "new", "Type")
-	if err != nil {
-		t.Errorf("Unexpected error given: %#v", err)
-	}
-	if name != "new" {
-		t.Errorf("Unexpected ac name given: %s", name)
-	}
-}
-
 func TestServer_GetCORS(t *testing.T) {
-	parent := &config.CORS{MaxAge: "123"}
-	curr := &config.CORS{MaxAge: "321"}
+	parentCORS := &config.CORS{MaxAge: "123"}
+	parent := &config.Server{
+		CORS: parentCORS,
+	}
+	currCORS := &config.CORS{MaxAge: "321"}
+	curr := &config.Server{
+		CORS: currCORS,
+	}
 
-	if got := getCORS(parent, nil); got != parent {
+	if got := whichCORS(parent, &config.Server{}); got != parentCORS {
 		t.Errorf("Unexpected CORS given: %#v", got)
 	}
 
-	if got := getCORS(parent, curr); got != curr {
+	if got := whichCORS(parent, curr); got != currCORS {
 		t.Errorf("Unexpected CORS given: %#v", got)
 	}
 
-	curr.Disable = true
+	currCORS.Disable = true
 
-	if got := getCORS(parent, curr); got != nil {
+	if got := whichCORS(parent, curr); got != nil {
 		t.Errorf("Unexpected CORS given: %#v", got)
 	}
 }

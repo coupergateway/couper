@@ -227,7 +227,9 @@ func TestInline_OAuth2(t *testing.T) {
 		Attributes: []hcl.AttributeSchema{
 			{Name: "client_id", Required: true},
 			{Name: "client_secret", Required: true},
+			{Name: "scope", Required: false},
 			{Name: "token_endpoint", Required: false},
+			{Name: "token_endpoint_auth_method", Required: false},
 		},
 	}
 
