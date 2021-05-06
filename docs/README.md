@@ -41,6 +41,7 @@
       * [Request Header](#request-header)
       * [Response Header](#response-header)
       * [Query Parameter](#query-parameter)
+      * [Form Parameter](#form-parameter)
     * [Path Parameter](#path-parameter)
     * [Access Control](#access-control)
       * [Error Handler](#error-handler)
@@ -670,9 +671,10 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 
 ### Modifier
 
-* [Query Parameter](#query-parameter)
 * [Request Header](#request-header)
 * [Response Header](#response-header)
+* [Query Parameter](#query-parameter)
+* [Form Parameter](#form-parameter)
 
 #### Request Header
 
@@ -682,11 +684,11 @@ executed ordered as follows:
 
 | Modifier                 | Contexts                                                                                        | Description |
 |:-------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set request header in the upstream request. |
-| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add request header to the upstream request. |
-| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of request header to be removed from the upstream request. |
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of request header to be removed from the upstream request. |
+| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set request header in the upstream request. |
+| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add request header to the upstream request. |
 
-All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend`.
+All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
 #### Response Header
 
@@ -696,9 +698,9 @@ executed ordered as follows:
 
 | Modifier                  | Contexts                                                                                        | Description |
 |:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `set_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set response header in the client response. |
-| `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add response header to the client response. |
-| `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of response header to be removed from the client response. |
+| `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of response header to be removed from the client response. |
+| `set_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add response header to the client response. |
 
 All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -710,9 +712,9 @@ executed ordered as follows:
 
 | Modifier              | Contexts                                                                                        | Description |
 |:----------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to set query parameters in the upstream request URL. |
-| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | Key/value(s) pairs to add query parameters to the upstream request URL. |
-| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block) | List of query parameters to be removed from the upstream request URL. |
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of query parameters to be removed from the upstream request URL. |
+| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set query parameters in the upstream request URL. |
+| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add query parameters to the upstream request URL. |
 
 All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -740,6 +742,60 @@ definitions {
     }
 
     add_query_params = {
+      noop = request.headers.noop
+      null = null
+      empty = ""
+    }
+  }
+}
+```
+
+#### Form Parameter
+
+Couper offers three attributes to manipulate the form parameter. The form
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier              | Contexts                                                                                        | Description |
+|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `remove_form_params`  | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of form parameters to be removed from the upstream request body. |
+| `set_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set form parameters in the upstream request body. |
+| `add_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add form parameters to the upstream request body. |
+
+All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
+
+The `*_form_params` apply only if the client request has one of `PATCH`, `POST` or `PUT`
+method with the `Content-Type: application/x-www-form-urlencoded` HTTP header field.
+Additionally, the `*_form_params` apply to the `GET` method, but only if the client
+request body is empty. If the `*_form_params` apply to a `GET` method, Couper changes
+the method to `POST` and sets a `Content-Type: application/x-www-form-urlencoded` HTTP
+header field for the backend request. The `remove_form_params` has no effect for `GET`
+requests.
+
+```hcl
+server "my_project" {
+  api {
+    endpoint "/" {
+      proxy {
+        backend = "example"
+      }
+    }
+  }
+}
+
+definitions {
+  backend "example" {
+    origin = "http://example.com"
+
+    remove_form_params = ["a", "b"]
+
+    set_form_params = {
+      string = "string"
+      multi = ["foo", "bar"]
+      "${request.headers.example}" = "yes"
+    }
+
+    add_form_params = {
       noop = request.headers.noop
       null = null
       empty = ""
