@@ -85,8 +85,8 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		expectedBody   []byte
 		expectedStatus int
 	}{
-		{"/", []byte("<html><body><h1>configuration error: My custom error template</h1></body></html>"), http.StatusInternalServerError},
-		{"/apps/", []byte("<html><body><h1>configuration error: My custom error template</h1></body></html>"), http.StatusInternalServerError},
+		{"/", []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>"), http.StatusNotFound},
+		{"/apps/", []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>"), http.StatusNotFound},
 		{"/apps/shiny-product/", []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>"), http.StatusNotFound},
 		{"/apps/shiny-product/assets/", []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>"), http.StatusNotFound},
 		{"/apps/shiny-product/app/", spaContent, http.StatusOK},
