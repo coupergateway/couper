@@ -58,12 +58,7 @@ func NewSamlSsoUrlFunction(samlConfigs []*cs.SAML) function.Function {
 				}
 			}
 
-			nameIDFormat := ""
-			if isSupportedNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats, NameIdFormatUnspecified) {
-				nameIDFormat = NameIdFormatUnspecified
-			} else if len(metadata.IDPSSODescriptor.NameIDFormats) > 0 {
-				nameIDFormat = metadata.IDPSSODescriptor.NameIDFormats[0].Value
-			}
+			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
 			sp := &saml2.SAMLServiceProvider{
 				AssertionConsumerServiceURL: saml.SpAcsUrl,
@@ -83,6 +78,16 @@ func NewSamlSsoUrlFunction(samlConfigs []*cs.SAML) function.Function {
 			return cty.StringVal(samlSsoUrl), nil
 		},
 	})
+}
+
+func getNameIDFormat(supportedNameIDFormats []types.NameIDFormat) string {
+	nameIDFormat := ""
+	if isSupportedNameIDFormat(supportedNameIDFormats, NameIdFormatUnspecified) {
+		nameIDFormat = NameIdFormatUnspecified
+	} else if len(supportedNameIDFormats) > 0 {
+		nameIDFormat = supportedNameIDFormats[0].Value
+	}
+	return nameIDFormat
 }
 
 func isSupportedNameIDFormat(supportedNameIDFormats []types.NameIDFormat, nameIDFormat string) bool {
