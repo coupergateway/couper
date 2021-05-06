@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -59,7 +60,9 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 		}
 
 		if n > bodyLimit {
-			return errors.EndpointReqBodySizeExceeded
+			return errors.ClientRequest.
+				Status(http.StatusRequestEntityTooLarge).
+				Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
 		bodyBytes := buf.Bytes()
@@ -209,9 +212,12 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 	}
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
-	err := applyHeaderOps(attrs,
-		[]string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}, httpCtx, beresp.Header)
-	return err
+	headers := []string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}
+	err := applyHeaderOps(attrs, headers, httpCtx, beresp.Header)
+	if err != nil {
+		return errors.Evaluation.With(err)
+	}
+	return nil
 }
 
 func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hcl.EvalContext, headers ...http.Header) error {
@@ -340,13 +346,13 @@ func deleteHeader(val cty.Value, headerCtx http.Header) {
 }
 
 func toSlice(val interface{}) []string {
-	switch val.(type) {
+	switch v := val.(type) {
 	case float64:
-		return []string{strconv.FormatFloat(val.(float64), 'f', 0, 64)}
+		return []string{strconv.FormatFloat(v, 'f', 0, 64)}
 	case string:
-		return []string{val.(string)}
+		return []string{v}
 	case []string:
-		return val.([]string)
+		return v
 	}
 	return []string{}
 }

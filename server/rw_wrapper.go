@@ -10,7 +10,6 @@ import (
 	"net/textproto"
 	"strconv"
 
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/logging"
 )
@@ -112,14 +111,14 @@ func (w *RWWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // Close closes the GZ writer.
 func (w *RWWrapper) Close() {
 	if w.gz != nil {
-		w.gz.Close()
+		_ = w.gz.Close()
 	}
 }
 
 // Flush implements the <http.Flusher> interface.
 func (w *RWWrapper) Flush() {
 	if w.gz != nil {
-		w.gz.Flush()
+		_ = w.gz.Flush()
 	}
 
 	if rw, ok := w.rw.(http.Flusher); ok {
@@ -167,8 +166,4 @@ func (w *RWWrapper) StatusCode() int {
 
 func (w *RWWrapper) WrittenBytes() int {
 	return w.bytesWritten
-}
-
-func (w *RWWrapper) ErrorHeader() string {
-	return w.Header().Get(errors.HeaderErrorCode)
 }

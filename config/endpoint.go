@@ -18,7 +18,7 @@ type Endpoint struct {
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
 	Response             *Response `hcl:"response,block"`
-	// internally used
+	// internally configured due to multi-label options
 	Proxies  Proxies
 	Requests Requests
 }

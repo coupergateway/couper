@@ -3,9 +3,6 @@ package runtime
 import (
 	"fmt"
 	"regexp"
-	"strings"
-
-	ac "github.com/avenga/couper/accesscontrol"
 )
 
 var (
@@ -26,20 +23,6 @@ func validateHosts(serverName string, hosts []string, isHostsMandatory bool) err
 	}
 
 	return nil
-}
-
-func validateACName(accessControls ac.Map, name, acType string) (string, error) {
-	name = strings.TrimSpace(name)
-
-	if name == "" {
-		return name, fmt.Errorf("access control: label required: '%s'", acType)
-	}
-
-	if _, ok := accessControls[name]; ok {
-		return name, fmt.Errorf("access control: '%s' already exists", name)
-	}
-
-	return name, nil
 }
 
 func isUnique(endpoints map[string]bool, pattern string) (bool, string) {

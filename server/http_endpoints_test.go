@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -21,7 +22,6 @@ func TestEndpoints_Protected404(t *testing.T) {
 	client := newClient()
 
 	type expectation struct {
-		Code           int
 		ResponseStatus int
 	}
 
@@ -35,18 +35,10 @@ func TestEndpoints_Protected404(t *testing.T) {
 	defer shutdown()
 
 	for _, tc := range []testCase{
-		{"", "/v1/anything", expectation{
-			Code: 5002, ResponseStatus: 0,
-		}},
-		{"secret", "/v1/anything", expectation{
-			Code: 0, ResponseStatus: 200,
-		}},
-		{"", "/v1/xxx", expectation{
-			Code: 5002, ResponseStatus: 0,
-		}},
-		{"secret", "/v1/xxx", expectation{
-			Code: 0, ResponseStatus: 404,
-		}},
+		{"", "/v1/anything", expectation{}},
+		{"secret", "/v1/anything", expectation{http.StatusOK}},
+		{"", "/v1/xxx", expectation{}},
+		{"secret", "/v1/xxx", expectation{http.StatusNotFound}},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
@@ -118,6 +110,87 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 
 	if string(resBytes) != "1616" {
 		t.Errorf("Expected body 1616, given %s", resBytes)
+	}
+}
+
+func TestEndpoints_BerespBody(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, logHook := newCouper(path.Join(testdataPath, "08_couper.hcl"), helper)
+	defer shutdown()
+
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range logHook.AllEntries() {
+			println(e.String())
+		}
+	}()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, given %d", res.StatusCode)
+	}
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	if !bytes.HasPrefix(resBytes, []byte("%PDF-1.6")) {
+		t.Errorf("Expected PDF file, given %s", resBytes)
+	}
+
+	if val := res.Header.Get("x-body"); !strings.HasPrefix(val, "%PDF-1.6") {
+		t.Errorf("Expected PDF file content, got: %q", val)
+	}
+}
+
+func TestEndpoints_ReqBody(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, logHook := newCouper(path.Join(testdataPath, "08_couper.hcl"), helper)
+	defer shutdown()
+
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range logHook.AllEntries() {
+			println(e.String())
+		}
+	}()
+
+	req, err := http.NewRequest(http.MethodPost, "http://example.com:8080/post", bytes.NewBufferString("content"))
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, given %d", res.StatusCode)
+	}
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	type result struct {
+		Body string
+	}
+
+	r := &result{}
+	helper.Must(json.Unmarshal(resBytes, r))
+
+	if r.Body != "content" {
+		t.Errorf("Want: content, got: %v", r.Body)
 	}
 }
 

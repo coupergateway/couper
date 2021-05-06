@@ -86,9 +86,11 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				Error:        errors.DefaultJSON,
 				Context:      remain.Inline,
 				ReqBodyLimit: 1024,
-			}, logger, producer.Proxies{
-				&producer.Proxy{Name: "default", RoundTrip: backend},
-			}, nil, nil)
+				Proxies: producer.Proxies{
+					&producer.Proxy{Name: "default", RoundTrip: backend},
+				},
+				Requests: make(producer.Requests, 0),
+			}, logger)
 
 			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
 			if tt.body != nil {
@@ -208,9 +210,11 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 					Error:        errors.DefaultJSON,
 					Context:      hcl.EmptyBody(),
 					ReqBodyLimit: 1024,
-				}, logger, producer.Proxies{
-					&producer.Proxy{Name: "default", RoundTrip: backend},
-				}, nil, nil)
+					Proxies: producer.Proxies{
+						&producer.Proxy{Name: "default", RoundTrip: backend},
+					},
+					Requests: make(producer.Requests, 0),
+				}, logger)
 
 				var body io.Reader
 				if tt.body != "" {
@@ -282,11 +286,15 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			}},
 		{"json_body request/response", `set_response_headers = {
 				x-client = "my-val-x-${request.json_body.client}"
+				x-client2 = request.body
 				x-origin = "my-val-y-${backend_responses.default.json_body.origin}"
+				x-origin2 = backend_responses.default.body
 			}`, "",
 			test.Header{
-				"x-client": "my-val-x-true",
-				"x-origin": "my-val-y-true",
+				"x-client":  "my-val-x-true",
+				"x-client2": `{ "client": true, "origin": false, "nil": null }`,
+				"x-origin":  "my-val-y-true",
+				"x-origin2": `{ "client": false, "origin": true, "nil": null }`,
 			}},
 		{"json_body request/response json variant", `set_response_headers = {
 				x-client = "my-val-x-${request.json_body.client}"
@@ -314,9 +322,11 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				Error:        errors.DefaultJSON,
 				Context:      helper.NewInlineContext(tc.remain),
 				ReqBodyLimit: 1024,
-			}, logger, producer.Proxies{
-				&producer.Proxy{Name: "default", RoundTrip: backend},
-			}, nil, nil)
+				Proxies: producer.Proxies{
+					&producer.Proxy{Name: "default", RoundTrip: backend},
+				},
+				Requests: make(producer.Requests, 0),
+			}, logger)
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
 			if tc.ct != "" {

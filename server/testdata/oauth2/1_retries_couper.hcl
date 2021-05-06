@@ -15,6 +15,7 @@ server "api" {
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
+            token_endpoint_auth_method = "client_secret_basic"
           }
         }
       }
@@ -30,6 +31,7 @@ server "api" {
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
+            token_endpoint_auth_method = "client_secret_basic"
             backend {
               origin = "${request.headers.x-token-endpoint}"
               path = "/oauth2"

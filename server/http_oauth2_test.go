@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,6 +21,29 @@ func TestEndpoints_OAuth2(t *testing.T) {
 
 		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.URL.Path == "/oauth2" {
+				reqBody, _ := ioutil.ReadAll(req.Body)
+				authorization := req.Header.Get("Authorization")
+
+				if i == 0 {
+					exp := `client_id=user&client_secret=pass+word&grant_type=client_credentials&scope=scope1+scope2`
+					if exp != string(reqBody) {
+						t.Errorf("want\n%s\ngot\n%s", exp, reqBody)
+					}
+					exp = ""
+					if exp != authorization {
+						t.Errorf("want\n%s\ngot\n%s", exp, authorization)
+					}
+				} else {
+					exp := `grant_type=client_credentials`
+					if exp != string(reqBody) {
+						t.Errorf("want\n%s\ngot\n%s", exp, reqBody)
+					}
+					exp = "Basic dXNlcjpwYXNz"
+					if exp != authorization {
+						t.Errorf("want\n%s\ngot\n%s", exp, authorization)
+					}
+				}
+
 				rw.Header().Set("Content-Type", "application/json")
 				rw.WriteHeader(http.StatusOK)
 

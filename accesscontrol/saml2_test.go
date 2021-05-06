@@ -116,7 +116,7 @@ func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := sa.ValidateAssertionInfo(tc.assertionInfo); (err != nil) != tc.wantErr {
+			if err = sa.ValidateAssertionInfo(tc.assertionInfo); (err != nil) != tc.wantErr {
 				t.Errorf("%s: ValidateAssertionInfo() error = %v, wantErr %v", tc.name, err, tc.wantErr)
 			}
 		})

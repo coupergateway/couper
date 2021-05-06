@@ -69,7 +69,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 		{" /w path param and expWildcard", newReq("/project/foo/bar/ha"), noContent, request.PathParameter{
 			"project": "foo",
 		}, "bar/ha"},
-		{" /w non existing path", newReq("/foo/{bar}/123"), errors.DefaultJSON.ServeError(errors.APIRouteNotFound), nil, ""},
+		{" /w non existing path", newReq("/foo/{bar}/123"), errors.DefaultJSON.ServeError(errors.RouteNotFound), nil, ""},
 		{" files", newReq("/htdocs/test.html"), http.NotFoundHandler(), request.PathParameter{
 			"section": "htdocs",
 			"project": "test.html",
