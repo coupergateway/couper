@@ -13,7 +13,10 @@ import (
 	"github.com/avenga/couper/config"
 )
 
-const FnSamlSsoUrl = "saml_sso_url"
+const (
+	FnSamlSsoUrl            = "saml_sso_url"
+	NameIdFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+)
 
 func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
 	samls := make(map[string]*config.SAML)
@@ -55,10 +58,7 @@ func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
 				}
 			}
 
-			nameIDFormat := ""
-			if len(metadata.IDPSSODescriptor.NameIDFormats) > 0 {
-				nameIDFormat = metadata.IDPSSODescriptor.NameIDFormats[0].Value
-			}
+			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
 			sp := &saml2.SAMLServiceProvider{
 				AssertionConsumerServiceURL: saml.SpAcsUrl,
@@ -78,4 +78,23 @@ func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
 			return cty.StringVal(samlSsoUrl), nil
 		},
 	})
+}
+
+func getNameIDFormat(supportedNameIDFormats []types.NameIDFormat) string {
+	nameIDFormat := ""
+	if isSupportedNameIDFormat(supportedNameIDFormats, NameIdFormatUnspecified) {
+		nameIDFormat = NameIdFormatUnspecified
+	} else if len(supportedNameIDFormats) > 0 {
+		nameIDFormat = supportedNameIDFormats[0].Value
+	}
+	return nameIDFormat
+}
+
+func isSupportedNameIDFormat(supportedNameIDFormats []types.NameIDFormat, nameIDFormat string) bool {
+	for _, n := range supportedNameIDFormats {
+		if n.Value == nameIDFormat {
+			return true
+		}
+	}
+	return false
 }
