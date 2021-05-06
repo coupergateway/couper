@@ -81,7 +81,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	if ee := eval.ApplyRequestContext(req.Context(), e.opts.Context, req); ee != nil {
-		log.Error(ee)
+		e.opts.Error.ServeError(ee).ServeHTTP(rw, req)
+		return
 	}
 
 	proxyResults := make(producer.Results)

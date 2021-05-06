@@ -5,6 +5,7 @@ import (
 	"context"
 	er "errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,6 +33,9 @@ const (
 	attrAddQueryParams = "add_query_params"
 	attrDelQueryParams = "remove_query_params"
 	attrSetQueryParams = "set_query_params"
+	attrAddFormParams  = "add_form_params"
+	attrDelFormParams  = "remove_form_params"
+	attrSetFormParams  = "set_form_params"
 
 	attrSetResHeaders = "set_response_headers"
 	attrAddResHeaders = "add_response_headers"
@@ -167,6 +171,95 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	if modifyQuery {
 		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 	}
+
+	err := getFormParams(httpCtx, req, attrs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hcl.Attribute) error {
+	const contentTypeValue = "application/x-www-form-urlencoded"
+
+	attrDel, okDel := attrs[attrDelFormParams]
+	attrSet, okSet := attrs[attrSetFormParams]
+	attrAdd, okAdd := attrs[attrAddFormParams]
+
+	if !okAdd && !okDel && !okSet {
+		return nil
+	}
+
+	if req.Method == http.MethodGet {
+		if !okAdd && !okSet {
+			return nil
+		}
+
+		b, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return err
+		}
+		if len(b) != 0 {
+			return errors.Request.Messagef("form_params: cannot apply form_params to a non-empty body within a GET request").Status(http.StatusBadRequest)
+		}
+
+		req.Method = http.MethodPost
+		req.Header.Set("Content-Type", contentTypeValue)
+	}
+
+	if !strings.HasPrefix(strings.ToLower(req.Header.Get("Content-Type")), contentTypeValue) {
+		return errors.Request.Message("form_params: content type mismatch").Status(http.StatusBadRequest)
+	}
+	if req.Method != http.MethodPatch && req.Method != http.MethodPost && req.Method != http.MethodPut {
+		return errors.Request.Messagef("form_params: method missmatch: %s", req.Method).Status(http.StatusBadRequest)
+	}
+
+	values := req.PostForm
+	if values == nil {
+		values = make(url.Values)
+	}
+
+	if okDel {
+		val, attrDiags := attrDel.Expr.Value(ctx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+		for _, key := range seetie.ValueToStringSlice(val) {
+			values.Del(key)
+		}
+	}
+
+	if okSet {
+		val, attrDiags := attrSet.Expr.Value(ctx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+
+		for k, v := range seetie.ValueToMap(val) {
+			values[k] = toSlice(v)
+		}
+	}
+
+	if okAdd {
+		val, attrDiags := attrAdd.Expr.Value(ctx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+
+		for k, v := range seetie.ValueToMap(val) {
+			list := toSlice(v)
+			if _, okAdd = values[k]; !okAdd {
+				values[k] = list
+			} else {
+				values[k] = append(values[k], list...)
+			}
+		}
+	}
+
+	req.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(values.Encode())))
+	req.Header.Del("Content-Length")
+	req.ContentLength = -1
 
 	return nil
 }
