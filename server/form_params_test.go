@@ -37,19 +37,10 @@ func TestIntegration_FormParams(t *testing.T) {
 		},
 		{
 			file:    "01_couper.hcl",
-			method:  http.MethodPut,
+			method:  http.MethodDelete,
 			ct:      "application/x-www-form-urlencoded",
 			post:    "x=X+1&x=X%202&y=Y",
-			expArgs: `"Args":{"a":["A"],"b":["B"],"c":["C 1","C 2"],"d":["D"],"y":["Y"]}`,
-			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
-			expErr:  "",
-		},
-		{
-			file:    "01_couper.hcl",
-			method:  http.MethodPatch,
-			ct:      "application/x-www-form-urlencoded",
-			post:    "x=X+1&x=X%202&y=Y",
-			expArgs: `"Args":{"a":["A"],"b":["B"],"c":["C 1","C 2"],"d":["D"],"y":["Y"]}`,
+			expArgs: `"Args":{}`,
 			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
 			expErr:  "",
 		},
@@ -58,8 +49,8 @@ func TestIntegration_FormParams(t *testing.T) {
 			method:  http.MethodGet,
 			ct:      "text/plain",
 			post:    "",
-			expArgs: `"Args":{"a":["A"],"b":["B"],"c":["C 1","C 2"],"d":["D"]}`,
-			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
+			expArgs: `"Args":{}`,
+			expCT:   `"Content-Type":["text/plain"]`,
 			expErr:  "",
 		},
 		{
@@ -67,9 +58,9 @@ func TestIntegration_FormParams(t *testing.T) {
 			method:  http.MethodGet,
 			ct:      "text/plain",
 			post:    "not-supported",
-			expArgs: ``,
-			expCT:   ``,
-			expErr:  `request error: form_params: cannot apply form_params to a non-empty body within a GET request`,
+			expArgs: `"Args":{}`,
+			expCT:   `"Content-Type":["text/plain"]`,
+			expErr:  `form_params: method missmatch: GET`,
 		},
 		{
 			file:    "01_couper.hcl",
@@ -78,7 +69,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "",
 			expArgs: ``,
 			expCT:   ``,
-			expErr:  `request error: form_params: content type mismatch`,
+			expErr:  `form_params: content type mismatch: application/foo`,
 		},
 		{
 			file:    "01_couper.hcl",
@@ -87,7 +78,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "",
 			expArgs: ``,
 			expCT:   ``,
-			expErr:  `request error: form_params: method missmatch: DELETE`,
+			expErr:  `form_params: method missmatch: DELETE`,
 		},
 		{
 			file:    "02_couper.hcl",
@@ -126,20 +117,16 @@ func TestIntegration_FormParams(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			if tc.expErr != "" {
-				if res.StatusCode != http.StatusBadRequest {
-					t.Fatalf("%d: Expected status 400, given %d", i, res.StatusCode)
-				}
+			if res.StatusCode != http.StatusOK {
+				t.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
+			}
 
-				if hook.LastEntry().Message != tc.expErr {
-					t.Logf("%v", hook.LastEntry())
+			if tc.expErr != "" {
+				if hook.Entries[0].Message != tc.expErr {
+					t.Logf("%v", hook)
 					t.Errorf("%d: Expected message log: %s", i, tc.expErr)
 				}
 			} else {
-				if res.StatusCode != http.StatusOK {
-					t.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
-				}
-
 				resBytes, err := ioutil.ReadAll(res.Body)
 				helper.Must(err)
 

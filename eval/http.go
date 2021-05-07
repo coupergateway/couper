@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
@@ -84,7 +85,7 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 	return nil
 }
 
-func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) error {
+func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request, logger *logrus.Entry) error {
 	if req == nil {
 		return nil
 	}
@@ -172,7 +173,7 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 	}
 
-	err := getFormParams(httpCtx, req, attrs)
+	err := getFormParams(httpCtx, req, attrs, logger)
 	if err != nil {
 		return err
 	}
@@ -180,7 +181,7 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	return nil
 }
 
-func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hcl.Attribute) error {
+func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hcl.Attribute, logger *logrus.Entry) error {
 	const contentTypeValue = "application/x-www-form-urlencoded"
 
 	attrDel, okDel := attrs[attrDelFormParams]
@@ -191,28 +192,17 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		return nil
 	}
 
-	if req.Method == http.MethodGet {
-		if !okAdd && !okSet {
-			return nil
+	if req.Method != http.MethodPost {
+		if logger != nil {
+			logger.Warnf("form_params: method missmatch: %s", req.Method)
 		}
-
-		b, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			return err
-		}
-		if len(b) != 0 {
-			return errors.Request.Messagef("form_params: cannot apply form_params to a non-empty body within a GET request").Status(http.StatusBadRequest)
-		}
-
-		req.Method = http.MethodPost
-		req.Header.Set("Content-Type", contentTypeValue)
+		return nil
 	}
-
 	if !strings.HasPrefix(strings.ToLower(req.Header.Get("Content-Type")), contentTypeValue) {
-		return errors.Request.Message("form_params: content type mismatch").Status(http.StatusBadRequest)
-	}
-	if req.Method != http.MethodPatch && req.Method != http.MethodPost && req.Method != http.MethodPut {
-		return errors.Request.Messagef("form_params: method missmatch: %s", req.Method).Status(http.StatusBadRequest)
+		if logger != nil {
+			logger.Warnf("form_params: content type mismatch: %s", req.Header.Get("Content-Type"))
+		}
+		return nil
 	}
 
 	values := req.PostForm

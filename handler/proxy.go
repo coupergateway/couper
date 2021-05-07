@@ -24,6 +24,7 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 type Proxy struct {
 	backend      http.RoundTripper
 	context      hcl.Body
+	logger       *logrus.Entry
 	reverseProxy *httputil.ReverseProxy
 }
 
@@ -31,6 +32,7 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,
+		logger:  logger,
 	}
 	rp := &httputil.ReverseProxy{
 		Director: proxy.director,
@@ -47,7 +49,7 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
-	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
+	if err := eval.ApplyRequestContext(req.Context(), p.context, req, nil); err != nil {
 		return nil, err // TODO: log only
 	}
 

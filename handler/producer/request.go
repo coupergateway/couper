@@ -96,7 +96,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		}
 
 		*outreq = *outreq.WithContext(outCtx)
-		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
+		err = eval.ApplyRequestContext(outCtx, or.Context, outreq, nil)
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue

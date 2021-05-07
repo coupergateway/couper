@@ -80,7 +80,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
-	if ee := eval.ApplyRequestContext(req.Context(), e.opts.Context, req); ee != nil {
+	if ee := eval.ApplyRequestContext(req.Context(), e.opts.Context, req, log); ee != nil {
 		e.opts.Error.ServeError(ee).ServeHTTP(rw, req)
 		return
 	}
