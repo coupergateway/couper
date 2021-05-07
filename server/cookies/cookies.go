@@ -1,4 +1,4 @@
-package server
+package cookies
 
 import (
 	"net/http"
@@ -14,7 +14,7 @@ const (
 
 var regexSplitSetCookie = regexp.MustCompile(`([^;]+);?`)
 
-func stripSecureCookies(header http.Header) {
+func StripSecureCookies(header http.Header) {
 	list := header.Values(setCookieHeader)
 	header.Del(setCookieHeader)
 

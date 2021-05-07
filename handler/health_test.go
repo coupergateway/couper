@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/server"
+	"github.com/avenga/couper/server/wrapper"
 )
 
 func TestHealth_Match(t *testing.T) {
@@ -57,7 +57,7 @@ func TestHealth_ServeHTTP(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			h := handler.NewHealthCheck(tt.fields.path, tt.fields.shutdownCh)
 			rec := httptest.NewRecorder()
-			rw := server.NewRWWrapper(rec, tt.fields.gzip, "")
+			rw := wrapper.NewRWWrapper(rec, tt.fields.gzip, "")
 			if tt.wantStatus >= 500 {
 				close(tt.fields.shutdownCh)
 			}
