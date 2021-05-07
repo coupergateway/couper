@@ -303,7 +303,7 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 
 // updateFunctions recreates the listed functions with the current evaluation context.
 func (c *Context) updateFunctions() {
-	jwtfn := lib.NewJwtSignFunction(c.jwtSigningConfigs, c.eval)
+	jwtfn := lib.NewJwtSignFunction(c.eval, c.jwtSigningConfigs, Value)
 	c.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 

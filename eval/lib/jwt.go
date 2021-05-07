@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -20,8 +19,6 @@ import (
 )
 
 const FnJWTSign = "jwt_sign"
-
-var rsaParseError = &rsa.PrivateKey{}
 
 type JWTSigningConfig struct {
 	Claims             config.Claims
@@ -129,7 +126,8 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 	return c, nil
 }
 
-func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
+func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTSigningConfig,
+	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, hcl.Diagnostics)) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -166,11 +164,11 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 
 			// get claims from signing profile
 			if signingConfig.Claims != nil {
-				c, diags := seetie.ExpToMap(confCtx, signingConfig.Claims)
+				v, diags := evalFn(ctx, signingConfig.Claims)
 				if diags.HasErrors() {
 					return cty.StringVal(""), diags
 				}
-				defaultClaims = c
+				defaultClaims = seetie.ValueToMap(v)
 			}
 
 			for k, v := range defaultClaims {

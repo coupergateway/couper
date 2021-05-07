@@ -15,14 +15,6 @@ import (
 
 var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
 
-func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{}, hcl.Diagnostics) {
-	val, diags := exp.Value(ctx)
-	if SetSeverityLevel(diags).HasErrors() {
-		return nil, filterErrors(diags)
-	}
-	return ValueToMap(val), nil
-}
-
 func ValueToMap(val cty.Value) map[string]interface{} {
 	result := make(map[string]interface{})
 	if val.IsNull() || !val.IsKnown() {
