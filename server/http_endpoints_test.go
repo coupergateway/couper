@@ -386,7 +386,7 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 	client := newClient()
 
-	confPath := path.Join("testdata/endpoints/09_couper.hcl")
+	confPath := path.Join("testdata/endpoints/10_couper.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
