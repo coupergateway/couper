@@ -13,7 +13,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	couperErr "github.com/avenga/couper/errors"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -37,15 +37,16 @@ type OAuth2Credentials struct {
 }
 
 // NewOAuth2 creates a new <http.RoundTripper> object.
-func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
+func NewOAuth2(conf *config.OAuth2, memStore *cache.MemoryStore,
 	backend, next http.RoundTripper) (http.RoundTripper, error) {
-	if config.GrantType != "client_credentials" {
-		return nil, fmt.Errorf("the grant_type has to be set to 'client_credentials'")
+	const grantType = "client_credentials"
+	if conf.GrantType != grantType {
+		return nil, errors.Backend.Label(conf.BackendName).Message("grant_type not supported: " + conf.GrantType)
 	}
 
 	return &OAuth2{
 		backend:  backend,
-		config:   config,
+		config:   conf,
 		memStore: memStore,
 		next:     next,
 	}, nil
@@ -55,13 +56,13 @@ func NewOAuth2(config *config.OAuth2, memStore *cache.MemoryStore,
 func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 	credentials, err := oa.getCredentials(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
 	}
 
 	if data := oa.memStore.Get(credentials.StorageKey); data != "" {
-		token, err := oa.readAccessToken(data)
-		if err != nil {
-			return nil, err
+		token, terr := oa.readAccessToken(data)
+		if terr != nil {
+			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
 		}
 
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -80,17 +81,17 @@ func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if tokenRes.StatusCode != http.StatusOK {
-		return nil, couperErr.TokenRequestFailed
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request failed")
 	}
 
 	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request read error").With(err)
 	}
 
 	token, err := oa.updateAccessToken(string(tokenResBytes), credentials.StorageKey)
 	if err != nil {
-		return nil, err
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token update error").With(err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -131,7 +132,7 @@ func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) 
 	clientSecret := seetie.ValueToString(secretv)
 
 	if !idOK || !secretOK {
-		return nil, couperErr.MissingOAuth2Credentials
+		return nil, fmt.Errorf("missing credentials")
 	}
 
 	var scope, teAuthMethod *string
@@ -219,7 +220,7 @@ func (oa *OAuth2) readAccessToken(data string) (string, error) {
 	if t, ok := jData["access_token"].(string); ok {
 		token = t
 	} else {
-		return "", couperErr.MissingOAuth2AccessToken
+		return "", fmt.Errorf("missing access token")
 	}
 
 	return token, nil
@@ -237,7 +238,7 @@ func (oa *OAuth2) updateAccessToken(jsonString, key string) (string, error) {
 	if t, ok := jData["access_token"].(string); ok {
 		token = t
 	} else {
-		return "", couperErr.MissingOAuth2AccessToken
+		return "", fmt.Errorf("missing access token")
 	}
 
 	if oa.memStore != nil {

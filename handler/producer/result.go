@@ -49,7 +49,7 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 		if rp := recover(); rp != nil {
 			var err error
 			if rp == http.ErrAbortHandler {
-				err = errors.EndpointProxyBodyCopyFailed
+				err = errors.Proxy.Message("body copy failed")
 			} else {
 				err = &ResultPanic{
 					err:   fmt.Errorf("%v", rp),

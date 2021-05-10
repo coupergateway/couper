@@ -42,9 +42,9 @@ type HTTPServer struct {
 }
 
 // NewServerList creates a list of all configured HTTP server.
-func NewServerList(
-	cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings,
+func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
+
 	var list []*HTTPServer
 
 	for port, hosts := range srvConf {
@@ -60,8 +60,7 @@ func NewServerList(
 }
 
 // New creates a configured HTTP server.
-func New(
-	cmdCtx context.Context, evalCtx *eval.Context, log logrus.FieldLogger, settings *config.Settings,
+func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
 	var uidFn func() string
 	if settings.RequestIDFormat == "uuid4" {
@@ -89,7 +88,7 @@ func New(
 	}
 
 	httpSrv := &HTTPServer{
-		evalCtx:    evalCtx,
+		evalCtx:    evalCtx.Value(eval.ContextType).(*eval.Context),
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
@@ -189,7 +188,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
-		errors.DefaultHTML.ServeError(errors.InvalidRequest).ServeHTTP(rw, req)
+		errors.DefaultHTML.ServeError(errors.ClientRequest).ServeHTTP(rw, req)
 	}
 
 	mux, ok := s.muxers[host]
@@ -211,7 +210,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	clientReq := req.Clone(req.Context())
 
-	if err := s.setGetBody(h, clientReq); err != nil {
+	if err = s.setGetBody(h, clientReq); err != nil {
 		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(rw, req)
 		return
 	}

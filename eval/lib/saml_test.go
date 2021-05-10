@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/avenga/couper/eval"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
@@ -86,7 +88,9 @@ func Test_SamlSsoUrl(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ssoUrl, err := cf.Context.HCLContext().Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
+			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
+			ssoUrl, err := hclContext.Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
 			if err == nil && tt.wantErr {
 				t.Fatal("Error expected")
 			}

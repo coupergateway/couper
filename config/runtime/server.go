@@ -4,12 +4,11 @@ package runtime
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"path"
-	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -26,9 +25,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
-	hac "github.com/avenga/couper/handler/ac"
 	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
@@ -87,18 +84,18 @@ func GetHostPort(hostPort string) (string, int, error) {
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(
-	conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore,
+func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore,
 ) (ServerConfiguration, error) {
 	// confCtx is created to evaluate request / response related configuration errors on start.
 	noopReq, _ := http.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
-	confCtx := conf.Context.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
+	evalContext := conf.Context.Value(eval.ContextType).(*eval.Context)
+	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
-	accessControls, err := configureAccessControls(conf, confCtx)
-	if err != nil {
-		return nil, err
+	accessControls, acErr := configureAccessControls(conf, confCtx)
+	if acErr != nil {
+		return nil, acErr
 	}
 
 	var (
@@ -114,7 +111,7 @@ func NewServerConfiguration(
 			return nil, err
 		}
 
-		if err := validateHosts(srvConf.Name, srvConf.Hosts, isHostsMandatory); err != nil {
+		if err = validateHosts(srvConf.Name, srvConf.Hosts, isHostsMandatory); err != nil {
 			return nil, err
 		}
 
@@ -145,22 +142,27 @@ func NewServerConfiguration(
 				return nil, err
 			}
 
-			var h http.Handler
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
+			if cerr != nil {
+				return nil, cerr
+			}
+			h := middleware.NewCORSHandler(corsOptions, spaHandler)
 
-			corsOptions, err := middleware.NewCORSOptions(
-				getCORS(srvConf.CORS, srvConf.Spa.CORS),
-			)
+			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
+				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
+				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
+				&protectedOptions{
+					epOpts:       &handler.EndpointOptions{Error: serverOptions.ServerErrTpl},
+					handler:      h,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				},
+				log)
+
 			if err != nil {
 				return nil, err
-			} else if corsOptions != nil {
-				h = middleware.NewCORSHandler(corsOptions, spaHandler)
-			} else {
-				h = spaHandler
 			}
-
-			spaHandler = configureProtectedHandler(accessControls, serverOptions.ServerErrTpl,
-				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl), h)
 
 			for _, spaPath := range srvConf.Spa.Paths {
 				err = setRoutesFromHosts(serverConfiguration, portsHosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
@@ -171,27 +173,32 @@ func NewServerConfiguration(
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, err := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions)
-			if err != nil {
-				return nil, err
+			fileHandler, ferr := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions)
+			if ferr != nil {
+				return nil, ferr
 			}
 
-			var h http.Handler
-
-			corsOptions, err := middleware.NewCORSOptions(
-				getCORS(srvConf.CORS, srvConf.Files.CORS),
-			)
-			if err != nil {
-				return nil, err
-			} else if corsOptions != nil {
-				h = middleware.NewCORSHandler(corsOptions, fileHandler)
-			} else {
-				h = fileHandler
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
+			if cerr != nil {
+				return nil, cerr
 			}
 
-			protectedFileHandler := configureProtectedHandler(accessControls, serverOptions.FilesErrTpl,
+			h := middleware.NewCORSHandler(corsOptions, fileHandler)
+
+			protectedFileHandler, err := configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl), h)
+				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
+				&protectedOptions{
+					epOpts:       &handler.EndpointOptions{Error: serverOptions.FilesErrTpl},
+					handler:      h,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				}, log)
+
+			if err != nil {
+				return nil, err
+			}
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, protectedFileHandler, files)
 			if err != nil {
@@ -199,165 +206,66 @@ func NewServerConfiguration(
 			}
 		}
 
-		endpointsPatterns := make(map[string]bool)
+		endpointPatterns := make(map[string]bool)
 		endpointsMap, err := newEndpointMap(srvConf, serverOptions)
 		if err != nil {
 			return nil, err
 		}
 
 		for endpointConf, parentAPI := range endpointsMap {
-			var basePath string
-			var corsOptions *middleware.CORSOptions
-			var errTpl *errors.Template
-
 			if endpointConf.Pattern == "" { // could happen for internally registered endpoints
 				return nil, fmt.Errorf("endpoint path pattern required")
 			}
 
-			if endpointConf.ErrorFile != "" {
-				errTpl, err = errors.NewTemplateFromFile(endpointConf.ErrorFile, log)
-				if err != nil {
-					return nil, err
-				}
-			} else if parentAPI != nil {
-				errTpl = serverOptions.APIErrTpls[parentAPI]
-			} else {
-				errTpl = serverOptions.ServerErrTpl
-			}
+			basePath := serverOptions.SrvBasePath
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePaths[parentAPI]
-
-				cors, err := middleware.NewCORSOptions(
-					getCORS(srvConf.CORS, parentAPI.CORS),
-				)
-				if err != nil {
-					return nil, err
-				}
-				corsOptions = cors
-			} else {
-				basePath = serverOptions.SrvBasePath
-
-				cors, err := middleware.NewCORSOptions(
-					getCORS(nil, srvConf.CORS),
-				)
-				if err != nil {
-					return nil, err
-				}
-				corsOptions = cors
 			}
 
 			pattern := utils.JoinPath(basePath, endpointConf.Pattern)
-			unique, cleanPattern := isUnique(endpointsPatterns, pattern)
+			unique, cleanPattern := isUnique(endpointPatterns, pattern)
 			if !unique {
 				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpointConf.HCLBody().MissingItemRange().String(), pattern)
 			}
-			endpointsPatterns[cleanPattern] = true
+			endpointPatterns[cleanPattern] = true
 
-			// setACHandlerFn individual wrap for access_control configuration per endpoint
-			setACHandlerFn := func(protectedHandler http.Handler) {
-				accessControl := newAC(srvConf, parentAPI)
-
-				if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-					protectedHandler = errTpl.ServeError(errors.APIRouteNotFound)
-				}
-
-				endpointHandlers[endpointConf] = configureProtectedHandler(accessControls, errTpl, accessControl,
-					config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
-					protectedHandler)
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			if err != nil {
+				return nil, err
 			}
-
-			var response *producer.Response
-			if endpointConf.Response != nil {
-				response = &producer.Response{
-					Context: endpointConf.Response.Remain,
-				}
-			}
-
-			var proxies producer.Proxies
-			var requests producer.Requests
-			//var redirect producer.Redirect
-
-			for _, proxyConf := range endpointConf.Proxies {
-				backend, berr := newBackend(confCtx, proxyConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
-				if berr != nil {
-					return nil, berr
-				}
-				proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), log)
-				p := &producer.Proxy{
-					Name:      proxyConf.Name,
-					RoundTrip: proxyHandler,
-				}
-				proxies = append(proxies, p)
-			}
-
-			for _, requestConf := range endpointConf.Requests {
-				backend, berr := newBackend(confCtx, requestConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
-				if berr != nil {
-					return nil, berr
-				}
-
-				requests = append(requests, &producer.Request{
-					Backend: backend,
-					Context: requestConf.Remain,
-					Name:    requestConf.Name,
-				})
-			}
-
-			backendConf := *DefaultBackendConf
-			if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
-				return nil, diags
-			}
-			// TODO: redirect
-			if endpointConf.Response == nil && len(proxies)+len(requests) == 0 { // && redirect == nil
-				r := endpointConf.Remain.MissingItemRange()
-				m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
-				return nil, hcl.Diagnostics{&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  m,
-					Subject:  &r,
-				}}
+			epOpts, err := newEndpointOptions(
+				confCtx, endpointConf, parentAPI, serverOptions,
+				log, conf.Settings.NoProxyFromEnv, memStore,
+			)
+			if err != nil {
+				return nil, err
 			}
 
 			kind := endpoint
 			if parentAPI != nil {
 				kind = api
 			}
+			epOpts.LogHandlerKind = kind.String()
 
-			bodyLimit, err := parseBodyLimit(endpointConf.RequestBodyLimit)
+			epHandler := handler.NewEndpoint(epOpts, log)
+			protectedHandler := middleware.NewCORSHandler(corsOptions, epHandler)
+
+			accessControl := newAC(srvConf, parentAPI)
+			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
+				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+			}
+			endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, confCtx, accessControl,
+				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
+				&protectedOptions{
+					epOpts:       epOpts,
+					handler:      protectedHandler,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				}, log)
 			if err != nil {
-				r := endpointConf.Remain.MissingItemRange()
-				return nil, hcl.Diagnostics{&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "parsing endpoint request body limit: " + endpointConf.Pattern,
-					Subject:  &r,
-				}}
+				return nil, err
 			}
-
-			// TODO: determine request/backend_responses.*.body access in this context (all including backend) or for now:
-			bufferOpts := eval.MustBuffer(endpointConf.Remain)
-			if len(proxies)+len(requests) > 1 { // also buffer with more possible results
-				bufferOpts |= eval.BufferResponse
-			}
-
-			epOpts := &handler.EndpointOptions{
-				Context:        endpointConf.Remain,
-				Error:          errTpl,
-				LogHandlerKind: kind.String(),
-				LogPattern:     endpointConf.Pattern,
-				ReqBodyLimit:   bodyLimit,
-				ReqBufferOpts:  bufferOpts,
-				ServerOpts:     serverOptions,
-			}
-			epHandler := handler.NewEndpoint(epOpts, log, proxies, requests, response)
-
-			var h http.Handler
-			if corsOptions != nil {
-				h = middleware.NewCORSHandler(corsOptions, epHandler)
-			} else {
-				h = epHandler
-			}
-
-			setACHandlerFn(h)
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
@@ -369,8 +277,7 @@ func NewServerConfiguration(
 	return serverConfiguration, nil
 }
 
-func newBackend(
-	evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
+func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
 	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
@@ -467,110 +374,154 @@ func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, erro
 	return "", nil
 }
 
-func getCORS(parent, curr *config.CORS) *config.CORS {
-	if curr == nil {
-		return parent
+func whichCORS(parent *config.Server, this interface{}) *config.CORS {
+	val := reflect.ValueOf(this)
+	if val.IsZero() {
+		return parent.CORS
 	}
 
-	if curr.Disable {
+	corsValue := val.Elem().FieldByName("CORS")
+	corsData, ok := corsValue.Interface().(*config.CORS)
+	if !ok || corsData == nil {
+		return parent.CORS
+	}
+
+	if corsData.Disable {
 		return nil
 	}
 
-	return curr
+	return corsData
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ac.Map, error) {
-	accessControls := make(ac.Map)
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACDefinitions, error) {
+	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
-		for _, ba := range conf.Definitions.BasicAuth {
-			name, err := validateACName(accessControls, ba.Name, "basic_auth")
+		for _, baConf := range conf.Definitions.BasicAuth {
+			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
 				return nil, err
 			}
 
-			basicAuth, err := ac.NewBasicAuth(name, ba.User, ba.Pass, ba.File, ba.Realm)
-			if err != nil {
+			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
 				return nil, err
 			}
-
-			accessControls[name] = ac.ValidateFunc(basicAuth.Validate)
 		}
 
-		for _, jwt := range conf.Definitions.JWT {
-			name, err := validateACName(accessControls, jwt.Name, "jwt")
-			if err != nil {
-				return nil, err
-			}
-
-			jwtSource := ac.Unknown
-			var jwtKey string
-			if jwt.Cookie != "" {
-				jwtSource = ac.Cookie
-				jwtKey = jwt.Cookie
-			} else if jwt.Header != "" {
-				jwtSource = ac.Header
-				jwtKey = jwt.Header
-			}
-			var key []byte
-			if jwt.KeyFile != "" {
-				p, err := filepath.Abs(jwt.KeyFile)
-				if err != nil {
-					return nil, err
-				}
-				content, err := ioutil.ReadFile(p)
-				if err != nil {
-					return nil, err
-				}
-				key = content
-			} else if jwt.Key != "" {
-				key = []byte(jwt.Key)
-			}
-
+		for _, jwtConf := range conf.Definitions.JWT {
 			var claims map[string]interface{}
-			if jwt.Claims != nil {
-				c, diags := seetie.ExpToMap(confCtx, jwt.Claims)
+			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
+				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
 				if diags.HasErrors() {
 					return nil, diags
 				}
 				claims = c
 			}
-			j, err := ac.NewJWT(jwt.SignatureAlgorithm, name, claims, jwt.ClaimsRequired, jwtSource, jwtKey, key)
+			jwt, err := ac.NewJWT(&ac.JWTOptions{
+				Algorithm:      jwtConf.SignatureAlgorithm,
+				Claims:         claims,
+				ClaimsRequired: jwtConf.ClaimsRequired,
+				Key:            jwtConf.Key,
+				KeyFile:        jwtConf.KeyFile,
+				Name:           jwtConf.Name,
+				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+			})
 			if err != nil {
-				return nil, fmt.Errorf("loading jwt %q definition failed: %s", name, err)
+				return nil, fmt.Errorf("loading jwt definition failed: %s", err)
 			}
 
-			accessControls[name] = ac.ValidateFunc(j.Validate)
+			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+				return nil, err
+			}
 		}
 
 		for _, saml := range conf.Definitions.SAML {
-			name, err := validateACName(accessControls, saml.Name, "saml")
+			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
+				return nil, fmt.Errorf("loading saml definition failed: %s", err)
+			}
+
+			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
 				return nil, err
 			}
-
-			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
-			if err != nil {
-				return nil, fmt.Errorf("loading saml %q definition failed: %s", name, err)
-			}
-
-			accessControls[name] = ac.ValidateFunc(s.Validate)
 		}
 	}
 
 	return accessControls, nil
 }
 
-func configureProtectedHandler(m ac.Map, errTpl *errors.Template, parentAC, handlerAC config.AccessControl, h http.Handler) http.Handler {
-	var acList ac.List
+type protectedOptions struct {
+	epOpts       *handler.EndpointOptions
+	handler      http.Handler
+	proxyFromEnv bool
+	memStore     *cache.MemoryStore
+	srvOpts      *server.Options
+}
+
+func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
+	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
+	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
-		m.MustExist(acName)
-		acList = append(acList, ac.ListItem{Func: m[acName], Name: acName})
+		if e := m.MustExist(acName); e != nil {
+			return nil, e
+		}
+		list = append(
+			list,
+			ac.NewItem(acName, m[acName].Control, newErrorHandler(ctx, opts, log, m, acName)),
+		)
 	}
-	if len(acList) > 0 {
-		return hac.NewAccessControl(h, errTpl, acList)
+
+	if len(list) > 0 {
+		return handler.NewAccessControl(opts.handler, list), nil
 	}
-	return h
+	return opts.handler, nil
+}
+
+func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
+	defs ACDefinitions, references ...string) http.Handler {
+	kindsHandler := map[string]http.Handler{}
+	for _, ref := range references {
+		for _, h := range defs[ref].ErrorHandler {
+			for _, k := range h.Kinds {
+				if _, exist := kindsHandler[k]; exist {
+					log.Fatal("error type handler exists already: " + k)
+				}
+
+				contextBody := h.HCLBody()
+
+				epConf := &config.Endpoint{
+					Remain:    contextBody,
+					Proxies:   h.Proxies,
+					ErrorFile: h.ErrorFile,
+					Requests:  h.Requests,
+					Response:  h.Response,
+				}
+
+				emptyBody := hcl.EmptyBody()
+				if epConf.Response == nil { // Set dummy resp to skip related requirement checks, allowed for error_handler.
+					epConf.Response = &config.Response{Remain: emptyBody}
+				}
+
+				epOpts, _ := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
+				if epOpts.Error == nil || h.ErrorFile == "" {
+					epOpts.Error = opts.epOpts.Error
+				}
+
+				epOpts.Error = epOpts.Error.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
+					beresp := &http.Response{Header: rw.Header()}
+					_ = eval.ApplyResponseContext(r.Context(), contextBody, beresp)
+				})
+
+				if epOpts.Response != nil && reflect.DeepEqual(epOpts.Response.Context, emptyBody) {
+					epOpts.Response = nil
+				}
+
+				epOpts.LogHandlerKind = "error_" + k
+				kindsHandler[k] = handler.NewEndpoint(epOpts, log)
+			}
+		}
+	}
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error)
 }
 
 func setRoutesFromHosts(
@@ -638,50 +589,6 @@ func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
 	}
 
 	return portsHosts, nil
-}
-
-func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endpointMap, error) {
-	endpoints := make(endpointMap)
-
-	apiBasePaths := make(map[string]struct{})
-
-	for _, api := range srvConf.APIs {
-		basePath := serverOptions.APIBasePaths[api]
-
-		var filesBasePath, spaBasePath string
-		if serverOptions.FilesBasePath != "" {
-			filesBasePath = serverOptions.FilesBasePath
-		}
-		if serverOptions.SPABasePath != "" {
-			spaBasePath = serverOptions.SPABasePath
-		}
-
-		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
-
-		if _, ok := apiBasePaths[basePath]; ok {
-			return nil, fmt.Errorf("API paths must be unique")
-		}
-
-		apiBasePaths[basePath] = struct{}{}
-
-		for _, endpoint := range api.Endpoints {
-			endpoints[endpoint] = api
-
-			if endpoint.Pattern == "/**" {
-				isAPIBasePathUniqueToFilesAndSPA = false
-			}
-		}
-
-		if isAPIBasePathUniqueToFilesAndSPA && len(newAC(srvConf, api).List()) > 0 {
-			endpoints[api.CatchAllEndpoint] = api
-		}
-	}
-
-	for _, endpoint := range srvConf.Endpoints {
-		endpoints[endpoint] = nil
-	}
-
-	return endpoints, nil
 }
 
 // parseDuration sets the target value if the given duration string is not empty.

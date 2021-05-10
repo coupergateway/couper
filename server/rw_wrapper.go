@@ -10,7 +10,6 @@ import (
 	"net/textproto"
 	"strconv"
 
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/logging"
 )
@@ -167,8 +166,4 @@ func (w *RWWrapper) StatusCode() int {
 
 func (w *RWWrapper) WrittenBytes() int {
 	return w.bytesWritten
-}
-
-func (w *RWWrapper) ErrorHeader() string {
-	return w.Header().Get(errors.HeaderErrorCode)
 }
