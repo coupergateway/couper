@@ -1,4 +1,4 @@
-package cookies
+package server
 
 import (
 	"net/http"
@@ -17,7 +17,7 @@ func TestCookies_StripSecureCookies(t *testing.T) {
 	header.Add(setCookieHeader, "name=secure; Path=path; HttpOnly")
 	header.Add(setCookieHeader, "name=Secure; Path=path; HttpOnly;")
 
-	StripSecureCookies(header)
+	stripSecureCookies(header)
 
 	exp := http.Header{}
 	exp.Add(setCookieHeader, "name=1; HttpOnly")

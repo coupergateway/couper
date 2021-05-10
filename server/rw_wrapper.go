@@ -1,4 +1,4 @@
-package wrapper
+package server
 
 import (
 	"bufio"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/cookies"
 )
 
 var (
@@ -26,7 +25,6 @@ var (
 type RWWrapper struct {
 	rw            http.ResponseWriter
 	gz            *gzip.Writer
-	disableGZ     bool
 	headerBuffer  *bytes.Buffer
 	httpStatus    []byte
 	httpLineDelim []byte
@@ -140,25 +138,17 @@ func (w *RWWrapper) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 }
 
-func (w *RWWrapper) DisableCompression() {
-	w.disableGZ = true
-	w.gz = nil
-}
-
 func (w *RWWrapper) configureHeader() {
 	w.rw.Header().Set("Server", "couper.io")
-
-	if !w.disableGZ {
-		w.rw.Header().Add(transport.VaryHeader, transport.AcceptEncodingHeader)
-	}
+	w.rw.Header().Add(transport.VaryHeader, transport.AcceptEncodingHeader)
 
 	if w.gz != nil {
 		w.rw.Header().Del(transport.ContentLengthHeader)
 		w.rw.Header().Set(transport.ContentEncodingHeader, transport.GzipName)
 	}
 
-	if w.secureCookies == cookies.SecureCookiesStrip {
-		cookies.StripSecureCookies(w.rw.Header())
+	if w.secureCookies == SecureCookiesStrip {
+		stripSecureCookies(w.rw.Header())
 	}
 }
 

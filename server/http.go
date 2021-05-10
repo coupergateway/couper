@@ -21,7 +21,6 @@ import (
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/wrapper"
 )
 
 type muxers map[string]*Mux
@@ -201,7 +200,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	h := mux.FindHandler(req)
-	w := wrapper.NewRWWrapper(rw,
+	w := NewRWWrapper(rw,
 		transport.ReClientSupportsGZ.MatchString(
 			req.Header.Get(transport.AcceptEncodingHeader),
 		),
