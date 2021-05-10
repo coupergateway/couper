@@ -12,6 +12,7 @@ import (
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/server"
+	"github.com/avenga/couper/server/cookies"
 	"github.com/sirupsen/logrus"
 )
 
@@ -55,7 +56,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 
 	if config.Settings.SecureCookies != "" &&
-		config.Settings.SecureCookies != server.SecureCookiesStrip {
+		config.Settings.SecureCookies != cookies.SecureCookiesStrip {
 		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
 	}
 
