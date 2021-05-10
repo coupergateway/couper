@@ -1,10 +1,7 @@
 package handler
 
 import (
-	"bytes"
 	"context"
-	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"runtime/debug"
@@ -19,7 +16,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
-	"github.com/avenga/couper/server/wrapper"
 )
 
 var _ http.Handler = &Endpoint{}
@@ -167,27 +163,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	case ctxErr := <-req.Context().Done():
 		log.Errorf("endpoint write: %v", ctxErr)
 	default:
-	}
-
-	if clientres.Body != nil {
-		b, err := ioutil.ReadAll(clientres.Body)
-		if err != nil {
-			log.Error(err)
-		}
-
-		if len(b) > 0 {
-			clientres.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
-		}
-
-		if len(b) < 60 {
-			if w, ok := rw.(*wrapper.RWWrapper); ok {
-				w.DisableCompression()
-			}
-		}
-	} else {
-		if w, ok := rw.(*wrapper.RWWrapper); ok {
-			w.DisableCompression()
-		}
 	}
 
 	if err = clientres.Write(rw); err != nil {
