@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/sirupsen/logrus"
 )
 
 type Proxy struct {
@@ -17,7 +18,7 @@ type Proxy struct {
 
 type Proxies []*Proxy
 
-func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results chan<- *Result) {
+func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results chan<- *Result, log *logrus.Entry) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 

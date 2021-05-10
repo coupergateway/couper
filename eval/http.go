@@ -193,15 +193,11 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	}
 
 	if req.Method != http.MethodPost {
-		if logger != nil {
-			logger.Warnf("form_params: method missmatch: %s", req.Method)
-		}
+		logger.Warnf("form_params: method missmatch: %s", req.Method)
 		return nil
 	}
 	if !strings.HasPrefix(strings.ToLower(req.Header.Get("Content-Type")), contentTypeValue) {
-		if logger != nil {
-			logger.Warnf("form_params: content type mismatch: %s", req.Header.Get("Content-Type"))
-		}
+		logger.Warnf("form_params: content type mismatch: %s", req.Header.Get("Content-Type"))
 		return nil
 	}
 

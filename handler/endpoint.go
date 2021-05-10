@@ -89,8 +89,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	requestResults := make(producer.Results)
 
 	// go for it due to chan write on error
-	go e.opts.Proxies.Produce(subCtx, req, proxyResults)
-	go e.opts.Requests.Produce(subCtx, req, requestResults)
+	go e.opts.Proxies.Produce(subCtx, req, proxyResults, log)
+	go e.opts.Requests.Produce(subCtx, req, requestResults, log)
 
 	beresps := make(producer.ResultMap)
 	// TODO: read parallel, proxy first for now

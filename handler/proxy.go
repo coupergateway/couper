@@ -49,7 +49,7 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
-	if err := eval.ApplyRequestContext(req.Context(), p.context, req, nil); err != nil {
+	if err := eval.ApplyRequestContext(req.Context(), p.context, req, p.logger); err != nil {
 		return nil, err // TODO: log only
 	}
 
