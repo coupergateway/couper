@@ -42,7 +42,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "x=X+1&x=X%202&y=Y",
 			expArgs: `"Args":{}`,
 			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
-			expErr:  "",
+			expErr:  "form_params: method mismatch: DELETE",
 		},
 		{
 			file:    "01_couper.hcl",
@@ -51,7 +51,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "",
 			expArgs: `"Args":{}`,
 			expCT:   `"Content-Type":["text/plain"]`,
-			expErr:  "",
+			expErr:  "form_params: method mismatch: GET",
 		},
 		{
 			file:    "01_couper.hcl",
@@ -87,7 +87,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "",
 			expArgs: `"Args":{}`,
 			expCT:   `"Content-Type":["text/plain"]`,
-			expErr:  "",
+			expErr:  "form_params: method mismatch: GET",
 		},
 		{
 			file:    "03_couper.hcl",
@@ -139,24 +139,22 @@ func TestIntegration_FormParams(t *testing.T) {
 				t.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
 			}
 
-			if tc.expErr != "" {
-				if hook.Entries[0].Message != tc.expErr {
-					t.Logf("%v", hook)
-					t.Errorf("%d: Expected message log: %s", i, tc.expErr)
-				}
-			} else {
-				resBytes, err := ioutil.ReadAll(res.Body)
-				helper.Must(err)
+			if hook.Entries[0].Message != tc.expErr {
+				t.Logf("%v", hook)
+				t.Errorf("%d: Expected message log: %s", i, tc.expErr)
+			}
 
-				_ = res.Body.Close()
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
 
-				if !bytes.Contains(resBytes, []byte(tc.expArgs)) {
-					t.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expArgs, resBytes)
-				}
+			_ = res.Body.Close()
 
-				if !bytes.Contains(resBytes, []byte(tc.expCT)) {
-					t.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expCT, resBytes)
-				}
+			if !bytes.Contains(resBytes, []byte(tc.expArgs)) {
+				t.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expArgs, resBytes)
+			}
+
+			if !bytes.Contains(resBytes, []byte(tc.expCT)) {
+				t.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expCT, resBytes)
 			}
 		})
 	}
