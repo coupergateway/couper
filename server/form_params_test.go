@@ -60,7 +60,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "not-supported",
 			expArgs: `"Args":{}`,
 			expCT:   `"Content-Type":["text/plain"]`,
-			expErr:  `form_params: method missmatch: GET`,
+			expErr:  `form_params: method mismatch: GET`,
 		},
 		{
 			file:    "01_couper.hcl",
@@ -78,7 +78,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			post:    "",
 			expArgs: ``,
 			expCT:   ``,
-			expErr:  `form_params: method missmatch: DELETE`,
+			expErr:  `form_params: method mismatch: DELETE`,
 		},
 		{
 			file:    "02_couper.hcl",
