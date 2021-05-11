@@ -764,13 +764,8 @@ executed ordered as follows:
 
 All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
-The `*_form_params` apply only if the client request has one of `PATCH`, `POST` or `PUT`
-method with the `Content-Type: application/x-www-form-urlencoded` HTTP header field.
-Additionally, the `*_form_params` apply to the `GET` method, but only if the client
-request body is empty. If the `*_form_params` apply to a `GET` method, Couper changes
-the method to `POST` and sets a `Content-Type: application/x-www-form-urlencoded` HTTP
-header field for the backend request. The `remove_form_params` has no effect for `GET`
-requests.
+The `*_form_params` apply only for client request with the `POST` method and
+the `Content-Type: application/x-www-form-urlencoded` HTTP header field.
 
 ```hcl
 server "my_project" {
