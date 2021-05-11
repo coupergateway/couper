@@ -46,6 +46,15 @@ func TestIntegration_FormParams(t *testing.T) {
 		},
 		{
 			file:    "01_couper.hcl",
+			method:  http.MethodPut,
+			ct:      "application/x-www-form-urlencoded",
+			post:    "x=X+1&x=X%202&y=Y",
+			expArgs: `"Args":{"x":["X 1","X 2"],"y":["Y"]}`,
+			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
+			expErr:  "form_params: method mismatch: PUT",
+		},
+		{
+			file:    "01_couper.hcl",
 			method:  http.MethodGet,
 			ct:      "text/plain",
 			post:    "",
@@ -79,6 +88,15 @@ func TestIntegration_FormParams(t *testing.T) {
 			expArgs: ``,
 			expCT:   ``,
 			expErr:  `form_params: method mismatch: DELETE`,
+		},
+		{
+			file:    "01_couper.hcl",
+			method:  http.MethodPut,
+			ct:      "application/x-www-form-urlencoded",
+			post:    "",
+			expArgs: ``,
+			expCT:   ``,
+			expErr:  `form_params: method mismatch: PUT`,
 		},
 		{
 			file:    "03_couper.hcl",
