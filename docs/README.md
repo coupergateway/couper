@@ -764,7 +764,7 @@ executed ordered as follows:
 
 All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
-The `*_form_params` apply only for client request with the `POST` method and
+The `*_form_params` apply only to requests with the `POST` method and
 the `Content-Type: application/x-www-form-urlencoded` HTTP header field.
 
 ```hcl
