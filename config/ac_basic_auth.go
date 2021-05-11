@@ -7,6 +7,8 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
+var _ Body = &BasicAuth{}
+
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
 	AccessControlSetter
