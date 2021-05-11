@@ -100,10 +100,10 @@ func TestIntegration_FormParams(t *testing.T) {
 		},
 		{
 			file:    "03_couper.hcl",
-			method:  http.MethodPost,
+			method:  http.MethodGet,
 			ct:      "application/x-www-form-urlencoded",
 			post:    "x=X+1&x=X%202&y=Y",
-			expArgs: `"Args":{"x":["X 1","X 2"],"y":["Y"]}`,
+			expArgs: `"Args":{}`,
 			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
 			expErr:  "",
 		},
