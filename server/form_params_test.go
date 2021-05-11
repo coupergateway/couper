@@ -99,7 +99,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			expErr:  `form_params: method mismatch: PUT`,
 		},
 		{
-			file:    "03_couper.hcl",
+			file:    "02_couper.hcl",
 			method:  http.MethodGet,
 			ct:      "application/x-www-form-urlencoded",
 			post:    "x=X+1&x=X%202&y=Y",
@@ -108,7 +108,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			expErr:  "",
 		},
 		{
-			file:    "04_couper.hcl",
+			file:    "03_couper.hcl",
 			method:  http.MethodPost,
 			ct:      "application/x-www-form-urlencoded",
 			post:    "x=X+1&x=X%202&y=Y",
@@ -117,7 +117,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			expErr:  "",
 		},
 		{
-			file:    "05_couper.hcl",
+			file:    "04_couper.hcl",
 			method:  http.MethodPost,
 			ct:      "application/x-www-form-urlencoded",
 			post:    "x=X+1&x=X%202&y=Y",

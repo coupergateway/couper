@@ -1,11 +1,11 @@
-server "form-params-in-proxy" {
+server "form-params-in-backend" {
   error_file = "./../server_error.html"
 
   endpoint "/" {
     proxy {
-      backend = "anything"
-
-      remove_form_params = ["x"]
+      backend "anything" {
+        remove_form_params = ["x"]
+      }
     }
   }
 }
