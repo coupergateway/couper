@@ -98,6 +98,24 @@ func TestIntegration_FormParams(t *testing.T) {
 			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
 			expErr:  "",
 		},
+		{
+			file:    "04_couper.hcl",
+			method:  http.MethodPost,
+			ct:      "application/x-www-form-urlencoded",
+			post:    "x=X+1&x=X%202&y=Y",
+			expArgs: `"Args":{"y":["Y"]}`,
+			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
+			expErr:  "",
+		},
+		{
+			file:    "05_couper.hcl",
+			method:  http.MethodPost,
+			ct:      "application/x-www-form-urlencoded",
+			post:    "x=X+1&x=X%202&y=Y",
+			expArgs: `"Args":{"y":["Y"]}`,
+			expCT:   `"Content-Type":["application/x-www-form-urlencoded"]`,
+			expErr:  "",
+		},
 	} {
 		t.Run("_"+tc.post, func(subT *testing.T) {
 			helper := test.New(subT)
