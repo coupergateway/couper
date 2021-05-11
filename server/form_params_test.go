@@ -81,15 +81,6 @@ func TestIntegration_FormParams(t *testing.T) {
 			expErr:  `form_params: method mismatch: DELETE`,
 		},
 		{
-			file:    "02_couper.hcl",
-			method:  http.MethodGet,
-			ct:      "text/plain",
-			post:    "",
-			expArgs: `"Args":{}`,
-			expCT:   `"Content-Type":["text/plain"]`,
-			expErr:  "form_params: method mismatch: GET",
-		},
-		{
 			file:    "03_couper.hcl",
 			method:  http.MethodPost,
 			ct:      "application/x-www-form-urlencoded",
