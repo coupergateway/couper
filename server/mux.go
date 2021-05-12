@@ -156,12 +156,8 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 				return fileHandler
 			}
 
-			if isConfigured(m.opts.ServerOptions.FilesBasePath) && matchesPath(m.opts.ServerOptions.FilesBasePath, req.URL.Path) {
-				return m.opts.ServerOptions.FilesErrTpl.ServeError(errors.RouteNotFound)
-			}
-
 			// Fallback
-			return m.opts.ServerOptions.ServerErrTpl.ServeError(errors.Configuration)
+			return m.opts.ServerOptions.ServerErrTpl.ServeError(errors.RouteNotFound)
 		}
 	}
 

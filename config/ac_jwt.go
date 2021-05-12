@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-var _ Body = &SAML{}
+var _ Body = &JWT{}
 
 // Claims represents the <Claims> object.
 type Claims hcl.Expression
