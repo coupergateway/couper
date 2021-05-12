@@ -17,7 +17,7 @@ type OpenAPIOptions struct {
 	ignoreRequestViolations  bool
 	ignoreResponseViolations bool
 	filterOptions            *openapi3filter.Options
-	router                   *openapi3filter.Router
+	swagger                  *openapi3.Swagger
 }
 
 // NewOpenAPIOptions takes a list of openAPI configuration due to merging configurations.
@@ -50,11 +50,6 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 		return nil, fmt.Errorf("error loading openapi file: %w", err)
 	}
 
-	router := openapi3filter.NewRouter()
-	if err = router.AddSwagger(swagger); err != nil {
-		return nil, err
-	}
-
 	// Always buffer if openAPI is active. Request buffering is handled by openapifilter too.
 	// Anyway adding request buffer option to let Couper check the body limits.
 	bufferBodies := eval.BufferRequest | eval.BufferResponse
@@ -68,6 +63,6 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 		},
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,
-		router:                   router,
+		swagger:                  swagger,
 	}, nil
 }

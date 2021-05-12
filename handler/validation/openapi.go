@@ -9,6 +9,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 
 	"github.com/avenga/couper/eval"
@@ -28,8 +29,22 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
+func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
+	sw := *s
+	// this is not a deep clone; we only want to add servers
+	sw.Servers = s.Servers[:]
+	return &sw
+}
+
 func (v *OpenAPI) ValidateRequest(req *http.Request) error {
-	route, pathParams, err := v.options.router.FindRoute(req.Method, req.URL)
+	clonedSwagger := cloneSwagger(v.options.swagger)
+
+	router := openapi3filter.NewRouter()
+	if err := router.AddSwagger(clonedSwagger); err != nil {
+		return err
+	}
+
+	route, pathParams, err := router.FindRoute(req.Method, req.URL)
 	if err != nil {
 		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
