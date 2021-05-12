@@ -5,8 +5,11 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ Inline = &Response{}
-var ResponseInlineSchema = Response{}.Schema(true)
+var (
+	_ Inline = &Response{}
+
+	ResponseInlineSchema = Response{}.Schema(true)
+)
 
 // Response represents the <Response> object.
 type Response struct {
