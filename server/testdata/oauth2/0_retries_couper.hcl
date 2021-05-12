@@ -16,8 +16,6 @@ server "api" {
             client_secret  = "pass word"
             grant_type     = "client_credentials"
             retries        = 0
-            scope          = "scope1 scope2"
-            token_endpoint_auth_method = "client_secret_post"
           }
         }
       }
@@ -34,8 +32,6 @@ server "api" {
             client_secret  = "pass word"
             grant_type     = "client_credentials"
             retries        = 0
-            scope          = "scope1 scope2"
-            token_endpoint_auth_method = "client_secret_post"
             backend {
               origin = "${request.headers.x-token-endpoint}"
               path = "/oauth2"
