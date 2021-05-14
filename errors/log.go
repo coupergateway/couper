@@ -11,7 +11,7 @@ var _ logrus.Hook = &LogHook{}
 type LogHook struct{}
 
 func (l *LogHook) Levels() []logrus.Level {
-	return []logrus.Level{logrus.ErrorLevel}
+	return []logrus.Level{logrus.ErrorLevel, logrus.WarnLevel}
 }
 
 func (l *LogHook) Fire(entry *logrus.Entry) error {

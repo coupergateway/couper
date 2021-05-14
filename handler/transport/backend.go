@@ -73,9 +73,12 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	err := eval.ApplyRequestContext(req.Context(), b.context, req, b.upstreamLog.LogEntry())
-	if err != nil {
-		return nil, err
+	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {
+		if errors.Equals(err, errors.Evaluation) {
+			b.upstreamLog.LogEntry().WithError(err).Warn()
+		} else {
+			return nil, err
+		}
 	}
 
 	tc, err := b.evalTransport(req)

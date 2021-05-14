@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 )
@@ -49,8 +50,12 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
-	if err := eval.ApplyRequestContext(req.Context(), p.context, req, p.logger); err != nil {
-		return nil, err // TODO: log only
+	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
+		if errors.Equals(err, errors.Evaluation) {
+			p.logger.WithError(err).Warn()
+		} else {
+			return nil, err
+		}
 	}
 
 	url, err := eval.GetContextAttribute(p.context, req.Context(), "url")
