@@ -169,3 +169,52 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 		}
 	})
 }
+
+func TestOpenAPIValidator_NonCanonicalServerURL(t *testing.T) {
+	helper := test.New(t)
+
+	log, hook := logrustest.NewNullLogger()
+	logger := log.WithContext(context.Background())
+	beConf := &config.Backend{
+		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
+			"origin": &hcl.Attribute{
+				Name: "origin",
+				Expr: hcltest.MockExprLiteral(cty.StringVal("https://httpbin.org")),
+			},
+		}}),
+		OpenAPI: &config.OpenAPI{
+			File: filepath.Join("testdata/backend_03_openapi.yaml"),
+		},
+	}
+	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	helper.Must(err)
+
+	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+		OpenAPI: openAPI,
+	}, logger)
+
+	tests := []struct {
+		name, url string
+	}{
+		{"http", "http://httpbin.org/anything"},
+		{"https", "https://httpbin.org/anything"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
+
+			hook.Reset()
+			_, err := backend.RoundTrip(req)
+			if err != nil {
+				helper.Must(err)
+			}
+
+			if t.Failed() {
+				for _, entry := range hook.Entries {
+					t.Log(entry.String())
+				}
+			}
+		})
+	}
+}
