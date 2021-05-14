@@ -1,0 +1,13 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test: non-canonical server URL'
+  version: 'v1.2.3'
+servers:
+  - url: https://httpbin.org/
+  - url: http://httpbin.org/
+paths:
+  /anything:
+    get:
+      responses:
+        200:
+          description: OK
