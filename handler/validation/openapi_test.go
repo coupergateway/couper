@@ -129,3 +129,43 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
+	helper := test.New(t)
+
+	log, hook := logrustest.NewNullLogger()
+	logger := log.WithContext(context.Background())
+	beConf := &config.Backend{
+		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
+			"origin": &hcl.Attribute{
+				Name: "origin",
+				Expr: hcltest.MockExprLiteral(cty.StringVal("https://httpbin.org")),
+			},
+		}}),
+		OpenAPI: &config.OpenAPI{
+			File: filepath.Join("testdata/backend_02_openapi.yaml"),
+		},
+	}
+	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	helper.Must(err)
+
+	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+		OpenAPI: openAPI,
+	}, logger)
+
+	t.Run("relative server URL", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "https://httpbin.org/anything", nil)
+
+		hook.Reset()
+		_, err := backend.RoundTrip(req)
+		if err != nil {
+			helper.Must(err)
+		}
+
+		if t.Failed() {
+			for _, entry := range hook.Entries {
+				t.Log(entry.String())
+			}
+		}
+	})
+}

@@ -6,6 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"sync"
 
 	"github.com/avenga/couper/config/request"
 
@@ -14,6 +16,8 @@ import (
 
 	"github.com/avenga/couper/eval"
 )
+
+var swaggers sync.Map
 
 type OpenAPI struct {
 	options                *OpenAPIOptions
@@ -29,6 +33,37 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
+func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, error) {
+	swagger, exists := swaggers.Load(key)
+	if !exists {
+		clonedSwagger := cloneSwagger(v.options.swagger)
+
+		var newServers []string
+		for _, s := range clonedSwagger.Servers {
+			su, err := url.Parse(s.URL)
+			if err != nil {
+				return nil, err
+			}
+			if !su.IsAbs() {
+				newServers = append(newServers, origin+s.URL)
+			}
+		}
+		for _, ns := range newServers {
+			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
+		}
+
+		swaggers.Store(key, clonedSwagger)
+		swagger = clonedSwagger
+	}
+
+	if s, ok := swagger.(*openapi3.Swagger); ok {
+		return s, nil
+	}
+
+	err := fmt.Errorf("request validation: swagger wrong type: %v", swagger)
+	return nil, err
+}
+
 func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
 	sw := *s
 	// this is not a deep clone; we only want to add servers
@@ -36,11 +71,20 @@ func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
 	return &sw
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request) error {
-	clonedSwagger := cloneSwagger(v.options.swagger)
+func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
+	swagger, err := v.getModifiedSwagger(key, origin)
+	if err != nil {
+		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
+			ctx.errors = append(ctx.errors, err)
+		}
+		if !v.options.ignoreRequestViolations {
+			return err
+		}
+		return nil
+	}
 
 	router := openapi3filter.NewRouter()
-	if err := router.AddSwagger(clonedSwagger); err != nil {
+	if err = router.AddSwagger(swagger); err != nil {
 		return err
 	}
 
