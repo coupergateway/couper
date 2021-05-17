@@ -758,6 +758,25 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_BackendLogPath(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/api/07_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/?query#fragment", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	if p := hook.Entries[0].Data["request"].(logging.Fields)["path"]; p != "/new/path/abc" {
+		t.Errorf("Unexpected path given: %s", p)
+	}
+}
+
 func TestHTTPServer_RequestHeaders(t *testing.T) {
 	client := newClient()
 
