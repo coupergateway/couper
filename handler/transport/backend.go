@@ -83,8 +83,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	t := Get(tc)
-
 	deadlineErr := b.withTimeout(req)
 
 	req.URL.Host = tc.Origin
@@ -105,13 +103,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del(AcceptEncodingHeader)
 	}
 
-	if b.openAPIValidator != nil {
-		// FIXME tc.Origin should be an origin, not just a host!
-		if err = b.openAPIValidator.ValidateRequest(req, tc.hash(), tc.Scheme+"://"+tc.Origin); err != nil {
-			return nil, errors.BackendValidation.Label(b.name).Kind("backend_request_validation").With(err)
-		}
-	}
-
 	if xff, ok := req.Context().Value(request.XFF).(string); ok {
 		if xff != "" {
 			req.Header.Set("X-Forwarded-For", xff)
@@ -129,23 +120,15 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := context.WithValue(req.Context(), request.BackendURL, req.URL.String())
 	*req = *req.WithContext(ctx)
 
-	beresp, err := t.RoundTrip(req)
-	if err != nil {
-		select {
-		case derr := <-deadlineErr:
-			if derr != nil {
-				return nil, derr
-			}
-		default:
-			return nil, errors.Backend.Label(b.name).With(err)
-		}
+	var beresp *http.Response
+	if b.openAPIValidator != nil {
+		beresp, err = b.openAPIValidate(req, tc, deadlineErr)
+	} else {
+		beresp, err = b.innerRoundTrip(req, tc, deadlineErr)
 	}
 
-	if b.openAPIValidator != nil {
-		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
-			return nil, errors.BackendValidation.Label(b.name).Kind("backend_response_validation").
-				With(err).Status(http.StatusBadGateway)
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	if strings.ToLower(beresp.Header.Get(ContentEncodingHeader)) == GzipName {
@@ -171,6 +154,43 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return beresp, err
+}
+
+func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
+	requestValidationInput, err := b.openAPIValidator.ValidateRequest(req, tc.hash(), tc.Scheme+"://"+tc.Origin)
+	if err != nil {
+		return nil, errors.BackendValidation.Label(b.name).Kind("backend_request_validation").With(err)
+	}
+
+	beresp, err := b.innerRoundTrip(req, tc, deadlineErr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = b.openAPIValidator.ValidateResponse(beresp, requestValidationInput); err != nil {
+		return nil, errors.BackendValidation.Label(b.name).Kind("backend_response_validation").
+			With(err).Status(http.StatusBadGateway)
+	}
+
+	return beresp, nil
+}
+
+func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
+	t := Get(tc)
+	beresp, err := t.RoundTrip(req)
+
+	if err != nil {
+		select {
+		case derr := <-deadlineErr:
+			if derr != nil {
+				return nil, derr
+			}
+		default:
+			return nil, errors.Backend.Label(b.name).With(err)
+		}
+	}
+
+	return beresp, nil
 }
 
 func (b *Backend) withPathPrefix(req *http.Request) {
