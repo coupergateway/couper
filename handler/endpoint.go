@@ -113,8 +113,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			case producer.ResultPanic:
 				log.Error(b.Err)
 			}
+
+			if b.Err != nil {
+				err = b.Err
+				break
+			}
 		}
-		clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
+
+		if err == nil {
+			clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
+		}
 	} else {
 		if result, ok := beresps["default"]; ok {
 			clientres = result.Beresp
