@@ -9,11 +9,10 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/avenga/couper/config/request"
-
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 )
 
@@ -60,8 +59,7 @@ func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, err
 		return s, nil
 	}
 
-	err := fmt.Errorf("request validation: swagger wrong type: %v", swagger)
-	return nil, err
+	return nil, fmt.Errorf("swagger wrong type: %v", swagger)
 }
 
 func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
@@ -90,7 +88,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
 
 	route, pathParams, err := router.FindRoute(req.Method, req.URL)
 	if err != nil {
-		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
+		err = fmt.Errorf("'%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
 		}
@@ -109,10 +107,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
 	}
 
 	// openapi3filter.ValidateRequestBody also handles resetting the req body after reading until EOF.
-	err = openapi3filter.ValidateRequest(req.Context(), v.requestValidationInput)
-
-	if err != nil {
-		err = fmt.Errorf("request validation: %w", err)
+	if err = openapi3filter.ValidateRequest(req.Context(), v.requestValidationInput); err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
 		}
@@ -127,7 +122,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
 func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 	// since a request validation could fail and ignored due to user options, the input route MAY be nil
 	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
-		err := fmt.Errorf("response validation: '%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
+		err := fmt.Errorf("'%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
 		if beresp.Request != nil {
 			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 				ctx.errors = append(ctx.errors, err)
@@ -162,7 +157,6 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 	}
 
 	if err := openapi3filter.ValidateResponse(beresp.Request.Context(), responseValidationInput); err != nil {
-		err = fmt.Errorf("response validation: %w", err)
 		if beresp.Request != nil {
 			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 				ctx.errors = append(ctx.errors, err)
