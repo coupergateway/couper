@@ -12,33 +12,36 @@ Unreleased changes are available as `avenga/couper:edge` container.
 <a name="1.2"></a>
 ## [1.2](https://github.com/avenga/couper/compare/1.1.1...1.2)
 
-> 2021-05-17
+Release date: 2021-05-18
+
+The most important feature of Couper 1.2 is the introduction of _custom
+error handling_ in form of the [`error_handler`](/docs/ERRORS.md) block.
+You can now register error handlers for [error types](/docs/ERRORS.md#error-types). Instead of the standard `error_file` template,
+you can flexibly respond with arbitrary `response`s. `error_handler` is allowed in access control blocks (`jwt`, `saml2` …), where you
+could e.g. handle missing tokens with a redirect-to-login. In the
+future, `error_handler` will be usable in more config areas. Refer to
+the [example](https://github.com/avenga/couper-examples/tree/master/error-handling-ba)
+if you want to see it in action.
 
 ### Added
 
-* `error_handler` block to access controls ([#140](https://github.com/avenga/couper/pull/140))
-  * see also: [example](https://github.com/avenga/couper-examples/tree/master/error-handling-ba)
+* `error_handler` block for access controls ([#140](https://github.com/avenga/couper/pull/140))
 * `backend_responses.*.body` variable for accessing raw response body content ([#182](https://github.com/avenga/couper/issues/182))
-* more `oauth2` config options ([#219](https://github.com/avenga/couper/pull/219), [#220](https://github.com/avenga/couper/pull/220)) 
-  * `scope`
-  * `TokenEndpointAuthMethod`
-    * `client_secret_basic` or `client_secret_post`
-* `saml2` fallback to `nameid-format:unspecified` ([#217](https://github.com/avenga/couper/pull/217))
+* more `oauth2` config options: `scope` and `token_endpoint_auth_method` (`client_secret_basic` or `client_secret_post`) ([#219](https://github.com/avenga/couper/pull/219), [#220](https://github.com/avenga/couper/pull/220))
 
 ### Changed
 
-* Basic-Auth always response with status-code 401 ([#227](https://github.com/avenga/couper/pull/227))
-* OpenAPI servers:
-  * relative urls gets rewritten to absolute ones with current backend origin ([#230](https://github.com/avenga/couper/pull/230))
+* `saml2` fallback to `nameid-format:unspecified` ([#217](https://github.com/avenga/couper/pull/217))
+* `basic_auth` always responds with status code `401` ([#227](https://github.com/avenga/couper/pull/227))
+* `openapi` resolves relative server URLs to the current backend origin ([#230](https://github.com/avenga/couper/pull/230))
 
 ### Fixed
 
-* Fix non-working health route with A/E gzip header ([#222](https://github.com/avenga/couper/pull/222))
-* Fix error log instead of a panic for duplicate access control definitions ([#221](https://github.com/avenga/couper/pull/221))
-* Response with 404 status-code if a route was not found ([#224](https://github.com/avenga/couper/pull/224))
-* possible race-condition with concurrent openAPI validations ([#231](https://github.com/avenga/couper/pull/231))
-* OpenAPI servers:
-  * canonicalize urls ([#230](https://github.com/avenga/couper/pull/230))
+* Fix `/healthz` route when called with `accept-encoding: gzip` ([#222](https://github.com/avenga/couper/pull/222))
+* Don't panic over duplicate access control definitions, log error instead ([#221](https://github.com/avenga/couper/pull/221))
+* Response for missing routes should have status code `404` ([#224](https://github.com/avenga/couper/pull/224))
+* Fix possible race-condition with concurrent `openapi` validations ([#231](https://github.com/avenga/couper/pull/231))
+* Fix use of server URLs without port in `openapi` ([#230](https://github.com/avenga/couper/pull/230))
 
 <a name="1.1.1"></a>
 ## [1.1.1](https://github.com/avenga/couper/compare/1.1...1.1.1)
