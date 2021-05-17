@@ -176,6 +176,13 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	if pathAttr, ok := attrs[attrPath]; ok {
 		pathValue, _ := pathAttr.Expr.Value(httpCtx)
 		if str := seetie.ValueToString(pathValue); str != "" {
+			if i := strings.Index(str, "?"); i >= 0 {
+				str = str[:i]
+			}
+			if i := strings.Index(str, "#"); i >= 0 {
+				str = str[:i]
+			}
+
 			path = str
 		}
 	}
