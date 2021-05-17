@@ -1,11 +1,51 @@
 # Couper Changelog
 
+<a name="unreleased"></a>
+## [Unreleased](https://github.com/avenga/couper/compare/1.2...master)
+
+> 2021-xx-xx
+
+Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+<a name="1.2"></a>
+## [1.2](https://github.com/avenga/couper/compare/1.1.1...1.2)
+
+> 2021-05-17
+
+### Added
+
+* `error_handler` block to access controls ([#140](https://github.com/avenga/couper/pull/140))
+  * see also: [example](https://github.com/avenga/couper-examples/tree/master/error-handling-ba)
+* `backend_responses.*.body` variable for accessing raw response body content ([#182](https://github.com/avenga/couper/issues/182))
+* more `oauth2` config options ([#219](https://github.com/avenga/couper/pull/219), [#220](https://github.com/avenga/couper/pull/220)) 
+  * `scope`
+  * `TokenEndpointAuthMethod`
+    * `client_secret_basic` or `client_secret_post`
+* `saml2` fallback to `nameid-format:unspecified` ([#217](https://github.com/avenga/couper/pull/217))
+
+### Changed
+
+* Basic-Auth always response with status-code 401 ([#227](https://github.com/avenga/couper/pull/227))
+* OpenAPI servers:
+  * relative urls gets rewritten to absolute ones with current backend origin ([#230](https://github.com/avenga/couper/pull/230))
+
+### Fixed
+
+* Fix non-working health route with A/E gzip header ([#222](https://github.com/avenga/couper/pull/222))
+* Fix error log instead of a panic for duplicate access control definitions ([#221](https://github.com/avenga/couper/pull/221))
+* Response with 404 status-code if a route was not found ([#224](https://github.com/avenga/couper/pull/224))
+* possible race-condition with concurrent openAPI validations ([#231](https://github.com/avenga/couper/pull/231))
+* OpenAPI servers:
+  * canonicalize urls ([#230](https://github.com/avenga/couper/pull/230))
+
 <a name="1.1.1"></a>
 ## [1.1.1](https://github.com/avenga/couper/compare/1.1...1.1.1)
 
 > 2021-04-21
 
-### Bug Fixes
+### Fixed
 
 * Endpoint responses are written and logged with correct status-code ([#216](https://github.com/avenga/couper/issues/216))
   * affected: a plain `response` without any additional headers or body configuration
@@ -15,7 +55,7 @@
 
 > 2021-04-16
 
-### Bug Fixes
+### Fixed
 
 * allow more +json mime types ([#207](https://github.com/avenga/couper/pull/207))
   * determines if ja request/response body gets parsed and provided as `json_body` variable
@@ -34,7 +74,7 @@
 * Change access control validation logging ([#199](https://github.com/avenga/couper/issues/199))
   * log the first occurred error instead of an array
 
-### Features
+### Added
 
 * Add OAuth2 token request retry option  ([#167](https://github.com/avenga/couper/issues/167)) ([#209](https://github.com/avenga/couper/issues/209))
 
@@ -44,16 +84,16 @@
 
 > 2021-04-09
 
-### Features
+### Added
 
 * `couper help` and usage documentation ([#187](https://github.com/avenga/couper/issues/187))
 
-### Changes
+### Changed
 
 * Ensure unique keys for set_* and add_* attributes ([#183](https://github.com/avenga/couper/pull/183))
 * split docker entrypoint and command ([#192](https://github.com/avenga/couper/issues/192))
 
-### Bug Fixes
+### Fixed
 
 * Fix missing `backend.origin` attribute url validation ([#191](https://github.com/avenga/couper/issues/191))
 
@@ -63,7 +103,7 @@
 
 > 2021-04-08
 
-### Bug Fixes
+### Fixed
 
 * Log option for `json` formatted logs: ([#176](https://github.com/avenga/couper/issues/176))
   * configured parent key applies to (almost) all log fields 
@@ -80,7 +120,7 @@
 * Log option for parent fields are 'global' now ([#176](https://github.com/avenga/couper/issues/176))
   * `COUPER_ACCESS_LOG_PARENT_FIELD`, `COUPER_BACKEND_LOG_PARENT_FIELD` -> `COUPER_LOG_PARENT_FIELD`
 
-### Features
+### Added
 
 * watch option for given Couper configuration file ([#24](https://github.com/avenga/couper/issues/24))
   * use `-watch` or via environment `COUPER_WATCH=true` to watch for file changes
@@ -92,7 +132,7 @@
 
 > 2021-04-06
 
-### Bug Fixes
+### Fixed
 
 * Some possible race conditions in combination with multiple `proxy` and/or `request`
   definitions are fixed ([#157](https://github.com/avenga/couper/issues/177)) ([#160](https://github.com/avenga/couper/issues/160))
@@ -108,12 +148,12 @@
 * 404 behaviour for access controlled endpoints:
   deny instead of 404 if the request matches the related base_path ([#143](https://github.com/avenga/couper/issues/143))
 
-### Changes
+### Changed
 
 * Rename log type for backend requests: `couper_upstream` -> `couper_backend` ([#159](https://github.com/avenga/couper/pull/159)) ([#172](https://github.com/avenga/couper/pull/172))
 * Rename `post` variable to `form_body` ([#158](https://github.com/avenga/couper/pull/158))
 
-### Features
+### Added
 
 * Add `json_body` attribute for `request` and `response` block ([#158](https://github.com/avenga/couper/issues/158))
 * `bytes` log field to represent the body size
@@ -124,12 +164,12 @@
 
 > 2021-03-23
 
-### Bug Fixes
+### Fixed
 
 * Recover from possible request/proxy related panics ([#157](https://github.com/avenga/couper/pull/157)) ([#145](https://github.com/avenga/couper/pull/145))
 * Configuration related hcl merge with an empty attributes and nested blocks
 
-### Change
+### Changed
 
 * `backend` block attributes `basic_auth`, `path_prefix` and `proxy` hcl evaluation during runtime
 * `request` attributes hcl evaluation during runtime ([#152](https://github.com/avenga/couper/pull/152))
@@ -139,7 +179,7 @@
 * no `X-Forwarded-For` header enrichment from couper `proxy` ([#139](https://github.com/avenga/couper/pull/139))
 * more log context for access control related errors ([#154](https://github.com/avenga/couper/issues/154))
 
-### Features
+### Added
 
 * `saml` 2.0 `access_control` support ([#113](https://github.com/avenga/couper/issues/113))
 * Add new `strip-secure-cookies` setting ([#147](https://github.com/avenga/couper/issues/147))
@@ -161,17 +201,17 @@
 
 > 2021-03-15
 
-### Bug Fixes
+### Fixed
 
 * Fix missing panic recovering for backend roundtrips ([#142](https://github.com/avenga/couper/issues/142))
   * Fix backend `timeout` behaviour
   * Add a more specific error message for proxy body copy errors
 
-### Change
+### Changed
 
 * Couper just passes the `X-Forwarded-For` header if any instead of adding the client remote addr to the list ([#139](https://github.com/avenga/couper/pull/139))
 
-### Features
+### Added
 
 * `url_encode` function for RFC 3986 string encoding ([#136](https://github.com/avenga/couper/pull/136))
 
@@ -208,18 +248,18 @@ endpoint "/new" {
 }
 ```
 
-### Change
+### Changed
 
 * Client-Request and upstream response body buffering by default
 * Server shutdown delay and deadline defaults to `0s` now and can be configured via [env](DOCKER.md) if required
 * Websocket connection upgrades in combination with `proxy {}` are disabled
   * we will add a proxy option for ws usage later on
 
-### Bug Fixes
+### Fixed
 
 * An absolute path resolving for `*_file` configuration attributes ([#120](https://github.com/avenga/couper/pull/120))
 
-### Features
+### Added
 
 * Endpoint:
   * Add `proxy` block to reverse proxy the client request to the configured `backend`.
@@ -247,14 +287,14 @@ endpoint "/new" {
 
 > 2021-02-16
 
-### Features
+### Added
 
 * backend:
   * a user-friendly `basic_auth` option
   * backend `proxy` url, `disable_connection_reuse` and `http2` settings ([#108](https://github.com/avenga/couper/pull/108))
 * version command
 
-### Change
+### Changed
 
 * KeepAlive `60s` ([#108](https://github.com/avenga/couper/pull/108)), previously `15s`
 * Reject requests which hits an endpoint with basic-auth access-control, and the configured password evaluates to an empty string ([#115](https://github.com/avenga/couper/pull/115))
@@ -264,11 +304,11 @@ endpoint "/new" {
 
 > 2021-01-29
 
-### Bug Fixes
+### Fixed
 
 * Fix missing http.Hijacker interface to be able to handle websocket upgrades ([#80](https://github.com/avenga/couper/issues/80))
 
-### Features
+### Added
 
 * Add additional eval functions: coalesce, json_decode, json_encode ([#105](https://github.com/avenga/couper/pull/105))
 * Add multi API support ([#103](https://github.com/avenga/couper/issues/103))
@@ -291,7 +331,7 @@ endpoint "/new" {
 
 > 2021-01-19
 
-### Fix
+### Fixed
 
 * Fix used backend hash not dependent on (hcl) config hierarchy (transport key)
 * Fix logging http scheme even without a successful tls handshake ([#99](https://github.com/avenga/couper/pull/99))
@@ -302,7 +342,7 @@ endpoint "/new" {
 
 > 2021-01-18
 
-### Fix
+### Fixed
 
 * Fix path trailing slash ([#94](https://github.com/avenga/couper/issues/94))
 * Fix query encoding ([#93](https://github.com/avenga/couper/issues/93))
@@ -313,13 +353,13 @@ endpoint "/new" {
 
 > 2021-01-13
 
-### Add
+### Added
 
 * url log field ([#87](https://github.com/avenga/couper/issues/87))
 * Add proxy from env settings option ([#84](https://github.com/avenga/couper/issues/84))
 * Add backend settings:  `disable_certificate_validation`, `max_connections` ([#86](https://github.com/avenga/couper/issues/86))
 
-### Fix
+### Fixed
 
 * command flag filter for bool values ([#85](https://github.com/avenga/couper/issues/85))
 * different proxy options for same origin should be part of the origin transport key
@@ -333,7 +373,7 @@ endpoint "/new" {
 
 > 2020-12-15
 
-### Add
+### Added
 
 * build version to startup log
 * upstream request/response validation with `openapi` ([#21](https://github.com/avenga/couper/issues/21)) ([#22](https://github.com/avenga/couper/issues/22))
@@ -343,7 +383,7 @@ endpoint "/new" {
 * `query_params` ([#73](https://github.com/avenga/couper/issues/73))
 * `json_body` access for request and response bodies [#44](https://github.com/avenga/couper/issues/44) ([#60](https://github.com/avenga/couper/issues/60))
 
-### Change
+### Changed
 
 * start Couper via `run` command now
 * internal router [#59](https://github.com/avenga/couper/issues/59)
@@ -352,7 +392,7 @@ endpoint "/new" {
 * passing the filename to underlying hcl diagnostics
 * Dockerfile to provide simple file serving ([#63](https://github.com/avenga/couper/issues/63))
 
-### Fix
+### Fixed
 
 * handling cty null or unknown values during roundtrip eval [#71](https://github.com/avenga/couper/issues/71)
 * logging: start-time measurement
@@ -364,14 +404,14 @@ endpoint "/new" {
 
 > 2020-10-08
 
-### Add
+### Added
 
 * health check ([#29](https://github.com/avenga/couper/issues/29))
 * Basic-Auth support ([#19](https://github.com/avenga/couper/issues/19))
 * post (form) parsing for use in config variables ([#26](https://github.com/avenga/couper/issues/26))
 * more documentation
 
-### Fix
+### Fixed
 
 * wildcard path join with trailing slash and respect req path ([#45](https://github.com/avenga/couper/pull/45))
 * env var mapping ([#35](https://github.com/avenga/couper/pull/35))
@@ -383,7 +423,7 @@ endpoint "/new" {
 
 > 2020-09-11
 
-### Add
+### Added
 
 * Parse and load from given *HCL* configuration file
 * Config structs for blocks: `server, api, endpoint, files, spa, definitions, jwt`
