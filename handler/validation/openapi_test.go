@@ -43,7 +43,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		}
 	}))
 
-	log, hook := logrustest.NewNullLogger()
+	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
 		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
@@ -69,10 +69,10 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		wantBody   bool
 		wantErrLog string
 	}{
-		{"GET without required query", "/a?b", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
+		{"GET without required query", "/a?b", nil, false, "backend validation error: Parameter 'b' in query has an error: must have a value: must have a value"},
 		{"GET with required query", "/a?b=value", nil, false, ""},
 		{"GET with required path", "/a/value", nil, false, ""},
-		{"GET with required path missing", "/a//", nil, false, "request validation: Parameter 'b' in query has an error: must have a value: must have a value"},
+		{"GET with required path missing", "/a//", nil, false, "backend validation error: Parameter 'b' in query has an error: must have a value: must have a value"},
 		{"GET with optional query", "/b", nil, false, ""},
 		{"GET with optional path param", "/b/a", nil, false, ""},
 		{"GET with required json body", "/json", strings.NewReader(`["hans", "wurst"]`), true, ""},
@@ -87,32 +87,23 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 			}
 
 			hook.Reset()
-			res, err := backend.RoundTrip(req)
+			var res *http.Response
+			res, err = backend.RoundTrip(req)
 			if err != nil && tt.wantErrLog == "" {
-				helper.Must(err)
+				t.Error(err)
+				return
 			}
 
 			if tt.wantErrLog != "" {
-				var found bool
-				for _, entry := range hook.Entries {
-					if valEntry, ok := entry.Data["validation"]; ok {
-						if list, ok := valEntry.([]string); ok {
-							for _, valMsg := range list {
-								if valMsg == tt.wantErrLog {
-									found = true
-									break
-								}
-							}
-						}
-					}
-				}
-				if !found {
-					t.Errorf("Expected error log: %q", tt.wantErrLog)
+				entry := hook.LastEntry()
+				if entry.Message != tt.wantErrLog {
+					t.Errorf("Expected error log:\nwant:\t%q\ngot:\t%s", tt.wantErrLog, entry.Message)
 				}
 			}
 
 			if tt.wantBody {
-				n, err := io.Copy(ioutil.Discard, res.Body)
+				var n int64
+				n, err = io.Copy(ioutil.Discard, res.Body)
 				if err != nil {
 					t.Error(err)
 				}

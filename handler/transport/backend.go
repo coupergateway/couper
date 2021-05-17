@@ -108,7 +108,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	if b.openAPIValidator != nil {
 		// FIXME tc.Origin should be an origin, not just a host!
 		if err = b.openAPIValidator.ValidateRequest(req, tc.hash(), tc.Scheme+"://"+tc.Origin); err != nil {
-			return nil, errors.BackendValidation.Label(b.name).With(err)
+			return nil, errors.BackendValidation.Label(b.name).Kind("backend_request_validation").With(err)
 		}
 	}
 
@@ -143,7 +143,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if b.openAPIValidator != nil {
 		if err = b.openAPIValidator.ValidateResponse(beresp); err != nil {
-			return nil, errors.BackendValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
+			return nil, errors.BackendValidation.Label(b.name).Kind("backend_response_validation").
+				With(err).Status(http.StatusBadGateway)
 		}
 	}
 
