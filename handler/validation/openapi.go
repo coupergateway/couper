@@ -19,8 +19,7 @@ import (
 var swaggers sync.Map
 
 type OpenAPI struct {
-	options                *OpenAPIOptions
-	requestValidationInput *openapi3filter.RequestValidationInput
+	options *OpenAPIOptions
 }
 
 func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
@@ -69,21 +68,21 @@ func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
 	return &sw
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
+func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) (*openapi3filter.RequestValidationInput, error) {
 	swagger, err := v.getModifiedSwagger(key, origin)
 	if err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
 		}
 		if !v.options.ignoreRequestViolations {
-			return err
+			return nil, err
 		}
-		return nil
+		return nil, nil
 	}
 
 	router := openapi3filter.NewRouter()
 	if err = router.AddSwagger(swagger); err != nil {
-		return err
+		return nil, err
 	}
 
 	route, pathParams, err := router.FindRoute(req.Method, req.URL)
@@ -93,12 +92,12 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
 			ctx.errors = append(ctx.errors, err)
 		}
 		if !v.options.ignoreRequestViolations {
-			return err
+			return nil, err
 		}
-		return nil
+		return nil, nil
 	}
 
-	v.requestValidationInput = &openapi3filter.RequestValidationInput{
+	requestValidationInput := &openapi3filter.RequestValidationInput{
 		Options:     v.options.filterOptions,
 		PathParams:  pathParams,
 		QueryParams: req.URL.Query(),
@@ -107,21 +106,21 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) error {
 	}
 
 	// openapi3filter.ValidateRequestBody also handles resetting the req body after reading until EOF.
-	if err = openapi3filter.ValidateRequest(req.Context(), v.requestValidationInput); err != nil {
+	if err = openapi3filter.ValidateRequest(req.Context(), requestValidationInput); err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
 		}
 		if !v.options.ignoreRequestViolations {
-			return err
+			return requestValidationInput, err
 		}
 	}
 
-	return nil
+	return requestValidationInput, nil
 }
 
-func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
+func (v *OpenAPI) ValidateResponse(beresp *http.Response, requestValidationInput *openapi3filter.RequestValidationInput) error {
 	// since a request validation could fail and ignored due to user options, the input route MAY be nil
-	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
+	if requestValidationInput == nil || requestValidationInput.Route == nil {
 		err := fmt.Errorf("'%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
 		if beresp.Request != nil {
 			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
@@ -139,7 +138,7 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 		Body:                   ioutil.NopCloser(&bytes.Buffer{}),
 		Header:                 beresp.Header.Clone(),
 		Options:                v.options.filterOptions,
-		RequestValidationInput: v.requestValidationInput,
+		RequestValidationInput: requestValidationInput,
 		Status:                 beresp.StatusCode,
 	}
 
