@@ -3,6 +3,10 @@
 <a name="unreleased"></a>
 ## [Unreleased](https://github.com/avenga/couper/compare/1.2...master)
 
+### Added
+
+Modifier for the form parameters (`set/add/remove_form_params`). [223](https://github.com/avenga/couper/pull/223)
+
 Release date: 2021-xx-xx
 
 Unreleased changes are available as `avenga/couper:edge` container.
