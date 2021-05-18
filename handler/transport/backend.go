@@ -157,7 +157,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
-	requestValidationInput, err := b.openAPIValidator.ValidateRequest(req, tc.hash(), tc.Scheme+"://"+tc.Origin)
+	requestValidationInput, err := b.openAPIValidator.ValidateRequest(req, tc.hash(), tc.Hostname)
 	if err != nil {
 		return nil, errors.BackendValidation.Label(b.name).Kind("backend_request_validation").With(err)
 	}

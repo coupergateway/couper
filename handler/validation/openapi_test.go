@@ -12,7 +12,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
@@ -124,7 +123,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 	helper := test.New(t)
 
-	log, hook := logrustest.NewNullLogger()
+	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
 		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
@@ -144,27 +143,70 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 		OpenAPI: openAPI,
 	}, logger)
 
-	t.Run("relative server URL", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "https://httpbin.org/anything", nil)
+	req := httptest.NewRequest(http.MethodGet, "https://httpbin.org/anything", nil)
 
-		hook.Reset()
-		_, err := backend.RoundTrip(req)
-		if err != nil {
-			helper.Must(err)
-		}
+	hook.Reset()
+	_, err = backend.RoundTrip(req)
+	if err != nil {
+		helper.Must(err)
+	}
 
-		if t.Failed() {
-			for _, entry := range hook.Entries {
-				t.Log(entry.String())
-			}
+	if t.Failed() {
+		for _, entry := range hook.Entries {
+			t.Log(entry.String())
 		}
-	})
+	}
+}
+
+func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
+	helper := test.New(t)
+
+	origin := test.NewBackend()
+	defer origin.Close()
+
+	log, hook := test.NewLogger()
+	logger := log.WithContext(context.Background())
+	beConf := &config.Backend{
+		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
+			"origin": &hcl.Attribute{
+				Name: "origin",
+				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.Addr())),
+			},
+			"hostname": &hcl.Attribute{
+				Name: "hostname",
+				Expr: hcltest.MockExprLiteral(cty.StringVal("api.example.com")),
+			},
+		}}),
+		OpenAPI: &config.OpenAPI{
+			File: filepath.Join("testdata/backend_04_openapi.yaml"),
+		},
+	}
+	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	helper.Must(err)
+
+	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+		OpenAPI: openAPI,
+	}, logger)
+
+	req := httptest.NewRequest(http.MethodGet, "https://test.local/anything", nil)
+
+	hook.Reset()
+	_, err = backend.RoundTrip(req)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if t.Failed() {
+		for _, entry := range hook.Entries {
+			t.Log(entry.String())
+		}
+	}
 }
 
 func TestOpenAPIValidator_NonCanonicalServerURL(t *testing.T) {
 	helper := test.New(t)
 
-	log, hook := logrustest.NewNullLogger()
+	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
 		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{

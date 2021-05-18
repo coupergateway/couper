@@ -3,7 +3,6 @@ package validation
 import (
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"path/filepath"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -41,26 +40,6 @@ func NewOpenAPIOptions(openapi *config.OpenAPI) (*OpenAPIOptions, error) {
 	return NewOpenAPIOptionsFromBytes(openapi, b)
 }
 
-func canonicalizeServerURLs(swagger *openapi3.Swagger) error {
-	for _, server := range swagger.Servers {
-		su, err := url.Parse(server.URL)
-		if err != nil {
-			return err
-		}
-
-		if su.IsAbs() && su.Port() == "" && (su.Scheme == "https" || su.Scheme == "http") {
-			su.Host = su.Hostname() + ":"
-			if su.Scheme == "https" {
-				su.Host += "443"
-			} else {
-				su.Host += "80"
-			}
-			server.URL = su.String()
-		}
-	}
-	return nil
-}
-
 func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIOptions, error) {
 	if openapi == nil || bytes == nil {
 		return nil, nil
@@ -69,10 +48,6 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 	swagger, err := openapi3.NewSwaggerLoader().LoadSwaggerFromData(bytes)
 	if err != nil {
 		return nil, fmt.Errorf("error loading openapi file: %w", err)
-	}
-
-	if err = canonicalizeServerURLs(swagger); err != nil {
-		return nil, err
 	}
 
 	// Always buffer if openAPI is active. Request buffering is handled by openapifilter too.

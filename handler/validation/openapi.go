@@ -38,6 +38,11 @@ func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, err
 
 		var newServers []string
 		for _, s := range clonedSwagger.Servers {
+			// Do not touch a url if template variables are used.
+			if names, err := s.ParameterNames(); len(names) > 0 || err != nil {
+				continue
+			}
+
 			su, err := url.Parse(s.URL)
 			if err != nil {
 				return nil, err
@@ -68,8 +73,8 @@ func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
 	return &sw
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) (*openapi3filter.RequestValidationInput, error) {
-	swagger, err := v.getModifiedSwagger(key, origin)
+func (v *OpenAPI) ValidateRequest(req *http.Request, key, host string) (*openapi3filter.RequestValidationInput, error) {
+	swagger, err := v.getModifiedSwagger(key, req.URL.Scheme+"://"+host)
 	if err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
@@ -85,7 +90,9 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) (*opena
 		return nil, err
 	}
 
-	route, pathParams, err := router.FindRoute(req.Method, req.URL)
+	routeURL := *req.URL
+	routeURL.Host = host
+	route, pathParams, err := router.FindRoute(req.Method, &routeURL)
 	if err != nil {
 		err = fmt.Errorf("'%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {

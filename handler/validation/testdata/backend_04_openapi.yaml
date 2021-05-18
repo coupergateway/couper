@@ -1,0 +1,19 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test: template variables'
+  version: 'v1.2.3'
+servers:
+  - url: 'http://api.example.com'
+    variables:
+      sub:
+        default: 'api'
+  - url: '{broken/v1'
+    variables:
+      broken:
+        default: https://api.example.com
+paths:
+  /anything:
+    get:
+      responses:
+        200:
+          description: OK
