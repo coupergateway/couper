@@ -1,0 +1,17 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test'
+  version: 'v1.2.3'
+paths:
+  /anything:
+    get:
+      responses:
+        200:
+          description: OK
+          schema:
+            type: object
+  /pdf:
+    get:
+      responses:
+        555:
+          description: OK

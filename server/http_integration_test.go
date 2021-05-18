@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -192,7 +193,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/app"},
-				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 		}},
 		{"files/01_couper.hcl", []requestCase{
@@ -212,7 +213,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://couper.io:9898/"},
-				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), nil, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/b"},
@@ -220,7 +221,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://example.com:9898/"},
-				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), nil, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{
@@ -236,7 +237,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		{"api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1"},
@@ -256,13 +257,13 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v1x"},
-				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Content-Type": {"text/html"}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 		}},
 		{"api/02_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusInternalServerError, []byte("<html>configuration error</html>\n"), http.Header{"Couper-Error": {"configuration error"}}, ""},
+				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/v2/"},
@@ -436,7 +437,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 
 	_ = res.Body.Close()
 
-	if string(resBytes) != "<html>configuration error</html>\n" {
+	if string(resBytes) != "<html>route not found error</html>\n" {
 		t.Errorf("%s", resBytes)
 	}
 
@@ -1872,6 +1873,48 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Error("Expected a bad request without required query param")
+	}
+}
+
+func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/validation/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req1, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
+	helper.Must(err)
+	req2, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
+	helper.Must(err)
+
+	var res1, res2 *http.Response
+	var err1, err2 error
+	waitCh := make(chan struct{})
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-waitCh // blocks
+		res1, err1 = client.Do(req1)
+	}()
+	go func() {
+		defer wg.Done()
+		<-waitCh // blocks
+		res2, err2 = client.Do(req2)
+	}()
+
+	close(waitCh) // triggers reqs
+	wg.Wait()
+
+	helper.Must(err1)
+	helper.Must(err2)
+
+	if res1.StatusCode != 200 {
+		t.Errorf("Expected status %d for response1; got: %d", 200, res1.StatusCode)
+	}
+	if res2.StatusCode != 502 {
+		t.Errorf("Expected status %d for response2; got: %d", 502, res2.StatusCode)
 	}
 }
 
