@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1910,6 +1911,48 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) 
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Error("Expected a bad request without required query param")
+	}
+}
+
+func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/validation/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req1, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
+	helper.Must(err)
+	req2, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
+	helper.Must(err)
+
+	var res1, res2 *http.Response
+	var err1, err2 error
+	waitCh := make(chan struct{})
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-waitCh // blocks
+		res1, err1 = client.Do(req1)
+	}()
+	go func() {
+		defer wg.Done()
+		<-waitCh // blocks
+		res2, err2 = client.Do(req2)
+	}()
+
+	close(waitCh) // triggers reqs
+	wg.Wait()
+
+	helper.Must(err1)
+	helper.Must(err2)
+
+	if res1.StatusCode != 200 {
+		t.Errorf("Expected status %d for response1; got: %d", 200, res1.StatusCode)
+	}
+	if res2.StatusCode != 502 {
+		t.Errorf("Expected status %d for response2; got: %d", 502, res2.StatusCode)
 	}
 }
 

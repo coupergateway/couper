@@ -1,0 +1,12 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test: relative server URL'
+  version: 'v1.2.3'
+servers:
+  - url: /
+paths:
+  /anything:
+    get:
+      responses:
+        200:
+          description: OK

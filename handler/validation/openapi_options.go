@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -17,7 +18,7 @@ type OpenAPIOptions struct {
 	ignoreRequestViolations  bool
 	ignoreResponseViolations bool
 	filterOptions            *openapi3filter.Options
-	router                   *openapi3filter.Router
+	swagger                  *openapi3.Swagger
 }
 
 // NewOpenAPIOptions takes a list of openAPI configuration due to merging configurations.
@@ -40,6 +41,26 @@ func NewOpenAPIOptions(openapi *config.OpenAPI) (*OpenAPIOptions, error) {
 	return NewOpenAPIOptionsFromBytes(openapi, b)
 }
 
+func canonicalizeServerURLs(swagger *openapi3.Swagger) error {
+	for _, server := range swagger.Servers {
+		su, err := url.Parse(server.URL)
+		if err != nil {
+			return err
+		}
+
+		if su.IsAbs() && su.Port() == "" && (su.Scheme == "https" || su.Scheme == "http") {
+			su.Host = su.Hostname() + ":"
+			if su.Scheme == "https" {
+				su.Host += "443"
+			} else {
+				su.Host += "80"
+			}
+			server.URL = su.String()
+		}
+	}
+	return nil
+}
+
 func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPIOptions, error) {
 	if openapi == nil || bytes == nil {
 		return nil, nil
@@ -50,8 +71,7 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 		return nil, fmt.Errorf("error loading openapi file: %w", err)
 	}
 
-	router := openapi3filter.NewRouter()
-	if err = router.AddSwagger(swagger); err != nil {
+	if err = canonicalizeServerURLs(swagger); err != nil {
 		return nil, err
 	}
 
@@ -68,6 +88,6 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 		},
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,
-		router:                   router,
+		swagger:                  swagger,
 	}, nil
 }
