@@ -197,7 +197,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			http.MethodPost,
 			"/get",
 			"backend validation error",
-			"request validation: 'POST /get': Path doesn't support the HTTP method",
+			"'POST /get': Path doesn't support the HTTP method",
 		},
 		{
 			"invalid request, IgnoreRequestViolations",
@@ -205,7 +205,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			http.MethodPost,
 			"/get",
 			"",
-			"request validation: 'POST /get': Path doesn't support the HTTP method",
+			"'POST /get': Path doesn't support the HTTP method",
 		},
 		{
 			"invalid response",
@@ -213,7 +213,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			http.MethodGet,
 			"/get?404",
 			"backend validation error",
-			"response validation: status is not supported",
+			"status is not supported",
 		},
 		{
 			"invalid response, IgnoreResponseViolations",
@@ -221,11 +221,11 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			http.MethodGet,
 			"/get?404",
 			"",
-			"response validation: status is not supported",
+			"status is not supported",
 		},
 	}
 
-	logger, hook := logrustest.NewNullLogger()
+	logger, hook := test.NewLogger()
 	log := logger.WithContext(context.Background())
 
 	for _, tt := range tests {
@@ -260,13 +260,15 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			entry := hook.LastEntry()
 			if tt.expectedLogMessage != "" {
 				if data, ok := entry.Data["validation"]; ok {
-					for _, err := range data.([]string) {
-						if err == tt.expectedLogMessage {
+					for _, errStr := range data.([]string) {
+						if errStr != tt.expectedLogMessage {
+							subT.Errorf("\nwant:\t%s\ngot:\t%v", tt.expectedLogMessage, errStr)
 							return
 						}
+						return
 					}
-					for _, err := range data.([]string) {
-						subT.Log(err)
+					for _, errStr := range data.([]string) {
+						subT.Log(errStr)
 					}
 				}
 				subT.Errorf("expected matching validation error logs:\n\t%s\n\tgot: nothing", tt.expectedLogMessage)

@@ -31,7 +31,3 @@ test-coverage-show:
 	go tool cover -html=handler.coverage
 	go tool cover -html=server.coverage
 	go tool cover -html=main.coverage
-
-# TAG=v0.3 make changelog
-changelog:
-	git-chglog --next-tag $(TAG) $(TAG)

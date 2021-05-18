@@ -6,17 +6,20 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"sync"
 
-	"github.com/avenga/couper/config/request"
-
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 )
 
+var swaggers sync.Map
+
 type OpenAPI struct {
-	options                *OpenAPIOptions
-	requestValidationInput *openapi3filter.RequestValidationInput
+	options *OpenAPIOptions
 }
 
 func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
@@ -28,20 +31,73 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request) error {
-	route, pathParams, err := v.options.router.FindRoute(req.Method, req.URL)
+func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, error) {
+	swagger, exists := swaggers.Load(key)
+	if !exists {
+		clonedSwagger := cloneSwagger(v.options.swagger)
+
+		var newServers []string
+		for _, s := range clonedSwagger.Servers {
+			su, err := url.Parse(s.URL)
+			if err != nil {
+				return nil, err
+			}
+			if !su.IsAbs() {
+				newServers = append(newServers, origin+s.URL)
+			}
+		}
+		for _, ns := range newServers {
+			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
+		}
+
+		swaggers.Store(key, clonedSwagger)
+		swagger = clonedSwagger
+	}
+
+	if s, ok := swagger.(*openapi3.Swagger); ok {
+		return s, nil
+	}
+
+	return nil, fmt.Errorf("swagger wrong type: %v", swagger)
+}
+
+func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
+	sw := *s
+	// this is not a deep clone; we only want to add servers
+	sw.Servers = s.Servers[:]
+	return &sw
+}
+
+func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) (*openapi3filter.RequestValidationInput, error) {
+	swagger, err := v.getModifiedSwagger(key, origin)
 	if err != nil {
-		err = fmt.Errorf("request validation: '%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
 		}
 		if !v.options.ignoreRequestViolations {
-			return err
+			return nil, err
 		}
-		return nil
+		return nil, nil
 	}
 
-	v.requestValidationInput = &openapi3filter.RequestValidationInput{
+	router := openapi3filter.NewRouter()
+	if err = router.AddSwagger(swagger); err != nil {
+		return nil, err
+	}
+
+	route, pathParams, err := router.FindRoute(req.Method, req.URL)
+	if err != nil {
+		err = fmt.Errorf("'%s %s': %w", req.Method, req.URL.Path, err)
+		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
+			ctx.errors = append(ctx.errors, err)
+		}
+		if !v.options.ignoreRequestViolations {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	requestValidationInput := &openapi3filter.RequestValidationInput{
 		Options:     v.options.filterOptions,
 		PathParams:  pathParams,
 		QueryParams: req.URL.Query(),
@@ -50,25 +106,22 @@ func (v *OpenAPI) ValidateRequest(req *http.Request) error {
 	}
 
 	// openapi3filter.ValidateRequestBody also handles resetting the req body after reading until EOF.
-	err = openapi3filter.ValidateRequest(req.Context(), v.requestValidationInput)
-
-	if err != nil {
-		err = fmt.Errorf("request validation: %w", err)
+	if err = openapi3filter.ValidateRequest(req.Context(), requestValidationInput); err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
 		}
 		if !v.options.ignoreRequestViolations {
-			return err
+			return requestValidationInput, err
 		}
 	}
 
-	return nil
+	return requestValidationInput, nil
 }
 
-func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
+func (v *OpenAPI) ValidateResponse(beresp *http.Response, requestValidationInput *openapi3filter.RequestValidationInput) error {
 	// since a request validation could fail and ignored due to user options, the input route MAY be nil
-	if v.requestValidationInput == nil || v.requestValidationInput.Route == nil {
-		err := fmt.Errorf("response validation: '%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
+	if requestValidationInput == nil || requestValidationInput.Route == nil {
+		err := fmt.Errorf("'%s %s': invalid route", beresp.Request.Method, beresp.Request.URL.Path)
 		if beresp.Request != nil {
 			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 				ctx.errors = append(ctx.errors, err)
@@ -85,7 +138,7 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 		Body:                   ioutil.NopCloser(&bytes.Buffer{}),
 		Header:                 beresp.Header.Clone(),
 		Options:                v.options.filterOptions,
-		RequestValidationInput: v.requestValidationInput,
+		RequestValidationInput: requestValidationInput,
 		Status:                 beresp.StatusCode,
 	}
 
@@ -103,7 +156,6 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response) error {
 	}
 
 	if err := openapi3filter.ValidateResponse(beresp.Request.Context(), responseValidationInput); err != nil {
-		err = fmt.Errorf("response validation: %w", err)
 		if beresp.Request != nil {
 			if ctx, ok := beresp.Request.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 				ctx.errors = append(ctx.errors, err)
