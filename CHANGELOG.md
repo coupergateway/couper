@@ -3,7 +3,7 @@
 <a name="unreleased"></a>
 ## [Unreleased](https://github.com/avenga/couper/compare/1.2...master)
 
-> 2021-xx-xx
+Release date: 2021-xx-xx
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
