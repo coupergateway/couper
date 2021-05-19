@@ -43,7 +43,7 @@ if you want to see it in action.
 
 ## [1.1.1](https://github.com/avenga/couper/compare/1.1...1.1.1)
 
-> 2021-04-21
+Release date: 2021-04-21
 
 ### Fixed
 
@@ -52,7 +52,7 @@ if you want to see it in action.
 
 ## [1.1](https://github.com/avenga/couper/compare/1.0...1.1)
 
-> 2021-04-16
+Release date: 2021-04-16
 
 ### Fixed
 
@@ -79,7 +79,7 @@ if you want to see it in action.
 
 ## [1.0](https://github.com/avenga/couper/compare/0.9...1.0)
 
-> 2021-04-09
+Release date: 2021-04-09
 
 ### Added
 
@@ -96,7 +96,7 @@ if you want to see it in action.
 
 ## [0.9](https://github.com/avenga/couper/compare/0.8...0.9)
 
-> 2021-04-08
+Release date: 2021-04-08
 
 ### Fixed
 
@@ -124,7 +124,7 @@ if you want to see it in action.
 
 ## [0.8](https://github.com/avenga/couper/compare/0.7.0...v0.8)
 
-> 2021-04-06
+Release date: 2021-04-06
 
 ### Fixed
 
@@ -154,7 +154,7 @@ if you want to see it in action.
 
 ## [0.7.0](https://github.com/avenga/couper/compare/0.6.1...0.7.0)
 
-> 2021-03-23
+Release date: 2021-03-23
 
 ### Fixed
 
@@ -190,7 +190,7 @@ if you want to see it in action.
 
 ## [0.6.1](https://github.com/avenga/couper/compare/0.6...0.6.1)
 
-> 2021-03-15
+Release date: 2021-03-15
 
 ### Fixed
 
@@ -208,7 +208,7 @@ if you want to see it in action.
 
 ## [0.6](https://github.com/avenga/couper/compare/0.5.1...0.6)
 
-> 2021-03-11
+Release date: 2021-03-11
 
 ### Breaking change
 
@@ -273,7 +273,7 @@ endpoint "/new" {
 
 ## [0.5.1](https://github.com/avenga/couper/compare/0.5...0.5.1)
 
-> 2021-02-16
+Release date: 2021-02-16
 
 ### Added
 
@@ -289,7 +289,7 @@ endpoint "/new" {
 
 ## [0.5](https://github.com/avenga/couper/compare/0.4.2...0.5)
 
-> 2021-01-29
+Release date: 2021-01-29
 
 ### Fixed
 
@@ -315,7 +315,7 @@ endpoint "/new" {
 
 ## [0.4.2](https://github.com/avenga/couper/compare/0.4.1...0.4.2)
 
-> 2021-01-19
+Release date: 2021-01-19
 
 ### Fixed
 
@@ -325,7 +325,7 @@ endpoint "/new" {
 
 ## [0.4.1](https://github.com/avenga/couper/compare/0.4...0.4.1)
 
-> 2021-01-18
+Release date: 2021-01-18
 
 ### Fixed
 
@@ -335,7 +335,7 @@ endpoint "/new" {
 
 ## [0.4](https://github.com/avenga/couper/compare/v0.3...0.4)
 
-> 2021-01-13
+Release date: 2021-01-13
 
 ### Added
 
@@ -354,7 +354,7 @@ endpoint "/new" {
 
 ## [v0.3](https://github.com/avenga/couper/compare/v0.2...v0.3)
 
-> 2020-12-15
+Release date: 2020-12-15
 
 ### Added
 
@@ -383,7 +383,7 @@ endpoint "/new" {
 
 ## [v0.2](https://github.com/avenga/couper/compare/v0.1...v0.2)
 
-> 2020-10-08
+Release date: 2020-10-08
 
 ### Added
 
@@ -400,7 +400,7 @@ endpoint "/new" {
 
 ## 0.1
 
-> 2020-09-11
+Release date: 2020-09-11
 
 ### Added
 
