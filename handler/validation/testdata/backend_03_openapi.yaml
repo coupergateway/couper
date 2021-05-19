@@ -3,8 +3,14 @@ info:
   title: 'Couper backend validation test: non-canonical server URL'
   version: 'v1.2.3'
 servers:
-  - url: https://httpbin.org/
-  - url: http://httpbin.org/
+  - url: 'http://api.example.com:12345'
+  - url: 'https://api.example.com:12345'
+  - url: 'https://api.example.com:443'
+  - url: 'https://api.example.com:80'
+  - url: 'http://api.example.com:443'
+  - url: 'http://api.example.com:80'
+  - url: 'http://api.example.com'
+  - url: 'https://api.example.com'
 paths:
   /anything:
     get:
