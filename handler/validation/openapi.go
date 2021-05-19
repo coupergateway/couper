@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
@@ -47,10 +48,24 @@ func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, err
 			if err != nil {
 				return nil, err
 			}
+
 			if !su.IsAbs() {
 				newServers = append(newServers, origin+s.URL)
+				continue
 			}
+
+			if su.Port() == "" && (su.Scheme == "https" || su.Scheme == "http") {
+				su.Host = su.Hostname() + ":"
+				if su.Scheme == "https" {
+					su.Host += "443"
+				} else {
+					su.Host += "80"
+				}
+				s.URL = su.String()
+			}
+
 		}
+
 		for _, ns := range newServers {
 			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
 		}
@@ -73,8 +88,16 @@ func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
 	return &sw
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request, key, host string) (*openapi3filter.RequestValidationInput, error) {
-	swagger, err := v.getModifiedSwagger(key, req.URL.Scheme+"://"+host)
+func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filter.RequestValidationInput, error) {
+	// reqURL is modified due to origin transport configuration
+	serverURL := *req.URL
+	// possible hostname attribute override
+	if _, p, _ := net.SplitHostPort(req.Host); p != "" { // hostname could contain a port already
+		serverURL.Host = req.Host
+	} else {
+		serverURL.Host = req.Host + ":" + serverURL.Port()
+	}
+	swagger, err := v.getModifiedSwagger(key, serverURL.Scheme+"://"+serverURL.Host)
 	if err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
@@ -90,9 +113,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, host string) (*openapi
 		return nil, err
 	}
 
-	routeURL := *req.URL
-	routeURL.Host = host
-	route, pathParams, err := router.FindRoute(req.Method, &routeURL)
+	route, pathParams, err := router.FindRoute(req.Method, &serverURL)
 	if err != nil {
 		err = fmt.Errorf("'%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {

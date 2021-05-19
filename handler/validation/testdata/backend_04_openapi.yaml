@@ -3,7 +3,7 @@ info:
   title: 'Couper backend validation test: template variables'
   version: 'v1.2.3'
 servers:
-  - url: 'http://api.example.com'
+  - url: '/anything'
     variables:
       sub:
         default: 'api'
@@ -12,7 +12,7 @@ servers:
       broken:
         default: https://api.example.com
 paths:
-  /anything:
+  /:
     get:
       responses:
         200:
