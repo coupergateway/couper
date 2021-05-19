@@ -17,7 +17,7 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
-var swaggers sync.Map
+var routers sync.Map
 
 type OpenAPI struct {
 	options *OpenAPIOptions
@@ -32,8 +32,8 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
-func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, error) {
-	swagger, exists := swaggers.Load(key)
+func (v *OpenAPI) getRouter(key, origin string) (*openapi3filter.Router, error) {
+	router, exists := routers.Load(key)
 	if !exists {
 		clonedSwagger := cloneSwagger(v.options.swagger)
 
@@ -70,22 +70,16 @@ func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, err
 			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
 		}
 
-		swaggers.Store(key, clonedSwagger)
-		swagger = clonedSwagger
+		r := openapi3filter.NewRouter()
+		if err := r.AddSwagger(clonedSwagger); err != nil {
+			return nil, err
+		}
+
+		routers.Store(key, r)
+		return r, nil
 	}
 
-	if s, ok := swagger.(*openapi3.Swagger); ok {
-		return s, nil
-	}
-
-	return nil, fmt.Errorf("swagger wrong type: %v", swagger)
-}
-
-func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
-	sw := *s
-	// this is not a deep clone; we only want to add servers
-	sw.Servers = s.Servers[:]
-	return &sw
+	return router.(*openapi3filter.Router), nil
 }
 
 func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filter.RequestValidationInput, error) {
@@ -97,7 +91,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filte
 	} else {
 		serverURL.Host = req.Host + ":" + serverURL.Port()
 	}
-	swagger, err := v.getModifiedSwagger(key, serverURL.Scheme+"://"+serverURL.Host)
+	router, err := v.getRouter(key, serverURL.Scheme+"://"+serverURL.Host)
 	if err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
@@ -106,11 +100,6 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filte
 			return nil, err
 		}
 		return nil, nil
-	}
-
-	router := openapi3filter.NewRouter()
-	if err = router.AddSwagger(swagger); err != nil {
-		return nil, err
 	}
 
 	route, pathParams, err := router.FindRoute(req.Method, &serverURL)
@@ -195,4 +184,11 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response, requestValidationInput
 	}
 
 	return nil
+}
+
+func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
+	sw := *s
+	// this is not a deep clone; we only want to add servers
+	sw.Servers = s.Servers[:]
+	return &sw
 }
