@@ -166,40 +166,60 @@ func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
 
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
-	beConf := &config.Backend{
-		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
-			"origin": &hcl.Attribute{
-				Name: "origin",
-				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.Addr())),
-			},
-			"hostname": &hcl.Attribute{
-				Name: "hostname",
-				Expr: hcltest.MockExprLiteral(cty.StringVal("api.example.com")),
-			},
-		}}),
-		OpenAPI: &config.OpenAPI{
-			File: filepath.Join("testdata/backend_04_openapi.yaml"),
-		},
+
+	type testCase struct {
+		name, origin, hostname string
 	}
-	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+
+	openAPI, err := validation.NewOpenAPIOptions(&config.OpenAPI{
+		File: filepath.Join("testdata/backend_04_openapi.yaml"),
+	})
 	helper.Must(err)
 
-	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
-		OpenAPI: openAPI,
-	}, logger)
+	for _, tc := range []testCase{
+		{name: "tpl url", origin: "https://api.example.com"},
+		{name: "relative url", origin: "https://api.example.com"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			beConf := &config.Backend{
+				Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
+					"origin": &hcl.Attribute{
+						Name: "origin",
+						Expr: hcltest.MockExprLiteral(cty.StringVal(tc.origin)),
+					},
+					"hostname": &hcl.Attribute{
+						Name: "hostname",
+						Expr: hcltest.MockExprLiteral(cty.StringVal(tc.hostname)),
+					},
+					"proxy": &hcl.Attribute{
+						Name: "proxy",
+						Expr: hcltest.MockExprLiteral(cty.StringVal(origin.Addr())),
+					},
+					"path": &hcl.Attribute{
+						Name: "path",
+						Expr: hcltest.MockExprLiteral(cty.StringVal("/anything")),
+					},
+				}}),
+			}
 
-	req := httptest.NewRequest(http.MethodGet, "https://test.local/anything", nil)
+			backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+				OpenAPI: openAPI,
+			}, logger)
 
-	hook.Reset()
-	_, err = backend.RoundTrip(req)
-	if err != nil {
-		t.Error(err)
-	}
+			req := httptest.NewRequest(http.MethodGet, "https://test.local/", nil)
 
-	if t.Failed() {
-		for _, entry := range hook.Entries {
-			t.Log(entry.String())
-		}
+			hook.Reset()
+			_, err = backend.RoundTrip(req)
+			if err != nil && err.Error() != "backend error" {
+				subT.Error(err)
+			}
+
+			if subT.Failed() {
+				for _, entry := range hook.Entries {
+					subT.Log(entry.String())
+				}
+			}
+		})
 	}
 }
 
