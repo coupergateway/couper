@@ -37,7 +37,7 @@ func TestChangelog_Links(t *testing.T) {
 			return
 		}
 
-		if !bytes.HasPrefix(line, []byte("* ")) {
+		if !bytes.HasPrefix(line, []byte("  * ")) {
 			continue
 		}
 

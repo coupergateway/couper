@@ -314,7 +314,7 @@ Release date: 2021-01-13
 * **Code Refactoring**
   * configuration load and prepare related body merges on hcl level
 
-## [v0.3](https://github.com/avenga/couper/compare/v0.2...v0.3)
+## [0.3](https://github.com/avenga/couper/compare/v0.2...v0.3)
 
 Release date: 2020-12-15
 
@@ -340,7 +340,7 @@ Release date: 2020-12-15
   * logging: start-time measurement
   * missing `backend.hostname` documentation ([#62](https://github.com/avenga/couper/issues/62))
 
-## [v0.2](https://github.com/avenga/couper/compare/v0.1...v0.2)
+## [0.2](https://github.com/avenga/couper/compare/v0.1...v0.2)
 
 Release date: 2020-10-08
 
