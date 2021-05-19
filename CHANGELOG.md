@@ -7,6 +7,10 @@ Release date: 2021-xx-xx
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+### Fixed
+
+* Ensure `Content-Length` HTTP header field instead of `Transfer-Encoding: chunked` ([#163](https://github.com/avenga/couper/issues/163))
+
 ---
 
 <a name="1.2"></a>
