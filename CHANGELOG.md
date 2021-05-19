@@ -2,15 +2,13 @@
 
 ## [Unreleased](https://github.com/avenga/couper/compare/1.2...master)
 
-Release date: 2021-xx-xx
-
 Unreleased changes are available as `avenga/couper:edge` container.
 
 ---
 
 ## [1.2](https://github.com/avenga/couper/compare/1.1.1...1.2)
 
-Release date: 2021-05-18
+Release date: 2021-05-19
 
 The most important feature of Couper 1.2 is the introduction of _custom
 error handling_ in form of the [`error_handler`](/docs/ERRORS.md) block.
