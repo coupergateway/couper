@@ -178,7 +178,7 @@ func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{name: "tpl url", origin: "https://api.example.com"},
-		{name: "relative url", origin: "https://api.example.com"},
+		{name: "relative url", origin: origin.Addr()},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			beConf := &config.Backend{
