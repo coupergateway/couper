@@ -4,6 +4,7 @@ info:
   version: 'v1.2.3'
 servers:
   - url: '/anything'
+  - url: '/{sub}/anything'
     variables:
       sub:
         default: 'api'
