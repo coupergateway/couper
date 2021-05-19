@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
@@ -16,7 +17,7 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
-var swaggers sync.Map
+var routers sync.Map
 
 type OpenAPI struct {
 	options *OpenAPIOptions
@@ -31,45 +32,66 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
-func (v *OpenAPI) getModifiedSwagger(key, origin string) (*openapi3.Swagger, error) {
-	swagger, exists := swaggers.Load(key)
+func (v *OpenAPI) getRouter(key, origin string) (*openapi3filter.Router, error) {
+	router, exists := routers.Load(key)
 	if !exists {
 		clonedSwagger := cloneSwagger(v.options.swagger)
 
 		var newServers []string
 		for _, s := range clonedSwagger.Servers {
+			// Do not touch a url if template variables are used.
+			if names, err := s.ParameterNames(); len(names) > 0 || err != nil {
+				continue
+			}
+
 			su, err := url.Parse(s.URL)
 			if err != nil {
 				return nil, err
 			}
+
 			if !su.IsAbs() {
 				newServers = append(newServers, origin+s.URL)
+				continue
 			}
+
+			if su.Port() == "" && (su.Scheme == "https" || su.Scheme == "http") {
+				su.Host = su.Hostname() + ":"
+				if su.Scheme == "https" {
+					su.Host += "443"
+				} else {
+					su.Host += "80"
+				}
+				s.URL = su.String()
+			}
+
 		}
+
 		for _, ns := range newServers {
 			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
 		}
 
-		swaggers.Store(key, clonedSwagger)
-		swagger = clonedSwagger
+		r := openapi3filter.NewRouter()
+		if err := r.AddSwagger(clonedSwagger); err != nil {
+			return nil, err
+		}
+
+		routers.Store(key, r)
+		return r, nil
 	}
 
-	if s, ok := swagger.(*openapi3.Swagger); ok {
-		return s, nil
+	return router.(*openapi3filter.Router), nil
+}
+
+func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filter.RequestValidationInput, error) {
+	// reqURL is modified due to origin transport configuration
+	serverURL := *req.URL
+	// possible hostname attribute override
+	if _, p, _ := net.SplitHostPort(req.Host); p != "" { // hostname could contain a port already
+		serverURL.Host = req.Host
+	} else {
+		serverURL.Host = req.Host + ":" + serverURL.Port()
 	}
-
-	return nil, fmt.Errorf("swagger wrong type: %v", swagger)
-}
-
-func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
-	sw := *s
-	// this is not a deep clone; we only want to add servers
-	sw.Servers = s.Servers[:]
-	return &sw
-}
-
-func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) (*openapi3filter.RequestValidationInput, error) {
-	swagger, err := v.getModifiedSwagger(key, origin)
+	router, err := v.getRouter(key, serverURL.Scheme+"://"+serverURL.Host)
 	if err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
@@ -80,12 +102,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key, origin string) (*opena
 		return nil, nil
 	}
 
-	router := openapi3filter.NewRouter()
-	if err = router.AddSwagger(swagger); err != nil {
-		return nil, err
-	}
-
-	route, pathParams, err := router.FindRoute(req.Method, req.URL)
+	route, pathParams, err := router.FindRoute(req.Method, &serverURL)
 	if err != nil {
 		err = fmt.Errorf("'%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
@@ -167,4 +184,11 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response, requestValidationInput
 	}
 
 	return nil
+}
+
+func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
+	sw := *s
+	// this is not a deep clone; we only want to add servers
+	sw.Servers = s.Servers[:]
+	return &sw
 }
