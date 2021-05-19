@@ -1,6 +1,5 @@
 # Couper Changelog
 
-<a name="unreleased"></a>
 ## [Unreleased](https://github.com/avenga/couper/compare/1.2...master)
 
 Release date: 2021-xx-xx
@@ -9,7 +8,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 ---
 
-<a name="1.2"></a>
 ## [1.2](https://github.com/avenga/couper/compare/1.1.1...1.2)
 
 Release date: 2021-05-18
@@ -43,7 +41,6 @@ if you want to see it in action.
 * Fix possible race-condition with concurrent `openapi` validations ([#231](https://github.com/avenga/couper/pull/231))
 * Fix use of server URLs without port in `openapi` ([#230](https://github.com/avenga/couper/pull/230))
 
-<a name="1.1.1"></a>
 ## [1.1.1](https://github.com/avenga/couper/compare/1.1...1.1.1)
 
 > 2021-04-21
@@ -53,7 +50,6 @@ if you want to see it in action.
 * Endpoint responses are written and logged with correct status-code ([#216](https://github.com/avenga/couper/issues/216))
   * affected: a plain `response` without any additional headers or body configuration
 
-<a name="1.1"></a>
 ## [1.1](https://github.com/avenga/couper/compare/1.0...1.1)
 
 > 2021-04-16
@@ -81,8 +77,6 @@ if you want to see it in action.
 
 * Add OAuth2 token request retry option  ([#167](https://github.com/avenga/couper/issues/167)) ([#209](https://github.com/avenga/couper/issues/209))
 
-
-<a name="1.0"></a> 🍾
 ## [1.0](https://github.com/avenga/couper/compare/0.9...1.0)
 
 > 2021-04-09
@@ -100,8 +94,6 @@ if you want to see it in action.
 
 * Fix missing `backend.origin` attribute url validation ([#191](https://github.com/avenga/couper/issues/191))
 
-
-<a name="0.9"></a>
 ## [0.9](https://github.com/avenga/couper/compare/0.8...0.9)
 
 > 2021-04-08
@@ -130,7 +122,6 @@ if you want to see it in action.
 * log option pretty print for `json` log-format ([#179](https://github.com/avenga/couper/pull/179))
   * `-log-pretty` to enable formatted and key colored logs
 
-<a name="0.8"></a>
 ## [0.8](https://github.com/avenga/couper/compare/0.7.0...v0.8)
 
 > 2021-04-06
@@ -161,8 +152,6 @@ if you want to see it in action.
 * Add `json_body` attribute for `request` and `response` block ([#158](https://github.com/avenga/couper/issues/158))
 * `bytes` log field to represent the body size
 
-
-<a name="0.7.0"></a>
 ## [0.7.0](https://github.com/avenga/couper/compare/0.6.1...0.7.0)
 
 > 2021-03-23
@@ -199,7 +188,6 @@ if you want to see it in action.
     * `token` memory storage with ttl
   * `path_prefix` attribute ([#138](https://github.com/avenga/couper/issues/138))
 
-<a name="0.6.1"></a>
 ## [0.6.1](https://github.com/avenga/couper/compare/0.6...0.6.1)
 
 > 2021-03-15
@@ -218,7 +206,6 @@ if you want to see it in action.
 
 * `url_encode` function for RFC 3986 string encoding ([#136](https://github.com/avenga/couper/pull/136))
 
-<a name="0.6"></a>
 ## [0.6](https://github.com/avenga/couper/compare/0.5.1...0.6)
 
 > 2021-03-11
@@ -284,8 +271,6 @@ endpoint "/new" {
 * hcl to v2.9.1
 * kin-openapi to v.0.49.0
 
-
-<a name="0.5.1"></a>
 ## [0.5.1](https://github.com/avenga/couper/compare/0.5...0.5.1)
 
 > 2021-02-16
@@ -302,7 +287,6 @@ endpoint "/new" {
 * KeepAlive `60s` ([#108](https://github.com/avenga/couper/pull/108)), previously `15s`
 * Reject requests which hits an endpoint with basic-auth access-control, and the configured password evaluates to an empty string ([#115](https://github.com/avenga/couper/pull/115))
 
-<a name="0.5"></a>
 ## [0.5](https://github.com/avenga/couper/compare/0.4.2...0.5)
 
 > 2021-01-29
@@ -329,7 +313,6 @@ endpoint "/new" {
 * Upgrade logrus module to 1.7.0
 * Upgrade kin-openapi module to v0.37
 
-<a name="0.4.2"></a>
 ## [0.4.2](https://github.com/avenga/couper/compare/0.4.1...0.4.2)
 
 > 2021-01-19
@@ -340,7 +323,6 @@ endpoint "/new" {
 * Fix logging http scheme even without a successful tls handshake ([#99](https://github.com/avenga/couper/pull/99))
 * Fix hcl.Body content for reference backends ([#96](https://github.com/avenga/couper/issues/96))
 
-<a name="0.4.1"></a>
 ## [0.4.1](https://github.com/avenga/couper/compare/0.4...0.4.1)
 
 > 2021-01-18
@@ -351,7 +333,6 @@ endpoint "/new" {
 * Fix query encoding ([#93](https://github.com/avenga/couper/issues/93))
 * Fix log_format (settings) configuration ([#61](https://github.com/avenga/couper/issues/61))
 
-<a name="0.4"></a>
 ## [0.4](https://github.com/avenga/couper/compare/v0.3...0.4)
 
 > 2021-01-13
@@ -371,7 +352,6 @@ endpoint "/new" {
 
 * configuration load and prepare related body merges on hcl level
 
-<a name="v0.3"></a>
 ## [v0.3](https://github.com/avenga/couper/compare/v0.2...v0.3)
 
 > 2020-12-15
@@ -401,8 +381,6 @@ endpoint "/new" {
 * logging: start-time measurement
 * missing `backend.hostname` documentation ([#62](https://github.com/avenga/couper/issues/62))
 
-
-<a name="v0.2"></a>
 ## [v0.2](https://github.com/avenga/couper/compare/v0.1...v0.2)
 
 > 2020-10-08
@@ -420,8 +398,6 @@ endpoint "/new" {
 * env var mapping ([#35](https://github.com/avenga/couper/pull/35))
 * JWT HMAC keys ([#32](https://github.com/avenga/couper/pull/32))
 
-
-<a name="0.1"></a>
 ## 0.1
 
 > 2020-09-11
