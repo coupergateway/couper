@@ -4,9 +4,8 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
-### Fixed
-
-* Ensure `Content-Length` HTTP header field instead of `Transfer-Encoding: chunked` ([#163](https://github.com/avenga/couper/issues/163))
+* **Fixed**
+  * Ensure `Content-Length` HTTP header field instead of `Transfer-Encoding: chunked` ([#163](https://github.com/avenga/couper/issues/163))
 
 ---
 
