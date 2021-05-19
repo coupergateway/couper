@@ -33,11 +33,11 @@ func TestChangelog_Links(t *testing.T) {
 		helper.Must(readErr)
 
 		// Link Condition introduced with 1.2 release.
-		if bytes.Equal(line, []byte("> 2021-04-21\n")) {
+		if bytes.Equal(line, []byte("Release date: 2021-04-21\n")) {
 			return
 		}
 
-		if !bytes.HasPrefix(line, []byte("* ")) {
+		if !bytes.HasPrefix(line, []byte("  * ")) {
 			continue
 		}
 
