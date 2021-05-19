@@ -195,7 +195,7 @@ Release date: 2021-03-11
     * Config migration, add a `proxy` block:
 
 ```hcl
-  endpoint "/old" {
+endpoint "/old" {
   backend = "reference"
   # or
   backend {
