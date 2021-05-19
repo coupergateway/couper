@@ -1,9 +1,13 @@
 package transport
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -119,6 +123,20 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	ctx := context.WithValue(req.Context(), request.BackendURL, req.URL.String())
 	*req = *req.WithContext(ctx)
+
+	if req.Body != nil {
+		reqBody, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		if len(reqBody) > 0 {
+			req.Body = io.NopCloser(bytes.NewBuffer(reqBody)) // reset
+
+			cl := len(reqBody)
+			req.Header.Set("Content-Length", fmt.Sprintf("%d", cl))
+			req.ContentLength = int64(cl)
+		}
+	}
 
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
