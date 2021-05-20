@@ -3,8 +3,6 @@ package producer
 import (
 	"context"
 	"net/http"
-
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -13,7 +11,7 @@ var (
 )
 
 type Roundtrips interface {
-	Produce(ctx context.Context, req *http.Request, results chan<- *Result, log *logrus.Entry)
+	Produce(ctx context.Context, req *http.Request, results chan<- *Result)
 }
 
 func sendResult(ctx context.Context, results chan<- *Result, result *Result) {

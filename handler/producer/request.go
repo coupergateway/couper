@@ -8,12 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
-
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/hashicorp/hcl/v2"
 )
 
 // Request represents the producer <Request> object.
@@ -26,7 +24,7 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result, log *logrus.Entry) {
+func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 
