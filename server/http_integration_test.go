@@ -773,8 +773,8 @@ func TestHTTPServer_BackendLogPath(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if p := hook.Entries[0].Data["request"].(logging.Fields)["path"]; p != "/path?query" {
-		t.Errorf("Unexpected path given: %s", p)
+	if m := hook.Entries[0].Message; m != "configuration error: path attribute: unallowed query string or fragment found" {
+		t.Errorf("Unexpected message given: %s", m)
 	}
 }
 
