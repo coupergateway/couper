@@ -773,12 +773,12 @@ func TestHTTPServer_BackendLogPath(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if m := hook.Entries[0].Message; m != "configuration error: path attribute: invalid fragment found" {
-		t.Errorf("Unexpected message given: %s", m)
+	if p := hook.Entries[0].Data["request"].(logging.Fields)["path"]; p != "/path?query" {
+		t.Errorf("Unexpected path given: %s", p)
 	}
 }
 
-func TestHTTPServer_BackendLogPathPath(t *testing.T) {
+func TestHTTPServer_BackendLogPathInEndpoint(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 

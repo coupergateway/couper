@@ -5,7 +5,7 @@ server "api" {
       proxy {
         backend {
           origin = "${env.COUPER_TEST_BACKEND_ADDR}"
-          path = "/path#?xxx"
+          path = "/path"
         }
       }
     }
