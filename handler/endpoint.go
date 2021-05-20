@@ -109,9 +109,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			if b.Err == nil {
 				continue
 			}
+
 			switch b.Err.(type) {
 			case producer.ResultPanic:
-				log.Error(b.Err)
+				log.WithError(b.Err).Error()
 			}
 
 			if b.Err != nil {
@@ -157,7 +158,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 		case producer.ResultPanic:
 			serveErr = errors.Server.With(err)
-			log.Error(err)
+			log.WithError(err).Error()
 		}
 		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
 		return
@@ -165,7 +166,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// always apply before write: redirect, response
 	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
-		log.Error(err)
+		log.WithError(err).Error()
 	}
 
 	select {
