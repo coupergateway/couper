@@ -69,6 +69,8 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 				Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
+		// reset body initially, additional body reads which are not depending on http.Request
+		// internals like form parsing should just call GetBody() and use the returned reader.
 		SetBody(req, buf.Bytes())
 
 		// parsing form data now since they read/write request attributes which could be
@@ -79,6 +81,9 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 	return nil
 }
 
+// SetBody creates a reader from the given bytes for the Body itself
+// and the request GetBody method. Since the size is known the
+// Content-Length will be configured too.
 func SetBody(req *http.Request, body []byte) {
 	bodyBytes := body
 
@@ -86,8 +91,6 @@ func SetBody(req *http.Request, body []byte) {
 		return io.NopCloser(bytes.NewBuffer(bodyBytes)), nil
 	}
 
-	// reset body initially, additional body reads which are not depending on http.Request
-	// internals like form parsing should just call GetBody() and use the returned reader.
 	req.Body, _ = req.GetBody()
 
 	cl := len(bodyBytes)
