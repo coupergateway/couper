@@ -85,11 +85,13 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		// The real URL is configured later in the backend,
 		// see <go roundtrip()> at the end of current for-loop.
-		outreq, err := http.NewRequest(strings.ToUpper(method), "", strings.NewReader(body))
+		outreq, err := http.NewRequest(strings.ToUpper(method), "", nil)
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
+
+		eval.SetBody(outreq, []byte(body))
 
 		if defaultContentType != "" {
 			outreq.Header.Set("Content-Type", defaultContentType)
