@@ -1,6 +1,9 @@
 package errors
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Error struct {
 	// client: synopsis
@@ -23,6 +26,17 @@ var _ GoError = &Error{}
 
 func New() *Error {
 	return Server
+}
+
+// Equals returns true if the base type and kinds are equal.
+func Equals(a, b error) bool {
+	aerr, oka := a.(*Error)
+	berr, okb := b.(*Error)
+	if !oka || !okb {
+		return a == b
+	}
+	return aerr.synopsis == berr.synopsis &&
+		strings.Join(aerr.kinds, "") == strings.Join(aerr.kinds, "")
 }
 
 // Status configures the http status-code which will be
