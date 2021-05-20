@@ -256,12 +256,11 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	if pathAttr, ok := attrs[attrPath]; ok {
 		pathValue, _ := pathAttr.Expr.Value(httpCtx)
 		if str := seetie.ValueToString(pathValue); str != "" {
-			i := strings.Index(str, "?")
-			j := strings.Index(str, "#")
-
-			if i >= 0 || j >= 0 {
-				// TODO: Check for a valid absolute path
-				return errors.Configuration.Message("path attribute: unallowed query string or fragment found")
+			// TODO: Check for a valid absolute path
+			if i := strings.Index(str, "#"); i >= 0 {
+				return errors.Configuration.Message("path attribute: invalid fragment found")
+			} else if i := strings.Index(str, "?"); i >= 0 {
+				return errors.Configuration.Message("path attribute: invalid query string found")
 			}
 
 			path = str

@@ -193,12 +193,11 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 
 func (b *Backend) withPathPrefix(req *http.Request) error {
 	if pathPrefix := b.getAttribute(req, "path_prefix"); pathPrefix != "" {
-		i := strings.Index(pathPrefix, "?")
-		j := strings.Index(pathPrefix, "#")
-
-		if i >= 0 || j >= 0 {
-			// TODO: Check for a valid absolute path
-			return errors.Configuration.Message("path_prefix attribute: unallowed query string or fragment found")
+		// TODO: Check for a valid absolute path
+		if i := strings.Index(pathPrefix, "#"); i >= 0 {
+			return errors.Configuration.Message("path_prefix attribute: invalid fragment found")
+		} else if i := strings.Index(pathPrefix, "?"); i >= 0 {
+			return errors.Configuration.Message("path_prefix attribute: invalid query string found")
 		}
 
 		req.URL.Path = utils.JoinPath("/", pathPrefix, req.URL.Path)
