@@ -360,3 +360,25 @@ func TestEndpoints_Muxing(t *testing.T) {
 		t.Errorf("Expected body 's1', given %s", resBytes)
 	}
 }
+
+func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "09_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	if !bytes.Contains(resBytes, []byte("<html>configuration error</html>")) {
+		t.Errorf("Expected body '<html>configuration error</html>', given '%s'", resBytes)
+	}
+}

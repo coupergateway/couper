@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * Upstream requests with a known body-size have a `Content-Length` HTTP header field instead of `Transfer-Encoding: chunked` ([#163](https://github.com/avenga/couper/issues/163))
+  * Exit endpoint if an error is occurred in `request` or `proxy` instead of processing a defined `response` ([#233](https://github.com/avenga/couper/pull/233))
 
 ---
 
