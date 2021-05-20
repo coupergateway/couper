@@ -5,7 +5,6 @@ import (
 	"context"
 	er "errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -253,9 +252,7 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		}
 	}
 
-	req.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(values.Encode())))
-	req.Header.Del("Content-Length")
-	req.ContentLength = -1
+	SetBody(req, []byte(values.Encode()))
 
 	return nil
 }
