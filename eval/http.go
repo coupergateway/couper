@@ -104,7 +104,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		attrs[attr.Name] = attr
 	}
 
-	evalURLPath(req, attrs, httpCtx)
+	if err := evalURLPath(req, attrs, httpCtx); err != nil {
+		return err
+	}
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
 	if err := applyHeaderOps(attrs,
@@ -171,16 +173,17 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	return nil
 }
 
-func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) {
+func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) error {
 	path := req.URL.Path
 	if pathAttr, ok := attrs[attrPath]; ok {
 		pathValue, _ := pathAttr.Expr.Value(httpCtx)
 		if str := seetie.ValueToString(pathValue); str != "" {
-			if i := strings.Index(str, "?"); i >= 0 {
-				str = str[:i]
-			}
-			if i := strings.Index(str, "#"); i >= 0 {
-				str = str[:i]
+			i := strings.Index(str, "?")
+			j := strings.Index(str, "#")
+
+			if i >= 0 || j >= 0 {
+				// TODO: Check for a valid absolute path
+				return errors.Configuration.Message("path attribute: unallowed query string or fragment found")
 			}
 
 			path = str
@@ -197,6 +200,8 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	} else if path != "" {
 		req.URL.Path = utils.JoinPath("/", path)
 	}
+
+	return nil
 }
 
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {

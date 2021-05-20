@@ -6,7 +6,6 @@ const (
 	UID ContextKey = iota
 	AccessControls
 	BackendName
-	BackendURL
 	Endpoint
 	EndpointKind
 	Error

@@ -112,13 +112,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	b.withBasicAuth(req)
-	b.withPathPrefix(req)
+	if err := b.withPathPrefix(req); err != nil {
+		return nil, err
+	}
 
 	setUserAgent(req)
 	req.Close = false
-
-	ctx := context.WithValue(req.Context(), request.BackendURL, req.URL.String())
-	*req = *req.WithContext(ctx)
 
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
@@ -193,10 +192,20 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	return beresp, nil
 }
 
-func (b *Backend) withPathPrefix(req *http.Request) {
+func (b *Backend) withPathPrefix(req *http.Request) error {
 	if pathPrefix := b.getAttribute(req, "path_prefix"); pathPrefix != "" {
+		i := strings.Index(pathPrefix, "?")
+		j := strings.Index(pathPrefix, "#")
+
+		if i >= 0 || j >= 0 {
+			// TODO: Check for a valid absolute path
+			return errors.Configuration.Message("path_prefix attribute: unallowed query string or fragment found")
+		}
+
 		req.URL.Path = utils.JoinPath("/", pathPrefix, req.URL.Path)
 	}
+
+	return nil
 }
 
 func (b *Backend) withBasicAuth(req *http.Request) {

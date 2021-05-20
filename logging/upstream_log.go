@@ -95,9 +95,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	requestFields["path"] = path.String()
 	requestFields["headers"] = filterHeader(u.config.RequestHeaders, req.Header)
 
-	if burl, ok := req.Context().Value(request.BackendURL).(string); ok {
-		fields["url"] = burl
-	}
+	fields["url"] = req.URL.String()
 
 	if req.URL.User != nil && req.URL.User.Username() != "" {
 		fields["auth_user"] = req.URL.User.Username()
