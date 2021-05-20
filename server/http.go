@@ -182,6 +182,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	uid := s.uidFn()
 	ctx := context.WithValue(req.Context(), request.UID, uid)
 	ctx = context.WithValue(ctx, request.XFF, req.Header.Get("X-Forwarded-For"))
+	ctx = context.WithValue(ctx, request.LogEntry, s.log.WithField("uid", uid))
 	*req = *req.WithContext(ctx)
 
 	req.Host = s.getHost(req)

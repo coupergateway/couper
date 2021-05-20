@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
@@ -172,8 +173,7 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 	}
 
-	err := getFormParams(httpCtx, req, attrs)
-	return err
+	return getFormParams(httpCtx, req, attrs)
 }
 
 func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hcl.Attribute) error {
@@ -187,11 +187,17 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		return nil
 	}
 
+	log := req.Context().Value(request.LogEntry).(*logrus.Entry)
+
 	if req.Method != http.MethodPost {
-		return errors.Evaluation.Label("form_params").Messagef("method mismatch: %s", req.Method)
+		log.WithError(errors.Evaluation.Label("form_params").
+			Messagef("method mismatch: %s", req.Method)).Warn()
+		return nil
 	}
 	if ct := req.Header.Get("Content-Type"); !strings.HasPrefix(strings.ToLower(ct), contentTypeValue) {
-		return errors.Evaluation.Label("form_params").Messagef("content-type mismatch: %s", ct)
+		log.WithError(errors.Evaluation.Label("form_params").
+			Messagef("content-type mismatch: %s", ct)).Warn()
+		return nil
 	}
 
 	values := req.PostForm
