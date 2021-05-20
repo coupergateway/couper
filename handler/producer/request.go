@@ -8,11 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/hcl/v2"
-
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/hashicorp/hcl/v2"
 )
 
 // Request represents the producer <Request> object.
