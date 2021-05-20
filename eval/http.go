@@ -5,6 +5,7 @@ import (
 	"context"
 	er "errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
@@ -32,6 +34,9 @@ const (
 	attrAddQueryParams = "add_query_params"
 	attrDelQueryParams = "remove_query_params"
 	attrSetQueryParams = "set_query_params"
+	attrAddFormParams  = "add_form_params"
+	attrDelFormParams  = "remove_form_params"
+	attrSetFormParams  = "set_form_params"
 
 	attrSetResHeaders = "set_response_headers"
 	attrAddResHeaders = "add_response_headers"
@@ -169,6 +174,79 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	if modifyQuery {
 		req.URL.RawQuery = strings.ReplaceAll(values.Encode(), "+", "%20")
 	}
+
+	return getFormParams(httpCtx, req, attrs)
+}
+
+func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hcl.Attribute) error {
+	const contentTypeValue = "application/x-www-form-urlencoded"
+
+	attrDel, okDel := attrs[attrDelFormParams]
+	attrSet, okSet := attrs[attrSetFormParams]
+	attrAdd, okAdd := attrs[attrAddFormParams]
+
+	if !okAdd && !okDel && !okSet {
+		return nil
+	}
+
+	log := req.Context().Value(request.LogEntry).(*logrus.Entry)
+
+	if req.Method != http.MethodPost {
+		log.WithError(errors.Evaluation.Label("form_params").
+			Messagef("method mismatch: %s", req.Method)).Warn()
+		return nil
+	}
+	if ct := req.Header.Get("Content-Type"); !strings.HasPrefix(strings.ToLower(ct), contentTypeValue) {
+		log.WithError(errors.Evaluation.Label("form_params").
+			Messagef("content-type mismatch: %s", ct)).Warn()
+		return nil
+	}
+
+	values := req.PostForm
+	if values == nil {
+		values = make(url.Values)
+	}
+
+	if okDel {
+		val, attrDiags := attrDel.Expr.Value(ctx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+		for _, key := range seetie.ValueToStringSlice(val) {
+			values.Del(key)
+		}
+	}
+
+	if okSet {
+		val, attrDiags := attrSet.Expr.Value(ctx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+
+		for k, v := range seetie.ValueToMap(val) {
+			values[k] = toSlice(v)
+		}
+	}
+
+	if okAdd {
+		val, attrDiags := attrAdd.Expr.Value(ctx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+
+		for k, v := range seetie.ValueToMap(val) {
+			list := toSlice(v)
+			if _, okAdd = values[k]; !okAdd {
+				values[k] = list
+			} else {
+				values[k] = append(values[k], list...)
+			}
+		}
+	}
+
+	req.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(values.Encode())))
+	req.Header.Del("Content-Length")
+	req.ContentLength = -1
 
 	return nil
 }

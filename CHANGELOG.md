@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * Modifier (`set/add/remove_form_params`) for the form parameters ([#223](https://github.com/avenga/couper/pull/223))
+
 * **Fixed**
   * The `path` field in the backend log ([#232](https://github.com/avenga/couper/pull/232))
 

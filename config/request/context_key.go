@@ -9,6 +9,7 @@ const (
 	Endpoint
 	EndpointKind
 	Error
+	LogEntry
 	OpenAPI
 	PathParams
 	RoundTripName
