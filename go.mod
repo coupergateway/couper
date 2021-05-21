@@ -8,6 +8,7 @@ require (
 	github.com/fatih/color v1.10.0
 	github.com/getkin/kin-openapi v0.49.0
 	github.com/hashicorp/hcl/v2 v2.10.0
+	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/rs/xid v1.2.1
 	github.com/russellhaering/gosaml2 v0.6.0
 	github.com/russellhaering/goxmldsig v1.1.0

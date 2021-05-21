@@ -212,6 +212,10 @@ func updateFunctions(ctx *Context) {
 		samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
 		ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	}
+	codeVerifierFn := NewOAuthCodeVerifierFunction(ctx)
+	ctx.eval.Functions[FnOAuthCodeVerifier] = codeVerifierFn
+	codeChallengeFn := NewOAuthCodeChallengeFunction(ctx)
+	ctx.eval.Functions[FnOAuthCodeChallenge] = codeChallengeFn
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
