@@ -21,6 +21,10 @@ func TestEndpoints_OAuth2(t *testing.T) {
 
 		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.URL.Path == "/oauth2" {
+				if cl := req.Header.Get("Content-Length"); cl != "29" {
+					t.Errorf("Unexpected C/L given: %s", cl)
+				}
+
 				rw.Header().Set("Content-Type", "application/json")
 				rw.WriteHeader(http.StatusOK)
 

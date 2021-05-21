@@ -178,13 +178,13 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 		post.Set("client_secret", creds.ClientSecret)
 	}
 
-	body := ioutil.NopCloser(strings.NewReader(post.Encode()))
-
 	// url will be configured via backend roundtrip
-	outreq, err := http.NewRequest(http.MethodPost, "", body)
+	outreq, err := http.NewRequest(http.MethodPost, "", nil)
 	if err != nil {
 		return nil, err
 	}
+
+	eval.SetBody(outreq, []byte(post.Encode()))
 
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 

@@ -8,6 +8,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Modifier (`set/add/remove_form_params`) for the form parameters ([#223](https://github.com/avenga/couper/pull/223))
   * More coverage and more tests ([#213](https://github.com/avenga/couper/pull/213))
 
+* **Fixed**
+  * Upstream requests with a known body-size have a `Content-Length` HTTP header field instead of `Transfer-Encoding: chunked` ([#163](https://github.com/avenga/couper/issues/163))
+  * Exit endpoint if an error is occurred in `request` or `proxy` instead of processing a defined `response` ([#233](https://github.com/avenga/couper/pull/233))
+
 ---
 
 ## [1.2](https://github.com/avenga/couper/compare/1.1.1...1.2)
