@@ -1,4 +1,4 @@
-package server
+package writer
 
 import (
 	"bufio"
@@ -15,14 +15,14 @@ import (
 )
 
 var (
-	_ http.Flusher         = &RWWrapper{}
-	_ http.Hijacker        = &RWWrapper{}
-	_ http.ResponseWriter  = &RWWrapper{}
-	_ logging.RecorderInfo = &RWWrapper{}
+	_ http.Flusher         = &Response{}
+	_ http.Hijacker        = &Response{}
+	_ http.ResponseWriter  = &Response{}
+	_ logging.RecorderInfo = &Response{}
 )
 
-// RWWrapper wraps the <http.ResponseWriter>.
-type RWWrapper struct {
+// Response wraps the http.ResponseWriter.
+type Response struct {
 	rw            http.ResponseWriter
 	gz            *gzip.Writer
 	headerBuffer  *bytes.Buffer
@@ -36,9 +36,9 @@ type RWWrapper struct {
 	bytesWritten    int
 }
 
-// NewRWWrapper creates a new RWWrapper object.
-func NewRWWrapper(rw http.ResponseWriter, useGZ bool, secureCookies string) *RWWrapper {
-	w := &RWWrapper{
+// NewResponseWriter creates a new Response object.
+func NewResponseWriter(rw http.ResponseWriter, useGZ bool, secureCookies string) *Response {
+	w := &Response{
 		rw:            rw,
 		headerBuffer:  &bytes.Buffer{},
 		secureCookies: secureCookies,
@@ -52,12 +52,12 @@ func NewRWWrapper(rw http.ResponseWriter, useGZ bool, secureCookies string) *RWW
 }
 
 // Header wraps the Header method of the <http.ResponseWriter>.
-func (w *RWWrapper) Header() http.Header {
+func (w *Response) Header() http.Header {
 	return w.rw.Header()
 }
 
 // Write wraps the Write method of the <http.ResponseWriter>.
-func (w *RWWrapper) Write(p []byte) (int, error) {
+func (w *Response) Write(p []byte) (int, error) {
 	l := len(p)
 	w.rawBytesWritten += l
 	if !w.statusWritten {
@@ -100,7 +100,7 @@ func (w *RWWrapper) Write(p []byte) (int, error) {
 	return n, writeErr
 }
 
-func (w *RWWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (w *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	hijack, ok := w.rw.(http.Hijacker)
 	if !ok {
 		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", w.rw)
@@ -109,14 +109,14 @@ func (w *RWWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 }
 
 // Close closes the GZ writer.
-func (w *RWWrapper) Close() {
+func (w *Response) Close() {
 	if w.gz != nil {
 		_ = w.gz.Close()
 	}
 }
 
 // Flush implements the <http.Flusher> interface.
-func (w *RWWrapper) Flush() {
+func (w *Response) Flush() {
 	if w.gz != nil {
 		_ = w.gz.Flush()
 	}
@@ -127,7 +127,7 @@ func (w *RWWrapper) Flush() {
 }
 
 // WriteHeader wraps the WriteHeader method of the <http.ResponseWriter>.
-func (w *RWWrapper) WriteHeader(statusCode int) {
+func (w *Response) WriteHeader(statusCode int) {
 	if w.statusWritten {
 		return
 	}
@@ -138,7 +138,7 @@ func (w *RWWrapper) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 }
 
-func (w *RWWrapper) configureHeader() {
+func (w *Response) configureHeader() {
 	w.rw.Header().Set("Server", "couper.io")
 	w.rw.Header().Add(transport.VaryHeader, transport.AcceptEncodingHeader)
 
@@ -147,12 +147,12 @@ func (w *RWWrapper) configureHeader() {
 		w.rw.Header().Set(transport.ContentEncodingHeader, transport.GzipName)
 	}
 
-	if w.secureCookies == SecureCookiesStrip {
-		stripSecureCookies(w.rw.Header())
-	}
+	//if w.secureCookies == SecureCookiesStrip {
+	//	stripSecureCookies(w.rw.Header())
+	//}
 }
 
-func (w *RWWrapper) parseStatusCode(p []byte) int {
+func (w *Response) parseStatusCode(p []byte) int {
 	if len(p) < 12 {
 		return 0
 	}
@@ -160,10 +160,10 @@ func (w *RWWrapper) parseStatusCode(p []byte) int {
 	return code
 }
 
-func (w *RWWrapper) StatusCode() int {
+func (w *Response) StatusCode() int {
 	return w.statusCode
 }
 
-func (w *RWWrapper) WrittenBytes() int {
+func (w *Response) WrittenBytes() int {
 	return w.bytesWritten
 }
