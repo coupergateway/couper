@@ -381,4 +381,18 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 	if !bytes.Contains(resBytes, []byte("<html>configuration error</html>")) {
 		t.Errorf("Expected body '<html>configuration error</html>', given '%s'", resBytes)
 	}
+
+	// header from error handling is set
+	if v := res.Header.Get("couper-error"); v != "configuration error" {
+		t.Errorf("want couper-error 'configuration error', got %q", v)
+	}
+
+	// happy path headers not set
+	if res.Header.Get("x-backend") != "" {
+		t.Errorf("backend.set_response_headers should not have been run")
+	}
+
+	if res.Header.Get("x-endpoint") != "" {
+		t.Errorf("endpoint.set_response_headers should not have been run")
+	}
 }
