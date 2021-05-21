@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -168,7 +169,8 @@ func TestEndpoints_ReqBody(t *testing.T) {
 		}
 	}()
 
-	req, err := http.NewRequest(http.MethodPost, "http://example.com:8080/post", bytes.NewBufferString("content"))
+	payload := "content"
+	req, err := http.NewRequest(http.MethodPost, "http://example.com:8080/post", bytes.NewBufferString(payload))
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -183,14 +185,19 @@ func TestEndpoints_ReqBody(t *testing.T) {
 	res.Body.Close()
 
 	type result struct {
-		Body string
+		Body    string
+		Headers http.Header
 	}
 
 	r := &result{}
 	helper.Must(json.Unmarshal(resBytes, r))
 
-	if r.Body != "content" {
+	if r.Body != payload {
 		t.Errorf("Want: content, got: %v", r.Body)
+	}
+
+	if r.Headers.Get("Content-Length") != strconv.Itoa(len(payload)) {
+		t.Errorf("Expected content-length: %d", len(payload))
 	}
 }
 
@@ -351,5 +358,27 @@ func TestEndpoints_Muxing(t *testing.T) {
 
 	if string(resBytes) != "s1" {
 		t.Errorf("Expected body 's1', given %s", resBytes)
+	}
+}
+
+func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "09_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	if !bytes.Contains(resBytes, []byte("<html>configuration error</html>")) {
+		t.Errorf("Expected body '<html>configuration error</html>', given '%s'", resBytes)
 	}
 }

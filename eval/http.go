@@ -5,7 +5,6 @@ import (
 	"context"
 	er "errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -70,19 +69,33 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 				Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
-		bodyBytes := buf.Bytes()
-		req.GetBody = func() (io.ReadCloser, error) {
-			return io.NopCloser(bytes.NewBuffer(bodyBytes)), nil
-		}
 		// reset body initially, additional body reads which are not depending on http.Request
 		// internals like form parsing should just call GetBody() and use the returned reader.
-		req.Body, _ = req.GetBody()
+		SetBody(req, buf.Bytes())
+
 		// parsing form data now since they read/write request attributes which could be
 		// difficult with multiple routines later on.
 		parseForm(req)
 	}
 
 	return nil
+}
+
+// SetBody creates a reader from the given bytes for the Body itself
+// and the request GetBody method. Since the size is known the
+// Content-Length will be configured too.
+func SetBody(req *http.Request, body []byte) {
+	bodyBytes := body
+
+	req.GetBody = func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewBuffer(bodyBytes)), nil
+	}
+
+	req.Body, _ = req.GetBody()
+
+	cl := len(bodyBytes)
+	req.Header.Set("Content-Length", strconv.Itoa(cl))
+	req.ContentLength = int64(cl)
 }
 
 func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) error {
@@ -244,9 +257,7 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		}
 	}
 
-	req.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(values.Encode())))
-	req.Header.Del("Content-Length")
-	req.ContentLength = -1
+	SetBody(req, []byte(values.Encode()))
 
 	return nil
 }
