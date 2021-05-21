@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
@@ -32,6 +33,10 @@ func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			if len(samls) == 0 {
+				return cty.StringVal(""), fmt.Errorf("no saml definitions found")
+			}
+
 			label := args[0].AsString()
 			saml := samls[label]
 			p, err := filepath.Abs(saml.IdpMetadataFile)

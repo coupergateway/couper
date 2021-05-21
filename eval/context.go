@@ -204,14 +204,11 @@ func (c *Context) HCLContext() *hcl.EvalContext {
 
 // updateFunctions recreates the listed functions with latest evaluation context.
 func updateFunctions(ctx *Context) {
-	if len(ctx.profiles) > 0 {
-		jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
-		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
-	}
-	if len(ctx.saml) > 0 {
-		samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
-		ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
-	}
+	jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
+	ctx.eval.Functions[lib.FnJWTSign] = jwtfn
+
+	samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
+	ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB

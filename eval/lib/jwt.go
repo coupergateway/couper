@@ -3,6 +3,7 @@ package lib
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,10 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			if len(signingProfiles) == 0 {
+				return cty.StringVal(""), fmt.Errorf("no jwt_signing_profile definitions found")
+			}
+
 			label := args[0].AsString()
 			signingProfile := signingProfiles[label]
 			if signingProfile == nil {
