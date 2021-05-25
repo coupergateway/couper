@@ -96,6 +96,12 @@ func (t *Template) ServeError(err error) http.Handler {
 		if !ok {
 			goErr = Server.With(err)
 		}
+
+		statusCode := goErr.HTTPStatus()
+		if statusCode == 0 {
+			statusCode = http.StatusInternalServerError
+		}
+
 		*req = *req.WithContext(context.WithValue(req.Context(), request.Error, goErr))
 
 		rw.Header().Set(HeaderErrorCode, fmt.Sprintf(err.Error()))
@@ -104,7 +110,7 @@ func (t *Template) ServeError(err error) http.Handler {
 			t.ctxHandler.ServeHTTP(rw, req)
 		}
 
-		rw.WriteHeader(goErr.HTTPStatus())
+		rw.WriteHeader(statusCode)
 
 		if req.Method == http.MethodHead { // Its fine to send CT
 			return
@@ -115,7 +121,7 @@ func (t *Template) ServeError(err error) http.Handler {
 			reqID = r // could be nil within (unit) test cases
 		}
 		data := map[string]interface{}{
-			"http_status": goErr.HTTPStatus(),
+			"http_status": statusCode,
 			"message":     err.Error(),
 			"path":        req.URL.EscapedPath(),
 			"request_id":  escapeValue(t.mime, reqID),
