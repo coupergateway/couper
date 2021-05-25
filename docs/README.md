@@ -835,11 +835,13 @@ Use the `definitions` block to define configurations you want to reuse.
 | Block                                    | Description |
 |:-----------------------------------------|:------------|
 | *context*                                | Root of the configuration file. |
-| *label*                                  | Not impplemented. |
+| *label*                                  | Not implemented. |
 | **Nested blocks**                        | **Description** |
 | [Backend Block(s)](#backend-block)       | Defines `Backend Block(s)`. |
 | [Basic Auth Block(s)](#basic-auth-block) | Defines `Basic Auth Block(s)`. |
 | [JWT Block(s)](#jwt-block)               | Defines `JWT Block(s)`. |
+| [JWT Signing Profile Block(s)](#jwt-signing-profile-block) | Defines `JWT Signing Profile Block(s)`. |
+| [SAML Block(s)](#saml-block)             | Defines `SAML Block(s)`. |
 
 #### Basic Auth Block
 
