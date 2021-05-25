@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -24,6 +25,7 @@ const FnJWTSign = "jwt_sign"
 var (
 	ErrorNoProfileForLabel        = errors.New("no signing profile for label")
 	ErrorMissingKey               = errors.New("either key_file or key must be specified")
+	ErrorDecodingKey              = errors.New("cannot decode the key data")
 	ErrorUnsupportedSigningMethod = errors.New("unsupported signing method")
 )
 
@@ -80,6 +82,10 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			}
 			if len(keyData) == 0 {
 				return cty.StringVal(""), &JwtSigningError{error: ErrorMissingKey}
+			} else if strings.HasPrefix(signingProfile.SignatureAlgorithm, "RS") {
+				if b, _ := pem.Decode(keyData); b == nil {
+					return cty.StringVal(""), &JwtSigningError{error: ErrorDecodingKey}
+				}
 			}
 
 			mapClaims := jwt.MapClaims{}

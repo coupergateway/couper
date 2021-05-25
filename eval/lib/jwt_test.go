@@ -477,6 +477,23 @@ func TestJwtSignError(t *testing.T) {
 		wantErr  string
 	}{
 		{
+			"unsupported signature algorithm",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "RS256"
+					key = "invalid"
+					ttl = 0
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"cannot decode the key data",
+		},
+		{
 			"No profile for label",
 			`
 			server "test" {
