@@ -477,7 +477,22 @@ func TestJwtSignError(t *testing.T) {
 		wantErr  string
 	}{
 		{
-			"unsupported signature algorithm",
+			"no jwt_signing_profile definitions found",
+			`
+			server "test" {
+				endpoint "/" {
+					response {
+						body = jwt_sign()
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"no jwt_signing_profile definitions found",
+		},
+		{
+			"invalid PEM key format",
 			`
 			server "test" {
 			}
