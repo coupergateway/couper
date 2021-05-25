@@ -20,7 +20,7 @@ import (
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/avenga/couper/server/writer"
 )
 
 func TestEndpoint_RoundTrip_Eval(t *testing.T) {
@@ -101,7 +101,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 			*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
-			rw := server.NewRWWrapper(rec, false, "") // crucial for working ep due to res.Write()
+			rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
 			ep.ServeHTTP(rw, req)
 			rec.Flush()
 			res := rec.Result()
@@ -228,7 +228,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				*req = *req.WithContext(eval.NewContext(nil).WithClientRequest(req))
 
 				rec := httptest.NewRecorder()
-				rw := server.NewRWWrapper(rec, false, "") // crucial for working ep due to res.Write()
+				rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
 				ep.ServeHTTP(rw, req)
 				rec.Flush()
 				res := rec.Result()
@@ -340,7 +340,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			*req = *req.WithContext(ctx)
 
 			rec := httptest.NewRecorder()
-			rw := server.NewRWWrapper(rec, false, "") // crucial for working ep due to res.Write()
+			rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
 			ep.ServeHTTP(rw, req)
 			rec.Flush()
 			res := rec.Result()

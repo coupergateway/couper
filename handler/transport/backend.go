@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -19,20 +18,11 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/utils"
 )
 
-const (
-	GzipName              = "gzip"
-	AcceptEncodingHeader  = "Accept-Encoding"
-	ContentEncodingHeader = "Content-Encoding"
-	ContentLengthHeader   = "Content-Length"
-	VaryHeader            = "Vary"
-)
-
 var _ http.RoundTripper = &Backend{}
-
-var ReClientSupportsGZ = regexp.MustCompile(`(?i)\b` + GzipName + `\b`)
 
 // Backend represents the transport configuration.
 type Backend struct {
@@ -96,11 +86,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		removeHopHeaders(req.Header)
 	}
 
-	if ReClientSupportsGZ.MatchString(req.Header.Get(AcceptEncodingHeader)) {
-		req.Header.Set(AcceptEncodingHeader, GzipName)
-	} else {
-		req.Header.Del(AcceptEncodingHeader)
-	}
+	writer.ModifyAcceptEncoding(req.Header)
 
 	if xff, ok := req.Context().Value(request.XFF).(string); ok {
 		if xff != "" {
@@ -129,13 +115,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if strings.ToLower(beresp.Header.Get(ContentEncodingHeader)) == GzipName {
-		src, rerr := gzip.NewReader(beresp.Body)
-		if rerr == nil {
-			beresp.Header.Del(ContentEncodingHeader)
-			beresp.Body = eval.NewReadCloser(src, beresp.Body)
-		}
-	}
+	setGzipReader(beresp)
 
 	if !isProxyReq {
 		removeConnectionHeaders(req.Header)
@@ -324,6 +304,15 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 func setUserAgent(outreq *http.Request) {
 	if ua := outreq.Header.Get("User-Agent"); ua == "" {
 		outreq.Header.Set("User-Agent", "")
+	}
+}
+
+func setGzipReader(beresp *http.Response) {
+	if strings.ToLower(beresp.Header.Get(writer.ContentEncodingHeader)) == writer.GzipName {
+		if src, err := gzip.NewReader(beresp.Body); err == nil {
+			beresp.Header.Del(writer.ContentEncodingHeader)
+			beresp.Body = eval.NewReadCloser(src, beresp.Body)
+		}
 	}
 }
 
