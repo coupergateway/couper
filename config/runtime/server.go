@@ -355,7 +355,12 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			beConf.OAuth2.Retries = &one
 		}
 
-		return transport.NewOAuth2(beConf.OAuth2, memStore, authBackend, backend)
+		oauth2, err := transport.NewOAuth2(beConf.OAuth2, authBackend)
+		if err != nil {
+			return nil, err
+		}
+
+		return transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2, backend)
 	}
 
 	return backend, nil

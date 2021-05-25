@@ -3,14 +3,12 @@ package transport
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -18,14 +16,10 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-var _ http.RoundTripper = &OAuth2{}
-
 // OAuth2 represents the transport <OAuth2> object.
 type OAuth2 struct {
-	backend  http.RoundTripper
-	config   *config.OAuth2
-	memStore *cache.MemoryStore
-	next     http.RoundTripper
+	backend http.RoundTripper
+	config  *config.OAuth2
 }
 
 type OAuth2Credentials struct {
@@ -36,86 +30,15 @@ type OAuth2Credentials struct {
 	TokenEndpointAuthMethod *string
 }
 
-// NewOAuth2 creates a new <http.RoundTripper> object.
-func NewOAuth2(conf *config.OAuth2, memStore *cache.MemoryStore,
-	backend, next http.RoundTripper) (http.RoundTripper, error) {
-	const grantType = "client_credentials"
-	if conf.GrantType != grantType {
-		return nil, errors.Backend.Label(conf.BackendName).Message("grant_type not supported: " + conf.GrantType)
-	}
-
+// NewOAuth2 creates a new <OAuth2> object.
+func NewOAuth2(conf *config.OAuth2, backend http.RoundTripper) (*OAuth2, error) {
 	return &OAuth2{
-		backend:  backend,
-		config:   conf,
-		memStore: memStore,
-		next:     next,
+		backend: backend,
+		config:  conf,
 	}, nil
 }
 
-// RoundTrip implements the <http.RoundTripper> interface.
-func (oa *OAuth2) RoundTrip(req *http.Request) (*http.Response, error) {
-	credentials, err := oa.getCredentials(req)
-	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
-	}
-
-	if data := oa.memStore.Get(credentials.StorageKey); data != "" {
-		token, terr := oa.readAccessToken(data)
-		if terr != nil {
-			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
-		}
-
-		req.Header.Set("Authorization", "Bearer "+token)
-
-		return oa.next.RoundTrip(req)
-	}
-
-	tokenReq, err := oa.newTokenRequest(req.Context(), credentials)
-	if err != nil {
-		return nil, err
-	}
-
-	tokenRes, err := oa.backend.RoundTrip(tokenReq)
-	if err != nil {
-		return nil, err
-	}
-
-	if tokenRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request failed")
-	}
-
-	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
-	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request read error").With(err)
-	}
-
-	token, err := oa.updateAccessToken(string(tokenResBytes), credentials.StorageKey)
-	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).Message("token update error").With(err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	res, err := oa.next.RoundTrip(req)
-
-	if res != nil && res.StatusCode == http.StatusUnauthorized {
-		oa.memStore.Del(credentials.StorageKey)
-
-		ctx := req.Context()
-		if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
-			ctx = context.WithValue(ctx, request.TokenRequestRetries, retries+1)
-
-			req.Header.Del("Authorization")
-			*req = *req.WithContext(ctx)
-
-			return oa.RoundTrip(req)
-		}
-	}
-
-	return res, err
-}
-
-func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) {
+func (oa *OAuth2) GetCredentials(req *http.Request) (*OAuth2Credentials, error) {
 	content, _, diags := oa.config.Remain.PartialContent(oa.config.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
@@ -166,6 +89,29 @@ func (oa *OAuth2) getCredentials(req *http.Request) (*OAuth2Credentials, error) 
 	}, nil
 }
 
+func (oa *OAuth2) RequestToken(ctx context.Context, credentials *OAuth2Credentials) (string, error) {
+	tokenReq, err := oa.newTokenRequest(ctx, credentials)
+	if err != nil {
+		return "", err
+	}
+
+	tokenRes, err := oa.backend.RoundTrip(tokenReq)
+	if err != nil {
+		return "", err
+	}
+
+	if tokenRes.StatusCode != http.StatusOK {
+		return "", errors.Backend.Label(oa.config.BackendName).Message("token request failed")
+	}
+
+	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
+	if err != nil {
+		return "", errors.Backend.Label(oa.config.BackendName).Message("token request read error").With(err)
+	}
+
+	return string(tokenResBytes), nil
+}
+
 func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials) (*http.Request, error) {
 	post := url.Values{}
 	post.Set("grant_type", oa.config.GrantType)
@@ -206,49 +152,4 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 	}
 
 	return outreq.WithContext(outCtx), nil
-}
-
-func (oa *OAuth2) readAccessToken(data string) (string, error) {
-	var jData map[string]interface{}
-
-	err := json.Unmarshal([]byte(data), &jData)
-	if err != nil {
-		return "", err
-	}
-
-	var token string
-	if t, ok := jData["access_token"].(string); ok {
-		token = t
-	} else {
-		return "", fmt.Errorf("missing access token")
-	}
-
-	return token, nil
-}
-
-func (oa *OAuth2) updateAccessToken(jsonString, key string) (string, error) {
-	var jData map[string]interface{}
-
-	err := json.Unmarshal([]byte(jsonString), &jData)
-	if err != nil {
-		return "", err
-	}
-
-	var token string
-	if t, ok := jData["access_token"].(string); ok {
-		token = t
-	} else {
-		return "", fmt.Errorf("missing access token")
-	}
-
-	if oa.memStore != nil {
-		var ttl int64
-		if t, ok := jData["expires_in"].(float64); ok {
-			ttl = (int64)(t * 0.9)
-		}
-
-		oa.memStore.Set(key, jsonString, ttl)
-	}
-
-	return token, nil
 }
