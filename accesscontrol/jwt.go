@@ -6,9 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -88,21 +86,9 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		source:         options.Source,
 	}
 
-	if options.Key != "" && options.KeyFile != "" {
-		return nil, confErr.Message("key and keyFile provided")
-	}
-
-	key := []byte(options.Key)
-	if options.KeyFile != "" {
-		k, err := readKeyFile(options.KeyFile)
-		if err != nil {
-			return nil, confErr.With(err)
-		}
-		key = k
-	}
-
-	if len(key) == 0 {
-		return nil, confErr.Message("key required")
+	key, err := errors.ValidateJWTKey(options.Algorithm, options.Key, options.KeyFile)
+	if err != nil {
+		return nil, confErr.Message(err.Error())
 	}
 
 	if jwtAC.source.Type == Invalid {
@@ -299,17 +285,6 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 		}
 	}
 	return pubKey, nil
-}
-
-func readKeyFile(filePath string) ([]byte, error) {
-	if filePath != "" {
-		p, err := filepath.Abs(filePath)
-		if err != nil {
-			return nil, err
-		}
-		return ioutil.ReadFile(p)
-	}
-	return nil, nil
 }
 
 func isStringType(val interface{}) error {

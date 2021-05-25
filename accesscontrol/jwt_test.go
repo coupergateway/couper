@@ -74,7 +74,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			fields  fields
 			wantErr string
 		}{
-			{"missing key", fields{}, "configuration error: test_ac: key required"},
+			{"missing key", fields{}, "configuration error: test_ac: either non-empty key_file or key must be specified"},
 			{"PKIX", fields{
 				algorithm: alg,
 				pubKey:    pubKeyBytesPKIX,
