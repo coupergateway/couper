@@ -22,7 +22,7 @@ type OAuth2 struct {
 	config  *config.OAuth2
 }
 
-type OAuth2Credentials struct {
+type OAuth2RequestConfig struct {
 	ClientID                string
 	ClientSecret            string
 	Scope                   *string
@@ -38,7 +38,7 @@ func NewOAuth2(conf *config.OAuth2, backend http.RoundTripper) (*OAuth2, error) 
 	}, nil
 }
 
-func (oa *OAuth2) GetCredentials(req *http.Request) (*OAuth2Credentials, error) {
+func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, error) {
 	content, _, diags := oa.config.Remain.PartialContent(oa.config.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
@@ -78,7 +78,7 @@ func (oa *OAuth2) GetCredentials(req *http.Request) (*OAuth2Credentials, error) 
 		}
 	}
 
-	return &OAuth2Credentials{
+	return &OAuth2RequestConfig{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Scope:        scope,
@@ -89,8 +89,8 @@ func (oa *OAuth2) GetCredentials(req *http.Request) (*OAuth2Credentials, error) 
 	}, nil
 }
 
-func (oa *OAuth2) RequestToken(ctx context.Context, credentials *OAuth2Credentials) (string, error) {
-	tokenReq, err := oa.newTokenRequest(ctx, credentials)
+func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2RequestConfig) (string, error) {
+	tokenReq, err := oa.newTokenRequest(ctx, requestConfig)
 	if err != nil {
 		return "", err
 	}
@@ -112,16 +112,16 @@ func (oa *OAuth2) RequestToken(ctx context.Context, credentials *OAuth2Credentia
 	return string(tokenResBytes), nil
 }
 
-func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials) (*http.Request, error) {
+func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2RequestConfig) (*http.Request, error) {
 	post := url.Values{}
 	post.Set("grant_type", oa.config.GrantType)
 
-	if creds.Scope != nil {
-		post.Set("scope", *creds.Scope)
+	if requestConfig.Scope != nil {
+		post.Set("scope", *requestConfig.Scope)
 	}
-	if creds.TokenEndpointAuthMethod != nil && *creds.TokenEndpointAuthMethod == "client_secret_post" {
-		post.Set("client_id", creds.ClientID)
-		post.Set("client_secret", creds.ClientSecret)
+	if requestConfig.TokenEndpointAuthMethod != nil && *requestConfig.TokenEndpointAuthMethod == "client_secret_post" {
+		post.Set("client_id", requestConfig.ClientID)
+		post.Set("client_secret", requestConfig.ClientSecret)
 	}
 
 	// url will be configured via backend roundtrip
@@ -134,8 +134,8 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, creds *OAuth2Credentials)
 
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	if creds.TokenEndpointAuthMethod == nil || *creds.TokenEndpointAuthMethod == "client_secret_basic" {
-		auth := base64.StdEncoding.EncodeToString([]byte(creds.ClientID + ":" + creds.ClientSecret))
+	if requestConfig.TokenEndpointAuthMethod == nil || *requestConfig.TokenEndpointAuthMethod == "client_secret_basic" {
+		auth := base64.StdEncoding.EncodeToString([]byte(requestConfig.ClientID + ":" + requestConfig.ClientSecret))
 
 		outreq.Header.Set("Authorization", "Basic "+auth)
 	}

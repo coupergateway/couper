@@ -40,12 +40,12 @@ func NewOAuth2ReqAuth(conf *config.OAuth2, memStore *cache.MemoryStore,
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
-	credentials, err := oa.oauth2.GetCredentials(req)
+	requestConfig, err := oa.oauth2.GetRequestConfig(req)
 	if err != nil {
 		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
 	}
 
-	if data := oa.memStore.Get(credentials.StorageKey); data != "" {
+	if data := oa.memStore.Get(requestConfig.StorageKey); data != "" {
 		token, terr := oa.readAccessToken(data)
 		if terr != nil {
 			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
@@ -56,9 +56,9 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 		return oa.next.RoundTrip(req)
 	}
 
-	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), credentials)
+	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
 
-	token, err := oa.updateAccessToken(tokenResponse, credentials.StorageKey)
+	token, err := oa.updateAccessToken(tokenResponse, requestConfig.StorageKey)
 	if err != nil {
 		return nil, errors.Backend.Label(oa.config.BackendName).Message("token update error").With(err)
 	}
@@ -68,7 +68,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	res, err := oa.next.RoundTrip(req)
 
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
-		oa.memStore.Del(credentials.StorageKey)
+		oa.memStore.Del(requestConfig.StorageKey)
 
 		ctx := req.Context()
 		if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
