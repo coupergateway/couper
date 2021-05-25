@@ -2,11 +2,7 @@ package lib
 
 import (
 	"encoding/json"
-	"encoding/pem"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,25 +13,11 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	"github.com/avenga/couper/config"
+	couperErr "github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/seetie"
 )
 
 const FnJWTSign = "jwt_sign"
-
-var (
-	ErrorNoProfileForLabel        = errors.New("no signing profile for label")
-	ErrorMissingKey               = errors.New("either key_file or key must be specified")
-	ErrorDecodingKey              = errors.New("cannot decode the key data")
-	ErrorUnsupportedSigningMethod = errors.New("unsupported signing method")
-)
-
-type JwtSigningError struct {
-	error
-}
-
-func (e *JwtSigningError) Error() string {
-	return e.error.Error()
-}
 
 func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx *hcl.EvalContext) function.Function {
 	signingProfiles := make(map[string]*config.JWTSigningProfile)
@@ -62,30 +44,14 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			label := args[0].AsString()
 			signingProfile := signingProfiles[label]
 			if signingProfile == nil {
-				return cty.StringVal(""), &JwtSigningError{error: ErrorNoProfileForLabel}
+				return cty.StringVal(""), couperErr.NewJWTError(couperErr.ErrorNoProfileForLabel)
 			}
 
-			// get key or secret
-			var keyData []byte
-			if signingProfile.KeyFile != "" {
-				p, err := filepath.Abs(signingProfile.KeyFile)
-				if err != nil {
-					return cty.StringVal(""), err
-				}
-				content, err := ioutil.ReadFile(p)
-				if err != nil {
-					return cty.StringVal(""), err
-				}
-				keyData = content
-			} else if signingProfile.Key != "" {
-				keyData = []byte(signingProfile.Key)
-			}
-			if len(keyData) == 0 {
-				return cty.StringVal(""), &JwtSigningError{error: ErrorMissingKey}
-			} else if strings.HasPrefix(signingProfile.SignatureAlgorithm, "RS") {
-				if b, _ := pem.Decode(keyData); b == nil {
-					return cty.StringVal(""), &JwtSigningError{error: ErrorDecodingKey}
-				}
+			keyData, err := couperErr.ValidateJWTKey(
+				signingProfile.SignatureAlgorithm, signingProfile.Key, signingProfile.KeyFile,
+			)
+			if err != nil {
+				return cty.StringVal(""), err
 			}
 
 			mapClaims := jwt.MapClaims{}
@@ -129,7 +95,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			// create token
 			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm)
 			if signingMethod == nil {
-				return cty.StringVal(""), &JwtSigningError{error: ErrorUnsupportedSigningMethod}
+				return cty.StringVal(""), couperErr.NewJWTError(couperErr.ErrorUnsupportedSigningMethod)
 			}
 
 			token := jwt.NewWithClaims(signingMethod, mapClaims)

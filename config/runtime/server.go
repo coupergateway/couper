@@ -413,6 +413,10 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
+			if _, err := errors.ValidateJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
+				return nil, err
+			}
+
 			var claims map[string]interface{}
 			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
 				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
@@ -435,6 +439,12 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 			}
 
 			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+				return nil, err
+			}
+		}
+
+		for _, jwtConf := range conf.Definitions.JWTSigningProfile {
+			if _, err := errors.ValidateJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
 				return nil, err
 			}
 		}
