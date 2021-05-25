@@ -835,7 +835,7 @@ Use the `definitions` block to define configurations you want to reuse.
 | Block                                    | Description |
 |:-----------------------------------------|:------------|
 | *context*                                | Root of the configuration file. |
-| *label*                                  | Not impplemented. |
+| *label*                                  | Not implemented. |
 | **Nested blocks**                        | **Description** |
 | [Backend Block(s)](#backend-block)       | Defines `Backend Block(s)`. |
 | [Basic Auth Block(s)](#basic-auth-block) | Defines `Basic Auth Block(s)`. |
