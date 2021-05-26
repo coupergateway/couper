@@ -128,7 +128,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
-	updateFunctions(ctx)
+	ctx.updateFunctions()
 
 	return ctx
 }
@@ -178,7 +178,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
 
-	updateFunctions(ctx)
+	ctx.updateFunctions()
 
 	return ctx
 }
@@ -189,7 +189,7 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	if c.profiles == nil {
 		c.profiles = make([]*config.JWTSigningProfile, 0)
 	}
-	updateFunctions(c)
+	c.updateFunctions()
 	return c
 }
 
@@ -199,7 +199,7 @@ func (c *Context) WithSAML(s []*config.SAML) *Context {
 	if c.saml == nil {
 		c.saml = make([]*config.SAML, 0)
 	}
-	updateFunctions(c)
+	c.updateFunctions()
 	return c
 }
 
@@ -208,24 +208,24 @@ func (c *Context) HCLContext() *hcl.EvalContext {
 }
 
 // updateFunctions recreates the listed functions with latest evaluation context.
-func updateFunctions(ctx *Context) {
-	if len(ctx.profiles) > 0 {
-		jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
-		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
+func (c *Context) updateFunctions() {
+	if len(c.profiles) > 0 {
+		jwtfn := lib.NewJwtSignFunction(c.profiles, c.eval)
+		c.eval.Functions[lib.FnJWTSign] = jwtfn
 	}
-	if len(ctx.saml) > 0 {
-		samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
-		ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
+	if len(c.saml) > 0 {
+		samlfn := lib.NewSamlSsoUrlFunction(c.saml)
+		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	}
 
-	codeVerifyFn, ok := ctx.memorize[lib.CodeVerifier]
+	codeVerifyFn, ok := c.memorize[lib.CodeVerifier]
 	if !ok {
 		codeVerifyFn, _ = pkce.CreateCodeVerifier()
-		ctx.memorize[lib.CodeVerifier] = codeVerifyFn
+		c.memorize[lib.CodeVerifier] = codeVerifyFn
 	}
 
-	ctx.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(codeVerifyFn)
-	ctx.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(codeVerifyFn)
+	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(codeVerifyFn)
+	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(codeVerifyFn)
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
