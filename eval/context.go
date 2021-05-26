@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -45,6 +46,7 @@ type Context struct {
 	bufferOption BufferOption
 	eval         *hcl.EvalContext
 	inner        context.Context
+	memorize     map[string]interface{}
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
 }
@@ -60,7 +62,8 @@ func NewContext(src []byte) *Context {
 			Variables: variables,
 			Functions: newFunctionsMap(),
 		},
-		inner: context.TODO(), // usually replaced with request context
+		inner:    context.TODO(), // usually replaced with request context
+		memorize: map[string]interface{}{},
 	}
 }
 
@@ -212,10 +215,15 @@ func updateFunctions(ctx *Context) {
 		samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
 		ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	}
-	codeVerifierFn := NewOAuthCodeVerifierFunction(ctx)
-	ctx.eval.Functions[FnOAuthCodeVerifier] = codeVerifierFn
-	codeChallengeFn := NewOAuthCodeChallengeFunction(ctx)
-	ctx.eval.Functions[FnOAuthCodeChallenge] = codeChallengeFn
+
+	codeVerifyFn, ok := ctx.memorize[lib.CodeVerifier]
+	if !ok {
+		codeVerifyFn, _ = pkce.CreateCodeVerifier()
+		ctx.memorize[lib.CodeVerifier] = codeVerifyFn
+	}
+
+	ctx.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(codeVerifyFn)
+	ctx.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(codeVerifyFn)
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
