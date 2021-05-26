@@ -2637,13 +2637,13 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	ccp := res.Header.Get("x-cc-plain")
 	ccs := res.Header.Get("x-cc-s256")
 	if cv2 != cv1 {
-		t.Errorf("multiple calls to oauth_code_verifier() must return the same value, %s, %s", cv1, cv2)
+		t.Errorf("multiple calls to oauth_code_verifier() must return the same value:\n\t%s\n\t%s", cv1, cv2)
 	}
 	if ccp != cv1 {
-		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier(), %s, %s", ccp, cv1)
+		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier():\n\t%s\n\t%s", ccp, cv1)
 	}
 	if ccs == ccp {
-		t.Errorf("call to oauth_code_challenge(\"S256\") must not return the same value as call to oauth_code_challenge(\"plain\"), %s, %s", ccs, ccp)
+		t.Errorf("call to oauth_code_challenge(\"S256\") must not return the same value as call to oauth_code_challenge(\"plain\"):\n\t%s\n\t%s", ccs, ccp)
 	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
@@ -2654,7 +2654,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 
 	cv1_n := res.Header.Get("x-cv-1")
 	if cv1_n == cv1 {
-		t.Errorf("calls to oauth_code_verifier() on different requests must not return the same value, %s, %s", cv1, cv1_n)
+		t.Errorf("calls to oauth_code_verifier() on different requests must not return the same value:\n\t%s\n\t%s", cv1, cv1_n)
 	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-nok", nil)

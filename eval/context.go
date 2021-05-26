@@ -90,9 +90,9 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
+		memorize:     make(map[string]interface{}),
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
-		memorize:     map[string]interface{}{},
 	}
 
 	if rc := req.Context(); rc != nil {
@@ -137,9 +137,9 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
+		memorize:     c.memorize,
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
-		memorize:     c.memorize,
 	}
 	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
 
