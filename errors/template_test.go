@@ -21,7 +21,7 @@ func TestTemplate_ServeError(t1 *testing.T) {
 		expStatus int
 	}{
 		{"error type with default status", errors.BasicAuth, http.StatusUnauthorized},
-		{"error type without status code /w fallback", errors.Evaluation, http.StatusInternalServerError},
+		{"error type without status code /w fallback", &errors.Error{}, http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
 		t1.Run(tt.name, func(t2 *testing.T) {
