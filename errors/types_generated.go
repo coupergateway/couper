@@ -10,6 +10,7 @@ var (
 	JwtTokenMissing             = Definitions[4]
 	JwtTokenInvalid             = Definitions[5]
 	Saml2                       = Definitions[6]
+	OAuth2                      = Definitions[7]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -26,6 +27,7 @@ var types = typeDefinitions{
 	"jwt_token_missing":              JwtTokenMissing,
 	"jwt_token_invalid":              JwtTokenInvalid,
 	"saml2":                          Saml2,
+	"oauth2":                         OAuth2,
 }
 
 // IsKnown tells the configuration callee if Couper

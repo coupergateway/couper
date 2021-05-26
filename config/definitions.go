@@ -6,4 +6,5 @@ type Definitions struct {
 	JWT               []*JWT               `hcl:"jwt,block"`
 	JWTSigningProfile []*JWTSigningProfile `hcl:"jwt_signing_profile,block"`
 	SAML              []*SAML              `hcl:"saml,block"`
+	OAuth2AC          []*OAuth2AC          `hcl:"oauth2,block"`
 }

@@ -26,8 +26,8 @@ type OAuth2ReqAuth struct {
 func NewOAuth2ReqAuth(conf *config.OAuth2, memStore *cache.MemoryStore,
 	oauth2 *OAuth2, next http.RoundTripper) (http.RoundTripper, error) {
 	const grantType = "client_credentials"
-	if conf.GrantType != grantType {
-		return nil, errors.Backend.Label(conf.BackendName).Message("grant_type not supported: " + conf.GrantType)
+	if conf.GetGrantType() != grantType {
+		return nil, errors.Backend.Label(conf.BackendName).Message("grant_type not supported: " + conf.GetGrantType())
 	}
 
 	return &OAuth2ReqAuth{

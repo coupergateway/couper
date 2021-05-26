@@ -14,4 +14,6 @@ var Definitions = []*Error{
 	AccessControl.Kind("jwt").Kind("jwt_token_invalid"),
 
 	AccessControl.Kind("saml2"),
+
+	AccessControl.Kind("oauth2"),
 }

@@ -5,45 +5,35 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-// Inline defines the <Inline> interface.
-type OAuth2Config interface {
-	BackendReference
-	Inline
-	GetGrantType() string
-}
-
 var (
-	_ OAuth2Config = &OAuth2{}
+	_ OAuth2Config = &OAuth2AC{}
 )
 
-var OAuthBlockSchema = &hcl.BodySchema{
-	Blocks: []hcl.BlockHeaderSchema{
-		{
-			Type: "oauth2",
-		},
-	},
-}
+var _ Body = &OAuth2AC{}
 
-// OAuth2 represents the <OAuth2> object.
-type OAuth2 struct {
+// OAuth2AC represents the <OAuth2> access control object.
+type OAuth2AC struct {
+	AccessControlSetter
 	BackendName string   `hcl:"backend,optional"`
 	GrantType   string   `hcl:"grant_type"`
+	Name        string   `hcl:"name,label"`
 	Remain      hcl.Body `hcl:",remain"`
-	Retries     *uint8   `hcl:"retries,optional"`
+	// internally used
+	Backend hcl.Body
 }
 
-// HCLBody implements the <Inline> interface.
-func (oa OAuth2) HCLBody() hcl.Body {
+// HCLBody implements the <Body> interface.
+func (oa OAuth2AC) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
 // Reference implements the <Inline> interface.
-func (oa OAuth2) Reference() string {
+func (oa OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
 // Schema implements the <Inline> interface.
-func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
+func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
 		return schema
@@ -53,6 +43,8 @@ func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
 		Backend                 *Backend `hcl:"backend,block"`
 		ClientID                string   `hcl:"client_id"`
 		ClientSecret            string   `hcl:"client_secret"`
+		CodeVerifierValue       string   `hcl:"code_verifier_value,optional"`
+		RedirectURI             string   `hcl:"redirect_uri,optional"`
 		Scope                   *string  `hcl:"scope,optional"`
 		TokenEndpoint           string   `hcl:"token_endpoint,optional"`
 		TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
@@ -68,6 +60,6 @@ func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
-func (oa OAuth2) GetGrantType() string {
+func (oa OAuth2AC) GetGrantType() string {
 	return oa.GrantType
 }

@@ -93,7 +93,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	evalContext := conf.Context.Value(eval.ContextType).(*eval.Context)
 	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
-	accessControls, acErr := configureAccessControls(conf, confCtx)
+	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore)
 	if acErr != nil {
 		return nil, acErr
 	}
@@ -402,7 +402,7 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACDefinitions, error) {
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (ACDefinitions, error) {
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
@@ -451,6 +451,27 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 			}
 
 			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
+				return nil, err
+			}
+		}
+
+		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
+			authBackend, authErr := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			if authErr != nil {
+				return nil, fmt.Errorf("loading oauth2 definition failed: %s", authErr)
+			}
+
+			oauth2, err := transport.NewOAuth2(oauth2Conf, authBackend)
+			if err != nil {
+				return nil, fmt.Errorf("loading oauth2 definition failed: %s", err)
+			}
+
+			oa, err := ac.NewOAuth2Callback(oauth2Conf, oauth2)
+			if err != nil {
+				return nil, fmt.Errorf("loading oauth2 definition failed: %s", err)
+			}
+
+			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
 				return nil, err
 			}
 		}
