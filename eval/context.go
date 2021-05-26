@@ -93,6 +93,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		inner:        c.inner,
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
+		memorize:     c.memorize,
 	}
 
 	if rc := req.Context(); rc != nil {
@@ -139,6 +140,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		inner:        c.inner,
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
+		memorize:     c.memorize,
 	}
 	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
 
