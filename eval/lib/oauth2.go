@@ -16,13 +16,13 @@ const (
 	CCM_S256             = "S256"
 )
 
-func NewOAuthCodeVerifierFunction(verifier interface{}) function.Function {
+func NewOAuthCodeVerifierFunction(verifier func() (*pkce.CodeVerifier, error)) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{},
 		Type:   function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			codeVerifier, ok := verifier.(*pkce.CodeVerifier)
-			if !ok {
+			codeVerifier, err := verifier()
+			if err != nil {
 				return cty.StringVal(""), err
 			}
 
@@ -31,7 +31,7 @@ func NewOAuthCodeVerifierFunction(verifier interface{}) function.Function {
 	})
 }
 
-func NewOAuthCodeChallengeFunction(verifier interface{}) function.Function {
+func NewOAuthCodeChallengeFunction(verifier func() (*pkce.CodeVerifier, error)) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -42,8 +42,8 @@ func NewOAuthCodeChallengeFunction(verifier interface{}) function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
 			method := args[0].AsString()
-			codeVerifier, ok := verifier.(*pkce.CodeVerifier)
-			if !ok {
+			codeVerifier, err := verifier()
+			if err != nil {
 				return cty.StringVal(""), err
 			}
 

@@ -62,8 +62,7 @@ func NewContext(src []byte) *Context {
 			Variables: variables,
 			Functions: newFunctionsMap(),
 		},
-		inner:    context.TODO(), // usually replaced with request context
-		memorize: map[string]interface{}{},
+		inner: context.TODO(), // usually replaced with request context
 	}
 }
 
@@ -93,7 +92,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		inner:        c.inner,
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
-		memorize:     c.memorize,
+		memorize:     map[string]interface{}{},
 	}
 
 	if rc := req.Context(); rc != nil {
@@ -218,14 +217,25 @@ func (c *Context) updateFunctions() {
 		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	}
 
-	codeVerifyFn, ok := c.memorize[lib.CodeVerifier]
+	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+}
+
+func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
+	cv, ok := c.memorize[lib.CodeVerifier]
+	var err error
 	if !ok {
-		codeVerifyFn, _ = pkce.CreateCodeVerifier()
-		c.memorize[lib.CodeVerifier] = codeVerifyFn
+		cv, err = pkce.CreateCodeVerifier()
+		if err != nil {
+			return nil, err
+		}
+
+		c.memorize[lib.CodeVerifier] = cv
 	}
 
-	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(codeVerifyFn)
-	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(codeVerifyFn)
+	codeVerifier, _ := cv.(*pkce.CodeVerifier)
+
+	return codeVerifier, nil
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
