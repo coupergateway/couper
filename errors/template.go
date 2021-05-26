@@ -98,9 +98,6 @@ func (t *Template) ServeError(err error) http.Handler {
 		}
 
 		statusCode := goErr.HTTPStatus()
-		if statusCode == 0 {
-			statusCode = http.StatusInternalServerError
-		}
 
 		*req = *req.WithContext(context.WithValue(req.Context(), request.Error, goErr))
 
