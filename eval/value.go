@@ -120,6 +120,7 @@ func walk(variables, parentVariables cty.Value, traversal hcl.Traversal) cty.Val
 				val := cty.TupleVal(slice)
 				return walk(val, val, traversal[1:])
 			}
+			slice[idx] = cty.NilVal
 			return cty.TupleVal(slice)
 		case cty.String:
 			m := map[string]cty.Value{}
