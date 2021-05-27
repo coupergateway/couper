@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-// Inline defines the <Inline> interface.
+// OAuth2Config defines the <OAuth2Config> interface.
 type OAuth2Config interface {
 	BackendReference
 	Inline
@@ -32,12 +32,12 @@ type OAuth2 struct {
 	Retries     *uint8   `hcl:"retries,optional"`
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (oa OAuth2) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
-// Reference implements the <Inline> interface.
+// Reference implements the <BackendReference> interface.
 func (oa OAuth2) Reference() string {
 	return oa.BackendName
 }
@@ -68,6 +68,7 @@ func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
+// GetGrantType implements the <OAuth2Config> interface.
 func (oa OAuth2) GetGrantType() string {
 	return oa.GrantType
 }

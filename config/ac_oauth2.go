@@ -27,7 +27,7 @@ func (oa OAuth2AC) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
-// Reference implements the <Inline> interface.
+// Reference implements the <BackendReference> interface.
 func (oa OAuth2AC) Reference() string {
 	return oa.BackendName
 }
@@ -60,6 +60,7 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
+// GetGrantType implements the <OAuth2Config> interface.
 func (oa OAuth2AC) GetGrantType() string {
 	return oa.GrantType
 }
