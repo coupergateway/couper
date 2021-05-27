@@ -23,8 +23,8 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	confErr := errors.Configuration.Label(conf.Name)
 
 	const grantType = "authorization_code"
-	if conf.GetGrantType() != grantType {
-		return nil, confErr.Message("grant_type not supported: " + conf.GetGrantType())
+	if conf.GrantType != grantType {
+		return nil, confErr.Message("grant_type not supported: " + conf.GrantType)
 	}
 
 	return &OAuth2Callback{
