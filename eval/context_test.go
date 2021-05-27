@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/zclconf/go-cty/cty"
 
@@ -104,11 +103,7 @@ func TestNewHTTPContext(t *testing.T) {
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			err := hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
-			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
-			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
-				subT.Fatal(err)
-			}
+			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]

@@ -165,8 +165,8 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			// get claims from signing profile
 			if signingConfig.Claims != nil {
 				v, diags := evalFn(ctx, signingConfig.Claims)
-				if diags.HasErrors() {
-					return cty.StringVal(""), diags
+				if diags != nil {
+					return cty.StringVal(""), err
 				}
 				defaultClaims = seetie.ValueToMap(v)
 			}
@@ -174,6 +174,7 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			for k, v := range defaultClaims {
 				mapClaims[k] = v
 			}
+
 			if signingConfig.TTL != 0 {
 				mapClaims["exp"] = time.Now().Unix() + int64(signingConfig.TTL.Seconds())
 			}

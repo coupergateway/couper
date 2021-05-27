@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -291,22 +290,4 @@ func isTuple(v cty.Value) bool {
 		return false
 	}
 	return v.Type().FriendlyNameForConstraint() == "tuple"
-}
-
-func SetSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
-	for _, d := range diags {
-		switch d.Summary {
-		case "Missing map element", "Unsupported attribute":
-			d.Severity = hcl.DiagWarning
-		}
-	}
-	return diags
-}
-
-func filterErrors(diags hcl.Diagnostics) hcl.Diagnostics {
-	var errs hcl.Diagnostics
-	for _, err := range diags.Errs() {
-		errs = append(errs, err.(*hcl.Diagnostic))
-	}
-	return errs
 }
