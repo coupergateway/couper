@@ -138,6 +138,18 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				return nil, diags
 			}
 
+			for _, oauth2Config := range couperConfig.Definitions.OAuth2AC {
+				err := uniqueAttributeKey(oauth2Config.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			// access control - error_handler
 			var acErrorHandler []AccessControlSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
@@ -212,41 +224,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		case settings:
 			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
-			}
-		}
-	}
-
-	for _, outerBlock := range content.Blocks {
-		switch outerBlock.Type {
-		case definitions:
-			definitionsContent := bodyToContent(outerBlock.Body)
-			oauth2Blocks := definitionsContent.Blocks.OfType(oauth2)
-			couperConfig.Definitions.OAuth2AC = []*config.OAuth2AC{}
-			for _, oauth2Block := range oauth2Blocks {
-				oauth2Config := &config.OAuth2AC{}
-				if diags := gohcl.DecodeBody(oauth2Block.Body, envContext, oauth2Config); diags.HasErrors() {
-					return nil, diags
-				}
-				if len(oauth2Block.Labels) > 0 {
-					oauth2Config.Name = oauth2Block.Labels[0]
-				}
-				if oauth2Config.Name == "" {
-					oauth2Config.Name = defaultNameLabel
-				}
-
-				oauth2Config.Remain = oauth2Block.Body
-
-				err := uniqueAttributeKey(oauth2Config.Remain)
-				if err != nil {
-					return nil, err
-				}
-
-				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
-				if err != nil {
-					return nil, err
-				}
-
-				couperConfig.Definitions.OAuth2AC = append(couperConfig.Definitions.OAuth2AC, oauth2Config)
 			}
 		}
 	}
