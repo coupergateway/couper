@@ -39,31 +39,29 @@ type Response struct {
 
 // NewResponseWriter creates a new Response object.
 func NewResponseWriter(rw http.ResponseWriter, secureCookies string) *Response {
-	w := &Response{
+	return &Response{
 		rw:            rw,
 		headerBuffer:  &bytes.Buffer{},
 		secureCookies: secureCookies,
 	}
-
-	return w
 }
 
 // Header wraps the Header method of the <http.ResponseWriter>.
-func (w *Response) Header() http.Header {
-	return w.rw.Header()
+func (r *Response) Header() http.Header {
+	return r.rw.Header()
 }
 
 // Write wraps the Write method of the <http.ResponseWriter>.
-func (w *Response) Write(p []byte) (int, error) {
+func (r *Response) Write(p []byte) (int, error) {
 	l := len(p)
-	w.rawBytesWritten += l
-	if !w.statusWritten {
-		if len(w.httpStatus) == 0 {
-			w.httpStatus = p[:]
+	r.rawBytesWritten += l
+	if !r.statusWritten {
+		if len(r.httpStatus) == 0 {
+			r.httpStatus = p[:]
 			// required for short writes without any additional header
 			// to detect EOH chunk later on
 			if l >= 2 {
-				w.httpLineDelim = p[l-2 : l]
+				r.httpLineDelim = p[l-2 : l]
 			}
 
 			return l, nil
@@ -71,62 +69,62 @@ func (w *Response) Write(p []byte) (int, error) {
 
 		// End-of-header
 		// http.Response.Write() EOH chunk is: '\r\n'
-		if bytes.Equal(w.httpLineDelim, p) {
-			reader := textproto.NewReader(bufio.NewReader(w.headerBuffer))
+		if bytes.Equal(r.httpLineDelim, p) {
+			reader := textproto.NewReader(bufio.NewReader(r.headerBuffer))
 			header, _ := reader.ReadMIMEHeader()
 			for k := range header {
-				w.rw.Header()[k] = header.Values(k)
+				r.rw.Header()[k] = header.Values(k)
 			}
-			w.WriteHeader(w.parseStatusCode(w.httpStatus))
+			r.WriteHeader(r.parseStatusCode(r.httpStatus))
 		}
 
 		if l >= 2 {
-			w.httpLineDelim = p[l-2 : l]
+			r.httpLineDelim = p[l-2 : l]
 		}
-		return w.headerBuffer.Write(p)
+		return r.headerBuffer.Write(p)
 	}
 
-	n, writeErr := w.rw.Write(p)
-	w.bytesWritten += n
+	n, writeErr := r.rw.Write(p)
+	r.bytesWritten += n
 	return n, writeErr
 }
 
-func (w *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hijack, ok := w.rw.(http.Hijacker)
+func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijack, ok := r.rw.(http.Hijacker)
 	if !ok {
-		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", w.rw)
+		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", r.rw)
 	}
 	return hijack.Hijack()
 }
 
 // Flush implements the <http.Flusher> interface.
-func (w *Response) Flush() {
-	if rw, ok := w.rw.(http.Flusher); ok {
+func (r *Response) Flush() {
+	if rw, ok := r.rw.(http.Flusher); ok {
 		rw.Flush()
 	}
 }
 
 // WriteHeader wraps the WriteHeader method of the <http.ResponseWriter>.
-func (w *Response) WriteHeader(statusCode int) {
-	if w.statusWritten {
+func (r *Response) WriteHeader(statusCode int) {
+	if r.statusWritten {
 		return
 	}
 
-	w.configureHeader()
-	w.rw.WriteHeader(statusCode)
-	w.statusWritten = true
-	w.statusCode = statusCode
+	r.configureHeader()
+	r.rw.WriteHeader(statusCode)
+	r.statusWritten = true
+	r.statusCode = statusCode
 }
 
-func (w *Response) configureHeader() {
-	w.rw.Header().Set("Server", "couper.io")
+func (r *Response) configureHeader() {
+	r.rw.Header().Set("Server", "couper.io")
 
-	if w.secureCookies == SecureCookiesStrip {
-		stripSecureCookies(w.rw.Header())
+	if r.secureCookies == SecureCookiesStrip {
+		stripSecureCookies(r.rw.Header())
 	}
 }
 
-func (w *Response) parseStatusCode(p []byte) int {
+func (r *Response) parseStatusCode(p []byte) int {
 	if len(p) < 12 {
 		return 0
 	}
@@ -134,10 +132,10 @@ func (w *Response) parseStatusCode(p []byte) int {
 	return code
 }
 
-func (w *Response) StatusCode() int {
-	return w.statusCode
+func (r *Response) StatusCode() int {
+	return r.statusCode
 }
 
-func (w *Response) WrittenBytes() int {
-	return w.bytesWritten
+func (r *Response) WrittenBytes() int {
+	return r.bytesWritten
 }
