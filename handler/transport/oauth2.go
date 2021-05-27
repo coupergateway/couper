@@ -25,7 +25,7 @@ type OAuth2 struct {
 type OAuth2RequestConfig struct {
 	ClientID                string
 	ClientSecret            string
-	Code                    string
+	Code                    *string
 	CodeVerifier            *string
 	RedirectURI             *string
 	Scope                   *string
@@ -138,6 +138,9 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	}
 	if requestConfig.RedirectURI != nil {
 		post.Set("redirect_uri", *requestConfig.RedirectURI)
+	}
+	if requestConfig.Code != nil {
+		post.Set("code", *requestConfig.Code)
 	}
 	if requestConfig.CodeVerifier != nil {
 		post.Set("code_verifier", *requestConfig.CodeVerifier)

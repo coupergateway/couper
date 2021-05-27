@@ -49,7 +49,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.OAuth2.With(err)
 	}
 
-	requestConfig.Code = code
+	requestConfig.Code = &code
 
 	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
 	var jData map[string]interface{}
