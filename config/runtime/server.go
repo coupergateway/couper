@@ -333,7 +333,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-		beConf.OAuth2 = &config.OAuth2{}
+		beConf.OAuth2 = &config.OAuth2ReqAuth{}
 
 		if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
 			return nil, diags

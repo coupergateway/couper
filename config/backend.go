@@ -28,7 +28,7 @@ type Backend struct {
 	Timeout                string   `hcl:"timeout,optional"`
 
 	// explicit configuration on load
-	OAuth2 *OAuth2
+	OAuth2 *OAuth2ReqAuth
 }
 
 // HCLBody implements the <Inline> interface.

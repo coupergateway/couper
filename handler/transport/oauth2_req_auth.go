@@ -17,13 +17,13 @@ var _ http.RoundTripper = &OAuth2ReqAuth{}
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	oauth2   *OAuth2
-	config   *config.OAuth2
+	config   *config.OAuth2ReqAuth
 	memStore *cache.MemoryStore
 	next     http.RoundTripper
 }
 
 // NewOAuth2 creates a new <http.RoundTripper> object.
-func NewOAuth2ReqAuth(conf *config.OAuth2, memStore *cache.MemoryStore,
+func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	oauth2 *OAuth2, next http.RoundTripper) (http.RoundTripper, error) {
 	const grantType = "client_credentials"
 	if conf.GetGrantType() != grantType {

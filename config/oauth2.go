@@ -13,7 +13,7 @@ type OAuth2Config interface {
 }
 
 var (
-	_ OAuth2Config = &OAuth2{}
+	_ OAuth2Config = &OAuth2ReqAuth{}
 )
 
 var OAuthBlockSchema = &hcl.BodySchema{
@@ -24,8 +24,8 @@ var OAuthBlockSchema = &hcl.BodySchema{
 	},
 }
 
-// OAuth2 represents the <OAuth2> object.
-type OAuth2 struct {
+// OAuth2ReqAuth represents the <OAuth2ReqAuth> object.
+type OAuth2ReqAuth struct {
 	BackendName string   `hcl:"backend,optional"`
 	GrantType   string   `hcl:"grant_type"`
 	Remain      hcl.Body `hcl:",remain"`
@@ -33,17 +33,17 @@ type OAuth2 struct {
 }
 
 // HCLBody implements the <Body> interface.
-func (oa OAuth2) HCLBody() hcl.Body {
+func (oa OAuth2ReqAuth) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
 // Reference implements the <BackendReference> interface.
-func (oa OAuth2) Reference() string {
+func (oa OAuth2ReqAuth) Reference() string {
 	return oa.BackendName
 }
 
 // Schema implements the <Inline> interface.
-func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
+func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
 		return schema
@@ -69,6 +69,6 @@ func (oa OAuth2) Schema(inline bool) *hcl.BodySchema {
 }
 
 // GetGrantType implements the <OAuth2Config> interface.
-func (oa OAuth2) GetGrantType() string {
+func (oa OAuth2ReqAuth) GetGrantType() string {
 	return oa.GrantType
 }
