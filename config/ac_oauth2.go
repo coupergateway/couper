@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	_ OAuth2Config = &OAuth2AC{}
+	_ OAuth2 = &OAuth2AC{}
 )
 
 var _ Body = &OAuth2AC{}
@@ -60,7 +60,7 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
-// GetGrantType implements the <OAuth2Config> interface.
+// GetGrantType implements the <OAuth2> interface.
 func (oa OAuth2AC) GetGrantType() string {
 	return oa.GrantType
 }

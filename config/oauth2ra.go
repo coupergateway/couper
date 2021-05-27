@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	_ OAuth2Config = &OAuth2ReqAuth{}
+	_ OAuth2 = &OAuth2ReqAuth{}
 )
 
 // OAuth2ReqAuth represents the <OAuth2ReqAuth> object.
@@ -53,7 +53,7 @@ func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
-// GetGrantType implements the <OAuth2Config> interface.
+// GetGrantType implements the <OAuth2> interface.
 func (oa OAuth2ReqAuth) GetGrantType() string {
 	return oa.GrantType
 }

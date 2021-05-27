@@ -19,7 +19,7 @@ import (
 // OAuth2 represents the transport <OAuth2> object.
 type OAuth2 struct {
 	backend http.RoundTripper
-	config  config.OAuth2Config
+	config  config.OAuth2
 }
 
 type OAuth2RequestConfig struct {
@@ -34,7 +34,7 @@ type OAuth2RequestConfig struct {
 }
 
 // NewOAuth2 creates a new <OAuth2> object.
-func NewOAuth2(conf config.OAuth2Config, backend http.RoundTripper) (*OAuth2, error) {
+func NewOAuth2(conf config.OAuth2, backend http.RoundTripper) (*OAuth2, error) {
 	return &OAuth2{
 		backend: backend,
 		config:  conf,

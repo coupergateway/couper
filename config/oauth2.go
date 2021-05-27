@@ -4,8 +4,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-// OAuth2Config defines the <OAuth2Config> interface.
-type OAuth2Config interface {
+// OAuth2 defines the <OAuth2> interface.
+type OAuth2 interface {
 	BackendReference
 	Inline
 	GetGrantType() string
