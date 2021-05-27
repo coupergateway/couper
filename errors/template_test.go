@@ -8,7 +8,7 @@ import (
 
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/avenga/couper/server/writer"
 )
 
 func TestTemplate_ServeError(t1 *testing.T) {
@@ -25,7 +25,7 @@ func TestTemplate_ServeError(t1 *testing.T) {
 	}
 	for _, tt := range tests {
 		t1.Run(tt.name, func(t2 *testing.T) {
-			rec := server.NewRWWrapper(httptest.NewRecorder(), false, "")
+			rec := writer.NewResponseWriter(httptest.NewRecorder(), "")
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			errors.DefaultJSON.ServeError(tt.err).ServeHTTP(rec, req)
 

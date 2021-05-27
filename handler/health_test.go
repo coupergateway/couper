@@ -8,8 +8,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/avenga/couper/server/writer"
+
 	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/server"
 )
 
 func TestHealth_Match(t *testing.T) {
@@ -56,18 +57,20 @@ func TestHealth_ServeHTTP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			h := handler.NewHealthCheck(tt.fields.path, tt.fields.shutdownCh)
-			rec := httptest.NewRecorder()
-			rw := server.NewRWWrapper(rec, tt.fields.gzip, "")
-			if tt.wantStatus >= 500 {
-				close(tt.fields.shutdownCh)
-			}
 
 			if tt.fields.gzip {
 				tt.req.Header.Set("Accept-Encoding", "gzip")
 			}
 
+			rec := httptest.NewRecorder()
+			gw := writer.NewGzipWriter(rec, tt.req.Header)
+			rw := writer.NewResponseWriter(gw, "")
+			if tt.wantStatus >= 500 {
+				close(tt.fields.shutdownCh)
+			}
+
 			h.ServeHTTP(rw, tt.req)
-			rw.Close()
+			_ = gw.Close()
 
 			rec.Flush()
 			res := rec.Result()
