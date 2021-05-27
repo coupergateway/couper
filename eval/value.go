@@ -31,7 +31,10 @@ func Value(ctx *hcl.EvalContext, exp hcl.Expression) (cty.Value, hcl.Diagnostics
 			switch t := tr.(type) {
 			case hcl.TraverseRoot:
 				if root, exist := ctx.Variables[t.Name]; exist {
-					populated.Variables[t.Name] = root
+					// prefer already configured populated root variables
+					if _, exist = populated.Variables[t.Name]; !exist {
+						populated.Variables[t.Name] = root
+					}
 					continue
 				}
 				// fallback, provide empty obj to populate with nil attrs if required
