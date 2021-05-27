@@ -161,6 +161,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			for _, acConfig := range couperConfig.Definitions.SAML {
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
+			for _, acConfig := range couperConfig.Definitions.OAuth2AC {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
 
 			for _, ac := range acErrorHandler {
 				acBody, ok := ac.(config.Body)
