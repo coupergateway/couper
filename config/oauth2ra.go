@@ -5,24 +5,9 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-// OAuth2Config defines the <OAuth2Config> interface.
-type OAuth2Config interface {
-	BackendReference
-	Inline
-	GetGrantType() string
-}
-
 var (
 	_ OAuth2Config = &OAuth2ReqAuth{}
 )
-
-var OAuthBlockSchema = &hcl.BodySchema{
-	Blocks: []hcl.BlockHeaderSchema{
-		{
-			Type: "oauth2",
-		},
-	},
-}
 
 // OAuth2ReqAuth represents the <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
