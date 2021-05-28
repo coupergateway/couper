@@ -117,13 +117,13 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 		return "", err
 	}
 
-	if tokenRes.StatusCode != http.StatusOK {
-		return "", errors.Backend.Label(oa.config.Reference()).Message("token request failed")
-	}
-
 	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
 		return "", errors.Backend.Label(oa.config.Reference()).Message("token request read error").With(err)
+	}
+
+	if tokenRes.StatusCode != http.StatusOK {
+		return "", errors.Backend.Label(oa.config.Reference()).Messagef("token request failed, response='%s'", string(tokenResBytes))
 	}
 
 	return string(tokenResBytes), nil
