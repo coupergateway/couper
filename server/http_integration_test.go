@@ -25,6 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
@@ -2642,8 +2643,9 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if ccp != cv1 {
 		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier():\n\t%s\n\t%s", ccp, cv1)
 	}
-	if ccs == ccp {
-		t.Errorf("call to oauth_code_challenge(\"S256\") must not return the same value as call to oauth_code_challenge(\"plain\"):\n\t%s\n\t%s", ccs, ccp)
+	s256 := accesscontrol.Base64url_s256(cv1)
+	if ccs != s256 {
+		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\n\tacrual: %s\n\texpected: %s", ccs, s256)
 	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
@@ -2666,5 +2668,47 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if res.StatusCode != 500 {
 		t.Errorf("/pkce-nok: expected Status %d, got: %d", 500, res.StatusCode)
 		return
+	}
+}
+
+func TestOAuthCSRFFunctions(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/02_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	ct1 := res.Header.Get("x-ct-1")
+	ct2 := res.Header.Get("x-ct-2")
+	cht := res.Header.Get("x-cht")
+	if ct2 != ct1 {
+		t.Errorf("multiple calls to oauth_csrf_token() must return the same value:\n\t%s\n\t%s", ct1, ct2)
+	}
+	s256 := accesscontrol.Base64url_s256(ct1)
+	if cht != s256 {
+		t.Errorf("call to oauth_hashed_csrf_token() returns wrong value:\n\tactual: %s\n\texpected: %s", cht, s256)
+	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	ct1_n := res.Header.Get("x-ct-1")
+	if ct1_n == ct1 {
+		t.Errorf("calls to oauth_csrf_token() on different requests must not return the same value:\n\t%s\n\t%s", ct1, ct1_n)
 	}
 }

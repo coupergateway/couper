@@ -27,6 +27,7 @@ type OAuth2RequestConfig struct {
 	ClientSecret            string
 	Code                    *string
 	CodeVerifier            *string
+	CsrfToken               *string
 	RedirectURI             *string
 	Scope                   *string
 	StorageKey              string
@@ -61,12 +62,18 @@ func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, err
 		return nil, fmt.Errorf("missing credentials")
 	}
 
-	var codeVerifier, redirectUri, scope, teAuthMethod *string
+	var csrfToken, codeVerifier, redirectUri, scope, teAuthMethod *string
 
 	if v, ok := content.Attributes["code_verifier_value"]; ok {
 		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
 		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
 		codeVerifier = &strVal
+	}
+
+	if v, ok := content.Attributes["csrf_token_value"]; ok {
+		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
+		csrfToken = &strVal
 	}
 
 	if v, ok := content.Attributes["redirect_uri"]; ok {
@@ -97,6 +104,7 @@ func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, err
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		CodeVerifier: codeVerifier,
+		CsrfToken:    csrfToken,
 		RedirectURI:  redirectUri,
 		Scope:        scope,
 		// Backend is build up via config and token_endpoint will configure the backend,

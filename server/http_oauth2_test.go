@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -237,11 +238,18 @@ func TestOAuth2AccessControl(t *testing.T) {
 		wantErrLog    string
 	}
 
+	st := "qeirtbnpetrbi"
+	state := accesscontrol.Base64url_s256(st)
+
 	for _, tc := range []testCase{
 		{"no code, but error", "04_couper.hcl", "/cb?error=qeuboub", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: missing code query parameter; query='error=qeuboub"},
 		{"no code; error handler", "05_couper.hcl", "/cb?error=qeuboub", http.Header{}, http.StatusBadRequest, "", "", "access control error: ac: missing code query parameter; query='error=qeuboub"},
-		{"code; client_secret_basic", "04_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
+		{"missing state param", "06_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"st=qerbnr"}}, http.StatusForbidden, "", "", "access control error: ac: missing state query parameter; query='code=qeuboub"},
+		{"wrong state param", "06_couper.hcl", "/cb?code=qeuboub&state=wrong", http.Header{"Cookie": []string{"st=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'wrong' (from query param) vs. 'qeirtbnpetrbi' (s256: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ')"},
+		{"code, state params, missing CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from query param) vs. '' (s256: '47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU')"},
+		{"code; client_secret_basic; PKCE", "04_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; client_secret_post", "05_couper.hcl", "/cb?code=qeuboub", http.Header{}, http.StatusOK, "client_id=foo&client_secret=etbinbp4in&code=qeuboub&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "", ""},
+		{"code, state params", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st}}, http.StatusOK, "code=qeuboub&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			shutdown, hook := newCouper("testdata/oauth2/"+tc.filename, test.New(t))

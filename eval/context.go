@@ -218,7 +218,9 @@ func (c *Context) updateFunctions() {
 	}
 
 	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthCsrfToken] = c.eval.Functions[lib.FnOAuthCodeVerifier]
 	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {

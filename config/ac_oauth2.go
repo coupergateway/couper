@@ -14,10 +14,11 @@ var _ Body = &OAuth2AC{}
 // OAuth2AC represents the <OAuth2> access control object.
 type OAuth2AC struct {
 	AccessControlSetter
-	BackendName string   `hcl:"backend,optional"`
-	GrantType   string   `hcl:"grant_type"`
-	Name        string   `hcl:"name,label"`
-	Remain      hcl.Body `hcl:",remain"`
+	BackendName    string   `hcl:"backend,optional"`
+	GrantType      string   `hcl:"grant_type"`
+	CsrfTokenParam string   `hcl:"csrf_token_param,optional"`
+	Name           string   `hcl:"name,label"`
+	Remain         hcl.Body `hcl:",remain"`
 	// internally used
 	Backend hcl.Body
 }
@@ -44,6 +45,7 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 		ClientID                string   `hcl:"client_id"`
 		ClientSecret            string   `hcl:"client_secret"`
 		CodeVerifierValue       string   `hcl:"code_verifier_value,optional"`
+		CsrfTokenValue          string   `hcl:"csrf_token_value,optional"`
 		RedirectURI             string   `hcl:"redirect_uri,optional"`
 		Scope                   *string  `hcl:"scope,optional"`
 		TokenEndpoint           string   `hcl:"token_endpoint,optional"`

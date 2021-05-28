@@ -2,8 +2,11 @@ package accesscontrol
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
@@ -24,7 +27,10 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 
 	const grantType = "authorization_code"
 	if conf.GrantType != grantType {
-		return nil, confErr.Message("grant_type not supported: " + conf.GrantType)
+		return nil, confErr.Messagef("grant_type %s not supported", conf.GrantType)
+	}
+	if conf.CsrfTokenParam != "" && conf.CsrfTokenParam != "state" {
+		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.CsrfTokenParam)
 	}
 
 	return &OAuth2Callback{
@@ -39,7 +45,8 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Messagef("wrong method: %s", req.Method)
 	}
 
-	code := req.URL.Query().Get("code")
+	query := req.URL.Query()
+	code := query.Get("code")
 	if code == "" {
 		return errors.Oauth2.Messagef("missing code query parameter; query='%s'", req.URL.RawQuery)
 	}
@@ -47,6 +54,18 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	requestConfig, err := oa.oauth2.GetRequestConfig(req)
 	if err != nil {
 		return errors.Oauth2.With(err)
+	}
+
+	// validate state param value against CSRF token
+	if oa.config.CsrfTokenParam == "state" {
+		csrfTokenFromParam := query.Get(oa.config.CsrfTokenParam)
+		if csrfTokenFromParam == "" {
+			return errors.Oauth2.Messagef("missing state query parameter; query='%s'", req.URL.RawQuery)
+		}
+		csrfToken := Base64url_s256(*requestConfig.CsrfToken)
+		if csrfToken != csrfTokenFromParam {
+			return errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from query param) vs. '%s' (s256: '%s')", csrfTokenFromParam, *requestConfig.CsrfToken, csrfToken)
+		}
 	}
 
 	requestConfig.Code = &code
@@ -80,4 +99,18 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	*req = *req.WithContext(ctx)
 
 	return nil
+}
+
+func Base64url_s256(value string) string {
+	h := sha256.New()
+	h.Write([]byte(value))
+	return base64url_encode(h.Sum(nil))
+}
+
+func base64url_encode(msg []byte) string {
+	encoded := base64.StdEncoding.EncodeToString(msg)
+	encoded = strings.Replace(encoded, "+", "-", -1)
+	encoded = strings.Replace(encoded, "/", "_", -1)
+	encoded = strings.Replace(encoded, "=", "", -1)
+	return encoded
 }
