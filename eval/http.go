@@ -108,18 +108,11 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		httpCtx = c.HCLContext()
 	}
 
-	content, _, diags := body.PartialContent(meta.AttributesSchema)
-	if diags.HasErrors() {
-		return diags
-	}
-
 	headerCtx := req.Header
 
-	// map to name
-	// TODO: sorted data structure on load
-	attrs := make(map[string]*hcl.Attribute)
-	for _, attr := range content.Attributes {
-		attrs[attr.Name] = attr
+	attrs, err := getAllAttributes(body)
+	if err != nil {
+		return err
 	}
 
 	if err := evalURLPath(req, attrs, httpCtx); err != nil {
@@ -297,11 +290,35 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		return nil
 	}
 
+	return ApplyResponseHeaderOps(ctx, body, beresp.Header)
+}
+
+func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {
 	var httpCtx *hcl.EvalContext
 	if c, ok := ctx.Value(ContextType).(*Context); ok {
 		httpCtx = c.eval
 	}
-	content, _, _ := body.PartialContent(meta.AttributesSchema)
+
+	attrs, err := getAllAttributes(body)
+	if err != nil {
+		return err
+	}
+
+	// sort and apply header values in hierarchical and logical order: delete, set, add
+	h := []string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}
+	err = applyHeaderOps(attrs, h, httpCtx, headers...)
+	if err != nil {
+		return errors.Evaluation.With(err)
+	}
+
+	return nil
+}
+
+func getAllAttributes(body hcl.Body) (map[string]*hcl.Attribute, error) {
+	content, _, diags := body.PartialContent(meta.AttributesSchema)
+	if diags.HasErrors() {
+		return nil, diags
+	}
 
 	// map to name
 	// TODO: sorted data structure on load
@@ -311,13 +328,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		attrs[attr.Name] = attr
 	}
 
-	// sort and apply header values in hierarchical and logical order: delete, set, add
-	headers := []string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}
-	err := applyHeaderOps(attrs, headers, httpCtx, beresp.Header)
-	if err != nil {
-		return errors.Evaluation.With(err)
-	}
-	return nil
+	return attrs, nil
 }
 
 func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hcl.EvalContext, headers ...http.Header) error {

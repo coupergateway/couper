@@ -137,7 +137,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
-			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions)
+			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions, []hcl.Body{srvConf.Spa.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
 			}
@@ -173,7 +173,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, ferr := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions)
+			fileHandler, ferr := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
 			if ferr != nil {
 				return nil, ferr
 			}
@@ -241,13 +241,17 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			modifier := []hcl.Body{srvConf.Remain}
+
 			kind := endpoint
 			if parentAPI != nil {
 				kind = api
+
+				modifier = []hcl.Body{parentAPI.Remain, srvConf.Remain}
 			}
 			epOpts.LogHandlerKind = kind.String()
 
-			epHandler := handler.NewEndpoint(epOpts, log)
+			epHandler := handler.NewEndpoint(epOpts, log, modifier)
 			protectedHandler := middleware.NewCORSHandler(corsOptions, epHandler)
 
 			accessControl := newAC(srvConf, parentAPI)
@@ -517,7 +521,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				}
 
 				epOpts.LogHandlerKind = "error_" + k
-				kindsHandler[k] = handler.NewEndpoint(epOpts, log)
+				kindsHandler[k] = handler.NewEndpoint(epOpts, log, nil)
 			}
 		}
 	}
