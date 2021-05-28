@@ -36,17 +36,17 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 // Validate implements the AccessControl interface
 func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	if req.Method != http.MethodGet {
-		return errors.OAuth2.Messagef("wrong method: %s", req.Method)
+		return errors.Oauth2.Messagef("wrong method: %s", req.Method)
 	}
 
 	code := req.URL.Query().Get("code")
 	if code == "" {
-		return errors.OAuth2.Messagef("missing code query parameter; query='%s'", req.URL.RawQuery)
+		return errors.Oauth2.Messagef("missing code query parameter; query='%s'", req.URL.RawQuery)
 	}
 
 	requestConfig, err := oa.oauth2.GetRequestConfig(req)
 	if err != nil {
-		return errors.OAuth2.With(err)
+		return errors.Oauth2.With(err)
 	}
 
 	requestConfig.Code = &code
@@ -56,14 +56,14 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 
 	err = json.Unmarshal([]byte(tokenResponse), &jData)
 	if err != nil {
-		return errors.OAuth2.Messagef("Parsing token response JSON failed: %s", err)
+		return errors.Oauth2.Messagef("Parsing token response JSON failed: %s", err)
 	}
 
 	if _, ok := jData["access_token"]; !ok {
-		return errors.OAuth2.Messagef("Missing access_token property in token response: '%s'", tokenResponse)
+		return errors.Oauth2.Messagef("Missing access_token property in token response: '%s'", tokenResponse)
 	}
 	if _, ok := jData["expires_in"]; !ok {
-		return errors.OAuth2.Messagef("Missing expires_in property in token response: '%s'", tokenResponse)
+		return errors.Oauth2.Messagef("Missing expires_in property in token response: '%s'", tokenResponse)
 	}
 
 	ctx := req.Context()
