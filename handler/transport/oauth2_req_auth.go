@@ -46,7 +46,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if data := oa.memStore.Get(requestConfig.StorageKey); data != "" {
-		token, terr := oa.readAccessToken(data)
+		token, terr := readAccessToken(data)
 		if terr != nil {
 			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
 		}
@@ -84,37 +84,19 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	return res, err
 }
 
-func (oa *OAuth2ReqAuth) readAccessToken(data string) (string, error) {
-	var jData map[string]interface{}
-
-	err := json.Unmarshal([]byte(data), &jData)
+func readAccessToken(data string) (string, error) {
+	_, token, err := parseAccessToken([]byte(data))
 	if err != nil {
 		return "", err
-	}
-
-	var token string
-	if t, ok := jData["access_token"].(string); ok {
-		token = t
-	} else {
-		return "", fmt.Errorf("missing access token")
 	}
 
 	return token, nil
 }
 
-func (oa *OAuth2ReqAuth) updateAccessToken(jsonString, key string) (string, error) {
-	var jData map[string]interface{}
-
-	err := json.Unmarshal([]byte(jsonString), &jData)
+func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string, error) {
+	jData, token, err := parseAccessToken(jsonBytes)
 	if err != nil {
 		return "", err
-	}
-
-	var token string
-	if t, ok := jData["access_token"].(string); ok {
-		token = t
-	} else {
-		return "", fmt.Errorf("missing access token")
 	}
 
 	if oa.memStore != nil {
@@ -123,8 +105,26 @@ func (oa *OAuth2ReqAuth) updateAccessToken(jsonString, key string) (string, erro
 			ttl = (int64)(t * 0.9)
 		}
 
-		oa.memStore.Set(key, jsonString, ttl)
+		oa.memStore.Set(key, string(jsonBytes), ttl)
 	}
 
 	return token, nil
+}
+
+func parseAccessToken(jsonBytes []byte) (map[string]interface{}, string, error) {
+	var jData map[string]interface{}
+
+	err := json.Unmarshal(jsonBytes, &jData)
+	if err != nil {
+		return jData, "", err
+	}
+
+	var token string
+	if t, ok := jData["access_token"].(string); ok {
+		token = t
+	} else {
+		return jData, "", fmt.Errorf("missing access token")
+	}
+
+	return jData, token, nil
 }

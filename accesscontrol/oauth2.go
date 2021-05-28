@@ -56,17 +56,18 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Message("requesting token failed").With(err)
 	}
 
+	tokenResponseString := string(tokenResponse)
 	var jData map[string]interface{}
-	err = json.Unmarshal([]byte(tokenResponse), &jData)
+	err = json.Unmarshal(tokenResponse, &jData)
 	if err != nil {
-		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", tokenResponse).With(err)
+		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", tokenResponseString).With(err)
 	}
 
 	if _, ok := jData["access_token"]; !ok {
-		return errors.Oauth2.Messagef("missing access_token property in token response, response='%s'", tokenResponse)
+		return errors.Oauth2.Messagef("missing access_token property in token response, response='%s'", tokenResponseString)
 	}
 	if _, ok := jData["expires_in"]; !ok {
-		return errors.Oauth2.Messagef("missing expires_in property in token response, response='%s'", tokenResponse)
+		return errors.Oauth2.Messagef("missing expires_in property in token response, response='%s'", tokenResponseString)
 	}
 
 	ctx := req.Context()

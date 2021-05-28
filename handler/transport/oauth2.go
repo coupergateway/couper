@@ -106,27 +106,27 @@ func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, err
 	}, nil
 }
 
-func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2RequestConfig) (string, error) {
+func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2RequestConfig) ([]byte, error) {
 	tokenReq, err := oa.newTokenRequest(ctx, requestConfig)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	tokenRes, err := oa.backend.RoundTrip(tokenReq)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
-		return "", errors.Backend.Label(oa.config.Reference()).Message("token request read error").With(err)
+		return nil, errors.Backend.Label(oa.config.Reference()).Message("token request read error").With(err)
 	}
 
 	if tokenRes.StatusCode != http.StatusOK {
-		return "", errors.Backend.Label(oa.config.Reference()).Messagef("token request failed, response='%s'", string(tokenResBytes))
+		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("token request failed, response='%s'", string(tokenResBytes))
 	}
 
-	return string(tokenResBytes), nil
+	return tokenResBytes, nil
 }
 
 func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2RequestConfig) (*http.Request, error) {
