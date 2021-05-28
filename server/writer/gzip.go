@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+
+	"github.com/avenga/couper/eval"
+	"github.com/hashicorp/hcl/v2"
 )
 
 const (
@@ -93,3 +96,5 @@ func ModifyAcceptEncoding(header http.Header) {
 		header.Del(AcceptEncodingHeader)
 	}
 }
+
+func (g *Gzip) AddModifier(_ *eval.Context, _ []hcl.Body) {}

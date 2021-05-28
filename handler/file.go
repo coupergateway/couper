@@ -10,7 +10,10 @@ import (
 
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/utils"
+	"github.com/hashicorp/hcl/v2"
 )
 
 const dirIndexFile = "index.html"
@@ -27,11 +30,12 @@ type HasResponse interface {
 
 type File struct {
 	basePath   string
+	modifier   []hcl.Body
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(docRoot string, srvOpts *server.Options) (*File, error) {
+func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -55,6 +59,7 @@ func NewFile(docRoot string, srvOpts *server.Options) (*File, error) {
 
 	f := &File{
 		basePath:   srvOpts.FilesBasePath,
+		modifier:   modifier,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
 	}
@@ -82,6 +87,11 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if r, ok := rw.(*writer.Response); ok {
+		evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+		r.AddModifier(evalContext, f.modifier)
+	}
+
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
 }
 
@@ -92,6 +102,11 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 	}
 
 	if !strings.HasSuffix(reqPath, "/") {
+		if r, ok := rw.(*writer.Response); ok {
+			evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+			r.AddModifier(evalContext, f.modifier)
+		}
+
 		rw.Header().Set("Location", utils.JoinPath(req.URL.Path, "/"))
 		rw.WriteHeader(http.StatusFound)
 		return
@@ -105,6 +120,11 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 		return
 	}
 	defer file.Close()
+
+	if r, ok := rw.(*writer.Response); ok {
+		evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+		r.AddModifier(evalContext, f.modifier)
+	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
 }

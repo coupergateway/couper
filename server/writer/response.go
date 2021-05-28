@@ -9,13 +9,17 @@ import (
 	"net/textproto"
 	"strconv"
 
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/logging"
+	"github.com/hashicorp/hcl/v2"
 )
 
 type writer interface {
 	http.Flusher
 	http.Hijacker
 	http.ResponseWriter
+
+	AddModifier(*eval.Context, []hcl.Body)
 }
 
 var (
@@ -35,6 +39,9 @@ type Response struct {
 	statusCode      int
 	rawBytesWritten int
 	bytesWritten    int
+	// modifier
+	evalCtx  *eval.Context
+	modifier []hcl.Body
 }
 
 // NewResponseWriter creates a new Response object.
@@ -111,6 +118,7 @@ func (r *Response) WriteHeader(statusCode int) {
 	}
 
 	r.configureHeader()
+	r.applyModifier()
 	r.rw.WriteHeader(statusCode)
 	r.statusWritten = true
 	r.statusCode = statusCode
@@ -138,4 +146,19 @@ func (r *Response) StatusCode() int {
 
 func (r *Response) WrittenBytes() int {
 	return r.bytesWritten
+}
+
+func (r *Response) AddModifier(evalCtx *eval.Context, modifier []hcl.Body) {
+	r.evalCtx = evalCtx
+	r.modifier = modifier
+}
+
+func (r *Response) applyModifier() {
+	if r.evalCtx == nil || r.modifier == nil {
+		return
+	}
+
+	for _, body := range r.modifier {
+		eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
+	}
 }
