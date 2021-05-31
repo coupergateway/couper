@@ -2645,7 +2645,28 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	}
 	s256 := accesscontrol.Base64url_s256(cv1)
 	if ccs != s256 {
-		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\n\tacrual: %s\n\texpected: %s", ccs, s256)
+		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
+	}
+	au, err := url.Parse(res.Header.Get("x-au-pkce"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("code_challenge_method") != "S256" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+	}
+	if auq.Get("code_challenge") != ccs {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
@@ -2699,6 +2720,27 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	s256 := accesscontrol.Base64url_s256(ct1)
 	if cht != s256 {
 		t.Errorf("call to oauth_hashed_csrf_token() returns wrong value:\n\tactual: %s\n\texpected: %s", cht, s256)
+	}
+	au, err := url.Parse(res.Header.Get("x-au-state"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("code_challenge_method") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	}
+	if auq.Get("code_challenge") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	}
+	if auq.Get("state") != cht {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), cht)
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)

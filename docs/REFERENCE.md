@@ -13,11 +13,12 @@
       - [Timings](#timings)
     - [OpenAPI Block](#openapi-block)
     - [CORS Block](#cors-block)
-    - [OAuth2 Block](#oauth2-block)
+    - [OAuth2 CC Block](#oauth2-cc-block)
     - [Definitions Block](#definitions-block)
     - [Basic Auth Block](#basic-auth-block)
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
+    - [OAuth2 AC Block](#oauth2-ac-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
   - [Access Control](#access-control)
@@ -200,7 +201,7 @@ as reference.
 | _label_                         | &#9888; Mandatory in the [Definitions Block](#definitions-block).                                                                                                                                                                          |
 | **Nested blocks**               | **Description**                                                                                                                                                                                                                            |
 | [OpenAPI Block](#openapi-block) | <ul><li>Optional.</li><li>Definition for validating outgoing requests to the origin and incoming responses from the origin.</li></ul>                                                                                                      |
-| [OAuth2 Block](#oauth2-block)   | <ul><li>Optional.</li><li>OAuth2 configuration block.</li></ul>                                                                                                                                                                            |
+| [OAuth2 CC Block](#oauth2-cc-block) | <ul><li>Optional.</li><li>OAuth2 configuration block.</li></ul>                                                                                                                                                                         |
 | **Attributes**                  | **Description**                                                                                                                                                                                                                            |
 | `basic_auth`                    | <ul><li>Optional.</li><li>Basic auth for the upstream request in format `username:password`.</li></ul>                                                                                                                                     |
 | `hostname`                      | <ul><li>Optional.</li><li>Value of the HTTP host header field for the origin request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.</li></ul> |
@@ -269,7 +270,9 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul>                                                                                                       |
 | `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul>                                                                                                   |
 
-### OAuth2 Block
+### OAuth2 CC Block
+
+The OAuth2 CC Block (`oauth2 {}`) configures the OAuth2 Client Credentials flow to request a bearer token for the backend request.
 
 | Block                           | Description                                                                                                                                                                                                                                                                                                                                                    |
 | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -301,6 +304,7 @@ Use the `definitions` block to define configurations you want to reuse.
 | [Basic Auth Block(s)](#basic-auth-block)                   | Defines `Basic Auth Block(s)`.          |
 | [JWT Block(s)](#jwt-block)                                 | Defines `JWT Block(s)`.                 |
 | [JWT Signing Profile Block(s)](#jwt-signing-profile-block) | Defines `JWT Signing Profile Block(s)`. |
+| [OAuth2 AC Block(s)](#oauth2-ac-block)                     | Defines `OAuth2 Authorization Code Grant Flow Block(s)`. |
 | [SAML Block(s)](#saml-block)                               | Defines `SAML Block(s)`.                |
 
 ### Basic Auth Block
@@ -361,6 +365,38 @@ by its mandatory _label_.
 | `signature_algorithm` | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul>       |
 | `ttl`                 | <ul><li>Optional.</li><li>The token's time-to-live (creates the `exp` claim).</li></ul>                               |
 | **`claims`**          | <ul><li>Optional.</li><li>Default claims for the JWT payload.</li></ul>                                               |
+
+#### OAuth2 AC Block
+
+The `oauth2` block lets you configure the `oauth_authorization_url()` [function](#functions) and an access
+control for an OAuth2 Authorization Code Grant Flow redirect endpoint.
+Like all [Access Control](#access-control) types, this `oauth2` block is defined in
+the `definitions` block and can be referenced in all configuration blocks by its
+mandatory *label*.
+
+| Block                      | Description |
+|:---------------------------|:------------|
+| *context*                  | [Definitions Block](#definitions-block). |
+| *label*                    | &#9888; Mandatory. |
+| **Attributes**             | **Description** |
+| `authorization_endpoint`   | <ul><li>&#9888; Mandatory.</li><li>The authorization server endpoint URL used for authorization.</li></ul> |
+| `token_endpoint`           | <ul><li>Optional.</li><li>The authorization server endpoint URL used for requesting the token.</li></ul> |
+| `token_endpoint_auth_method` | <ul><li>Optional.</li><li>Defines the method to authenticate the client at the token endpoint.</li><li>If set to `client_secret_post`, the client credentials are transported in the request body.</li><li>If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.</li><li>Default: `client_secret_basic`.</li></ul> |
+| `redirect_uri`             | <ul><li>Mandatory.</li><li>The Couper endpoint for receiving the authorization code.</li></ul> |
+| `backend`                  | <ul><li>Optional.</li><li>[Backend Block Reference](#backend-block).</li></ul> |
+| `grant_type`               | <ul><li>&#9888; Mandatory.</li><li>Available values: `authorization_code`.</li></ul> |
+| `client_id`                | <ul><li>&#9888; Mandatory.</li><li>The client identifier.</li></ul> |
+| `client_secret`            | <ul><li>&#9888; Mandatory.</li><li>The client secret.</li></ul> |
+| `scope`                    | <ul><li>Optional.</li><li>A space separated list of requested scopes for the access token.</li></ul> |
+
+Additionally there are attributes to configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF):
+
+| Attributes                 | Description |
+|:---------------------------|:------------|
+| `code_challenge_method`    | <ul><li>Optional.</li><li>The method to calculate the PKCE code challenge. Available values: `S256`, `plain` (not recommended).</li></ul> |
+| `code_verifier_value`      | <ul><li>Mandatory if `code_challenge_method` is set.</li><li>The value of the code verifier.</li></ul> |
+| `csrf_token_param`         | <ul><li>Optional.</li><li>The name of the query parameter for the hashed CSRF token. Available values: `state`.</li></ul> |
+| `csrf_token_value`         | <ul><li>Mandatory if `csrf_token_param` is set.</li><li>The value of the CSRF token.</li></ul> |
 
 ### SAML Block
 
@@ -496,9 +532,10 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `json_encode`   | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     |
 | `jwt_sign`      | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 |
 | `merge`         | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
+| `oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block).                                                                                                                                                                                                 |
 | `oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636. Multiple calls of this function in the same client request context return the same value.                                                                                                                                     |
 | `oauth_code_challenge` | Creates an OAuth2 PKCE code challenge from the same code verifier created by `oauth_code_verifier()` using the given code challenge method (valid values: `S256` or `plain`), as specified in RFC 7636.                                                                                       |
-| `oauth_csrf_token`     | Alias for `oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF.                                                                                                                                                              |
+| `oauth_csrf_token`     | Alias for `oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF protection.                                                                                                                                                   |
 | `oauth_hashed_csrf_token` | Creates a hashed CSRF token from the same token created by `oauth_csrf_token()` using `sha256` hashing, to be used as the `state` parameter.                                                                                                                                               |
 | `saml_sso_url`  | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 |
 | `to_lower`      | Converts a given string to lowercase.                                                                                                                                                                                                                                                                |

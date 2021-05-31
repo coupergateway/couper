@@ -48,6 +48,7 @@ type Context struct {
 	eval         *hcl.EvalContext
 	inner        context.Context
 	memorize     sync.Map
+	oauth2       []*config.OAuth2AC
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
 }
@@ -93,6 +94,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
 		memorize:     m,
+		oauth2:       c.oauth2[:],
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
@@ -140,6 +142,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
 		memorize:     c.memorize,
+		oauth2:       c.oauth2[:],
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
@@ -194,6 +197,16 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	return c
 }
 
+// WithOAuth2 initially setup the lib.FnOAuthAuthorizationUrl function.
+func (c *Context) WithOAuth2(o []*config.OAuth2AC) *Context {
+	c.oauth2 = o
+	if c.oauth2 == nil {
+		c.oauth2 = make([]*config.OAuth2AC, 0)
+	}
+	c.updateFunctions()
+	return c
+}
+
 // WithSAML initially setup the lib.FnSamlSsoUrl function.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
@@ -217,6 +230,10 @@ func (c *Context) updateFunctions() {
 	if len(c.saml) > 0 {
 		samlfn := lib.NewSamlSsoUrlFunction(c.saml)
 		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
+	}
+	if len(c.oauth2) > 0 {
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
+		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
 	}
 
 	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)

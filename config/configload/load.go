@@ -234,6 +234,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	// Prepare dynamic functions
 	couperConfig.Context = evalContext.
 		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
+		WithOAuth2(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
