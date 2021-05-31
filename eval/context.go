@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -47,7 +46,7 @@ type Context struct {
 	bufferOption BufferOption
 	eval         *hcl.EvalContext
 	inner        context.Context
-	memorize     sync.Map
+	memorize     map[string]interface{}
 	oauth2       []*config.OAuth2AC
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
@@ -88,12 +87,11 @@ func (c *Context) Value(key interface{}) interface{} {
 }
 
 func (c *Context) WithClientRequest(req *http.Request) *Context {
-	var m sync.Map
 	ctx := &Context{
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
-		memorize:     m,
+		memorize:     make(map[string]interface{}),
 		oauth2:       c.oauth2[:],
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
@@ -243,7 +241,7 @@ func (c *Context) updateFunctions() {
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
-	cv, ok := c.memorize.Load(lib.CodeVerifier)
+	cv, ok := c.memorize[lib.CodeVerifier]
 	var err error
 	if !ok {
 		cv, err = pkce.CreateCodeVerifier()
@@ -251,7 +249,7 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 			return nil, err
 		}
 
-		c.memorize.Store(lib.CodeVerifier, cv)
+		c.memorize[lib.CodeVerifier] = cv
 	}
 
 	codeVerifier, _ := cv.(*pkce.CodeVerifier)
