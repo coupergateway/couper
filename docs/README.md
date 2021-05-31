@@ -700,11 +700,11 @@ executed ordered as follows:
 
 | Modifier                  | Contexts                                                                                        | Description |
 |:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_response_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of response header to be removed from the client response. |
-| `set_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set response header in the client response. |
-| `add_response_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add response header to the client response. |
+| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of response header to be removed from the client response. |
+| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add response header to the client response. |
 
-All `*_response_headers` are executed from:  `endpoint`, `proxy`, `backend` and `error_handler`.
+All `*_response_headers` are executed from: `server`, `files`, `spa`, `api`, `endpoint`, `proxy`, `backend` and `error_handler`.
 
 #### Query Parameter
 
