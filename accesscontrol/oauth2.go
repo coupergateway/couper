@@ -11,6 +11,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
 )
 
@@ -29,8 +30,14 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	if conf.GrantType != grantType {
 		return nil, confErr.Messagef("grant_type %s not supported", conf.GrantType)
 	}
+	if conf.CodeChallengeMethod == "" && conf.CsrfTokenParam == "" {
+		return nil, confErr.Message("CSRF protection not configured")
+	}
 	if conf.CsrfTokenParam != "" && conf.CsrfTokenParam != "state" {
 		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.CsrfTokenParam)
+	}
+	if conf.CodeChallengeMethod != "" && conf.CodeChallengeMethod != lib.CCM_plain && conf.CodeChallengeMethod != lib.CCM_S256 {
+		return nil, confErr.Messagef("code_challenge_method %s not supported", conf.CodeChallengeMethod)
 	}
 
 	return &OAuth2Callback{

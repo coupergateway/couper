@@ -10,9 +10,11 @@ var _ OAuth2 = &OAuth2AC{}
 // OAuth2AC represents the <OAuth2> access control object.
 type OAuth2AC struct {
 	AccessControlSetter
+	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
+	CodeChallengeMethod     string   `hcl:"code_challenge_method,optional"`
 	GrantType               string   `hcl:"grant_type"`
 	CsrfTokenParam          string   `hcl:"csrf_token_param,optional"`
 	Name                    string   `hcl:"name,label"`
