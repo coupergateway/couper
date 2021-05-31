@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/server"
-	"github.com/sirupsen/logrus"
+	"github.com/avenga/couper/server/writer"
 )
 
 var _ Cmd = &Run{}
@@ -55,7 +57,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 
 	if config.Settings.SecureCookies != "" &&
-		config.Settings.SecureCookies != server.SecureCookiesStrip {
+		config.Settings.SecureCookies != writer.SecureCookiesStrip {
 		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
 	}
 

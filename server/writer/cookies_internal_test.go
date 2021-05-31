@@ -1,4 +1,4 @@
-package server
+package writer
 
 import (
 	"net/http"

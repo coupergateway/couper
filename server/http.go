@@ -19,8 +19,8 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/server/writer"
 )
 
 type muxers map[string]*Mux
@@ -201,27 +201,23 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	h := mux.FindHandler(req)
-	w := NewRWWrapper(rw,
-		transport.ReClientSupportsGZ.MatchString(
-			req.Header.Get(transport.AcceptEncodingHeader),
-		),
-		s.settings.SecureCookies,
-	)
-	rw = w
 
 	clientReq := req.Clone(req.Context())
 
+	gw := writer.NewGzipWriter(rw, clientReq.Header)
+	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
+
 	if err = s.setGetBody(h, clientReq); err != nil {
-		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(rw, req)
+		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(w, clientReq)
 		return
 	}
 
 	ctx = s.evalCtx.WithClientRequest(clientReq)
 	*clientReq = *clientReq.WithContext(ctx)
 
-	s.accessLog.ServeHTTP(rw, clientReq, h, startTime)
+	s.accessLog.ServeHTTP(w, clientReq, h, startTime)
 
-	w.Close() // Closes the GZ writer.
+	_ = gw.Close() // Closes the GZ writer.
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
