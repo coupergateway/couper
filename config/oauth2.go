@@ -8,7 +8,11 @@ import (
 type OAuth2 interface {
 	BackendReference
 	Inline
+	GetClientID() string
+	GetClientSecret() string
 	GetGrantType() string
+	GetScope() *string
+	GetTokenEndpointAuthMethod() *string
 }
 
 var OAuthBlockSchema = &hcl.BodySchema{

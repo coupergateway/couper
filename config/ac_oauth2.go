@@ -5,20 +5,21 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var (
-	_ OAuth2 = &OAuth2AC{}
-)
-
-var _ Body = &OAuth2AC{}
+var _ OAuth2 = &OAuth2AC{}
 
 // OAuth2AC represents the <OAuth2> access control object.
 type OAuth2AC struct {
 	AccessControlSetter
-	BackendName    string   `hcl:"backend,optional"`
-	GrantType      string   `hcl:"grant_type"`
-	CsrfTokenParam string   `hcl:"csrf_token_param,optional"`
-	Name           string   `hcl:"name,label"`
-	Remain         hcl.Body `hcl:",remain"`
+	BackendName             string   `hcl:"backend,optional"`
+	ClientID                string   `hcl:"client_id"`
+	ClientSecret            string   `hcl:"client_secret"`
+	GrantType               string   `hcl:"grant_type"`
+	CsrfTokenParam          string   `hcl:"csrf_token_param,optional"`
+	Name                    string   `hcl:"name,label"`
+	RedirectURI             *string  `hcl:"redirect_uri"`
+	Remain                  hcl.Body `hcl:",remain"`
+	Scope                   *string  `hcl:"scope,optional"`
+	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	// internally used
 	Backend hcl.Body
 }
@@ -41,15 +42,10 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend                 *Backend `hcl:"backend,block"`
-		ClientID                string   `hcl:"client_id"`
-		ClientSecret            string   `hcl:"client_secret"`
-		CodeVerifierValue       string   `hcl:"code_verifier_value,optional"`
-		CsrfTokenValue          string   `hcl:"csrf_token_value,optional"`
-		RedirectURI             string   `hcl:"redirect_uri,optional"`
-		Scope                   *string  `hcl:"scope,optional"`
-		TokenEndpoint           string   `hcl:"token_endpoint,optional"`
-		TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
+		Backend           *Backend `hcl:"backend,block"`
+		CodeVerifierValue string   `hcl:"code_verifier_value,optional"`
+		CsrfTokenValue    string   `hcl:"csrf_token_value,optional"`
+		TokenEndpoint     string   `hcl:"token_endpoint,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -63,6 +59,22 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 }
 
 // GetGrantType implements the <OAuth2> interface.
+func (oa OAuth2AC) GetClientID() string {
+	return oa.ClientID
+}
+
+func (oa OAuth2AC) GetClientSecret() string {
+	return oa.ClientSecret
+}
+
 func (oa OAuth2AC) GetGrantType() string {
 	return oa.GrantType
+}
+
+func (oa OAuth2AC) GetScope() *string {
+	return oa.Scope
+}
+
+func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
+	return oa.TokenEndpointAuthMethod
 }

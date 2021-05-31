@@ -69,6 +69,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	}
 
 	requestConfig.Code = &code
+	requestConfig.RedirectURI = oa.config.RedirectURI
 
 	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
 	if err != nil {

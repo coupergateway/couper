@@ -23,19 +23,20 @@ type OAuth2 struct {
 }
 
 type OAuth2RequestConfig struct {
-	ClientID                string
-	ClientSecret            string
-	Code                    *string
-	CodeVerifier            *string
-	CsrfToken               *string
-	RedirectURI             *string
-	Scope                   *string
-	StorageKey              string
-	TokenEndpointAuthMethod *string
+	Code         *string
+	CodeVerifier *string
+	CsrfToken    *string
+	RedirectURI  *string
+	StorageKey   string
 }
 
 // NewOAuth2 creates a new <OAuth2> object.
 func NewOAuth2(conf config.OAuth2, backend http.RoundTripper) (*OAuth2, error) {
+	if teAuthMethod := conf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
+		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
+			return nil, fmt.Errorf("unsupported 'token_endpoint_auth_method': %s", *teAuthMethod)
+		}
+	}
 	return &OAuth2{
 		backend: backend,
 		config:  conf,
@@ -50,19 +51,7 @@ func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, err
 
 	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
 
-	id, idOK := content.Attributes["client_id"]
-	idv, _ := id.Expr.Value(evalContext.HCLContext())
-	clientID := seetie.ValueToString(idv)
-
-	secret, secretOK := content.Attributes["client_secret"]
-	secretv, _ := secret.Expr.Value(evalContext.HCLContext())
-	clientSecret := seetie.ValueToString(secretv)
-
-	if !idOK || !secretOK {
-		return nil, fmt.Errorf("missing credentials")
-	}
-
-	var csrfToken, codeVerifier, redirectUri, scope, teAuthMethod *string
+	var csrfToken, codeVerifier *string
 
 	if v, ok := content.Attributes["code_verifier_value"]; ok {
 		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
@@ -76,41 +65,12 @@ func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, err
 		csrfToken = &strVal
 	}
 
-	if v, ok := content.Attributes["redirect_uri"]; ok {
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
-		redirectUri = &strVal
-	}
-
-	if v, ok := content.Attributes["scope"]; ok {
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
-		scope = &strVal
-	}
-
-	if v, ok := content.Attributes["token_endpoint_auth_method"]; ok {
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
-		teAuthMethod = &strVal
-	}
-
-	if teAuthMethod != nil {
-		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
-			return nil, fmt.Errorf("unsupported 'token_endpoint_auth_method': %s", *teAuthMethod)
-		}
-	}
-
 	return &OAuth2RequestConfig{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
 		CodeVerifier: codeVerifier,
 		CsrfToken:    csrfToken,
-		RedirectURI:  redirectUri,
-		Scope:        scope,
 		// Backend is build up via config and token_endpoint will configure the backend,
 		// use the backend memory location here.
-		StorageKey:              fmt.Sprintf("%p|%s|%s", &oa.backend, clientID, clientSecret),
-		TokenEndpointAuthMethod: teAuthMethod,
+		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.backend, oa.config.GetClientID(), oa.config.GetClientSecret()),
 	}, nil
 }
 
@@ -141,8 +101,8 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	post := url.Values{}
 	post.Set("grant_type", oa.config.GetGrantType())
 
-	if requestConfig.Scope != nil {
-		post.Set("scope", *requestConfig.Scope)
+	if scope := oa.config.GetScope(); scope != nil {
+		post.Set("scope", *scope)
 	}
 	if requestConfig.RedirectURI != nil {
 		post.Set("redirect_uri", *requestConfig.RedirectURI)
@@ -153,9 +113,10 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	if requestConfig.CodeVerifier != nil {
 		post.Set("code_verifier", *requestConfig.CodeVerifier)
 	}
-	if requestConfig.TokenEndpointAuthMethod != nil && *requestConfig.TokenEndpointAuthMethod == "client_secret_post" {
-		post.Set("client_id", requestConfig.ClientID)
-		post.Set("client_secret", requestConfig.ClientSecret)
+	teAuthMethod := oa.config.GetTokenEndpointAuthMethod()
+	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
+		post.Set("client_id", oa.config.GetClientID())
+		post.Set("client_secret", oa.config.GetClientSecret())
 	}
 
 	// url will be configured via backend roundtrip
@@ -168,8 +129,8 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	if requestConfig.TokenEndpointAuthMethod == nil || *requestConfig.TokenEndpointAuthMethod == "client_secret_basic" {
-		auth := base64.StdEncoding.EncodeToString([]byte(requestConfig.ClientID + ":" + requestConfig.ClientSecret))
+	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
+		auth := base64.StdEncoding.EncodeToString([]byte(oa.config.GetClientID() + ":" + oa.config.GetClientSecret()))
 
 		outreq.Header.Set("Authorization", "Basic "+auth)
 	}
