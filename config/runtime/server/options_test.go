@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/avenga/couper/config"
@@ -110,8 +111,8 @@ func TestServer_NewServerOptions_ConfigWithErrTpl_Server_Fail(t *testing.T) {
 	}
 
 	_, err := server.NewServerOptions(conf, nil)
-	if err == nil {
-		t.Error("Unexpected NIL-error given")
+	if !strings.Contains(err.Error(), "no such file or directory") {
+		t.Errorf("Unexpected error given: %#v", err)
 	}
 }
 
@@ -123,8 +124,8 @@ func TestServer_NewServerOptions_ConfigWithErrTpl_Files_Fail(t *testing.T) {
 	}
 
 	_, err := server.NewServerOptions(conf, nil)
-	if err == nil {
-		t.Error("Unexpected NIL-error given")
+	if !strings.Contains(err.Error(), "no such file or directory") {
+		t.Errorf("Unexpected error given: %#v", err)
 	}
 }
 
@@ -136,8 +137,8 @@ func TestServer_NewServerOptions_ConfigWithErrTpl_API_Fail(t *testing.T) {
 	}
 
 	_, err := server.NewServerOptions(conf, nil)
-	if err == nil {
-		t.Error("Unexpected NIL-error given")
+	if !strings.Contains(err.Error(), "no such file or directory") {
+		t.Errorf("Unexpected error given: %#v", err)
 	}
 }
 
