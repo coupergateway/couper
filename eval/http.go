@@ -344,16 +344,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 				beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
 				beresp.ContentLength = -1
-
-				for h := range beresp.Header {
-					h = strings.ToLower(h)
-
-					if strings.HasPrefix(h, "content-") || h == "x-content-type-options" {
-						beresp.Header.Del(h)
-					}
-				}
-
-				// TODO: Delete/modify more headers, e.g. `Vary: Accept-Encoding`?
+				beresp.Header.Del("Content-Length")
 			}
 
 			beresp.StatusCode = int(status)
