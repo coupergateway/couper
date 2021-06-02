@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
+	"github.com/avenga/couper/server/writer"
 )
 
 var _ http.Handler = &Endpoint{}
@@ -24,6 +25,7 @@ var _ EndpointLimit = &Endpoint{}
 type Endpoint struct {
 	log            *logrus.Entry
 	logHandlerKind string
+	modifier       []hcl.Body
 	opts           *EndpointOptions
 }
 
@@ -46,11 +48,12 @@ type EndpointLimit interface {
 	RequestLimit() int64
 }
 
-func NewEndpoint(opts *EndpointOptions, log *logrus.Entry) *Endpoint {
+func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) *Endpoint {
 	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
-		log:  log.WithField("handler", opts.LogHandlerKind),
-		opts: opts,
+		log:      log.WithField("handler", opts.LogHandlerKind),
+		modifier: modifier,
+		opts:     opts,
 	}
 }
 
@@ -173,6 +176,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	case ctxErr := <-req.Context().Done():
 		log.Errorf("endpoint write: %v", ctxErr)
 	default:
+	}
+
+	if r, ok := rw.(*writer.Response); ok {
+		r.AddModifier(evalContext, e.modifier)
 	}
 
 	if err = clientres.Write(rw); err != nil {
