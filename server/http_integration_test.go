@@ -3827,3 +3827,59 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }
+
+func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/endpoint_eval/20_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path   string
+		expVal bool
+	}
+
+	for _, tc := range []testCase{
+		{"/1stchild", true},
+		{"/2ndchild/no", true}, // TODO: write NilVal header vals?
+		{"/child-chain/no", true},
+		{"/list-idx", true},
+		{"/list-idx-splat", true},
+		{"/list-idx/no", true}, // TODO: handle nilVal / empty header
+		{"/root/no", true},
+		{"/tpl", true},
+		{"/for", true},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			hook.Reset()
+			defer func() {
+				if subT.Failed() {
+					time.Sleep(time.Millisecond * 100)
+					for _, entry := range hook.AllEntries() {
+						s, _ := entry.String()
+						println(s)
+					}
+				}
+			}()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("Expected Status OK, got: %d", res.StatusCode)
+				return
+			}
+
+			val, ok := res.Header[http.CanonicalHeaderKey("X-Value")]
+			if !tc.expVal && ok {
+				subT.Errorf("%q: expected no value, got: %q", tc.path, val)
+				return
+			}
+		})
+	}
+}
