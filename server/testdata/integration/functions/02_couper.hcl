@@ -26,6 +26,7 @@ definitions {
   oauth2 "ac-pkce" {
     grant_type = "authorization_code"
     authorization_endpoint = "https://authorization.server/oauth/authorize"
+    scope = "openid profile email"
     token_endpoint = "https://authorization.server/oauth/token"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
@@ -35,6 +36,7 @@ definitions {
   oauth2 "ac-state" {
     grant_type = "authorization_code"
     authorization_endpoint = "https://authorization.server/oauth/authorize"
+    scope = "openid profile"
     token_endpoint = "https://authorization.server/oauth/token"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"

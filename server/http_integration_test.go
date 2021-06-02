@@ -2656,6 +2656,9 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
 		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
+	if auq.Get("scope") != "openid profile email" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+	}
 	if auq.Get("code_challenge_method") != "S256" {
 		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
@@ -2729,6 +2732,9 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
 		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
 	}
 	if auq.Get("code_challenge_method") != "" {
 		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
