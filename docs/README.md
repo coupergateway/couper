@@ -42,6 +42,7 @@
       * [Response Header](#response-header)
       * [Query Parameter](#query-parameter)
       * [Form Parameter](#form-parameter)
+      * [Set Response Status](#set-response-status)
     * [Path Parameter](#path-parameter)
     * [Access Control](#access-control)
       * [Error Handler](#error-handler)
@@ -677,6 +678,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 * [Response Header](#response-header)
 * [Query Parameter](#query-parameter)
 * [Form Parameter](#form-parameter)
+* [Set Response Status](#set-response-status)
 
 #### Request Header
 
@@ -800,6 +802,19 @@ definitions {
   }
 }
 ```
+
+#### Set Response Status
+
+The `set_response_status` attribute allows to modify the HTTP status code to the
+given value.
+
+| Modifier              | Contexts                                                                                            | Description |
+|:----------------------|:----------------------------------------------------------------------------------------------------|:------------|
+| `set_response_status` | [Endpoint Block](#endpoint-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | HTTP status code to be set to the client response. |
+
+If the HTTP status code ist set to `204`, the reponse body and all HTTP header
+fields related to the body (`Content-Length`, `Content-Encoding` etc.) are removed
+from the client response, and a warning is logged.
 
 ### Path Parameter
 
