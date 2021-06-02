@@ -256,6 +256,9 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	originURL, parseErr := url.Parse(origin)
 	if parseErr != nil {
 		log.WithError(parseErr).Error()
+	} else if strings.HasPrefix(originURL.Host, originURL.Scheme+":") {
+		return nil, errors.Configuration.Label("backend origin").
+			Messagef("invalid url: %s", originURL.String())
 	}
 
 	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
