@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	er "errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -317,6 +319,49 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 	if err != nil {
 		return errors.Evaluation.With(err)
 	}
+
+	content, _, _ = body.PartialContent(config.BackendInlineSchema)
+	for _, attr := range content.Attributes {
+		if attr.Name == "set_response_status" {
+			val, attrDiags := attr.Expr.Value(httpCtx)
+			if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+				return attrDiags
+			}
+
+			status := seetie.ValueToInt(val)
+			if status < 100 || status > 599 {
+				return errors.Configuration.With(
+					fmt.Errorf(
+						"set_response_status sets an invalid HTTP status code: %d; set the status code to 500",
+						status,
+					))
+			}
+
+			if status == 204 {
+				beresp.Request.Context().Value(request.LogEntry).(*logrus.Entry).Warn(
+					"set_response_status sets the HTTP status code to 204 - removing the response body if any",
+				)
+
+				beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
+				beresp.ContentLength = -1
+
+				for h := range beresp.Header {
+					h = strings.ToLower(h)
+
+					if strings.HasPrefix(h, "content-") || h == "x-content-type-options" {
+						beresp.Header.Del(h)
+					}
+				}
+
+				// TODO: Delete/modify more headers, e.g. `Vary: Accept-Encoding`?
+			}
+
+			beresp.StatusCode = int(status)
+
+			break
+		}
+	}
+
 	return nil
 }
 
