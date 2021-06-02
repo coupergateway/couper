@@ -812,9 +812,8 @@ given value.
 |:----------------------|:----------------------------------------------------------------------------------------------------|:------------|
 | `set_response_status` | [Endpoint Block](#endpoint-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | HTTP status code to be set to the client response. |
 
-If the HTTP status code ist set to `204`, the reponse body and all HTTP header
-fields related to the body (`Content-Length`, `Content-Encoding` etc.) are removed
-from the client response, and a warning is logged.
+If the HTTP status code ist set to `204`, the reponse body and the HTTP header
+field `Content-Length` is removed from the client response, and a warning is logged.
 
 ### Path Parameter
 
