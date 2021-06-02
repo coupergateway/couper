@@ -50,11 +50,12 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		meta.Attributes
-		BasicAuth  string `hcl:"basic_auth,optional"`
-		Hostname   string `hcl:"hostname,optional"`
-		Origin     string `hcl:"origin,optional"`
-		PathPrefix string `hcl:"path_prefix,optional"`
-		ProxyURL   string `hcl:"proxy,optional"`
+		BasicAuth      string `hcl:"basic_auth,optional"`
+		Hostname       string `hcl:"hostname,optional"`
+		Origin         string `hcl:"origin,optional"`
+		PathPrefix     string `hcl:"path_prefix,optional"`
+		ProxyURL       string `hcl:"proxy,optional"`
+		ResponseStatus *uint8 `hcl:"set_response_status,optional"`
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})

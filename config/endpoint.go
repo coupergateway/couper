@@ -40,8 +40,9 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		meta.Attributes
-		Requests Requests `hcl:"request,block"`
-		Proxies  Proxies  `hcl:"proxy,block"`
+		Proxies        Proxies  `hcl:"proxy,block"`
+		Requests       Requests `hcl:"request,block"`
+		ResponseStatus *uint8   `hcl:"set_response_status,optional"`
 	}
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 	return schema
