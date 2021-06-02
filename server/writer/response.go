@@ -18,12 +18,15 @@ type writer interface {
 	http.Flusher
 	http.Hijacker
 	http.ResponseWriter
+}
 
+type modifier interface {
 	AddModifier(*eval.Context, []hcl.Body)
 }
 
 var (
 	_ writer               = &Response{}
+	_ modifier             = &Response{}
 	_ logging.RecorderInfo = &Response{}
 )
 
