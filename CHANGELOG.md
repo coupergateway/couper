@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * Modifier (`set/add/remove_form_params`) for the form parameters ([#223](https://github.com/avenga/couper/pull/223))
+  * Modifier (`set_response_status`) to be able to modify the response HTTP status code ([#250](https://github.com/avenga/couper/pull/250))
 
 * **Changed**
   * Stronger configuration check for `path` and `path_prefix` attributes, possibly resulting in configuration errors ([#232](https://github.com/avenga/couper/pull/232))
