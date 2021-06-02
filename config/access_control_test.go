@@ -54,13 +54,29 @@ func TestAccessControl_Merge(t *testing.T) {
 		{"empty", fields{}, args{}, config.AccessControl{}},
 		{"empty and not-empty", fields{}, args{config.AccessControl{AccessControl: []string{"one"}}}, config.AccessControl{AccessControl: []string{"one"}}},
 		{"not-empty and empty", fields{AccessControl: []string{"one"}}, args{}, config.AccessControl{AccessControl: []string{"one"}}},
+		{
+			"contains in AccessControl",
+			fields{AccessControl: []string{"one"}},
+			args{config.AccessControl{AccessControl: []string{"one"}}},
+			config.AccessControl{AccessControl: []string{"one"}},
+		},
+		{
+			"contains in DisableAccessControl",
+			fields{DisableAccessControl: []string{"one"}},
+			args{config.AccessControl{DisableAccessControl: []string{"one"}}},
+			config.AccessControl{DisableAccessControl: []string{"one"}},
+		},
+		{
+			"not contains in DisableAccessControl",
+			fields{},
+			args{config.AccessControl{DisableAccessControl: []string{"one"}}},
+			config.AccessControl{DisableAccessControl: []string{"one"}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ac := config.AccessControl{
-				AccessControl:        tt.fields.AccessControl,
-				DisableAccessControl: tt.fields.DisableAccessControl,
-			}
+			ac := config.NewAccessControl(tt.fields.AccessControl, tt.fields.DisableAccessControl)
+
 			if got := ac.Merge(tt.args.oac); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)
 			}

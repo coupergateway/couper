@@ -20,6 +20,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 	})
 
 	serverOptions, _ := rs.NewServerOptions(nil, nil)
+	serverOptions.FilesBasePath = "/"
 
 	testOptions := &runtime.MuxOptions{
 		EndpointRoutes: map[string]http.Handler{
@@ -30,6 +31,9 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"/{b}/a":                noContent,
 			"/{section}/{project}":  noContent,
 			"/project/{project}/**": noContent,
+		},
+		FileRoutes: map[string]http.Handler{
+			"/htdocs/test.html": noContent,
 		},
 		ServerOptions: serverOptions,
 	}
@@ -66,6 +70,10 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"project": "foo",
 		}, "bar/ha"},
 		{" /w non existing path", newReq("/foo/{bar}/123"), errors.DefaultJSON.ServeError(errors.RouteNotFound), nil, ""},
+		{" files", newReq("/htdocs/test.html"), http.NotFoundHandler(), request.PathParameter{
+			"section": "htdocs",
+			"project": "test.html",
+		}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
