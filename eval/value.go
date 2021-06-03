@@ -61,6 +61,16 @@ func walk(variables, parentVariables cty.Value, traversal hcl.Traversal) cty.Val
 	}
 
 	hasNext := len(traversal) > 1
+	nextValue := cty.NilVal // fallback; last one
+	if hasNext {
+		switch traversal[1].(type) {
+		case hcl.TraverseIndex, hcl.TraverseSplat:
+			nextValue = cty.EmptyTupleVal
+		default:
+			nextValue = cty.EmptyObjectVal
+		}
+	}
+
 	currentFn := func(name string) (current cty.Value, exist bool) {
 		if parentVariables.CanIterateElements() {
 			if current, exist = parentVariables.AsValueMap()[name]; exist {
@@ -79,11 +89,7 @@ func walk(variables, parentVariables cty.Value, traversal hcl.Traversal) cty.Val
 	case hcl.TraverseAttr:
 		current, exist := currentFn(t.Name)
 		if !exist {
-			if hasNext {
-				current = cty.EmptyObjectVal
-			} else { // last one
-				current = cty.NilVal
-			}
+			current = nextValue
 		} else if hasNext && !current.CanIterateElements() {
 			current = cty.EmptyObjectVal
 		}
@@ -115,23 +121,18 @@ func walk(variables, parentVariables cty.Value, traversal hcl.Traversal) cty.Val
 			fidx := t.Key.AsBigFloat()
 			idx, _ := fidx.Int64()
 			slice := make([]cty.Value, idx+1)
+			slice[idx] = nextValue
 			if hasNext {
-				slice[idx] = cty.EmptyTupleVal
-				val := cty.TupleVal(slice)
-				return walk(val, val, traversal[1:])
+				slice[idx] = walk(nextValue, nextValue, traversal[1:])
 			}
-			slice[idx] = cty.NilVal
 			return cty.TupleVal(slice)
 		case cty.String:
 			m := map[string]cty.Value{}
+			m[t.Key.AsString()] = nextValue
 			if hasNext {
-				m[t.Key.AsString()] = cty.EmptyObjectVal
-				val := cty.ObjectVal(m)
-				return walk(val, val, traversal[1:])
-			} else {
-				m[t.Key.AsString()] = cty.NilVal
-				return cty.ObjectVal(m)
+				m[t.Key.AsString()] = walk(nextValue, nextValue, traversal[1:])
 			}
+			return cty.ObjectVal(m)
 		default:
 			panic(reflect.TypeOf(t))
 		}

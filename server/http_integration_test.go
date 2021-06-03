@@ -3846,6 +3846,8 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/list-idx", true},
 		{"/list-idx-splat", true},
 		{"/list-idx/no", true}, // TODO: handle nilVal / empty header
+		{"/list-idx-chain/no", true},
+		{"/list-idx-key-chain/no", true},
 		{"/root/no", true},
 		{"/tpl", true},
 		{"/for", true},

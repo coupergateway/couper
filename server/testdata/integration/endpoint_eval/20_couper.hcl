@@ -1,37 +1,4 @@
 server "cty.NilVal" {
-  endpoint "/1stchild" {
-    proxy {
-      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
-    }
-    response {
-      headers = {
-        X-Value = env.COUPER_TEST_BACKEND_ADDR
-      }
-    }
-  }
-
-  endpoint "/2ndchild/no" {
-    proxy {
-      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
-    }
-    response {
-      headers = {
-        X-Value = env.COUPER_TEST_BACKEND_ADDR.not_there
-      }
-    }
-  }
-
-  endpoint "/child-chain/no" {
-    proxy {
-      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
-    }
-    response {
-      headers = {
-        X-Value = env.COUPER_TEST_BACKEND_ADDR.one.two
-      }
-    }
-  }
-
   endpoint "/list-idx" {
     proxy {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -61,6 +28,28 @@ server "cty.NilVal" {
     response {
       headers = {
         X-Value = backend_responses.default.json_body.Json.list[21]
+      }
+    }
+  }
+
+  endpoint "/list-idx-chain/no" {
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+    }
+    response {
+      headers = {
+        X-Value = backend_responses.default.json_body.Json.list[21][12]
+      }
+    }
+  }
+
+  endpoint "/list-idx-key-chain/no" {
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+    }
+    response {
+      headers = {
+        X-Value = backend_responses.default.json_body.Json.list[21].obj[1]
       }
     }
   }
