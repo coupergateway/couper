@@ -127,7 +127,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 }
 
 func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTSigningConfig,
-	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, hcl.Diagnostics)) function.Function {
+	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
