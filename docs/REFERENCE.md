@@ -1,8 +1,8 @@
-# Couper Docs - Version 1.2
+# Couper Reference - Version 1.2
 
 ## Table of contents
 
-* [Couper Docs - Version 1.2](#couper-docs---version-12)
+* [Couper Reference - Version 1.2](#couper-reference---version-12)
   * [Table of contents](#table-of-contents)
   * [Introduction](#introduction)
   * [Core concepts](#core-concepts)
