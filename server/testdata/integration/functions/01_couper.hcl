@@ -11,6 +11,7 @@ server "api" {
         }
       }
     }
+
     endpoint "/coalesce" {
       response {
         headers = {
