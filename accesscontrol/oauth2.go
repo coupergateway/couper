@@ -33,6 +33,7 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	if conf.CodeChallengeMethod == "" && conf.CsrfTokenParam == "" {
 		return nil, confErr.Message("CSRF protection not configured")
 	}
+	// TODO for OIDC: add "nonce" as valid value
 	if conf.CsrfTokenParam != "" && conf.CsrfTokenParam != "state" {
 		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.CsrfTokenParam)
 	}
@@ -96,6 +97,15 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	if _, ok := jData["expires_in"]; !ok {
 		return errors.Oauth2.Messagef("missing expires_in property in token response, response='%s'", tokenResponseString)
 	}
+
+	// TODO for OIDC:
+	// * send GET request to userinfo endpoint with Authorization: Bearer <access_token>
+	// * validate id_token signature using key from JWKS with kid from header
+	// * validate id_token claim iss (== configured value)
+	// * validate id_token claim aud (== oa.config.GetClientID())
+	// * validate id_token claim sub (== sub in userinfo response)
+	// * if oa.config.CsrfTokenParam == "nonce", validate id_token claim nonce (== query.Get("nonce"))
+	// * assign id_token claims to jData["id_token"] (instead of JWT string)
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})

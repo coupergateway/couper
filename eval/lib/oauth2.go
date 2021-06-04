@@ -68,6 +68,7 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier
 
 				query.Set("state", state)
 			}
+			// TODO for OIDC: if oauth2.CsrfTokenParam == "nonce", create and add nonce
 			oauthAuthorizationUrl.RawQuery = query.Encode()
 
 			return cty.StringVal(oauthAuthorizationUrl.String()), nil
