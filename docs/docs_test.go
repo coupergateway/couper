@@ -2,6 +2,7 @@ package docs_test
 
 import (
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -12,9 +13,15 @@ import (
 func TestDocs_Links(t *testing.T) {
 	helper := test.New(t)
 
-	for _, file := range []string{"README.md", "ERRORS.md"} {
-		raw, err := ioutil.ReadFile(file)
-		helper.Must(err)
+	files, err := os.ReadDir("./")
+	helper.Must(err)
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
+			continue
+		}
+		raw, readErr := ioutil.ReadFile(file.Name())
+		helper.Must(readErr)
 
 		regexLinks := regexp.MustCompile(`]\(#([^)]+)\)`)
 		links := regexLinks.FindAllStringSubmatch(string(raw), -1)
@@ -46,7 +53,7 @@ func TestDocs_Links(t *testing.T) {
 			}
 
 			if !exists {
-				t.Errorf("Anchor for '%s' not found", link[1])
+				t.Errorf("%s: anchor for '%s' not found", file.Name(), link[1])
 			}
 		}
 
@@ -62,7 +69,7 @@ func TestDocs_Links(t *testing.T) {
 			}
 
 			if !exists && prepareAnchor(anchor[1]) != "table-of-contents" {
-				t.Errorf("Link for '%s' not found", anchor[1])
+				t.Errorf("%s: link for '%s' not found", file.Name(), anchor[1])
 			}
 		}
 	}

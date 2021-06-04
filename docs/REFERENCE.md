@@ -4,24 +4,14 @@
 
 * [Couper Reference - Version 1.2](#couper-reference---version-12)
   * [Table of contents](#table-of-contents)
-  * [Introduction](#introduction)
-  * [Core concepts](#core-concepts)
   * [Command Line Interface](#command-line-interface)
     * [Global Options](#global-options)
-  * [Configuration file](#configuration-file)
-    * [Syntax](#syntax)
-    * [File name](#file-name)
-    * [Basic file structure](#basic-file-structure)
-      * [Nesting of configuration blocks and attributes](#nesting-of-configuration-blocks-and-attributes)
     * [Variables](#variables)
       * [env variable](#env-variable)
       * [request (client request) variable](#request-client-request-variable)
       * [backend_requests (modified backend requests) variables](#backend_requests-modified-backend-requests-variables)
       * [backend_responses (non modified backend responses) variables](#backend_responses-non-modified-backend-responses-variables)
-        * [Variable Example](#variable-example)
-    * [Expressions](#expressions)
     * [Functions](#functions)
-  * [Reference](#reference)
     * [Server Block](#server-block)
     * [Files Block](#files-block)
     * [SPA Block](#spa-block)
@@ -52,37 +42,6 @@
       * [SAML Block](#saml-block)
     * [Settings Block](#settings-block)
     * [Health-Check](#health-check)
-  * [Examples](#examples)
-    * [Request routing example](#request-routing-example)
-    * [Routing configuration example](#routing-configuration-example)
-    * [Web serving configuration example](#web-serving-configuration-example)
-    * [access_control configuration example](#access_control-configuration-example)
-    * [hosts configuration example](#hosts-configuration-example)
-    * [Referencing and overwriting example](#referencing-and-overwriting-example)
-
-## Introduction
-
-Couper is a lightweight open source API gateway designed to support developers in
-building and running API-driven Web projects. Acting as a proxy component it connects
-clients with (micro) services and adds access control and observability to the project.
-Couper does not need any special development skills and offers easy configuration
-and integration.
-
-## Core concepts
-
-![overview](./overview.png)
-
-| Concept / Feature  | Description |
-|:-------------------|:------------|
-| Client(s)          | Browser, App or API Client that sends requests to Couper. |
-| Web Serving        | Couper supports file serving and Web serving for SPA assets. |
-| API                | Configuration block that bundles endpoints under a certain base path. |
-| Access Control     | Couper handles access control for incoming client requests and outgoing backend requests. |
-| Endpoint           | Configuration block that specifies how (and if) requests are sent to backend service(s) after they reach Couper. |
-| Backend            | Configuration block that specifies the connection to a local/remote backend service. |
-| Logging            | Couper provides standard logs for analysis and monitoring. |
-| Backend Service(s) | External API or micro services where Couper fetches data from. |
-| Validation         | Couper supports validation of outgoing and incoming requests to and from the origin. |
 
 ## Command Line Interface
 
@@ -108,125 +67,8 @@ Couper is build as binary called `couper` with the following commands:
 
 *Note*: `log-format` and `log-pretty` also maps to [settings](#settings-block).
 
-## Configuration file
-
-### Syntax
-
-The syntax for Couper's configuration file is
-[HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax),
-a configuration language by HashiCorp.
-
-### File name
-
-The file-ending of your configuration file should be .hcl to have syntax highlighting
-within your IDE.
-
-The file name defaults to `couper.hcl` in your working directory. This can be
-changed with the `-f` command-line flag. With `-f /opt/couper/my_conf.hcl` couper
-changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
-
-### Basic file structure
-
-Couper's configuration file consists of nested configuration blocks that configure
-Web serving and routing of the gateway. Access control is controlled by an
-[Access Control](#access-control) attribute that can be set for many blocks.
-
-For orientation compare the following example and the information below:
-
-```hcl
-server "my_project" {
-  files { 
-    # ...
-  }
-
-  spa {
-    # ...
-  }
-
-  api {
-    access_control = ["foo"]
-    endpoint "/bar" {
-      proxy {
-        backend { }
-      }
-      request "sub-request" {
-        backend { }
-      }
-      response { }
-    }
-  }
-}
-
-definitions {
-  # ...
-}
-
-settings {
-  # ...
-}
-```
-
-* `server` main configuration block(s)
-  * `files` configuration block for file serving
-  * `spa` configuration block for Web serving (SPA assets)
-  * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
-  * `access_control` attribute that sets access control for a block context
-  * `endpoint` configuration block for Couper's entry points
-    * `proxy` configuration block for a proxy request and response to an origin
-    * `request` configuration block for a manual request to an origin
-    * `response` configuration block for a manual client response
-    * `backend` configuration block for connection to local/remote backend service(s)
-* `definitions` block for predefined configurations, that can be referenced
-* `settings` block for server configuration which applies to the running instance
-
-#### Nesting of configuration blocks and attributes
-
-* [Server Block(s)](#server-block)
-  * [Access Control](#access-control)
-  * [Endpoint Block(s)](#endpoint-block)
-    * [Access Control](#access-control)
-    * [Proxy Block(s)](#proxy-block)
-      * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
-    * [Request Block(s)](#request-block)
-      * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
-    * [Response Block](#response-block)
-    * [Modifier](#modifier)
-  * [Files Block](#files-block)
-    * [Access Control](#access-control)
-  * [SPA Block](#spa-block)
-    * [Access Control](#access-control)
-  * [API Block](#api-block)
-    * [Access Control](#access-control)
-    * [Endpoint Block(s)](#endpoint-block)
-      * [Access Control](#access-control)
-      * [Proxy Block(s)](#proxy-block)
-        * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
-        * [Modifier](#modifier)
-      * [Request Block(s)](#request-block)
-        * [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference)
-      * [Response Block](#response-block)
-      * [Modifier](#modifier)
-* [Definitions Block](#definitions-block)
-  * [Backend Block](#backend-block)
-  * [JWT Block(s)](#jwt-block)
-  * [JWT Signing Profile Block(s)](#jwt-signing-profile-block)
-  * [Basic Auth Block(s)](#basic-auth-block)
-  * [SAML Block(s)](#saml-block)
-* [Settings Block](#settings-block)
 
 ### Variables
-
-The configuration file allows the use of some predefined variables. There are
-two phases when those variables get evaluated. The first phase is at config load
-which is currently related to `env` and **function** usage. The second evaluation
-will happen during the request/response handling.
-
-* `env` are the environment variables
-* `request` is the client request
-* `backend_requests` contains all modified backend requests
-* `backend_responses` contains all original backend responses
-
-Most fields are self-explanatory (compare tables below).
 
 #### `env` variable
 
@@ -284,49 +126,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `body`             | The response message body |
 | `json_body.<name>` | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
 
-##### Variable Example
-
-An example to send an additional header with client request header to a configured
-backend and gets evaluated on per request basis:
-
-```hcl
-server "variables-srv" {
-  api {
-    endpoint "/" {
-      proxy {
-        backend "my_backend_definition" {
-          set_request_headers = {
-            x-env-user = env.USER
-            user-agent = "myproxyClient/${request.headers.app-version}"
-            x-uuid = request.id
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Expressions
-
-Since we use HCL2 for our configuration, we are able to use attribute values as
-expression:
-
-```hcl
-// Arithmetic with literals and application-provided variables
-sum = 1 + addend
-
-// String interpolation and templates
-message = "Hello, ${name}!"
-
-// Application-provided functions
-shouty_message = upper(message)
-```
-
 ### Functions
-
-Functions are little helper methods which are registered for every hcl evaluation
-context.
 
 | Name               | Description |
 |:-------------------|:------------|
@@ -342,53 +142,6 @@ context.
 | `to_upper`         | Converts a given string to uppercase. |
 | `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
 | `url_encode`       | URL-encodes a given string according to RFC 3986. |
-
-Example usage:
-
-```hcl
-my_attribute = base64_decode("aGVsbG8gd29ybGQK")
-
-iat = unixtime()
-
-my_json = json_encode({
-  value-a: backend_responses.default.json_body.origin
-  value-b: ["item1", "item2"]
-})
-
-x = merge({"k1": 1}, null, {"k2": 2})          // -> {"k1": 1, "k2": 2}        merge object attributes
-x = merge({"k": [1]}, {"k": [2]})              // -> {"k": [1, 2]}             merge tuple values
-x = merge({"k": {"k1": 1}}, {"k": {"k2": 2}})  // -> {"k": {"k1": 1, "k2": 2}} merge object attributes
-x = merge({"k": [1]}, {"k": null}, {"k": [2]}) // -> {"k": [2]}                remove value and set new value
-x = merge({"k": [1]}, {"k": 2})                // -> {"k": 2}                  set new value
-x = merge([1], null, [2, "3"], [true, false])  // -> [1, 2, "3", true, false]  merge tuple values
-
-x = merge({"k1": 1}, 2)                        // -> error: cannot mix object with primitive value
-x = merge({"k1": 1}, [2])                      // -> error: cannot mix object with tuple
-x = merge([1], 2)                              // -> error: cannot mix tuple with primitive value
-
-token = jwt_sign("MyJwt", {"sub": "abc12345"})
-
-url = saml_sso_url("MySaml")
-
-definitions {
-  jwt_signing_profile "MyJwt" {
-    signature_algorithm = "RS256"
-    key_file = "priv_key.pem"
-    ttl = "1h"
-    claims = {
-      iss = "The_Issuer"
-    }
-  }
-  saml "MySaml" {
-    idp_metadata_file = "idp-metadata.xml"
-    sp_acs_url = "https://the-sp.com/api/saml/acs"
-    sp_entity_id = "the-sp-entity-id"
-    array_attributes = ["memberOf"]
-  }
-}
-```
-
-## Reference
 
 ### Server Block
 
@@ -406,7 +159,7 @@ The `server` block is the main configuration block of Couper's configuration fil
 | [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `Server Block` context. |
 | **Attributes**                       | **Description** |
 | `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>*Example:* `base_path = "/api"`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
-| `hosts`                              | <ul><li>List.</li><li>&#9888; Mandatory, if there is more than one `Server Block`.</li><li>*Example:* `hosts = ["example.com", "..."]`</li><li>You can add a specific port to your host.</li><li>*Example:* `hosts = ["localhost:9090"]`</li><li>Default port is `8080`.</li><li>Only **one** `hosts` attribute per `Server Block` is allowed.</li><li>Compare the hosts [example](#hosts-configuration-example) for details.</li></ul> |
+| `hosts`                              | <ul><li>List.</li><li>&#9888; Mandatory, if there is more than one `Server Block`.</li><li>*Example:* `hosts = ["example.com", "..."]`</li><li>You can add a specific port to your host.</li><li>*Example:* `hosts = ["localhost:9090"]`</li><li>Default port is `8080`.</li><li>Only **one** `hosts` attribute per `Server Block` is allowed.</li><li>Compare the hosts [example](./README.md#hosts-configuration-example) for details.</li></ul> |
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
 | `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Server Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
@@ -467,7 +220,7 @@ as json error with an error body payload. This can be customized via `error_file
 The `endpoint` blocks define the entry points of Couper. The mandatory *label*
 defines the path suffix for the incoming client request. The `path` attribute
 changes the path for the outgoing request (compare
-[request routing example](#request-routing-example)). Each `Endpoint Block` must
+[request routing example](./README.md#request-routing-example)). Each `Endpoint Block` must
 produce an explicit or implicit client response.
 
 | Block                              | Description |
@@ -821,7 +574,7 @@ list to protect that block. &#9888; access rights are inherited by nested blocks
 You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`,
 the `access_control` type `bar` will be disabled for the corresponding block context.
 
-Compare the `access_control` [example](#access_control-configuration-example) for details.
+Compare the `access_control` [example](./README.md#access_control-configuration-example) for details.
 
 #### Error Handler
 
@@ -955,137 +708,3 @@ time to pick another gateway instance. After this delay the server goes into
 shutdown mode with a deadline of `5s` and no new requests will be accepted.
 The shutdown timings defaults to `0` which means no delaying with development setups.
 Both durations can be configured via environment variable. Please refer to the [docker document](./../DOCKER.md).
-
-## Examples
-
-See the official Couper's examples and tutorials
-[repository](https://github.com/avenga/couper-examples), too.
-
-### Request routing example
-
-![routing_example](./routing_example.png)
-
-| No. | Configuration source                              |
-|:----|:--------------------------------------------------|
-| 1   | `hosts` attribute in `server` block               |
-| 2   | `base_path` attribute in `api` block              |
-| 3   | *label* of `endpoint` block                       |
-| 4   | `origin` attribute in `backend` block             |
-| 5   | `path_prefix` attribute in `backend`              |
-| 6   | `path` attribute in `endpoint` or `backend` block |
-
-### Routing configuration example
-
-```hcl
-api "my_api" {
-  base_path = "/api/novoconnect"
-
-  endpoint "/login/**" {
-    # incoming request: .../login/foo
-    # implicit proxy
-    # outgoing request: http://identityprovider:8080/login/foo
-    proxy {
-      backend {
-        origin = "http://identityprovider:8080"
-      }
-    }
-  }
-
-  endpoint "/cart/**" {
-      # incoming request: .../cart/items
-      # outgoing request: http://cartservice:8080/api/v1/items
-      path = "/api/v1/**"
-      proxy {
-        backend {
-          origin = "http://cartservice:8080"
-        }
-      }
-
-      endpoint "/account/{id}" {
-        # incoming request: .../account/brenda
-        # outgoing request: http://accountservice:8080/user/brenda/info
-        proxy {
-          backend {
-            path = "/user/${request.param.id}/info"
-            origin = "http://accountservice:8080"
-          }
-        }
-      }
-    }
-  }
-```
-
-### Web serving configuration example
-
-```hcl
-server "my_project" {
-  files {
-    document_root = "./htdocs"
-    error_file = "./my_custom_error_page.html"
-  }
-
-  spa {
-    bootstrap_file = "./htdocs/index.html"
-    paths = [
-      "/app/**",
-      "/profile/**"
-    ]
-  }
-}
-```
-
-### `access_control` configuration example
-
-```hcl
-server "ac-example" {
-  access_control = ["ac1"]
-  files {
-    access_control = ["ac2"]
-  }
-
-  spa {
-    bootstrap_file = "myapp.html"
-  }
-
-  api {
-    access_control = ["ac3"]
-    endpoint "/foo" {
-      disable_access_control = ["ac3"]
-    }
-    endpoint "/bar" {
-      access_control = ["ac4"]
-    }
-  }
-}
-
-definitions {
-  basic_auth "ac1" { }
-  jwt "ac2" { }
-  jwt "ac3" { }
-  jwt "ac4" { }
-}
-```
-
-The following table shows which `access_control` is set for which context:
-
-| context          | `ac1` | `ac2` | `ac3` | `ac4` |
-|------------------|:-----:|:-----:|:-----:|:-----:|
-| `files`          | x     | x     |       |       |
-| `spa`            | x     |       |       |       |
-| `endpoint "foo"` | x     |       |       |       |
-| `endpoint "bar"` | x     |       | x     | x     |
-
-### `hosts` configuration example
-
-Example configuration: `hosts = [ "localhost:9090", "api-stage.wao.io", "api.wao.io", "*:8081" ]`
-
-The example configuration above makes Couper listen to port `:9090`, `:8081` and `8080`.
-
-![hosts_example](./hosts_example.png)
-
-In a second step Couper compares the host-header information with the configuration.
-In case of mismatch a system error occurs (HTML error, status 500).
-
-### Referencing and overwriting example
-
-TBA
