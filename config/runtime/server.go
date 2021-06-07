@@ -414,7 +414,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 
 		for _, jwtConf := range conf.Definitions.JWT {
 			if _, err := errors.ValidateJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
-				return nil, errors.Configuration.Message(err.Error())
+				return nil, errors.Configuration.With(err)
 			}
 
 			var claims map[string]interface{}
