@@ -7,6 +7,9 @@ import (
 
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/server/writer"
+	"github.com/hashicorp/hcl/v2"
 )
 
 var (
@@ -16,16 +19,18 @@ var (
 
 type Spa struct {
 	file       string
+	modifier   []hcl.Body
 	srvOptions *server.Options
 }
 
-func NewSpa(bootstrapFile string, srvOpts *server.Options) (*Spa, error) {
+func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body) (*Spa, error) {
 	absPath, err := filepath.Abs(bootstrapFile)
 	if err != nil {
 		return nil, err
 	}
 	return &Spa{
 		file:       absPath,
+		modifier:   modifier,
 		srvOptions: srvOpts,
 	}, nil
 }
@@ -52,6 +57,11 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if err != nil || fileInfo.IsDir() {
 		s.srvOptions.ServerErrTpl.ServeError(errors.Configuration).ServeHTTP(rw, req)
 		return
+	}
+
+	if r, ok := rw.(*writer.Response); ok {
+		evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+		r.AddModifier(evalContext, s.modifier)
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)
