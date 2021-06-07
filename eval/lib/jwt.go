@@ -172,6 +172,9 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			}
 
 			for k, v := range defaultClaims {
+				if v == nil {
+					continue
+				}
 				mapClaims[k] = v
 			}
 

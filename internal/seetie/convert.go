@@ -28,7 +28,7 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 
 	for k, v := range valMap {
 		if v.IsNull() || !v.IsWhollyKnown() {
-			result[k] = ""
+			result[k] = nil
 			continue
 		}
 		switch v.Type() {
@@ -42,14 +42,13 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 			f, _ := v.AsBigFloat().Float64()
 			result[k] = f
 		case cty.Map(cty.NilType):
-			result[k] = ""
+			result[k] = nil
 		default:
 			if isTuple(v) {
 				result[k] = ValueToStringSlice(v)
 				continue
 			}
-			// unknown types results in empty string which gets removed later on
-			result[k] = ""
+			result[k] = nil
 		}
 	}
 	return result

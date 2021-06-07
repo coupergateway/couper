@@ -496,6 +496,9 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 func SetHeader(val cty.Value, headerCtx http.Header) {
 	expMap := seetie.ValueToMap(val)
 	for key, v := range expMap {
+		if v == nil {
+			continue
+		}
 		k := http.CanonicalHeaderKey(key)
 		headerCtx[k] = toSlice(v)
 	}
