@@ -15,4 +15,12 @@ server "set-response-status" {
       }
     }
   }
+  endpoint "/600" {
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+      backend {
+        set_response_status = 600
+      }
+    }
+  }
 }

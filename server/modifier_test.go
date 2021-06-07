@@ -108,4 +108,22 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 	if hook.Entries[0].Message != "" {
 		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
 	}
+
+	// ================================================== 600 >>>
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/600", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 500 {
+		t.Errorf("Expected status code 500, given: %d", res.StatusCode)
+	}
+
+	exp = "configuration error: set_response_status sets an invalid HTTP status code: 600; set the status code to 500"
+	if hook.Entries[0].Message != exp {
+		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
+	}
 }
