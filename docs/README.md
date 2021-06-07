@@ -1,4 +1,4 @@
-#Couper Documentation - Version 1.2
+# Couper Documentation - Version 1.2
 
 ## Table of Contents
 
