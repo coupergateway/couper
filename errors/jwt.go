@@ -17,20 +17,6 @@ var (
 	ErrorEmptyKey                 = errors.New("empty key")
 )
 
-type JwtSigningError struct {
-	error
-}
-
-func NewJWTError(err error) *JwtSigningError {
-	return &JwtSigningError{
-		error: err,
-	}
-}
-
-func (e *JwtSigningError) Error() string {
-	return e.error.Error()
-}
-
 func LoadJWTKey(algo, key, file string) ([]byte, error) {
 	var keyData []byte
 
@@ -48,18 +34,18 @@ func LoadJWTKey(algo, key, file string) ([]byte, error) {
 	} else if key != "" {
 		keyData = []byte(key)
 	} else {
-		return keyData, NewJWTError(ErrorMissingKey)
+		return keyData, ErrorMissingKey
 	}
 
 	if len(keyData) == 0 {
 		if file != "" {
-			return keyData, NewJWTError(ErrorEmptyKeyFile)
+			return keyData, ErrorEmptyKeyFile
 		}
 
-		return keyData, NewJWTError(ErrorEmptyKey)
+		return keyData, ErrorEmptyKey
 	} else if strings.HasPrefix(algo, "RS") {
 		if b, _ := pem.Decode(keyData); b == nil {
-			return keyData, NewJWTError(ErrorDecodingKey)
+			return keyData, ErrorDecodingKey
 		}
 	}
 

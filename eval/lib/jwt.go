@@ -44,7 +44,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			label := args[0].AsString()
 			signingProfile := signingProfiles[label]
 			if signingProfile == nil {
-				return cty.StringVal(""), couperErr.NewJWTError(couperErr.ErrorNoProfileForLabel)
+				return cty.StringVal(""), couperErr.ErrorNoProfileForLabel
 			}
 
 			keyData, err := couperErr.LoadJWTKey(
@@ -95,7 +95,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			// create token
 			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm)
 			if signingMethod == nil {
-				return cty.StringVal(""), couperErr.NewJWTError(couperErr.ErrorUnsupportedSigningMethod)
+				return cty.StringVal(""), couperErr.ErrorUnsupportedSigningMethod
 			}
 
 			token := jwt.NewWithClaims(signingMethod, mapClaims)
