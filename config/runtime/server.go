@@ -445,7 +445,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 
 		for _, jwtConf := range conf.Definitions.JWTSigningProfile {
 			if _, err := errors.ValidateJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
-				return nil, errors.Configuration.Message(err.Error())
+				return nil, errors.Configuration.With(err)
 			}
 		}
 
