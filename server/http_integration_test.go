@@ -3836,14 +3836,14 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/1stchild", true},
-		{"/2ndchild/no", true}, // TODO: write NilVal header vals?
-		{"/child-chain/no", true},
+		{"/2ndchild/no", false},
+		{"/child-chain/no", false},
 		{"/list-idx", true},
 		{"/list-idx-splat", true},
-		{"/list-idx/no", true}, // TODO: handle nilVal / empty header
-		{"/list-idx-chain/no", true},
-		{"/list-idx-key-chain/no", true},
-		{"/root/no", true},
+		{"/list-idx/no", false},
+		{"/list-idx-chain/no", false},
+		{"/list-idx-key-chain/no", false},
+		{"/root/no", false},
 		{"/tpl", true},
 		{"/for", true},
 	} {
@@ -3875,7 +3875,12 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 			val, ok := res.Header[http.CanonicalHeaderKey("X-Value")]
 			if !tc.expVal && ok {
 				subT.Errorf("%q: expected no value, got: %q", tc.path, val)
-				return
+			} else if tc.expVal && !ok {
+				subT.Errorf("%q: expected value, got: nothing", tc.path)
+			}
+
+			if res.Header.Get("Z-Value") != "y" {
+				subT.Errorf("additional header Z-Value should always been written")
 			}
 		})
 	}
