@@ -65,3 +65,47 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 		})
 	}
 }
+
+func TestIntegration_SetResponseStatus(t *testing.T) {
+	const confFile = "testdata/integration/modifier/02_couper.hcl"
+
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(confFile, helper)
+	defer shutdown()
+
+	// ================================================== 204 >>>
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/204", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 204 {
+		t.Errorf("Expected status code 204, given: %d", res.StatusCode)
+	}
+
+	exp := "set_response_status sets the HTTP status code to 204 - removing the response body if any"
+	if hook.Entries[0].Message != exp {
+		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
+	}
+
+	// ================================================== 201 >>>
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/201", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 201 {
+		t.Errorf("Expected status code 201, given: %d", res.StatusCode)
+	}
+	if hook.Entries[0].Message != "" {
+		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
+	}
+}
