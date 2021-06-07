@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -22,7 +21,7 @@ type OAuth2Callback struct {
 	oauth2 *transport.OAuth2
 }
 
-// NewOAuth2 creates a new AC-OAuth2 object
+// NewOAuth2Callback creates a new AC-OAuth2 object
 func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2Callback, error) {
 	confErr := errors.Configuration.Label(conf.Name)
 
@@ -84,18 +83,9 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Message("requesting token failed").With(err)
 	}
 
-	tokenResponseString := string(tokenResponse)
-	var jData map[string]interface{}
-	err = json.Unmarshal(tokenResponse, &jData)
+	tokenResponseData, _, err := transport.ParseAccessToken(tokenResponse)
 	if err != nil {
-		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", tokenResponseString).With(err)
-	}
-
-	if _, ok := jData["access_token"]; !ok {
-		return errors.Oauth2.Messagef("missing access_token property in token response, response='%s'", tokenResponseString)
-	}
-	if _, ok := jData["expires_in"]; !ok {
-		return errors.Oauth2.Messagef("missing expires_in property in token response, response='%s'", tokenResponseString)
+		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", string(tokenResponse)).With(err)
 	}
 
 	// TODO for OIDC:
@@ -105,14 +95,14 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	// * validate id_token claim aud (== oa.config.GetClientID())
 	// * validate id_token claim sub (== sub in userinfo response)
 	// * if oa.config.CsrfTokenParam == "nonce", validate id_token claim nonce (== query.Get("nonce"))
-	// * assign id_token claims to jData["id_token"] (instead of JWT string)
+	// * assign id_token claims to tokenResponseData["id_token"] (instead of JWT string)
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
 	}
-	acMap[oa.config.Name] = jData
+	acMap[oa.config.Name] = tokenResponseData
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 	*req = *req.WithContext(ctx)
 

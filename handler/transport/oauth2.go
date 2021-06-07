@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -147,4 +148,22 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	}
 
 	return outreq.WithContext(outCtx), nil
+}
+
+func ParseAccessToken(jsonBytes []byte) (map[string]interface{}, string, error) {
+	var jData map[string]interface{}
+
+	err := json.Unmarshal(jsonBytes, &jData)
+	if err != nil {
+		return jData, "", err
+	}
+
+	var token string
+	if t, ok := jData["access_token"].(string); ok {
+		token = t
+	} else {
+		return jData, "", fmt.Errorf("missing access token")
+	}
+
+	return jData, token, nil
 }

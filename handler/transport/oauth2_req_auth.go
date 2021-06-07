@@ -2,8 +2,6 @@ package transport
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/cache"
@@ -85,7 +83,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func readAccessToken(data string) (string, error) {
-	_, token, err := parseAccessToken([]byte(data))
+	_, token, err := ParseAccessToken([]byte(data))
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +92,7 @@ func readAccessToken(data string) (string, error) {
 }
 
 func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string, error) {
-	jData, token, err := parseAccessToken(jsonBytes)
+	jData, token, err := ParseAccessToken(jsonBytes)
 	if err != nil {
 		return "", err
 	}
@@ -109,22 +107,4 @@ func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string
 	}
 
 	return token, nil
-}
-
-func parseAccessToken(jsonBytes []byte) (map[string]interface{}, string, error) {
-	var jData map[string]interface{}
-
-	err := json.Unmarshal(jsonBytes, &jData)
-	if err != nil {
-		return jData, "", err
-	}
-
-	var token string
-	if t, ok := jData["access_token"].(string); ok {
-		token = t
-	} else {
-		return jData, "", fmt.Errorf("missing access token")
-	}
-
-	return jData, token, nil
 }
