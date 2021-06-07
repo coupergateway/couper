@@ -88,7 +88,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 	key, err := errors.ValidateJWTKey(options.Algorithm, options.Key, options.KeyFile)
 	if err != nil {
-		return nil, confErr.Message(err.Error())
+		return nil, confErr.With(err)
 	}
 
 	if jwtAC.source.Type == Invalid {
