@@ -13,6 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/validate"
 	"github.com/avenga/couper/errors"
 )
 
@@ -86,7 +87,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		source:         options.Source,
 	}
 
-	key, err := errors.LoadJWTKey(options.Algorithm, options.Key, options.KeyFile)
+	key, err := validate.LoadJWTKey(options.Algorithm, options.Key, options.KeyFile)
 	if err != nil {
 		return nil, confErr.With(err)
 	}

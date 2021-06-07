@@ -22,6 +22,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/config/validate"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -413,7 +414,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
-			if _, err := errors.LoadJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
+			if _, err := validate.LoadJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
 				return nil, errors.Configuration.With(err)
 			}
 
@@ -444,7 +445,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		}
 
 		for _, jwtConf := range conf.Definitions.JWTSigningProfile {
-			if _, err := errors.LoadJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
+			if _, err := validate.LoadJWTKey(jwtConf.SignatureAlgorithm, jwtConf.Key, jwtConf.KeyFile); err != nil {
 				return nil, errors.Configuration.With(err)
 			}
 		}

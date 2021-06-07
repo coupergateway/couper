@@ -13,7 +13,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	"github.com/avenga/couper/config"
-	couperErr "github.com/avenga/couper/errors"
+	"github.com/avenga/couper/config/validate"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -44,10 +44,10 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			label := args[0].AsString()
 			signingProfile := signingProfiles[label]
 			if signingProfile == nil {
-				return cty.StringVal(""), couperErr.ErrorNoProfileForLabel
+				return cty.StringVal(""), validate.ErrorNoProfileForLabel
 			}
 
-			keyData, err := couperErr.LoadJWTKey(
+			keyData, err := validate.LoadJWTKey(
 				signingProfile.SignatureAlgorithm, signingProfile.Key, signingProfile.KeyFile,
 			)
 			if err != nil {
@@ -95,7 +95,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			// create token
 			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm)
 			if signingMethod == nil {
-				return cty.StringVal(""), couperErr.ErrorUnsupportedSigningMethod
+				return cty.StringVal(""), validate.ErrorUnsupportedSigningMethod
 			}
 
 			token := jwt.NewWithClaims(signingMethod, mapClaims)
