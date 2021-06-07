@@ -19,7 +19,7 @@ import (
 
 // OAuth2 represents the transport <OAuth2> object.
 type OAuth2 struct {
-	backend http.RoundTripper
+	Backend http.RoundTripper
 	config  config.OAuth2
 }
 
@@ -39,7 +39,7 @@ func NewOAuth2(conf config.OAuth2, backend http.RoundTripper) (*OAuth2, error) {
 		}
 	}
 	return &OAuth2{
-		backend: backend,
+		Backend: backend,
 		config:  conf,
 	}, nil
 }
@@ -71,7 +71,7 @@ func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, err
 		CsrfToken:    csrfToken,
 		// Backend is build up via config and token_endpoint will configure the backend,
 		// use the backend memory location here.
-		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.backend, oa.config.GetClientID(), oa.config.GetClientSecret()),
+		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.Backend, oa.config.GetClientID(), oa.config.GetClientSecret()),
 	}, nil
 }
 
@@ -81,7 +81,7 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 		return nil, err
 	}
 
-	tokenRes, err := oa.backend.RoundTrip(tokenReq)
+	tokenRes, err := oa.Backend.RoundTrip(tokenReq)
 	if err != nil {
 		return nil, err
 	}

@@ -4,12 +4,18 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
 )
@@ -17,8 +23,9 @@ import (
 var _ AccessControl = &OAuth2Callback{}
 
 type OAuth2Callback struct {
-	config *config.OAuth2AC
-	oauth2 *transport.OAuth2
+	config    *config.OAuth2AC
+	oauth2    *transport.OAuth2
+	jwtParser *jwt.Parser
 }
 
 // NewOAuth2Callback creates a new AC-OAuth2 object
@@ -40,9 +47,19 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 		return nil, confErr.Messagef("code_challenge_method %s not supported", conf.CodeChallengeMethod)
 	}
 
+	options := []jwt.ParserOption{
+		// jwt.WithValidMethods([]string{algo.String()}),
+		jwt.WithLeeway(time.Second),
+	}
+
+	options = append(options, jwt.WithIssuer(conf.Issuer))
+	options = append(options, jwt.WithAudience(conf.ClientID))
+	jwtParser := jwt.NewParser(options...)
+
 	return &OAuth2Callback{
-		config: conf,
-		oauth2: oauth2,
+		config:    conf,
+		jwtParser: jwtParser,
+		oauth2:    oauth2,
 	}, nil
 }
 
@@ -83,30 +100,123 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Message("requesting token failed").With(err)
 	}
 
-	tokenResponseData, _, err := transport.ParseAccessToken(tokenResponse)
+	tokenData, accessToken, err := transport.ParseAccessToken(tokenResponse)
 	if err != nil {
 		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", string(tokenResponse)).With(err)
 	}
 
-	// TODO for OIDC:
-	// * send GET request to userinfo endpoint with Authorization: Bearer <access_token>
-	// * validate id_token signature using key from JWKS with kid from header
-	// * validate id_token claim iss (== configured value)
-	// * validate id_token claim aud (== oa.config.GetClientID())
-	// * validate id_token claim sub (== sub in userinfo response)
-	// * if oa.config.CsrfTokenParam == "nonce", validate id_token claim nonce (== query.Get("nonce"))
-	// * assign id_token claims to tokenResponseData["id_token"] (instead of JWT string)
+	if idTokenString, ok := tokenData["id_token"].(string); ok {
+		// TODO use ParseWithClaims() with key function instead
+		idToken, _, err := oa.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
+		if err != nil {
+			return err
+		}
+
+		idtc, err := oa.validateIdTokenClaims(req, idToken.Claims, accessToken)
+		if err != nil {
+			return err
+		}
+
+		tokenData["id_token"] = idtc
+	}
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
 	}
-	acMap[oa.config.Name] = tokenResponseData
+	acMap[oa.config.Name] = tokenData
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 	*req = *req.WithContext(ctx)
 
 	return nil
+}
+
+func (oa *OAuth2Callback) validateIdTokenClaims(req *http.Request, claims jwt.Claims, accessToken string) (map[string]interface{}, error) {
+	var idTokenClaims jwt.MapClaims
+	if tc, ok := claims.(jwt.MapClaims); ok {
+		idTokenClaims = tc
+	}
+
+	// TODO if oa.config.CsrfTokenParam == "nonce", validate id_token claim nonce (== query.Get("nonce"))
+
+	var subIdtoken string
+	if s, ok := idTokenClaims["sub"].(string); ok {
+		subIdtoken = s
+	} else {
+		return nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
+	}
+
+	userinfoResponse, err := oa.requestUserinfo(req.Context(), accessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	userinfoResponseString := string(userinfoResponse)
+	var userinfoData map[string]interface{}
+	err = json.Unmarshal(userinfoResponse, &userinfoData)
+	if err != nil {
+		return nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response='%s'", userinfoResponseString).With(err)
+	}
+
+	var subUserinfo string
+	if s, ok := userinfoData["sub"].(string); ok {
+		subUserinfo = s
+	} else {
+		return nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response='%s'", userinfoResponseString)
+	}
+
+	if subIdtoken != subUserinfo {
+		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token: '%s', in userinfo response: '%s'", subIdtoken, subUserinfo)
+	}
+
+	return idTokenClaims, nil
+}
+
+func (oa *OAuth2Callback) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
+	userinfoReq, err := oa.newUserinfoRequest(ctx, accessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	userinfoRes, err := oa.oauth2.Backend.RoundTrip(userinfoReq)
+	if err != nil {
+		return nil, err
+	}
+
+	userinfoResBytes, err := ioutil.ReadAll(userinfoRes.Body)
+	if err != nil {
+		return nil, errors.Backend.Label(oa.config.Reference()).Message("userinfo request read error").With(err)
+	}
+
+	if userinfoRes.StatusCode != http.StatusOK {
+		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("userinfo request failed, response='%s'", string(userinfoResBytes))
+	}
+
+	return userinfoResBytes, nil
+}
+
+func (oa *OAuth2Callback) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
+	url, err := eval.GetContextAttribute(oa.config.HCLBody(), ctx, "userinfo_endpoint")
+	if err != nil {
+		return nil, err
+	}
+
+	if url == "" {
+		return nil, errors.Oauth2.Messagef("missing userinfo_endpoint in config")
+	}
+
+	// url will be configured via backend roundtrip
+	outreq, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	outreq.Header.Set("Authorization", "Bearer "+accessToken)
+
+	outCtx := context.WithValue(ctx, request.URLAttribute, url)
+
+	return outreq.WithContext(outCtx), nil
 }
 
 func Base64url_s256(value string) string {
