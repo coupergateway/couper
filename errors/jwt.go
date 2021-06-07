@@ -31,7 +31,7 @@ func (e *JwtSigningError) Error() string {
 	return e.error.Error()
 }
 
-func ValidateJWTKey(algo, key, file string) ([]byte, error) {
+func LoadJWTKey(algo, key, file string) ([]byte, error) {
 	var keyData []byte
 
 	if file != "" {

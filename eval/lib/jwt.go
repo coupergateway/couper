@@ -47,7 +47,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				return cty.StringVal(""), couperErr.NewJWTError(couperErr.ErrorNoProfileForLabel)
 			}
 
-			keyData, err := couperErr.ValidateJWTKey(
+			keyData, err := couperErr.LoadJWTKey(
 				signingProfile.SignatureAlgorithm, signingProfile.Key, signingProfile.KeyFile,
 			)
 			if err != nil {
