@@ -568,7 +568,7 @@ func TestJwtSignError(t *testing.T) {
 			`,
 			"MyToken",
 			`{"sub":"12345"}`,
-			"either non-empty key_file or key must be specified",
+			"either key_file or key must be specified",
 		},
 		{
 			"Invalid ttl value",

@@ -10,7 +10,7 @@ import (
 
 var (
 	ErrorNoProfileForLabel        = errors.New("no signing profile for label")
-	ErrorMissingKey               = errors.New("either non-empty key_file or key must be specified")
+	ErrorMissingKey               = errors.New("either key_file or key must be specified")
 	ErrorDecodingKey              = errors.New("cannot decode the key data")
 	ErrorUnsupportedSigningMethod = errors.New("unsupported signing method")
 	ErrorEmptyKeyFile             = errors.New("empty key_file")
