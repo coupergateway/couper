@@ -100,9 +100,10 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 
 func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2RequestConfig) (*http.Request, error) {
 	post := url.Values{}
-	post.Set("grant_type", oa.config.GetGrantType())
+	grantType := oa.config.GetGrantType()
+	post.Set("grant_type", grantType)
 
-	if scope := oa.config.GetScope(); scope != nil {
+	if scope := oa.config.GetScope(); scope != nil && grantType != "authorization_code" {
 		post.Set("scope", *scope)
 	}
 	if requestConfig.RedirectURI != nil {
