@@ -11,7 +11,7 @@ server "api" {
           path   = "/resource"
 
           oauth2 {
-            token_endpoint = "${request.headers.x-token-endpoint}/oauth2"
+            token_endpoint = "${request.headers.x-as-origin}/oauth2"
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
@@ -33,7 +33,7 @@ server "api" {
             grant_type     = "client_credentials"
             retries        = 2
             backend {
-              origin = "${request.headers.x-token-endpoint}"
+              origin = "${request.headers.x-as-origin}"
               path = "/oauth2"
             }
           }

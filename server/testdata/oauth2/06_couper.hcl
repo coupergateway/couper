@@ -13,7 +13,7 @@ definitions {
     grant_type = "authorization_code"
     redirect_uri = "http://localhost:8080/cb" # value is not checked
     authorization_endpoint = "https://authorization.server/oauth2/authorize"
-    token_endpoint = "${request.headers.x-token-url}/token"
+    token_endpoint = "${request.headers.x-as-origin}/token"
     client_id = "foo"
     client_secret = "etbinbp4in"
     csrf_token_param = "state"

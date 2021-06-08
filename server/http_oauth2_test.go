@@ -86,7 +86,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 		helper.Must(err)
 
-		req.Header.Set("X-Token-Endpoint", oauthOrigin.URL)
+		req.Header.Set("X-AS-Origin", oauthOrigin.URL)
 		req.Header.Set("X-Origin", ResourceOrigin.URL)
 
 		for _, p := range []string{"/", "/2nd"} {
@@ -182,7 +182,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 		helper.Must(err)
 
-		req.Header.Set("X-Token-Endpoint", oauthOrigin.URL)
+		req.Header.Set("X-AS-Origin", oauthOrigin.URL)
 
 		hook.Reset()
 
@@ -293,7 +293,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 			for k, v := range tc.header {
 				req.Header.Set(k, v[0])
 			}
-			req.Header.Set("X-Token-URL", oauthOrigin.URL)
+			req.Header.Set("X-AS-Origin", oauthOrigin.URL)
 
 			res, err := client.Do(req)
 			helper.Must(err)
