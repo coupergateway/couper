@@ -39,8 +39,7 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	if conf.CodeChallengeMethod == "" && conf.CsrfTokenParam == "" {
 		return nil, confErr.Message("CSRF protection not configured")
 	}
-	// TODO for OIDC: add "nonce" as valid value
-	if conf.CsrfTokenParam != "" && conf.CsrfTokenParam != "state" {
+	if conf.CsrfTokenParam != "" && conf.CsrfTokenParam != "state" && conf.CsrfTokenParam != "nonce" {
 		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.CsrfTokenParam)
 	}
 	if conf.CodeChallengeMethod != "" && conf.CodeChallengeMethod != lib.CCM_plain && conf.CodeChallengeMethod != lib.CCM_S256 {
@@ -51,7 +50,6 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 		// jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),
 	}
-
 	options = append(options, jwt.WithIssuer(conf.Issuer))
 	options = append(options, jwt.WithAudience(conf.ClientID))
 	jwtParser := jwt.NewParser(options...)
@@ -105,6 +103,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", string(tokenResponse)).With(err)
 	}
 
+	ctx := req.Context()
 	if idTokenString, ok := tokenData["id_token"].(string); ok {
 		// TODO use ParseWithClaims() with key function instead
 		idToken, _, err := oa.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
@@ -112,7 +111,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 			return err
 		}
 
-		idtc, err := oa.validateIdTokenClaims(req, idToken.Claims, accessToken)
+		idtc, err := oa.validateIdTokenClaims(idToken.Claims, requestConfig, ctx, accessToken)
 		if err != nil {
 			return err
 		}
@@ -120,7 +119,6 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		tokenData["id_token"] = idtc
 	}
 
-	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
@@ -132,13 +130,26 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	return nil
 }
 
-func (oa *OAuth2Callback) validateIdTokenClaims(req *http.Request, claims jwt.Claims, accessToken string) (map[string]interface{}, error) {
+func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig *transport.OAuth2RequestConfig, ctx context.Context, accessToken string) (map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
 	}
 
-	// TODO if oa.config.CsrfTokenParam == "nonce", validate id_token claim nonce (== query.Get("nonce"))
+	// validate nonce claim value against CSRF token
+	if oa.config.CsrfTokenParam == "nonce" {
+		var nonce string
+		if n, ok := idTokenClaims["nonce"].(string); ok {
+			nonce = n
+		} else {
+			return nil, errors.Oauth2.Messagef("missing nonce claim in ID token, claims='%#v'", idTokenClaims)
+		}
+
+		csrfToken := Base64url_s256(*requestConfig.CsrfToken)
+		if csrfToken != nonce {
+			return nil, errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from nonce claim) vs. '%s' (s256: '%s')", nonce, *requestConfig.CsrfToken, csrfToken)
+		}
+	}
 
 	var subIdtoken string
 	if s, ok := idTokenClaims["sub"].(string); ok {
@@ -147,7 +158,7 @@ func (oa *OAuth2Callback) validateIdTokenClaims(req *http.Request, claims jwt.Cl
 		return nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
 	}
 
-	userinfoResponse, err := oa.requestUserinfo(req.Context(), accessToken)
+	userinfoResponse, err := oa.requestUserinfo(ctx, accessToken)
 	if err != nil {
 		return nil, err
 	}

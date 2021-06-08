@@ -60,15 +60,14 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier
 				}
 
 				query.Set("code_challenge", codeChallenge)
-			} else if oauth2.CsrfTokenParam == "state" {
-				state, err := createCodeChallenge(verifier, CCM_S256)
+			} else if oauth2.CsrfTokenParam == "state" || oauth2.CsrfTokenParam == "nonce" {
+				hashedCsrfToken, err := createCodeChallenge(verifier, CCM_S256)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
-				query.Set("state", state)
+				query.Set(oauth2.CsrfTokenParam, hashedCsrfToken)
 			}
-			// TODO for OIDC: if oauth2.CsrfTokenParam == "nonce", create and add nonce
 			oauthAuthorizationUrl.RawQuery = query.Encode()
 
 			return cty.StringVal(oauthAuthorizationUrl.String()), nil

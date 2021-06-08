@@ -15,8 +15,8 @@ type OAuth2AC struct {
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
 	CodeChallengeMethod     string   `hcl:"code_challenge_method,optional"`
-	GrantType               string   `hcl:"grant_type"`
 	CsrfTokenParam          string   `hcl:"csrf_token_param,optional"`
+	GrantType               string   `hcl:"grant_type"`
 	Issuer                  string   `hcl:"issuer,optional"`
 	Name                    string   `hcl:"name,label"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
