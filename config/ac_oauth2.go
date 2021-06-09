@@ -18,6 +18,7 @@ type OAuth2AC struct {
 	CsrfTokenParam          string   `hcl:"csrf_token_param,optional"`
 	GrantType               string   `hcl:"grant_type"`
 	Issuer                  string   `hcl:"issuer,optional"`
+	JwksFile                string   `hcl:"jwks_file,optional"`
 	Name                    string   `hcl:"name,label"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`

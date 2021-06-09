@@ -4,7 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,6 +27,7 @@ type OAuth2Callback struct {
 	config    *config.OAuth2AC
 	oauth2    *transport.OAuth2
 	jwtParser *jwt.Parser
+	jwks      *JWKS
 }
 
 // NewOAuth2Callback creates a new AC-OAuth2 object
@@ -60,11 +65,35 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	options = append(options, jwt.WithAudience(conf.ClientID))
 	jwtParser := jwt.NewParser(options...)
 
-	return &OAuth2Callback{
+	oa := &OAuth2Callback{
 		config:    conf,
 		jwtParser: jwtParser,
 		oauth2:    oauth2,
-	}, nil
+	}
+
+	if conf.JwksFile != "" {
+		jwksReader, err := readJwksFile(conf.JwksFile)
+		if err != nil {
+			return nil, confErr.Messagef("error reading JWKS file").With(err)
+		}
+
+		jsonWebKeySet := new(JWKS)
+		if err = json.NewDecoder(jwksReader).Decode(jsonWebKeySet); err != nil {
+			return nil, confErr.Messagef("error parsing JWKS file").With(err)
+		}
+		oa.jwks = jsonWebKeySet
+	}
+
+	return oa, nil
+}
+
+func readJwksFile(filePath string) (io.Reader, error) {
+	p, err := filepath.Abs(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.Open(p)
 }
 
 // Validate implements the AccessControl interface
@@ -111,8 +140,11 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 
 	ctx := req.Context()
 	if idTokenString, ok := tokenData["id_token"].(string); ok {
-		// TODO use ParseWithClaims() with key function instead
-		idToken, _, err := oa.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
+		if oa.jwks == nil {
+			return errors.Oauth2.Messagef("missing JWKS")
+		}
+
+		idToken, err := oa.jwtParser.ParseWithClaims(idTokenString, jwt.MapClaims{}, oa.getKey)
 		if err != nil {
 			return err
 		}
@@ -134,6 +166,34 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	*req = *req.WithContext(ctx)
 
 	return nil
+}
+
+func (oa *OAuth2Callback) getKey(token *jwt.Token) (interface{}, error) {
+	kid, ok := token.Header["kid"].(string)
+	if !ok {
+		return nil, errors.Oauth2.Messagef("missing kid header in ID token, header='%#v'", token.Header)
+	}
+
+	alg, ok := token.Header["alg"].(string)
+	if !ok {
+		return nil, errors.Oauth2.Messagef("missing alg header in ID token, header='%#v'", token.Header)
+	}
+
+	keys := oa.jwks.Key(kid)
+	if len(keys) == 0 {
+		return nil, errors.Oauth2.Messagef("no key for kid '%s' found in JWKS", kid)
+	}
+
+	jwk := keys[0]
+	if jwk.Algorithm != alg {
+		return nil, errors.Oauth2.Messagef("alg mismatch for key with kid '%s', token alg = %s, jwk alg = %s", kid, alg, jwk.Algorithm)
+	}
+
+	if jwk.Use != "sig" {
+		return nil, errors.Oauth2.Messagef("key with kid '%s' is not usable for signing", kid)
+	}
+
+	return jwk.Key, nil
 }
 
 func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig *transport.OAuth2RequestConfig, ctx context.Context, accessToken string) (map[string]interface{}, error) {

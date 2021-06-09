@@ -16,6 +16,7 @@ definitions {
     authorization_endpoint = "https://authorization.server/oauth2/authorize"
     scope = "openid profile email"
     token_endpoint = "${request.headers.x-as-origin}/token"
+    jwks_file = "jwks.json.created"
     client_id = "foo"
     client_secret = "etbinbp4in"
     csrf_token_param = "nonce"

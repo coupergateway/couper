@@ -1,11 +1,15 @@
 package server_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +17,6 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/accesscontrol"
-	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -211,6 +214,20 @@ func TestOAuth2AccessControl(t *testing.T) {
 	st := "qeirtbnpetrbi"
 	state := accesscontrol.Base64url_s256(st)
 
+	kid := "kid1"
+	pubKey, privKey := newRSAKeyPair()
+	jwk := &accesscontrol.JWK{Key: pubKey, KeyID: kid, Use: "sig", Algorithm: "RS256"}
+	jwks := &accesscontrol.JWKS{Keys: []accesscontrol.JWK{*jwk}}
+	p, _ := filepath.Abs("testdata/oauth2/jwks.json.created")
+	writer, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		helper.Must(err)
+	}
+	if err = json.NewEncoder(writer).Encode(jwks); err != nil {
+		helper.Must(err)
+	}
+	fmt.Printf("jwks=%#v\n", jwks)
+
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/token" {
 			_ = req.ParseForm()
@@ -221,7 +238,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 			idTokenToAdd := ""
 			if strings.HasSuffix(code, "-id") {
 				nonce := state
-				mapClaims := jwt.MapClaims{"issuer": "https://authorization.server", "aud": []string{"foo", "another-client-id"}, "sub": "myself"}
+				mapClaims := jwt.MapClaims{"iss": "https://authorization.server", "aud": []string{"foo", "another-client-id"}, "sub": "myself"}
 				if strings.HasSuffix(code, "-wazp-id") {
 					mapClaims["azp"] = "bar"
 				} else if !strings.HasSuffix(code, "-mazp-id") {
@@ -233,7 +250,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims)
+				idToken, _ := createJWT(privKey, mapClaims, kid)
 				idTokenToAdd = `"id_token":"` + idToken + `",
 				`
 			}
@@ -273,11 +290,11 @@ func TestOAuth2AccessControl(t *testing.T) {
 		{"code, wrong state param", "06_couper.hcl", "/cb?code=qeuboub&state=wrong", http.Header{"Cookie": []string{"st=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'wrong' (from query param) vs. 'qeirtbnpetrbi' (s256: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ')"},
 		{"code, state param, wrong CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from query param) vs. 'qeirtbnpetrbi-wrong' (s256: 'Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A')"},
 		{"code, state param, missing CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from query param) vs. '' (s256: '47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU')"},
-		{"code, missing nonce", "07_couper.hcl", "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing nonce claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"issuer\":\"https://authorization.server\", \"sub\":\"myself\"}'"},
+		{"code, missing nonce", "07_couper.hcl", "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing nonce claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"iss\":\"https://authorization.server\", \"sub\":\"myself\"}'"},
 		{"code, wrong nonce", "07_couper.hcl", "/cb?code=qeuboub-wn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ-wrong' (from nonce claim) vs. 'qeirtbnpetrbi' (s256: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ')"},
 		{"code, nonce, wrong CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from nonce claim) vs. 'qeirtbnpetrbi-wrong' (s256: 'Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A')"},
 		{"code, nonce, missing CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from nonce claim) vs. '' (s256: '47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU')"},
-		{"code, missing azp claim", "07_couper.hcl", "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"issuer\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
+		{"code, missing azp claim", "07_couper.hcl", "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
 		{"code, wrong azp claim", "07_couper.hcl", "/cb?code=qeuboub-wazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: azp claim / client ID mismatch, azp = 'bar', client ID = 'foo'"},
 		{"code; client_secret_basic; PKCE", "04_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; client_secret_post", "05_couper.hcl", "/cb?code=qeuboub", http.Header{}, http.StatusOK, "client_id=foo&client_secret=etbinbp4in&code=qeuboub&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "", ""},
@@ -337,4 +354,27 @@ func TestOAuth2AccessControl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newRSAKeyPair() (pubKey *rsa.PublicKey, privKey *rsa.PrivateKey) {
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+	if e := privKey.Validate(); e != nil {
+		panic(e)
+	}
+
+	pubKey = &privKey.PublicKey
+	return
+}
+
+func createJWT(key interface{}, mapClaims jwt.MapClaims, kid string) (string, error) {
+	// create token
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, mapClaims)
+
+	token.Header["kid"] = kid
+
+	// sign token
+	return token.SignedString(key)
 }

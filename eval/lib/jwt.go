@@ -115,7 +115,26 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				mapClaims[k] = v
 			}
 
-			tokenString, err := CreateJWT(signingProfile.SignatureAlgorithm, keyData, mapClaims)
+			// create token
+			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm)
+			if signingMethod == nil {
+				return cty.StringVal(""), &JwtSigningError{error: ErrorUnsupportedSigningMethod}
+			}
+
+			token := jwt.NewWithClaims(signingMethod, mapClaims)
+
+			var key interface{}
+			if strings.HasPrefix(signingProfile.SignatureAlgorithm, "RS") {
+				key, err = jwt.ParseRSAPrivateKeyFromPEM(keyData)
+				if err != nil {
+					return cty.StringVal(""), err
+				}
+			} else {
+				key = keyData
+			}
+
+			// sign token
+			tokenString, err := token.SignedString(key)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -123,30 +142,4 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			return cty.StringVal(tokenString), nil
 		},
 	})
-}
-
-func CreateJWT(signatureAlgorithm string, keyData []byte, mapClaims jwt.MapClaims) (string, error) {
-	signingMethod := jwt.GetSigningMethod(signatureAlgorithm)
-	if signingMethod == nil {
-		return "", &JwtSigningError{error: ErrorUnsupportedSigningMethod}
-	}
-
-	// create token
-	token := jwt.NewWithClaims(signingMethod, mapClaims)
-
-	var (
-		key interface{}
-		err error
-	)
-	if strings.HasPrefix(signatureAlgorithm, "RS") {
-		key, err = jwt.ParseRSAPrivateKeyFromPEM(keyData)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		key = keyData
-	}
-
-	// sign token
-	return token.SignedString(key)
 }
