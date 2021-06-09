@@ -50,7 +50,16 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 		// jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),
 	}
+	// 2. The Issuer Identifier for the OpenID Provider (which is typically
+	//    obtained during Discovery) MUST exactly match the value of the iss
+	//    (issuer) Claim.
 	options = append(options, jwt.WithIssuer(conf.Issuer))
+	// 3. The Client MUST validate that the aud (audience) Claim contains its
+	//    client_id value registered at the Issuer identified by the iss
+	//    (issuer) Claim as an audience. The aud (audience) Claim MAY contain
+	//    an array with more than one element. The ID Token MUST be rejected if
+	//    the ID Token does not list the Client as a valid audience, or if it
+	//    contains additional audiences not trusted by the Client.
 	options = append(options, jwt.WithAudience(conf.ClientID))
 	jwtParser := jwt.NewParser(options...)
 
@@ -136,8 +145,25 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig
 		idTokenClaims = tc
 	}
 
+	// 4. If the ID Token contains multiple audiences, the Client SHOULD verify
+	//    that an azp Claim is present.
+	azp, azpExists := idTokenClaims["azp"]
+	if auds, audsOK := idTokenClaims["aud"].([]interface{}); audsOK && len(auds) > 1 && !azpExists {
+		return nil, errors.Oauth2.Messagef("missing azp claim in ID token, claims='%#v'", idTokenClaims)
+	}
+	// 5. If an azp (authorized party) Claim is present, the Client SHOULD
+	//    verify that its client_id is the Claim Value.
+	if azpExists && azp != oa.config.ClientID {
+		return nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = '%s', client ID = '%s'", azp, oa.config.ClientID)
+	}
+
 	// validate nonce claim value against CSRF token
 	if oa.config.CsrfTokenParam == "nonce" {
+		// 11. If a nonce value was sent in the Authentication Request, a nonce
+		//     Claim MUST be present and its value checked to verify that it is the
+		//     same value as the one that was sent in the Authentication Request.
+		//     The Client SHOULD check the nonce value for replay attacks. The
+		//     precise method for detecting replay attacks is Client specific.
 		var nonce string
 		if n, ok := idTokenClaims["nonce"].(string); ok {
 			nonce = n
