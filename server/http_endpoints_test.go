@@ -396,3 +396,43 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 		t.Errorf("endpoint.set_response_headers should not have been run")
 	}
 }
+
+func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/endpoints/10_couper.hcl")
+	shutdown, _ := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path   string
+		expLen string
+		expCE  string
+	}
+
+	for _, tc := range []testCase{
+		{"/0", "0", ""},
+		{"/59", "59", ""},
+		{"/60", "47", "gzip"},
+		{"/x", "1731", "gzip"},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.org:9898"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header.Set("Accept-Encoding", "gzip")
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if val := res.Header.Get("Content-Encoding"); val != tc.expCE {
+				t.Errorf("%s: Expected Content-Encoding '%s', got: '%s'", tc.path, tc.expCE, val)
+			}
+			if val := res.Header.Get("Content-Length"); val != tc.expLen {
+				t.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
+			}
+		})
+	}
+}
