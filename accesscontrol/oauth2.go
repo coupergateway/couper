@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +13,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
 )
@@ -177,83 +174,7 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig
 		}
 	}
 
-	var subIdtoken string
-	if s, ok := idTokenClaims["sub"].(string); ok {
-		subIdtoken = s
-	} else {
-		return nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
-	}
-
-	userinfoResponse, err := oa.requestUserinfo(ctx, accessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	userinfoResponseString := string(userinfoResponse)
-	var userinfoData map[string]interface{}
-	err = json.Unmarshal(userinfoResponse, &userinfoData)
-	if err != nil {
-		return nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response='%s'", userinfoResponseString).With(err)
-	}
-
-	var subUserinfo string
-	if s, ok := userinfoData["sub"].(string); ok {
-		subUserinfo = s
-	} else {
-		return nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response='%s'", userinfoResponseString)
-	}
-
-	if subIdtoken != subUserinfo {
-		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token: '%s', in userinfo response: '%s'", subIdtoken, subUserinfo)
-	}
-
 	return idTokenClaims, nil
-}
-
-func (oa *OAuth2Callback) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
-	userinfoReq, err := oa.newUserinfoRequest(ctx, accessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	userinfoRes, err := oa.oauth2.Backend.RoundTrip(userinfoReq)
-	if err != nil {
-		return nil, err
-	}
-
-	userinfoResBytes, err := ioutil.ReadAll(userinfoRes.Body)
-	if err != nil {
-		return nil, errors.Backend.Label(oa.config.Reference()).Message("userinfo request read error").With(err)
-	}
-
-	if userinfoRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("userinfo request failed, response='%s'", string(userinfoResBytes))
-	}
-
-	return userinfoResBytes, nil
-}
-
-func (oa *OAuth2Callback) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	url, err := eval.GetContextAttribute(oa.config.HCLBody(), ctx, "userinfo_endpoint")
-	if err != nil {
-		return nil, err
-	}
-
-	if url == "" {
-		return nil, errors.Oauth2.Messagef("missing userinfo_endpoint in config")
-	}
-
-	// url will be configured via backend roundtrip
-	outreq, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	outreq.Header.Set("Authorization", "Bearer "+accessToken)
-
-	outCtx := context.WithValue(ctx, request.URLAttribute, url)
-
-	return outreq.WithContext(outCtx), nil
 }
 
 func Base64url_s256(value string) string {

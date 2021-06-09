@@ -250,12 +250,6 @@ func TestOAuth2AccessControl(t *testing.T) {
 			helper.Must(werr)
 
 			return
-		} else if req.URL.Path == "/userinfo" {
-			body := []byte(`{"sub": "myself"}`)
-			_, werr := rw.Write(body)
-			helper.Must(werr)
-
-			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
