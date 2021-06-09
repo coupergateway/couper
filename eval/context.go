@@ -162,6 +162,10 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		var body, jsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
 			body, jsonBody = parseRespBody(beresp)
+			if l := len(seetie.ValueToString(body)); l > 0 {
+				ctx := context.WithValue(beresp.Request.Context(), request.ResponseBodyLen, l)
+				*beresp.Request = *beresp.Request.WithContext(ctx)
+			}
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),

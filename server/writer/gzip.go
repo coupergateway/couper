@@ -24,10 +24,11 @@ var (
 )
 
 type Gzip struct {
-	enabled bool
-	rw      http.ResponseWriter
-	w       *gzip.Writer
-	written int64
+	enabled         bool
+	rw              http.ResponseWriter
+	skipCompression bool
+	w               *gzip.Writer
+	written         int64
 }
 
 func NewGzipWriter(rw http.ResponseWriter, header http.Header) *Gzip {
@@ -58,7 +59,9 @@ func (g *Gzip) Header() http.Header {
 }
 
 func (g *Gzip) WriteHeader(statusCode int) {
-	g.rw.Header().Add(VaryHeader, AcceptEncodingHeader)
+	if !g.skipCompression {
+		g.rw.Header().Add(VaryHeader, AcceptEncodingHeader)
+	}
 
 	if g.enabled {
 		g.rw.Header().Del(ContentLengthHeader)
@@ -84,6 +87,11 @@ func (g *Gzip) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker gzip writer type %T", g.rw)
 	}
 	return hijack.Hijack()
+}
+
+func (g *Gzip) SkipCompression() {
+	g.skipCompression = true
+	g.enabled = false
 }
 
 func ModifyAcceptEncoding(header http.Header) {

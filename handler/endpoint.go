@@ -178,6 +178,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
+	if l, ok := clientres.Request.Context().Value(request.ResponseBodyLen).(int); !ok || ok && l < 60 {
+		if w, ok := rw.(*writer.Response); ok {
+			w.SkipCompression()
+		}
+	}
+
 	if r, ok := rw.(*writer.Response); ok {
 		r.AddModifier(evalContext, e.modifier)
 	}

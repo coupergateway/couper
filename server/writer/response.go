@@ -165,3 +165,9 @@ func (r *Response) applyModifier() {
 		eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
 	}
 }
+
+func (r *Response) SkipCompression() {
+	if g, ok := r.rw.(*Gzip); ok {
+		g.SkipCompression()
+	}
+}

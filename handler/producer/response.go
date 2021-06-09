@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -66,6 +68,9 @@ func NewResponse(req *http.Request, resp hcl.Body, evalCtx *eval.Context, status
 	if respBody != "" {
 		r := strings.NewReader(respBody)
 		clientres.Body = io.NopCloser(r)
+
+		ctx := context.WithValue(req.Context(), request.ResponseBodyLen, len(respBody))
+		*req = *req.WithContext(ctx)
 	}
 
 	return clientres, nil

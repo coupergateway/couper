@@ -12,6 +12,7 @@ const (
 	LogEntry
 	OpenAPI
 	PathParams
+	ResponseBodyLen
 	RoundTripName
 	RoundTripProxy
 	ServerName
