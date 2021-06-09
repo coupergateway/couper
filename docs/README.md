@@ -2,20 +2,21 @@
 
 ## Table of Contents
 
-* [Table of Contents](#table-of-contents)
-* [Introduction](#introduction)
-* [Getting Started](#getting-started)
-* [Concepts](#concepts)
+* [Couper Documentation - Version 1.2](#couper-documentation---version-12)
+  * [Table of Contents](#table-of-contents)
+  * [Introduction](#introduction)
+  * [Getting Started](#getting-started)
+  * [Concepts](#concepts)
     * [Configuration File](#configuration-file)
     * [Language](#language)
     * [File name](#file-name)
     * [Basic file structure](#basic-file-structure)
     * [Expressions](#expressions)
     * [Variables](#variables)
-        * [Variable Example](#variable-example)
+      * [Variable Example](#variable-example)
     * [Functions](#functions)
-        * [Functions Examples:](#functions-examples)
-* [Configuration examples](#configuration-examples)
+      * [Functions Examples:](#functions-examples)
+  * [Configuration examples](#configuration-examples)
     * [Request routing example](#request-routing-example)
     * [Routing configuration example](#routing-configuration-example)
     * [Web serving configuration example](#web-serving-configuration-example)
@@ -107,15 +108,15 @@ settings {
 ```
 
 * `server` main configuration block(s)
-    * `files` configuration block for file serving
-    * `spa` configuration block for Web serving (SPA assets)
-    * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
-    * `access_control` attribute that sets access control for a block context
-    * `endpoint` configuration block for Couper's entry points
-        * `proxy` configuration block for a proxy request and response to an origin
-        * `request` configuration block for a manual request to an origin
-        * `response` configuration block for a manual client response
-        * `backend` configuration block for connection to local/remote backend service(s)
+  * `files` configuration block for file serving
+  * `spa` configuration block for Web serving (SPA assets)
+  * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
+  * `access_control` attribute that sets access control for a block context
+  * `endpoint` configuration block for Couper's entry points
+    * `proxy` configuration block for a proxy request and response to an origin
+    * `request` configuration block for a manual request to an origin
+    * `response` configuration block for a manual client response
+    * `backend` configuration block for connection to local/remote backend service(s)
 * `definitions` block for predefined configurations, that can be referenced
 * `settings` block for server configuration which applies to the running instance
 
