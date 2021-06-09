@@ -28,7 +28,6 @@ type Gzip struct {
 	rw              http.ResponseWriter
 	skipCompression bool
 	w               *gzip.Writer
-	written         int64
 }
 
 func NewGzipWriter(rw http.ResponseWriter, header http.Header) *Gzip {
