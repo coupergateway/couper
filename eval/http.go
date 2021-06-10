@@ -297,41 +297,37 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 	}
 
 	content, _, _ := body.PartialContent(config.BackendInlineSchema)
-	for _, attr := range content.Attributes {
-		if attr.Name == "set_response_status" {
-			var httpCtx *hcl.EvalContext
-			if c, ok := ctx.Value(ContextType).(*Context); ok {
-				httpCtx = c.eval
-			}
-
-			val, attrDiags := attr.Expr.Value(httpCtx)
-			if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-				return attrDiags
-			}
-
-			status := seetie.ValueToInt(val)
-			if status < 100 || status > 599 {
-				return errors.Configuration.With(
-					fmt.Errorf(
-						"set_response_status sets an invalid HTTP status code: %d; set the status code to 500",
-						status,
-					))
-			}
-
-			if status == 204 {
-				beresp.Request.Context().Value(request.LogEntry).(*logrus.Entry).Warn(
-					"set_response_status sets the HTTP status code to 204 - removing the response body if any",
-				)
-
-				beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
-				beresp.ContentLength = -1
-				beresp.Header.Del("Content-Length")
-			}
-
-			beresp.StatusCode = int(status)
-
-			break
+	if attr, ok := content.Attributes["set_response_status"]; ok {
+		var httpCtx *hcl.EvalContext
+		if c, ok := ctx.Value(ContextType).(*Context); ok {
+			httpCtx = c.eval
 		}
+
+		val, attrDiags := attr.Expr.Value(httpCtx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+
+		status := seetie.ValueToInt(val)
+		if status < 100 || status > 599 {
+			return errors.Configuration.With(
+				fmt.Errorf(
+					"set_response_status sets an invalid HTTP status code: %d; set the status code to 500",
+					status,
+				))
+		}
+
+		if status == 204 {
+			beresp.Request.Context().Value(request.LogEntry).(*logrus.Entry).Warn(
+				"set_response_status sets the HTTP status code to 204 - removing the response body if any",
+			)
+
+			beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
+			beresp.ContentLength = -1
+			beresp.Header.Del("Content-Length")
+		}
+
+		beresp.StatusCode = int(status)
 	}
 
 	return nil
