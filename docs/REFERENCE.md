@@ -1,149 +1,7 @@
-# Couper Reference - Version 1.2
-
-## Table of contents
-
-* [Couper Reference - Version 1.2](#couper-reference---version-12)
-  * [Table of contents](#table-of-contents)
-  * [Command Line Interface](#command-line-interface)
-    * [Global Options](#global-options)
-    * [Variables](#variables)
-      * [env variable](#env-variable)
-      * [request (client request) variable](#request-client-request-variable)
-      * [backend_requests (modified backend requests) variables](#backend_requests-modified-backend-requests-variables)
-      * [backend_responses (non modified backend responses) variables](#backend_responses-non-modified-backend-responses-variables)
-    * [Functions](#functions)
-    * [Server Block](#server-block)
-    * [Files Block](#files-block)
-    * [SPA Block](#spa-block)
-    * [API Block](#api-block)
-    * [Endpoint Block](#endpoint-block)
-    * [Proxy Block](#proxy-block)
-    * [Request Block](#request-block)
-    * [Response Block](#response-block)
-    * [Backend Block](#backend-block)
-      * [Transport Settings Attributes](#transport-settings-attributes)
-    * [Timings](#timings)
-    * [Backend Block Reference](#backend-block-reference)
-      * [OpenAPI Block](#openapi-block)
-    * [CORS Block](#cors-block)
-    * [OAuth2 Block](#oauth2-block)
-    * [Modifier](#modifier)
-      * [Request Header](#request-header)
-      * [Response Header](#response-header)
-      * [Query Parameter](#query-parameter)
-      * [Form Parameter](#form-parameter)
-    * [Path Parameter](#path-parameter)
-    * [Access Control](#access-control)
-      * [Error Handler](#error-handler)
-    * [Definitions Block](#definitions-block)
-      * [Basic Auth Block](#basic-auth-block)
-      * [JWT Block](#jwt-block)
-      * [JWT Signing Profile Block](#jwt-signing-profile-block)
-      * [SAML Block](#saml-block)
-    * [Settings Block](#settings-block)
-    * [Health-Check](#health-check)
-
-## Command Line Interface
-
-Couper is build as binary called `couper` with the following commands:
-
-| Command   | Description                                       |
-|:----------|:--------------------------------------------------|
-| `run`     | Start the server with given configuration file.   |
-|           | *Note*: `run` options can also be configured with [settings](#settings-block) or related [environment variables](./../DOCKER.md).
-| `help`    | Print the usage for the given command: `help run` |
-| `version` | Print the current version and build information.  |
-
-### Global Options
-
-| Argument  | Default      | Environment       | Description                                                       |
-|:----------|:-------------|:------------------|:------------------------------------------------------------------|
-| `-f`      | `couper.hcl` | `COUPER_FILE`     | File path to your Couper configuration file.                      |
-| `-watch`  | `false`      | `COUPER_WATCH`    | Watch for configuration file changes and reload on modifications. |
-| `-watch-retries`  | `5`  | `COUPER_WATCH_RETRIES` | Maximal retry count for configuration reloads which could not bind the configured port. |
-| `-watch-retry-delay`  | `500ms`  | `COUPER_WATCH_RETRY_DELAY` | Delay duration before next attempt if an error occurs. |
-| `-log-format`  | `common` | `COUPER_LOG_FORMAT` | Can be set to `json` output format. |
-| `-log-pretty`  | `false` | `COUPER_LOG_PRETTY`  | Option for `json` log format which pretty prints with basic key coloring. |
-
-*Note*: `log-format` and `log-pretty` also maps to [settings](#settings-block).
+# Reference
 
 
-### Variables
-
-#### `env` variable
-
-Environment variables can be accessed everywhere within the configuration file
-since these references get evaluated at start.
-
-#### `request` (client request) variable
-
-| Variable                  | Description |
-|:--------------------------|:------------|
-| `id`                      | Unique request id |
-| `method`                  | HTTP method |
-| `path`                    | URL path |
-| `endpoint`                | Matched endpoint pattern |
-| `headers.<name>`          | HTTP request header value for requested lower-case key |
-| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
-| `query.<name>`            | Query parameter values (&#9888; last wins!) |
-| `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
-| `body`                    | The request message body |
-| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
-| `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
-| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
-
-#### `backend_requests` (modified backend requests) variables
-
-`backend_requests.<label>` is a list of all backend requests, and their variables.
-To access a specific request use the related label. [Request](#request-block) and
-[Proxy](#proxy-block) blocks without a label will be available as `default`.
-To access the HTTP method of the `default` request use `backend_requests.default.method` .
-
-| Variable                  | Description |
-|:--------------------------|:------------|
-| `id`                      | Unique request id |
-| `method`                  | HTTP method |
-| `path`                    | URL path |
-| `headers.<name>`          | HTTP request header value for requested lower-case key |
-| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
-| `query.<name>`            | Query parameter values (&#9888; last wins!) |
-| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
-| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
-| `url`                     | Backend origin URL |
-
-#### `backend_responses` (non modified backend responses) variables
-
-`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
-Use the related label to access a specific response.
-[Request](#request-block) and [Proxy](#proxy-block) blocks without a label will be available as `default`.
-To access the HTTP status code of the `default` response use `backend_responses.default.status` .
-
-| Variable           | Description |
-|:-------------------|:------------|
-| `status`           | HTTP status code |
-| `headers.<name>`   | HTTP response header value for requested lower-case key |
-| `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
-| `body`             | The response message body |
-| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
-
-### Functions
-
-| Name               | Description |
-|:-------------------|:------------|
-| `base64_decode`    | Decodes Base64 data, as specified in RFC 4648. |
-| `base64_encode`    | Encodes Base64 data, as specified in RFC 4648. |
-| `coalesce`         | Returns the first of the given arguments that is not null. |
-| `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
-| `json_encode`      | Returns a JSON serialization of the given value. |
-| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
-| `merge`            | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
-| `saml_sso_url`     | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block). |
-| `to_lower`         | Converts a given string to lowercase. |
-| `to_upper`         | Converts a given string to uppercase. |
-| `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
-| `url_encode`       | URL-encodes a given string according to RFC 3986. |
-
-### Server Block
+## Server Block
 
 The `server` block is the main configuration block of Couper's configuration file.
 
@@ -163,7 +21,7 @@ The `server` block is the main configuration block of Couper's configuration fil
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
 | `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Server Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
-### Files Block
+## Files Block
 
 The `files` block configures the file serving.
 
@@ -179,7 +37,7 @@ The `files` block configures the file serving.
 | `error_file`              | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
 | `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul>  |
 
-### SPA Block
+## SPA Block
 
 The `spa` block configures the Web serving for SPA assets.
 
@@ -195,7 +53,7 @@ The `spa` block configures the Web serving for SPA assets.
 | `paths`                   | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
 | `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 
-### API Block
+## API Block
 
 The `api` block contains all information about endpoints, and the connection to
 remote/local backend service(s), configured in the nested
@@ -215,7 +73,7 @@ as json error with an error body payload. This can be customized via `error_file
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_body.json"`</li></ul> |
 | `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `API Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
-### Endpoint Block
+## Endpoint Block
 
 The `endpoint` blocks define the entry points of Couper. The mandatory *label*
 defines the path suffix for the incoming client request. The `path` attribute
@@ -237,7 +95,7 @@ produce an explicit or implicit client response.
 | `access_control`                   | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Endpoint Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 | [Modifier](#modifier)              | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
-### Proxy Block
+## Proxy Block
 
 The `proxy` block creates and executes a proxy request to a backend service.
 
@@ -254,7 +112,7 @@ The `proxy` block creates and executes a proxy request to a backend service.
 | `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
 | [Modifier](#modifier)                               | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
-### Request Block
+## Request Block
 
 The `request` block creates and executes a request to a backend service.
 
@@ -276,7 +134,7 @@ The `request` block creates and executes a request to a backend service.
 | `headers`                                           | <ul><li>Optional.</li><li>Same as `set_request_headers` in [Request Header](#request-header).</li></ul> |
 | `query_params`                                      | <ul><li>Optional.</li><li>Same as `set_query_params` in [Query Parameter](#query-parameter).</li></ul> |
 
-### Response Block
+## Response Block
 
 The `response` block creates and sends a client response.
 
@@ -290,7 +148,7 @@ The `response` block creates and sends a client response.
 | `status`       | <ul><li>HTTP status code.</li><li>Optional.</li><li>Default `200`.</li></ul> |
 | `headers`      | <ul><li>Optional.</li><li>Same as `set_response_headers` in [Request Header](#response-header).</li></ul> |
 
-### Backend Block
+## Backend Block
 
 A `backend` defines the connection to a local/remote backend service. Backends
 can be defined in the [Definitions Block](#definitions-block) and use the *label*
@@ -311,7 +169,7 @@ as reference.
 | `path_prefix`                   | <ul><li>Optional.</li><li>Prefixes all backend request paths with the given prefix.</li><li>Relative prefixes are prefixed with a slash `/`.</li></ul>
 | [Modifier](#modifier)           | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
-#### Transport Settings Attributes
+### Transport Settings Attributes
 
 | Name                             | Type               | Default         | Description |
 |:---------------------------------|:-------------------|:----------------|:------------|
@@ -324,7 +182,7 @@ as reference.
 | `timeout`                        | [Timing](#timings) | `300s`          | The total deadline duration a backend request has for write and read/pipe. |
 | `ttfb_timeout`                   | [Timing](#timings) | `60s`           | The duration from writing the full request to the origin and receiving the answer. |
 
-### Timings
+## Timings
 
 | Valid time unit | Description  |
 |:----------------|:-------------|
@@ -335,7 +193,7 @@ as reference.
 | `m`             | minutes      |
 | `h`             | hours        |
 
-### Backend Block Reference
+## Backend Block Reference
 
 A [Backend Block](#backend-block) can be used as reference of a `backend` block
 from the [Definitions Block](#definitions-block). In addition, a `backend` block
@@ -370,7 +228,7 @@ definitions {
 }
 ```
 
-#### OpenAPI Block
+### OpenAPI Block
 
 The `openapi` block configures the backends proxy behaviour to validate outgoing
 and incoming requests to and from the origin. Preventing the origin from invalid
@@ -392,7 +250,7 @@ the definitions from a given document defined with the `file` attribute.
 lead to a non-matching *route* which is still required for response validations.
 In this case the response validation will fail if not ignored too.
 
-### CORS Block
+## CORS Block
 
 The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
@@ -406,7 +264,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul> |
 | `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
 
-### OAuth2 Block
+## OAuth2 Block
 
 | Block                           | Description |
 |:--------------------------------|:------------|
@@ -424,14 +282,14 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `token_endpoint_auth_method`    | <ul><li>Optional.</li><li>Defines the method to authenticate the client at the token endpoint.</li><li>If set to `client_secret_post`, the client credentials are transported in the request body.</li><li>If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.</li><li>Default: `client_secret_basic`.</li></ul> |
 | `scope`                         | <ul><li>Optional.</li><li>A space separated list of requested scopes for the access token.</li></ul> |
 
-### Modifier
+## Modifier
 
 * [Request Header](#request-header)
 * [Response Header](#response-header)
 * [Query Parameter](#query-parameter)
 * [Form Parameter](#form-parameter)
 
-#### Request Header
+### Request Header
 
 Couper offers three attributes to manipulate the request header fields. The header
 attributes can be defined unordered within the configuration file but will be
@@ -445,7 +303,7 @@ executed ordered as follows:
 
 All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
-#### Response Header
+### Response Header
 
 Couper offers three attributes to manipulate the response header fields. The header
 attributes can be defined unordered within the configuration file but will be
@@ -459,7 +317,7 @@ executed ordered as follows:
 
 All `*_response_headers` are executed from: `server`, `files`, `spa`, `api`, `endpoint`, `proxy`, `backend` and `error_handler`.
 
-#### Query Parameter
+### Query Parameter
 
 Couper offers three attributes to manipulate the query parameter. The query
 attributes can be defined unordered within the configuration file but will be
@@ -505,7 +363,7 @@ definitions {
 }
 ```
 
-#### Form Parameter
+### Form Parameter
 
 Couper offers three attributes to manipulate the form parameter. The form
 attributes can be defined unordered within the configuration file but will be
@@ -554,7 +412,7 @@ definitions {
 }
 ```
 
-### Path Parameter
+## Path Parameter
 
 An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
 to access the named path parameter `section` and `project` via `request.path_params.*`.
@@ -565,7 +423,7 @@ The values would map as following for the request path: `/app/nature/plant-a-tre
 | `request.path_params.section` | `nature`       |
 | `request.path_params.project` | `plant-a-tree` |
 
-### Access Control
+## Access Control
 
 The configuration of access control is twofold in Couper: You define the particular
 type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
@@ -576,11 +434,11 @@ the `access_control` type `bar` will be disabled for the corresponding block con
 
 Compare the `access_control` [example](./README.md#access_control-configuration-example) for details.
 
-#### Error Handler
+### Error Handler
 
 All access controls have an option to handle related errors. Please refer to [Errors](ERRORS.md).
 
-### Definitions Block
+## Definitions Block
 
 Use the `definitions` block to define configurations you want to reuse.
 [Access Control](#access-control) is **always** defined in the `Definitions Block`.
@@ -596,7 +454,7 @@ Use the `definitions` block to define configurations you want to reuse.
 | [JWT Signing Profile Block(s)](#jwt-signing-profile-block) | Defines `JWT Signing Profile Block(s)`. |
 | [SAML Block(s)](#saml-block)             | Defines `SAML Block(s)`. |
 
-#### Basic Auth Block
+### Basic Auth Block
 
 The `basic_auth` block lets you configure basic auth for your gateway. Like all
 [Access Control](#access-control) types, the `Basic Auth` block is defined in the
@@ -618,7 +476,7 @@ by `htpasswd_file` otherwise.
 | `htpasswd_file` | <ul><li>Optional.</li><li>The htpasswd file.</li></ul> |
 | `realm`         | <ul><li>Optional.</li><li>The realm to be sent in a `WWW-Authenticate` response HTTP header field.</li></ul> |
 
-#### JWT Block
+### JWT Block
 
 The `jwt` block lets you configure JSON Web Token access control for your gateway.
 Like all [Access Control](#access-control) types, the `jwt` block is defined in
@@ -638,7 +496,7 @@ mandatory *label*.
 | **`claims`**               | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul> |
 | **`required_claims`**      | <ul><li>Optional.</li><li>List of claims that must be given for a valid token</li></ul> |
 
-#### JWT Signing Profile Block
+### JWT Signing Profile Block
 
 The `jwt_signing_profile` block lets you configure a JSON Web Token signing
 profile for your gateway. It is referenced in the [`jwt_sign()` function](#functions)
@@ -655,7 +513,7 @@ by its mandatory *label*.
 | `ttl`                     | <ul><li>Optional.</li><li>The token's time-to-live (creates the `exp` claim).</li></ul> |
 | **`claims`**              | <ul><li>Optional.</li><li>Default claims for the JWT payload.</li></ul> |
 
-#### SAML Block
+### SAML Block
 
 The `saml` block lets you configure the `saml_sso_url()` [function](#functions) and an access
 control for a SAML Assertion Consumer Service (ACS) endpoint.
@@ -679,7 +537,7 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 * the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
 * the attributes (`request.context.<label>.attributes.<name>`)
 
-### Settings Block
+## Settings Block
 
 The `settings` block let you configure the more basic and global behavior of your
 gateway instance.
