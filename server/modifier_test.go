@@ -72,58 +72,48 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper(confFile, helper)
-	defer shutdown()
-
-	// ================================================== 204 >>>
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/204", nil)
-	helper.Must(err)
-
-	hook.Reset()
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != 204 {
-		t.Errorf("Expected status code 204, given: %d", res.StatusCode)
+	type testCase struct {
+		path       string
+		expMessage string
+		expStatus  int
 	}
 
-	exp := "set_response_status sets the HTTP status code to 204 - removing the response body if any"
-	if hook.Entries[0].Message != exp {
-		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
-	}
+	for _, tc := range []testCase{
+		{
+			path:       "/204",
+			expMessage: "set_response_status sets the HTTP status code to 204 - removing the response body if any",
+			expStatus:  204,
+		},
+		{
+			path:       "/201",
+			expMessage: "",
+			expStatus:  201,
+		},
+		{
+			path:       "/600",
+			expMessage: "configuration error: set_response_status sets an invalid HTTP status code: 600; set the status code to 500",
+			expStatus:  500,
+		},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
 
-	// ================================================== 201 >>>
+			shutdown, hook := newCouper(confFile, helper)
+			defer shutdown()
 
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/201", nil)
-	helper.Must(err)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
 
-	hook.Reset()
-	res, err = client.Do(req)
-	helper.Must(err)
+			hook.Reset()
+			res, err := client.Do(req)
+			helper.Must(err)
 
-	if res.StatusCode != 201 {
-		t.Errorf("Expected status code 201, given: %d", res.StatusCode)
-	}
-	if hook.Entries[0].Message != "" {
-		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
-	}
+			if res.StatusCode != tc.expStatus {
+				t.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
+			}
 
-	// ================================================== 600 >>>
-
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/600", nil)
-	helper.Must(err)
-
-	hook.Reset()
-	res, err = client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != 500 {
-		t.Errorf("Expected status code 500, given: %d", res.StatusCode)
-	}
-
-	exp = "configuration error: set_response_status sets an invalid HTTP status code: 600; set the status code to 500"
-	if hook.Entries[0].Message != exp {
-		t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
+			if hook.Entries[0].Message != tc.expMessage {
+				t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
+			}
+		})
 	}
 }
