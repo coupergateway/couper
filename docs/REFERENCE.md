@@ -304,7 +304,7 @@ Use the `definitions` block to define configurations you want to reuse.
 | [Basic Auth Block(s)](#basic-auth-block)                   | Defines `Basic Auth Block(s)`.          |
 | [JWT Block(s)](#jwt-block)                                 | Defines `JWT Block(s)`.                 |
 | [JWT Signing Profile Block(s)](#jwt-signing-profile-block) | Defines `JWT Signing Profile Block(s)`. |
-| [OAuth2 AC Block(s)](#oauth2-ac-block)                     | Defines `OAuth2 Authorization Code Grant Flow Block(s)`. |
+| [OAuth2 AC Block(s)](#oauth2-ac-block)                     | Defines `OAuth2 Authorization Code Grant Flow Block(s)` **(Beta!)**. |
 | [SAML Block(s)](#saml-block)                               | Defines `SAML Block(s)`.                |
 
 ### Basic Auth Block
@@ -368,9 +368,9 @@ by its mandatory _label_.
 
 #### OAuth2 AC Block
 
-The `oauth2` block lets you configure the `oauth_authorization_url()` [function](#functions) and an access
+The `beta_oauth2` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
 control for an OAuth2 Authorization Code Grant Flow redirect endpoint.
-Like all [Access Control](#access-control) types, this `oauth2` block is defined in
+Like all [Access Control](#access-control) types, this `beta_oauth2` block is defined in
 the `definitions` block and can be referenced in all configuration blocks by its
 mandatory *label*.
 
@@ -532,11 +532,11 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `json_encode`   | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     |
 | `jwt_sign`      | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 |
 | `merge`         | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
-| `oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block).                                                                                                                                                                                                 |
-| `oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636. Multiple calls of this function in the same client request context return the same value.                                                                                                                                     |
-| `oauth_code_challenge` | Creates an OAuth2 PKCE code challenge from the same code verifier created by `oauth_code_verifier()` using the given code challenge method (valid values: `S256` or `plain`), as specified in RFC 7636.                                                                                       |
-| `oauth_csrf_token`     | Alias for `oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF protection.                                                                                                                                                   |
-| `oauth_hashed_csrf_token` | Creates a hashed CSRF token from the same token created by `oauth_csrf_token()` using `sha256` hashing, to be used as the `state` parameter.                                                                                                                                               |
+| `beta_oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block).                                                                                                                                                                                                 |
+| `beta_oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636. Multiple calls of this function in the same client request context return the same value.                                                                                                                                     |
+| `beta_oauth_code_challenge` | Creates an OAuth2 PKCE code challenge from the same code verifier created by `beta_oauth_code_verifier()` using the given code challenge method (valid values: `S256` or `plain`), as specified in RFC 7636.                                                                                       |
+| `beta_oauth_csrf_token`     | Alias for `beta_oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF protection.                                                                                                                                                   |
+| `beta_oauth_hashed_csrf_token` | Creates a hashed CSRF token from the same token created by `beta_oauth_csrf_token()` using `sha256` hashing, to be used as the `state` parameter.                                                                                                                                               |
 | `saml_sso_url`  | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 |
 | `to_lower`      | Converts a given string to lowercase.                                                                                                                                                                                                                                                                |
 | `to_upper`      | Converts a given string to uppercase.                                                                                                                                                                                                                                                                |

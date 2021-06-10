@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	FnOAuthAuthorizationUrl = "oauth_authorization_url"
-	FnOAuthCodeVerifier     = "oauth_code_verifier"
-	FnOAuthCodeChallenge    = "oauth_code_challenge"
-	FnOAuthCsrfToken        = "oauth_csrf_token"
-	FnOAuthHashedCsrfToken  = "oauth_hashed_csrf_token"
+	FnOAuthAuthorizationUrl = "beta_oauth_authorization_url"
+	FnOAuthCodeVerifier     = "beta_oauth_code_verifier"
+	FnOAuthCodeChallenge    = "beta_oauth_code_challenge"
+	FnOAuthCsrfToken        = "beta_oauth_csrf_token"
+	FnOAuthHashedCsrfToken  = "beta_oauth_hashed_csrf_token"
 	CodeVerifier            = "code_verifier"
 	CCM_plain               = "plain"
 	CCM_S256                = "S256"

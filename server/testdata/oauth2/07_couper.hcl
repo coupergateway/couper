@@ -9,7 +9,7 @@ server "client" {
   }
 }
 definitions {
-  oauth2 "ac" {
+  beta_oauth2 "ac" {
     grant_type = "authorization_code"
     redirect_uri = "http://localhost:8080/cb" # value is not checked
     issuer = "https://authorization.server"
