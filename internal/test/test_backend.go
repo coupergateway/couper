@@ -31,6 +31,7 @@ func NewBackend() *Backend {
 	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
 	b.mux.HandleFunc("/ws", echo)
 	b.mux.HandleFunc("/pdf", pdf)
+	b.mux.HandleFunc("/small", small)
 
 	return b
 }
@@ -162,4 +163,8 @@ func pdf(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	http.ServeContent(rw, req, "/blank.pdf", info.ModTime(), file)
+}
+
+func small(rw http.ResponseWriter, req *http.Request) {
+	rw.Write([]byte("1234567890"))
 }
