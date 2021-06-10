@@ -3,13 +3,11 @@ package accesscontrol
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -19,6 +17,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/utils/base64url"
 )
 
 var _ AccessControl = &OAuth2Callback{}
@@ -240,13 +239,5 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig
 func Base64url_s256(value string) string {
 	h := sha256.New()
 	h.Write([]byte(value))
-	return base64url_encode(h.Sum(nil))
-}
-
-func base64url_encode(msg []byte) string {
-	encoded := base64.StdEncoding.EncodeToString(msg)
-	encoded = strings.Replace(encoded, "+", "-", -1)
-	encoded = strings.Replace(encoded, "/", "_", -1)
-	encoded = strings.Replace(encoded, "=", "", -1)
-	return encoded
+	return base64url.Encode(h.Sum(nil))
 }
