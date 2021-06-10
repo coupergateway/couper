@@ -50,18 +50,18 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	options := []jwt.ParserOption{
 		// jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),
+		// 2. The Issuer Identifier for the OpenID Provider (which is typically
+		//    obtained during Discovery) MUST exactly match the value of the iss
+		//    (issuer) Claim.
+		jwt.WithIssuer(conf.Issuer),
+		// 3. The Client MUST validate that the aud (audience) Claim contains its
+		//    client_id value registered at the Issuer identified by the iss
+		//    (issuer) Claim as an audience. The aud (audience) Claim MAY contain
+		//    an array with more than one element. The ID Token MUST be rejected if
+		//    the ID Token does not list the Client as a valid audience, or if it
+		//    contains additional audiences not trusted by the Client.
+		jwt.WithAudience(conf.ClientID),
 	}
-	// 2. The Issuer Identifier for the OpenID Provider (which is typically
-	//    obtained during Discovery) MUST exactly match the value of the iss
-	//    (issuer) Claim.
-	options = append(options, jwt.WithIssuer(conf.Issuer))
-	// 3. The Client MUST validate that the aud (audience) Claim contains its
-	//    client_id value registered at the Issuer identified by the iss
-	//    (issuer) Claim as an audience. The aud (audience) Claim MAY contain
-	//    an array with more than one element. The ID Token MUST be rejected if
-	//    the ID Token does not list the Client as a valid audience, or if it
-	//    contains additional audiences not trusted by the Client.
-	options = append(options, jwt.WithAudience(conf.ClientID))
 	jwtParser := jwt.NewParser(options...)
 
 	oa := &OAuth2Callback{
