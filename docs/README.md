@@ -1,63 +1,48 @@
-# Couper Documentation - Version 1.2
+* [Introduction](#introduction)
+   * [Overview](#overview)
+   * [Getting Started](#getting-started)
+   * [Configuration File](#configuration-file)
+      * [File Name](#file-name)
+      * [Basic file structure](#basic-file-structure)
+      * [Expressions](#expressions)
+      * [Variables](#variables)
+         * [Variable Example](#variable-example)
+      * [Functions](#functions)
+         * [Functions Examples](#functions-examples)
 
-## Table of Contents
+# Introduction
+Couper is a lightweight open-source API gateway that acts as an entry point for clients to your application (frontend API gateway) and an exit point to upstream services (upstream API gateway).
 
-* [Couper Documentation - Version 1.2](#couper-documentation---version-12)
-  * [Table of Contents](#table-of-contents)
-  * [Introduction](#introduction)
-  * [Getting Started](#getting-started)
-  * [Concepts](#concepts)
-    * [Configuration File](#configuration-file)
-    * [Language](#language)
-    * [File name](#file-name)
-    * [Basic file structure](#basic-file-structure)
-    * [Expressions](#expressions)
-    * [Variables](#variables)
-      * [Variable Example](#variable-example)
-    * [Functions](#functions)
-      * [Functions Examples:](#functions-examples)
-  * [Configuration examples](#configuration-examples)
-    * [Request routing example](#request-routing-example)
-    * [Routing configuration example](#routing-configuration-example)
-    * [Web serving configuration example](#web-serving-configuration-example)
-    * [access_control configuration example](#access_control-configuration-example)
-    * [hosts configuration example](#hosts-configuration-example)
+It exposes endpoints with use cases and adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
 
-## Introduction
+Couper does not need any special development skills and offers easy configuration and integration.
 
-Couper is a lightweight open source API gateway designed to support developers in
-building and running API-driven Web projects. Acting as a proxy component it connects
-clients with (micro) services and adds access control and observability to the project.
-Couper does not need any special development skills and offers easy configuration
-and integration.
+## Overview
+![architecture](./architecture.png)
+
+| Entity  | Description |
+|:-------------------|:------------|
+| Frontend         | Browser, App or API Client that sends requests to Couper. |
+|Frontend API | Couper acts as an entry point for clients to your application. |
+|Backend Service|Your core application - no matter which technology, if monolithic or micro-services.|
+|Upstream API| Couper acts as an exit point to upstream services for your application. |
+|Remote Service|Any upstream service or system which is accessible via HTTP. |
+|Protected System| Representing a service or system that offers protected resources.|
 
 ## Getting Started
+Couper is available as _docker image_ from [Dockerhub](https://hub.docker.com/r/avenga/couper).
 
-* [Configuration Reference](REFERENCE.md)
+You can install Couper from [Docker](https://www.docker.com/) or [Kubernetes](http://kubernetes.io/).
 
-## Concepts
+Check out the [example repository](https://github.com/avenga/couper-examples) to explore Couper’s features with small, ready-to-use examples. Every example comes with a short introduction and guides you step by step through the configuration.
 
-![overview](./overview.png)
+Here's the link to Couper's [Configuration Reference](REFERENCE.md)
 
-| Concept / Feature  | Description |
-|:-------------------|:------------|
-| Client(s)          | Browser, App or API Client that sends requests to Couper. |
-| Web Serving        | Couper supports file serving and Web serving for SPA assets. |
-| API                | Configuration block that bundles endpoints under a certain base path. |
-| Access Control     | Couper handles access control for incoming client requests and outgoing backend requests. |
-| Endpoint           | Configuration block that specifies how (and if) requests are sent to backend service(s) after they reach Couper. |
-| Backend            | Configuration block that specifies the connection to a local/remote backend service. |
-| Logging            | Couper provides standard logs for analysis and monitoring. |
-| Backend Service(s) | External API or micro services where Couper fetches data from. |
-| Validation         | Couper supports validation of outgoing and incoming requests to and from the origin. |
 
-### Configuration File
-
-### Language
-
+## Configuration File
 The language for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
 
-### File name
+### File Name
 
 The file-ending of your configuration file should be .hcl to have syntax highlighting
 within your IDE.
@@ -122,7 +107,7 @@ settings {
 
 ### Expressions
 
-Since we use HCL2 for our configuration, we are able to use attribute values as
+Since we use [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax) for our configuration, we are able to use attribute values as
 expression:
 
 ```hcl
@@ -146,7 +131,7 @@ The second evaluation will happen during the request/response handling.
 * `request` is the client request
 * `backend_requests` contains all modified backend requests
 * `backend_responses` contains all original backend responses
-
+<!--
 #### Variable Example
 
 An example to send an additional header with client request header to a configured
@@ -167,7 +152,7 @@ server "variables-srv" {
   }
 }
 ```
-
+-->
 See [variables reference](./REFERENCE.md#variables).
 
 ### Functions
@@ -176,7 +161,7 @@ Functions are little helper methods which are registered for every hcl evaluatio
 context.
 
 See [functions reference](./REFERENCE.md#functions).
-
+<!--
 #### Functions Examples
 
 ```hcl
@@ -221,8 +206,8 @@ definitions {
   }
 }
 ```
-
-## Configuration examples
+-->
+<!--## Configuration examples
 
 See the official Couper's examples and tutorials
 [repository](https://github.com/avenga/couper-examples), too.
@@ -351,3 +336,4 @@ The example configuration above makes Couper listen to port `:9090`, `:8081` and
 
 In a second step Couper compares the host-header information with the configuration.
 In case of mismatch a system error occurs (HTML error, status 500).
+-->
