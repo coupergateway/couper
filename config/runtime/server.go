@@ -407,20 +407,22 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 	if conf.Definitions != nil {
 		for _, baConf := range conf.Definitions.BasicAuth {
+			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
-				return nil, err
+				return nil, confErr.Message("loading basic_auth definition failed").With(err)
 			}
 
 			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.Message("adding basic_auth definition failed").With(err)
 			}
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
+			confErr := errors.Configuration.Label(jwtConf.Name)
 			key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 			if err != nil {
-				return nil, errors.Configuration.Label(jwtConf.Name).With(err)
+				return nil, confErr.With(err)
 			}
 
 			var claims map[string]interface{}
@@ -440,26 +442,28 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("loading jwt definition failed: %s", err)
+				return nil, confErr.Message("loading jwt definition failed").With(err)
 			}
 
 			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.Message("adding jwt definition failed").With(err)
 			}
 		}
 
 		for _, saml := range conf.Definitions.SAML {
+			confErr := errors.Configuration.Label(saml.Name)
 			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
 			if err != nil {
-				return nil, errors.Configuration.Label(saml.Name).With(err)
+				return nil, confErr.With(err)
 			}
+
 			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
-				return nil, fmt.Errorf("loading saml definition failed: %s", err)
+				return nil, confErr.Message("loading saml definition failed").With(err)
 			}
 
 			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.Message("adding saml definition failed").With(err)
 			}
 		}
 

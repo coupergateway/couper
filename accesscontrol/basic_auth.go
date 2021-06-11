@@ -3,6 +3,7 @@ package accesscontrol
 import (
 	"bufio"
 	"crypto/subtle"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -36,7 +37,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 
 	fp, err := os.Open(file)
 	if err != nil {
-		return nil, errors.Configuration.Label(name).With(err)
+		return nil, err
 	}
 	defer fp.Close()
 
@@ -50,18 +51,18 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 		}
 
 		if len(line) > 255 {
-			return nil, errors.Configuration.Label(name).Message("parse error: line length exceeded: 255")
+			return nil, fmt.Errorf("parse error: line length exceeded: 255")
 		}
 
 		up := strings.SplitN(line, ":", 2)
 		if len(up) != 2 {
-			return nil, errors.Configuration.Label(name).Message("parse error: invalid line: " + strconv.Itoa(lineNr))
+			return nil, fmt.Errorf("parse error: invalid line: " + strconv.Itoa(lineNr))
 		}
 
 		username, password := up[0], up[1]
 
 		if _, ok := ba.htFile[username]; ok {
-			return nil, errors.Configuration.Label(name).Message("multiple user: " + username)
+			return nil, fmt.Errorf("multiple user: " + username)
 		}
 
 		switch pwdType := getPwdType(password); pwdType {
@@ -75,7 +76,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 
 			parts := strings.Split(strings.TrimPrefix(password, prefix), "$")
 			if len(parts) != 2 {
-				return nil, errors.Configuration.Label(name).Message("parse error: malformed password for user: " + username)
+				return nil, fmt.Errorf("parse error: malformed password for user: " + username)
 			}
 
 			ba.htFile[username] = pwd{
@@ -90,7 +91,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 				pwdType: pwdType,
 			}
 		default:
-			return nil, errors.Configuration.Label(name).Message("parse error: algorithm not supported")
+			return nil, fmt.Errorf("parse error: algorithm not supported")
 		}
 	}
 
