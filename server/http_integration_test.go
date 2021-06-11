@@ -2668,6 +2668,9 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if auq.Get("state") != "" {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
+	if auq.Get("nonce") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
@@ -2744,6 +2747,36 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	}
 	if auq.Get("state") != cht {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), cht)
+	}
+	if auq.Get("nonce") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+	au, err = url.Parse(res.Header.Get("x-au-nonce"))
+	helper.Must(err)
+	auq = au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+	}
+	if auq.Get("code_challenge_method") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	}
+	if auq.Get("code_challenge") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != cht {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), cht)
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
