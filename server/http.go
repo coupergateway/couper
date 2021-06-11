@@ -212,6 +212,29 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	clientReq.URL.Scheme = "http"
+	if s.settings.AcceptsForwardedProtocol() {
+		if xfpr := req.Header.Get("X-Forwarded-Proto"); xfpr != "" {
+			clientReq.URL.Scheme = xfpr
+		} else {
+			// TODO log warning empty X-Forwarded-Proto
+		}
+	}
+	clientReq.URL.Host = req.Host
+	if s.settings.AcceptsForwardedHost() {
+		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
+			clientReq.URL.Host = xfh + ":" + clientReq.URL.Port()
+		} else {
+			// TODO log warning empty X-Forwarded-Host
+		}
+	}
+	if s.settings.AcceptsForwardedPort() {
+		if xfpo := req.Header.Get("X-Forwarded-Port"); xfpo != "" {
+			clientReq.URL.Host = clientReq.URL.Hostname() + ":" + xfpo
+		} else {
+			// TODO log warning empty X-Forwarded-Port
+		}
+	}
 	ctx = s.evalCtx.WithClientRequest(clientReq)
 	*clientReq = *clientReq.WithContext(ctx)
 

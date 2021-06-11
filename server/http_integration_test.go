@@ -1784,7 +1784,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "/req",
+		Url: "http://example.com:8080/req",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -1838,7 +1838,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "/req",
+		Url: "http://example.com:8080/req",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -1899,7 +1899,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "/req",
+		Url: "http://example.com:8080/req",
 	}
 
 	if fmt.Sprint(jsonResult) != fmt.Sprint(exp) {
