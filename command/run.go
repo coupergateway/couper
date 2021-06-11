@@ -37,6 +37,7 @@ func NewRun(ctx context.Context) *Run {
 	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
+	set.StringVar(&settings.AcceptForwardedURL, "accept-forwarded-url", settings.AcceptForwardedURL, "-accept-forwarded-url")
 	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
