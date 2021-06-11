@@ -8,13 +8,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 // OAuth2 represents the transport <OAuth2> object.
@@ -26,7 +24,6 @@ type OAuth2 struct {
 type OAuth2RequestConfig struct {
 	Code         *string
 	CodeVerifier *string
-	CsrfToken    *string
 	RedirectURI  *string
 	StorageKey   string
 }
@@ -45,30 +42,7 @@ func NewOAuth2(conf config.OAuth2, backend http.RoundTripper) (*OAuth2, error) {
 }
 
 func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, error) {
-	content, _, diags := oa.config.HCLBody().PartialContent(oa.config.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
-
-	var csrfToken, codeVerifier *string
-
-	if v, ok := content.Attributes["code_verifier_value"]; ok {
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
-		codeVerifier = &strVal
-	}
-
-	if v, ok := content.Attributes["csrf_token_value"]; ok {
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
-		csrfToken = &strVal
-	}
-
 	return &OAuth2RequestConfig{
-		CodeVerifier: codeVerifier,
-		CsrfToken:    csrfToken,
 		// Backend is build up via config and token_endpoint will configure the backend,
 		// use the backend memory location here.
 		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.Backend, oa.config.GetClientID(), oa.config.GetClientSecret()),

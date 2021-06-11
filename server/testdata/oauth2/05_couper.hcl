@@ -15,7 +15,9 @@ definitions {
     authorization_endpoint = "https://authorization.server/oauth2/authorize"
     token_endpoint = "${request.headers.x-as-origin}/token"
     token_endpoint_auth_method = "client_secret_post"
-    code_challenge_method = "S256"
+    pkce {
+      code_challenge_method = "S256"
+    }
     client_id = "foo"
     client_secret = "etbinbp4in"
     error_handler {

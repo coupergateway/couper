@@ -19,7 +19,9 @@ definitions {
     jwks_file = "jwks.json.created"
     client_id = "foo"
     client_secret = "etbinbp4in"
-    csrf_token_param = "nonce"
-    csrf_token_value = request.cookies.nnc
+    csrf {
+      token_param = "nonce"
+      token_value = request.cookies.nnc
+    }
   }
 }

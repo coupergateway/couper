@@ -14,12 +14,12 @@ type OAuth2AC struct {
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
-	CodeChallengeMethod     string   `hcl:"code_challenge_method,optional"`
-	CsrfTokenParam          string   `hcl:"csrf_token_param,optional"`
+	Csrf                    *CSRF    `hcl:"csrf,block"`
 	GrantType               string   `hcl:"grant_type"`
 	Issuer                  string   `hcl:"issuer,optional"`
 	JwksFile                string   `hcl:"jwks_file,optional"`
 	Name                    string   `hcl:"name,label"`
+	Pkce                    *PKCE    `hcl:"pkce,block"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
@@ -81,4 +81,56 @@ func (oa OAuth2AC) GetScope() *string {
 
 func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
 	return oa.TokenEndpointAuthMethod
+}
+
+type PKCE struct {
+	CodeChallengeMethod string   `hcl:"code_challenge_method"`
+	Remain              hcl.Body `hcl:",remain"`
+}
+
+// HCLBody implements the <Body> interface.
+func (p PKCE) HCLBody() hcl.Body {
+	return p.Remain
+}
+
+// Schema implements the <Inline> interface.
+func (p PKCE) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(p)
+		return schema
+	}
+
+	type Inline struct {
+		CodeVerifierValue string `hcl:"code_verifier_value,optional"`
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+
+	return schema
+}
+
+type CSRF struct {
+	TokenParam string   `hcl:"token_param"`
+	Remain     hcl.Body `hcl:",remain"`
+}
+
+// HCLBody implements the <Body> interface.
+func (c CSRF) HCLBody() hcl.Body {
+	return c.Remain
+}
+
+// Schema implements the <Inline> interface.
+func (c CSRF) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(c)
+		return schema
+	}
+
+	type Inline struct {
+		TokenValue string `hcl:"token_value"`
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+
+	return schema
 }

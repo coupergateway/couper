@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -15,8 +16,10 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils/base64url"
 )
 
@@ -37,14 +40,14 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	if conf.GrantType != grantType {
 		return nil, confErr.Messagef("grant_type %s not supported", conf.GrantType)
 	}
-	if conf.CodeChallengeMethod == "" && conf.CsrfTokenParam == "" {
+	if conf.Pkce == nil && conf.Csrf == nil {
 		return nil, confErr.Message("CSRF protection not configured")
 	}
-	if conf.CsrfTokenParam != "" && conf.CsrfTokenParam != "state" && conf.CsrfTokenParam != "nonce" {
-		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.CsrfTokenParam)
+	if conf.Csrf != nil && conf.Csrf.TokenParam != "state" && conf.Csrf.TokenParam != "nonce" {
+		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.Csrf.TokenParam)
 	}
-	if conf.CodeChallengeMethod != "" && conf.CodeChallengeMethod != lib.CCM_plain && conf.CodeChallengeMethod != lib.CCM_S256 {
-		return nil, confErr.Messagef("code_challenge_method %s not supported", conf.CodeChallengeMethod)
+	if conf.Pkce != nil && conf.Pkce.CodeChallengeMethod != lib.CCM_plain && conf.Pkce.CodeChallengeMethod != lib.CCM_S256 {
+		return nil, confErr.Messagef("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
 	}
 
 	options := []jwt.ParserOption{
@@ -112,15 +115,46 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.With(err)
 	}
 
-	// validate state param value against CSRF token
-	if oa.config.CsrfTokenParam == "state" {
-		csrfTokenFromParam := query.Get(oa.config.CsrfTokenParam)
-		if csrfTokenFromParam == "" {
-			return errors.Oauth2.Messagef("missing state query parameter; query='%s'", req.URL.RawQuery)
+	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
+
+	if oa.config.Pkce != nil {
+		content, _, diags := oa.config.Pkce.HCLBody().PartialContent(oa.config.Pkce.Schema(true))
+		if diags.HasErrors() {
+			return errors.Oauth2.Messagef("parsing remain of pkce block").With(diags)
 		}
-		csrfToken := Base64url_s256(*requestConfig.CsrfToken)
-		if csrfToken != csrfTokenFromParam {
-			return errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from query param) vs. '%s' (s256: '%s')", csrfTokenFromParam, *requestConfig.CsrfToken, csrfToken)
+
+		if v, ok := content.Attributes["code_verifier_value"]; ok {
+			ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+			strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
+			requestConfig.CodeVerifier = &strVal
+		}
+	}
+
+	var csrfToken, csrfTokenValue string
+	if oa.config.Csrf != nil {
+		content, _, diags := oa.config.Csrf.HCLBody().PartialContent(oa.config.Csrf.Schema(true))
+		if diags.HasErrors() {
+			return errors.Oauth2.Messagef("parsing remain of csrf block").With(diags)
+		}
+
+		if v, ok := content.Attributes["token_value"]; ok {
+			ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+			csrfTokenValue = strings.TrimSpace(seetie.ValueToString(ctyVal))
+		} else {
+			return errors.Oauth2.Messagef("Missing CSRF token_value")
+		}
+		csrfToken = Base64url_s256(csrfTokenValue)
+
+		// validate state param value against CSRF token
+		if oa.config.Csrf.TokenParam == "state" {
+			csrfTokenFromParam := query.Get(oa.config.Csrf.TokenParam)
+			if csrfTokenFromParam == "" {
+				return errors.Oauth2.Messagef("missing state query parameter; query='%s'", req.URL.RawQuery)
+			}
+
+			if csrfToken != csrfTokenFromParam {
+				return errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from query param) vs. '%s' (s256: '%s')", csrfTokenFromParam, csrfTokenValue, csrfToken)
+			}
 		}
 	}
 
@@ -148,7 +182,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 			return err
 		}
 
-		idtc, err := oa.validateIdTokenClaims(idToken.Claims, requestConfig, ctx, accessToken)
+		idtc, err := oa.validateIdTokenClaims(idToken.Claims, csrfToken, csrfTokenValue, ctx, accessToken)
 		if err != nil {
 			return err
 		}
@@ -195,7 +229,7 @@ func (oa *OAuth2Callback) getKey(token *jwt.Token) (interface{}, error) {
 	return jwk.Key, nil
 }
 
-func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig *transport.OAuth2RequestConfig, ctx context.Context, accessToken string) (map[string]interface{}, error) {
+func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, csrfTokenValue string, ctx context.Context, accessToken string) (map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
@@ -214,7 +248,7 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig
 	}
 
 	// validate nonce claim value against CSRF token
-	if oa.config.CsrfTokenParam == "nonce" {
+	if oa.config.Csrf != nil && oa.config.Csrf.TokenParam == "nonce" {
 		// 11. If a nonce value was sent in the Authentication Request, a nonce
 		//     Claim MUST be present and its value checked to verify that it is the
 		//     same value as the one that was sent in the Authentication Request.
@@ -227,9 +261,8 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, requestConfig
 			return nil, errors.Oauth2.Messagef("missing nonce claim in ID token, claims='%#v'", idTokenClaims)
 		}
 
-		csrfToken := Base64url_s256(*requestConfig.CsrfToken)
 		if csrfToken != nonce {
-			return nil, errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from nonce claim) vs. '%s' (s256: '%s')", nonce, *requestConfig.CsrfToken, csrfToken)
+			return nil, errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from nonce claim) vs. '%s' (s256: '%s')", nonce, csrfTokenValue, csrfToken)
 		}
 	}
 

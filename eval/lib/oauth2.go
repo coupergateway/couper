@@ -52,21 +52,21 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier
 				query.Set("scope", *oauth2.Scope)
 			}
 
-			if oauth2.CodeChallengeMethod != "" {
-				query.Set("code_challenge_method", oauth2.CodeChallengeMethod)
-				codeChallenge, err := createCodeChallenge(verifier, oauth2.CodeChallengeMethod)
+			if oauth2.Pkce != nil && oauth2.Pkce.CodeChallengeMethod != "" {
+				query.Set("code_challenge_method", oauth2.Pkce.CodeChallengeMethod)
+				codeChallenge, err := createCodeChallenge(verifier, oauth2.Pkce.CodeChallengeMethod)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
 				query.Set("code_challenge", codeChallenge)
-			} else if oauth2.CsrfTokenParam == "state" || oauth2.CsrfTokenParam == "nonce" {
+			} else if oauth2.Csrf != nil && (oauth2.Csrf.TokenParam == "state" || oauth2.Csrf.TokenParam == "nonce") {
 				hashedCsrfToken, err := createCodeChallenge(verifier, CCM_S256)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
-				query.Set(oauth2.CsrfTokenParam, hashedCsrfToken)
+				query.Set(oauth2.Csrf.TokenParam, hashedCsrfToken)
 			}
 			oauthAuthorizationUrl.RawQuery = query.Encode()
 

@@ -16,7 +16,9 @@ definitions {
     token_endpoint = "${request.headers.x-as-origin}/token"
     client_id = "foo"
     client_secret = "etbinbp4in"
-    code_challenge_method = "S256"
-    code_verifier_value = request.cookies.pkcecv
+    pkce {
+      code_challenge_method = "S256"
+      code_verifier_value = request.cookies.pkcecv
+    }
   }
 }

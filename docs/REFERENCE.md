@@ -19,6 +19,8 @@
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
     - [OAuth2 AC Block](#oauth2-ac-block)
+      - [PKCE Block](#pkce-block)
+      - [CSRF Block](#csrf-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
   - [Access Control](#access-control)
@@ -378,6 +380,9 @@ mandatory *label*.
 |:---------------------------|:------------|
 | *context*                  | [Definitions Block](#definitions-block). |
 | *label*                    | &#9888; Mandatory. |
+| **Nested blocks**          | **Description** |
+| `pkce`                     | <ul><li>&#9888; one of `pkce` or `csrf` is mandatory.</li><li>Use PKCE for protection against CSRF and code injection.</li></ul> |
+| `csrf`                     | <ul><li>&#9888; one of `pkce` or `csrf` is mandatory.</li><li>Use `state` or `nonce` for protection against CSRF.</li></ul> |
 | **Attributes**             | **Description** |
 | `authorization_endpoint`   | <ul><li>&#9888; Mandatory.</li><li>The authorization server endpoint URL used for authorization.</li></ul> |
 | `token_endpoint`           | <ul><li>Optional.</li><li>The authorization server endpoint URL used for requesting the token.</li></ul> |
@@ -389,14 +394,31 @@ mandatory *label*.
 | `client_secret`            | <ul><li>&#9888; Mandatory.</li><li>The client secret.</li></ul> |
 | `scope`                    | <ul><li>Optional.</li><li>A space separated list of requested scopes for the access token.</li></ul> |
 
-Additionally there are attributes to configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF):
+To configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF) use either the `pkce` or the `csrf` block. If the authorization server supports PKCE, we recommend `pkce`.
 
-| Attributes                 | Description |
+##### PKCE Block
+
+Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636) for protection against CSRF and code injection.
+
+| Block                      | Description |
 |:---------------------------|:------------|
-| `code_challenge_method`    | <ul><li>Optional.</li><li>The method to calculate the PKCE code challenge. Available values: `S256`, `plain` (not recommended).</li></ul> |
-| `code_verifier_value`      | <ul><li>Mandatory if `code_challenge_method` is set.</li><li>The value of the code verifier.</li></ul> |
-| `csrf_token_param`         | <ul><li>Optional.</li><li>The name of the query parameter for the hashed CSRF token. Available values: `state`.</li></ul> |
-| `csrf_token_value`         | <ul><li>Mandatory if `csrf_token_param` is set.</li><li>The value of the CSRF token.</li></ul> |
+| *context*                  | [OAuth2 AC Block](#oauth2-ac-block). |
+| *label*                    | &#9888; Not implemented. |
+| **Attributes**             | **Description** |
+| `code_challenge_method`    | <ul><li>&#9888; Mandatory.</li><li>The method to calculate the PKCE code challenge. Available values: `S256` or (not recommended) `plain`.</li></ul> |
+| `code_verifier_value`      | <ul><li>&#9888; Mandatory.</li><li>The value of the code verifier (e.g. `request.cookies.pkce_code_verifier`).</li></ul> |
+
+##### CSRF Block
+
+Use `state` or `nonce` for protection against CSRF.
+
+| Block          | Description |
+|:---------------|:------------|
+| *context*      | [OAuth2 AC Block](#oauth2-ac-block). |
+| *label*        | &#9888; Not implemented. |
+| **Attributes** | **Description** |
+| `token_param`  | <ul><li>&#9888; Mandatory.</li><li>The name of the query parameter for the hashed CSRF token. Available values: `state`, `nonce`.</li></ul> |
+| `token_value`  | <ul><li>&#9888; Mandatory.</li><li>The value of the CSRF token (e.g. `request.cookies.csrf_token`).</li></ul> |
 
 ### SAML Block
 

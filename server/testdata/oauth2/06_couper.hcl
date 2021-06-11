@@ -16,7 +16,9 @@ definitions {
     token_endpoint = "${request.headers.x-as-origin}/token"
     client_id = "foo"
     client_secret = "etbinbp4in"
-    csrf_token_param = "state"
-    csrf_token_value = request.cookies.st
+    csrf {
+      token_param = "state"
+      token_value = request.cookies.st
+    }
   }
 }
