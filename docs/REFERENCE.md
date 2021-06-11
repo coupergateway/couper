@@ -1,7 +1,9 @@
+
 # Reference
 
+## Block Reference 
 
-## Server Block
+### Server Block
 
 The `server` block is the main configuration block of Couper's configuration file.
 
@@ -21,7 +23,7 @@ The `server` block is the main configuration block of Couper's configuration fil
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
 | `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Server Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
-## Files Block
+### Files Block
 
 The `files` block configures the file serving.
 
@@ -37,7 +39,7 @@ The `files` block configures the file serving.
 | `error_file`              | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_page.html"`</li></ul> |
 | `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul>  |
 
-## SPA Block
+### SPA Block
 
 The `spa` block configures the Web serving for SPA assets.
 
@@ -53,7 +55,7 @@ The `spa` block configures the Web serving for SPA assets.
 | `paths`                   | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>*Example:* `paths = ["/app/**"]`</li></ul> |
 | `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 
-## API Block
+### API Block
 
 The `api` block contains all information about endpoints, and the connection to
 remote/local backend service(s), configured in the nested
@@ -73,7 +75,7 @@ as json error with an error body payload. This can be customized via `error_file
 | `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>*Example:* `error_file = "./my_error_body.json"`</li></ul> |
 | `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `API Block` context.</li><li>*Example:* `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
 
-## Endpoint Block
+### Endpoint Block
 
 The `endpoint` blocks define the entry points of Couper. The mandatory *label*
 defines the path suffix for the incoming client request. The `path` attribute
@@ -95,7 +97,7 @@ produce an explicit or implicit client response.
 | `access_control`                   | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Endpoint Block` context.</li><li>*Example:* `access_control = ["foo"]`</li></ul> |
 | [Modifier](#modifier)              | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
-## Proxy Block
+### Proxy Block
 
 The `proxy` block creates and executes a proxy request to a backend service.
 
@@ -112,7 +114,7 @@ The `proxy` block creates and executes a proxy request to a backend service.
 | `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
 | [Modifier](#modifier)                               | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
-## Request Block
+### Request Block
 
 The `request` block creates and executes a request to a backend service.
 
@@ -134,7 +136,7 @@ The `request` block creates and executes a request to a backend service.
 | `headers`                                           | <ul><li>Optional.</li><li>Same as `set_request_headers` in [Request Header](#request-header).</li></ul> |
 | `query_params`                                      | <ul><li>Optional.</li><li>Same as `set_query_params` in [Query Parameter](#query-parameter).</li></ul> |
 
-## Response Block
+### Response Block
 
 The `response` block creates and sends a client response.
 
@@ -148,7 +150,7 @@ The `response` block creates and sends a client response.
 | `status`       | <ul><li>HTTP status code.</li><li>Optional.</li><li>Default `200`.</li></ul> |
 | `headers`      | <ul><li>Optional.</li><li>Same as `set_response_headers` in [Request Header](#response-header).</li></ul> |
 
-## Backend Block
+### Backend Block
 
 A `backend` defines the connection to a local/remote backend service. Backends
 can be defined in the [Definitions Block](#definitions-block) and use the *label*
@@ -169,7 +171,7 @@ as reference.
 | `path_prefix`                   | <ul><li>Optional.</li><li>Prefixes all backend request paths with the given prefix.</li><li>Relative prefixes are prefixed with a slash `/`.</li></ul>
 | [Modifier](#modifier)           | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
-### Transport Settings Attributes
+#### Transport Settings Attributes
 
 | Name                             | Type               | Default         | Description |
 |:---------------------------------|:-------------------|:----------------|:------------|
@@ -182,7 +184,7 @@ as reference.
 | `timeout`                        | [Timing](#timings) | `300s`          | The total deadline duration a backend request has for write and read/pipe. |
 | `ttfb_timeout`                   | [Timing](#timings) | `60s`           | The duration from writing the full request to the origin and receiving the answer. |
 
-## Timings
+#### Timings
 
 | Valid time unit | Description  |
 |:----------------|:-------------|
@@ -192,41 +194,6 @@ as reference.
 | `s`             | seconds      |
 | `m`             | minutes      |
 | `h`             | hours        |
-
-## Backend Block Reference
-
-A [Backend Block](#backend-block) can be used as reference of a `backend` block
-from the [Definitions Block](#definitions-block). In addition, a `backend` block
-from the [Definitions Block](#definitions-block) can be refined.
-
-```hcl
-server "my_project" {
-  api {
-    endpoint "/e1" {
-      proxy {
-        # Uses the "example" backend from the definitions block.
-        backend = "example"
-      }
-    }
-    endpoint "/e2" {
-      proxy {
-        # Uses a refined version of the "example" backend from the definitions block.
-        backend "example" {
-          set_query_params = {
-            foo = "bar"
-          }
-        }
-      }
-    }
-  }
-}
-
-definitions {
-  backend "example" {
-    origin = "http://example.com"
-  }
-}
-```
 
 ### OpenAPI Block
 
@@ -250,7 +217,7 @@ the definitions from a given document defined with the `file` attribute.
 lead to a non-matching *route* which is still required for response validations.
 In this case the response validation will fail if not ignored too.
 
-## CORS Block
+### CORS Block
 
 The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
@@ -264,7 +231,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul> |
 | `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul> |
 
-## OAuth2 Block
+### OAuth2 Block
 
 | Block                           | Description |
 |:--------------------------------|:------------|
@@ -282,163 +249,8 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | `token_endpoint_auth_method`    | <ul><li>Optional.</li><li>Defines the method to authenticate the client at the token endpoint.</li><li>If set to `client_secret_post`, the client credentials are transported in the request body.</li><li>If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.</li><li>Default: `client_secret_basic`.</li></ul> |
 | `scope`                         | <ul><li>Optional.</li><li>A space separated list of requested scopes for the access token.</li></ul> |
 
-## Modifier
 
-* [Request Header](#request-header)
-* [Response Header](#response-header)
-* [Query Parameter](#query-parameter)
-* [Form Parameter](#form-parameter)
-
-### Request Header
-
-Couper offers three attributes to manipulate the request header fields. The header
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-| Modifier                 | Contexts                                                                                        | Description |
-|:-------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of request header to be removed from the upstream request. |
-| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set request header in the upstream request. |
-| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add request header to the upstream request. |
-
-All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
-
-### Response Header
-
-Couper offers three attributes to manipulate the response header fields. The header
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-| Modifier                  | Contexts                                                                                        | Description |
-|:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of response header to be removed from the client response. |
-| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set response header in the client response. |
-| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add response header to the client response. |
-
-All `*_response_headers` are executed from: `server`, `files`, `spa`, `api`, `endpoint`, `proxy`, `backend` and `error_handler`.
-
-### Query Parameter
-
-Couper offers three attributes to manipulate the query parameter. The query
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-| Modifier              | Contexts                                                                                        | Description |
-|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of query parameters to be removed from the upstream request URL. |
-| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set query parameters in the upstream request URL. |
-| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add query parameters to the upstream request URL. |
-
-All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
-
-```hcl
-server "my_project" {
-  api {
-    endpoint "/" {
-      proxy {
-        backend = "example"
-      }
-    }
-  }
-}
-
-definitions {
-  backend "example" {
-    origin = "http://example.com"
-
-    remove_query_params = ["a", "b"]
-
-    set_query_params = {
-      string = "string"
-      multi = ["foo", "bar"]
-      "${request.headers.example}" = "yes"
-    }
-
-    add_query_params = {
-      noop = request.headers.noop
-      null = null
-      empty = ""
-    }
-  }
-}
-```
-
-### Form Parameter
-
-Couper offers three attributes to manipulate the form parameter. The form
-attributes can be defined unordered within the configuration file but will be
-executed ordered as follows:
-
-| Modifier              | Contexts                                                                                        | Description |
-|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_form_params`  | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of form parameters to be removed from the upstream request body. |
-| `set_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set form parameters in the upstream request body. |
-| `add_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add form parameters to the upstream request body. |
-
-All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
-
-The `*_form_params` apply only to requests with the `POST` method and
-the `Content-Type: application/x-www-form-urlencoded` HTTP header field.
-
-```hcl
-server "my_project" {
-  api {
-    endpoint "/" {
-      proxy {
-        backend = "example"
-      }
-    }
-  }
-}
-
-definitions {
-  backend "example" {
-    origin = "http://example.com"
-
-    remove_form_params = ["a", "b"]
-
-    set_form_params = {
-      string = "string"
-      multi = ["foo", "bar"]
-      "${request.headers.example}" = "yes"
-    }
-
-    add_form_params = {
-      noop = request.headers.noop
-      null = null
-      empty = ""
-    }
-  }
-}
-```
-
-## Path Parameter
-
-An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
-to access the named path parameter `section` and `project` via `request.path_params.*`.
-The values would map as following for the request path: `/app/nature/plant-a-tree/view`:
-
-| Variable                  | Value          |
-|:--------------------------|:---------------|
-| `request.path_params.section` | `nature`       |
-| `request.path_params.project` | `plant-a-tree` |
-
-## Access Control
-
-The configuration of access control is twofold in Couper: You define the particular
-type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
-Anywhere in the `server` block those labels can be used in the `access_control`
-list to protect that block. &#9888; access rights are inherited by nested blocks.
-You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`,
-the `access_control` type `bar` will be disabled for the corresponding block context.
-
-Compare the `access_control` [example](./README.md#access_control-configuration-example) for details.
-
-### Error Handler
-
-All access controls have an option to handle related errors. Please refer to [Errors](ERRORS.md).
-
-## Definitions Block
+### Definitions Block
 
 Use the `definitions` block to define configurations you want to reuse.
 [Access Control](#access-control) is **always** defined in the `Definitions Block`.
@@ -537,7 +349,7 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 * the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
 * the attributes (`request.context.<label>.attributes.<name>`)
 
-## Settings Block
+### Settings Block
 
 The `settings` block let you configure the more basic and global behavior of your
 gateway instance.
@@ -556,7 +368,20 @@ gateway instance.
 | `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields | `common` |
 | `secure_cookies`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. | `""` |
 
-### Health-Check
+## Access Control
+
+The configuration of access control is twofold in Couper: You define the particular
+type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
+Anywhere in the `server` block those labels can be used in the `access_control`
+list to protect that block. &#9888; access rights are inherited by nested blocks.
+You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`,
+the `access_control` type `bar` will be disabled for the corresponding block context.
+
+All access controls have an option to handle related errors. Please refer to [Errors](ERRORS.md).
+
+
+
+## Health-Check
 
 The health check will answer a status `200 OK` on every port with the configured
 `health_path`. As soon as the gateway instance will receive a `SIGINT` or `SIGTERM`
@@ -566,3 +391,147 @@ time to pick another gateway instance. After this delay the server goes into
 shutdown mode with a deadline of `5s` and no new requests will be accepted.
 The shutdown timings defaults to `0` which means no delaying with development setups.
 Both durations can be configured via environment variable. Please refer to the [docker document](./../DOCKER.md).
+
+## Modifier
+
+* [Request Header](#request-header)
+* [Response Header](#response-header)
+* [Query Parameter](#query-parameter)
+* [Form Parameter](#form-parameter)
+
+### Request Header
+
+Couper offers three attributes to manipulate the request header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier                 | Contexts                                                                                        | Description |
+|:-------------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of request header to be removed from the upstream request. |
+| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set request header in the upstream request. |
+| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add request header to the upstream request. |
+
+All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
+
+### Response Header
+
+Couper offers three attributes to manipulate the response header fields. The header
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier                  | Contexts                                                                                        | Description |
+|:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of response header to be removed from the client response. |
+| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add response header to the client response. |
+
+All `*_response_headers` are executed from: `server`, `files`, `spa`, `api`, `endpoint`, `proxy`, `backend` and `error_handler`.
+
+## Parameters 
+
+### Query Parameter
+
+Couper offers three attributes to manipulate the query parameter. The query
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier              | Contexts                                                                                        | Description |
+|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of query parameters to be removed from the upstream request URL. |
+| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set query parameters in the upstream request URL. |
+| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add query parameters to the upstream request URL. |
+
+All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
+
+```hcl
+server "my_project" {
+  api {
+    endpoint "/" {
+      proxy {
+        backend = "example"
+      }
+    }
+  }
+}
+
+definitions {
+  backend "example" {
+    origin = "http://example.com"
+
+    remove_query_params = ["a", "b"]
+
+    set_query_params = {
+      string = "string"
+      multi = ["foo", "bar"]
+      "${request.headers.example}" = "yes"
+    }
+
+    add_query_params = {
+      noop = request.headers.noop
+      null = null
+      empty = ""
+    }
+  }
+}
+```
+
+### Form Parameter
+
+Couper offers three attributes to manipulate the form parameter. The form
+attributes can be defined unordered within the configuration file but will be
+executed ordered as follows:
+
+| Modifier              | Contexts                                                                                        | Description |
+|:----------------------|:------------------------------------------------------------------------------------------------|:------------|
+| `remove_form_params`  | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of form parameters to be removed from the upstream request body. |
+| `set_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set form parameters in the upstream request body. |
+| `add_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add form parameters to the upstream request body. |
+
+All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
+
+The `*_form_params` apply only to requests with the `POST` method and
+the `Content-Type: application/x-www-form-urlencoded` HTTP header field.
+
+```hcl
+server "my_project" {
+  api {
+    endpoint "/" {
+      proxy {
+        backend = "example"
+      }
+    }
+  }
+}
+
+definitions {
+  backend "example" {
+    origin = "http://example.com"
+
+    remove_form_params = ["a", "b"]
+
+    set_form_params = {
+      string = "string"
+      multi = ["foo", "bar"]
+      "${request.headers.example}" = "yes"
+    }
+
+    add_form_params = {
+      noop = request.headers.noop
+      null = null
+      empty = ""
+    }
+  }
+}
+```
+
+### Path Parameter
+
+An endpoint label could be defined as `endpoint "/app/{section}/{project}/view" { ... }`
+to access the named path parameter `section` and `project` via `request.path_params.*`.
+The values would map as following for the request path: `/app/nature/plant-a-tree/view`:
+
+| Variable                  | Value          |
+|:--------------------------|:---------------|
+| `request.path_params.section` | `nature`       |
+| `request.path_params.project` | `plant-a-tree` |
+
