@@ -450,6 +450,11 @@ since these references get evaluated at start.
 | `form_body.<name>`               | Parameter in a `application/x-www-form-urlencoded` body                                                                                                                                                                                                                             |
 | `json_body.<name>`               | Access json decoded object properties. Media type must be `application/json` or `application/*+json`.                                                                                                                                                                               |
 | `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
+| `url`                            | Request URL |
+| `origin`                         | Origin of the request URL |
+| `protocol`                       | The request protocol (`http` or `https`) |
+| `host`                           | Host of the request URL |
+| `port`                           | Port of the request URL |
 
 ### `backend_requests`
 

@@ -20,4 +20,8 @@ const (
 	PathParam        = "path_params"
 	Query            = "query"
 	URL              = "url"
+	Origin           = "origin"
+	Protocol         = "protocol"
+	Host             = "host"
+	Port             = "port"
 )
