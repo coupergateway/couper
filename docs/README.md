@@ -1,15 +1,11 @@
 * [Introduction](#introduction)
-  * [Architectural Overview](#architectural-overview)
-  * [Getting Started](#getting-started)
-  * [Configuration File](#configuration-file)
-  * [File Name](#file-name)
-    * [Basic file structure](#basic-file-structure)
-    * [Expressions](#expressions)
-    * [Variables](#variables)
-      * [env](#env)
-      * [request](#request)
-      * [backend_requests](#backend_requests)
-      * [backend_responses](#backend_responses)
+   * [Architectural Overview](#architectural-overview)
+   * [Getting Started](#getting-started)
+   * [Configuration File](#configuration-file)
+      * [File Name](#file-name)
+      * [Basic file structure](#basic-file-structure)
+      * [Expressions](#expressions)
+      * [Variables](#variables)
       * [Functions](#functions)
       
 # Introduction
@@ -29,7 +25,7 @@ Couper does not need any special development skills and offers easy configuratio
 |Backend Service|Your core application - no matter which technology, if monolithic or micro-services.|
 |Upstream API| Couper acts as an exit point to upstream services for your application. |
 |Remote Service|Any upstream service or system which is accessible via HTTP. |
-|Protected System| Representing a service or system that offers protected resources.|
+|Protected System| Representing a service or system that offers protected resources via HTTP.|
 
 ## Getting Started
 Couper is available as _docker image_ from [Dockerhub](https://hub.docker.com/r/avenga/couper).
@@ -134,61 +130,7 @@ The second evaluation will happen during the request/response handling.
 * `backend_requests` contains all modified backend requests
 * `backend_responses` contains all original backend responses
 
-#### `env`
 
-Environment variables can be accessed everywhere within the configuration file
-since these references get evaluated at start.
-
-#### `request` 
-
-| Variable                  | Description |
-|:--------------------------|:------------|
-| `id`                      | Unique request id |
-| `method`                  | HTTP method |
-| `path`                    | URL path |
-| `endpoint`                | Matched endpoint pattern |
-| `headers.<name>`          | HTTP request header value for requested lower-case key |
-| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
-| `query.<name>`            | Query parameter values (&#9888; last wins!) |
-| `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
-| `body`                    | The request message body |
-| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
-| `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
-| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](REFERENCE.md#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](REFERENCE.md#jwt-block) or [SAML Block's](REFERENCE.md#saml-block) label and `property_name` being the claim's or assertion information's name |
-
-#### `backend_requests`
-
-`backend_requests.<label>` is a list of all backend requests, and their variables.
-To access a specific request use the related label. [Request](REFERENCE.md#request-block) and
-[Proxy](REFERENCE.md#proxy-block) blocks without a label will be available as `default`.
-To access the HTTP method of the `default` request use `backend_requests.default.method` .
-
-| Variable                  | Description |
-|:--------------------------|:------------|
-| `id`                      | Unique request id |
-| `method`                  | HTTP method |
-| `path`                    | URL path |
-| `headers.<name>`          | HTTP request header value for requested lower-case key |
-| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
-| `query.<name>`            | Query parameter values (&#9888; last wins!) |
-| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
-| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](REFERENCE.md#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](REFERENCE.md#jwt-block) or [SAML Block's](REFERENCE.md#saml-block) label and `property_name` being the claim's or assertion information's name |
-| `url`                     | Backend origin URL |
-
-#### `backend_responses`
-
-`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
-Use the related label to access a specific response.
-[Request](REFERENCE.md#request-block) and [Proxy](REFERENCE.md#proxy-block) blocks without a label will be available as `default`.
-To access the HTTP status code of the `default` response use `backend_responses.default.status` .
-
-| Variable           | Description |
-|:-------------------|:------------|
-| `status`           | HTTP status code |
-| `headers.<name>`   | HTTP response header value for requested lower-case key |
-| `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
-| `body`             | The response message body |
-| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
 
 <!--
 #### Variable Example
@@ -212,29 +154,14 @@ server "variables-srv" {
 }
 ```
 -->
-See [variables reference](REFERENCE.md#variables).
+See [variables reference](./REFERENCE.md#variables).
 
 ### Functions
 
 Functions are little helper methods which are registered for every hcl evaluation
 context.
 
-| Name               | Description |
-|:-------------------|:------------|
-| `base64_decode`    | Decodes Base64 data, as specified in RFC 4648. |
-| `base64_encode`    | Encodes Base64 data, as specified in RFC 4648. |
-| `coalesce`         | Returns the first of the given arguments that is not null. |
-| `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
-| `json_encode`      | Returns a JSON serialization of the given value. |
-| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](REFERENCE.md#jwt-signing-profile-block) and additional claims provided as a function parameter. |
-| `merge`            | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
-| `saml_sso_url`     | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](REFERENCE.md#saml-block). |
-| `to_lower`         | Converts a given string to lowercase. |
-| `to_upper`         | Converts a given string to uppercase. |
-| `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
-| `url_encode`       | URL-encodes a given string according to RFC 3986. |
-
-See [functions reference](REFERENCE.md#functions).
+See [functions reference](./REFERENCE.md#functions).
 <!--
 #### Functions Examples
 
@@ -340,24 +267,6 @@ api "my_api" {
   }
 ```
 
-### Web serving configuration example
-
-```hcl
-server "my_project" {
-  files {
-    document_root = "./htdocs"
-    error_file = "./my_custom_error_page.html"
-  }
-
-  spa {
-    bootstrap_file = "./htdocs/index.html"
-    paths = [
-      "/app/**",
-      "/profile/**"
-    ]
-  }
-}
-```
 
 ### `access_control` configuration example
 

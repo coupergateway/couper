@@ -1,4 +1,36 @@
 
+ [Reference](#reference)
+   * [Block Reference](#block-reference)
+      * [Server Block](#server-block)
+      * [Files Block](#files-block)
+      * [SPA Block](#spa-block)
+      * [API Block](#api-block)
+      * [Endpoint Block](#endpoint-block)
+      * [Proxy Block](#proxy-block)
+      * [Request Block](#request-block)
+      * [Response Block](#response-block)
+      * [Backend Block](#backend-block)
+         * [Transport Settings Attributes](#transport-settings-attributes)
+         * [Timings](#timings)
+      * [OpenAPI Block](#openapi-block)
+      * [CORS Block](#cors-block)
+      * [OAuth2 Block](#oauth2-block)
+      * [Definitions Block](#definitions-block)
+      * [Basic Auth Block](#basic-auth-block)
+      * [JWT Block](#jwt-block)
+      * [JWT Signing Profile Block](#jwt-signing-profile-block)
+      * [SAML Block](#saml-block)
+      * [Settings Block](#settings-block)
+   * [Access Control](#access-control)
+   * [Health-Check](#health-check)
+   * [Modifier](#modifier)
+      * [Request Header](#request-header)
+      * [Response Header](#response-header)
+   * [Parameters](#parameters)
+      * [Query Parameter](#query-parameter)
+      * [Form Parameter](#form-parameter)
+      * [Path Parameter](#path-parameter)
+
 # Reference
 
 ## Block Reference 
@@ -391,6 +423,82 @@ time to pick another gateway instance. After this delay the server goes into
 shutdown mode with a deadline of `5s` and no new requests will be accepted.
 The shutdown timings defaults to `0` which means no delaying with development setups.
 Both durations can be configured via environment variable. Please refer to the [docker document](./../DOCKER.md).
+
+
+## Variables
+
+### `env`
+
+Environment variables can be accessed everywhere within the configuration file
+since these references get evaluated at start.
+
+### `request` 
+
+| Variable                  | Description |
+|:--------------------------|:------------|
+| `id`                      | Unique request id |
+| `method`                  | HTTP method |
+| `path`                    | URL path |
+| `endpoint`                | Matched endpoint pattern |
+| `headers.<name>`          | HTTP request header value for requested lower-case key |
+| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
+| `query.<name>`            | Query parameter values (&#9888; last wins!) |
+| `path_params.<name>`      | Value from a named path parameter defined within an endpoint path label |
+| `body`                    | The request message body |
+| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
+| `json_body.<name>`        | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
+| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
+
+### `backend_requests`
+
+`backend_requests.<label>` is a list of all backend requests, and their variables.
+To access a specific request use the related label. [Request](#request-block) and
+[Proxy](#proxy-block) blocks without a label will be available as `default`.
+To access the HTTP method of the `default` request use `backend_requests.default.method` .
+
+| Variable                  | Description |
+|:--------------------------|:------------|
+| `id`                      | Unique request id |
+| `method`                  | HTTP method |
+| `path`                    | URL path |
+| `headers.<name>`          | HTTP request header value for requested lower-case key |
+| `cookies.<name>`          | Value from `Cookie` request header for requested key (&#9888; last wins!) |
+| `query.<name>`            | Query parameter values (&#9888; last wins!) |
+| `form_body.<name>`        | Parameter in a `application/x-www-form-urlencoded` body |
+| `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
+| `url`                     | Backend origin URL |
+
+### `backend_responses`
+
+`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
+Use the related label to access a specific response.
+[Request](#request-block) and [Proxy](#proxy-block) blocks without a label will be available as `default`.
+To access the HTTP status code of the `default` response use `backend_responses.default.status` .
+
+| Variable           | Description |
+|:-------------------|:------------|
+| `status`           | HTTP status code |
+| `headers.<name>`   | HTTP response header value for requested lower-case key |
+| `cookies.<name>`   | Value from `Set-Cookie` response header for requested key (&#9888; last wins!) |
+| `body`             | The response message body |
+| `json_body.<name>` | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. |
+
+## Functions
+
+| Name               | Description |
+|:-------------------|:------------|
+| `base64_decode`    | Decodes Base64 data, as specified in RFC 4648. |
+| `base64_encode`    | Encodes Base64 data, as specified in RFC 4648. |
+| `coalesce`         | Returns the first of the given arguments that is not null. |
+| `json_decode`      | Parses the given JSON string and, if it is valid, returns the value it represents. |
+| `json_encode`      | Returns a JSON serialization of the given value. |
+| `jwt_sign`         | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter. |
+| `merge`            | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
+| `saml_sso_url`     | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block). |
+| `to_lower`         | Converts a given string to lowercase. |
+| `to_upper`         | Converts a given string to uppercase. |
+| `unixtime`         | Retrieves the current UNIX timestamp in seconds. |
+| `url_encode`       | URL-encodes a given string according to RFC 3986. |
 
 ## Modifier
 
