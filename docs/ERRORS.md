@@ -29,7 +29,7 @@ For this purpose every access control definition of `basic_auth`, `jwt` or `saml
 The error handler label specifies which [error type](#error-types)
 should be handled. Multiple labels are allowed. The label can be omitted to catch all errors which are related to this access control definition. This has the same behavior as the error type `*`, that catches all errors explicitly.
 
-This handler behaves like an [endpoint](README.md#endpoint-block). It can have the same attributes **except** the following:
+This handler behaves like an [endpoint](REFERENCE.md#endpoint-block). It can have the same attributes **except** the following:
 
 * `access_control`
 * `disable_access_control`

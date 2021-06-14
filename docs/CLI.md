@@ -1,3 +1,7 @@
+
+* [Command Line Interface](#command-line-interface)
+    * [Global Options](#global-options)
+    
 # Command Line Interface
 
 Couper is build as binary called `couper` with the following commands:
@@ -5,7 +9,7 @@ Couper is build as binary called `couper` with the following commands:
 | Command   | Description                                       |
 |:----------|:--------------------------------------------------|
 | `run`     | Start the server with given configuration file.   |
-|           | *Note*: `run` options can also be configured with [settings](#settings-block) or related [environment variables](./../DOCKER.md).
+|           | *Note*: `run` options can also be configured with [settings](REFERENCE.md#settings-block) or related [environment variables](./../DOCKER.md).
 | `help`    | Print the usage for the given command: `help run` |
 | `version` | Print the current version and build information.  |
 
@@ -20,6 +24,6 @@ Couper is build as binary called `couper` with the following commands:
 | `-log-format`  | `common` | `COUPER_LOG_FORMAT` | Can be set to `json` output format. |
 | `-log-pretty`  | `false` | `COUPER_LOG_PRETTY`  | Option for `json` log format which pretty prints with basic key coloring. |
 
-*Note*: `log-format` and `log-pretty` also maps to [settings](#settings-block).
+*Note*: `log-format` and `log-pretty` also maps to [settings](REFERENCE.md#settings-block).
 
 

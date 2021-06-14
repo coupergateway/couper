@@ -1,35 +1,41 @@
 
- [Reference](#reference)
-   * [Block Reference](#block-reference)
-      * [Server Block](#server-block)
-      * [Files Block](#files-block)
-      * [SPA Block](#spa-block)
-      * [API Block](#api-block)
-      * [Endpoint Block](#endpoint-block)
-      * [Proxy Block](#proxy-block)
-      * [Request Block](#request-block)
-      * [Response Block](#response-block)
-      * [Backend Block](#backend-block)
-         * [Transport Settings Attributes](#transport-settings-attributes)
-         * [Timings](#timings)
-      * [OpenAPI Block](#openapi-block)
-      * [CORS Block](#cors-block)
-      * [OAuth2 Block](#oauth2-block)
-      * [Definitions Block](#definitions-block)
-      * [Basic Auth Block](#basic-auth-block)
-      * [JWT Block](#jwt-block)
-      * [JWT Signing Profile Block](#jwt-signing-profile-block)
-      * [SAML Block](#saml-block)
-      * [Settings Block](#settings-block)
-   * [Access Control](#access-control)
-   * [Health-Check](#health-check)
-   * [Modifier](#modifier)
-      * [Request Header](#request-header)
-      * [Response Header](#response-header)
-   * [Parameters](#parameters)
-      * [Query Parameter](#query-parameter)
-      * [Form Parameter](#form-parameter)
-      * [Path Parameter](#path-parameter)
+* [Reference](#reference)
+     * [Block Reference](#block-reference)
+          * [Server Block](#server-block)
+          * [Files Block](#files-block)
+          * [SPA Block](#spa-block)
+          * [API Block](#api-block)
+          * [Endpoint Block](#endpoint-block)
+          * [Proxy Block](#proxy-block)
+          * [Request Block](#request-block)
+          * [Response Block](#response-block)
+          * [Backend Block](#backend-block)
+               * [Transport Settings Attributes](#transport-settings-attributes)
+               * [Timings](#timings)
+          * [OpenAPI Block](#openapi-block)
+          * [CORS Block](#cors-block)
+          * [OAuth2 Block](#oauth2-block)
+          * [Definitions Block](#definitions-block)
+          * [Basic Auth Block](#basic-auth-block)
+          * [JWT Block](#jwt-block)
+          * [JWT Signing Profile Block](#jwt-signing-profile-block)
+          * [SAML Block](#saml-block)
+          * [Settings Block](#settings-block)
+     * [Access Control](#access-control)
+     * [Health-Check](#health-check)
+     * [Variables](#variables)
+          * [env](#env)
+          * [request](#request)
+          * [backend_requests](#backend_requests)
+          * [backend_responses](#backend_responses)
+     * [Functions](#functions)
+     * [Modifier](#modifier)
+          * [Request Header](#request-header)
+          * [Response Header](#response-header)
+     * [Parameters](#parameters)
+         * [Query Parameter](#query-parameter)
+         * [Form Parameter](#form-parameter)
+         * [Path Parameter](#path-parameter)
 
 # Reference
 
@@ -140,10 +146,10 @@ The `proxy` block creates and executes a proxy request to a backend service.
 | *context*                                           | [Endpoint Block](#endpoint-block). |
 | *label*                                             | <ul><li>Partly optional.</li><li>A `Proxy Block` or [Request Block](#request-block) w/o a label has an implicit label `"default"`.</li><li>Only **one** `Proxy Block` or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.</li></ul> |
 | **Nested blocks**                                   | **Description** |
-| [Backend Block](#backend-block)                     | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block-reference) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul> |
+| [Backend Block](#backend-block)                     | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul> |
 | **Attributes**                                      | **Description** |
-| [Backend Block Reference](#backend-block-reference) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
-| `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
+| [Backend Block Reference](#backend-block) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
+| `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).</li></ul> |
 | [Modifier](#modifier)                               | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul> |
 
 ### Request Block
@@ -157,10 +163,10 @@ The `request` block creates and executes a request to a backend service.
 | *context*                                           | [Endpoint Block](#endpoint-block). |
 | *label*                                             | <ul><li>Partly optional.</li><li>A [Proxy Block](#proxy-block) or `Request Block` w/o a label has an implicit label `"default"`.</li><li>Only **one** [Proxy Block](#proxy-block) or `Request Block` w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.</li></ul> |
 | **Nested blocks**                                   | **Description** |
-| [Backend Block](#backend-block)                     | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block-reference) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul> |
+| [Backend Block](#backend-block)                     | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul> |
 | **Attributes**                                      | **Description** |
-| [Backend Block Reference](#backend-block-reference) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
-| `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block-reference) (if defined).</li></ul> |
+| [Backend Block Reference](#backend-block) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul> |
+| `url`                                               | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).</li></ul> |
 | `body`                                              | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul> |
 | `json_body`                                         | <ul><li>null, Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul> |
 | `form_body`                                         | <ul><li>Object.</li><li>Optional. Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.</li></ul> |
@@ -272,7 +278,7 @@ The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in C
 | **Nested blocks**               | **Description** |
 | [Backend Block](#backend-block) | Optional. |
 | **Attributes**                  | **Description** |
-| `backend`                       | <ul><li>Optional.</li><li>[Backend Block Reference](#backend-block-reference).</li></ul> |
+| `backend`                       | <ul><li>Optional.</li><li>[Backend Block Reference](#backend-block).</li></ul> |
 | `grant_type`                    | <ul><li>&#9888; Mandatory.</li><li>Available values: `client_credentials`.</li></ul> |
 | `token_endpoint`                | <ul><li>&#9888; Mandatory.</li><li>URL of the token endpoint at the authorization server.</li></ul> |
 | `client_id`                     | <ul><li>&#9888; Mandatory.</li><li>The client identifier.</li></ul> |
@@ -515,9 +521,9 @@ executed ordered as follows:
 
 | Modifier                 | Contexts                                                                                        | Description |
 |:-------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of request header to be removed from the upstream request. |
-| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set request header in the upstream request. |
-| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add request header to the upstream request. |
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of request header to be removed from the upstream request. |
+| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set request header in the upstream request. |
+| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add request header to the upstream request. |
 
 All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -529,9 +535,9 @@ executed ordered as follows:
 
 | Modifier                  | Contexts                                                                                        | Description |
 |:--------------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of response header to be removed from the client response. |
-| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set response header in the client response. |
-| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add response header to the client response. |
+| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of response header to be removed from the client response. |
+| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add response header to the client response. |
 
 All `*_response_headers` are executed from: `server`, `files`, `spa`, `api`, `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -545,9 +551,9 @@ executed ordered as follows:
 
 | Modifier              | Contexts                                                                                        | Description |
 |:----------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of query parameters to be removed from the upstream request URL. |
-| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set query parameters in the upstream request URL. |
-| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add query parameters to the upstream request URL. |
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of query parameters to be removed from the upstream request URL. |
+| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set query parameters in the upstream request URL. |
+| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add query parameters to the upstream request URL. |
 
 All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -591,9 +597,9 @@ executed ordered as follows:
 
 | Modifier              | Contexts                                                                                        | Description |
 |:----------------------|:------------------------------------------------------------------------------------------------|:------------|
-| `remove_form_params`  | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | List of form parameters to be removed from the upstream request body. |
-| `set_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to set form parameters in the upstream request body. |
-| `add_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler) | Key/value(s) pairs to add form parameters to the upstream request body. |
+| `remove_form_params`  | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of form parameters to be removed from the upstream request body. |
+| `set_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set form parameters in the upstream request body. |
+| `add_form_params`     | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add form parameters to the upstream request body. |
 
 All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
