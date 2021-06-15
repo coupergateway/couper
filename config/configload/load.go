@@ -17,6 +17,7 @@ import (
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
@@ -217,6 +218,13 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 
 	// Prepare dynamic functions
+	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
+		key, err := reader.ReadFromAttrFile("jwt key", profile.Key, profile.KeyFile)
+		if err != nil {
+			return nil, errors.Configuration.Label(profile.Name).With(err)
+		}
+		profile.KeyBytes = key
+	}
 	couperConfig.Context = evalContext.
 		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
 		WithSAML(couperConfig.Definitions.SAML)

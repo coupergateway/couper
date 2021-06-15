@@ -13,7 +13,6 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/validate"
 	"github.com/avenga/couper/errors"
 )
 
@@ -51,8 +50,7 @@ type JWTOptions struct {
 	ClaimsRequired []string
 	Name           string // TODO: more generic (validate)
 	Source         JWTSource
-	Key            string
-	KeyFile        string
+	Key            []byte
 }
 
 func NewJWTSource(cookie, header string) JWTSource {
@@ -87,11 +85,6 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		source:         options.Source,
 	}
 
-	key, err := validate.LoadJWTKey(options.Algorithm, options.Key, options.KeyFile)
-	if err != nil {
-		return nil, confErr.With(err)
-	}
-
 	if jwtAC.source.Type == Invalid {
 		return nil, confErr.Message("token source is invalid")
 	}
@@ -107,11 +100,11 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 	jwtAC.parser = parser
 
 	if jwtAC.algorithm.IsHMAC() {
-		jwtAC.hmacSecret = key
+		jwtAC.hmacSecret = options.Key
 		return jwtAC, nil
 	}
 
-	pubKey, err := parsePublicPEMKey(key)
+	pubKey, err := parsePublicPEMKey(options.Key)
 	if err != nil {
 		return nil, confErr.With(err)
 	}
@@ -268,8 +261,8 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 	}
 	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
 	if pubErr != nil {
-		pkixKey, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
-		if err != nil {
+		pkixKey, pkerr := x509.ParsePKIXPublicKey(pemBlock.Bytes)
+		if pkerr != nil {
 			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
 			if cerr != nil {
 				return nil, jwt.ErrNotRSAPublicKey
