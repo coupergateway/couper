@@ -154,6 +154,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			values[k] = toSlice(v)
 		}
 
@@ -168,6 +171,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			list := toSlice(v)
 			if _, ok = values[k]; !ok {
 				values[k] = list
@@ -232,6 +238,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			values[k] = toSlice(v)
 		}
 	}
@@ -243,6 +252,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			list := toSlice(v)
 			if _, okAdd = values[k]; !okAdd {
 				values[k] = list
