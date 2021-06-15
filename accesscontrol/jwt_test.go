@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -27,6 +28,7 @@ func Test_JWT_NewJWT_RSA(t *testing.T) {
 		claims         map[string]interface{}
 		claimsRequired []string
 		pubKey         []byte
+		pubKeyPath     string
 	}
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -75,6 +77,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			wantErr string
 		}{
 			{"missing key", fields{}, "configuration error: jwt key: read error: empty attribute"},
+			{"missing key-file", fields{pubKeyPath: "./not-there.file"}, "not-there.file: no such file or directory"},
 			{"PKIX", fields{
 				algorithm: alg,
 				pubKey:    pubKeyBytesPKIX,
@@ -95,10 +98,10 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v / %s", signingMethod, tt.name), func(subT *testing.T) {
-				key, rerr := reader.ReadFromAttrFile("jwt key", string(tt.fields.pubKey), "")
+				key, rerr := reader.ReadFromAttrFile("jwt key", string(tt.fields.pubKey), tt.fields.pubKeyPath)
 				if rerr != nil {
 					logErr := rerr.(errors.GoError)
-					if tt.wantErr != "" && tt.wantErr != logErr.LogError() {
+					if tt.wantErr != "" && !strings.HasSuffix(logErr.LogError(), tt.wantErr) {
 						subT.Errorf("\nWant:\t%q\nGot:\t%q", tt.wantErr, logErr.LogError())
 					} else if tt.wantErr == "" {
 						subT.Fatal(logErr.LogError())

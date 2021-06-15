@@ -529,47 +529,6 @@ func TestJwtSignError(t *testing.T) {
 			`{"sub":"12345"}`,
 			"missing jwt_signing_profile for given label: NoProfileForThisLabel",
 		},
-		//{
-		//	"Missing file for key_file",
-		//	`
-		//	server "test" {
-		//	}
-		//	definitions {
-		//		jwt_signing_profile "MyToken" {
-		//			signature_algorithm = "HS256"
-		//			key_file = "not_there.txt"
-		//			ttl = "0"
-		//			claims = {
-		//			  iss = to_lower("The_Issuer")
-		//			  aud = to_upper("The_Audience")
-		//			}
-		//		}
-		//	}
-		//	`,
-		//	"MyToken",
-		//	`{"sub":"12345"}`,
-		//	"no such file or directory",
-		//},
-		//{
-		//	"Missing key and key_file",
-		//	`
-		//	server "test" {
-		//	}
-		//	definitions {
-		//		jwt_signing_profile "MyToken" {
-		//			signature_algorithm = "HS256"
-		//			ttl = "0"
-		//			claims = {
-		//			  iss = to_lower("The_Issuer")
-		//			  aud = to_upper("The_Audience")
-		//			}
-		//		}
-		//	}
-		//	`,
-		//	"MyToken",
-		//	`{"sub":"12345"}`,
-		//	"either key_file or key must be specified",
-		//},
 		{
 			"Invalid ttl value",
 			`
