@@ -2,13 +2,20 @@
    * [Architectural Overview](#architectural-overview)
    * [Getting Started](#getting-started)
    * [Configuration File](#configuration-file)
+      * [IDE Extension](#ide-extension)
       * [File Name](#file-name)
-      * [Basic file structure](#basic-file-structure)
+      * [Basic File Structure](#basic-file-structure)
       * [Expressions](#expressions)
-      * [Variables](#variables)
-      * [Functions](#functions)
-      
+         * [Variables](#variables)
+      * [Examples](#examples)
+         * [File &amp; Web Serving](#file--web-serving)
+         * [Exposing APIs](#exposing-apis)
+         * [Access Control](#access-control)
+         * [Routing: Path Mapping](#routing-path-mapping)
+         * [Using Variables](#using-variables)
+
 # Introduction
+
 Couper is a lightweight open-source API gateway that acts as an entry point for clients to your application (frontend API gateway) and an exit point to upstream services (upstream API gateway).
 
 It exposes endpoints with use cases and adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
@@ -16,6 +23,7 @@ It exposes endpoints with use cases and adds access control, observability, and 
 Couper does not need any special development skills and offers easy configuration and integration.
 
 ## Architectural Overview
+
 ![architecture](./architecture.png)
 
 | Entity  | Description |
@@ -28,85 +36,130 @@ Couper does not need any special development skills and offers easy configuratio
 |Protected System| Representing a service or system that offers protected resources via HTTP.|
 
 ## Getting Started
-Couper is available as _docker image_ from [Dockerhub](https://hub.docker.com/r/avenga/couper).
 
-You can install Couper from [Docker](https://www.docker.com/) or [Kubernetes](http://kubernetes.io/).
+Couper is available as _docker
+image_ from [Docker Hub](https://hub.docker.com/r/avenga/couper)
 
-Check out the [example repository](https://github.com/avenga/couper-examples) to explore Couper’s features with small, ready-to-use examples. Every example comes with a short introduction and guides you step by step through the configuration.
+Running Couper requires a working [Docker](https://www.docker.com/) setup on your
+computer. Please visit the [get started guide](https://docs.docker.com/get-started/) to get prepared.
 
-Here's the link to Couper's [Configuration Reference](REFERENCE.md)
+To download/install Couper, open a terminal and execute:
 
+```sh
+$ docker pull avenga/couper
+```
+A good start to try out Couper is the Couper [example repository](). It comes with small, ready-to-use examples that highlight Couper's features.
+
+
+To run the examples, clone the repository:
+```sh
+$ git clone https://github.com/avenga/couper-examples.git
+
+Cloning into 'couper-examples'...
+```
+`cd` into the directory:
+```sh
+$ cd couper-examples
+```
+Choose an example and `cd` into the directory:
+```sh
+$ cd /simple-fileserving
+````
+
+Then start Couper in a docker
+container: 
+
+```sh
+$ docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper
+
+{"addr":"0.0.0.0:8080","level":"info","message":"couper gateway is serving","timestamp":"2020-08-27T16:39:18Z","type":"couper"}
+```
+If the example contains a `docker-compose.yml` you can also run: 
+```sh
+$ docker-compose up
+```
+as an alternative.
+
+Now Couper is serving on your computer's port *8080*. Point your
+browser or `curl` to [`localhost:8080`](http://localhost:8080/) to see what's going on.
+
+Press `CTRL+c` to stop the container.
+
+> Git Bash users on Windows may encounter the error message `Failed to load configuration: open couper.hcl: no such file or directory`. Try if disabling Windows path conversion helps:
+> ```sh
+> $ export MSYS_NO_PATHCONV=1
+> ```
 
 ## Configuration File
 The language for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
 
+### IDE Extension
+Couper provides its own IDE extension that adds Couper-specific highlighting and autocompletion to Couper's configuration file `couper.hcl` in Visual Studio Code.
+
+Get it from the [Visual Studio Market Place](https://marketplace.visualstudio.com/items?itemName=AvengaGermanyGmbH.couper) or visit the [Extension repository](https://github.com/avenga/couper-vscode).
+
+
 ### File Name
 
-The file-ending of your configuration file should be .hcl to have syntax highlighting
-within your IDE.
+The file-ending of your configuration file should be `.hcl` to have syntax highlighting within your IDE.
 
-The file name defaults to `couper.hcl` in your working directory. This can be
-changed with the `-f` command-line flag. With `-f /opt/couper/my_conf.hcl` couper
-changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
+The file name defaults to `couper.hcl` in your working directory. This can be changed with the `-f` command-line flag. With `-f /opt/couper/my_conf.hcl` couper changes the working directory to `/opt/couper` and loads `my_conf.hcl`.
 
-### Basic file structure
+### Basic File Structure
 
 Couper's configuration file consists of nested configuration blocks that configure
-Web serving and routing of the gateway. Access control is controlled by an
-[Access Control](./REFERENCE.md#access-control) attribute that can be set for many blocks.
-
-For orientation compare the following example and the information below:
+the gateway. There are a large number of options, but let's focus on the main structure first:
 
 ```hcl
 server "my_project" {
   files { 
-    # ...
+    ...
   }
 
   spa {
-    # ...
+    ...
   }
 
   api {
     access_control = ["foo"]
     endpoint "/bar" {
       proxy {
-        backend { }
+        backend {...}
       }
       request "sub-request" {
-        backend { }
+        backend {...}
       }
-      response { }
+      response {...}
     }
   }
 }
 
 definitions {
-  # ...
+  ...
 }
 
 settings {
-  # ...
+  ...
 }
 ```
 
 * `server` main configuration block(s)
   * `files` configuration block for file serving
   * `spa` configuration block for Web serving (SPA assets)
-  * `api` configuration block(s) that bundles endpoints under a certain base path or `access_control` list
+  * `api` configuration block(s) that bundle(s) endpoints under a certain base path or `access_control` list
   * `access_control` attribute that sets access control for a block context
   * `endpoint` configuration block for Couper's entry points
     * `proxy` configuration block for a proxy request and response to an origin
+      * `backend` configuration block for connection to local/remote backend service(s)
     * `request` configuration block for a manual request to an origin
+      * `backend` configuration block for connection to local/remote backend service(s)
     * `response` configuration block for a manual client response
-    * `backend` configuration block for connection to local/remote backend service(s)
 * `definitions` block for predefined configurations, that can be referenced
 * `settings` block for server configuration which applies to the running instance
 
 ### Expressions
 
-Since we use [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax) for our configuration, we are able to use attribute values as
-expression:
+Since we use [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax) for our configuration, we are able to use attribute values as expression.
 
 ```hcl
 // Arithmetic with literals and application-provided variables
@@ -118,8 +171,9 @@ message = "Hello, ${name}!"
 // Application-provided functions
 shouty_message = upper(message)
 ```
+See [function reference](./REFERENCE.md#functions).
 
-### Variables
+#### Variables
 
 The configuration file allows the use of some predefined variables. There are two phases when those variables get evaluated.
 The first phase is at config load which is currently related to `env` and simple **function** usage.
@@ -130,10 +184,118 @@ The second evaluation will happen during the request/response handling.
 * `backend_requests` contains all modified backend requests
 * `backend_responses` contains all original backend responses
 
+See [variables reference](./REFERENCE.md#variables) for details.
 
+### Examples
 
-<!--
-#### Variable Example
+#### File & Web Serving 
+Couper contains a Web server for simple file serving and also takes care of the more complex web serving of SPA assets.
+
+```hcl
+server "example" {
+
+  files {
+    document_root = "htdocs"
+  }
+
+  spa {
+    bootstrap_file = "htdocs/index.html"
+    paths = ["/**"]
+  }
+}
+```
+The `files` block configures Couper's file server. It needs to know which directory to serve (`document_root`).
+
+The `spa` block is responsible for serving the bootstrap document for all paths that match the paths list.
+
+#### Exposing APIs
+
+Couper's main concept is exposing APIs via the configuration block `endpoint`, fetching data from upstream or remote services, represented by the configuration block `backend`.
+
+```hcl
+server "example"{
+
+  endpoint "/public/**"{
+    path = "/**"
+  
+    proxy {
+      backend {
+        origin = "https://httpbin.org"
+      }
+    }
+  }
+}
+```
+This basic configuration defines an upstream backend service (`https://httpbin.org`) and "mounts" it on the local API endpoint `/public/**`.
+
+#### Access Control
+Access control is controlled by an
+[Access Control](./REFERENCE.md#access-control) attribute that can be set for many blocks.
+
+```hcl
+server "example" {
+
+  endpoint "/private/**" {
+    access_control = ["accessToken"]
+    path = "/**"
+
+    proxy {
+      backend {
+        origin = "https://httpbin.org"
+      }
+    }
+  }
+    
+  definitions {
+    jwt "accessToken" {
+      signature_algorithm = "RS256"
+      key_file = "keys/public.pem"
+      header = "Authorization"
+    }
+  }
+}
+```
+This configuration protects the endpoint `/private/**` with the access control `"accessToken"` configured in the `definitions` block. 
+
+#### Routing: Path Mapping
+
+```hcl
+api "my_api" {
+  base_path = "/api/v1"
+  
+  endpoint "/login/**" {
+ 
+    proxy {
+      backend {
+        origin = "http://identityprovider:8080"
+      }
+    }
+  }
+
+  endpoint "/cart/**" {
+     
+      path = "/api/v1/**"
+      proxy {
+        url = "http://cartservice:8080"
+      }
+
+  endpoint "/account/{id}" {
+    proxy {
+      backend {
+        path = "/user/${request.param.id}/info"
+        origin = "http://accountservice:8080"
+        }
+    }
+  }
+}
+```
+| Incoming request   | Outgoing request |
+|:--------------------------|:------------|
+|/api/v1/login/foo|http://identityprovider:8080/login/foo|
+|/api/v1/cart/items|http://cartservice:8080/api/v1/items|
+|/api/v1/account/brenda|http://accountservice:8080/user/brenda/info|
+
+#### Using Variables
 
 An example to send an additional header with client request header to a configured
 backend and gets evaluated on per-request basis:
@@ -152,145 +314,7 @@ server "variables-srv" {
     }
   }
 }
-```
--->
-See [variables reference](./REFERENCE.md#variables).
-
-### Functions
-
-Functions are little helper methods which are registered for every hcl evaluation
-context.
-
-See [functions reference](./REFERENCE.md#functions).
-<!--
-#### Functions Examples
-
-```hcl
-my_attribute = base64_decode("aGVsbG8gd29ybGQK")
-
-iat = unixtime()
-
-my_json = json_encode({
-  value-a: backend_responses.default.json_body.origin
-  value-b: ["item1", "item2"]
-})
-
-x = merge({"k1": 1}, null, {"k2": 2})          // -> {"k1": 1, "k2": 2}        merge object attributes
-x = merge({"k": [1]}, {"k": [2]})              // -> {"k": [1, 2]}             merge tuple values
-x = merge({"k": {"k1": 1}}, {"k": {"k2": 2}})  // -> {"k": {"k1": 1, "k2": 2}} merge object attributes
-x = merge({"k": [1]}, {"k": null}, {"k": [2]}) // -> {"k": [2]}                remove value and set new value
-x = merge({"k": [1]}, {"k": 2})                // -> {"k": 2}                  set new value
-x = merge([1], null, [2, "3"], [true, false])  // -> [1, 2, "3", true, false]  merge tuple values
-
-x = merge({"k1": 1}, 2)                        // -> error: cannot mix object with primitive value
-x = merge({"k1": 1}, [2])                      // -> error: cannot mix object with tuple
-x = merge([1], 2)                              // -> error: cannot mix tuple with primitive value
-
-token = jwt_sign("MyJwt", {"sub": "abc12345"})
-
-url = saml_sso_url("MySaml")
-
-definitions {
-  jwt_signing_profile "MyJwt" {
-    signature_algorithm = "RS256"
-    key_file = "priv_key.pem"
-    ttl = "1h"
-    claims = {
-      iss = "The_Issuer"
-    }
-  }
-  saml "MySaml" {
-    idp_metadata_file = "idp-metadata.xml"
-    sp_acs_url = "https://the-sp.com/api/saml/acs"
-    sp_entity_id = "the-sp-entity-id"
-    array_attributes = ["memberOf"]
-  }
-}
-```
--->
-<!--## Configuration examples
-
-See the official Couper's examples and tutorials
-[repository](https://github.com/avenga/couper-examples), too.
-
-### Request routing example
-
-![routing_example](./routing_example.png)
-
-| No. | Configuration source                              |
-|:----|:--------------------------------------------------|
-| 1   | `hosts` attribute in `server` block               |
-| 2   | `base_path` attribute in `api` block              |
-| 3   | *label* of `endpoint` block                       |
-| 4   | `origin` attribute in `backend` block             |
-| 5   | `path_prefix` attribute in `backend`              |
-| 6   | `path` attribute in `endpoint` or `backend` block |
-
-### Routing configuration example
-
-```hcl
-api "my_api" {
-  base_path = "/api/novoconnect"
-
-  endpoint "/login/**" {
-    # incoming request: .../login/foo
-    # implicit proxy
-    # outgoing request: http://identityprovider:8080/login/foo
-    proxy {
-      backend {
-        origin = "http://identityprovider:8080"
-      }
-    }
-  }
-
-  endpoint "/cart/**" {
-      # incoming request: .../cart/items
-      # outgoing request: http://cartservice:8080/api/v1/items
-      path = "/api/v1/**"
-      proxy {
-        backend {
-          origin = "http://cartservice:8080"
-        }
-      }
-
-      endpoint "/account/{id}" {
-        # incoming request: .../account/brenda
-        # outgoing request: http://accountservice:8080/user/brenda/info
-        proxy {
-          backend {
-            path = "/user/${request.param.id}/info"
-            origin = "http://accountservice:8080"
-          }
-        }
-      }
-    }
-  }
-```
-
-
-### `access_control` configuration example
-
-```hcl
-server "ac-example" {
-  access_control = ["ac1"]
-  files {
-    access_control = ["ac2"]
-  }
-
-  spa {
-    bootstrap_file = "myapp.html"
-  }
-
-  api {
-    access_control = ["ac3"]
-    endpoint "/foo" {
-      disable_access_control = ["ac3"]
-    }
-    endpoint "/bar" {
-      access_control = ["ac4"]
-    }
-  }
-}
+<<<<<<< HEAD
 
 definitions {
   basic_auth "ac1" { }
@@ -320,3 +344,6 @@ The example configuration above makes Couper listen to port `:9090`, `:8081` and
 In a second step Couper compares the host-header information with the configuration.
 In case of mismatch a system error occurs (HTML error, status 500).
 -->
+=======
+```
+>>>>>>> c9a040c (update)
