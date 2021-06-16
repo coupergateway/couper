@@ -111,7 +111,15 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		pathParams = params
 	}
 
-	port, _ := strconv.ParseInt(req.URL.Port(), 10, 64)
+	p := req.URL.Port()
+	if p == "" {
+		if req.URL.Scheme == "https" {
+			p = "443"
+		} else {
+			p = "80"
+		}
+	}
+	port, _ := strconv.ParseInt(p, 10, 64)
 	body, jsonBody := parseReqBody(req)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
