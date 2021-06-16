@@ -8,10 +8,10 @@
       * [Expressions](#expressions)
          * [Variables](#variables)
       * [Examples](#examples)
-         * [File &amp; Web Serving](#file--web-serving)
+         * [File &amp; Web Serving](#file-&-web-serving)
          * [Exposing APIs](#exposing-apis)
          * [Access Control](#access-control)
-         * [Routing: Path Mapping](#routing-path-mapping)
+         * [Routing: Path Mapping](#routing:-path-mapping)
          * [Using Variables](#using-variables)
 
 # Introduction
@@ -48,47 +48,35 @@ To download/install Couper, open a terminal and execute:
 ```sh
 $ docker pull avenga/couper
 ```
-A good start to try out Couper is the Couper [example repository](). It comes with small, ready-to-use examples that highlight Couper's features.
 
+Couper needs a configuration file to know what to do. 
 
-To run the examples, clone the repository:
-```sh
-$ git clone https://github.com/avenga/couper-examples.git
+Create a directory with an empty `couper.hcl` file. 
 
-Cloning into 'couper-examples'...
+Copy/paste the following configuration to the file and save it. 
+
+```hcl
+server "hello" {
+	endpoint "/**" {
+        response {
+            json_body = {
+                message = "Hello World!"   
+            }
+        }
+    }
+}
 ```
-`cd` into the directory:
-```sh
-$ cd couper-examples
-```
-Choose an example and `cd` into the directory:
-```sh
-$ cd /simple-fileserving
-````
-
-Then start Couper in a docker
-container: 
+Now `cd` into the directory with the configuration file and start Couper in a docker container:
 
 ```sh
 $ docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper
 
 {"addr":"0.0.0.0:8080","level":"info","message":"couper gateway is serving","timestamp":"2020-08-27T16:39:18Z","type":"couper"}
 ```
-If the example contains a `docker-compose.yml` you can also run: 
-```sh
-$ docker-compose up
-```
-as an alternative.
-
 Now Couper is serving on your computer's port *8080*. Point your
 browser or `curl` to [`localhost:8080`](http://localhost:8080/) to see what's going on.
 
 Press `CTRL+c` to stop the container.
-
-> Git Bash users on Windows may encounter the error message `Failed to load configuration: open couper.hcl: no such file or directory`. Try if disabling Windows path conversion helps:
-> ```sh
-> $ export MSYS_NO_PATHCONV=1
-> ```
 
 ## Configuration File
 The language for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
@@ -226,9 +214,11 @@ server "example"{
   }
 }
 ```
-This basic configuration defines an upstream backend service (`https://httpbin.org`) and "mounts" it on the local API endpoint `/public/**`.
+This basic configuration defines an upstream backend service (`https://httpbin.org`) and "mounts" it on the local API endpoint `/public/**`. 
 
-#### Access Control
+An incoming request `/public/foo` will result in an outgoing request `https://httpbin.org/foo`.
+
+#### Securing APIs
 Access control is controlled by an
 [Access Control](./REFERENCE.md#access-control) attribute that can be set for many blocks.
 
@@ -258,7 +248,6 @@ server "example" {
 This configuration protects the endpoint `/private/**` with the access control `"accessToken"` configured in the `definitions` block. 
 
 #### Routing: Path Mapping
-
 ```hcl
 api "my_api" {
   base_path = "/api/v1"
@@ -295,7 +284,7 @@ api "my_api" {
 |/api/v1/cart/items|http://cartservice:8080/api/v1/items|
 |/api/v1/account/brenda|http://accountservice:8080/user/brenda/info|
 
-#### Using Variables
+#### Using Variables & Expressions
 
 An example to send an additional header with client request header to a configured
 backend and gets evaluated on per-request basis:
@@ -306,44 +295,15 @@ server "variables-srv" {
     proxy {
       backend "my_backend_definition" {
         set_request_headers = {
-          x-env-user = env.USER
-          user-agent = "myproxyClient/${request.headers.app-version}"
+          # simple variable lookup
           x-uuid = request.id
+          # template string
+          user-agent = "myproxyClient/${request.headers.app-version}"
+          # expressions and function calls
+          x-env-user = env.USER != "" ? upper(env.USER) : "UNKNOWN"
         }
       }
     }
   }
 }
-<<<<<<< HEAD
-
-definitions {
-  basic_auth "ac1" { }
-  jwt "ac2" { }
-  jwt "ac3" { }
-  jwt "ac4" { }
-}
 ```
-
-The following table shows which `access_control` is set for which context:
-
-| context          | `ac1` | `ac2` | `ac3` | `ac4` |
-|------------------|:-----:|:-----:|:-----:|:-----:|
-| `files`          | x     | x     |       |       |
-| `spa`            | x     |       |       |       |
-| `endpoint "foo"` | x     |       |       |       |
-| `endpoint "bar"` | x     |       | x     | x     |
-
-### `hosts` configuration example
-
-Example configuration: `hosts = [ "localhost:9090", "api-stage.wao.io", "api.wao.io", "*:8081" ]`
-
-The example configuration above makes Couper listen to port `:9090`, `:8081` and `8080`.
-
-![hosts_example](./hosts_example.png)
-
-In a second step Couper compares the host-header information with the configuration.
-In case of mismatch a system error occurs (HTML error, status 500).
--->
-=======
-```
->>>>>>> c9a040c (update)
