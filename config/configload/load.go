@@ -213,6 +213,14 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
 			}
+			if err := couperConfig.Settings.SetAcceptForwarded(); err != nil {
+				diag := &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("invalid accept_forwarded_url: %q", err),
+					Subject:  &outerBlock.DefRange,
+				}
+				return nil, diag
+			}
 		}
 	}
 

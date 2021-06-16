@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -37,7 +38,7 @@ func NewRun(ctx context.Context) *Run {
 	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
-	set.StringVar(&settings.AcceptForwardedURL, "accept-forwarded-url", settings.AcceptForwardedURL, "-accept-forwarded-url")
+	set.Var(&AcceptForwardedValue{af: settings.AcceptForwarded}, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
 	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
@@ -46,6 +47,22 @@ func NewRun(ctx context.Context) *Run {
 		flagSet:  set,
 		settings: &settings,
 	}
+}
+
+type AcceptForwardedValue struct {
+	af *config.AcceptForwarded
+}
+
+func (a AcceptForwardedValue) String() string {
+	if a.af == nil {
+		return ""
+	}
+
+	return a.af.String()
+}
+
+func (a AcceptForwardedValue) Set(s string) error {
+	return a.af.Set(strings.Split(s, ","))
 }
 
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
@@ -64,6 +81,10 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	// Some remapping due to flag set pre-definition
 	env.Decode(r.settings)
+	err := r.settings.SetAcceptForwarded()
+	if err != nil {
+		return err
+	}
 	r.settingsMu.Lock()
 	config.Settings = r.settings
 	r.settingsMu.Unlock()
