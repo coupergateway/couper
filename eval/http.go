@@ -310,7 +310,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 		status := seetie.ValueToInt(val)
 		if status < 100 || status > 599 {
-			return errors.Configuration.With(
+			return errors.Configuration.Label("set_response_status").Messagef("invalid http status code: %d", status)
 				fmt.Errorf(
 					"set_response_status sets an invalid HTTP status code: %d; set the status code to 500",
 					status,
