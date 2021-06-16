@@ -104,6 +104,7 @@ func prepareAnchor(anchor string) string {
 	anchor = strings.ToLower(anchor)
 	anchor = strings.ReplaceAll(anchor, "`", "")
 	anchor = strings.ReplaceAll(anchor, ".", "")
+	anchor = strings.ReplaceAll(anchor, ":", "")
 	anchor = strings.ReplaceAll(anchor, "(", "")
 	anchor = strings.ReplaceAll(anchor, ")", "")
 	anchor = strings.ReplaceAll(anchor, " ", "-")
