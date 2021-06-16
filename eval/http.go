@@ -318,7 +318,9 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		}
 
 		if status == 204 {
-			beresp.Request.Context().Value(request.LogEntry).(*logrus.Entry).Warn(
+			beresp.Request.Context().
+				Value(request.LogEntry).(*logrus.Entry).
+				Warn("set_response_status: removing body, if any due to status-code 204")
 				"set_response_status sets the HTTP status code to 204 - removing the response body if any",
 			)
 
