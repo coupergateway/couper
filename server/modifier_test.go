@@ -69,8 +69,10 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 func TestIntegration_SetResponseStatus(t *testing.T) {
 	const confFile = "testdata/integration/modifier/02_couper.hcl"
 
+	shutdown, hook := newCouper(confFile, test.New(t))
+	defer shutdown()
+
 	client := newClient()
-	helper := test.New(t)
 
 	type testCase struct {
 		path       string
@@ -96,9 +98,7 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
-
-			shutdown, hook := newCouper(confFile, helper)
-			defer shutdown()
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
