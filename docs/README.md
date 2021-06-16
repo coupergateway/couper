@@ -59,9 +59,7 @@ Copy/paste the following configuration to the file and save it.
 server "hello" {
 	endpoint "/**" {
         response {
-            json_body = {
-                message = "Hello World!"   
-            }
+            body = "Hello World!"   
         }
     }
 }
