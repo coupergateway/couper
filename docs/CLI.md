@@ -24,3 +24,9 @@ Couper is build as binary called `couper` with the following commands:
 | `-log-pretty`        | `false`      | `COUPER_LOG_PRETTY`        | Option for `json` log format which pretty prints with basic key coloring.               |
 
 _Note_: `log-format` and `log-pretty` also maps to [settings](REFERENCE.md#settings-block).
+
+## Run Options
+
+| Argument                | Default      | Environment                   | Description  |
+| :---------------------- | :----------- | :---------------------------- | :----------- |
+| `-accept-forwarded-url` | empty string | `COUPER_ACCEPT_FORWARDED_URL` | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.proto`, `request.host`, `request.port`. Comma-separated list of values. Valid values: `proto`, `host`, `port` |
