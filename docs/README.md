@@ -102,33 +102,33 @@ the gateway. There are a large number of options, but let's focus on the main st
 ```hcl
 server "my_project" {
   files {
-    ...
+    # ...
   }
 
   spa {
-    ...
+    # ...
   }
 
   api {
     access_control = ["foo"]
     endpoint "/bar" {
       proxy {
-        backend {...}
+        backend { }
       }
       request "sub-request" {
-        backend {...}
+        backend { }
       }
-      response {...}
+      response { }
     }
   }
 }
 
 definitions {
-  ...
+  # ...
 }
 
 settings {
-  ...
+  # ...
 }
 ```
 

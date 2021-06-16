@@ -169,7 +169,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// always apply before write: redirect, response
 	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
-		log.WithError(err).Error()
+		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
+		return
 	}
 
 	select {
