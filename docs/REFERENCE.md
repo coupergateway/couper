@@ -1,4 +1,4 @@
-- [Reference](#reference)
+- [1.3 Reference](#13-reference)
   - [Block Reference](#block-reference)
     - [Server Block](#server-block)
     - [Files Block](#files-block)
@@ -37,7 +37,7 @@
     - [Form Parameter](#form-parameter)
     - [Path Parameter](#path-parameter)
 
-# Reference
+# 1.3 Reference
 
 ## Block Reference
 

@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.2...master)
+## [Unreleased](https://github.com/avenga/couper/compare/1.3...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.3](https://github.com/avenga/couper/compare/1.2...1.3)
 
 * **Added**
   * Modifier (`set/add/remove_form_params`) for the form parameters ([#223](https://github.com/avenga/couper/pull/223))
