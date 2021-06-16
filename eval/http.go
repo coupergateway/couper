@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	er "errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -311,18 +310,12 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		status := seetie.ValueToInt(val)
 		if status < 100 || status > 599 {
 			return errors.Configuration.Label("set_response_status").Messagef("invalid http status code: %d", status)
-				fmt.Errorf(
-					"set_response_status sets an invalid HTTP status code: %d; set the status code to 500",
-					status,
-				))
 		}
 
 		if status == 204 {
 			beresp.Request.Context().
 				Value(request.LogEntry).(*logrus.Entry).
 				Warn("set_response_status: removing body, if any due to status-code 204")
-				"set_response_status sets the HTTP status code to 204 - removing the response body if any",
-			)
 
 			beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
 			beresp.ContentLength = -1

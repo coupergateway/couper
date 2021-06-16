@@ -10,6 +10,9 @@ import (
 func TestIntegration_ResponseHeaders(t *testing.T) {
 	const confFile = "testdata/integration/modifier/01_couper.hcl"
 
+	shutdown, _ := newCouper(confFile, test.New(t))
+	defer shutdown()
+
 	client := newClient()
 
 	type testCase struct {
@@ -46,10 +49,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 		},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
-			helper := test.New(t)
-
-			shutdown, _ := newCouper(confFile, helper)
-			defer shutdown()
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -83,7 +83,7 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 	for _, tc := range []testCase{
 		{
 			path:       "/204",
-			expMessage: "set_response_status sets the HTTP status code to 204 - removing the response body if any",
+			expMessage: "set_response_status: removing body, if any due to status-code 204",
 			expStatus:  204,
 		},
 		{
@@ -93,7 +93,7 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 		},
 		{
 			path:       "/600",
-			expMessage: "configuration error: set_response_status sets an invalid HTTP status code: 600; set the status code to 500",
+			expMessage: "configuration error: set_response_status: invalid http status code: 600",
 			expStatus:  500,
 		},
 	} {
