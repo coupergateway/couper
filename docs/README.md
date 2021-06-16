@@ -10,7 +10,7 @@
       * [Examples](#examples)
          * [File &amp; Web Serving](#file-&-web-serving)
          * [Exposing APIs](#exposing-apis)
-         * [Access Control](#access-control)
+         * [Securing APIs](#securing-apis)
          * [Routing: Path Mapping](#routing:-path-mapping)
          * [Using Variables](#using-variables)
 
