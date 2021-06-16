@@ -187,7 +187,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 			return err
 		}
 
-		tokenData["id_token"] = idtc
+		tokenData["id_token_claims"] = idtc
 	}
 
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
