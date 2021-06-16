@@ -1,5 +1,6 @@
 - [Command Line Interface](#command-line-interface)
   - [Global Options](#global-options)
+  - [Run Options](#run-options)
 
 # Command Line Interface
 
@@ -29,4 +30,4 @@ _Note_: `log-format` and `log-pretty` also maps to [settings](REFERENCE.md#setti
 
 | Argument                | Default      | Environment                   | Description  |
 | :---------------------- | :----------- | :---------------------------- | :----------- |
-| `-accept-forwarded-url` | empty string | `COUPER_ACCEPT_FORWARDED_URL` | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.proto`, `request.host`, `request.port`. Comma-separated list of values. Valid values: `proto`, `host`, `port` |
+| `-accept-forwarded-url` | empty string | `COUPER_ACCEPT_FORWARDED_URL` | Which `X-Forwarded-*` request headers should be accepted to change the [variables](./REFERENCE.md#variables) `request.url`, `request.origin`, `request.proto`, `request.host`, `request.port`. Comma-separated list of values. Valid values: `proto`, `host`, `port` |
