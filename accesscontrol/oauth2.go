@@ -120,7 +120,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	if oa.config.Pkce != nil {
 		content, _, diags := oa.config.Pkce.HCLBody().PartialContent(oa.config.Pkce.Schema(true))
 		if diags.HasErrors() {
-			return errors.Oauth2.Messagef("parsing remain of pkce block").With(diags)
+			return errors.Evaluation.With(diags)
 		}
 
 		if v, ok := content.Attributes["code_verifier_value"]; ok {
@@ -134,7 +134,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	if oa.config.Csrf != nil {
 		content, _, diags := oa.config.Csrf.HCLBody().PartialContent(oa.config.Csrf.Schema(true))
 		if diags.HasErrors() {
-			return errors.Oauth2.Messagef("parsing remain of csrf block").With(diags)
+			return errors.Evaluation.With(diags)
 		}
 
 		if v, ok := content.Attributes["token_value"]; ok {
