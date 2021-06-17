@@ -97,6 +97,8 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		saml:         c.saml[:],
 	}
 
+	ctx.createOAuth2Functions()
+
 	if rc := req.Context(); rc != nil {
 		ctx.inner = context.WithValue(rc, ContextType, ctx)
 	}
@@ -201,7 +203,6 @@ func (c *Context) WithOAuth2(o []*config.OAuth2AC) *Context {
 	if c.oauth2 == nil {
 		c.oauth2 = make([]*config.OAuth2AC, 0)
 	}
-	c.updateFunctions()
 	return c
 }
 
@@ -211,12 +212,25 @@ func (c *Context) WithSAML(s []*config.SAML) *Context {
 	if c.saml == nil {
 		c.saml = make([]*config.SAML, 0)
 	}
-	c.updateFunctions()
+	samlfn := lib.NewSamlSsoUrlFunction(c.saml)
+	c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	return c
 }
 
 func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
+}
+
+// createOAuth2Functions creates the listed OAuth2 functions for the client request context.
+func (c *Context) createOAuth2Functions() {
+	if c.oauth2 != nil {
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
+		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
+	}
+	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthCsrfToken] = c.eval.Functions[lib.FnOAuthCodeVerifier]
+	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
 }
 
 // updateFunctions recreates the listed functions with latest evaluation context.
@@ -225,19 +239,6 @@ func (c *Context) updateFunctions() {
 		jwtfn := lib.NewJwtSignFunction(c.profiles, c.eval)
 		c.eval.Functions[lib.FnJWTSign] = jwtfn
 	}
-	if len(c.saml) > 0 {
-		samlfn := lib.NewSamlSsoUrlFunction(c.saml)
-		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
-	}
-	if len(c.oauth2) > 0 {
-		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
-		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
-	}
-
-	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.FnOAuthCsrfToken] = c.eval.Functions[lib.FnOAuthCodeVerifier]
-	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
