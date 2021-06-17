@@ -18,8 +18,8 @@ const (
 	FnOAuthCsrfToken        = "beta_oauth_csrf_token"
 	FnOAuthHashedCsrfToken  = "beta_oauth_hashed_csrf_token"
 	CodeVerifier            = "code_verifier"
-	CCM_plain               = "plain"
-	CCM_S256                = "S256"
+	CcmPlain                = "plain"
+	CcmS256                 = "S256"
 )
 
 func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier func() (*pkce.CodeVerifier, error)) function.Function {
@@ -61,7 +61,7 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier
 
 				query.Set("code_challenge", codeChallenge)
 			} else if oauth2.Csrf != nil && (oauth2.Csrf.TokenParam == "state" || oauth2.Csrf.TokenParam == "nonce") {
-				hashedCsrfToken, err := createCodeChallenge(verifier, CCM_S256)
+				hashedCsrfToken, err := createCodeChallenge(verifier, CcmS256)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
@@ -116,7 +116,7 @@ func NewOAuthHashedCsrfTokenFunction(verifier func() (*pkce.CodeVerifier, error)
 		Params: []function.Parameter{},
 		Type:   function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			hashedCsrfToken, err := createCodeChallenge(verifier, CCM_S256)
+			hashedCsrfToken, err := createCodeChallenge(verifier, CcmS256)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -133,9 +133,9 @@ func createCodeChallenge(verifier func() (*pkce.CodeVerifier, error), method str
 	}
 
 	switch method {
-	case CCM_S256:
+	case CcmS256:
 		return codeVerifier.CodeChallengeS256(), nil
-	case CCM_plain:
+	case CcmPlain:
 		return codeVerifier.CodeChallengePlain(), nil
 	default:
 		return "", fmt.Errorf("unsupported code challenge method: %s", method)

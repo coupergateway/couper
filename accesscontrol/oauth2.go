@@ -46,7 +46,7 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	if conf.Csrf != nil && conf.Csrf.TokenParam != "state" && conf.Csrf.TokenParam != "nonce" {
 		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.Csrf.TokenParam)
 	}
-	if conf.Pkce != nil && conf.Pkce.CodeChallengeMethod != lib.CCM_plain && conf.Pkce.CodeChallengeMethod != lib.CCM_S256 {
+	if conf.Pkce != nil && conf.Pkce.CodeChallengeMethod != lib.CcmPlain && conf.Pkce.CodeChallengeMethod != lib.CcmS256 {
 		return nil, confErr.Messagef("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
 	}
 
