@@ -15,8 +15,8 @@ type JWKS struct {
 	Keys []JWK `json:"keys"`
 }
 
-// a JWK Set only "SHOULD" use distinct key IDs
-func (j JWKS) Key(kid string) []JWK {
+// GetKeys retrieves key(s) for a given key ID. As a JWK Set only "SHOULD" use distinct key IDs, this may return more than one key.
+func (j JWKS) GetKeys(kid string) []JWK {
 	var keys []JWK
 	for _, key := range j.Keys {
 		if key.KeyID == kid {

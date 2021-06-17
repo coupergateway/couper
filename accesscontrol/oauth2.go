@@ -218,7 +218,7 @@ func (oa *OAuth2Callback) getKey(token *jwt.Token) (interface{}, error) {
 		return nil, errors.Oauth2.Messagef("missing alg header in ID token, header='%#v'", token.Header)
 	}
 
-	keys := oa.jwks.Key(kid)
+	keys := oa.jwks.GetKeys(kid)
 	if len(keys) == 0 {
 		return nil, errors.Oauth2.Messagef("no key for kid '%s' found in JWKS", kid)
 	}
