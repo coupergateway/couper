@@ -47,6 +47,7 @@ func NewGzipWriter(rw http.ResponseWriter, header http.Header) *Gzip {
 
 // Write fills a small buffer first to determine if a compression is required or not.
 func (g *Gzip) Write(p []byte) (n int, err error) {
+	b := p[:]
 	bytesLen := len(p)
 	bufLen := g.buffer.Len()
 
@@ -54,20 +55,20 @@ func (g *Gzip) Write(p []byte) (n int, err error) {
 		limit := minCompressBodyLength - bufLen
 
 		if bytesLen < limit {
-			return g.buffer.Write(p)
+			return g.buffer.Write(b)
 		}
 
 		// Fill the buffer at least to minCompressBodyLength size.
-		if _, err = g.buffer.Write(p); err != nil {
+		if _, err = g.buffer.Write(b); err != nil {
 			return 0, err
 		}
 
-		p = g.buffer.Bytes()
+		b = g.buffer.Bytes()
 	}
 
 	g.writeHeader()
 
-	n, err = g.write(p)
+	n, err = g.write(b)
 	if err != nil {
 		return n, err
 	} else if bufLen < minCompressBodyLength && bytesLen != (n-bufLen) {
