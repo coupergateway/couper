@@ -46,7 +46,7 @@ type Context struct {
 	oauth2            []config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
-	src          []byte
+	src               []byte
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {

@@ -359,12 +359,12 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 		httpCtx = c.HCLContext()
 	}
 
-	val, err := Value(httpCtx, attr.Expr)
+	statusValue, err := Value(httpCtx, attr.Expr)
 	if err != nil {
 		return 0, err
 	}
 
-	status := seetie.ValueToInt(val)
+	status := seetie.ValueToInt(statusValue)
 	if status < 100 || status > 599 {
 		return 0, errors.Configuration.Label("set_response_status").
 			Messagef("invalid http status code: %d", status)
