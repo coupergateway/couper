@@ -3,6 +3,7 @@ package accesscontrol
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/utils/base64url"
 )
 
 var _ AccessControl = &OAuth2Callback{}
@@ -272,5 +272,5 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 func Base64url_s256(value string) string {
 	h := sha256.New()
 	h.Write([]byte(value))
-	return base64url.Encode(h.Sum(nil))
+	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }

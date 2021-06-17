@@ -3,13 +3,12 @@ package accesscontrol
 import (
 	"bytes"
 	"crypto/rsa"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
-
-	"github.com/avenga/couper/utils/base64url"
 )
 
 type JWKS struct {
@@ -111,7 +110,7 @@ func newKeyParamFromInt(num uint64) *keyParam {
 }
 
 func (k *keyParam) MarshalJSON() ([]byte, error) {
-	return json.Marshal(base64url.Encode(k.data))
+	return json.Marshal(base64.RawURLEncoding.EncodeToString(k.data))
 }
 
 func (k *keyParam) UnmarshalJSON(data []byte) error {
@@ -125,7 +124,7 @@ func (k *keyParam) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	decoded, err := base64url.Decode(encoded)
+	decoded, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
 		return err
 	}
