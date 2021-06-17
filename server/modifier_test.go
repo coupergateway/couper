@@ -111,9 +111,12 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 				t.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
 			}
 
-			if hook.Entries[0].Message != tc.expMessage {
-				t.Errorf("Unexpected message given: %s", hook.Entries[0].Message)
+			for _, entry := range hook.AllEntries() {
+				if entry.Message == tc.expMessage {
+					return
+				}
 			}
+			t.Errorf("expected log message not seen: %s", tc.expMessage)
 		})
 	}
 }
