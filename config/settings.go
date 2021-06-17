@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 )
 
 type AcceptForwarded struct {
@@ -26,23 +27,19 @@ func (a *AcceptForwarded) Set(forwarded []string) error {
 }
 
 func (a AcceptForwarded) String() string {
-	s := ""
+	var parts []string
+
 	if a.protocol {
-		s += "proto"
+		parts = append(parts, "proto")
 	}
 	if a.host {
-		if len(s) > 0 {
-			s += ","
-		}
-		s += "host"
+		parts = append(parts, "host")
 	}
 	if a.port {
-		if len(s) > 0 {
-			s += ","
-		}
-		s += "port"
+		parts = append(parts, "port")
 	}
-	return s
+
+	return strings.Join(parts, ",")
 }
 
 // DefaultSettings defines the <DefaultSettings> object.
