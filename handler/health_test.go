@@ -51,7 +51,7 @@ func TestHealth_ServeHTTP(t *testing.T) {
 	}{
 		{"healthy check", fields{shutdownCh: make(chan struct{})}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
 		{"healthy check /w nil chan", fields{}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
-		// TODO: {"healthy check /w gzip", fields{shutdownCh: make(chan struct{}), gzip: true}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
+		//{"healthy check /w gzip", fields{shutdownCh: make(chan struct{}), gzip: true}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK},
 		{"unhealthy check", fields{shutdownCh: make(chan struct{})}, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
@@ -89,6 +89,7 @@ func TestHealth_ServeHTTP(t *testing.T) {
 
 			if tt.fields.gzip && rw.Header().Get("Content-Encoding") != "gzip" {
 				subT.Error("Expected gzip response")
+				return
 			}
 			body := res.Body
 			if tt.fields.gzip {

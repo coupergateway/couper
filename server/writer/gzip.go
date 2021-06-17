@@ -17,7 +17,7 @@ const (
 	GzipName              = "gzip"
 	VaryHeader            = "Vary"
 
-	minCompressBodyLenght = 60
+	minCompressBodyLength = 60
 )
 
 var (
@@ -45,20 +45,20 @@ func NewGzipWriter(rw http.ResponseWriter, header http.Header) *Gzip {
 	}
 }
 
+// Write fills a small buffer first to determine if a compression is required or not.
 func (g *Gzip) Write(p []byte) (n int, err error) {
 	bytesLen := len(p)
 	bufLen := g.buffer.Len()
 
-	if bufLen < minCompressBodyLenght {
-		cap := minCompressBodyLenght - bufLen
+	if bufLen < minCompressBodyLength {
+		limit := minCompressBodyLength - bufLen
 
-		if bytesLen < cap {
+		if bytesLen < limit {
 			return g.buffer.Write(p)
 		}
 
-		// Fill the buffer at least to minCompressBodyLenght size.
-		_, err := g.buffer.Write(p)
-		if err != nil {
+		// Fill the buffer at least to minCompressBodyLength size.
+		if _, err = g.buffer.Write(p); err != nil {
 			return 0, err
 		}
 
@@ -67,10 +67,10 @@ func (g *Gzip) Write(p []byte) (n int, err error) {
 
 	g.writeHeader()
 
-	l, err := g.write(p)
+	n, err = g.write(p)
 	if err != nil {
-		return l, err
-	} else if bufLen < minCompressBodyLenght && bytesLen != (l-bufLen) {
+		return n, err
+	} else if bufLen < minCompressBodyLength && bytesLen != (n-bufLen) {
 		return 0, fmt.Errorf("invalid write result")
 	}
 
@@ -89,11 +89,11 @@ func (g *Gzip) Close() (err error) {
 		return g.writeErr
 	}
 
-	if g.buffer.Len() < minCompressBodyLenght {
+	if g.buffer.Len() < minCompressBodyLength {
 		g.enabled = false
 		g.writeHeader()
 
-		_, err := g.write(g.buffer.Bytes())
+		_, err = g.write(g.buffer.Bytes())
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func (g *Gzip) writeHeader() {
 
 	g.headerSent = true
 
-	if g.buffer.Len() >= minCompressBodyLenght {
+	if g.buffer.Len() >= minCompressBodyLength {
 		g.rw.Header().Add(VaryHeader, AcceptEncodingHeader)
 	}
 
@@ -136,14 +136,14 @@ func (g *Gzip) writeHeader() {
 }
 
 func (g *Gzip) Flush() {
-	if l := g.buffer.Len(); l < minCompressBodyLenght {
+	if l := g.buffer.Len(); l < minCompressBodyLength {
 		g.enabled = false
 		g.writeHeader()
 
 		_, g.writeErr = g.write(g.buffer.Bytes())
 
-		// Fill the buffer up to minCompressBodyLenght size.
-		_, err := g.buffer.Write(make([]byte, minCompressBodyLenght-l))
+		// Fill the buffer up to minCompressBodyLength size.
+		_, err := g.buffer.Write(make([]byte, minCompressBodyLength-l))
 		if g.writeErr == nil {
 			g.writeErr = err
 		}
