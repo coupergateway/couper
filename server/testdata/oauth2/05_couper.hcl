@@ -17,6 +17,7 @@ definitions {
     token_endpoint_auth_method = "client_secret_post"
     pkce {
       code_challenge_method = "S256"
+      code_verifier_value = request.cookies.pkcecv
     }
     client_id = "foo"
     client_secret = "etbinbp4in"

@@ -43,11 +43,25 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	if conf.Pkce == nil && conf.Csrf == nil {
 		return nil, confErr.Message("CSRF protection not configured")
 	}
-	if conf.Csrf != nil && conf.Csrf.TokenParam != "state" && conf.Csrf.TokenParam != "nonce" {
-		return nil, confErr.Messagef("csrf_token_param %s not supported", conf.Csrf.TokenParam)
+	if conf.Csrf != nil {
+		if conf.Csrf.TokenParam != "state" && conf.Csrf.TokenParam != "nonce" {
+			return nil, confErr.Messagef("csrf_token_param %s not supported", conf.Csrf.TokenParam)
+		}
+		content, _, diags := conf.Csrf.HCLBody().PartialContent(conf.Csrf.Schema(true))
+		if diags.HasErrors() {
+			return nil, errors.Evaluation.With(diags)
+		}
+		conf.Csrf.Content = content
 	}
-	if conf.Pkce != nil && conf.Pkce.CodeChallengeMethod != lib.CcmPlain && conf.Pkce.CodeChallengeMethod != lib.CcmS256 {
-		return nil, confErr.Messagef("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
+	if conf.Pkce != nil {
+		if conf.Pkce.CodeChallengeMethod != lib.CcmPlain && conf.Pkce.CodeChallengeMethod != lib.CcmS256 {
+			return nil, confErr.Messagef("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
+		}
+		content, _, diags := conf.Pkce.HCLBody().PartialContent(conf.Pkce.Schema(true))
+		if diags.HasErrors() {
+			return nil, errors.Evaluation.With(diags)
+		}
+		conf.Pkce.Content = content
 	}
 
 	options := []jwt.ParserOption{
@@ -118,30 +132,22 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
 
 	if oa.config.Pkce != nil {
-		content, _, diags := oa.config.Pkce.HCLBody().PartialContent(oa.config.Pkce.Schema(true))
-		if diags.HasErrors() {
-			return errors.Evaluation.With(diags)
+		v, _ := oa.config.Pkce.Content.Attributes["code_verifier_value"]
+		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+		codeVerifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
+		if codeVerifierValue == "" {
+			return errors.Oauth2.Messagef("Empty PKCE code_verifier_value")
 		}
-
-		if v, ok := content.Attributes["code_verifier_value"]; ok {
-			ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-			strVal := strings.TrimSpace(seetie.ValueToString(ctyVal))
-			requestConfig.CodeVerifier = &strVal
-		}
+		requestConfig.CodeVerifier = &codeVerifierValue
 	}
 
 	var csrfToken, csrfTokenValue string
 	if oa.config.Csrf != nil {
-		content, _, diags := oa.config.Csrf.HCLBody().PartialContent(oa.config.Csrf.Schema(true))
-		if diags.HasErrors() {
-			return errors.Evaluation.With(diags)
-		}
-
-		if v, ok := content.Attributes["token_value"]; ok {
-			ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-			csrfTokenValue = strings.TrimSpace(seetie.ValueToString(ctyVal))
-		} else {
-			return errors.Oauth2.Messagef("Missing CSRF token_value")
+		v, _ := oa.config.Csrf.Content.Attributes["token_value"]
+		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+		csrfTokenValue = strings.TrimSpace(seetie.ValueToString(ctyVal))
+		if csrfTokenValue == "" {
+			return errors.Oauth2.Messagef("Empty CSRF token_value")
 		}
 		csrfToken = Base64url_s256(csrfTokenValue)
 

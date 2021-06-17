@@ -46,10 +46,8 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend           *Backend `hcl:"backend,block"`
-		CodeVerifierValue string   `hcl:"code_verifier_value,optional"`
-		CsrfTokenValue    string   `hcl:"csrf_token_value,optional"`
-		TokenEndpoint     string   `hcl:"token_endpoint,optional"`
+		Backend       *Backend `hcl:"backend,block"`
+		TokenEndpoint string   `hcl:"token_endpoint,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -86,6 +84,8 @@ func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
 type PKCE struct {
 	CodeChallengeMethod string   `hcl:"code_challenge_method"`
 	Remain              hcl.Body `hcl:",remain"`
+	// internally used
+	Content *hcl.BodyContent
 }
 
 // HCLBody implements the <Body> interface.
@@ -101,7 +101,7 @@ func (p PKCE) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		CodeVerifierValue string `hcl:"code_verifier_value,optional"`
+		CodeVerifierValue string `hcl:"code_verifier_value"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -112,6 +112,8 @@ func (p PKCE) Schema(inline bool) *hcl.BodySchema {
 type CSRF struct {
 	TokenParam string   `hcl:"token_param"`
 	Remain     hcl.Body `hcl:",remain"`
+	// internally used
+	Content *hcl.BodyContent
 }
 
 // HCLBody implements the <Body> interface.

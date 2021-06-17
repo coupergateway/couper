@@ -34,6 +34,7 @@ definitions {
     client_secret = "5eCr3t"
     pkce {
       code_challenge_method = "S256"
+      code_verifier_value = "not_used_here"
     }
   }
   beta_oauth2 "ac-state" {
@@ -46,6 +47,7 @@ definitions {
     client_secret = "5eCr3t"
     csrf {
       token_param = "state"
+      token_value = "not_used_here"
     }
   }
   beta_oauth2 "ac-nonce" {
@@ -58,6 +60,7 @@ definitions {
     client_secret = "5eCr3t"
     csrf {
       token_param = "nonce"
+      token_value = "not_used_here"
     }
   }
 }
