@@ -16,6 +16,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -290,7 +291,41 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		return nil
 	}
 
-	return ApplyResponseHeaderOps(ctx, body, beresp.Header)
+	if err := ApplyResponseHeaderOps(ctx, body, beresp.Header); err != nil {
+		return err
+	}
+
+	content, _, _ := body.PartialContent(config.BackendInlineSchema)
+	if attr, ok := content.Attributes["set_response_status"]; ok {
+		var httpCtx *hcl.EvalContext
+		if c, ok := ctx.Value(ContextType).(*Context); ok {
+			httpCtx = c.eval
+		}
+
+		val, attrDiags := attr.Expr.Value(httpCtx)
+		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
+			return attrDiags
+		}
+
+		status := seetie.ValueToInt(val)
+		if status < 100 || status > 599 {
+			return errors.Configuration.Label("set_response_status").Messagef("invalid http status code: %d", status)
+		}
+
+		if status == 204 {
+			beresp.Request.Context().
+				Value(request.LogEntry).(*logrus.Entry).
+				Warn("set_response_status: removing body, if any due to status-code 204")
+
+			beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
+			beresp.ContentLength = -1
+			beresp.Header.Del("Content-Length")
+		}
+
+		beresp.StatusCode = int(status)
+	}
+
+	return nil
 }
 
 func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {
