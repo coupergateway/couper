@@ -87,7 +87,8 @@ func TestHealth_ServeHTTP(t *testing.T) {
 			}
 
 			if tt.fields.gzip && rw.Header().Get("Content-Encoding") != "gzip" {
-				subT.Error("Expected gzip response")
+				b, _ := ioutil.ReadAll(res.Body)
+				subT.Errorf("Expected gzip response, got: %q", string(b))
 				return
 			}
 			body := res.Body
