@@ -206,6 +206,9 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	gw := writer.NewGzipWriter(rw, clientReq.Header)
 	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
+	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
+	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
+	defer gw.Close()
 
 	if err = s.setGetBody(h, clientReq); err != nil {
 		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(w, clientReq)
@@ -216,8 +219,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	*clientReq = *clientReq.WithContext(ctx)
 
 	s.accessLog.ServeHTTP(w, clientReq, h, startTime)
-
-	_ = gw.Close() // Closes the GZ writer.
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {

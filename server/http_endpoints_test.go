@@ -242,27 +242,27 @@ func TestEndpoints_ProxyReqResCancel(t *testing.T) {
 	}
 }
 
-// func TestEndpoints_RequestLimit(t *testing.T) {
-// 	client := newClient()
-// 	helper := test.New(t)
+func TestEndpoints_RequestLimit(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
 
-// 	shutdown, _ := newCouper(path.Join(testdataPath, "06_couper.hcl"), helper)
-// 	defer shutdown()
+	shutdown, _ := newCouper(path.Join(testdataPath, "06_couper.hcl"), helper)
+	defer shutdown()
 
-// 	body := strings.NewReader(`{"foo" = "bar"}`)
+	body := strings.NewReader(`{"foo" = "bar"}`)
 
-// 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", body)
-// 	helper.Must(err)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", body)
+	helper.Must(err)
 
-// 	req.SetBasicAuth("", "qwertz")
+	req.SetBasicAuth("", "qwertz")
 
-// 	res, err := client.Do(req)
-// 	helper.Must(err)
+	res, err := client.Do(req)
+	helper.Must(err)
 
-// 	if res.StatusCode != http.StatusRequestEntityTooLarge {
-// 		t.Errorf("Expected status 413, given %d", res.StatusCode)
-// 	}
-// }
+	if res.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected status 413, given %d", res.StatusCode)
+	}
+}
 
 func TestEndpoints_Res(t *testing.T) {
 	client := newClient()
