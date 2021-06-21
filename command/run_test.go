@@ -19,6 +19,10 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
+func resetWD(helper *test.Helper, wd string) {
+	helper.Must(os.Chdir(wd))
+}
+
 func TestNewRun(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -70,7 +74,7 @@ func TestNewRun(t *testing.T) {
 			helper := test.New(t)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			defer helper.Must(os.Chdir(wd))
+			defer resetWD(helper, wd)
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
@@ -116,6 +120,75 @@ func TestNewRun(t *testing.T) {
 			} else if len(uid) > xidLen {
 				t.Errorf("expected common id format, got: %s", uid)
 			}
+		})
+		time.Sleep(time.Second / 2) // shutdown
+	}
+}
+
+func TestAcceptForwarded(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, hook := logrustest.NewNullLogger()
+	//log.Out = os.Stdout
+
+	tests := []struct {
+		name     string
+		file     string
+		args     Args
+		envs     []string
+		expProto bool
+		expHost  bool
+		expPort  bool
+	}{
+		{"defaults", "01_defaults.hcl", nil, nil, false, false, false},
+		{"accept by settings", "03_accept.hcl", nil, nil, true, true, true},
+		{"accept by option", "01_defaults.hcl", Args{"-accept-forwarded-url", "proto,host,port"}, nil, true, true, true},
+		{"accept by env", "01_defaults.hcl", nil, []string{"COUPER_ACCEPT_FORWARDED_URL=proto,host,port"}, true, true, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(t)
+			ctx, shutdown := context.WithCancel(context.Background())
+			defer shutdown()
+			defer resetWD(helper, wd)
+
+			runCmd := NewRun(ctx)
+			if runCmd == nil {
+				t.Error("create run cmd failed")
+				return
+			}
+
+			couperFile, fileErr := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			helper.Must(fileErr)
+
+			if len(tt.envs) > 0 {
+				env.OsEnviron = func() []string {
+					return tt.envs
+				}
+				defer func() { env.OsEnviron = os.Environ }()
+			}
+
+			go func() {
+				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
+			}()
+			time.Sleep(time.Second / 4)
+			runCmd.settingsMu.Lock()
+
+			if couperFile.Settings.AcceptsForwardedProtocol() != tt.expProto {
+				t.Errorf("AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
+			}
+			if couperFile.Settings.AcceptsForwardedHost() != tt.expHost {
+				t.Errorf("AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.expHost, couperFile.Settings.AcceptsForwardedHost())
+			}
+			if couperFile.Settings.AcceptsForwardedPort() != tt.expPort {
+				t.Errorf("AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.expPort, couperFile.Settings.AcceptsForwardedPort())
+			}
+			runCmd.settingsMu.Unlock()
+
+			hook.Reset()
 		})
 		time.Sleep(time.Second / 2) // shutdown
 	}
