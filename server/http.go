@@ -187,28 +187,28 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	req.Host = s.getHost(req)
 
+	gw := writer.NewGzipWriter(rw, req.Header)
+	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
+	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
+	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
+	defer gw.Close()
+
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
-		errors.DefaultHTML.ServeError(errors.ClientRequest).ServeHTTP(rw, req)
+		errors.DefaultHTML.ServeError(errors.ClientRequest).ServeHTTP(w, req)
 	}
 
 	mux, ok := s.muxers[host]
 	if !ok {
 		mux, ok = s.muxers["*"]
 		if !ok {
-			errors.DefaultHTML.ServeError(errors.Configuration).ServeHTTP(rw, req)
+			errors.DefaultHTML.ServeError(errors.Configuration).ServeHTTP(w, req)
 		}
 	}
 
 	h := mux.FindHandler(req)
 
 	clientReq := req.Clone(req.Context())
-
-	gw := writer.NewGzipWriter(rw, clientReq.Header)
-	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
-	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
-	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
-	defer gw.Close()
 
 	if err = s.setGetBody(h, clientReq); err != nil {
 		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(w, clientReq)
