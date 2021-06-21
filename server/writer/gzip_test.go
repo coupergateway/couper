@@ -27,6 +27,7 @@ func TestGzip_Flush(t *testing.T) {
 			_, _ = rw.Write([]byte{b})
 		}
 	}))
+	defer origin.Close()
 
 	rp := &httputil.ReverseProxy{
 		Director:      func(_ *http.Request) {},

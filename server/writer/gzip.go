@@ -138,16 +138,9 @@ func (g *Gzip) writeHeader() {
 
 func (g *Gzip) Flush() {
 	if l := g.buffer.Len(); l < minCompressBodyLength {
-		g.enabled = false
-		g.writeHeader()
-
-		_, g.writeErr = g.write(g.buffer.Bytes())
-
-		// Fill the buffer up to minCompressBodyLength size.
-		_, err := g.buffer.Write(make([]byte, minCompressBodyLength-l))
-		if g.writeErr == nil {
-			g.writeErr = err
-		}
+		// We have to wait for minCompressBodyLength bytes to be
+		// able to determine, if we enable GZIP compression or not.
+		return
 	}
 
 	g.writeHeader()
