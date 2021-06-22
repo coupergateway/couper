@@ -2723,3 +2723,30 @@ func TestCORS_Configuration(t *testing.T) {
 		})
 	}
 }
+
+func TestLog_Level(t *testing.T) {
+	shutdown, hook := newCouper("testdata/integration/logging/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	client := newClient()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://my.upstream:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected status: %d, got: %d", http.StatusInternalServerError, res.StatusCode)
+	}
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Level != logrus.InfoLevel {
+			t.Errorf("Expected info level, got: %v", entry.Level)
+		}
+	}
+}

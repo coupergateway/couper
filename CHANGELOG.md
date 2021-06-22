@@ -4,6 +4,12 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Changed**
+  * `Error` log-level for upstream responses with status `500` to `Info` log-level ([#258](https://github.com/avenga/couper/pull/258))
+
+* **Fixed**
+  * Missing support for `set_response_status` within a plain `error_handler` block ([#257](https://github.com/avenga/couper/pull/257))
+
 ---
 
 ## [1.3](https://github.com/avenga/couper/compare/1.2...1.3)
@@ -14,14 +20,12 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
   * Stronger configuration check for `path` and `path_prefix` attributes, possibly resulting in configuration errors ([#232](https://github.com/avenga/couper/pull/232))
-  * Modifier (`set/add/remove_response_headers`) is available for `api`, `files`, `server` and `spa` block too ([#248](https://github.com/avenga/couper/pull/248))
+  * Modifier (`set/add/remove_response_headers`) is available for `api`, `files`, `server` and `spa` block, too ([#248](https://github.com/avenga/couper/pull/248))
 
 * **Fixed**
   * The `path` field in the backend log ([#232](https://github.com/avenga/couper/pull/232))
   * Upstream requests with a known body-size have a `Content-Length` HTTP header field instead of `Transfer-Encoding: chunked` ([#163](https://github.com/avenga/couper/issues/163))
   * Exit endpoint if an error is occurred in `request` or `proxy` instead of processing a defined `response` ([#233](https://github.com/avenga/couper/pull/233))
-
----
 
 ## [1.2](https://github.com/avenga/couper/compare/1.1.1...1.2)
 
