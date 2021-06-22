@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Changed**
+  * `Error` log-level for upstream responses with status `500` to `Info` log-level ([#258](https://github.com/avenga/couper/pull/258))
+
 * **Fixed**
   * Missing support for `set_response_status` within a plain `error_handler` block ([#257](https://github.com/avenga/couper/pull/257))
 

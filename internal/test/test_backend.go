@@ -31,6 +31,9 @@ func NewBackend() *Backend {
 	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
 	b.mux.HandleFunc("/ws", echo)
 	b.mux.HandleFunc("/pdf", pdf)
+	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
 
 	return b
 }

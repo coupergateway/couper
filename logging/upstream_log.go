@@ -143,11 +143,9 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	entry := u.log.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
 
-	if (beresp != nil && beresp.StatusCode == http.StatusInternalServerError) || err != nil {
-		if err != nil {
-			if _, ok := err.(errors.GoError); !ok {
-				err = errors.Backend.With(err)
-			}
+	if err != nil {
+		if _, ok := err.(errors.GoError); !ok {
+			err = errors.Backend.With(err)
 		}
 		entry.WithError(err).Error()
 	} else {
