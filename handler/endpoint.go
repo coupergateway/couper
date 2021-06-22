@@ -167,14 +167,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
 		if attr, ok := content.Attributes["set_response_status"]; ok {
-			if evalErr, statusCode := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
+			if applyErr, statusCode := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
 				if serr, k := serveErr.(*errors.Error); k {
 					serveErr = serr.Status(statusCode)
 				} else {
 					serveErr = errors.Server.With(serveErr).Status(statusCode)
 				}
-			} else if evalErr != nil {
-				e.log.WithError(errors.Evaluation.With(evalErr))
+			} else if applyErr != nil {
+				e.log.WithError(applyErr)
 			}
 		}
 

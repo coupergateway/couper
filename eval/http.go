@@ -312,7 +312,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 
 	val, attrDiags := attr.Expr.Value(httpCtx)
 	if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-		return attrDiags, 0
+		return errors.Evaluation.With(attrDiags), 0
 	}
 
 	status := seetie.ValueToInt(val)
