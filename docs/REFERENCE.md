@@ -387,7 +387,7 @@ mandatory *label*.
 | `authorization_endpoint`   | <ul><li>&#9888; Mandatory.</li><li>The authorization server endpoint URL used for authorization.</li></ul> |
 | `token_endpoint`           | <ul><li>Optional.</li><li>The authorization server endpoint URL used for requesting the token.</li></ul> |
 | `token_endpoint_auth_method` | <ul><li>Optional.</li><li>Defines the method to authenticate the client at the token endpoint.</li><li>If set to `client_secret_post`, the client credentials are transported in the request body.</li><li>If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.</li><li>Default: `client_secret_basic`.</li></ul> |
-| `redirect_uri`             | <ul><li>Mandatory.</li><li>The Couper endpoint for receiving the authorization code.</li></ul> |
+| `redirect_uri`             | <ul><li>&#9888; Mandatory.</li><li>The Couper endpoint for receiving the authorization code.</li></ul> |
 | `backend`                  | <ul><li>Optional.</li><li>[Backend Block Reference](#backend-block).</li></ul> |
 | `grant_type`               | <ul><li>&#9888; Mandatory.</li><li>Available values: `authorization_code`.</li></ul> |
 | `client_id`                | <ul><li>&#9888; Mandatory.</li><li>The client identifier.</li></ul> |
@@ -406,7 +406,7 @@ Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatrac
 | *label*                    | &#9888; Not implemented. |
 | **Attributes**             | **Description** |
 | `code_challenge_method`    | <ul><li>&#9888; Mandatory.</li><li>The method to calculate the PKCE code challenge. Available values: `S256` or (not recommended) `plain`.</li></ul> |
-| `code_verifier_value`      | <ul><li>&#9888; Mandatory.</li><li>The value of the code verifier (e.g. `request.cookies.pkce_code_verifier`).</li></ul> |
+| `code_verifier_value`      | <ul><li>&#9888; Mandatory.</li><li>The value of the code verifier (e.g. `request.cookies.pkce_code_verifier`, using cookie value created with [`beta_oauth_code_verifier()` function](#functions)).</li></ul> |
 
 ##### CSRF Block
 
@@ -418,7 +418,7 @@ Use `state` or `nonce` for protection against CSRF.
 | *label*        | &#9888; Not implemented. |
 | **Attributes** | **Description** |
 | `token_param`  | <ul><li>&#9888; Mandatory.</li><li>The name of the query parameter for the hashed CSRF token. Available values: `state`, `nonce`.</li></ul> |
-| `token_value`  | <ul><li>&#9888; Mandatory.</li><li>The value of the CSRF token (e.g. `request.cookies.csrf_token`).</li></ul> |
+| `token_value`  | <ul><li>&#9888; Mandatory.</li><li>The value of the CSRF token (e.g. `request.cookies.csrf_token`, using cookie value created with [`beta_oauth_csrf_token()` function](#functions)).</li></ul> |
 
 ### SAML Block
 
@@ -555,7 +555,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `jwt_sign`      | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 |
 | `merge`         | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
 | `beta_oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block).                                                                                                                                                                                                 |
-| `beta_oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636. Multiple calls of this function in the same client request context return the same value.                                                                                                                                     |
+| `beta_oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636, e.g. to be used in a cookie, when using the PKCE for CSRF protection. Multiple calls of this function in the same client request context return the same value.                                                                                                                                     |
 | `beta_oauth_csrf_token`     | Alias for `beta_oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF protection.                                                                                                                                                   |
 | `saml_sso_url`  | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 |
 | `to_lower`      | Converts a given string to lowercase.                                                                                                                                                                                                                                                                |
