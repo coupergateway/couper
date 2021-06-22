@@ -83,6 +83,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
+	defaults.AcceptForwarded = &config.AcceptForwarded{}
 
 	evalContext := eval.NewContext(src)
 	envContext = evalContext.HCLContext()

@@ -178,13 +178,13 @@ func TestAcceptForwarded(t *testing.T) {
 			runCmd.settingsMu.Lock()
 
 			if couperFile.Settings.AcceptsForwardedProtocol() != tt.expProto {
-				t.Errorf("AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
+				t.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
 			}
 			if couperFile.Settings.AcceptsForwardedHost() != tt.expHost {
-				t.Errorf("AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.expHost, couperFile.Settings.AcceptsForwardedHost())
+				t.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expHost, couperFile.Settings.AcceptsForwardedHost())
 			}
 			if couperFile.Settings.AcceptsForwardedPort() != tt.expPort {
-				t.Errorf("AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.expPort, couperFile.Settings.AcceptsForwardedPort())
+				t.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expPort, couperFile.Settings.AcceptsForwardedPort())
 			}
 			runCmd.settingsMu.Unlock()
 

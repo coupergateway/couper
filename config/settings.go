@@ -69,7 +69,7 @@ type Settings struct {
 }
 
 func (s *Settings) SetAcceptForwarded() error {
-	if (*s.AcceptForwarded == AcceptForwarded{}) && len(s.AcceptForwardedURL) > 0 {
+	if len(s.AcceptForwardedURL) > 0 {
 		return s.AcceptForwarded.Set(s.AcceptForwardedURL)
 	}
 

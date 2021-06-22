@@ -54,10 +54,6 @@ type AcceptForwardedValue struct {
 }
 
 func (a AcceptForwardedValue) String() string {
-	if a.af == nil {
-		return ""
-	}
-
 	return a.af.String()
 }
 
@@ -69,6 +65,12 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	r.settingsMu.Lock()
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
+
+	if flag := r.flagSet.Lookup("accept-forwarded-url"); flag != nil {
+		if afv, ok := flag.Value.(*AcceptForwardedValue); ok {
+			afv.af = r.settings.AcceptForwarded
+		}
+	}
 
 	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
 		return err
