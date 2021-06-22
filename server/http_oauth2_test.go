@@ -239,6 +239,12 @@ func TestOAuth2AccessControl(t *testing.T) {
 			if strings.HasSuffix(code, "-id") {
 				nonce := state
 				mapClaims := jwt.MapClaims{"iss": "https://authorization.server", "aud": []string{"foo", "another-client-id"}, "sub": "myself"}
+				if strings.HasSuffix(code, "-wiss-id") {
+					mapClaims["iss"] = "https://malicious.authorization.server"
+				}
+				if strings.HasSuffix(code, "-waud-id") {
+					mapClaims["aud"] = "another-client-id"
+				}
 				if strings.HasSuffix(code, "-wazp-id") {
 					mapClaims["azp"] = "bar"
 				} else if !strings.HasSuffix(code, "-mazp-id") {
@@ -296,6 +302,8 @@ func TestOAuth2AccessControl(t *testing.T) {
 		{"code, nonce, missing CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty CSRF token_value"},
 		{"code, missing azp claim", "07_couper.hcl", "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
 		{"code, wrong azp claim", "07_couper.hcl", "/cb?code=qeuboub-wazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: azp claim / client ID mismatch, azp = 'bar', client ID = 'foo'"},
+		{"code, wrong iss claim", "07_couper.hcl", "/cb?code=qeuboub-wiss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token issuer is invalid: 'iss' value doesn't match expectation"},
+		{"code, wrong aud claim", "07_couper.hcl", "/cb?code=qeuboub-waud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token audience is invalid: 'foo' wasn't found in aud claim"},
 		{"code; client_secret_basic; PKCE", "04_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; client_secret_post", "05_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "client_id=foo&client_secret=etbinbp4in&code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "", ""},
 		{"code, state param", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st}}, http.StatusOK, "code=qeuboub&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
