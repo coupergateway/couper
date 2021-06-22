@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * OAuth2 Authorization Code Grant Flow: `beta_oauth2 {}` block; `beta_oauth_authorization_url()`, `beta_oauth_code_verifier()` and `beta_oauth_csrf_token()` functions ([#247](https://github.com/avenga/couper/pull/247))
+
 * **Changed**
   * `Error` log-level for upstream responses with status `500` to `Info` log-level ([#258](https://github.com/avenga/couper/pull/258))
 
