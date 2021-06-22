@@ -23,4 +23,27 @@ server "set-response-status" {
       }
     }
   }
+
+  endpoint "/teapot" {
+    access_control = ["ba"]
+    response {}
+  }
+
+  endpoint "/no-content" {
+    response {
+      status = 500
+    }
+    set_response_status = 204
+  }
 }
+
+definitions {
+  basic_auth "ba" {
+    user = "hans"
+    password = "peter"
+    error_handler {
+      set_response_status = 418
+    }
+  }
+}
+

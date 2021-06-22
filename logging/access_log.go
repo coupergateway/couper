@@ -138,7 +138,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	entry := log.logger.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
 
-	if statusCode == http.StatusInternalServerError || err != nil {
+	if err != nil {
 		entry.WithError(err).Error()
 	} else {
 		entry.Info()

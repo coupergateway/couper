@@ -196,7 +196,7 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 func (b *Backend) getAttribute(req *http.Request, name string) string {
 	attrVal, err := eval.GetContextAttribute(b.context, req.Context(), name)
 	if err != nil {
-		b.upstreamLog.LogEntry().WithField("hcl", "backend").Error(err)
+		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}
 	return attrVal
 }
@@ -229,11 +229,11 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		httpContext = httpCtx.HCLContext()
 	}
 
-	log := b.upstreamLog.LogEntry().WithField("hcl", "backend")
+	log := b.upstreamLog.LogEntry()
 
 	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
-		log.WithError(diags).Error()
+		log.WithError(errors.Evaluation.Label(b.name).With(diags)).Error()
 	}
 
 	var origin, hostname, proxyURL string
@@ -247,7 +247,7 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		{"proxy", &proxyURL},
 	} {
 		if v, err := eval.GetAttribute(httpContext, content, p.attrName); err != nil {
-			log.WithError(err).Error()
+			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
 		} else if v != "" {
 			*p.target = v
 		}
@@ -257,14 +257,14 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	if parseErr != nil {
 		log.WithError(parseErr).Error()
 	} else if strings.HasPrefix(originURL.Host, originURL.Scheme+":") {
-		return nil, errors.Configuration.Label("backend origin").
+		return nil, errors.Configuration.Label(b.name).
 			Messagef("invalid url: %s", originURL.String())
 	}
 
 	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
 		urlAttr, err := url.Parse(rawURL)
 		if err != nil {
-			log.WithError(err).Error()
+			log.WithError(errors.Configuration.Label(b.name).With(err)).Error()
 		}
 
 		if origin != "" && urlAttr.Host != originURL.Host {
