@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * Run option `-accept-forwarded-url` and setting `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers, affecting new client request variables `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
+
 * **Changed**
   * `Error` log-level for upstream responses with status `500` to `Info` log-level ([#258](https://github.com/avenga/couper/pull/258))
 
