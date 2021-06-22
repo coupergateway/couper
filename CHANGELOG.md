@@ -5,7 +5,7 @@
 Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
-  * missing support for `set_response_status` within a plain `error_handler` block ([#257](https://github.com/avenga/couper/pull/257))
+  * Missing support for `set_response_status` within a plain `error_handler` block ([#257](https://github.com/avenga/couper/pull/257))
 
 ---
 
@@ -17,7 +17,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
   * Stronger configuration check for `path` and `path_prefix` attributes, possibly resulting in configuration errors ([#232](https://github.com/avenga/couper/pull/232))
-  * Modifier (`set/add/remove_response_headers`) is available for `api`, `files`, `server` and `spa` block too ([#248](https://github.com/avenga/couper/pull/248))
+  * Modifier (`set/add/remove_response_headers`) is available for `api`, `files`, `server` and `spa` block, too ([#248](https://github.com/avenga/couper/pull/248))
 
 * **Fixed**
   * The `path` field in the backend log ([#232](https://github.com/avenga/couper/pull/232))
