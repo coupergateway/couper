@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -163,6 +164,18 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			serveErr = errors.Server.With(err)
 			log.WithError(err).Error()
 		}
+
+		content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
+		if attr, ok := content.Attributes["set_response_status"]; ok {
+			if _, statusCode := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
+				if serr, k := serveErr.(*errors.Error); k {
+					serveErr = serr.Status(statusCode)
+				} else {
+					serveErr = errors.Server.With(serveErr).Status(statusCode)
+				}
+			}
+		}
+
 		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
 		return
 	}
