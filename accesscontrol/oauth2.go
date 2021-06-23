@@ -155,6 +155,19 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 			return err
 		}
 
+		// 2.  ID Token
+		// iss
+		// 		REQUIRED.
+		// aud
+		// 		REQUIRED.
+		// 3.1.3.7.  ID Token Validation
+		// 3. The Client MUST validate that the aud (audience) Claim contains
+		//    its client_id value registered at the Issuer identified by the
+		//    iss (issuer) Claim as an audience. The aud (audience) Claim MAY
+		//    contain an array with more than one element. The ID Token MUST
+		//    be rejected if the ID Token does not list the Client as a valid
+		//    audience, or if it contains additional audiences not trusted by
+		//    the Client.
 		if err := idToken.Claims.Valid(oa.jwtParser.ValidationHelper); err != nil {
 			return err
 		}
@@ -184,6 +197,24 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 		idTokenClaims = tc
 	}
 
+	// 2.  ID Token
+	// sub
+	// 		REQUIRED.
+	if _, subExists := idTokenClaims["sub"]; !subExists {
+		return nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
+	}
+	// exp
+	// 		REQUIRED.
+	if _, expExists := idTokenClaims["exp"]; !expExists {
+		return nil, errors.Oauth2.Messagef("missing exp claim in ID token, claims='%#v'", idTokenClaims)
+	}
+	// iat
+	// 		REQUIRED.
+	if _, iatExists := idTokenClaims["iat"]; !iatExists {
+		return nil, errors.Oauth2.Messagef("missing iat claim in ID token, claims='%#v'", idTokenClaims)
+	}
+
+	// 3.1.3.7.  ID Token Validation
 	// 4. If the ID Token contains multiple audiences, the Client SHOULD verify
 	//    that an azp Claim is present.
 	azp, azpExists := idTokenClaims["azp"]

@@ -221,9 +221,24 @@ func TestOAuth2AccessControl(t *testing.T) {
 			idTokenToAdd := ""
 			if strings.HasSuffix(code, "-id") {
 				nonce := state
-				mapClaims := jwt.MapClaims{"iss": "https://authorization.server", "aud": []string{"foo", "another-client-id"}, "sub": "myself"}
-				if strings.HasSuffix(code, "-wiss-id") {
-					mapClaims["iss"] = "https://malicious.authorization.server"
+				mapClaims := jwt.MapClaims{"aud": []string{"foo", "another-client-id"}}
+				if !strings.HasSuffix(code, "-miss-id") {
+					if strings.HasSuffix(code, "-wiss-id") {
+						mapClaims["iss"] = "https://malicious.authorization.server"
+					} else {
+						mapClaims["iss"] = "https://authorization.server"
+					}
+				}
+				if !strings.HasSuffix(code, "-miat-id") {
+					// 1970-01-01 00:16:40 +0000 UTC
+					mapClaims["iat"] = 1000
+				}
+				if !strings.HasSuffix(code, "-mexp-id") {
+					// 2096-10-02 07:06:40 +0000 UTC
+					mapClaims["exp"] = 4000000000
+				}
+				if !strings.HasSuffix(code, "-msub-id") {
+					mapClaims["sub"] = "myself"
 				}
 				if strings.HasSuffix(code, "-waud-id") {
 					mapClaims["aud"] = "another-client-id"
@@ -279,12 +294,16 @@ func TestOAuth2AccessControl(t *testing.T) {
 		{"code, wrong state param", "06_couper.hcl", "/cb?code=qeuboub&state=wrong", http.Header{"Cookie": []string{"st=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'wrong' (from query param) vs. 'qeirtbnpetrbi' (s256: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ')"},
 		{"code, state param, wrong CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from query param) vs. 'qeirtbnpetrbi-wrong' (s256: 'Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A')"},
 		{"code, state param, missing CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty CSRF token_value"},
-		{"code, missing nonce", "07_couper.hcl", "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing nonce claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"iss\":\"https://authorization.server\", \"sub\":\"myself\"}'"},
+		{"code, missing nonce", "07_couper.hcl", "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing nonce claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"sub\":\"myself\"}'"},
 		{"code, wrong nonce", "07_couper.hcl", "/cb?code=qeuboub-wn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ-wrong' (from nonce claim) vs. 'qeirtbnpetrbi' (s256: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ')"},
 		{"code, nonce, wrong CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from nonce claim) vs. 'qeirtbnpetrbi-wrong' (s256: 'Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A')"},
 		{"code, nonce, missing CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty CSRF token_value"},
-		{"code, missing azp claim", "07_couper.hcl", "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
+		{"code, missing sub claim", "07_couper.hcl", "/cb?code=qeuboub-msub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing sub claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\"}'"},
+		{"code, missing exp claim", "07_couper.hcl", "/cb?code=qeuboub-mexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing exp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
+		{"code, missing iat claim", "07_couper.hcl", "/cb?code=qeuboub-miat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing iat claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
+		{"code, missing azp claim", "07_couper.hcl", "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
 		{"code, wrong azp claim", "07_couper.hcl", "/cb?code=qeuboub-wazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: azp claim / client ID mismatch, azp = 'bar', client ID = 'foo'"},
+		{"code, missing iss claim", "07_couper.hcl", "/cb?code=qeuboub-miss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token issuer is invalid: 'iss' value doesn't match expectation"},
 		{"code, wrong iss claim", "07_couper.hcl", "/cb?code=qeuboub-wiss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token issuer is invalid: 'iss' value doesn't match expectation"},
 		{"code, wrong aud claim", "07_couper.hcl", "/cb?code=qeuboub-waud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token audience is invalid: 'foo' wasn't found in aud claim"},
 		{"code; client_secret_basic; PKCE", "04_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
