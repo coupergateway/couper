@@ -10,8 +10,13 @@ type AcceptForwarded struct {
 }
 
 func (a *AcceptForwarded) Set(forwarded []string) error {
+	a.protocol = false
+	a.host = false
+	a.port = false
 	for _, part := range forwarded {
-		switch part {
+		switch strings.TrimSpace(part) {
+		case "":
+			continue
 		case "port":
 			a.port = true
 		case "proto":
@@ -69,11 +74,7 @@ type Settings struct {
 }
 
 func (s *Settings) SetAcceptForwarded() error {
-	if len(s.AcceptForwardedURL) > 0 {
-		return s.AcceptForwarded.Set(s.AcceptForwardedURL)
-	}
-
-	return nil
+	return s.AcceptForwarded.Set(s.AcceptForwardedURL)
 }
 
 func (s *Settings) AcceptsForwardedPort() bool {
