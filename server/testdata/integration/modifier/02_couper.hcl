@@ -35,6 +35,18 @@ server "set-response-status" {
     }
     set_response_status = 204
   }
+
+  endpoint "/happy-path-only" {
+    proxy {
+      url = "couper://some.host/"
+    }
+    set_response_status = 418
+  }
+
+  endpoint "/inception" {
+    access_control = ["layer2"]
+    response {}
+  }
 }
 
 definitions {
@@ -42,6 +54,16 @@ definitions {
     user = "hans"
     password = "peter"
     error_handler {
+      set_response_status = 418
+    }
+  }
+
+  basic_auth "layer2" {
+    password = "sauerkraut"
+    error_handler {
+      request {
+        url = "couper://some.host/"
+      }
       set_response_status = 418
     }
   }
