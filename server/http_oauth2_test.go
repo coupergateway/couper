@@ -238,7 +238,11 @@ func TestOAuth2AccessControl(t *testing.T) {
 					mapClaims["exp"] = 4000000000
 				}
 				if !strings.HasSuffix(code, "-msub-id") {
-					mapClaims["sub"] = "myself"
+					if strings.HasSuffix(code, "-wsub-id") {
+						mapClaims["sub"] = "me"
+					} else {
+						mapClaims["sub"] = "myself"
+					}
 				}
 				if strings.HasSuffix(code, "-waud-id") {
 					mapClaims["aud"] = "another-client-id"
@@ -305,6 +309,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 		{"code, nonce, wrong CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: 'oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ' (from nonce claim) vs. 'qeirtbnpetrbi-wrong' (s256: 'Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A')"},
 		{"code, nonce, missing CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty CSRF token_value"},
 		{"code, missing sub claim", "07_couper.hcl", "/cb?code=qeuboub-msub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing sub claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\"}'"},
+		{"code, sub mismatch", "07_couper.hcl", "/cb?code=qeuboub-wsub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: subject mismatch, in ID token 'me', in userinfo response 'myself'"},
 		{"code, missing exp claim", "07_couper.hcl", "/cb?code=qeuboub-mexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing exp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
 		{"code, missing iat claim", "07_couper.hcl", "/cb?code=qeuboub-miat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing iat claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
 		{"code, missing azp claim", "07_couper.hcl", "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},

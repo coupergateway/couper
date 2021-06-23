@@ -200,11 +200,6 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 	}
 
 	// 2.  ID Token
-	// sub
-	// 		REQUIRED.
-	if _, subExists := idTokenClaims["sub"]; !subExists {
-		return nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
-	}
 	// exp
 	// 		REQUIRED.
 	if _, expExists := idTokenClaims["exp"]; !expExists {
@@ -248,6 +243,9 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 		}
 	}
 
+	// 2.  ID Token
+	// sub
+	// 		REQUIRED.
 	var subIdtoken string
 	if s, ok := idTokenClaims["sub"].(string); ok {
 		subIdtoken = s
@@ -275,7 +273,7 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 	}
 
 	if subIdtoken != subUserinfo {
-		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token: '%s', in userinfo response: '%s'", subIdtoken, subUserinfo)
+		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token '%s', in userinfo response '%s'", subIdtoken, subUserinfo)
 	}
 
 	return idTokenClaims, nil

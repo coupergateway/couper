@@ -45,8 +45,9 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend       *Backend `hcl:"backend,block"`
-		TokenEndpoint string   `hcl:"token_endpoint,optional"`
+		Backend          *Backend `hcl:"backend,block"`
+		TokenEndpoint    string   `hcl:"token_endpoint,optional"`
+		UserinfoEndpoint string   `hcl:"userinfo_endpoint,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
