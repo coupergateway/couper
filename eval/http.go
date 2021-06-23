@@ -297,14 +297,14 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 	content, _, _ := body.PartialContent(config.BackendInlineSchema)
 	if attr, ok := content.Attributes["set_response_status"]; ok {
-		err, _ := ApplyResponseStatus(ctx, attr, beresp)
+		_, err := ApplyResponseStatus(ctx, attr, beresp)
 		return err
 	}
 
 	return nil
 }
 
-func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.Response) (error, int) {
+func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.Response) (int, error) {
 	var httpCtx *hcl.EvalContext
 	if c, ok := ctx.Value(ContextType).(*Context); ok {
 		httpCtx = c.eval
@@ -312,12 +312,13 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 
 	val, attrDiags := attr.Expr.Value(httpCtx)
 	if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-		return errors.Evaluation.With(attrDiags), 0
+		return 0, errors.Evaluation.With(attrDiags)
 	}
 
 	status := seetie.ValueToInt(val)
 	if status < 100 || status > 599 {
-		return errors.Configuration.Label("set_response_status").Messagef("invalid http status code: %d", status), 0
+		return 0, errors.Configuration.Label("set_response_status").
+			Messagef("invalid http status code: %d", status)
 	}
 
 	if beresp != nil {
@@ -334,7 +335,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 		beresp.StatusCode = int(status)
 	}
 
-	return nil, int(status)
+	return int(status), nil
 }
 
 func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {

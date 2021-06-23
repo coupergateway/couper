@@ -107,6 +107,16 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 			expMessage: "", // logs without err have no/an empty message field
 			expStatus:  http.StatusNoContent,
 		},
+		{
+			path:       "/happy-path-only",
+			expMessage: `backend error: unsupported protocol scheme "couper"`,
+			expStatus:  http.StatusBadGateway,
+		},
+		{
+			path:       "/inception",
+			expMessage: `backend error: unsupported protocol scheme "couper"`,
+			expStatus:  http.StatusBadGateway,
+		},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
