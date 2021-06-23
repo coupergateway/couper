@@ -17,7 +17,6 @@ type OAuth2AC struct {
 	Csrf                    *CSRF    `hcl:"csrf,block"`
 	GrantType               string   `hcl:"grant_type"`
 	Issuer                  string   `hcl:"issuer,optional"`
-	JwksFile                string   `hcl:"jwks_file,optional"`
 	Name                    string   `hcl:"name,label"`
 	Pkce                    *PKCE    `hcl:"pkce,block"`
 	RedirectURI             *string  `hcl:"redirect_uri"`

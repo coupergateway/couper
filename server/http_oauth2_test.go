@@ -1,15 +1,11 @@
 package server_test
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -214,20 +211,6 @@ func TestOAuth2AccessControl(t *testing.T) {
 	st := "qeirtbnpetrbi"
 	state := accesscontrol.Base64url_s256(st)
 
-	kid := "kid1"
-	pubKey, privKey := newRSAKeyPair()
-	jwk := &accesscontrol.JWK{Key: pubKey, KeyID: kid, Use: "sig", Algorithm: "RS256"}
-	jwks := &accesscontrol.JWKS{Keys: []accesscontrol.JWK{*jwk}}
-	p, _ := filepath.Abs("testdata/oauth2/jwks.json.created")
-	writer, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		helper.Must(err)
-	}
-	if err = json.NewEncoder(writer).Encode(jwks); err != nil {
-		helper.Must(err)
-	}
-	fmt.Printf("jwks=%#v\n", jwks)
-
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/token" {
 			_ = req.ParseForm()
@@ -256,7 +239,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				idToken, _ := createJWT(privKey, mapClaims, kid)
+				idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims)
 				idTokenToAdd = `"id_token":"` + idToken + `",
 				`
 			}
@@ -362,27 +345,4 @@ func TestOAuth2AccessControl(t *testing.T) {
 			}
 		})
 	}
-}
-
-func newRSAKeyPair() (pubKey *rsa.PublicKey, privKey *rsa.PrivateKey) {
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		panic(err)
-	}
-	if e := privKey.Validate(); e != nil {
-		panic(e)
-	}
-
-	pubKey = &privKey.PublicKey
-	return
-}
-
-func createJWT(key interface{}, mapClaims jwt.MapClaims, kid string) (string, error) {
-	// create token
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, mapClaims)
-
-	token.Header["kid"] = kid
-
-	// sign token
-	return token.SignedString(key)
 }

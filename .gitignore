@@ -2,8 +2,6 @@
 
 .vscode/settings.json
 
-server/testdata/oauth2/jwks.json.created
-
 #binary
 /couper
 
