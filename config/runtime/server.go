@@ -444,7 +444,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		}
 
 		for _, saml := range conf.Definitions.SAML {
-			metadata, err := reader.ReadFromAttrFile("saml2 metadata", "", saml.IdpMetadataFile)
+			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
 			if err != nil {
 				return nil, errors.Configuration.Label(saml.Name).With(err)
 			}
