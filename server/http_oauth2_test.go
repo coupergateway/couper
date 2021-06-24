@@ -73,7 +73,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 		defer ResourceOrigin.Close()
 
 		confPath := fmt.Sprintf("testdata/oauth2/%d_retries_couper.hcl", i)
-		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL, "rsOrigin": ResourceOrigin.URL})
 		defer func() {
 			if t.Failed() {
 				for _, e := range hook.Entries {
@@ -85,8 +85,6 @@ func TestEndpoints_OAuth2(t *testing.T) {
 
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 		helper.Must(err)
-
-		req.Header.Set("X-Origin", ResourceOrigin.URL)
 
 		for _, p := range []string{"/", "/2nd"} {
 			hook.Reset()

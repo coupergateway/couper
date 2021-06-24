@@ -7,7 +7,7 @@ server "api" {
     endpoint "/" {
       proxy {
         backend {
-          origin = "${request.headers.x-origin}"
+          origin = "{{.rsOrigin}}"
           path   = "/resource"
 
           oauth2 {
@@ -23,7 +23,7 @@ server "api" {
     endpoint "/2nd" {
       proxy {
         backend {
-          origin = "${request.headers.x-origin}"
+          origin = "{{.rsOrigin}}"
           path   = "/resource"
 
           oauth2 {
