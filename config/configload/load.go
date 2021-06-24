@@ -219,7 +219,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 	// Prepare dynamic functions
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
-		key, err := reader.ReadFromAttrFile("jwt key", profile.Key, profile.KeyFile)
+		key, err := reader.ReadFromAttrFile("jwt_signing_profile key", profile.Key, profile.KeyFile)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
 		}

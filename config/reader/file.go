@@ -11,6 +11,8 @@ func ReadFromAttrFile(context, attribute, path string) ([]byte, error) {
 	readErr := errors.Configuration.Label(context + ": read error")
 	if attribute != "" && path != "" {
 		return nil, readErr.Message("configured attribute and file")
+	} else if attribute == "" && path == "" {
+		return nil, readErr.Message("required: configured attribute or file")
 	}
 
 	if path != "" {
@@ -28,9 +30,5 @@ func ReadFromAttrFile(context, attribute, path string) ([]byte, error) {
 		return b, nil
 	}
 
-	if attribute != "" {
-		return []byte(attribute), nil
-	} else {
-		return nil, readErr.Message("empty attribute")
-	}
+	return []byte(attribute), nil
 }
