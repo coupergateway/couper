@@ -19,17 +19,14 @@ type OAuth2ReqAuth struct {
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 }
 
-// HCLBody implements the <Body> interface.
 func (oa OAuth2ReqAuth) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
-// Reference implements the <BackendReference> interface.
 func (oa OAuth2ReqAuth) Reference() string {
 	return oa.BackendName
 }
 
-// Schema implements the <Inline> interface.
 func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
@@ -51,7 +48,6 @@ func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
-// GetGrantType implements the <OAuth2> interface.
 func (oa OAuth2ReqAuth) GetClientID() string {
 	return oa.ClientID
 }

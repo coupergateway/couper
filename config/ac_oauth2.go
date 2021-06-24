@@ -27,17 +27,14 @@ type OAuth2AC struct {
 	Backend hcl.Body
 }
 
-// HCLBody implements the <Body> interface.
 func (oa OAuth2AC) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
-// Reference implements the <BackendReference> interface.
 func (oa OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
-// Schema implements the <Inline> interface.
 func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
@@ -60,7 +57,6 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
-// GetGrantType implements the <OAuth2> interface.
 func (oa OAuth2AC) GetClientID() string {
 	return oa.ClientID
 }
