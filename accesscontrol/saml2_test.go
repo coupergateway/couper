@@ -11,14 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/test"
-
 	saml2 "github.com/russellhaering/gosaml2"
 	"github.com/russellhaering/gosaml2/types"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config/reader"
+	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/internal/test"
 )
 
 func Test_NewSAML2ACS(t *testing.T) {
