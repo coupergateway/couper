@@ -20,7 +20,7 @@ type OAuth2ReqAuth struct {
 	next     http.RoundTripper
 }
 
-// NewOAuth2 creates a new <http.RoundTripper> object.
+// NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	oauth2 *OAuth2, next http.RoundTripper) (http.RoundTripper, error) {
 	const grantType = "client_credentials"
