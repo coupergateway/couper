@@ -326,6 +326,8 @@ func TestOAuth2AccessControl(t *testing.T) {
 			shutdown, hook := newCouper("testdata/oauth2/"+tc.filename, test.New(t))
 			defer shutdown()
 
+			helper := test.New(subT)
+
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
@@ -338,7 +340,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
+				subT.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
 			tokenResBytes, err := ioutil.ReadAll(res.Body)
@@ -346,31 +348,31 @@ func TestOAuth2AccessControl(t *testing.T) {
 			json.Unmarshal(tokenResBytes, &jData)
 			if params, ok := jData["form_params"]; ok {
 				if params != tc.params {
-					t.Errorf("%q: expected params %s, got: %s", tc.name, tc.params, params)
+					subT.Errorf("%q: expected params %s, got: %s", tc.name, tc.params, params)
 				}
 			} else {
 				if "" != tc.params {
-					t.Errorf("%q: expected params %s, got no", tc.name, tc.params)
+					subT.Errorf("%q: expected params %s, got no", tc.name, tc.params)
 				}
 			}
 			if authorization, ok := jData["authorization"]; ok {
 				if authorization != tc.authorization {
-					t.Errorf("%q: expected authorization %s, got: %s", tc.name, tc.authorization, authorization)
+					subT.Errorf("%q: expected authorization %s, got: %s", tc.name, tc.authorization, authorization)
 				}
 			} else {
 				if "" != tc.authorization {
-					t.Errorf("%q: expected authorization %s, got no", tc.name, tc.authorization)
+					subT.Errorf("%q: expected authorization %s, got no", tc.name, tc.authorization)
 				}
 			}
 
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					t.Errorf("%q: Expected error log: %q, actual: %#v", tc.name, tc.wantErrLog, message)
+					subT.Errorf("%q: Expected error log: %q, actual: %#v", tc.name, tc.wantErrLog, message)
 				}
 			} else {
 				if !strings.HasPrefix(message, tc.wantErrLog) {
-					t.Errorf("%q: Expected error log message: %q, actual: %#v", tc.name, tc.wantErrLog, message)
+					subT.Errorf("%q: Expected error log message: %q, actual: %#v", tc.name, tc.wantErrLog, message)
 				}
 			}
 		})
