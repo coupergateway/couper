@@ -209,7 +209,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 	helper := test.New(t)
 
 	st := "qeirtbnpetrbi"
-	state := accesscontrol.Base64url_s256(st)
+	state := accesscontrol.Base64urlSha256(st)
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/token" {

@@ -122,7 +122,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		if csrfTokenValue == "" {
 			return errors.Oauth2.Message("Empty CSRF token_value")
 		}
-		csrfToken = Base64url_s256(csrfTokenValue)
+		csrfToken = Base64urlSha256(csrfTokenValue)
 
 		// validate state param value against CSRF token
 		if oa.config.Csrf.TokenParam == "state" {
@@ -325,7 +325,7 @@ func (oa *OAuth2Callback) newUserinfoRequest(ctx context.Context, accessToken st
 	return outreq.WithContext(outCtx), nil
 }
 
-func Base64url_s256(value string) string {
+func Base64urlSha256(value string) string {
 	h := sha256.New()
 	h.Write([]byte(value))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
