@@ -16,19 +16,28 @@ func ReadFromAttrFile(context, attribute, path string) ([]byte, error) {
 	}
 
 	if path != "" {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, err
-		}
-		b, err := ioutil.ReadFile(absPath)
-		if err != nil {
-			return nil, readErr.With(err)
-		}
-		if len(b) == 0 {
-			return nil, readErr.Message("empty file")
-		}
-		return b, nil
+		return ReadFromFile(context, path)
 	}
 
 	return []byte(attribute), nil
+}
+
+func ReadFromFile(context, path string) ([]byte, error) {
+	readErr := errors.Configuration.Label(context + ": read error")
+	if path == "" {
+		return nil, readErr.Message("required: configured file")
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, readErr.With(err)
+	}
+	b, err := ioutil.ReadFile(absPath)
+	if err != nil {
+		return nil, readErr.With(err)
+	}
+	if len(b) == 0 {
+		return nil, readErr.Message("empty file")
+	}
+	return b, nil
 }

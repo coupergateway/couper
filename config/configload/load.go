@@ -227,7 +227,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 
 	for _, saml := range couperConfig.Definitions.SAML {
-		metadata, err := reader.ReadFromAttrFile("saml2 idp_metadata_file", "", saml.IdpMetadataFile)
+		metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
 		if err != nil {
 			return nil, errors.Configuration.Label(saml.Name).With(err)
 		}
