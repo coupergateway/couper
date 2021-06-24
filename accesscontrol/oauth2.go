@@ -109,7 +109,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
 		codeVerifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
 		if codeVerifierValue == "" {
-			return errors.Oauth2.Messagef("Empty PKCE code_verifier_value")
+			return errors.Oauth2.Message("Empty PKCE code_verifier_value")
 		}
 		requestConfig.CodeVerifier = &codeVerifierValue
 	}
@@ -120,7 +120,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
 		csrfTokenValue = strings.TrimSpace(seetie.ValueToString(ctyVal))
 		if csrfTokenValue == "" {
-			return errors.Oauth2.Messagef("Empty CSRF token_value")
+			return errors.Oauth2.Message("Empty CSRF token_value")
 		}
 		csrfToken = Base64url_s256(csrfTokenValue)
 
@@ -309,7 +309,7 @@ func (oa *OAuth2Callback) newUserinfoRequest(ctx context.Context, accessToken st
 	}
 
 	if url == "" {
-		return nil, errors.Oauth2.Messagef("missing userinfo_endpoint in config")
+		return nil, errors.Oauth2.Message("missing userinfo_endpoint in config")
 	}
 
 	// url will be configured via backend roundtrip
