@@ -174,12 +174,13 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 			return err
 		}
 
-		idtc, err := oa.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, csrfTokenValue, accessToken)
+		idtc, userinfo, err := oa.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, csrfTokenValue, accessToken)
 		if err != nil {
 			return err
 		}
 
 		tokenData["id_token_claims"] = idtc
+		tokenData["userinfo"] = userinfo
 	}
 
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
@@ -193,7 +194,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	return nil
 }
 
-func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, csrfTokenValue string, accessToken string) (map[string]interface{}, error) {
+func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, csrfTokenValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
@@ -203,12 +204,12 @@ func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.
 	// exp
 	// 		REQUIRED.
 	if _, expExists := idTokenClaims["exp"]; !expExists {
-		return nil, errors.Oauth2.Messagef("missing exp claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Messagef("missing exp claim in ID token, claims='%#v'", idTokenClaims)
 	}
 	// iat
 	// 		REQUIRED.
 	if _, iatExists := idTokenClaims["iat"]; !iatExists {
-		return nil, errors.Oauth2.Messagef("missing iat claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Messagef("missing iat claim in ID token, claims='%#v'", idTokenClaims)
 	}
 
 	// 3.1.3.7.  ID Token Validation
@@ -216,12 +217,12 @@ func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.
 	//    that an azp Claim is present.
 	azp, azpExists := idTokenClaims["azp"]
 	if auds, audsOK := idTokenClaims["aud"].([]interface{}); audsOK && len(auds) > 1 && !azpExists {
-		return nil, errors.Oauth2.Messagef("missing azp claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Messagef("missing azp claim in ID token, claims='%#v'", idTokenClaims)
 	}
 	// 5. If an azp (authorized party) Claim is present, the Client SHOULD
 	//    verify that its client_id is the Claim Value.
 	if azpExists && azp != oa.config.ClientID {
-		return nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, oa.config.ClientID)
+		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, oa.config.ClientID)
 	}
 
 	// validate nonce claim value against CSRF token
@@ -235,11 +236,11 @@ func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.
 		if n, ok := idTokenClaims["nonce"].(string); ok {
 			nonce = n
 		} else {
-			return nil, errors.Oauth2.Messagef("missing nonce claim in ID token, claims='%#v'", idTokenClaims)
+			return nil, nil, errors.Oauth2.Messagef("missing nonce claim in ID token, claims='%#v'", idTokenClaims)
 		}
 
 		if csrfToken != nonce {
-			return nil, errors.Oauth2.Messagef("CSRF token mismatch: %q (from nonce claim) vs. %q (s256: %q)", nonce, csrfTokenValue, csrfToken)
+			return nil, nil, errors.Oauth2.Messagef("CSRF token mismatch: %q (from nonce claim) vs. %q (s256: %q)", nonce, csrfTokenValue, csrfToken)
 		}
 	}
 
@@ -250,33 +251,33 @@ func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.
 	if s, ok := idTokenClaims["sub"].(string); ok {
 		subIdtoken = s
 	} else {
-		return nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
 	}
 
 	userinfoResponse, err := oa.requestUserinfo(ctx, accessToken)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	userinfoResponseString := string(userinfoResponse)
 	var userinfoData map[string]interface{}
 	err = json.Unmarshal(userinfoResponse, &userinfoData)
 	if err != nil {
-		return nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response=%q", userinfoResponseString).With(err)
+		return nil, nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response=%q", userinfoResponseString).With(err)
 	}
 
 	var subUserinfo string
 	if s, ok := userinfoData["sub"].(string); ok {
 		subUserinfo = s
 	} else {
-		return nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response=%q", userinfoResponseString)
+		return nil, nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response=%q", userinfoResponseString)
 	}
 
 	if subIdtoken != subUserinfo {
-		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token %q, in userinfo response %q", subIdtoken, subUserinfo)
+		return nil, nil, errors.Oauth2.Messagef("subject mismatch, in ID token %q, in userinfo response %q", subIdtoken, subUserinfo)
 	}
 
-	return idTokenClaims, nil
+	return idTokenClaims, userinfoData, nil
 }
 
 func (oa *OAuth2Callback) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
