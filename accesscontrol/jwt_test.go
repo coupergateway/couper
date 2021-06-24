@@ -76,7 +76,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			fields  fields
 			wantErr string
 		}{
-			{"missing key", fields{}, "configuration error: jwt key: read error: empty attribute"},
+			{"missing key-file path", fields{}, "configuration error: jwt key: read error: required: configured attribute or file"},
 			{"missing key-file", fields{pubKeyPath: "./not-there.file"}, "not-there.file: no such file or directory"},
 			{"PKIX", fields{
 				algorithm: alg,
