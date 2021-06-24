@@ -94,7 +94,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	query := req.URL.Query()
 	code := query.Get("code")
 	if code == "" {
-		return errors.Oauth2.Messagef("missing code query parameter; query='%s'", req.URL.RawQuery)
+		return errors.Oauth2.Messagef("missing code query parameter; query=%q", req.URL.RawQuery)
 	}
 
 	requestConfig, err := oa.oauth2.GetRequestConfig(req)
@@ -128,11 +128,11 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		if oa.config.Csrf.TokenParam == "state" {
 			csrfTokenFromParam := query.Get(oa.config.Csrf.TokenParam)
 			if csrfTokenFromParam == "" {
-				return errors.Oauth2.Messagef("missing state query parameter; query='%s'", req.URL.RawQuery)
+				return errors.Oauth2.Messagef("missing state query parameter; query=%q", req.URL.RawQuery)
 			}
 
 			if csrfToken != csrfTokenFromParam {
-				return errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from query param) vs. '%s' (s256: '%s')", csrfTokenFromParam, csrfTokenValue, csrfToken)
+				return errors.Oauth2.Messagef("CSRF token mismatch: %q (from query param) vs. %q (s256: %q)", csrfTokenFromParam, csrfTokenValue, csrfToken)
 			}
 		}
 	}
@@ -147,7 +147,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 
 	tokenData, accessToken, err := transport.ParseAccessToken(tokenResponse)
 	if err != nil {
-		return errors.Oauth2.Messagef("parsing token response JSON failed, response='%s'", string(tokenResponse)).With(err)
+		return errors.Oauth2.Messagef("parsing token response JSON failed, response=%q", string(tokenResponse)).With(err)
 	}
 
 	ctx := req.Context()
@@ -221,7 +221,7 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 	// 5. If an azp (authorized party) Claim is present, the Client SHOULD
 	//    verify that its client_id is the Claim Value.
 	if azpExists && azp != oa.config.ClientID {
-		return nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = '%s', client ID = '%s'", azp, oa.config.ClientID)
+		return nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, oa.config.ClientID)
 	}
 
 	// validate nonce claim value against CSRF token
@@ -239,7 +239,7 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 		}
 
 		if csrfToken != nonce {
-			return nil, errors.Oauth2.Messagef("CSRF token mismatch: '%s' (from nonce claim) vs. '%s' (s256: '%s')", nonce, csrfTokenValue, csrfToken)
+			return nil, errors.Oauth2.Messagef("CSRF token mismatch: %q (from nonce claim) vs. %q (s256: %q)", nonce, csrfTokenValue, csrfToken)
 		}
 	}
 
@@ -262,18 +262,18 @@ func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, cs
 	var userinfoData map[string]interface{}
 	err = json.Unmarshal(userinfoResponse, &userinfoData)
 	if err != nil {
-		return nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response='%s'", userinfoResponseString).With(err)
+		return nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response=%q", userinfoResponseString).With(err)
 	}
 
 	var subUserinfo string
 	if s, ok := userinfoData["sub"].(string); ok {
 		subUserinfo = s
 	} else {
-		return nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response='%s'", userinfoResponseString)
+		return nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response=%q", userinfoResponseString)
 	}
 
 	if subIdtoken != subUserinfo {
-		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token '%s', in userinfo response '%s'", subIdtoken, subUserinfo)
+		return nil, errors.Oauth2.Messagef("subject mismatch, in ID token %q, in userinfo response %q", subIdtoken, subUserinfo)
 	}
 
 	return idTokenClaims, nil
@@ -296,7 +296,7 @@ func (oa *OAuth2Callback) requestUserinfo(ctx context.Context, accessToken strin
 	}
 
 	if userinfoRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("userinfo request failed, response='%s'", string(userinfoResBytes))
+		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
 	}
 
 	return userinfoResBytes, nil

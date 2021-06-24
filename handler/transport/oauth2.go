@@ -66,7 +66,7 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 	}
 
 	if tokenRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("token request failed, response='%s'", string(tokenResBytes))
+		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("token request failed, response=%q", string(tokenResBytes))
 	}
 
 	return tokenResBytes, nil
