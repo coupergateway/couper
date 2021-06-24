@@ -385,7 +385,7 @@ mandatory *label*.
 | `csrf`                     | <ul><li>&#9888; one of `pkce` or `csrf` is mandatory.</li><li>Use `state` or `nonce` for protection against CSRF.</li></ul> |
 | **Attributes**             | **Description** |
 | `authorization_endpoint`   | <ul><li>&#9888; Mandatory.</li><li>The authorization server endpoint URL used for authorization.</li></ul> |
-| `token_endpoint`           | <ul><li>Optional.</li><li>The authorization server endpoint URL used for requesting the token.</li></ul> |
+| `token_endpoint`           | <ul><li>&#9888; Mandatory.</li><li>The authorization server endpoint URL used for requesting the token.</li></ul> |
 | `token_endpoint_auth_method` | <ul><li>Optional.</li><li>Defines the method to authenticate the client at the token endpoint.</li><li>If set to `client_secret_post`, the client credentials are transported in the request body.</li><li>If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.</li><li>Default: `client_secret_basic`.</li></ul> |
 | `userinfo_endpoint`        | <ul><li>Optional.</li><li>The authorization server (OIDC server) endpoint URL used for requesting information about the user.</li></ul> |
 | `redirect_uri`             | <ul><li>&#9888; Mandatory.</li><li>The Couper endpoint for receiving the authorization code.</li></ul> |

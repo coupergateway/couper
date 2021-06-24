@@ -1,8 +1,8 @@
 server "api" {
-  error_file = "./../integration/server_error.html"
+  error_file = "./testdata/integration/server_error.html"
 
   api {
-    error_file = "./../integration/api_error.json"
+    error_file = "./testdata/integration/api_error.json"
 
     endpoint "/" {
       proxy {
@@ -11,7 +11,7 @@ server "api" {
           path   = "/resource"
 
           oauth2 {
-            token_endpoint = "${request.headers.x-as-origin}/oauth2"
+            token_endpoint = "{{.asOrigin}}/oauth2"
             client_id      = "user"
             client_secret  = "pass"
             grant_type     = "client_credentials"
@@ -31,7 +31,7 @@ server "api" {
             client_secret  = "pass"
             grant_type     = "client_credentials"
             backend {
-              origin = "${request.headers.x-as-origin}"
+              origin = "{{.asOrigin}}"
               path = "/oauth2"
             }
           }

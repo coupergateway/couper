@@ -113,12 +113,7 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
-	tokenURL, err := eval.GetContextAttribute(oa.config.HCLBody(), outCtx, "token_endpoint")
-	if err != nil {
-		return nil, err
-	}
-
-	if tokenURL != "" {
+	if tokenURL := oa.config.GetTokenEndpoint(); tokenURL != "" {
 		outCtx = context.WithValue(outCtx, request.URLAttribute, tokenURL)
 	}
 

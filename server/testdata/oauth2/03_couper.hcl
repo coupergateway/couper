@@ -1,8 +1,8 @@
 server "oauth2-options" {
-  error_file = "./../integration/server_error.html"
+  error_file = "./testdata/integration/server_error.html"
 
   api {
-    error_file = "./../integration/api_error.json"
+    error_file = "./testdata/integration/api_error.json"
 
     endpoint "/" {
       proxy {

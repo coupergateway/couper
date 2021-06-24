@@ -16,6 +16,7 @@ type OAuth2ReqAuth struct {
 	Remain                  hcl.Body `hcl:",remain"`
 	Retries                 *uint8   `hcl:"retries,optional"`
 	Scope                   *string  `hcl:"scope,optional"`
+	TokenEndpoint           string   `hcl:"token_endpoint,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 }
 
@@ -34,8 +35,7 @@ func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend       *Backend `hcl:"backend,block"`
-		TokenEndpoint string   `hcl:"token_endpoint,optional"`
+		Backend *Backend `hcl:"backend,block"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -62,6 +62,10 @@ func (oa OAuth2ReqAuth) GetGrantType() string {
 
 func (oa OAuth2ReqAuth) GetScope() *string {
 	return oa.Scope
+}
+
+func (oa OAuth2ReqAuth) GetTokenEndpoint() string {
+	return oa.TokenEndpoint
 }
 
 func (oa OAuth2ReqAuth) GetTokenEndpointAuthMethod() *string {

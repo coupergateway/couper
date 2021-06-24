@@ -22,6 +22,7 @@ type OAuth2AC struct {
 	RedirectURI             *string  `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
+	TokenEndpoint           string   `hcl:"token_endpoint"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	UserinfoEndpoint        string   `hcl:"userinfo_endpoint,optional"`
 	// internally used
@@ -43,8 +44,7 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend       *Backend `hcl:"backend,block"`
-		TokenEndpoint string   `hcl:"token_endpoint,optional"`
+		Backend *Backend `hcl:"backend,block"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -71,6 +71,10 @@ func (oa OAuth2AC) GetGrantType() string {
 
 func (oa OAuth2AC) GetScope() *string {
 	return oa.Scope
+}
+
+func (oa OAuth2AC) GetTokenEndpoint() string {
+	return oa.TokenEndpoint
 }
 
 func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {

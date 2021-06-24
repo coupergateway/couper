@@ -12,6 +12,7 @@ type OAuth2 interface {
 	GetClientSecret() string
 	GetGrantType() string
 	GetScope() *string
+	GetTokenEndpoint() string
 	GetTokenEndpointAuthMethod() *string
 }
 
