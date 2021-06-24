@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -80,6 +81,27 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
+}
+
+// newCouperWithTemplate applies given variables first and loads Couper with the resulting configuration file.
+// Example template:
+// 		My {{.message}}
+// Example value:
+//		map[string]interface{}{
+//			"message": "value",
+//		}
+func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]interface{}) (func(), *logrustest.Hook) {
+	if vars == nil {
+		return newCouper(file, helper)
+	}
+
+	tpl, err := template.New(filepath.Base(file)).ParseFiles(file)
+	helper.Must(err)
+
+	result := &bytes.Buffer{}
+	helper.Must(tpl.Execute(result, vars))
+
+	return newCouperWithBytes(result.Bytes(), helper)
 }
 
 func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
