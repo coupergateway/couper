@@ -174,7 +174,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 			return err
 		}
 
-		idtc, err := oa.validateIdTokenClaims(idToken.Claims, csrfToken, csrfTokenValue, ctx, accessToken)
+		idtc, err := oa.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, csrfTokenValue, accessToken)
 		if err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	return nil
 }
 
-func (oa *OAuth2Callback) validateIdTokenClaims(claims jwt.Claims, csrfToken, csrfTokenValue string, ctx context.Context, accessToken string) (map[string]interface{}, error) {
+func (oa *OAuth2Callback) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, csrfTokenValue string, accessToken string) (map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
