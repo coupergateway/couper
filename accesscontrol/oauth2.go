@@ -303,24 +303,19 @@ func (oa *OAuth2Callback) requestUserinfo(ctx context.Context, accessToken strin
 }
 
 func (oa *OAuth2Callback) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	url, err := eval.GetContextAttribute(oa.config.HCLBody(), ctx, "userinfo_endpoint")
-	if err != nil {
-		return nil, err
-	}
-
-	if url == "" {
+	if oa.config.UserinfoEndpoint == "" {
 		return nil, errors.Oauth2.Message("missing userinfo_endpoint in config")
 	}
 
 	// url will be configured via backend roundtrip
-	outreq, err := http.NewRequest(http.MethodGet, url, nil)
+	outreq, err := http.NewRequest(http.MethodGet, oa.config.UserinfoEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	outreq.Header.Set("Authorization", "Bearer "+accessToken)
 
-	outCtx := context.WithValue(ctx, request.URLAttribute, url)
+	outCtx := context.WithValue(ctx, request.URLAttribute, oa.config.UserinfoEndpoint)
 
 	return outreq.WithContext(outCtx), nil
 }

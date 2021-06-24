@@ -23,6 +23,7 @@ type OAuth2AC struct {
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
+	UserinfoEndpoint        string   `hcl:"userinfo_endpoint,optional"`
 	// internally used
 	Backend hcl.Body
 }
@@ -42,9 +43,8 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend          *Backend `hcl:"backend,block"`
-		TokenEndpoint    string   `hcl:"token_endpoint,optional"`
-		UserinfoEndpoint string   `hcl:"userinfo_endpoint,optional"`
+		Backend       *Backend `hcl:"backend,block"`
+		TokenEndpoint string   `hcl:"token_endpoint,optional"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})

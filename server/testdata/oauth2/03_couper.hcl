@@ -10,7 +10,7 @@ server "oauth2-options" {
           url = "https://example.com/"
 
           oauth2 {
-            token_endpoint = "${request.headers.x-as-origin}/options"
+            token_endpoint = "{{.asOrigin}}/options"
             retries        = 0
             client_id      = "user"
             client_secret  = "pass"

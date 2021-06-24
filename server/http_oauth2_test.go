@@ -323,7 +323,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 		{"code, nonce param", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusOK, "code=qeuboub-id&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
-			shutdown, hook := newCouper("testdata/oauth2/"+tc.filename, test.New(t))
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
 			defer shutdown()
 
 			helper := test.New(subT)
@@ -334,7 +334,6 @@ func TestOAuth2AccessControl(t *testing.T) {
 			for k, v := range tc.header {
 				req.Header.Set(k, v[0])
 			}
-			req.Header.Set("X-AS-Origin", oauthOrigin.URL)
 
 			res, err := client.Do(req)
 			helper.Must(err)
