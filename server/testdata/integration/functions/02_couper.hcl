@@ -9,9 +9,9 @@ server "oauth-functions" {
         x-ct-1 = beta_oauth_csrf_token()
         x-ct-2 = beta_oauth_csrf_token()
         x-cht = beta_oauth_hashed_csrf_token()
-		x-au-pkce = beta_oauth_authorization_url("ac-pkce")
-		x-au-state = beta_oauth_authorization_url("ac-state")
-		x-au-nonce = beta_oauth_authorization_url("ac-nonce")
+        x-au-pkce = beta_oauth_authorization_url("ac-pkce")
+        x-au-state = beta_oauth_authorization_url("ac-state")
+        x-au-nonce = beta_oauth_authorization_url("ac-nonce")
       }
     }
   }
