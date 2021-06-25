@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * Missing support for `set_response_status` within a plain `error_handler` block ([#257](https://github.com/avenga/couper/pull/257))
+  * Panic in jwt_sign() and saml_sso_url() functions without proper configuration ([#243](https://github.com/avenga/couper/issues/243))
 
 ---
 

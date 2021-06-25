@@ -13,6 +13,9 @@ type SAML struct {
 	Remain          hcl.Body `hcl:",remain"`
 	SpAcsUrl        string   `hcl:"sp_acs_url"`
 	SpEntityId      string   `hcl:"sp_entity_id"`
+
+	// internally used
+	MetadataBytes []byte
 }
 
 // HCLBody implements the <Body> interface.
