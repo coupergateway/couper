@@ -136,7 +136,7 @@ The [Proxy Block](#proxy-block) creates and executes a proxy request to a backen
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Reference Block](#reference-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
+| `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
 | `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|-|
 |[Modifier](#modifier)|-|-|-|-|-|
 
@@ -152,7 +152,7 @@ The [Request Block](#request-block) creates and executes a request to a backend 
 <!-- TODO: add available http methods -->
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `backend` |string|-|`backend` block reference, defined in [Reference Block](#reference-block)|&#9888; required, if no [Backend Block](#backend-block) is defined.|`backend = "foo"`|
+| `backend` |string|-|`backend` block reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) is defined.|`backend = "foo"`|
 | `url` |string|-|-|If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).|-|-|
 |`body`|string|-|-| Creates implicit default `Content-Type: text/plain` header field.|-|
 |`json_body`|null, bool, number, string, map, list|-|-|Creates implicit default `Content-Type: text/plain` header field.|-|
