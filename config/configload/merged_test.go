@@ -16,7 +16,7 @@ import (
 
 func TestMergeBodies(t *testing.T) {
 	type expectedBody struct {
-		OAuth2 *config.OAuth2 `hcl:"oauth2,block"`
+		OAuth2 *config.OAuth2ReqAuth `hcl:"oauth2,block"`
 	}
 
 	type container struct {
@@ -24,11 +24,11 @@ func TestMergeBodies(t *testing.T) {
 	}
 
 	bodies := &container{[]*expectedBody{
-		{OAuth2: &config.OAuth2{
+		{OAuth2: &config.OAuth2ReqAuth{
 			BackendName: "test",
 			GrantType:   "override_me",
 		}},
-		{OAuth2: &config.OAuth2{
+		{OAuth2: &config.OAuth2ReqAuth{
 			GrantType: "no_creds",
 		}},
 	}}

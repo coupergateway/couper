@@ -139,6 +139,18 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				return nil, diags
 			}
 
+			for _, oauth2Config := range couperConfig.Definitions.OAuth2AC {
+				err := uniqueAttributeKey(oauth2Config.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			// access control - error_handler
 			var acErrorHandler []AccessControlSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
@@ -148,6 +160,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 			for _, acConfig := range couperConfig.Definitions.SAML {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.OAuth2AC {
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 
@@ -236,6 +251,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 	couperConfig.Context = evalContext.
 		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
+		WithOAuth2(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
@@ -679,7 +695,7 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		return nil, err
 	}
 
-	return newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
+	return newBackend(definedBackends, &config.OAuth2ReqAuth{Remain: hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
 		},
