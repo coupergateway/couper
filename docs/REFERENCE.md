@@ -364,7 +364,7 @@ required _label_.
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `backend`                       |string|-|[Backend Block Reference](#backend-block)|-|-|
+| `backend`                       |string|-|[Backend Block Reference](#backend-block)| &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`! |-|
 | `authorization_endpoint` | string |-| The authorization server endpoint URL used for authorization. |&#9888; required|-|
 | `token_endpoint` | string |-| The authorization server endpoint URL used for requesting the token. |&#9888; required|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
