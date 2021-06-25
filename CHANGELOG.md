@@ -1,19 +1,21 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.3...master)
+## [Unreleased](https://github.com/avenga/couper/compare/1.3.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * OAuth2 Authorization Code Grant Flow: `beta_oauth2 {}` block; `beta_oauth_authorization_url()`, `beta_oauth_code_verifier()` and `beta_oauth_csrf_token()` functions ([#247](https://github.com/avenga/couper/pull/247))
+---
+
+## [1.3.1](https://github.com/avenga/couper/compare/1.3...1.3.1)
 
 * **Changed**
   * `Error` log-level for upstream responses with status `500` to `Info` log-level ([#258](https://github.com/avenga/couper/pull/258))
 
 * **Fixed**
   * Missing support for `set_response_status` within a plain `error_handler` block ([#257](https://github.com/avenga/couper/pull/257))
-
----
+  * Panic in jwt_sign() and saml_sso_url() functions without proper configuration ([#243](https://github.com/avenga/couper/issues/243))
 
 ## [1.3](https://github.com/avenga/couper/compare/1.2...1.3)
 

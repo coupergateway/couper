@@ -2,8 +2,7 @@ package lib
 
 import (
 	"encoding/xml"
-	"io/ioutil"
-	"path/filepath"
+	"fmt"
 
 	saml2 "github.com/russellhaering/gosaml2"
 	"github.com/russellhaering/gosaml2/types"
@@ -18,11 +17,24 @@ const (
 	NameIdFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
 )
 
-func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
-	samls := make(map[string]*config.SAML)
-	for _, s := range samlConfigs {
-		samls[s.Name] = s
+func NewSamlSsoUrlFunction(configs []*config.SAML) function.Function {
+	type entity struct {
+		config     *config.SAML
+		descriptor *types.EntityDescriptor
+		err        error
 	}
+
+	samlEntities := make(map[string]*entity)
+	for _, conf := range configs {
+		metadata := &types.EntityDescriptor{}
+		err := xml.Unmarshal(conf.MetadataBytes, metadata)
+		samlEntities[conf.Name] = &entity{
+			config:     conf,
+			descriptor: metadata,
+			err:        err,
+		}
+	}
+
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -32,24 +44,20 @@ func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			label := args[0].AsString()
-			saml := samls[label]
-			p, err := filepath.Abs(saml.IdpMetadataFile)
-			if err != nil {
-				return cty.StringVal(""), err
+			if len(samlEntities) == 0 {
+				return cty.StringVal(""), fmt.Errorf("missing saml2 definitions")
 			}
 
-			rawMetadata, err := ioutil.ReadFile(p)
-			if err != nil {
-				return cty.StringVal(""), err
+			if len(args) == 0 {
+				return cty.StringVal(""), fmt.Errorf("missing saml2 definition reference")
 			}
 
-			metadata := &types.EntityDescriptor{}
-			err = xml.Unmarshal(rawMetadata, metadata)
-			if err != nil {
-				return cty.StringVal(""), err
+			ent := samlEntities[args[0].AsString()]
+			if ent.err != nil {
+				return cty.StringVal(""), ent.err
 			}
 
+			metadata := ent.descriptor
 			var ssoUrl string
 			for _, ssoService := range metadata.IDPSSODescriptor.SingleSignOnServices {
 				if ssoService.Binding == "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" {
@@ -61,9 +69,9 @@ func NewSamlSsoUrlFunction(samlConfigs []*config.SAML) function.Function {
 			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
 			sp := &saml2.SAMLServiceProvider{
-				AssertionConsumerServiceURL: saml.SpAcsUrl,
+				AssertionConsumerServiceURL: ent.config.SpAcsUrl,
 				IdentityProviderSSOURL:      ssoUrl,
-				ServiceProviderIssuer:       saml.SpEntityId,
+				ServiceProviderIssuer:       ent.config.SpEntityId,
 				SignAuthnRequests:           false,
 			}
 			if nameIDFormat != "" {

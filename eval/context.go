@@ -131,7 +131,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
-	ctx.updateFunctions()
+	updateFunctions(ctx)
 
 	return ctx
 }
@@ -182,7 +182,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
 
-	ctx.updateFunctions()
+	updateFunctions(ctx)
 
 	return ctx
 }
@@ -193,7 +193,7 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	if c.profiles == nil {
 		c.profiles = make([]*config.JWTSigningProfile, 0)
 	}
-	c.updateFunctions()
+	updateFunctions(c)
 	return c
 }
 
@@ -233,14 +233,6 @@ func (c *Context) createOAuth2Functions() {
 	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
 }
 
-// updateFunctions recreates the listed functions with latest evaluation context.
-func (c *Context) updateFunctions() {
-	if len(c.profiles) > 0 {
-		jwtfn := lib.NewJwtSignFunction(c.profiles, c.eval)
-		c.eval.Functions[lib.FnJWTSign] = jwtfn
-	}
-}
-
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 	cv, ok := c.memorize[lib.CodeVerifier]
 	var err error
@@ -256,6 +248,12 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 	codeVerifier, _ := cv.(*pkce.CodeVerifier)
 
 	return codeVerifier, nil
+}
+
+// updateFunctions recreates the listed functions with latest evaluation context.
+func updateFunctions(ctx *Context) {
+	jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
+	ctx.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
