@@ -46,7 +46,7 @@ computer. Please visit the [get started guide](https://docs.docker.com/get-start
 To download/install Couper, open a terminal and execute:
 
 ```sh
-$ docker pull avenga/couper
+docker pull avenga/couper
 ```
 
 Couper needs a configuration file to know what to do.
@@ -57,7 +57,7 @@ Copy/paste the following configuration to the file and save it.
 
 ```hcl
 server "hello" {
-	endpoint "/**" {
+  endpoint "/**" {
         response {
             body = "Hello World!"
         }
@@ -145,6 +145,8 @@ settings {
     - `response` configuration block for a manual client response
 - `definitions` block for predefined configurations, that can be referenced
 - `settings` block for server configuration which applies to the running instance
+
+> See also: [Configuration Reference](REFERENCE.md)
 
 ### Expressions
 
@@ -287,11 +289,11 @@ api "my_api" {
 }
 ```
 
-| Incoming request       | Outgoing request                            |
-| :--------------------- | :------------------------------------------ |
-| /api/v1/login/foo      | http://identityprovider:8080/login/foo      |
-| /api/v1/cart/items     | http://cartservice:8080/api/v1/items        |
-| /api/v1/account/brenda | http://accountservice:8080/user/brenda/info |
+| Incoming request       | Outgoing request                              |
+| :--------------------- | :-------------------------------------------- |
+| /api/v1/login/foo      | `http://identityprovider:8080/login/foo`      |
+| /api/v1/cart/items     | `http://cartservice:8080/api/v1/items`        |
+| /api/v1/account/brenda | `http://accountservice:8080/user/brenda/info` |
 
 #### Using Variables and Expressions
 

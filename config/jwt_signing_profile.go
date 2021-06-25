@@ -7,4 +7,7 @@ type JWTSigningProfile struct {
 	Name               string `hcl:"name,label"`
 	SignatureAlgorithm string `hcl:"signature_algorithm"`
 	TTL                string `hcl:"ttl"`
+
+	// internally used
+	KeyBytes []byte
 }

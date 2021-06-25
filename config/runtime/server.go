@@ -21,6 +21,7 @@ import (
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -84,8 +85,7 @@ func GetHostPort(hostPort string) (string, int, error) {
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore,
-) (ServerConfiguration, error) {
+func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (ServerConfiguration, error) {
 	// confCtx is created to evaluate request / response related configuration errors on start.
 	noopReq, _ := http.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
@@ -413,6 +413,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
+			key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
+			if err != nil {
+				return nil, errors.Configuration.Label(jwtConf.Name).With(err)
+			}
+
 			var claims map[string]interface{}
 			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
 				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
@@ -425,8 +430,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 				Algorithm:      jwtConf.SignatureAlgorithm,
 				Claims:         claims,
 				ClaimsRequired: jwtConf.ClaimsRequired,
-				Key:            jwtConf.Key,
-				KeyFile:        jwtConf.KeyFile,
+				Key:            key,
 				Name:           jwtConf.Name,
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
@@ -440,7 +444,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext) (ACD
 		}
 
 		for _, saml := range conf.Definitions.SAML {
-			s, err := ac.NewSAML2ACS(saml.IdpMetadataFile, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
+			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
+			if err != nil {
+				return nil, errors.Configuration.Label(saml.Name).With(err)
+			}
+			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
 				return nil, fmt.Errorf("loading saml definition failed: %s", err)
 			}

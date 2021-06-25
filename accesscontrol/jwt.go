@@ -6,9 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -52,8 +50,7 @@ type JWTOptions struct {
 	ClaimsRequired []string
 	Name           string // TODO: more generic (validate)
 	Source         JWTSource
-	Key            string
-	KeyFile        string
+	Key            []byte
 }
 
 func NewJWTSource(cookie, header string) JWTSource {
@@ -88,23 +85,6 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		source:         options.Source,
 	}
 
-	if options.Key != "" && options.KeyFile != "" {
-		return nil, confErr.Message("key and keyFile provided")
-	}
-
-	key := []byte(options.Key)
-	if options.KeyFile != "" {
-		k, err := readKeyFile(options.KeyFile)
-		if err != nil {
-			return nil, confErr.With(err)
-		}
-		key = k
-	}
-
-	if len(key) == 0 {
-		return nil, confErr.Message("key required")
-	}
-
 	if jwtAC.source.Type == Invalid {
 		return nil, confErr.Message("token source is invalid")
 	}
@@ -120,11 +100,11 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 	jwtAC.parser = parser
 
 	if jwtAC.algorithm.IsHMAC() {
-		jwtAC.hmacSecret = key
+		jwtAC.hmacSecret = options.Key
 		return jwtAC, nil
 	}
 
-	pubKey, err := parsePublicPEMKey(key)
+	pubKey, err := parsePublicPEMKey(options.Key)
 	if err != nil {
 		return nil, confErr.With(err)
 	}
@@ -281,8 +261,8 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 	}
 	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
 	if pubErr != nil {
-		pkixKey, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
-		if err != nil {
+		pkixKey, pkerr := x509.ParsePKIXPublicKey(pemBlock.Bytes)
+		if pkerr != nil {
 			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
 			if cerr != nil {
 				return nil, jwt.ErrNotRSAPublicKey
@@ -299,17 +279,6 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 		}
 	}
 	return pubKey, nil
-}
-
-func readKeyFile(filePath string) ([]byte, error) {
-	if filePath != "" {
-		p, err := filepath.Abs(filePath)
-		if err != nil {
-			return nil, err
-		}
-		return ioutil.ReadFile(p)
-	}
-	return nil, nil
 }
 
 func isStringType(val interface{}) error {

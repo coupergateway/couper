@@ -1,6 +1,10 @@
 package test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/avenga/couper/errors"
+)
 
 type Helper struct {
 	tb testing.TB
@@ -13,6 +17,10 @@ func New(tb testing.TB) *Helper {
 func (h *Helper) Must(err error) {
 	h.tb.Helper()
 	if err != nil {
+		if logErr, ok := err.(errors.GoError); ok {
+			h.tb.Fatal(logErr.LogError())
+			return
+		}
 		h.tb.Fatal(err)
 	}
 }
