@@ -135,12 +135,12 @@ The [Proxy Block](#proxy-block) creates and executes a proxy request to a backen
 
 |Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------|
-|[Endpoint Block](#endpoint-block)|&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|-|
+|[Endpoint Block](#endpoint-block)|&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
-| `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|-|
+| `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|
 |[Modifier](#modifier)|-|-|-|-|-|
 
 ### Request Block
@@ -156,13 +156,13 @@ The [Request Block](#request-block) creates and executes a request to a backend 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `backend` |string|-|`backend` block reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) is defined.|`backend = "foo"`|
-| `url` |string|-|-|If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).|-|-|
+| `url` |string|-|-|If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).|-|
 |`body`|string|-|-| Creates implicit default `Content-Type: text/plain` header field.|-|
 |`json_body`|null, bool, number, string, map, list|-|-|Creates implicit default `Content-Type: text/plain` header field.|-|
 | `form_body` |map|-|-|Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.|-|
 |`method`    |string|`GET`|-|-|-|
 |`headers`  |-|-|-|Same as `set_request_headers` in [Request Header](#request-header).|-|
-|`query_params`|-|-|-|Same as `set_query_params` in [Query Parameter](#query-parameter).|-|                                                                                                                                                         - |
+|`query_params`|-|-|-|Same as `set_query_params` in [Query Parameter](#query-parameter).|-|
 
 ### Response Block
 
@@ -174,9 +174,9 @@ The [Response Block](#response-block) creates and sends a client response.
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `body`         | string|-|-|Creates implicit default `Content-Type: text/plain` header field.|-|                                              |
-| `json_body`    | null, bool, number, string, map, list|-|-|Creates implicit default `Content-Type: application/json` header field.|-|-|
-| `status`       | integer|`200`|HTTP status code.|-|-|                                                                                 |
+| `body`         | string|-|-|Creates implicit default `Content-Type: text/plain` header field.|-|
+| `json_body`    | null, bool, number, string, map, list|-|-|Creates implicit default `Content-Type: application/json` header field.|-|
+| `status`       | integer|`200`|HTTP status code.|-|-|
 | `headers`      |string|-|Same as `set_response_headers` in [Request Header](#response-header).                  |-|-|
 
 ### Backend Block
@@ -193,9 +193,9 @@ A [Backend Block](#backend-block) defines the connection to a local/remote backe
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `basic_auth`                    | string|-|Basic auth for the upstream request. | format is `username:password`|-|
 | `hostname`                      | string |-|Value of the HTTP host header field for the origin request. |Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.|-|
-| `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with the scheme `http://...`.|-|                                                                                          |
-| `path`                          | string|-|Changeable part of upstream URL.|-|-|                                                                                                                                                                       |
-| `path_prefix`  | string|-|Prefixes all backend request paths with the given prefix|&#9888; Must start with the scheme `http://...`. |-|-|                                                                                    |
+| `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with the scheme `http://...`.|-|
+| `path`                          | string|-|Changeable part of upstream URL.|-|-|
+| `path_prefix`  | string|-|Prefixes all backend request paths with the given prefix|&#9888; Must start with the scheme `http://...`. |-|
 | `connect_timeout`                | [duration](#duration) | `10s`      | The total timeout for dialing and connect to the origin.   |-                                   |-|
 | `disable_certificate_validation` | bool               | `false`       | Disables the peer certificate validation.                                              |      - |-|
 | `disable_connection_reuse`       | bool               | `false`        | Disables reusage of connections to the origin.                                          |    -  |-|
@@ -204,7 +204,7 @@ A [Backend Block](#backend-block) defines the connection to a local/remote backe
 | `proxy`                          | string             | -| A proxy URL for the related origin request.      |-   | `http://SERVER-IP_OR_NAME:PORT`|
 | `timeout`                        | [duration](#duration) | `300s`          | The total deadline duration a backend request has for write and read/pipe.               |-     |-|
 | `ttfb_timeout`                   | [duration](#duration) | `60s`           | The duration from writing the full request to the origin and receiving the answer.        |-    |-|
-| [Modifier](#modifier)           |- |-|All [Modifier](#modifier)|-|-|                                                                                                       |
+| [Modifier](#modifier)           |- |-|All [Modifier](#modifier)|-|-|
 
 #### Duration
 
@@ -236,7 +236,7 @@ In this case the response validation will fail if not ignored too.
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `file`                       |string|-|OpenAPI yaml definition file.|&#9888; required|-|                                     |
+| `file`                       |string|-|OpenAPI yaml definition file.|&#9888; required|-|
 | `ignore_request_violations`  |bool|`false`|Log request validation results, skip error handling. |-|-|
 | `ignore_response_violations` |bool|`false`|Log response validation results, skip error handling.|-|-|
 
@@ -254,9 +254,9 @@ The [CORS Block](#cors-block) configures the CORS (Cross-Origin Resource Sharing
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `allowed_origins`   | string|-|A list of allowed origin(s).|Can be either of: a string with a single specific origin, `"*"` (all origins are allowed) or an array of specific origins | `allowed_origins = ["https://www.example.com", "https://www.another.host.org"]`|
-| `allow_credentials` |bool|`false`| Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).|-|-|                                                                                                                                                         |
-| `disable`           | bool|`false`|Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.|-|-|                                                                                                       |
-| `max_age`           |[duration](#duration)|-|Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.|&#9888; Can be cached (string with time unit, e.g. `"1h"`)|-|                                                                                               |
+| `allow_credentials` |bool|`false`| Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).|-|-|
+| `disable`           | bool|`false`|Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.|-|-|
+| `max_age`           |[duration](#duration)|-|Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.|&#9888; Can be cached (string with time unit, e.g. `"1h"`)|-|
 
 ### OAuth2 CC Block
 
@@ -273,9 +273,9 @@ The OAuth2 CC Block (`oauth2 {}`) configures the OAuth2 Client Credentials flow 
 | `token_endpoint`   |string|-|URL of the token endpoint at the authorization server.|&#9888; required|-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
-| `retries` |integer|`1` | The number of retries to get the token and resource, if the resource-request responds with `401 Unauthorized` HTTP status code.|-|-|                                                                                                                                                                      |
+| `retries` |integer|`1` | The number of retries to get the token and resource, if the resource-request responds with `401 Unauthorized` HTTP status code.|-|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `scope`                      |string|-|  A space separated list of requested scopes for the access token.|-|
+| `scope`                      |string|-|  A space separated list of requested scopes for the access token.|-| `scope = "read write"` |
 
 ### Definitions Block
 
@@ -373,7 +373,7 @@ required _label_.
 | `grant_type` |string|-| The grant type. |&#9888; required, available value(s): `client_credentials`|-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
-| `scope` |string|-| A space separated list of requested scopes for the access token.|Use at least `openid` for OpenID Connect|-|
+| `scope` |string|-| A space separated list of requested scopes for the access token.|Use at least `openid` for OpenID Connect| `scope = "openid profile read"` |
 
 To configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF) use either the `pkce` or the `csrf` block. If the authorization server supports PKCE, we recommend `pkce`.
 
@@ -383,12 +383,12 @@ Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatrac
 
 |Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------|
-| [OAuth2 AC Block](#oauth2-ac-block)| - |-|
+| [OAuth2 AC Block](#oauth2-ac-block)| no label |-|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `code_challenge_method` | string | - | The method to calculate the PKCE code challenge. |&#9888; required, available values: `S256` or (not recommended) `plain`|-|
-| `code_verifier_value` | string or expression | - | The value of the code verifier. |&#9888; required|`request.cookies.code_verifier` using cookie value created with [`beta_oauth_code_verifier()` function](#functions)|
+| `code_verifier_value` | string or expression | - | The value of the code verifier. |&#9888; required; e.g. using cookie value created with [`beta_oauth_code_verifier()` function](#functions)|`code_verifier_value = request.cookies.code_verifier` |
 
 ##### CSRF Block
 
@@ -396,12 +396,12 @@ Use `state` or `nonce` for protection against CSRF.
 
 |Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------|
-| [OAuth2 AC Block](#oauth2-ac-block)| - |-|
+| [OAuth2 AC Block](#oauth2-ac-block)| no label |-|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `token_param`  | string | - | The name of the query parameter for the hashed CSRF token. |&#9888; required, available values: `state`, `nonce`.|-|
-| `token_value`  | string or expression | - | The value of the CSRF token. | - |`request.cookies.csrf_token` using cookie value created with [`beta_oauth_csrf_token()` function](#functions) |
+| `token_value`  | string or expression | - | The value of the CSRF token. | &#9888; required; e.g. using cookie value created with [`beta_oauth_csrf_token()` function](#functions) |`token_value = request.cookies.csrf_token` |
 
 ### SAML Block
 
