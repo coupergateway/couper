@@ -1,4 +1,6 @@
-- [1.3 Reference](#13-reference)
+# Reference
+
+- [Reference](#reference)
   - [Block Reference](#block-reference)
     - [Server Block](#server-block)
     - [Files Block](#files-block)
@@ -9,8 +11,7 @@
     - [Request Block](#request-block)
     - [Response Block](#response-block)
     - [Backend Block](#backend-block)
-      - [Transport Settings Attributes](#transport-settings-attributes)
-      - [Timings](#timings)
+      - [Duration](#duration)
     - [OpenAPI Block](#openapi-block)
     - [CORS Block](#cors-block)
     - [OAuth2 Block](#oauth2-block)
@@ -37,194 +38,174 @@
     - [Form Parameter](#form-parameter)
     - [Path Parameter](#path-parameter)
 
-# 1.3 Reference
-
 ## Block Reference
 
 ### Server Block
 
-The `server` block is the main configuration block of Couper's configuration file.
+The `server` block is one of the root configuration blocks of Couper's configuration file.
 
-| Block                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                            | Root of the configuration file.                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| _label_                              | &#9888; Mandatory.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Nested blocks**                    | **Description**                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| [CORS Block](#cors-block)            | Configures CORS behavior for [Files Block](#files-block), [SPA Block](#spa-block) and [API Block(s)](#api-block) contexts.                                                                                                                                                                                                                                                                                                                         |
-| [Files Block](#files-block)          | Configures the file serving.                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| [SPA Block](#spa-block)              | Configures the Web serving for SPA assets.                                                                                                                                                                                                                                                                                                                                                                                                         |
-| [API Block(s)](#api-block)           | Configures routing and communication with backend(s).                                                                                                                                                                                                                                                                                                                                                                                              |
-| [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `Server Block` context.                                                                                                                                                                                                                                                                                                                                                                                |
-| **Attributes**                       | **Description**                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>_Example:_ `base_path = "/api"`</li><li>&#9888; Inherited by nested blocks.</li></ul>                                                                                                                                                                                                                                                                               |
-| `hosts`                              | <ul><li>List.</li><li>&#9888; Mandatory, if there is more than one `Server Block`.</li><li>_Example:_ `hosts = ["example.com", "..."]`</li><li>You can add a specific port to your host.</li><li>_Example:_ `hosts = ["localhost:9090"]`</li><li>Default port is `8080`.</li><li>Only **one** `hosts` attribute per `Server Block` is allowed.</li><li>Compare the hosts [example](./README.md#hosts-configuration-example) for details.</li></ul> |
-| `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>_Example:_ `error_file = "./my_error_page.html"`</li></ul>                                                                                                                                                                                                                                                                                                                  |
-| `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Server Block` context.</li><li>_Example:_ `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul>                                                                                                                                                                                                                                |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|-|&#9888; required| [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `base_path`     |string|-|Configures the path prefix for all requests.| &#9888; Inherited by nested blocks.|`base_path = "/api"` |
+|`hosts`|list|port `:8080`|-|&#9888; required, if there is more than one  [Server Block](#server-block). &#9888; Only one `hosts` attribute per  [Server Block](#server-block) is allowed.| `hosts = ["example.com", "localhost:9090"]`|
+|`error_file`|string|-|Location of the error file template.|-|`error_file = "./my_error_page.html"`|
+|`access_control`|list|-|Sets predefined [Access Control](#access-control) for [Server Block](#server-block) context.|&#9888; Inherited by nested blocks.|`access_control = ["foo"]`|
 
 ### Files Block
 
 The `files` block configures the file serving.
 
-| Block                     | Description                                                                                                                                                            |
-| :------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                 | [Server Block](#server-block).                                                                                                                                         |
-| _label_                   | Not implemented.                                                                                                                                                       |
-| **Nested blocks**         | **Description**                                                                                                                                                        |
-| [CORS Block](#cors-block) | Configures CORS behavior for the current `Files Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block).                               |
-| **Attributes**            | **Description**                                                                                                                                                        |
-| `base_path`               | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>_Example:_ `base_path = "/files"`</li></ul>                                             |
-| `document_root`           | <ul><li>&#9888; Mandatory.</li><li>Location of the document root.</li><li>_Example:_ `document_root = "./htdocs"`</li></ul>                                            |
-| `error_file`              | <ul><li>Optional.</li><li>Location of the error file template.</li><li>_Example:_ `error_file = "./my_error_page.html"`</li></ul>                                      |
-| `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Files Block` context.</li><li>_Example:_ `access_control = ["foo"]`</li></ul> |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|[Server Block](#server-block)|no label| [CORS Block](#cors-block)|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+|`base_path`|string|-|Configures the path prefix for all requests.|-|`base_path = "/files"`|
+|`document_root`|string|-|-|&#9888; required|`document_root = "./htdocs"`|
+|`error_file`|string|-|Location of the document root.|-| -|
+|`access_control` |list|-|Sets predefined [Access Control](#access-control) for [Files Block](#files-block) context.|-|`access_control = ["foo"]`|
 
 ### SPA Block
 
-The `spa` block configures the Web serving for SPA assets.
+The [SPA Block](#spa-block) configures the Web serving for SPA assets.
 
-| Block                     | Description                                                                                                                                                          |
-| :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                 | [Server Block](#server-block).                                                                                                                                       |
-| _label_                   | Not implemented.                                                                                                                                                     |
-| **Nested blocks**         | **Description**                                                                                                                                                      |
-| [CORS Block](#cors-block) | Configures CORS behavior for the current `SPA Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block).                               |
-| **Attributes**            | **Description**                                                                                                                                                      |
-| `base_path`               | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>_Example:_ `base_path = "/assets"`</li></ul>                                          |
-| `bootstrap_file`          | <ul><li>&#9888; Mandatory.</li><li>Location of the bootstrap file.</li><li>_Example:_ `bootstrap_file = "./htdocs/index.html"`</li></ul>                             |
-| `paths`                   | <ul><li>&#9888; Mandatory.</li><li>List of SPA paths that need the bootstrap file.</li><li>_Example:_ `paths = ["/app/**"]`</li></ul>                                |
-| `access_control`          | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `SPA Block` context.</li><li>_Example:_ `access_control = ["foo"]`</li></ul> |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Server Block](#server-block)|no label|[CORS Block](#cors-block) |
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+|`base_path`|string|-|Configures the path prefix for all requests.|-|`base_path = "/assets"`|
+|`bootstrap_file`|string|-|Location of the bootstrap file.|&#9888; required| `bootstrap_file = "./htdocs/index.html"`|
+|`paths`|list|-|list of SPA paths that need the bootstrap file.|&#9888; required|`paths = ["/app/**"]`|
+|`access_control` |list|-|Sets predefined [Access Control](#access-control) for [SPA Block](spa-block) context.|-|`access_control = ["foo"]`|
 
 ### API Block
 
-The `api` block contains all information about endpoints, and the connection to
-remote/local backend service(s), configured in the nested
-[Endpoint Block(s)](#endpoint-block). You can add more than one `api` block to a
-`Server Block`. If an error occurred for api endpoints the response gets processed
+The [API Block](#api-block) bundles `endpoints` under a certain `base_path`.
+
+&#9888; If an error occurred for api endpoints the response gets processed
 as json error with an error body payload. This can be customized via `error_file`.
 
-| Block                                | Description                                                                                                                                                                                                      |
-| :----------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                            | [Server Block](#server-block).                                                                                                                                                                                   |
-| _label_                              | Optional.                                                                                                                                                                                                        |
-| **Nested blocks**                    | **Description**                                                                                                                                                                                                  |
-| [Endpoint Block(s)](#endpoint-block) | Configures specific endpoint(s) for current `API Block` context.                                                                                                                                                 |
-| [CORS Block](#cors-block)            | Configures CORS behavior for the current `API Block` context. Overrides the CORS behavior of the parent [Server Block](#server-block).                                                                           |
-| **Attributes**                       | **Description**                                                                                                                                                                                                  |
-| `base_path`                          | <ul><li>Optional.</li><li>Configures the path prefix for all requests.</li><li>Must be unique if multiple API Blocks are defined.</li><li>_Example:_ `base_path = "/v1"`</li></ul>                               |
-| `error_file`                         | <ul><li>Optional.</li><li>Location of the error file template.</li><li>_Example:_ `error_file = "./my_error_body.json"`</li></ul>                                                                                |
-| `access_control`                     | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `API Block` context.</li><li>_Example:_ `access_control = ["foo"]`</li><li>&#9888; Inherited by nested blocks.</li></ul> |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block),  [CORS Block](#cors-block)|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+|`base_path`|string|-|Configures the path prefix for all requests.|&#9888; Must be unique if multiple [API Blocks](#api-block) are defined.| `base_path = "/v1"`|
+| `error_file` |string|-|Location of the error file template.|-|`error_file = "./my_error_body.json"`|
+| `access_control` |list|-|Sets predefined [Access Control](#access-control) for [API Block](#api-block) context.|&#9888; Inherited by nested blocks.| `access_control = ["foo"]`|
 
 ### Endpoint Block
 
-The `endpoint` blocks define the entry points of Couper. The mandatory _label_
+[Endpoint Block](#endpoint-block)s define the entry points of Couper. The required _label_
 defines the path suffix for the incoming client request. The `path` attribute
 changes the path for the outgoing request (compare
-[request routing example](./README.md#request-routing-example)). Each `Endpoint Block` must
+[path mapping example](./README.md#routing-path-mapping)). Each [Endpoint Block](#endpoint-block) must
 produce an explicit or implicit client response.
 
-| Block                              | Description                                                                                                                                                                                                                                                               |
-| :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| _context_                          | [Server Block](#server-block), [API Block](#api-block)                                                                                                                                                                                                                    |
-| _label_                            | <ul><li>&#9888; Mandatory.</li><li>Defines the path suffix for incoming client requests.</li><li>_Example:_ `endpoint "/dashboard" {...}`</li><li>Incoming client request: `http://example.com/api/v1/dashboard`</li><li>See [Path Parameter](#path-parameter), too.</ul> |
-| **Nested blocks**                  | **Description**                                                                                                                                                                                                                                                           |
-| [Proxy Block(s)](#proxy-block)     |                                                                                                                                                                                                                                                                           |
-| [Request Block(s)](#request-block) |                                                                                                                                                                                                                                                                           |
-| [Response Block](#response-block)  |                                                                                                                                                                                                                                                                           |
-| **Attributes**                     | **Description**                                                                                                                                                                                                                                                           |
-| `request_body_limit`               | <ul><li>Optional.</li><li>Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.</li><li>Valid units are: `KiB, MiB, GiB`.</li><li>Default limit is `64MiB`.</li></ul>                                                    |
-| `path`                             | <ul><li>Optional.</li><li>Changeable part of the upstream URL.</li><li>Changes the path suffix of the outgoing request.</li></ul>                                                                                                                                         |
-| `access_control`                   | <ul><li>Optional.</li><li>Sets predefined [Access Control](#access-control) for current `Endpoint Block` context.</li><li>_Example:_ `access_control = ["foo"]`</li></ul>                                                                                                 |
-| [Modifier](#modifier)              | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul>                                                                                                                                                                                                            |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Server Block](#server-block), [API Block](#api-block) |&#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block) |
+
+<!-- TODO: decide how to place "modifier" in the reference table - same for other block which allow modifiers -->
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+|`request_body_limit`  |string|`64MiB`|Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.|&#9888; Valid units are: `KiB, MiB, GiB`|`request_body_limit = "200KiB"`|
+| `path`|string|-|Changeable part of the upstream URL. Changes the path suffix of the outgoing request.|-|-|
+|`access_control`   |list|-|Sets predefined [Access Control](#access-control) for [Endpoint Block](#endpoint-block) context.|-| `access_control = ["foo"]`|
+|[Modifier](#modifier) |-|-|-|-|-|
 
 ### Proxy Block
 
-The `proxy` block creates and executes a proxy request to a backend service.
+The [Proxy Block](#proxy-block) creates and executes a proxy request to a backend service.
 
-&#9888; Multiple `proxy` and `request` blocks are executed in parallel.
+&#9888; Multiple [Proxy](#proxy-block) and [Request Block](#request-block)s are executed in parallel.
+<!-- TODO: shorten label text in table below and find better explanation for backend, backend reference or url - same for request block-->
 
-| Block                                     | Description                                                                                                                                                                                                                                                                               |
-| :---------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                                 | [Endpoint Block](#endpoint-block).                                                                                                                                                                                                                                                        |
-| _label_                                   | <ul><li>Partly optional.</li><li>A `Proxy Block` or [Request Block](#request-block) w/o a label has an implicit label `"default"`.</li><li>Only **one** `Proxy Block` or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.</li></ul> |
-| **Nested blocks**                         | **Description**                                                                                                                                                                                                                                                                           |
-| [Backend Block](#backend-block)           | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block) is defined or no `url` attribute is set.</li><li>Configures the connection to a local/remote backend service.</li></ul>                                                                                         |
-| **Attributes**                            | **Description**                                                                                                                                                                                                                                                                           |
-| [Backend Block Reference](#backend-block) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul>                                                                                                                                    |
-| `url`                                     | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).</li></ul>                                                                |
-| [Modifier](#modifier)                     | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul>                                                                                                                                                                                                                            |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|[Endpoint Block](#endpoint-block)|&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
+| `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|-|
+|[Modifier](#modifier)|-|-|-|-|-|
 
 ### Request Block
 
-The `request` block creates and executes a request to a backend service.
+The [Request Block](#request-block) creates and executes a request to a backend service.
 
-&#9888; Multiple `proxy` and `request` blocks are executed in parallel.
+&#9888; Multiple [Proxy](#proxy-block) and [Request Block](#request-block)s are executed in parallel.
 
-| Block                                     | Description                                                                                                                                                                                                                                                                           |
-| :---------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| _context_                                 | [Endpoint Block](#endpoint-block).                                                                                                                                                                                                                                                    |
-| _label_                                   | <ul><li>Partly optional.</li><li>A [Proxy Block](#proxy-block) or `Request Block` w/o a label has an implicit label `"default"`.</li><li>Only **one** [Proxy Block](#proxy-block) or `Request Block` w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.</li></ul> |
-| **Nested blocks**                         | **Description**                                                                                                                                                                                                                                                                       |
-| [Backend Block](#backend-block)           | <ul><li>&#9888; Mandatory if no [Backend Block Reference](#backend-block) is defined.</li><li>Configures the connection to a local/remote backend service.</li></ul>                                                                                                                  |
-| **Attributes**                            | **Description**                                                                                                                                                                                                                                                                       |
-| [Backend Block Reference](#backend-block) | <ul><li>&#9888; Mandatory if no [Backend Block](#backend-block) is defined.</li><li>References or refines a [Backend Block](#backend-block).</li></ul>                                                                                                                                |
-| `url`                                     | <ul><li>Optional.</li><li>If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).</li></ul>                                                            |
-| `body`                                    | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul>                                                                                                                                                                         |
-| `json_body`                               | <ul><li>null, Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul>                                                                                                                          |
-| `form_body`                               | <ul><li>Object.</li><li>Optional. Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.</li></ul>                                                                                                                                                  |
-| `method`                                  | <ul><li>String.</li><li>Optional.</li><li>Default `GET`.</li></ul>                                                                                                                                                                                                                    |
-| `headers`                                 | <ul><li>Optional.</li><li>Same as `set_request_headers` in [Request Header](#request-header).</li></ul>                                                                                                                                                                               |
-| `query_params`                            | <ul><li>Optional.</li><li>Same as `set_query_params` in [Query Parameter](#query-parameter).</li></ul>                                                                                                                                                                                |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Endpoint Block](#endpoint-block)|&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set.|
+<!-- TODO: add available http methods -->
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `backend` |string|-|`backend` block reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) is defined.|`backend = "foo"`|
+| `url` |string|-|-|If defined, the host part of the URL must be the same as the `origin` attribute of the used [Backend Block](#backend-block) or [Backend Block Reference](#backend-block) (if defined).|-|-|
+|`body`|string|-|-| Creates implicit default `Content-Type: text/plain` header field.|-|
+|`json_body`|null, bool, number, string, map, list|-|-|Creates implicit default `Content-Type: text/plain` header field.|-|
+| `form_body` |map|-|-|Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.|-|
+|`method`    |string|`GET`|-|-|-|
+|`headers`  |-|-|-|Same as `set_request_headers` in [Request Header](#request-header).|-|
+|`query_params`|-|-|-|Same as `set_query_params` in [Query Parameter](#query-parameter).|-|                                                                                                                                                         - |
 
 ### Response Block
 
-The `response` block creates and sends a client response.
+The [Response Block](#response-block) creates and sends a client response.
 
-| Block          | Description                                                                                                                                                  |
-| :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_      | [Endpoint Block](#endpoint-block).                                                                                                                           |
-| _label_        | Not implemented.                                                                                                                                             |
-| **Attributes** | **Description**                                                                                                                                              |
-| `body`         | <ul><li>String.</li><li>Optional. Creates implicit default `Content-Type: text/plain` header field.</li></ul>                                                |
-| `json_body`    | <ul><li>null, Boolean, Number, String, Object, or Tuple.</li><li>Optional. Creates implicit default `Content-Type: application/json` header field.</li></ul> |
-| `status`       | <ul><li>HTTP status code.</li><li>Optional.</li><li>Default `200`.</li></ul>                                                                                 |
-| `headers`      | <ul><li>Optional.</li><li>Same as `set_response_headers` in [Request Header](#response-header).</li></ul>                                                    |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|[Endpoint Block](#endpoint-block).|no label|-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `body`         | string|-|-|Creates implicit default `Content-Type: text/plain` header field.|-|                                              |
+| `json_body`    | null, bool, number, string, map, list|-|-|Creates implicit default `Content-Type: application/json` header field.|-|-|
+| `status`       | integer|`200`|HTTP status code.|-|-|                                                                                 |
+| `headers`      |string|-|Same as `set_response_headers` in [Request Header](#response-header).                  |-|-|
 
 ### Backend Block
 
-A `backend` defines the connection to a local/remote backend service. Backends
-can be defined in the [Definitions Block](#definitions-block) and use the _label_
-as reference.
+A [Backend Block](#backend-block) defines the connection to a local/remote backend service.
 
-| Block                           | Description                                                                                                                                                                                                                                |
-| :------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                       | [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block).                                                                                                                                     |
-| _label_                         | &#9888; Mandatory in the [Definitions Block](#definitions-block).                                                                                                                                                                          |
-| **Nested blocks**               | **Description**                                                                                                                                                                                                                            |
-| [OpenAPI Block](#openapi-block) | <ul><li>Optional.</li><li>Definition for validating outgoing requests to the origin and incoming responses from the origin.</li></ul>                                                                                                      |
-| [OAuth2 Block](#oauth2-block)   | <ul><li>Optional.</li><li>OAuth2 configuration block.</li></ul>                                                                                                                                                                            |
-| **Attributes**                  | **Description**                                                                                                                                                                                                                            |
-| `basic_auth`                    | <ul><li>Optional.</li><li>Basic auth for the upstream request in format `username:password`.</li></ul>                                                                                                                                     |
-| `hostname`                      | <ul><li>Optional.</li><li>Value of the HTTP host header field for the origin request. Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.</li></ul> |
-| `origin`                        | <ul><li>&#9888; Mandatory.</li><li>URL to connect to for backend requests.</li><li>&#9888; Must start with the scheme `http://...`.</li></ul>                                                                                              |
-| `path`                          | <ul><li>Optional.</li><li>Changeable part of upstream URL.</li></ul>                                                                                                                                                                       |
-| `path_prefix`                   | <ul><li>Optional.</li><li>Prefixes all backend request paths with the given prefix.</li><li>Relative prefixes are prefixed with a slash `/`.</li></ul>                                                                                     |
-| [Modifier](#modifier)           | <ul><li>Optional.</li><li>All [Modifier](#modifier).</li></ul>                                                                                                                                                                             |
+&#9888; Backends can be defined in the [Definitions Block](#definitions-block) and referenced by _label_.
 
-#### Transport Settings Attributes
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 Block](#oauth2-block)|
 
-| Name                             | Type               | Default         | Description                                                                                   |
-| :------------------------------- | :----------------- | :-------------- | :-------------------------------------------------------------------------------------------- |
-| `connect_timeout`                | [Timing](#timings) | `10s`           | The total timeout for dialing and connect to the origin.                                      |
-| `disable_certificate_validation` | bool               | `false`         | Disables the peer certificate validation.                                                     |
-| `disable_connection_reuse`       | bool               | `false`         | Disables reusage of connections to the origin.                                                |
-| `http2`                          | bool               | `false`         | Enables the HTTP2 support.                                                                    |
-| `max_connections`                | int                | `0` (unlimited) | The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. |
-| `proxy`                          | string             | (no default)    | A proxy URL for the related origin request. Example: `http://SERVER-IP_OR_NAME:PORT`.         |
-| `timeout`                        | [Timing](#timings) | `300s`          | The total deadline duration a backend request has for write and read/pipe.                    |
-| `ttfb_timeout`                   | [Timing](#timings) | `60s`           | The duration from writing the full request to the origin and receiving the answer.            |
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `basic_auth`                    | string|-|Basic auth for the upstream request. | format is `username:password`|-|
+| `hostname`                      | string |-|Value of the HTTP host header field for the origin request. |Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.|-|
+| `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with the scheme `http://...`.|-|                                                                                          |
+| `path`                          | string|-|Changeable part of upstream URL.|-|-|                                                                                                                                                                       |
+| `path_prefix`  | string|-|Prefixes all backend request paths with the given prefix|&#9888; Must start with the scheme `http://...`. |-|-|                                                                                    |
+| `connect_timeout`                | [duration](#duration) | `10s`      | The total timeout for dialing and connect to the origin.   |-                                   |-|
+| `disable_certificate_validation` | bool               | `false`       | Disables the peer certificate validation.                                              |      - |-|
+| `disable_connection_reuse`       | bool               | `false`        | Disables reusage of connections to the origin.                                          |    -  |-|
+| `http2`                          | bool               | `false`         | Enables the HTTP2 support.                                                               | -    |-|
+| `max_connections`                | integer                | `0` (unlimited) | The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. |-|-|
+| `proxy`                          | string             | -| A proxy URL for the related origin request.      |-   | `http://SERVER-IP_OR_NAME:PORT`|
+| `timeout`                        | [duration](#duration) | `300s`          | The total deadline duration a backend request has for write and read/pipe.               |-     |-|
+| `ttfb_timeout`                   | [duration](#duration) | `60s`           | The duration from writing the full request to the origin and receiving the answer.        |-    |-|
+| [Modifier](#modifier)           |- |-|All [Modifier](#modifier)|-|-|                                                                                                       |
 
-#### Timings
+#### Duration
 
-| Valid time unit | Description  |
+| Duration units | Description  |
 | :-------------- | :----------- |
 | `ns`            | nanoseconds  |
 | `us` (or `µs`)  | microseconds |
@@ -235,150 +216,153 @@ as reference.
 
 ### OpenAPI Block
 
-The `openapi` block configures the backends proxy behaviour to validate outgoing
+The [OpenAPI Block](#openapi-block)configures the backends proxy behaviour to validate outgoing
 and incoming requests to and from the origin. Preventing the origin from invalid
 requests, and the Couper client from invalid answers. An example can be found
 [here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
 To do so Couper uses the [OpenAPI 3 standard](https://www.openapis.org/) to load
 the definitions from a given document defined with the `file` attribute.
 
-| Block                        | Description                                                                                                      |
-| :--------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| _context_                    | [Backend Block](#backend-block).                                                                                 |
-| _label_                      | Not implemented.                                                                                                 |
-| **Attributes**               | **Description**                                                                                                  |
-| `file`                       | <ul><li>&#9888; Mandatory.</li><li>OpenAPI yaml definition file.</li></ul>                                       |
-| `ignore_request_violations`  | <ul><li>Optional.</li><li>Log request validation results, skip err handling.</li><li>Default `false`.</li></ul>  |
-| `ignore_response_violations` | <ul><li>Optional.</li><li>Log response validation results, skip err handling.</li><li>Default `false`.</li></ul> |
-
-**Caveats**: While ignoring request violations an invalid method or path would
+&#9888; While ignoring request violations an invalid method or path would
 lead to a non-matching _route_ which is still required for response validations.
 In this case the response validation will fail if not ignored too.
 
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Backend Block](#backend-block)|-|-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `file`                       |string|-|OpenAPI yaml definition file.|&#9888; required|-|                                     |
+| `ignore_request_violations`  |bool|`false`|Log request validation results, skip error handling. |-|-|
+| `ignore_response_violations` |bool|`false`|Log response validation results, skip error handling.|-|-|
+
 ### CORS Block
 
-The CORS block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
+The [CORS Block](#cors-block) configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
-| Block               | Description                                                                                                                                                                                                                                                                                                                                              |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_           | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block).                                                                                                                                                                                                                                            |
-| _label_             | Not implemented.                                                                                                                                                                                                                                                                                                                                         |
-| **Attributes**      | **Description**                                                                                                                                                                                                                                                                                                                                          |
-| `allowed_origins`   | <ul><li>&#9888; Mandatory.</li><li>A list of allowed origin(s).</li><li>Can be either of:<br/><ul><li>a string with a single specific origin (e.g. `"https://www.example.com"`).</li><li>`"*"` (all origins are allowed).</li><li>an array of specific origins (e.g. `["https://www.example.com", "https://www.another.host.org"]`).</li></ul></li></ul> |
-| `allow_credentials` | <ul><li>Optional.</li><li>Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).</li><li>Default `false`.</li></ul>                                                                                                                                                         |
-| `disable`           | <ul><li>Optional.</li><li>Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.</li><li>Default `false`.</li></ul>                                                                                                       |
-| `max_age`           | <ul><li>Optional.</li><li>Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.</li><li>Can be cached (string with time unit, e.g. `"1h"`).</li></li></ul>                                                                                                   |
+<!--TODO: check if this information is correct -->
+&#9888; Overrides the CORS behavior of the parent block-
+
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|[Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block).  |no label|-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `allowed_origins`   | string|-|A list of allowed origin(s).|Can be either of: a string with a single specific origin, `"*"` (all origins are allowed) or an array of specific origins | `allowed_origins = ["https://www.example.com", "https://www.another.host.org"]`|
+| `allow_credentials` |bool|`false`| Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).|-|-|                                                                                                                                                         |
+| `disable`           | bool|`false`|Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.|-|-|                                                                                                       |
+| `max_age`           |[duration](#duration)|-|Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.|&#9888; Can be cached (string with time unit, e.g. `"1h"`)|-|                                                                                               |
 
 ### OAuth2 Block
 
-| Block                           | Description                                                                                                                                                                                                                                                                                                                                                    |
-| :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                       | [Backend Block](#backend-block).                                                                                                                                                                                                                                                                                                                               |
-| _label_                         | Not implemented.                                                                                                                                                                                                                                                                                                                                               |
-| **Nested blocks**               | **Description**                                                                                                                                                                                                                                                                                                                                                |
-| [Backend Block](#backend-block) | Optional.                                                                                                                                                                                                                                                                                                                                                      |
-| **Attributes**                  | **Description**                                                                                                                                                                                                                                                                                                                                                |
-| `backend`                       | <ul><li>Optional.</li><li>[Backend Block Reference](#backend-block).</li></ul>                                                                                                                                                                                                                                                                                 |
-| `grant_type`                    | <ul><li>&#9888; Mandatory.</li><li>Available values: `client_credentials`.</li></ul>                                                                                                                                                                                                                                                                           |
-| `token_endpoint`                | <ul><li>&#9888; Mandatory.</li><li>URL of the token endpoint at the authorization server.</li></ul>                                                                                                                                                                                                                                                            |
-| `client_id`                     | <ul><li>&#9888; Mandatory.</li><li>The client identifier.</li></ul>                                                                                                                                                                                                                                                                                            |
-| `client_secret`                 | <ul><li>&#9888; Mandatory.</li><li>The client password.</li></ul>                                                                                                                                                                                                                                                                                              |
-| `retries`                       | <ul><li>Optional.</li><li>The number of retries to get the token and resource, if the resource-request responds with `401 Unauthorized` HTTP status code.</li><li>Default: `1`.</li></ul>                                                                                                                                                                      |
-| `token_endpoint_auth_method`    | <ul><li>Optional.</li><li>Defines the method to authenticate the client at the token endpoint.</li><li>If set to `client_secret_post`, the client credentials are transported in the request body.</li><li>If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.</li><li>Default: `client_secret_basic`.</li></ul> |
-| `scope`                         | <ul><li>Optional.</li><li>A space separated list of requested scopes for the access token.</li></ul>                                                                                                                                                                                                                                                           |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|[Backend Block](#backend-block)|no label|[Backend Block](#backend-block)|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `backend`                       |string|-|[Backend Block Reference](#backend-block)|-|-|ul>                                                                                                                                                                                                                                                                                 |
+| `grant_type`                    |string|-|-|&#9888; required, available value(s): `client_credentials`|-|                                                                                                                                                                                                                                                                           |
+| `token_endpoint`   |string|-|URL of the token endpoint at the authorization server.|&#9888; required|-|
+| `client_id`|  string|-|The client identifier.|&#9888; required|-|                                                                                                                                ||
+| `client_secret` |string|-|The client password.|&#9888; required.|-|
+| `retries` |integer|`1` | The number of retries to get the token and resource, if the resource-request responds with `401 Unauthorized` HTTP status code.|-|-|                                                                                                                                                                      |
+| `token_endpoint_auth_method` |string|`client_secret_post`|Defines the method to authenticate the client at the token endpoint.|If set to , the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
+| `scope`                      |string|-|  A space separated list of requested scopes for the access token.|-|
 
 ### Definitions Block
 
-Use the `definitions` block to define configurations you want to reuse.
-[Access Control](#access-control) is **always** defined in the `Definitions Block`.
+Use the [Definitions Block](#definitions-block) to define configurations you want to reuse.
+[Access Control](#access-control) is **always** defined in the [Definitions Block](#definitions-block).
 
-| Block                                                      | Description                             |
-| :--------------------------------------------------------- | :-------------------------------------- |
-| _context_                                                  | Root of the configuration file.         |
-| _label_                                                    | Not implemented.                        |
-| **Nested blocks**                                          | **Description**                         |
-| [Backend Block(s)](#backend-block)                         | Defines `Backend Block(s)`.             |
-| [Basic Auth Block(s)](#basic-auth-block)                   | Defines `Basic Auth Block(s)`.          |
-| [JWT Block(s)](#jwt-block)                                 | Defines `JWT Block(s)`.                 |
-| [JWT Signing Profile Block(s)](#jwt-signing-profile-block) | Defines `JWT Signing Profile Block(s)`. |
-| [SAML Block(s)](#saml-block)                               | Defines `SAML Block(s)`.                |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block)|
+
+<!--Example???-->
 
 ### Basic Auth Block
 
-The `basic_auth` block lets you configure basic auth for your gateway. Like all
-[Access Control](#access-control) types, the `Basic Auth` block is defined in the
+The  [Basic Auth Block](#basic-auth-block) lets you configure basic auth for your gateway. Like all
+[Access Control](#access-control) types, the  [Basic Auth Block](#basic-auth-block) is defined in the
 [Definitions Block](#definitions-block) and can be referenced in all configuration
-blocks by its mandatory _label_.
+blocks by its required _label_.
 
-If both `user`/`password` and `htpasswd_file` are configured, the incoming
+&#9888; If both `user`/`password` and `htpasswd_file` are configured, the incoming
 credentials from the `Authorization` request HTTP header field are checked against
 `user`/`password` if the user matches, and against the data in the file referenced
 by `htpasswd_file` otherwise.
 
-| Block           | Description                                                                                                  |
-| :-------------- | :----------------------------------------------------------------------------------------------------------- |
-| _context_       | [Definitions Block](#definitions-block).                                                                     |
-| _label_         | &#9888; Mandatory.                                                                                           |
-| **Attributes**  | **Description**                                                                                              |
-| `user`          | <ul><li>Optional.</li><li>The user name.</li></ul>                                                           |
-| `password`      | <ul><li>Optional.</li><li>The corresponding password.</li></ul>                                              |
-| `htpasswd_file` | <ul><li>Optional.</li><li>The htpasswd file.</li></ul>                                                       |
-| `realm`         | <ul><li>Optional.</li><li>The realm to be sent in a `WWW-Authenticate` response HTTP header field.</li></ul> |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Definitions Block](#definitions-block)| &#9888; required |-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `user`          |string|-|The user name.|-|-|
+| `password`      |string|-|The corresponding password.|-|-|
+| `htpasswd_file`      |string|-|>The htpasswd file.|-|-|
+|`realm`     |string|-|The realm to be sent in a `WWW-Authenticate` response HTTP header field.|-|-|
 
 ### JWT Block
 
-The `jwt` block lets you configure JSON Web Token access control for your gateway.
-Like all [Access Control](#access-control) types, the `jwt` block is defined in
-the `definitions` block and can be referenced in all configuration blocks by its
-mandatory _label_.
+The[JWT Block](#jwt-block) lets you configure JSON Web Token access control for your gateway.
+Like all [Access Control](#access-control) types, the [JWT Block](#jwt-block) is defined in
+the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its
+required _label_.
 
-| Block                      | Description                                                                                                                                              |
-| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _context_                  | [Definitions Block](#definitions-block).                                                                                                                 |
-| _label_                    | &#9888; Mandatory.                                                                                                                                       |
-| **Attributes**             | **Description**                                                                                                                                          |
-| `cookie = "AccessToken"`   | <ul><li>Optional.</li><li>Read `AccessToken` key to gain the token value from a cookie.</li></ul>                                                        |
-| `header = "Authorization"` | <ul><li>Optional.</li><li>&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.</li></ul> |
-| `key`                      | <ul><li>Optional.</li><li>Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul>                                     |
-| `key_file`                 | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul>                                                                      |
-| `signature_algorithm`      | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul>                                          |
-| **`claims`**               | <ul><li>Optional.</li><li>Equals/in comparison with JWT payload.</li></ul>                                                                               |
-| **`required_claims`**      | <ul><li>Optional.</li><li>List of claims that must be given for a valid token</li></ul>                                                                  |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Definitions Block](#definitions-block)| &#9888; required |-|
+<!-- warum claims fett?-->
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `cookie`  |string|-|Read `AccessToken` key to gain the token value from a cookie.|&#9888; available value: `AccessToken`|`cookie = "AccessToken"`|
+| `header`          |string|-|-|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.|`header = "Authorization"` |
+| `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
+| `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
+|  `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+| `claims`               |string|-|Equals/in comparison with JWT payload.|-|-|
+| `required_claims`      | string|-|list of claims that must be given for a valid token |-|-|
 
 ### JWT Signing Profile Block
 
-The `jwt_signing_profile` block lets you configure a JSON Web Token signing
+The [JWT Signing Profile Block(s)](#jwt-signing-profile-block) lets you configure a JSON Web Token signing
 profile for your gateway. It is referenced in the [`jwt_sign()` function](#functions)
-by its mandatory _label_.
+by its required _label_.
 
-| Name                  | Description                                                                                                           |
-| :-------------------- | :-------------------------------------------------------------------------------------------------------------------- |
-| _context_             | [Definitions Block](#definitions-block).                                                                              |
-| _label_               | &#9888; Mandatory.                                                                                                    |
-| **Attributes**        | **Description**                                                                                                       |
-| `key`                 | <ul><li>Optional.</li><li>Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.</li></ul> |
-| `key_file`            | <ul><li>Optional.</li><li>Optional file reference instead of `key` usage.</li></ul>                                   |
-| `signature_algorithm` | <ul><li>&#9888; Mandatory.</li><li>Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.</li></ul>       |
-| `ttl`                 | <ul><li>Optional.</li><li>The token's time-to-live (creates the `exp` claim).</li></ul>                               |
-| **`claims`**          | <ul><li>Optional.</li><li>Default claims for the JWT payload.</li></ul>                                               |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Definitions Block](#definitions-block)| &#9888; required |-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
+| `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
+| `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+|`ttl`  |string|-|The token's time-to-live (creates the `exp` claim).|-|-|
+| `claims` |string|-|Default claims for the JWT payload.|-|-|
 
 ### SAML Block
 
-The `saml` block lets you configure the `saml_sso_url()` [function](#functions) and an access
+The  [SAML Block(s)](#saml-block) lets you configure the `saml_sso_url()` [function](#functions) and an access
 control for a SAML Assertion Consumer Service (ACS) endpoint.
 Like all [Access Control](#access-control) types, the `saml` block is defined in
-the `definitions` block and can be referenced in all configuration blocks by its
-mandatory _label_.
+the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its
+required _label_.
 
-| Block               | Description                                                                                             |
-| :------------------ | :------------------------------------------------------------------------------------------------------ |
-| _context_           | [Definitions Block](#definitions-block).                                                                |
-| _label_             | &#9888; Mandatory.                                                                                      |
-| **Attributes**      | **Description**                                                                                         |
-| `idp_metadata_file` | <ul><li>&#9888; Mandatory.</li><li>File reference to the Identity Provider metadata XML file.</li></ul> |
-| `sp_acs_url`        | <ul><li>&#9888; Mandatory.</li><li>The URL of the Service Provider's ACS endpoint.</li></ul>            |
-| `sp_entity_id`      | <ul><li>&#9888; Mandatory.</li><li>The Service Provider's entity ID.</li></ul>                          |
-| `array_attributes`  | <ul><li>Optional.</li><li>A list of assertion attributes that may have several values.</li></ul>        |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| [Definitions Block](#definitions-block)| &#9888; required |-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+|`idp_metadata_file`|string|-|File reference to the Identity Provider metadata XML file.|&#9888; required|-|
+|`sp_acs_url`  |string|-|The URL of the Service Provider's ACS endpoint.|&#9888; required|-|
+| `sp_entity_id`   |string|-|The Service Provider's entity ID.|&#9888; required|-|
+| `array_attributes`|string|-|A list of assertion attributes that may have several values.|-|-|
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 
@@ -391,19 +375,20 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 The `settings` block let you configure the more basic and global behavior of your
 gateway instance.
 
-| Block               | Description                                                                                                        |             |
-| :------------------ | :----------------------------------------------------------------------------------------------------------------- | :---------- |
-| _context_           | Root of the configuration file.                                                                                    |             |
-| _label_             | Not impplemented.                                                                                                  |             |
-| **Attributes**      | **Description**                                                                                                    | **Default** |
-| `health_path`       | Health path which is available for all configured server and ports                                                 | `/healthz`  |
-| `no_proxy_from_env` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). | `false`     |
-| `default_port`      | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list              | `8080`      |
-| `log_format`        | Switch for tab/field based colored view or json log lines                                                          | `common`    |
-| `log_pretty`        | Global option for `json` log format which pretty prints with basic key coloring                                    | `false`     |
-| `xfh`               | Option to use the `X-Forwarded-Host` header as the request host                                                    | `false`     |
-| `request_id_format` | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields                                   | `common`    |
-| `secure_cookies`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.                        | `""`        |
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| -| no label |-|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+|`health_path` |string|`/healthz`| Health path which is available for all configured server and ports.|-|-|
+|`no_proxy_from_env`|bool|`false`|Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |-|-|
+|`default_port`|number|`8080`| Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list   |-|-|
+|`log_format` |string|`common`|Switch for tab/field based colored view or json log lines    |-|-|
+|`log_pretty`|bool|`false`|Global option for `json` log format which pretty prints with basic key coloring  |-|-|
+|`xfh`  |bool|`false`|Option to use the `X-Forwarded-Host` header as the request host  |-|-|
+| `request_id_format`|string|`common`| If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields  |-|-|
+|`secure_cookies`|string|`""` | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.    |-|-|
 
 ## Access Control
 
@@ -518,7 +503,7 @@ executed ordered as follows:
 
 | Modifier                 | Contexts                                                                                                                                                | Description                                                       |
 | :----------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------- |
-| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of request header to be removed from the upstream request.   |
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of request header to be removed from the upstream request.   |
 | `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set request header in the upstream request. |
 | `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add request header to the upstream request. |
 
@@ -532,7 +517,7 @@ executed ordered as follows:
 
 | Modifier                  | Contexts                                                                                                                                                                                                                                                              | Description                                                       |
 | :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
-| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of response header to be removed from the client response.   |
+| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of response header to be removed from the client response.   |
 | `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set response header in the client response. |
 | `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add response header to the client response. |
 
@@ -560,7 +545,7 @@ executed ordered as follows:
 
 | Modifier              | Contexts                                                                                                                                                | Description                                                             |
 | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------- |
-| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of query parameters to be removed from the upstream request URL.   |
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of query parameters to be removed from the upstream request URL.   |
 | `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set query parameters in the upstream request URL. |
 | `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add query parameters to the upstream request URL. |
 
@@ -606,7 +591,7 @@ executed ordered as follows:
 
 | Modifier             | Contexts                                                                                                                                                | Description                                                             |
 | :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------- |
-| `remove_form_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | List of form parameters to be removed from the upstream request body.   |
+| `remove_form_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of form parameters to be removed from the upstream request body.   |
 | `set_form_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set form parameters in the upstream request body. |
 | `add_form_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add form parameters to the upstream request body. |
 
