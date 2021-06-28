@@ -18,7 +18,7 @@
 
 Couper is a lightweight open-source API gateway that acts as an entry point for clients to your application (frontend API gateway) and an exit point to upstream services (upstream API gateway).
 
-It exposes endpoints with use cases and adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
+It adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
 
 Couper does not need any special development skills and offers easy configuration and integration.
 

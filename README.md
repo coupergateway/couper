@@ -10,11 +10,11 @@
 
 ## Getting started
 
-* Check out our [example repository](https://github.com/avenga/couper-examples) for a first glance.
-* Read more about our use-cases on [couper.io](https://couper.io).
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
-* Continue with the [documentation](https://github.com/avenga/couper/tree/master/docs).
-
+* The [documentation](https://github.com/avenga/couper/tree/master/docs) gives an introduction to Couper.
+* Check out the [example repository](https://github.com/avenga/couper-examples) to learn about Couper's features in detail.
+* Dive into the [Configuration Reference](docs/REFERENCE.md)
+* Use-cases can be found on [couper.io](https://couper.io).
 
 ## Features
 
@@ -28,24 +28,22 @@ Couper …
 
 Key features are:
 
-* **Easy configuration** powered by [HCL 2](https://github.com/hashicorp/hcl/tree/hcl2)
-* Exposes local and remote backend services in a consolidated frontend API
-* Operation and **observability**:
-  * Timeout handling
-  * Logging access and upstream requests as tab fields or json format
-* Centralized **Access-Control** layer:
+* **Easy Configuration & Deployment**
+* HTTP Request Routing / Forwarding
+* Custom Requests and Responses
+* Request / Response Manipulation
+* Centralized **Access-Control** Layer:
   * Basic-Auth
-  * JWT
-    * RS/HS 256,386,512 algorithms
-    * Custom claim validation
-    * pass claim values to upstream services
-   * Single Sign On with SAML2
-* Uniform **error handling** with custom templates across different backend services
-  * api endpoints serving a json error response, defaults to html otherwise
-* **SPA** support with configurable path fallbacks
+  * JWT  Validation & Signing
+  * Single Sign On with SAML2
+  * OAuth2 Client Credentials
+* **Configurable Service Connectivity**
+* Upstream Validation & CORS
+* SPA & Web Serving
+* Error Handling
+* Observability
 
-The full list of features of Couper 1.0 is [here](FEATURES.md).
-
+The full list of features of Couper 1.0 is [here](FEATURES.md) or at [https://couper.io/features](https://couper.io/features).
 
 ## Contributing
 
