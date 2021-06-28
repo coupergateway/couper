@@ -84,6 +84,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
+	defaults.AcceptForwarded = &config.AcceptForwarded{}
 
 	evalContext := eval.NewContext(src)
 	envContext = evalContext.HCLContext()
@@ -228,6 +229,14 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		case settings:
 			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
+			}
+			if err := couperConfig.Settings.SetAcceptForwarded(); err != nil {
+				diag := &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("invalid accept_forwarded_url: %q", err),
+					Subject:  &outerBlock.DefRange,
+				}
+				return nil, diag
 			}
 		}
 	}

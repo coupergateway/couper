@@ -118,6 +118,15 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		pathParams = params
 	}
 
+	p := req.URL.Port()
+	if p == "" {
+		if req.URL.Scheme == "https" {
+			p = "443"
+		} else {
+			p = "80"
+		}
+	}
+	port, _ := strconv.ParseInt(p, 10, 64)
 	body, jsonBody := parseReqBody(req)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
@@ -129,6 +138,10 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		PathParam: seetie.MapToValue(pathParams),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
+		Origin:    cty.StringVal(newRawOrigin(req.URL).String()),
+		Protocol:  cty.StringVal(req.URL.Scheme),
+		Host:      cty.StringVal(req.URL.Hostname()),
+		Port:      cty.NumberIntVal(port),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
 	updateFunctions(ctx)
@@ -335,6 +348,12 @@ func newRawURL(u *url.URL) *url.URL {
 	rawURL.RawQuery = ""
 	rawURL.Fragment = ""
 	return &rawURL
+}
+
+func newRawOrigin(u *url.URL) *url.URL {
+	rawOrigin := *newRawURL(u)
+	rawOrigin.Path = ""
+	return &rawOrigin
 }
 
 func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {

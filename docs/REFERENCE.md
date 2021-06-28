@@ -447,6 +447,7 @@ gateway instance.
 |`xfh`  |bool|`false`|Option to use the `X-Forwarded-Host` header as the request host  |-|-|
 | `request_id_format`|string|`common`| If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields  |-|-|
 |`secure_cookies`|string|`""` | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.    |-|-|
+|`accept_forwarded_url`|array of string |empty| Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.proto`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-|`["proto","host","port"]`|
 
 ## Access Control
 
@@ -493,6 +494,11 @@ since these references get evaluated at start.
 | `form_body.<name>`               | Parameter in a `application/x-www-form-urlencoded` body                                                                                                                                                                                                                             |
 | `json_body.<name>`               | Access json decoded object properties. Media type must be `application/json` or `application/*+json`.                                                                                                                                                                               |
 | `context.<name>.<property_name>` | Request context containing information from the [Access Control](#access-control). |
+| `url`                            | Request URL |
+| `origin`                         | Origin of the request URL |
+| `protocol`                       | The request protocol (`http` or `https`) |
+| `host`                           | Host of the request URL |
+| `port`                           | Port of the request URL |
 
 The value of `context.<name>` depends on the type of block referenced by `<name>`.
 
