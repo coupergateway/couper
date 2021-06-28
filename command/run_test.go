@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -19,15 +20,9 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
-func resetWD(helper *test.Helper, wd string) {
-	helper.Must(os.Chdir(wd))
-}
-
 func TestNewRun(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, currFile, _, _ := runtime.Caller(0)
+	wd := filepath.Dir(currFile)
 
 	log, hook := logrustest.NewNullLogger()
 	//log.Out = os.Stdout
@@ -74,7 +69,6 @@ func TestNewRun(t *testing.T) {
 			helper := test.New(t)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			defer resetWD(helper, wd)
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
@@ -126,10 +120,8 @@ func TestNewRun(t *testing.T) {
 }
 
 func TestAcceptForwarded(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, currFile, _, _ := runtime.Caller(0)
+	wd := filepath.Dir(currFile)
 
 	log, hook := logrustest.NewNullLogger()
 	//log.Out = os.Stdout
@@ -153,7 +145,6 @@ func TestAcceptForwarded(t *testing.T) {
 			helper := test.New(t)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			defer resetWD(helper, wd)
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
