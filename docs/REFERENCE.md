@@ -321,7 +321,6 @@ required _label_.
 |Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------|
 | [Definitions Block](#definitions-block)| &#9888; required |-|
-<!-- warum claims fett?-->
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `cookie`  |string|-|Read `AccessToken` key to gain the token value from a cookie.|&#9888; available value: `AccessToken`|`cookie = "AccessToken"`|
@@ -377,7 +376,7 @@ required _label_.
 
 To configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF) use either the `pkce` or the `csrf` block. If the authorization server supports PKCE, we recommend `pkce`.
 
-##### PKCE Block
+#### PKCE Block
 
 Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636) for protection against CSRF and code injection.
 
@@ -390,7 +389,7 @@ Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatrac
 | `code_challenge_method` | string | - | The method to calculate the PKCE code challenge. |&#9888; required, available values: `S256` or (not recommended) `plain`|-|
 | `code_verifier_value` | string or expression | - | The value of the code verifier. |&#9888; required; e.g. using cookie value created with [`beta_oauth_code_verifier()` function](#functions)|`code_verifier_value = request.cookies.code_verifier` |
 
-##### CSRF Block
+#### CSRF Block
 
 Use `state` or `nonce` for protection against CSRF.
 
@@ -506,20 +505,22 @@ For a [JWT Block](#jwt-block), the variable contains claims from the JWT used fo
 
 For a [SAML Block](#saml-block), the variable contains
 
- - `sub`: the `NameID` of the SAML assertion
- - `exp`: optional expiration date (value of `SessionNotOnOrAfter` of the SAML assertion)
- - `attributes`: a map of attributes from the SAML assertion
+- `sub`: the `NameID` of the SAML assertion
+- `exp`: optional expiration date (value of `SessionNotOnOrAfter` of the SAML assertion)
+- `attributes`: a map of attributes from the SAML assertion
 
 For an [OAuth2 AC Block](#oauth2-ac-block), the variable contains the response from the token endpoint, e.g.
- - `access_token`: the access token retrieved from the token endpoint
- - `token_type`: the token type
- - `expires_in`: the token lifetime
- - `scope`: the granted scope (if different from the requested scope)
+
+- `access_token`: the access token retrieved from the token endpoint
+- `token_type`: the token type
+- `expires_in`: the token lifetime
+- `scope`: the granted scope (if different from the requested scope)
 
 and for OIDC additionally:
- - `id_token`: the ID token
- - `id_token_claims`: a map of claims from the ID token
- - `userinfo`: a map of claims retrieved from the userinfo endpoint
+
+- `id_token`: the ID token
+- `id_token_claims`: a map of claims from the ID token
+- `userinfo`: a map of claims retrieved from the userinfo endpoint
 
 ### `backend_requests`
 
