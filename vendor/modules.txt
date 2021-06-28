@@ -42,6 +42,9 @@ github.com/hashicorp/hcl/v2/hclsyntax
 github.com/hashicorp/hcl/v2/hcltest
 github.com/hashicorp/hcl/v2/hclwrite
 github.com/hashicorp/hcl/v2/json
+# github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
+## explicit
+github.com/jimlambrt/go-oauth-pkce-code-verifier
 # github.com/jonboulle/clockwork v0.2.0
 github.com/jonboulle/clockwork
 # github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e

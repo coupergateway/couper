@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -37,6 +38,7 @@ func NewRun(ctx context.Context) *Run {
 	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
+	set.Var(&AcceptForwardedValue{settings: &settings}, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
 	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
@@ -47,10 +49,37 @@ func NewRun(ctx context.Context) *Run {
 	}
 }
 
+type AcceptForwardedValue struct {
+	settings *config.Settings
+}
+
+func (a AcceptForwardedValue) String() string {
+	if a.settings == nil || a.settings.AcceptForwarded == nil {
+		return ""
+	}
+	return a.settings.AcceptForwarded.String()
+}
+
+func (a AcceptForwardedValue) Set(s string) error {
+	forwarded := strings.Split(s, ",")
+	err := a.settings.AcceptForwarded.Set(forwarded)
+	if err != nil {
+		return err
+	}
+	a.settings.AcceptForwardedURL = forwarded
+	return nil
+}
+
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
 	r.settingsMu.Lock()
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
+
+	if flag := r.flagSet.Lookup("accept-forwarded-url"); flag != nil {
+		if afv, ok := flag.Value.(*AcceptForwardedValue); ok {
+			afv.settings = r.settings
+		}
+	}
 
 	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
 		return err
@@ -63,6 +92,10 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	// Some remapping due to flag set pre-definition
 	env.Decode(r.settings)
+	err := r.settings.SetAcceptForwarded()
+	if err != nil {
+		return err
+	}
 	r.settingsMu.Lock()
 	config.Settings = r.settings
 	r.settingsMu.Unlock()

@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -45,6 +46,8 @@ type Context struct {
 	bufferOption BufferOption
 	eval         *hcl.EvalContext
 	inner        context.Context
+	memorize     map[string]interface{}
+	oauth2       []*config.OAuth2AC
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
 }
@@ -88,9 +91,13 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
+		memorize:     make(map[string]interface{}),
+		oauth2:       c.oauth2[:],
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
+
+	ctx.createOAuth2Functions()
 
 	if rc := req.Context(); rc != nil {
 		ctx.inner = context.WithValue(rc, ContextType, ctx)
@@ -111,6 +118,15 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		pathParams = params
 	}
 
+	p := req.URL.Port()
+	if p == "" {
+		if req.URL.Scheme == "https" {
+			p = "443"
+		} else {
+			p = "80"
+		}
+	}
+	port, _ := strconv.ParseInt(p, 10, 64)
 	body, jsonBody := parseReqBody(req)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
@@ -122,6 +138,10 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		PathParam: seetie.MapToValue(pathParams),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		URL:       cty.StringVal(newRawURL(req.URL).String()),
+		Origin:    cty.StringVal(newRawOrigin(req.URL).String()),
+		Protocol:  cty.StringVal(req.URL.Scheme),
+		Host:      cty.StringVal(req.URL.Hostname()),
+		Port:      cty.NumberIntVal(port),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
 	updateFunctions(ctx)
@@ -134,6 +154,8 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		bufferOption: c.bufferOption,
 		eval:         cloneContext(c.eval),
 		inner:        c.inner,
+		memorize:     c.memorize,
+		oauth2:       c.oauth2[:],
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
@@ -188,13 +210,23 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	return c
 }
 
+// WithOAuth2 initially setup the lib.FnOAuthAuthorizationUrl function.
+func (c *Context) WithOAuth2(o []*config.OAuth2AC) *Context {
+	c.oauth2 = o
+	if c.oauth2 == nil {
+		c.oauth2 = make([]*config.OAuth2AC, 0)
+	}
+	return c
+}
+
 // WithSAML initially setup the lib.FnSamlSsoUrl function.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
 	if c.saml == nil {
 		c.saml = make([]*config.SAML, 0)
 	}
-	updateFunctions(c)
+	samlfn := lib.NewSamlSsoUrlFunction(c.saml)
+	c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	return c
 }
 
@@ -202,16 +234,39 @@ func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
 }
 
+// createOAuth2Functions creates the listed OAuth2 functions for the client request context.
+func (c *Context) createOAuth2Functions() {
+	if c.oauth2 != nil {
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
+		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
+	}
+	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthCsrfToken] = c.eval.Functions[lib.FnOAuthCodeVerifier]
+	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
+}
+
+func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
+	cv, ok := c.memorize[lib.CodeVerifier]
+	var err error
+	if !ok {
+		cv, err = pkce.CreateCodeVerifier()
+		if err != nil {
+			return nil, err
+		}
+
+		c.memorize[lib.CodeVerifier] = cv
+	}
+
+	codeVerifier, _ := cv.(*pkce.CodeVerifier)
+
+	return codeVerifier, nil
+}
+
 // updateFunctions recreates the listed functions with latest evaluation context.
 func updateFunctions(ctx *Context) {
-	if len(ctx.profiles) > 0 {
-		jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
-		ctx.eval.Functions[lib.FnJWTSign] = jwtfn
-	}
-	if len(ctx.saml) > 0 {
-		samlfn := lib.NewSamlSsoUrlFunction(ctx.saml)
-		ctx.eval.Functions[lib.FnSamlSsoUrl] = samlfn
-	}
+	jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
+	ctx.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
@@ -293,6 +348,12 @@ func newRawURL(u *url.URL) *url.URL {
 	rawURL.RawQuery = ""
 	rawURL.Fragment = ""
 	return &rawURL
+}
+
+func newRawOrigin(u *url.URL) *url.URL {
+	rawOrigin := *newRawURL(u)
+	rawOrigin.Path = ""
+	return &rawOrigin
 }
 
 func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {

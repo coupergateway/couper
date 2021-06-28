@@ -153,6 +153,8 @@ settings {
 - `definitions` block for predefined configurations, that can be referenced
 - `settings` block for server configuration which applies to the running instance
 
+> See also: [Configuration Reference](REFERENCE.md)
+
 ### Expressions
 
 Since we use [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax) for our configuration, we are able to use attribute values as expression.
@@ -294,8 +296,8 @@ api "my_api" {
 }
 ```
 
-| Incoming request       | Outgoing request                            |
-| :--------------------- | :------------------------------------------ |
+| Incoming request       | Outgoing request                              |
+| :--------------------- | :-------------------------------------------- |
 | /api/v1/login/foo      | `http://identityprovider:8080/login/foo`      |
 | /api/v1/cart/items     | `http://cartservice:8080/api/v1/items`        |
 | /api/v1/account/brenda | `http://accountservice:8080/user/brenda/info` |

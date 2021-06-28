@@ -20,11 +20,13 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
@@ -79,6 +81,27 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
+}
+
+// newCouperWithTemplate applies given variables first and loads Couper with the resulting configuration file.
+// Example template:
+// 		My {{.message}}
+// Example value:
+//		map[string]interface{}{
+//			"message": "value",
+//		}
+func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]interface{}) (func(), *logrustest.Hook) {
+	if vars == nil {
+		return newCouper(file, helper)
+	}
+
+	tpl, err := template.New(filepath.Base(file)).ParseFiles(file)
+	helper.Must(err)
+
+	result := &bytes.Buffer{}
+	helper.Must(tpl.Execute(result, vars))
+
+	return newCouperWithBytes(result.Bytes(), helper)
 }
 
 func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
@@ -1784,7 +1807,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "/req",
+		Url: "http://example.com:8080/req",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -1838,7 +1861,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "/req",
+		Url: "http://example.com:8080/req",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -1899,11 +1922,149 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "/req",
+		Url: "http://example.com:8080/req",
 	}
 
 	if fmt.Sprint(jsonResult) != fmt.Sprint(exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
+func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/settings/05_couper.hcl")
+	shutdown, hook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type expectation struct {
+		Protocol string `json:"protocol"`
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Origin   string `json:"origin"`
+		Url      string `json:"url"`
+	}
+
+	type testCase struct {
+		name       string
+		header     http.Header
+		exp        expectation
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"no proto, host, or port",
+			http.Header{},
+			expectation{
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/path",
+			},
+			"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http",
+		},
+		{
+			"proto, host, no port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     443,
+				Origin:   "https://www.example.com",
+				Url:      "https://www.example.com/path",
+			},
+			"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port ",
+		},
+		{
+			"proto, port, no host",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Port":  []string{"8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "localhost",
+				Port:     8443,
+				Origin:   "https://localhost:8443",
+				Url:      "https://localhost:8443/path",
+			},
+			"couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost",
+		},
+		{
+			"host, port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com"},
+				"X-Forwarded-Port": []string{"8443"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "http://www.example.com:8443",
+				Url:      "http://www.example.com:8443/path",
+			},
+			"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http",
+		},
+		{
+			"proto, host, port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com"},
+				"X-Forwarded-Port":  []string{"8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "https://www.example.com:8443",
+				Url:      "https://www.example.com:8443/path",
+			},
+			"",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/path", nil)
+			helper.Must(err)
+			for k, v := range tc.header {
+				req.Header.Set(k, v[0])
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := ioutil.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+			}
+
+			message := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if message != "" {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			} else {
+				if message != tc.wantErrLog {
+					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			}
+		})
 	}
 }
 
@@ -2282,7 +2443,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 }
 
 func getAccessControlMessages(hook *logrustest.Hook) string {
-	for _, entry := range hook.Entries {
+	for _, entry := range hook.AllEntries() {
 		if entry.Message != "" {
 			return entry.Message
 		}
@@ -2583,5 +2744,212 @@ func TestCORS_Configuration(t *testing.T) {
 				t.Errorf("Expected allowed origin resp, got: %v", val)
 			}
 		})
+	}
+}
+
+func TestLog_Level(t *testing.T) {
+	shutdown, hook := newCouper("testdata/integration/logging/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	client := newClient()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://my.upstream:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected status: %d, got: %d", http.StatusInternalServerError, res.StatusCode)
+	}
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Level != logrus.InfoLevel {
+			t.Errorf("Expected info level, got: %v", entry.Level)
+		}
+	}
+}
+
+func TestOAuthPKCEFunctions(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/02_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	cv1 := res.Header.Get("x-cv-1")
+	cv2 := res.Header.Get("x-cv-2")
+	ccp := res.Header.Get("x-cc-plain")
+	ccs := res.Header.Get("x-cc-s256")
+	if cv2 != cv1 {
+		t.Errorf("multiple calls to oauth_code_verifier() must return the same value:\n\t%s\n\t%s", cv1, cv2)
+	}
+	if ccp != cv1 {
+		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier():\n\t%s\n\t%s", ccp, cv1)
+	}
+	s256 := accesscontrol.Base64urlSha256(cv1)
+	if ccs != s256 {
+		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
+	}
+	au, err := url.Parse(res.Header.Get("x-au-pkce"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile email" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+	}
+	if auq.Get("code_challenge_method") != "S256" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+	}
+	if auq.Get("code_challenge") != ccs {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	cv1_n := res.Header.Get("x-cv-1")
+	if cv1_n == cv1 {
+		t.Errorf("calls to oauth_code_verifier() on different requests must not return the same value:\n\t%s\n\t%s", cv1, cv1_n)
+	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-nok", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 500 {
+		t.Errorf("/pkce-nok: expected Status %d, got: %d", 500, res.StatusCode)
+		return
+	}
+}
+
+func TestOAuthCSRFFunctions(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/02_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	ct1 := res.Header.Get("x-ct-1")
+	ct2 := res.Header.Get("x-ct-2")
+	cht := res.Header.Get("x-cht")
+	if ct2 != ct1 {
+		t.Errorf("multiple calls to oauth_csrf_token() must return the same value:\n\t%s\n\t%s", ct1, ct2)
+	}
+	s256 := accesscontrol.Base64urlSha256(ct1)
+	if cht != s256 {
+		t.Errorf("call to oauth_hashed_csrf_token() returns wrong value:\n\tactual: %s\n\texpected: %s", cht, s256)
+	}
+	au, err := url.Parse(res.Header.Get("x-au-state"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+	}
+	if auq.Get("code_challenge_method") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	}
+	if auq.Get("code_challenge") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	}
+	if auq.Get("state") != cht {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), cht)
+	}
+	if auq.Get("nonce") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+	au, err = url.Parse(res.Header.Get("x-au-nonce"))
+	helper.Must(err)
+	auq = au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+	}
+	if auq.Get("code_challenge_method") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	}
+	if auq.Get("code_challenge") != "" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != cht {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), cht)
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	ct1_n := res.Header.Get("x-ct-1")
+	if ct1_n == ct1 {
+		t.Errorf("calls to oauth_csrf_token() on different requests must not return the same value:\n\t%s\n\t%s", ct1, ct1_n)
 	}
 }

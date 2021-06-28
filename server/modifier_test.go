@@ -3,6 +3,7 @@ package server_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/avenga/couper/internal/test"
 )
@@ -84,17 +85,37 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 		{
 			path:       "/204",
 			expMessage: "set_response_status: removing body, if any due to status-code 204",
-			expStatus:  204,
+			expStatus:  http.StatusNoContent,
 		},
 		{
 			path:       "/201",
 			expMessage: "",
-			expStatus:  201,
+			expStatus:  http.StatusCreated,
 		},
 		{
 			path:       "/600",
 			expMessage: "configuration error: set_response_status: invalid http status code: 600",
-			expStatus:  500,
+			expStatus:  http.StatusInternalServerError,
+		},
+		{
+			path:       "/teapot",
+			expMessage: "access control error: ba: credentials required",
+			expStatus:  http.StatusTeapot,
+		},
+		{
+			path:       "/no-content",
+			expMessage: "", // logs without err have no/an empty message field
+			expStatus:  http.StatusNoContent,
+		},
+		{
+			path:       "/happy-path-only",
+			expMessage: `backend error: unsupported protocol scheme "couper"`,
+			expStatus:  http.StatusBadGateway,
+		},
+		{
+			path:       "/inception",
+			expMessage: `backend error: unsupported protocol scheme "couper"`,
+			expStatus:  http.StatusBadGateway,
 		},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
@@ -111,12 +132,13 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 				t.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
 			}
 
+			time.Sleep(time.Second / 2) // MAYbe entries arent written yet
 			for _, entry := range hook.AllEntries() {
 				if entry.Message == tc.expMessage {
 					return
 				}
 			}
-			t.Errorf("expected log message not seen: %s", tc.expMessage)
+			t.Errorf("expected log message not seen: %s\ngot: %s", tc.expMessage, hook.LastEntry().Message)
 		})
 	}
 }
