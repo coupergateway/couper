@@ -57,11 +57,11 @@ Copy/paste the following configuration to the file and save it.
 
 ```hcl
 server "hello" {
-	endpoint "/**" {
-        response {
-            body = "Hello World!"
-        }
+  endpoint "/**" {
+    response {
+      body = "Hello World!"
     }
+  }
 }
 ```
 
@@ -69,18 +69,26 @@ Now `cd` into the directory with the configuration file and start Couper in a do
 
 ```sh
 $ docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper
-
 {"addr":"0.0.0.0:8080","level":"info","message":"couper gateway is serving","timestamp":"2020-08-27T16:39:18Z","type":"couper"}
 ```
 
 Now Couper is serving on your computer's port _8080_. Point your
 browser or `curl` to [`localhost:8080`](http://localhost:8080/) to see what's going on.
 
-Press `CTRL+c` to stop the container.
+Press `CTRL+c` to stop the container. 
+
+The [following section](#configuration-file) will give you an introduction into Couper's configuration file.  
+
+[Here](./REFERENCE.md) you will find the full configuration reference.
+
+If you prefer to learn about Couper by checking out certain features, visit the [example repository](https://github.com/avenga/couper-examples).
 
 ## Configuration File
 
 The language for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
+
+**&#9888; Couper's configuration reference can be found [here](./REFERENCE.md).**
+
 
 ### IDE Extension
 
