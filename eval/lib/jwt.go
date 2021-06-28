@@ -98,14 +98,6 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				mapClaims[k] = v
 			}
 
-			// create token
-			signingMethod := jwt.GetSigningMethod(signingProfile.SignatureAlgorithm)
-			if signingMethod == nil {
-				return cty.StringVal(""), fmt.Errorf("no signing method for given algorithm: %s", signingProfile.SignatureAlgorithm)
-			}
-
-			token := jwt.NewWithClaims(signingMethod, mapClaims)
-
 			var key interface{}
 			if rsaKey, exist := rsaKeys[signingProfile.Name]; exist {
 				if rsaKey == rsaParseError {
@@ -116,8 +108,7 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 				key = signingProfile.KeyBytes
 			}
 
-			// sign token
-			tokenString, err := token.SignedString(key)
+			tokenString, err := CreateJWT(signingProfile.SignatureAlgorithm, key, mapClaims)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -125,4 +116,17 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			return cty.StringVal(tokenString), nil
 		},
 	})
+}
+
+func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClaims) (string, error) {
+	signingMethod := jwt.GetSigningMethod(signatureAlgorithm)
+	if signingMethod == nil {
+		return "", fmt.Errorf("no signing method for given algorithm: %s", signatureAlgorithm)
+	}
+
+	// create token
+	token := jwt.NewWithClaims(signingMethod, mapClaims)
+
+	// sign token
+	return token.SignedString(key)
 }
