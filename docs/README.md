@@ -46,7 +46,7 @@ computer. Please visit the [get started guide](https://docs.docker.com/get-start
 To download/install Couper, open a terminal and execute:
 
 ```sh
-$ docker pull avenga/couper
+docker pull avenga/couper
 ```
 
 Couper needs a configuration file to know what to do.
@@ -75,7 +75,7 @@ $ docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper
 Now Couper is serving on your computer's port _8080_. Point your
 browser or `curl` to [`localhost:8080`](http://localhost:8080/) to see what's going on.
 
-Press `CTRL+c` to stop the container. 
+Press `CTRL+c` to stop the container.
 
 The [following section](#configuration-file) will give you an introduction into Couper's configuration file.  
 
@@ -88,7 +88,6 @@ If you prefer to learn about Couper by checking out certain features, visit the 
 The language for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
 
 **&#9888; Couper's configuration reference can be found [here](./REFERENCE.md).**
-
 
 ### IDE Extension
 
@@ -297,9 +296,9 @@ api "my_api" {
 
 | Incoming request       | Outgoing request                            |
 | :--------------------- | :------------------------------------------ |
-| /api/v1/login/foo      | http://identityprovider:8080/login/foo      |
-| /api/v1/cart/items     | http://cartservice:8080/api/v1/items        |
-| /api/v1/account/brenda | http://accountservice:8080/user/brenda/info |
+| /api/v1/login/foo      | `http://identityprovider:8080/login/foo`      |
+| /api/v1/cart/items     | `http://cartservice:8080/api/v1/items`        |
+| /api/v1/account/brenda | `http://accountservice:8080/user/brenda/info` |
 
 #### Using Variables and Expressions
 
