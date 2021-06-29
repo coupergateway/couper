@@ -15,6 +15,8 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
 )
 
 type Saml2 struct {
@@ -79,6 +81,13 @@ func (s *Saml2) Validate(req *http.Request) error {
 	if err != nil {
 		return err
 	}
+
+	origin := eval.NewRawOrigin(req.URL)
+	absAcsUrl, err := lib.MakeUrlAbsolute(s.sp.AssertionConsumerServiceURL, origin)
+	if err != nil {
+		return err
+	}
+	s.sp.AssertionConsumerServiceURL = absAcsUrl
 
 	encodedResponse := req.FormValue("SAMLResponse")
 	req.ContentLength = 0

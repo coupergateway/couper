@@ -17,7 +17,7 @@ const (
 	CodeVerifier                  = "code_verifier"
 )
 
-func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error)) function.Function {
+func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error), origin *url.URL) function.Function {
 	oauth2s := make(map[string]config.OAuth2Authorization)
 	for _, o := range oauth2Configs {
 		oauth2s[o.GetName()] = o
@@ -47,7 +47,11 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 			query := oauthAuthorizationUrl.Query()
 			query.Set("response_type", "code")
 			query.Set("client_id", oauth2.GetClientID())
-			query.Set("redirect_uri", oauth2.GetRedirectURI())
+			absRedirectUri, err := MakeUrlAbsolute(oauth2.GetRedirectURI(), origin)
+			if err != nil {
+				return cty.StringVal(""), err
+			}
+			query.Set("redirect_uri", absRedirectUri)
 			if scope := oauth2.GetScope(); scope != "" {
 				query.Set("scope", scope)
 			}

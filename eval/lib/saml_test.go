@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -92,9 +93,12 @@ func Test_SamlSsoUrl(t *testing.T) {
 				h.Must(err)
 			}
 
-			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+			evalContext := cf.Context.Value(eval.ContextType).(*eval.Context)
+			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
+			h.Must(err)
+			evalContext = evalContext.WithClientRequest(req)
 
-			ssoUrl, err := hclContext.Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
+			ssoUrl, err := evalContext.HCLContext().Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
 			if err == nil && tt.wantErr {
 				st.Fatal("Error expected")
 			}

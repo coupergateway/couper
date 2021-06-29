@@ -15,6 +15,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -70,9 +71,6 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 
 	if scope := c.clientConfig.GetScope(); scope != "" && grantType != "authorization_code" {
 		post.Set("scope", scope)
-	}
-	if acClientConfig, ok := c.clientConfig.(config.OAuth2AcClient); ok && grantType == "authorization_code" {
-		post.Set("redirect_uri", acClientConfig.GetRedirectURI())
 	}
 	if requestParams != nil {
 		for key, value := range requestParams {
@@ -163,6 +161,12 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	}
 
 	requestParams := map[string]string{"code": code}
+	origin := eval.NewRawOrigin(callbackURL)
+	absRedirectUri, err := lib.MakeUrlAbsolute(a.getAcClientConfig().GetRedirectURI(), origin)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	requestParams["redirect_uri"] = absRedirectUri
 
 	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)
 
