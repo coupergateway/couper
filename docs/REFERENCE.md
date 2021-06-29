@@ -19,7 +19,7 @@
     - [Basic Auth Block](#basic-auth-block)
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
-    - [OAuth2 AC Block](#oauth2-ac-block-beta)
+    - [OAuth2 AC Block (Beta)](#oauth2-ac-block-beta)
     - [PKCE Block](#pkce-block)
     - [CSRF Block](#csrf-block)
     - [SAML Block](#saml-block)
