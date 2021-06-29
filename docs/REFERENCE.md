@@ -19,7 +19,7 @@
     - [Basic Auth Block](#basic-auth-block)
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
-    - [OAuth2 AC Block](#oauth2-ac-block)
+    - [OAuth2 AC Block](#oauth2-ac-block-beta)
     - [PKCE Block](#pkce-block)
     - [CSRF Block](#csrf-block)
     - [SAML Block](#saml-block)
@@ -285,7 +285,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block)|
+|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta)|
 
 <!-- TODO: add link to (still missing) example -->
 
@@ -385,7 +385,7 @@ Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatrac
 
 |Block name|Context|Label|Nested block(s)|
 | :---------| :-----------| :-----------| :-----------|
-|`pkce`| [OAuth2 AC Block](#oauth2-ac-block)| no label |-|
+|`pkce`| [OAuth2 AC Block](#oauth2-ac-block-beta)| no label |-|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -398,7 +398,7 @@ Use `state` or `nonce` for protection against CSRF.
 
 |Block name|Context|Label|Nested block(s)|
 | :------| :-----------| :-----------| :-----------|
-|`csrf`| [OAuth2 AC Block](#oauth2-ac-block)| no label |-|
+|`csrf`| [OAuth2 AC Block](#oauth2-ac-block-beta)| no label |-|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -512,7 +512,7 @@ For a [SAML Block](#saml-block), the variable contains
 - `exp`: optional expiration date (value of `SessionNotOnOrAfter` of the SAML assertion)
 - `attributes`: a map of attributes from the SAML assertion
 
-For an [OAuth2 AC Block](#oauth2-ac-block), the variable contains the response from the token endpoint, e.g.
+For an [OAuth2 AC Block](#oauth2-ac-block-beta), the variable contains the response from the token endpoint, e.g.
 
 - `access_token`: the access token retrieved from the token endpoint
 - `token_type`: the token type
@@ -570,7 +570,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `json_encode`   | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     |
 | `jwt_sign`      | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 |
 | `merge`         | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
-| `beta_oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block).                                                                                                                                                                                            |
+| `beta_oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta).                                                                                                                                                                                            |
 | `beta_oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636, e.g. to be used in a cookie, when using the PKCE for CSRF protection. Multiple calls of this function in the same client request context return the same value.                                                          |
 | `beta_oauth_csrf_token`     | Alias for `beta_oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF protection.                                                                                                                                         |
 | `saml_sso_url`  | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 |
