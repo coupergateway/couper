@@ -5,8 +5,10 @@
 Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
-  * OAuth2 Authorization Code Grant Flow: `beta_oauth2 {}` block; `beta_oauth_authorization_url()`, `beta_oauth_code_verifier()` and `beta_oauth_csrf_token()` functions ([#247](https://github.com/avenga/couper/pull/247))
   * Run option `-accept-forwarded-url` and setting `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers, affecting new client request variables `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
+
+* [**Beta**](./docs/BETA.md)
+  * OAuth2 Authorization Code Grant Flow: `beta_oauth2 {}` [block](./docs/REFERENCE.md#oauth2-ac-block-beta);  `beta_oauth_authorization_url()`, `beta_oauth_code_verifier()` and `beta_oauth_csrf_token()` [functions](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
 
 ---
 
