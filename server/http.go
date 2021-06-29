@@ -179,10 +179,12 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 
-	uid := s.uidFn()
-	ctx := context.WithValue(req.Context(), request.UID, uid)
-	ctx = context.WithValue(ctx, request.XFF, req.Header.Get("X-Forwarded-For"))
-	ctx = context.WithValue(ctx, request.LogEntry, s.log.WithField("uid", uid))
+	if err := setUID(s, rw, req); err != nil {
+		s.accessLog.ServeHTTP(rw, req, errors.DefaultHTML.ServeError(err), startTime)
+		return
+	}
+
+	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
 	*req = *req.WithContext(ctx)
 
 	req.Host = s.getHost(req)
