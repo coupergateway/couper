@@ -20,8 +20,8 @@
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
     - [OAuth2 AC Block](#oauth2-ac-block)
-      - [PKCE Block](#pkce-block)
-      - [CSRF Block](#csrf-block)
+    - [PKCE Block](#pkce-block)
+    - [CSRF Block](#csrf-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
   - [Access Control](#access-control)
@@ -47,7 +47,7 @@
 
 The `server` block is one of the root configuration blocks of Couper's configuration file.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`server`|-|&#9888; required| [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
 
@@ -62,7 +62,7 @@ The `server` block is one of the root configuration blocks of Couper's configura
 
 The `files` block configures the file serving.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`files`|[Server Block](#server-block)|no label| [CORS Block](#cors-block)|
 
@@ -77,7 +77,7 @@ The `files` block configures the file serving.
 
 The `spa` block configures the Web serving for SPA assets.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`spa`| [Server Block](#server-block)|no label|[CORS Block](#cors-block) |
 
@@ -95,7 +95,7 @@ The `api` block bundles endpoints under a certain `base_path`.
 &#9888; If an error occurred for api endpoints the response gets processed
 as json error with an error body payload. This can be customized via `error_file`.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block),  [CORS Block](#cors-block)|
 
@@ -113,7 +113,7 @@ changes the path for the outgoing request (compare
 [path mapping example](./README.md#routing-path-mapping)). Each `endpoint` block must
 produce an explicit or implicit client response.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`endpoint`| [Server Block](#server-block), [API Block](#api-block) |&#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block) |
 
@@ -133,7 +133,7 @@ The `proxy` block creates and executes a proxy request to a backend service.
 &#9888; Multiple  `proxy` and [Request Block](#request-block)s are executed in parallel.
 <!-- TODO: shorten label text in table below and find better explanation for backend, backend reference or url - same for request block-->
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`proxy`|[Endpoint Block](#endpoint-block)|&#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|
 
@@ -149,7 +149,7 @@ The `request` block creates and executes a request to a backend service.
 
 &#9888; Multiple [Proxy](#proxy-block) and `request` blocks are executed in parallel.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`request`| [Endpoint Block](#endpoint-block)|&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set.|
 <!-- TODO: add available http methods -->
@@ -168,7 +168,7 @@ The `request` block creates and executes a request to a backend service.
 
 The `response` block creates and sends a client response.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`response`|[Endpoint Block](#endpoint-block)|no label|-|
 
@@ -185,7 +185,7 @@ The `backend` block defines the connection to a local/remote backend service.
 
 &#9888; Backends can be defined in the [Definitions Block](#definitions-block) and referenced by _label_.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :----------| :-----------| :-----------| :-----------|
 |`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-cc-block)|
 
@@ -230,7 +230,7 @@ the definitions from a given document defined with the `file` attribute.
 lead to a non-matching _route_ which is still required for response validations.
 In this case the response validation will fail if not ignored too.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`openapi`| [Backend Block](#backend-block)|-|-|
 
@@ -247,7 +247,7 @@ The `cors` block configures the CORS (Cross-Origin Resource Sharing) behavior in
 <!--TODO: check if this information is correct -->
 &#9888; Overrides the CORS behavior of the parent block.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`cors`|[Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block).  |no label|-|
 
@@ -262,7 +262,7 @@ The `cors` block configures the CORS (Cross-Origin Resource Sharing) behavior in
 
 The `oauth2` block in the [Backend Block](#backend-block) context configures the OAuth2 Client Credentials flow to request a bearer token for the backend request.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`oauth2`|[Backend Block](#backend-block)|no label|[Backend Block](#backend-block)|
 
@@ -283,9 +283,9 @@ Use the `definitions` block to define configurations you want to reuse.
 
 &#9888; [Access Control](#access-control) is **always** defined in the `definitions` block.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block)|
+|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block)|
 
 <!-- TODO: add link to (still missing) example -->
 
@@ -301,7 +301,7 @@ credentials from the `Authorization` request HTTP header field are checked again
 `user`/`password` if the user matches, and against the data in the file referenced
 by `htpasswd_file` otherwise.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`basic_auth`| [Definitions Block](#definitions-block)| &#9888; required |-|
 
@@ -319,7 +319,7 @@ Like all [Access Control](#access-control) types, the `jwt` block is defined in
 the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its
 required _label_.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`jwt`| [Definitions Block](#definitions-block)| &#9888; required |-|
 
@@ -342,7 +342,7 @@ by its required _label_.
 An example can be found
 [here](https://github.com/avenga/couper-examples/blob/master/creating-jwt/README.md).
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`jwt_signing_profile`| [Definitions Block](#definitions-block)| &#9888; required |-|
 
@@ -360,7 +360,7 @@ The `beta_oauth2` block lets you configure the `beta_oauth_authorization_url()` 
 control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint.
 Like all [Access Control](#access-control) types, the `beta_oauth2` block is defined in the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its required _label_.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 |`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [PKCE Block](#pkce-block), [CSRF Block](#csrf-block) |
 
@@ -379,11 +379,11 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 To configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF) use either the [PKCE](#pkce-block) or the [CSRF Block](#csrf-block). If the authorization server supports PKCE, we recommend `pkce`.
 
-#### PKCE Block
+### PKCE Block
 
 Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636) for protection against CSRF and code injection.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :---------| :-----------| :-----------| :-----------|
 |`pkce`| [OAuth2 AC Block](#oauth2-ac-block)| no label |-|
 
@@ -392,11 +392,11 @@ Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatrac
 | `code_challenge_method` | string | - | The method to calculate the PKCE code challenge. |&#9888; required, available values: `S256` or (not recommended) `plain`|-|
 | `code_verifier_value` | string or expression | - | The value of the code verifier. |&#9888; required; e.g. using cookie value created with [`beta_oauth_code_verifier()` function](#functions)|`code_verifier_value = request.cookies.code_verifier` |
 
-#### CSRF Block
+### CSRF Block
 
 Use `state` or `nonce` for protection against CSRF.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :------| :-----------| :-----------| :-----------|
 |`csrf`| [OAuth2 AC Block](#oauth2-ac-block)| no label |-|
 
@@ -413,7 +413,7 @@ Like all [Access Control](#access-control) types, the `saml` block is defined in
 the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its
 required _label_.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :--------| :-----------| :-----------| :-----------|
 |`saml`| [Definitions Block](#definitions-block)| &#9888; required |-|
 
@@ -435,7 +435,7 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 The `settings` block let you configure the more basic and global behavior of your
 gateway instance.
 
-|Block Name|Context|Label|Nested block(s)|
+|Block name|Context|Label|Nested block(s)|
 | :----------| :-----------| :-----------| :-----------|
 |`settings`| -| no label |-|
 
