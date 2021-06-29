@@ -32,7 +32,7 @@
     - [backend_requests](#backend_requests)
     - [backend_responses](#backend_responses)
   - [Functions](#functions)
-  - [Modifier](#modifier)
+  - [Modifiers](#modifiers)
     - [Request Header](#request-header)
     - [Response Header](#response-header)
     - [Set Response Status](#set-response-status)
@@ -124,7 +124,7 @@ produce an explicit or implicit client response.
 |`request_body_limit`  |string|`64MiB`|Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.|&#9888; Valid units are: `KiB, MiB, GiB`|`request_body_limit = "200KiB"`|
 | `path`|string|-|Changeable part of the upstream URL. Changes the path suffix of the outgoing request.|-|-|
 |`access_control`   |list|-|Sets predefined [Access Control](#access-control) for `endpoint` block context.|-| `access_control = ["foo"]`|
-|[Modifier](#modifier) |-|-|-|-|-|
+|[Modifiers](#modifiers) |-|-|-|-|-|
 
 ### Proxy Block
 
@@ -141,7 +141,7 @@ The `proxy` block creates and executes a proxy request to a backend service.
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
 | `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|
-|[Modifier](#modifier)|-|-|-|-|-|
+|[Modifiers](#modifiers)|-|-|-|-|-|
 
 ### Request Block
 
@@ -204,7 +204,7 @@ The `backend` block defines the connection to a local/remote backend service.
 | `proxy`                          | string             | -| A proxy URL for the related origin request.      |-   | `http://SERVER-IP_OR_NAME:PORT`|
 | `timeout`                        | [duration](#duration) | `300s`          | The total deadline duration a backend request has for write and read/pipe.               |-     |-|
 | `ttfb_timeout`                   | [duration](#duration) | `60s`           | The duration from writing the full request to the origin and receiving the answer.        |-    |-|
-| [Modifier](#modifier)           |- |-|All [Modifier](#modifier)|-|-|
+| [Modifiers](#modifiers)           |- |-|All [Modifiers](#modifiers)|-|-|
 
 #### Duration
 
@@ -579,7 +579,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `unixtime`      | Retrieves the current UNIX timestamp in seconds.                                                                                                                                                                                                                                                     |
 | `url_encode`    | URL-encodes a given string according to RFC 3986.                                                                                                                                                                                                                                                    |
 
-## Modifier
+## Modifiers
 
 - [Request Header](#request-header)
 - [Response Header](#response-header)
