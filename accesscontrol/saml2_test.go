@@ -15,36 +15,46 @@ import (
 	"github.com/russellhaering/gosaml2/types"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/config/reader"
+	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/internal/test"
 )
 
 func Test_NewSAML2ACS(t *testing.T) {
+	helper := test.New(t)
+
 	type testCase struct {
 		metadataFile, acsUrl, spEntityId string
 		arrayAttributes                  []string
 		expErrMsg                        string
 		shouldFail                       bool
 	}
+
 	for _, tc := range []testCase{
 		{"testdata/idp-metadata.xml", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{}, "", false},
 		{"not-there.xml", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{}, "not-there.xml: no such file or directory", true},
 	} {
-		sa, err := ac.NewSAML2ACS(tc.metadataFile, "test", tc.acsUrl, tc.spEntityId, tc.arrayAttributes)
-		if tc.shouldFail && sa != nil {
-			t.Error("Expected no successful saml acs creation")
+		metadata, err := reader.ReadFromAttrFile("saml2", "", tc.metadataFile)
+		if err != nil {
+			readErr := err.(errors.GoError)
+			if tc.shouldFail {
+				if !strings.HasSuffix(readErr.LogError(), tc.expErrMsg) {
+					t.Errorf("Want: %q, got: %q", tc.expErrMsg, readErr.LogError())
+				}
+				continue
+			}
+			t.Error(err)
+			continue
 		}
 
-		if tc.shouldFail && err != nil && tc.expErrMsg != "" {
-			if !strings.HasSuffix(err.Error(), tc.expErrMsg) {
-				t.Errorf("Expected error message suffix: %q, got: %q", tc.expErrMsg, err.Error())
-			}
-		} else if err != nil {
-			t.Error(err)
-		}
+		_, err = ac.NewSAML2ACS(metadata, "test", tc.acsUrl, tc.spEntityId, tc.arrayAttributes)
+		helper.Must(err)
 	}
 }
 
 func Test_SAML2ACS_Validate(t *testing.T) {
-	sa, err := ac.NewSAML2ACS("testdata/idp-metadata.xml", "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
+	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
 	}
@@ -87,7 +97,8 @@ func Test_SAML2ACS_Validate(t *testing.T) {
 }
 
 func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
-	sa, err := ac.NewSAML2ACS("testdata/idp-metadata.xml", "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
+	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
 	}
@@ -124,7 +135,8 @@ func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
 }
 
 func Test_SAML2ACS_GetAssertionData(t *testing.T) {
-	sa, err := ac.NewSAML2ACS("testdata/idp-metadata.xml", "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
+	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
 	}

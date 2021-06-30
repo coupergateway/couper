@@ -17,6 +17,7 @@ import (
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/parser"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
@@ -83,6 +84,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	defaults := config.DefaultSettings
+	defaults.AcceptForwarded = &config.AcceptForwarded{}
 
 	evalContext := eval.NewContext(src)
 	envContext = evalContext.HCLContext()
@@ -138,6 +140,18 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				return nil, diags
 			}
 
+			for _, oauth2Config := range couperConfig.Definitions.OAuth2AC {
+				err := uniqueAttributeKey(oauth2Config.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			// access control - error_handler
 			var acErrorHandler []AccessControlSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
@@ -147,6 +161,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 			for _, acConfig := range couperConfig.Definitions.SAML {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.OAuth2AC {
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 
@@ -213,12 +230,37 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			if diags = gohcl.DecodeBody(outerBlock.Body, envContext, couperConfig.Settings); diags.HasErrors() {
 				return nil, diags
 			}
+			if err := couperConfig.Settings.SetAcceptForwarded(); err != nil {
+				diag := &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("invalid accept_forwarded_url: %q", err),
+					Subject:  &outerBlock.DefRange,
+				}
+				return nil, diag
+			}
 		}
 	}
 
 	// Prepare dynamic functions
+	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
+		key, err := reader.ReadFromAttrFile("jwt_signing_profile key", profile.Key, profile.KeyFile)
+		if err != nil {
+			return nil, errors.Configuration.Label(profile.Name).With(err)
+		}
+		profile.KeyBytes = key
+	}
+
+	for _, saml := range couperConfig.Definitions.SAML {
+		metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
+		if err != nil {
+			return nil, errors.Configuration.Label(saml.Name).With(err)
+		}
+		saml.MetadataBytes = metadata
+	}
+
 	couperConfig.Context = evalContext.
 		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
+		WithOAuth2(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
@@ -662,7 +704,7 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		return nil, err
 	}
 
-	return newBackend(definedBackends, &config.OAuth2{Remain: hclbody.New(&hcl.BodyContent{
+	return newBackend(definedBackends, &config.OAuth2ReqAuth{Remain: hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
 		},

@@ -6,9 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"sort"
 
 	saml2 "github.com/russellhaering/gosaml2"
@@ -25,20 +23,9 @@ type Saml2 struct {
 	sp              *saml2.SAMLServiceProvider
 }
 
-func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId string, arrayAttributes []string) (*Saml2, error) {
-	p, err := filepath.Abs(metadataFile)
-	if err != nil {
-		return nil, err
-	}
-
-	rawMetadata, err := ioutil.ReadFile(p)
-	if err != nil {
-		return nil, err
-	}
-
-	metadata := &types.EntityDescriptor{}
-	err = xml.Unmarshal(rawMetadata, metadata)
-	if err != nil {
+func NewSAML2ACS(metadata []byte, name string, acsUrl string, spEntityId string, arrayAttributes []string) (*Saml2, error) {
+	metadataEntity := &types.EntityDescriptor{}
+	if err := xml.Unmarshal(metadata, metadataEntity); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +33,7 @@ func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId str
 		Roots: []*x509.Certificate{},
 	}
 
-	for _, kd := range metadata.IDPSSODescriptor.KeyDescriptors {
+	for _, kd := range metadataEntity.IDPSSODescriptor.KeyDescriptors {
 		for idx, xcert := range kd.KeyInfo.X509Data.X509Certificates {
 			if xcert.Data == "" {
 				return nil, fmt.Errorf("metadata certificate(%d) must not be empty", idx)
@@ -69,7 +56,7 @@ func NewSAML2ACS(metadataFile string, name string, acsUrl string, spEntityId str
 		AssertionConsumerServiceURL: acsUrl,
 		AudienceURI:                 spEntityId,
 		IDPCertificateStore:         &certStore,
-		IdentityProviderIssuer:      metadata.EntityID,
+		IdentityProviderIssuer:      metadataEntity.EntityID,
 	}
 	if arrayAttributes != nil {
 		sort.Strings(arrayAttributes)

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/eval"
-
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/test"
 )
 
 func Test_SamlSsoUrl(t *testing.T) {
@@ -82,57 +82,53 @@ func Test_SamlSsoUrl(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
+			h := test.New(st)
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				t.Fatal(err)
+				if tt.wantErr {
+					return
+				}
+				h.Must(err)
 			}
 
 			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
 
 			ssoUrl, err := hclContext.Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
 			if err == nil && tt.wantErr {
-				t.Fatal("Error expected")
+				st.Fatal("Error expected")
 			}
 			if err != nil {
 				if !tt.wantErr {
-					t.Fatal(err)
+					h.Must(err)
 				} else {
 					return
 				}
 			}
 
 			if !strings.HasPrefix(ssoUrl.AsString(), tt.wantPfx) {
-				t.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoUrl.AsString())
+				st.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoUrl.AsString())
 			}
 
 			u, err := url.Parse(ssoUrl.AsString())
-			if err != nil {
-				t.Fatal(err)
-			}
+			h.Must(err)
 
 			q := u.Query()
 			samlRequest := q.Get("SAMLRequest")
 			if samlRequest == "" {
-				t.Fatal("Expected SAMLRequest query param")
+				st.Fatal("Expected SAMLRequest query param")
 			}
 
 			b64Decoded, err := base64.StdEncoding.DecodeString(samlRequest)
-			if err != nil {
-				t.Fatal(err)
-			}
+			h.Must(err)
 
 			fr := flate.NewReader(bytes.NewReader(b64Decoded))
 			deflated, err := ioutil.ReadAll(fr)
-			if err != nil {
-				t.Fatal(err)
-			}
+			h.Must(err)
 
 			var x interface{}
 			err = xml.Unmarshal(deflated, &x)
-			if err != nil {
-				t.Fatal(err)
-			}
+			h.Must(err)
 		})
 	}
 

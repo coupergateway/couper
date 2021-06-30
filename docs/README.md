@@ -18,7 +18,7 @@
 
 Couper is a lightweight open-source API gateway that acts as an entry point for clients to your application (frontend API gateway) and an exit point to upstream services (upstream API gateway).
 
-It exposes endpoints with use cases and adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
+It adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
 
 Couper does not need any special development skills and offers easy configuration and integration.
 
@@ -46,7 +46,7 @@ computer. Please visit the [get started guide](https://docs.docker.com/get-start
 To download/install Couper, open a terminal and execute:
 
 ```sh
-$ docker pull avenga/couper
+docker pull avenga/couper
 ```
 
 Couper needs a configuration file to know what to do.
@@ -57,11 +57,11 @@ Copy/paste the following configuration to the file and save it.
 
 ```hcl
 server "hello" {
-	endpoint "/**" {
-        response {
-            body = "Hello World!"
-        }
+  endpoint "/**" {
+    response {
+      body = "Hello World!"
     }
+  }
 }
 ```
 
@@ -69,7 +69,6 @@ Now `cd` into the directory with the configuration file and start Couper in a do
 
 ```sh
 $ docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper
-
 {"addr":"0.0.0.0:8080","level":"info","message":"couper gateway is serving","timestamp":"2020-08-27T16:39:18Z","type":"couper"}
 ```
 
@@ -78,9 +77,17 @@ browser or `curl` to [`localhost:8080`](http://localhost:8080/) to see what's go
 
 Press `CTRL+c` to stop the container.
 
+The [following section](#configuration-file) will give you an introduction into Couper's configuration file.  
+
+[Here](./REFERENCE.md) you will find the full configuration reference.
+
+If you prefer to learn about Couper by checking out certain features, visit the [example repository](https://github.com/avenga/couper-examples).
+
 ## Configuration File
 
 The language for Couper's configuration file is [HCL 2.0](https://github.com/hashicorp/hcl/tree/hcl2#information-model-and-syntax), a configuration language by HashiCorp.
+
+**&#9888; Couper's configuration reference can be found [here](./REFERENCE.md).**
 
 ### IDE Extension
 
@@ -145,6 +152,8 @@ settings {
     - `response` configuration block for a manual client response
 - `definitions` block for predefined configurations, that can be referenced
 - `settings` block for server configuration which applies to the running instance
+
+> See also: [Configuration Reference](REFERENCE.md)
 
 ### Expressions
 
@@ -287,11 +296,11 @@ api "my_api" {
 }
 ```
 
-| Incoming request       | Outgoing request                            |
-| :--------------------- | :------------------------------------------ |
-| /api/v1/login/foo      | http://identityprovider:8080/login/foo      |
-| /api/v1/cart/items     | http://cartservice:8080/api/v1/items        |
-| /api/v1/account/brenda | http://accountservice:8080/user/brenda/info |
+| Incoming request       | Outgoing request                              |
+| :--------------------- | :-------------------------------------------- |
+| /api/v1/login/foo      | `http://identityprovider:8080/login/foo`      |
+| /api/v1/cart/items     | `http://cartservice:8080/api/v1/items`        |
+| /api/v1/account/brenda | `http://accountservice:8080/user/brenda/info` |
 
 #### Using Variables and Expressions
 

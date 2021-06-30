@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -59,9 +60,10 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) 
 
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var (
-		clientres *http.Response
-		err       error
-		log       = e.log.WithField("uid", req.Context().Value(request.UID))
+		clientres    *http.Response
+		err          error
+		log          = e.log.WithField("uid", req.Context().Value(request.UID))
+		isErrHandler = strings.HasPrefix(e.opts.LogHandlerKind, "error_") // weak ref
 	)
 
 	// Bind some values for logging purposes
@@ -135,7 +137,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			// fallback
 			err = errors.Configuration
 
-			if strings.HasPrefix(e.opts.LogHandlerKind, "error_") { // weak ref
+			if isErrHandler {
 				err = req.Context().Value(request.Error).(*errors.Error)
 			} else {
 				// TODO determine error priority, may solved with error_handler
@@ -163,6 +165,21 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			serveErr = errors.Server.With(err)
 			log.WithError(err).Error()
 		}
+
+		content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
+		errFromCtx := req.Context().Value(request.Error)
+		if attr, ok := content.Attributes["set_response_status"]; isErrHandler && errFromCtx == err && ok {
+			if statusCode, applyErr := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
+				if serr, k := serveErr.(*errors.Error); k {
+					serveErr = serr.Status(statusCode)
+				} else {
+					serveErr = errors.Server.With(serveErr).Status(statusCode)
+				}
+			} else if applyErr != nil {
+				e.log.WithError(applyErr)
+			}
+		}
+
 		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
 		return
 	}
