@@ -1,16 +1,17 @@
-# What's a 'beta' Feature?
+# About _beta_ features
 
-We introduced 'beta' feature in order to keep our feature warranty and still develop new complex features for you.
+We use _beta_ features to have the possibility to develop new, complex features for you while still being able to maintain our compatibility promise.
 
-## What 'beta' means for you
+You can see beta features as a feature preview. We will announce new beta features in the [Changelog](/CHANGELOG.md) and document them in the [reference](REFERENCE.md).
 
-In practice, a 'beta' feature is:
+We will keep features in beta as long as we collect feedback and are actively working on it. You can expect beta features to evolve.
 
-- one that our team is still actively working on
-- is prefixed with `beta_`
-- going to evolve, so it is recommended to pin the current docker tag (please add tests to your code to make sure that nothing is going to break when you want to update to a newer version)
-- documented in the changelog
+_They can change with every release._
 
-## Feedback more than welcome
+We recommended you to pin Couper to a specific [docker tag](https://hub.docker.com/r/avenga/couper/tags) to avoid unintended updates. (Add tests to your code to make sure that nothing is going to break when you want to update to a newer version).
 
-We need your feedback to bring 'beta' features to public. So please leave your feedback and questions [here](https://github.com/avenga/couper/discussions). Thank you! :)
+To make you and your colleagues aware that a beta feature is used, we will prefix all configuration items such as config blocks or functions with `beta_`:
+
+## Feedback more than welcome!
+
+We need your feedback to make beta features to proper features. Please leave your feedback and questions [here](https://github.com/avenga/couper/discussions), or open an issue. Thank you! :)
