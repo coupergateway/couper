@@ -47,46 +47,46 @@
 
 The `server` block is one of the root configuration blocks of Couper's configuration file.
 
-|Block name|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-|`server`|-|&#9888; required| [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
+| Block name | Context | Label            | Nested block(s) |
+| :--------- | :------ | :--------------- | :-------------- |
+| `server`   | -       | &#9888; required | [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `base_path`     |string|-|Configures the path prefix for all requests.| &#9888; Inherited by nested blocks.|`base_path = "/api"` |
-|`hosts`|list|port `:8080`|-|&#9888; required, if there is more than one `server` block. &#9888; Only one `hosts` attribute per  `server` block is allowed.| `hosts = ["example.com", "localhost:9090"]`|
-|`error_file`|string|-|Location of the error file template.|-|`error_file = "./my_error_page.html"`|
-|`access_control`|list|-|Sets predefined [Access Control](#access-control) for [Server Block](#server-block) context.|&#9888; Inherited by nested blocks.|`access_control = ["foo"]`|
+| Attribute(s)     | Type   | Default      | Description | Characteristic(s) | Example |
+| :--------------- | :----- | :----------- | :---------- | :---------------- | :------ |
+| `base_path`      | string | -            | Configures the path prefix for all requests. | &#9888; Inherited by nested blocks. | `base_path = "/api"` |
+| `hosts`          | list   | port `:8080` | - | &#9888; required, if there is more than one `server` block. &#9888; Only one `hosts` attribute per `server` block is allowed. | `hosts = ["example.com", "localhost:9090"]` |
+| `error_file`     | string | -            | Location of the error file template. | - | `error_file = "./my_error_page.html"` |
+| `access_control` | list   | -            | Sets predefined [Access Control](#access-control) for `server` block context. | &#9888; Inherited by nested blocks. | `access_control = ["foo"]` |
 
 ### Files Block
 
 The `files` block configures the file serving.
 
-|Block name|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-|`files`|[Server Block](#server-block)|no label| [CORS Block](#cors-block)|
+| Block name | Context                       | Label    | Nested block(s)           |
+| :--------- | :---------------------------- | :------- | :------------------------ |
+| `files`    | [Server Block](#server-block) | no label | [CORS Block](#cors-block) |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-|`base_path`|string|-|Configures the path prefix for all requests.|-|`base_path = "/files"`|
-|`document_root`|string|-|-|&#9888; required|`document_root = "./htdocs"`|
-|`error_file`|string|-|Location of the document root.|-| -|
-|`access_control` |list|-|Sets predefined [Access Control](#access-control) for `files` block context.|-|`access_control = ["foo"]`|
+| Attribute(s)     | Type   | Default | Description | Characteristic(s) | Example |
+| :--------------- | :----- | :------ | :---------- | :---------------- | :------ |
+| `base_path`      | string | -       | Configures the path prefix for all requests. | - | `base_path = "/files"` |
+| `document_root`  | string | -       | Location of the document root. | &#9888; required | `document_root = "./htdocs"` |
+| `error_file`     | string | -       | Location of the error file template. | - | - |
+| `access_control` | list   | -       | Sets predefined [Access Control](#access-control) for `files` block context. | - | `access_control = ["foo"]` |
 
 ### SPA Block
 
 The `spa` block configures the Web serving for SPA assets.
 
-|Block name|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-|`spa`| [Server Block](#server-block)|no label|[CORS Block](#cors-block) |
+| Block name | Context                       | Label    | Nested block(s)           |
+| :--------- | :---------------------------- | :------- | :------------------------ |
+| `spa`      | [Server Block](#server-block) | no label | [CORS Block](#cors-block) |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-|`base_path`|string|-|Configures the path prefix for all requests.|-|`base_path = "/assets"`|
-|`bootstrap_file`|string|-|Location of the bootstrap file.|&#9888; required| `bootstrap_file = "./htdocs/index.html"`|
-|`paths`|list|-|list of SPA paths that need the bootstrap file.|&#9888; required|`paths = ["/app/**"]`|
-|`access_control` |list|-|Sets predefined [Access Control](#access-control) for `spa` block context.|-|`access_control = ["foo"]`|
+| Attribute(s)     | Type   | Default | Description | Characteristic(s) | Example |
+| :--------------- | :----- | :------ | :---------- | :---------------- | :------ |
+| `base_path`      | string | -       | Configures the path prefix for all requests. | - | `base_path = "/assets"` |
+| `bootstrap_file` | string | -       | Location of the bootstrap file. | &#9888; required | `bootstrap_file = "./htdocs/index.html"` |
+| `paths`          | list   | -       | List of SPA paths that need the bootstrap file. | &#9888; required | `paths = ["/app/**"]` |
+| `access_control` | list   | -       | Sets predefined [Access Control](#access-control) for `spa` block context. | - | `access_control = ["foo"]` |
 
 ### API Block
 
