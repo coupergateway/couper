@@ -18,7 +18,7 @@ server "hcl" {
 
 definitions {
   backend "a" {
-    origin = "https://blackhole.webpagespeedtest.org"
+    origin = "https://blackhole.webpagetest.org"
     timeout = "2s"
   }
 
