@@ -97,7 +97,7 @@ as json error with an error body payload. This can be customized via `error_file
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block),  [CORS Block](#cors-block)|
+|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block)|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -209,13 +209,13 @@ The `backend` block defines the connection to a local/remote backend service.
 #### Duration
 
 | Duration units | Description  |
-| :-------------- | :----------- |
-| `ns`            | nanoseconds  |
-| `us` (or `µs`)  | microseconds |
-| `ms`            | milliseconds |
-| `s`             | seconds      |
-| `m`             | minutes      |
-| `h`             | hours        |
+| :------------- | :----------- |
+| `ns`           | nanoseconds  |
+| `us` (or `µs`) | microseconds |
+| `ms`           | milliseconds |
+| `s`            | seconds      |
+| `m`            | minutes      |
+| `h`            | hours        |
 
 ### OpenAPI Block
 
