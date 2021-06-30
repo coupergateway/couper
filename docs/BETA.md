@@ -1,4 +1,5 @@
-# About _beta_ features
+About _beta_ features
+=============================
 
 We use _beta_ features to have the possibility to develop new, complex features for you while still being able to maintain our compatibility promise.
 
@@ -12,6 +13,7 @@ We recommended you to pin Couper to a specific [docker tag](https://hub.docker.c
 
 To make you and your colleagues aware that a beta feature is used, we will prefix all configuration items such as config blocks or functions with `beta_`:
 
-## Feedback more than welcome!
+Feedback more than welcome!
+-------------------------------
 
 We need your feedback to make beta features to proper features. Please leave your feedback and questions [here](https://github.com/avenga/couper/discussions), or open an issue. Thank you! :)
