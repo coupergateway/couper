@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"regexp"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
@@ -386,5 +389,163 @@ func TestHTTPServer_Errors(t *testing.T) {
 	e := logHook.LastEntry()
 	if e == nil {
 		t.Fatalf("Missing log line")
+	}
+}
+
+func TestHTTPServer_RequestID(t *testing.T) {
+	client := newClient()
+
+	const (
+		confPath = "testdata/settings/"
+		validUID = "0123456789-abc+DEF=@/-"
+	)
+
+	type expectation struct {
+		Headers http.Header
+	}
+
+	type testCase struct {
+		file         string
+		uid          string
+		status       int
+		expToClient  expectation
+		expToBackend expectation
+	}
+
+	for i, tc := range []testCase{
+		{"07_couper.hcl", "", http.StatusBadRequest,
+			expectation{
+				Headers: http.Header{
+					"Couper-Client-Request-Id": []string{"{{system-id}}"},
+					"Couper-Error":             []string{"client request error"},
+				},
+			},
+			expectation{
+				Headers: http.Header{},
+			},
+		},
+		{"07_couper.hcl", "XXX", http.StatusBadRequest,
+			expectation{
+				Headers: http.Header{
+					"Couper-Client-Request-Id": []string{"{{system-id}}"},
+					"Couper-Error":             []string{"client request error"},
+				},
+			},
+			expectation{
+				Headers: http.Header{},
+			},
+		},
+		{"07_couper.hcl", validUID, http.StatusOK,
+			expectation{
+				Headers: http.Header{
+					"Couper-Client-Request-Id": []string{validUID},
+				},
+			},
+			expectation{
+				Headers: http.Header{
+					"Client-Request-Id":         []string{validUID},
+					"Couper-Backend-Request-Id": []string{validUID},
+				},
+			},
+		},
+		{"08_couper.hcl", validUID, http.StatusOK,
+			expectation{
+				Headers: http.Header{
+					"Couper-Request-Id": []string{validUID},
+				},
+			},
+			expectation{
+				Headers: http.Header{
+					"Client-Request-Id": []string{validUID},
+					"Couper-Request-Id": []string{validUID},
+				},
+			},
+		},
+		{"09_couper.hcl", validUID, http.StatusOK,
+			expectation{
+				Headers: http.Header{},
+			},
+			expectation{
+				Headers: http.Header{
+					"Client-Request-Id": []string{validUID},
+				},
+			},
+		},
+	} {
+		t.Run("_"+tc.file, func(subT *testing.T) {
+			helper := test.New(subT)
+			shutdown, hook := newCouper(path.Join(confPath, tc.file), helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+			helper.Must(err)
+
+			if tc.uid != "" {
+				req.Header.Set("Client-Request-ID", tc.uid)
+			}
+
+			hook.Reset()
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			// Wait for log
+			time.Sleep(300 * time.Millisecond)
+
+			lastLog := hook.LastEntry()
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given: %d", res.StatusCode)
+			}
+
+			if tc.status == http.StatusOK {
+				if lastLog.Message != "" {
+					subT.Errorf("Unexpected log message given: %s", lastLog.Message)
+				}
+
+				for k := range tc.expToClient.Headers {
+					v := tc.expToClient.Headers.Get(k)
+
+					if v != res.Header.Get(k) {
+						subT.Errorf("%d: Unexpected header %q given: %s, want: %q", i, k, res.Header.Get(k), v)
+					}
+				}
+
+				body, err := io.ReadAll(res.Body)
+				helper.Must(err)
+				helper.Must(res.Body.Close())
+
+				var jsonResult expectation
+				err = json.Unmarshal(body, &jsonResult)
+				if err != nil {
+					t.Errorf("unmarshal json: %v: got:\n%s", err, string(body))
+				}
+
+				for k := range tc.expToBackend.Headers {
+					v := tc.expToBackend.Headers.Get(k)
+
+					if v != jsonResult.Headers.Get(k) {
+						subT.Errorf("%d: Unexpected header %q given: %s, want: %q", i, k, jsonResult.Headers.Get(k), v)
+					}
+				}
+			} else {
+				exp := fmt.Sprintf("client request error: invalid request-ID \"%s\" given in header \"Client-Request-ID\"", tc.uid)
+				if lastLog.Message != exp {
+					subT.Errorf("Unexpected log message given: %s", lastLog.Message)
+				}
+
+				for k := range tc.expToClient.Headers {
+					v := strings.Replace(
+						tc.expToClient.Headers.Get(k),
+						"{{system-id}}",
+						fmt.Sprintf("%s", lastLog.Data["uid"]),
+						-1,
+					)
+
+					if v != res.Header.Get(k) {
+						subT.Errorf("Unexpected header %q given: %s, want: %q", k, res.Header.Get(k), v)
+					}
+				}
+			}
+		})
 	}
 }
