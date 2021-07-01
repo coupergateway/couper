@@ -413,15 +413,16 @@ func TestHTTPServer_RequestID(t *testing.T) {
 	}
 
 	for i, tc := range []testCase{
-		{"07_couper.hcl", "", http.StatusBadRequest,
+		{"07_couper.hcl", "", http.StatusOK,
 			expectation{
 				Headers: http.Header{
 					"Couper-Client-Request-Id": []string{"{{system-id}}"},
-					"Couper-Error":             []string{"client request error"},
 				},
 			},
 			expectation{
-				Headers: http.Header{},
+				Headers: http.Header{
+					"Couper-Backend-Request-Id": []string{"{{system-id}}"},
+				},
 			},
 		},
 		{"07_couper.hcl", "XXX", http.StatusBadRequest,
@@ -431,9 +432,7 @@ func TestHTTPServer_RequestID(t *testing.T) {
 					"Couper-Error":             []string{"client request error"},
 				},
 			},
-			expectation{
-				Headers: http.Header{},
-			},
+			expectation{},
 		},
 		{"07_couper.hcl", validUID, http.StatusOK,
 			expectation{
@@ -456,8 +455,22 @@ func TestHTTPServer_RequestID(t *testing.T) {
 			},
 			expectation{
 				Headers: http.Header{
-					"Client-Request-Id": []string{validUID},
-					"Couper-Request-Id": []string{validUID},
+					"Client-Request-Id":   []string{validUID},
+					"Couper-Request-Id":   []string{validUID},
+					"Request-Id-From-Var": []string{validUID},
+				},
+			},
+		},
+		{"08_couper.hcl", "", http.StatusOK,
+			expectation{
+				Headers: http.Header{
+					"Couper-Request-Id": []string{"{{system-id}}"},
+				},
+			},
+			expectation{
+				Headers: http.Header{
+					"Couper-Request-Id":   []string{"{{system-id}}"},
+					"Request-Id-From-Var": []string{"{{system-id}}"},
 				},
 			},
 		},
@@ -467,7 +480,8 @@ func TestHTTPServer_RequestID(t *testing.T) {
 			},
 			expectation{
 				Headers: http.Header{
-					"Client-Request-Id": []string{validUID},
+					"Client-Request-Id":   []string{validUID},
+					"Request-ID-From-Var": []string{validUID},
 				},
 			},
 		},
@@ -493,8 +507,18 @@ func TestHTTPServer_RequestID(t *testing.T) {
 
 			lastLog := hook.LastEntry()
 
+			getHeaderValue := func(header http.Header, name string) string {
+				return strings.Replace(
+					header.Get(name),
+					"{{system-id}}",
+					lastLog.Data["uid"].(string),
+					-1,
+				)
+			}
+
 			if tc.status != res.StatusCode {
 				subT.Errorf("Unexpected status code given: %d", res.StatusCode)
+				return
 			}
 
 			if tc.status == http.StatusOK {
@@ -503,10 +527,10 @@ func TestHTTPServer_RequestID(t *testing.T) {
 				}
 
 				for k := range tc.expToClient.Headers {
-					v := tc.expToClient.Headers.Get(k)
+					v := getHeaderValue(tc.expToClient.Headers, k)
 
 					if v != res.Header.Get(k) {
-						subT.Errorf("%d: Unexpected header %q given: %s, want: %q", i, k, res.Header.Get(k), v)
+						subT.Errorf("%d: Unexpected response header %q sent: %s, want: %q", i, k, res.Header.Get(k), v)
 					}
 				}
 
@@ -521,10 +545,10 @@ func TestHTTPServer_RequestID(t *testing.T) {
 				}
 
 				for k := range tc.expToBackend.Headers {
-					v := tc.expToBackend.Headers.Get(k)
+					v := getHeaderValue(tc.expToBackend.Headers, k)
 
 					if v != jsonResult.Headers.Get(k) {
-						subT.Errorf("%d: Unexpected header %q given: %s, want: %q", i, k, jsonResult.Headers.Get(k), v)
+						subT.Errorf("%d: Unexpected header %q sent to backend: %q, want: %q", i, k, jsonResult.Headers.Get(k), v)
 					}
 				}
 			} else {
@@ -534,15 +558,10 @@ func TestHTTPServer_RequestID(t *testing.T) {
 				}
 
 				for k := range tc.expToClient.Headers {
-					v := strings.Replace(
-						tc.expToClient.Headers.Get(k),
-						"{{system-id}}",
-						fmt.Sprintf("%s", lastLog.Data["uid"]),
-						-1,
-					)
+					v := getHeaderValue(tc.expToClient.Headers, k)
 
 					if v != res.Header.Get(k) {
-						subT.Errorf("Unexpected header %q given: %s, want: %q", k, res.Header.Get(k), v)
+						subT.Errorf("Unexpected response header %q: %q, want: %q", k, res.Header.Get(k), v)
 					}
 				}
 			}
