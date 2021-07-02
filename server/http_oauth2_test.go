@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -199,7 +201,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 	}
 }
 
-func TestOAuth2AccessControl(t *testing.T) {
+func TestOAuth2_AccessControl(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -382,4 +384,183 @@ func TestOAuth2AccessControl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOAuth2_Locking(t *testing.T) {
+	helper := test.New(t)
+	token := "token-"
+	var oauthRequestCount int32
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		atomic.AddInt32(&oauthRequestCount, 1)
+		if req.URL.Path == "/oauth2" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			n := fmt.Sprintf("%d", atomic.LoadInt32(&oauthRequestCount))
+			body := []byte(`{
+				"access_token": "` + token + n + `",
+				"token_type": "bearer",
+				"expires_in": 1.5
+			}`)
+
+			// Slow down token request to test locking.
+			time.Sleep(1 * time.Second)
+
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/resource" {
+			if auth := req.Header.Get("Authorization"); auth != "" {
+				rw.Header().Set("Token", auth[len("Bearer "):])
+				rw.WriteHeader(http.StatusNoContent)
+			}
+
+			return
+		}
+
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	defer ResourceOrigin.Close()
+
+	confPath := "testdata/oauth2/1_retries_couper.hcl"
+	shutdown, hook := newCouperWithTemplate(
+		confPath, test.New(t), map[string]interface{}{
+			"asOrigin": oauthOrigin.URL,
+			"rsOrigin": ResourceOrigin.URL,
+		},
+	)
+
+	defer func() {
+		if t.Failed() {
+			for _, e := range hook.Entries {
+				println(e.String())
+			}
+		}
+		shutdown()
+	}()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	req.URL.Path = "/"
+
+	var responses []*http.Response
+	var wg sync.WaitGroup
+
+	addLock := &sync.Mutex{}
+	// Fire 5 requests in parallel...
+	waitCh := make(chan struct{})
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-waitCh
+			res, err := newClient().Do(req)
+			helper.Must(err)
+
+			addLock.Lock()
+			responses = append(responses, res)
+			addLock.Unlock()
+
+		}()
+	}
+	close(waitCh)
+	wg.Wait()
+
+	for _, res := range responses {
+		if res.StatusCode != http.StatusNoContent {
+			t.Errorf("Expected status NoContent, got: %d", res.StatusCode)
+		}
+
+		if token+"1" != res.Header.Get("Token") {
+			t.Errorf("Invalid token given: want %s1, got: %s", token, res.Header.Get("Token"))
+		}
+	}
+
+	if oauthRequestCount != 1 {
+		t.Errorf("Too many OAuth2 requests: want 1, got: %d", oauthRequestCount)
+	}
+
+	t.Run("Lock is effective", func(t *testing.T) {
+		// Wait until token has expired.
+		time.Sleep(2 * time.Second)
+
+		// Fetch new token.
+		go func() {
+			res, err := newClient().Do(req)
+			helper.Must(err)
+
+			if token+"2" != res.Header.Get("Token") {
+				t.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
+			}
+		}()
+
+		// Slow response due to lock
+		go func() {
+			start := time.Now()
+			res, err := newClient().Do(req)
+			helper.Must(err)
+			timeElapsed := time.Since(start).Seconds()
+
+			if token+"2" != res.Header.Get("Token") {
+				t.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
+			}
+
+			if timeElapsed < 1 {
+				t.Errorf("Response came too fast: dysfunctional lock?! (%v s)", timeElapsed)
+			}
+		}()
+	})
+
+	t.Run("Mem store expiry", func(t *testing.T) {
+		// Wait again until token has expired.
+		time.Sleep(2 * time.Second)
+
+		// Request fresh token and store in memstore
+		res, err := newClient().Do(req)
+		helper.Must(err)
+		if res.StatusCode != http.StatusNoContent {
+			t.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
+		}
+
+		if token+"3" != res.Header.Get("Token") {
+			t.Errorf("Received wrong token: want %s3, got: %s", token, res.Header.Get("Token"))
+		}
+
+		if oauthRequestCount != 3 {
+			t.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", oauthRequestCount)
+		}
+
+		// Disconnect OAuth server
+		oauthOrigin.Close()
+
+		// Next request gets token from memstore
+		res, err = newClient().Do(req)
+		helper.Must(err)
+		if res.StatusCode != http.StatusNoContent {
+			t.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
+		}
+
+		if token+"3" != res.Header.Get("Token") {
+			t.Errorf("Wrong token from mem store: want %s3, got: %s", token, res.Header.Get("Token"))
+		}
+
+		// Wait until token has expired. Next request accesses the OAuth server again.
+		time.Sleep(2 * time.Second)
+		res, err = newClient().Do(req)
+		helper.Must(err)
+		if res.StatusCode != http.StatusBadGateway {
+			t.Errorf("Unexpected response status: want %d, got: %d", http.StatusBadGateway, res.StatusCode)
+		}
+	})
 }

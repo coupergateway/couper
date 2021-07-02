@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
@@ -19,6 +20,7 @@ type OAuth2ReqAuth struct {
 	oauth2Client *oauth2.Client
 	config       *config.OAuth2ReqAuth
 	memStore     *cache.MemoryStore
+	locks        sync.Map
 	next         http.RoundTripper
 }
 
@@ -29,6 +31,7 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		config:       conf,
 		oauth2Client: oauth2Client,
 		memStore:     memStore,
+		locks:        sync.Map{},
 		next:         next,
 	}, nil
 }
@@ -36,16 +39,28 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 // RoundTrip implements the <http.RoundTripper> interface.
 func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2Client.Backend, oa.config.ClientID, oa.config.ClientSecret)
-	if data := oa.memStore.Get(storageKey); data != "" {
-		token, terr := oa.readAccessToken(data)
-		if terr != nil {
-			// TODO this error is not connected to the OAuth2 client's backend
-			// In fact this can only be a JSON parse error or a missing access_token,
-			// which will occur after having requested the token from the authorization
-			// server. So the erroneous response will never be stored.
-			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
-		}
 
+	if token, terr := oa.readAccessToken(storageKey); terr != nil {
+		// TODO this error is not connected to the OAuth2 client's backend
+		// In fact this can only be a JSON parse error or a missing access_token,
+		// which will occur after having requested the token from the authorization
+		// server. So the erroneous response will never be stored.
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
+	} else if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		return oa.next.RoundTrip(req)
+	}
+
+	value, _ := oa.locks.LoadOrStore(storageKey, &sync.Mutex{})
+	mutex := value.(*sync.Mutex)
+	mutex.Lock()
+
+	if token, terr := oa.readAccessToken(storageKey); terr != nil {
+		mutex.Unlock()
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
+	} else if token != "" {
+		mutex.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		return oa.next.RoundTrip(req)
@@ -54,10 +69,13 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()
 	tokenResponse, tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
 	if err != nil {
+		mutex.Unlock()
 		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
 	}
 
 	oa.updateAccessToken(tokenResponse, tokenResponseData, storageKey)
+
+	mutex.Unlock()
 
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -79,13 +97,17 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	return res, err
 }
 
-func (oa *OAuth2ReqAuth) readAccessToken(data string) (string, error) {
-	_, token, err := oauth2.ParseTokenResponse([]byte(data))
-	if err != nil {
-		return "", err
+func (oa *OAuth2ReqAuth) readAccessToken(key string) (string, error) {
+	if data := oa.memStore.Get(key); data != "" {
+		_, token, err := oauth2.ParseTokenResponse([]byte(data))
+		if err != nil {
+			return "", errors.Backend.Label(oa.config.BackendName).Message("token read error").With(err)
+		}
+
+		return token, nil
 	}
 
-	return token, nil
+	return "", nil
 }
 
 func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]interface{}, key string) {
