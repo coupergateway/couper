@@ -94,7 +94,7 @@ block {
 		t.Error(diags)
 	}
 
-	hclcontext := eval.NewContext(nil).HCLContext()
+	hclcontext := eval.NewContext(nil, nil).HCLContext()
 	for k, attr := range expectedAttributes {
 		a, exist := resultAttributes[k]
 		if !exist {
