@@ -167,9 +167,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	paramKeys := node.VariableNames
 	for i, value := range paramValues {
 		key := paramKeys[i]
-		if strings.HasSuffix(key, "*") {
-			key = key[:len(key)-1]
-		}
+		key = strings.TrimSuffix(key, "*")
 		pathParams[key] = value
 	}
 
