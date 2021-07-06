@@ -964,6 +964,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 
 			jsonResult.Headers.Del("User-Agent")
 			jsonResult.Headers.Del("X-Forwarded-For")
+			jsonResult.Headers.Del("Couper-Request-Id")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
@@ -1795,6 +1796,9 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 	if err != nil {
 		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 	}
+
+	delete(jsonResult.Headers, "couper-request-id")
+
 	exp := Expectation{
 		Method: http.MethodPost,
 		FormBody: map[string][]string{
@@ -1849,6 +1853,9 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	if err != nil {
 		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 	}
+
+	delete(jsonResult.Headers, "couper-request-id")
+
 	exp := Expectation{
 		Method: http.MethodGet,
 		JSONBody: map[string]interface{}{
@@ -1905,6 +1912,8 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 	if err != nil {
 		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 	}
+
+	delete(jsonResult.Headers, "couper-request-id")
 
 	exp := Expectation{
 		Method: http.MethodGet,
