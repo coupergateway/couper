@@ -205,7 +205,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.args.conf.Context = eval.NewContext(nil)
+			tt.args.conf.Context = eval.NewContext(nil, nil)
 			tt.args.conf.Settings = &config.DefaultSettings
 
 			if _, err := NewServerConfiguration(tt.args.conf, nil, nil); (err != nil) != tt.wantErr {

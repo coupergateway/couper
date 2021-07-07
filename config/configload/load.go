@@ -45,7 +45,7 @@ type AccessControlSetter interface {
 }
 
 func init() {
-	envContext = eval.NewContext(nil).HCLContext()
+	envContext = eval.NewContext(nil, nil).HCLContext()
 }
 
 // SetWorkingDirectory sets the working directory to the given configuration file path.
@@ -83,16 +83,22 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 }
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
+	defaultsBlock := &config.DefaultsBlock{}
+	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
+		return nil, diags
+	}
+
 	defaults := config.DefaultSettings
 	defaults.AcceptForwarded = &config.AcceptForwarded{}
 
-	evalContext := eval.NewContext(src)
+	evalContext := eval.NewContext(src, defaultsBlock.Defaults)
 	envContext = evalContext.HCLContext()
 
 	couperConfig := &config.Couper{
 		Bytes:       src,
 		Context:     evalContext,
 		Definitions: &config.Definitions{},
+		Defaults:    defaultsBlock.Defaults,
 		Filename:    filename,
 		Settings:    &defaults,
 	}

@@ -52,10 +52,18 @@ type Context struct {
 	saml         []*config.SAML
 }
 
-func NewContext(src []byte) *Context {
+func NewContext(src []byte, defaults *config.Defaults) *Context {
 	envKeys := decodeEnvironmentRefs(src)
+
+	var defaultEnvVariables config.DefaultEnvVars
+	if defaults != nil {
+		defaultEnvVariables = defaults.EnvironmentVariables
+	} else {
+		defaultEnvVariables = make(config.DefaultEnvVars)
+	}
+
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(envKeys)
+	variables[Environment] = newCtyEnvMap(envKeys, defaultEnvVariables)
 
 	return &Context{
 		bufferOption: BufferRequest | BufferResponse, // TODO: eval per endpoint body route
@@ -396,14 +404,20 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(envKeys []string) cty.Value {
+func newCtyEnvMap(envKeys []string, defaultValues map[string]string) cty.Value {
 	if len(envKeys) == 0 {
 		return cty.MapValEmpty(cty.String)
 	}
 	ctyMap := make(map[string]cty.Value)
 	for _, key := range envKeys {
 		if _, ok := ctyMap[key]; !ok {
-			ctyMap[key] = cty.StringVal(os.Getenv(key))
+			if _, ok := os.LookupEnv(key); ok {
+				ctyMap[key] = cty.StringVal(os.Getenv(key))
+			} else if value, isset := defaultValues[key]; isset {
+				ctyMap[key] = cty.StringVal(value)
+			} else {
+				ctyMap[key] = cty.StringVal("")
+			}
 		}
 	}
 	return cty.MapVal(ctyMap)

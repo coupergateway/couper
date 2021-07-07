@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -31,7 +32,7 @@ func TestNewHTTPContext(t *testing.T) {
 		}
 	}
 
-	baseCtx := eval.NewContext(nil)
+	baseCtx := eval.NewContext(nil, nil)
 
 	tests := []struct {
 		name      string
@@ -117,6 +118,89 @@ func TestNewHTTPContext(t *testing.T) {
 				result := seetie.ValueToStringSlice(cv)
 				if !reflect.DeepEqual(v, result) {
 					t.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
+				}
+			}
+		})
+	}
+}
+
+func TestDefaultEnvVariables(t *testing.T) {
+	tests := []struct {
+		name string
+		hcl  string
+		want map[string]string
+	}{
+		{
+			"test",
+			`
+			server "test" {
+				api {
+					origin = env.ORIGIN
+					timeout = env.TIMEOUT
+				}
+			}
+
+			defaults {
+				environment_variables = {
+					ORIGIN = "FOO"
+					TIMEOUT = "41"
+					TIMEOUT = "42"
+					IGNORED = "bar"
+				}
+			}
+			`,
+			map[string]string{"ORIGIN": "FOO", "TIMEOUT": "42"},
+		},
+		{
+			"no-environment_variables-block",
+			`
+			server "test" {
+				api {
+					origin = env.ORIGIN
+					timeout = env.TIMEOUT
+				}
+			}
+
+			defaults {}
+			`,
+			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
+		},
+		{
+			"no-defaults-block",
+			`
+			server "test" {
+				api {
+					origin = env.ORIGIN
+					timeout = env.TIMEOUT
+				}
+			}
+			`,
+			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
+			envVars := seetie.ValueToMap(hclContext.Variables["env"])
+			for key, expectedValue := range tt.want {
+				value, isset := envVars[key]
+				if !isset {
+					t.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
+				} else if value != expectedValue {
+					t.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
+				}
+			}
+
+			for key, value := range envVars {
+				if _, isset := tt.want[key]; !isset {
+					t.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
 				}
 			}
 		})

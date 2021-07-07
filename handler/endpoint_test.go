@@ -67,7 +67,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 		}},
 	}
 
-	evalCtx := eval.NewContext(nil)
+	evalCtx := eval.NewContext(nil, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -225,7 +225,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				// normally injected by server/http
 				helper.Must(eval.SetGetBody(req, 1024))
-				*req = *req.WithContext(eval.NewContext(nil).WithClientRequest(req))
+				*req = *req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
 
 				rec := httptest.NewRecorder()
 				rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -336,7 +336,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			}
 
 			helper.Must(eval.SetGetBody(req, 1024))
-			ctx := eval.NewContext(nil).WithClientRequest(req)
+			ctx := eval.NewContext(nil, nil).WithClientRequest(req)
 			*req = *req.WithContext(ctx)
 
 			rec := httptest.NewRecorder()

@@ -15,4 +15,5 @@ type Couper struct {
 	Definitions *Definitions `hcl:"definitions,block"`
 	Servers     Servers      `hcl:"server,block"`
 	Settings    *Settings    `hcl:"settings,block"`
+	Defaults    *Defaults    `hcl:"defaults,block"`
 }
