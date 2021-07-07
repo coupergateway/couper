@@ -54,9 +54,12 @@ type Context struct {
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
 	envKeys := decodeEnvironmentRefs(src)
-	defaultEnvVariables := map[string]string{}
+
+	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
+	} else {
+		defaultEnvVariables = make(config.DefaultEnvVars)
 	}
 
 	variables := make(map[string]cty.Value)

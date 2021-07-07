@@ -151,6 +151,32 @@ func TestDefaultEnvVariables(t *testing.T) {
 			`,
 			map[string]string{"ORIGIN": "FOO", "TIMEOUT": "42"},
 		},
+		{
+			"no-environment_variables-block",
+			`
+			server "test" {
+				api {
+					origin = env.ORIGIN
+					timeout = env.TIMEOUT
+				}
+			}
+
+			defaults {}
+			`,
+			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
+		},
+		{
+			"no-defaults-block",
+			`
+			server "test" {
+				api {
+					origin = env.ORIGIN
+					timeout = env.TIMEOUT
+				}
+			}
+			`,
+			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
+		},
 	}
 
 	for _, tt := range tests {
