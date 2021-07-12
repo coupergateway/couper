@@ -26,7 +26,6 @@ type OAuth2RequestConfig struct {
 	Code         *string
 	CodeVerifier *string
 	RedirectURI  *string
-	StorageKey   string
 }
 
 // NewOAuth2 creates a new <OAuth2> object.
@@ -44,11 +43,7 @@ func NewOAuth2(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend h
 }
 
 func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, error) {
-	return &OAuth2RequestConfig{
-		// Backend is build up via clientConfig and token_endpoint will configure the backend,
-		// use the backend memory location here.
-		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.Backend, oa.clientConfig.GetClientID(), oa.clientConfig.GetClientSecret()),
-	}, nil
+	return &OAuth2RequestConfig{}, nil
 }
 
 func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2RequestConfig) ([]byte, error) {

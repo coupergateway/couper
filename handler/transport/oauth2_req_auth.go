@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/cache"
@@ -43,7 +44,8 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
 	}
 
-	if data := oa.memStore.Get(requestConfig.StorageKey); data != "" {
+	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2.Backend, oa.config.ClientID, oa.config.ClientSecret)
+	if data := oa.memStore.Get(storageKey); data != "" {
 		token, terr := readAccessToken(data)
 		if terr != nil {
 			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
@@ -56,7 +58,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
 
-	token, err := oa.updateAccessToken(tokenResponse, requestConfig.StorageKey)
+	token, err := oa.updateAccessToken(tokenResponse, storageKey)
 	if err != nil {
 		return nil, errors.Backend.Label(oa.config.BackendName).Message("token update error").With(err)
 	}
@@ -66,7 +68,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	res, err := oa.next.RoundTrip(req)
 
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
-		oa.memStore.Del(requestConfig.StorageKey)
+		oa.memStore.Del(storageKey)
 
 		ctx := req.Context()
 		if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
