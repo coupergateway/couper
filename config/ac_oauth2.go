@@ -74,6 +74,10 @@ func (oa OAuth2AC) GetScope() *string {
 	return oa.Scope
 }
 
+func (oa OAuth2AC) GetRedirectURI() *string {
+	return oa.RedirectURI
+}
+
 func (oa OAuth2AC) GetTokenEndpoint() string {
 	return oa.TokenEndpoint
 }

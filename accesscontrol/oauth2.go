@@ -66,7 +66,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Messagef("missing code query parameter; query=%q", req.URL.RawQuery)
 	}
 
-	requestParams := map[string]string{"code": code, "redirect_uri": *oa.config.RedirectURI}
+	requestParams := map[string]string{"code": code}
 
 	ctx := req.Context()
 	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)

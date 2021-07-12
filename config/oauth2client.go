@@ -19,6 +19,7 @@ type OAuth2AcClient interface {
 	OAuth2Client
 	GetCsrf() *CSRF
 	GetPkce() *PKCE
+	GetRedirectURI() *string
 }
 
 type PKCE struct {
