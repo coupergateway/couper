@@ -98,7 +98,8 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 
 	requestParams := map[string]string{"code": code, "redirect_uri": *oa.config.RedirectURI}
 
-	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
+	ctx := req.Context()
+	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)
 
 	if oa.config.Pkce != nil {
 		v, _ := oa.config.Pkce.Content.Attributes["code_verifier_value"]
@@ -133,7 +134,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		}
 	}
 
-	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestParams)
+	tokenResponse, err := oa.oauth2.RequestToken(ctx, requestParams)
 	if err != nil {
 		return errors.Oauth2.Message("requesting token failed").With(err)
 	}
@@ -143,7 +144,6 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Messagef("parsing token response JSON failed, response=%q", string(tokenResponse)).With(err)
 	}
 
-	ctx := req.Context()
 	if idTokenString, ok := tokenData["id_token"].(string); ok {
 		idToken, _, err := oa.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
 		if err != nil {
