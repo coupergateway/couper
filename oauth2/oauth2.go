@@ -1,4 +1,4 @@
-package transport
+package oauth2
 
 import (
 	"context"
@@ -16,15 +16,15 @@ import (
 	"github.com/avenga/couper/eval/lib"
 )
 
-// OAuth2 represents the transport <OAuth2> object.
-type OAuth2 struct {
+// Client represents the OAuth2 client.
+type Client struct {
 	Backend      http.RoundTripper
 	asConfig     config.OAuth2AS
 	clientConfig config.OAuth2Client
 }
 
-// NewOAuth2CC() creates a new OAuth2 Client Credentials client.
-func NewOAuth2CC(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
+// NewOAuth2CC creates a new OAuth2 Client Credentials client.
+func NewOAuth2CC(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend http.RoundTripper) (*Client, error) {
 	backendErr := errors.Backend.Label(asConf.Reference())
 	if grantType := clientConf.GetGrantType(); grantType != "client_credentials" {
 		return nil, backendErr.Messagef("grant_type %s not supported", grantType)
@@ -35,15 +35,15 @@ func NewOAuth2CC(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend
 			return nil, backendErr.Messagef("token_endpoint_auth_method %s not supported", *teAuthMethod)
 		}
 	}
-	return &OAuth2{
+	return &Client{
 		Backend:      backend,
 		asConfig:     asConf,
 		clientConfig: clientConf,
 	}, nil
 }
 
-// NewOAuth2AC() creates a new OAuth2 Authorization Code client.
-func NewOAuth2AC(clientConf config.OAuth2AcClient, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
+// NewOAuth2AC creates a new OAuth2 Authorization Code client.
+func NewOAuth2AC(clientConf config.OAuth2AcClient, asConf config.OAuth2AS, backend http.RoundTripper) (*Client, error) {
 	if grantType := clientConf.GetGrantType(); grantType != "authorization_code" {
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
 	}
@@ -78,42 +78,42 @@ func NewOAuth2AC(clientConf config.OAuth2AcClient, asConf config.OAuth2AS, backe
 		}
 		pkce.Content = content
 	}
-	return &OAuth2{
+	return &Client{
 		Backend:      backend,
 		asConfig:     asConf,
 		clientConfig: clientConf,
 	}, nil
 }
 
-func (oa *OAuth2) RequestToken(ctx context.Context, requestParams map[string]string) ([]byte, error) {
-	tokenReq, err := oa.newTokenRequest(ctx, requestParams)
+func (c *Client) RequestToken(ctx context.Context, requestParams map[string]string) ([]byte, error) {
+	tokenReq, err := c.newTokenRequest(ctx, requestParams)
 	if err != nil {
 		return nil, err
 	}
 
-	tokenRes, err := oa.Backend.RoundTrip(tokenReq)
+	tokenRes, err := c.Backend.RoundTrip(tokenReq)
 	if err != nil {
 		return nil, err
 	}
 
 	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(oa.asConfig.Reference()).Message("token request read error").With(err)
+		return nil, errors.Backend.Label(c.asConfig.Reference()).Message("token request read error").With(err)
 	}
 
 	if tokenRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(oa.asConfig.Reference()).Messagef("token request failed, response=%q", string(tokenResBytes))
+		return nil, errors.Backend.Label(c.asConfig.Reference()).Messagef("token request failed, response=%q", string(tokenResBytes))
 	}
 
 	return tokenResBytes, nil
 }
 
-func (oa *OAuth2) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
+func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
 	post := url.Values{}
-	grantType := oa.clientConfig.GetGrantType()
+	grantType := c.clientConfig.GetGrantType()
 	post.Set("grant_type", grantType)
 
-	if scope := oa.clientConfig.GetScope(); scope != nil && grantType != "authorization_code" {
+	if scope := c.clientConfig.GetScope(); scope != nil && grantType != "authorization_code" {
 		post.Set("scope", *scope)
 	}
 	if requestParams != nil {
@@ -121,10 +121,10 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestParams map[string]
 			post.Set(key, value)
 		}
 	}
-	teAuthMethod := oa.clientConfig.GetTokenEndpointAuthMethod()
+	teAuthMethod := c.clientConfig.GetTokenEndpointAuthMethod()
 	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
-		post.Set("client_id", oa.clientConfig.GetClientID())
-		post.Set("client_secret", oa.clientConfig.GetClientSecret())
+		post.Set("client_id", c.clientConfig.GetClientID())
+		post.Set("client_secret", c.clientConfig.GetClientSecret())
 	}
 
 	// url will be configured via backend roundtrip
@@ -138,14 +138,14 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestParams map[string]
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
-		auth := base64.StdEncoding.EncodeToString([]byte(oa.clientConfig.GetClientID() + ":" + oa.clientConfig.GetClientSecret()))
+		auth := base64.StdEncoding.EncodeToString([]byte(c.clientConfig.GetClientID() + ":" + c.clientConfig.GetClientSecret()))
 
 		outreq.Header.Set("Authorization", "Basic "+auth)
 	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
-	if tokenURL := oa.asConfig.GetTokenEndpoint(); tokenURL != "" {
+	if tokenURL := c.asConfig.GetTokenEndpoint(); tokenURL != "" {
 		outCtx = context.WithValue(outCtx, request.URLAttribute, tokenURL)
 	}
 

@@ -16,20 +16,20 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/oauth2"
 )
 
 var _ AccessControl = &OAuth2Callback{}
 
 type OAuth2Callback struct {
-	config    *config.OAuth2AC
-	oauth2    *transport.OAuth2
-	jwtParser *jwt.Parser
+	config       *config.OAuth2AC
+	oauth2Client *oauth2.Client
+	jwtParser    *jwt.Parser
 }
 
 // NewOAuth2Callback creates a new AC-OAuth2 object
-func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2Callback, error) {
+func NewOAuth2Callback(conf *config.OAuth2AC, oauth2Client *oauth2.Client) (*OAuth2Callback, error) {
 	options := []jwt.ParserOption{
 		// jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),
@@ -48,9 +48,9 @@ func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2
 	jwtParser := jwt.NewParser(options...)
 
 	return &OAuth2Callback{
-		config:    conf,
-		jwtParser: jwtParser,
-		oauth2:    oauth2,
+		config:       conf,
+		jwtParser:    jwtParser,
+		oauth2Client: oauth2Client,
 	}, nil
 }
 
@@ -104,12 +104,12 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		}
 	}
 
-	tokenResponse, err := oa.oauth2.RequestToken(ctx, requestParams)
+	tokenResponse, err := oa.oauth2Client.RequestToken(ctx, requestParams)
 	if err != nil {
 		return errors.Oauth2.Message("requesting token failed").With(err)
 	}
 
-	tokenData, accessToken, err := transport.ParseAccessToken(tokenResponse)
+	tokenData, accessToken, err := oauth2.ParseAccessToken(tokenResponse)
 	if err != nil {
 		return errors.Oauth2.Messagef("parsing token response JSON failed, response=%q", string(tokenResponse)).With(err)
 	}
@@ -249,7 +249,7 @@ func (oa *OAuth2Callback) requestUserinfo(ctx context.Context, accessToken strin
 		return nil, err
 	}
 
-	userinfoRes, err := oa.oauth2.Backend.RoundTrip(userinfoReq)
+	userinfoRes, err := oa.oauth2Client.Backend.RoundTrip(userinfoReq)
 	if err != nil {
 		return nil, err
 	}

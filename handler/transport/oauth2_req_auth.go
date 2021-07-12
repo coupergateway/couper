@@ -9,32 +9,33 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/oauth2"
 )
 
 var _ http.RoundTripper = &OAuth2ReqAuth{}
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
-	oauth2   *OAuth2
-	config   *config.OAuth2ReqAuth
-	memStore *cache.MemoryStore
-	next     http.RoundTripper
+	oauth2Client *oauth2.Client
+	config       *config.OAuth2ReqAuth
+	memStore     *cache.MemoryStore
+	next         http.RoundTripper
 }
 
 // NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2 *OAuth2, next http.RoundTripper) (http.RoundTripper, error) {
+	oauth2Client *oauth2.Client, next http.RoundTripper) (http.RoundTripper, error) {
 	return &OAuth2ReqAuth{
-		config:   conf,
-		oauth2:   oauth2,
-		memStore: memStore,
-		next:     next,
+		config:       conf,
+		oauth2Client: oauth2Client,
+		memStore:     memStore,
+		next:         next,
 	}, nil
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
-	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2.Backend, oa.config.ClientID, oa.config.ClientSecret)
+	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2Client.Backend, oa.config.ClientID, oa.config.ClientSecret)
 	if data := oa.memStore.Get(storageKey); data != "" {
 		token, terr := readAccessToken(data)
 		if terr != nil {
@@ -46,7 +47,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 		return oa.next.RoundTrip(req)
 	}
 
-	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), nil)
+	tokenResponse, err := oa.oauth2Client.RequestToken(req.Context(), nil)
 
 	token, err := oa.updateAccessToken(tokenResponse, storageKey)
 	if err != nil {
@@ -75,7 +76,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func readAccessToken(data string) (string, error) {
-	_, token, err := ParseAccessToken([]byte(data))
+	_, token, err := oauth2.ParseAccessToken([]byte(data))
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +85,7 @@ func readAccessToken(data string) (string, error) {
 }
 
 func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string, error) {
-	jData, token, err := ParseAccessToken(jsonBytes)
+	jData, token, err := oauth2.ParseAccessToken(jsonBytes)
 	if err != nil {
 		return "", err
 	}
