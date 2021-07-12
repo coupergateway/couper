@@ -39,11 +39,6 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
-	requestConfig, err := oa.oauth2.GetRequestConfig(req)
-	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
-	}
-
 	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2.Backend, oa.config.ClientID, oa.config.ClientSecret)
 	if data := oa.memStore.Get(storageKey); data != "" {
 		token, terr := readAccessToken(data)
@@ -56,7 +51,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 		return oa.next.RoundTrip(req)
 	}
 
-	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
+	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), nil)
 
 	token, err := oa.updateAccessToken(tokenResponse, storageKey)
 	if err != nil {

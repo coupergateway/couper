@@ -96,10 +96,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Messagef("missing code query parameter; query=%q", req.URL.RawQuery)
 	}
 
-	requestConfig, err := oa.oauth2.GetRequestConfig(req)
-	if err != nil {
-		return errors.Oauth2.With(err)
-	}
+	requestParams := map[string]string{"code": code, "redirect_uri": *oa.config.RedirectURI}
 
 	evalContext, _ := req.Context().Value(eval.ContextType).(*eval.Context)
 
@@ -110,7 +107,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		if codeVerifierValue == "" {
 			return errors.Oauth2.Message("Empty PKCE code_verifier_value")
 		}
-		requestConfig.CodeVerifier = &codeVerifierValue
+		requestParams["code_verifier"] = codeVerifierValue
 	}
 
 	var csrfToken, csrfTokenValue string
@@ -136,10 +133,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		}
 	}
 
-	requestConfig.Code = &code
-	requestConfig.RedirectURI = oa.config.RedirectURI
-
-	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
+	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestParams)
 	if err != nil {
 		return errors.Oauth2.Message("requesting token failed").With(err)
 	}

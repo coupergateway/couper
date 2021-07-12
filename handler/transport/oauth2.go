@@ -22,12 +22,6 @@ type OAuth2 struct {
 	clientConfig config.OAuth2Client
 }
 
-type OAuth2RequestConfig struct {
-	Code         *string
-	CodeVerifier *string
-	RedirectURI  *string
-}
-
 // NewOAuth2 creates a new <OAuth2> object.
 func NewOAuth2(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
 	if teAuthMethod := clientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
@@ -42,12 +36,8 @@ func NewOAuth2(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend h
 	}, nil
 }
 
-func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, error) {
-	return &OAuth2RequestConfig{}, nil
-}
-
-func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2RequestConfig) ([]byte, error) {
-	tokenReq, err := oa.newTokenRequest(ctx, requestConfig)
+func (oa *OAuth2) RequestToken(ctx context.Context, requestParams map[string]string) ([]byte, error) {
+	tokenReq, err := oa.newTokenRequest(ctx, requestParams)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +59,7 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 	return tokenResBytes, nil
 }
 
-func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2RequestConfig) (*http.Request, error) {
+func (oa *OAuth2) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
 	post := url.Values{}
 	grantType := oa.clientConfig.GetGrantType()
 	post.Set("grant_type", grantType)
@@ -77,14 +67,10 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	if scope := oa.clientConfig.GetScope(); scope != nil && grantType != "authorization_code" {
 		post.Set("scope", *scope)
 	}
-	if requestConfig.RedirectURI != nil {
-		post.Set("redirect_uri", *requestConfig.RedirectURI)
-	}
-	if requestConfig.Code != nil {
-		post.Set("code", *requestConfig.Code)
-	}
-	if requestConfig.CodeVerifier != nil {
-		post.Set("code_verifier", *requestConfig.CodeVerifier)
+	if requestParams != nil {
+		for key, value := range requestParams {
+			post.Set(key, value)
+		}
 	}
 	teAuthMethod := oa.clientConfig.GetTokenEndpointAuthMethod()
 	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
