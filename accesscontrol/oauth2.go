@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -32,34 +30,6 @@ type OAuth2Callback struct {
 
 // NewOAuth2Callback creates a new AC-OAuth2 object
 func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2Callback, error) {
-	const grantType = "authorization_code"
-	if conf.GrantType != grantType {
-		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
-	}
-	if conf.Pkce == nil && conf.Csrf == nil {
-		return nil, fmt.Errorf("CSRF protection not configured")
-	}
-	if conf.Csrf != nil {
-		if conf.Csrf.TokenParam != "state" && conf.Csrf.TokenParam != "nonce" {
-			return nil, fmt.Errorf("csrf_token_param %s not supported", conf.Csrf.TokenParam)
-		}
-		content, _, diags := conf.Csrf.HCLBody().PartialContent(conf.Csrf.Schema(true))
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		conf.Csrf.Content = content
-	}
-	if conf.Pkce != nil {
-		if conf.Pkce.CodeChallengeMethod != lib.CcmPlain && conf.Pkce.CodeChallengeMethod != lib.CcmS256 {
-			return nil, fmt.Errorf("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
-		}
-		content, _, diags := conf.Pkce.HCLBody().PartialContent(conf.Pkce.Schema(true))
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		conf.Pkce.Content = content
-	}
-
 	options := []jwt.ParserOption{
 		// jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),

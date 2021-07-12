@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ OAuth2Client = &OAuth2AC{}
+var _ OAuth2AcClient = &OAuth2AC{}
 var _ OAuth2AS = &OAuth2AC{}
 
 // OAuth2AC represents the <OAuth2> access control object.
@@ -82,58 +82,10 @@ func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
 	return oa.TokenEndpointAuthMethod
 }
 
-type PKCE struct {
-	CodeChallengeMethod string   `hcl:"code_challenge_method"`
-	Remain              hcl.Body `hcl:",remain"`
-	// internally used
-	Content *hcl.BodyContent
+func (oa OAuth2AC) GetCsrf() *CSRF {
+	return oa.Csrf
 }
 
-// HCLBody implements the <Body> interface.
-func (p PKCE) HCLBody() hcl.Body {
-	return p.Remain
-}
-
-// Schema implements the <Inline> interface.
-func (p PKCE) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(p)
-		return schema
-	}
-
-	type Inline struct {
-		CodeVerifierValue string `hcl:"code_verifier_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
-}
-
-type CSRF struct {
-	TokenParam string   `hcl:"token_param"`
-	Remain     hcl.Body `hcl:",remain"`
-	// internally used
-	Content *hcl.BodyContent
-}
-
-// HCLBody implements the <Body> interface.
-func (c CSRF) HCLBody() hcl.Body {
-	return c.Remain
-}
-
-// Schema implements the <Inline> interface.
-func (c CSRF) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(c)
-		return schema
-	}
-
-	type Inline struct {
-		TokenValue string `hcl:"token_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
+func (oa OAuth2AC) GetPkce() *PKCE {
+	return oa.Pkce
 }

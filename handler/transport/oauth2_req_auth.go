@@ -24,11 +24,6 @@ type OAuth2ReqAuth struct {
 // NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	oauth2 *OAuth2, next http.RoundTripper) (http.RoundTripper, error) {
-	const grantType = "client_credentials"
-	if conf.GrantType != grantType {
-		return nil, errors.Backend.Label(conf.BackendName).Message("grant_type not supported: " + conf.GrantType)
-	}
-
 	return &OAuth2ReqAuth{
 		config:   conf,
 		oauth2:   oauth2,

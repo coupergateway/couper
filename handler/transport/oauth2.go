@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
 )
 
 // OAuth2 represents the transport <OAuth2> object.
@@ -22,12 +23,60 @@ type OAuth2 struct {
 	clientConfig config.OAuth2Client
 }
 
-// NewOAuth2 creates a new <OAuth2> object.
-func NewOAuth2(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
+// NewOAuth2CC() creates a new OAuth2 Client Credentials client.
+func NewOAuth2CC(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
+	backendErr := errors.Backend.Label(asConf.Reference())
+	if grantType := clientConf.GetGrantType(); grantType != "client_credentials" {
+		return nil, backendErr.Messagef("grant_type %s not supported", grantType)
+	}
+
 	if teAuthMethod := clientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
 		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
-			return nil, fmt.Errorf("unsupported 'token_endpoint_auth_method': %s", *teAuthMethod)
+			return nil, backendErr.Messagef("token_endpoint_auth_method %s not supported", *teAuthMethod)
 		}
+	}
+	return &OAuth2{
+		Backend:      backend,
+		asConfig:     asConf,
+		clientConfig: clientConf,
+	}, nil
+}
+
+// NewOAuth2AC() creates a new OAuth2 Authorization Code client.
+func NewOAuth2AC(clientConf config.OAuth2AcClient, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
+	if grantType := clientConf.GetGrantType(); grantType != "authorization_code" {
+		return nil, fmt.Errorf("grant_type %s not supported", grantType)
+	}
+
+	if teAuthMethod := clientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
+		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
+			return nil, fmt.Errorf("token_endpoint_auth_method %s not supported", *teAuthMethod)
+		}
+	}
+	csrf := clientConf.GetCsrf()
+	pkce := clientConf.GetPkce()
+	if pkce == nil && csrf == nil {
+		return nil, fmt.Errorf("CSRF protection not configured")
+	}
+	if csrf != nil {
+		if csrf.TokenParam != "state" && csrf.TokenParam != "nonce" {
+			return nil, fmt.Errorf("csrf_token_param %s not supported", csrf.TokenParam)
+		}
+		content, _, diags := csrf.HCLBody().PartialContent(csrf.Schema(true))
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		csrf.Content = content
+	}
+	if pkce != nil {
+		if pkce.CodeChallengeMethod != lib.CcmPlain && pkce.CodeChallengeMethod != lib.CcmS256 {
+			return nil, fmt.Errorf("code_challenge_method %s not supported", pkce.CodeChallengeMethod)
+		}
+		content, _, diags := pkce.HCLBody().PartialContent(pkce.Schema(true))
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		pkce.Content = content
 	}
 	return &OAuth2{
 		Backend:      backend,

@@ -355,7 +355,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			beConf.OAuth2.Retries = &one
 		}
 
-		oauth2, err := transport.NewOAuth2(beConf.OAuth2, beConf.OAuth2, authBackend)
+		oauth2, err := transport.NewOAuth2CC(beConf.OAuth2, beConf.OAuth2, authBackend)
 		if err != nil {
 			return nil, err
 		}
@@ -474,7 +474,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			oauth2, err := transport.NewOAuth2(oauth2Conf, oauth2Conf, backend)
+			oauth2, err := transport.NewOAuth2AC(oauth2Conf, oauth2Conf, backend)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
