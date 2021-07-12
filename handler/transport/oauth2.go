@@ -17,8 +17,9 @@ import (
 
 // OAuth2 represents the transport <OAuth2> object.
 type OAuth2 struct {
-	Backend http.RoundTripper
-	config  config.OAuth2
+	Backend      http.RoundTripper
+	asConfig     config.OAuth2AS
+	clientConfig config.OAuth2Client
 }
 
 type OAuth2RequestConfig struct {
@@ -29,23 +30,24 @@ type OAuth2RequestConfig struct {
 }
 
 // NewOAuth2 creates a new <OAuth2> object.
-func NewOAuth2(conf config.OAuth2, backend http.RoundTripper) (*OAuth2, error) {
-	if teAuthMethod := conf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
+func NewOAuth2(clientConf config.OAuth2Client, asConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2, error) {
+	if teAuthMethod := clientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
 		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
 			return nil, fmt.Errorf("unsupported 'token_endpoint_auth_method': %s", *teAuthMethod)
 		}
 	}
 	return &OAuth2{
-		Backend: backend,
-		config:  conf,
+		Backend:      backend,
+		asConfig:     asConf,
+		clientConfig: clientConf,
 	}, nil
 }
 
 func (oa *OAuth2) GetRequestConfig(req *http.Request) (*OAuth2RequestConfig, error) {
 	return &OAuth2RequestConfig{
-		// Backend is build up via config and token_endpoint will configure the backend,
+		// Backend is build up via clientConfig and token_endpoint will configure the backend,
 		// use the backend memory location here.
-		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.Backend, oa.config.GetClientID(), oa.config.GetClientSecret()),
+		StorageKey: fmt.Sprintf("%p|%s|%s", &oa.Backend, oa.clientConfig.GetClientID(), oa.clientConfig.GetClientSecret()),
 	}, nil
 }
 
@@ -62,11 +64,11 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 
 	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(oa.config.Reference()).Message("token request read error").With(err)
+		return nil, errors.Backend.Label(oa.asConfig.Reference()).Message("token request read error").With(err)
 	}
 
 	if tokenRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(oa.config.Reference()).Messagef("token request failed, response=%q", string(tokenResBytes))
+		return nil, errors.Backend.Label(oa.asConfig.Reference()).Messagef("token request failed, response=%q", string(tokenResBytes))
 	}
 
 	return tokenResBytes, nil
@@ -74,10 +76,10 @@ func (oa *OAuth2) RequestToken(ctx context.Context, requestConfig *OAuth2Request
 
 func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2RequestConfig) (*http.Request, error) {
 	post := url.Values{}
-	grantType := oa.config.GetGrantType()
+	grantType := oa.clientConfig.GetGrantType()
 	post.Set("grant_type", grantType)
 
-	if scope := oa.config.GetScope(); scope != nil && grantType != "authorization_code" {
+	if scope := oa.clientConfig.GetScope(); scope != nil && grantType != "authorization_code" {
 		post.Set("scope", *scope)
 	}
 	if requestConfig.RedirectURI != nil {
@@ -89,10 +91,10 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	if requestConfig.CodeVerifier != nil {
 		post.Set("code_verifier", *requestConfig.CodeVerifier)
 	}
-	teAuthMethod := oa.config.GetTokenEndpointAuthMethod()
+	teAuthMethod := oa.clientConfig.GetTokenEndpointAuthMethod()
 	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
-		post.Set("client_id", oa.config.GetClientID())
-		post.Set("client_secret", oa.config.GetClientSecret())
+		post.Set("client_id", oa.clientConfig.GetClientID())
+		post.Set("client_secret", oa.clientConfig.GetClientSecret())
 	}
 
 	// url will be configured via backend roundtrip
@@ -106,14 +108,14 @@ func (oa *OAuth2) newTokenRequest(ctx context.Context, requestConfig *OAuth2Requ
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
-		auth := base64.StdEncoding.EncodeToString([]byte(oa.config.GetClientID() + ":" + oa.config.GetClientSecret()))
+		auth := base64.StdEncoding.EncodeToString([]byte(oa.clientConfig.GetClientID() + ":" + oa.clientConfig.GetClientSecret()))
 
 		outreq.Header.Set("Authorization", "Basic "+auth)
 	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
-	if tokenURL := oa.config.GetTokenEndpoint(); tokenURL != "" {
+	if tokenURL := oa.asConfig.GetTokenEndpoint(); tokenURL != "" {
 		outCtx = context.WithValue(outCtx, request.URLAttribute, tokenURL)
 	}
 

@@ -5,7 +5,16 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ OAuth2 = &OAuth2ReqAuth{}
+var OAuthBlockSchema = &hcl.BodySchema{
+	Blocks: []hcl.BlockHeaderSchema{
+		{
+			Type: "oauth2",
+		},
+	},
+}
+
+var _ OAuth2Client = &OAuth2ReqAuth{}
+var _ OAuth2AS = &OAuth2ReqAuth{}
 
 // OAuth2ReqAuth represents the <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {

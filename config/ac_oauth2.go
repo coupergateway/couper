@@ -5,7 +5,8 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ OAuth2 = &OAuth2AC{}
+var _ OAuth2Client = &OAuth2AC{}
+var _ OAuth2AS = &OAuth2AC{}
 
 // OAuth2AC represents the <OAuth2> access control object.
 type OAuth2AC struct {
