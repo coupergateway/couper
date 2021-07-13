@@ -480,7 +480,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			oa, err := ac.NewOAuth2Callback(oauth2Conf, oauth2Client)
+			oa, err := ac.NewOAuth2Callback(oauth2Client)
 			if err != nil {
 				return nil, confErr.With(err)
 			}

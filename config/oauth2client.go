@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-// OAuth2Client defines the <OAuth2Client> interface.
+// OAuth2Client represents the OAuth2 client configuration.
 type OAuth2Client interface {
 	Inline
 	GetClientID() string
@@ -15,8 +15,10 @@ type OAuth2Client interface {
 	GetTokenEndpointAuthMethod() *string
 }
 
+// OAuth2AcClient represents the configuration for OAuth2 clients using the authorization code flow.
 type OAuth2AcClient interface {
 	OAuth2Client
+	GetName() string
 	GetCsrf() *CSRF
 	GetPkce() *PKCE
 	GetRedirectURI() *string

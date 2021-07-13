@@ -12,9 +12,9 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
-	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/oauth2"
 )
 
 func TestEndpoints_OAuth2(t *testing.T) {
@@ -204,7 +204,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 	helper := test.New(t)
 
 	st := "qeirtbnpetrbi"
-	state := accesscontrol.Base64urlSha256(st)
+	state := oauth2.Base64urlSha256(st)
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/token" {

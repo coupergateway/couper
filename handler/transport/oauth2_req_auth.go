@@ -37,7 +37,7 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2Client.Backend, oa.config.ClientID, oa.config.ClientSecret)
 	if data := oa.memStore.Get(storageKey); data != "" {
-		token, terr := readAccessToken(data)
+		token, terr := oa.readAccessToken(data)
 		if terr != nil {
 			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
 		}
@@ -47,12 +47,13 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 		return oa.next.RoundTrip(req)
 	}
 
-	tokenResponse, err := oa.oauth2Client.RequestToken(req.Context(), nil)
-
-	token, err := oa.updateAccessToken(tokenResponse, storageKey)
+	ctx := req.Context()
+	tokenResponse, tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
 	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).Message("token update error").With(err)
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
 	}
+
+	oa.updateAccessToken(tokenResponse, tokenResponseData, storageKey)
 
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -61,7 +62,6 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
 		oa.memStore.Del(storageKey)
 
-		ctx := req.Context()
 		if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
 			ctx = context.WithValue(ctx, request.TokenRequestRetries, retries+1)
 
@@ -75,8 +75,8 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	return res, err
 }
 
-func readAccessToken(data string) (string, error) {
-	_, token, err := oauth2.ParseAccessToken([]byte(data))
+func (oa *OAuth2ReqAuth) readAccessToken(data string) (string, error) {
+	_, token, err := oauth2.ParseTokenResponse([]byte(data))
 	if err != nil {
 		return "", err
 	}
@@ -84,12 +84,7 @@ func readAccessToken(data string) (string, error) {
 	return token, nil
 }
 
-func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string, error) {
-	jData, token, err := oauth2.ParseAccessToken(jsonBytes)
-	if err != nil {
-		return "", err
-	}
-
+func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]interface{}, key string) {
 	if oa.memStore != nil {
 		var ttl int64
 		if t, ok := jData["expires_in"].(float64); ok {
@@ -98,6 +93,4 @@ func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string
 
 		oa.memStore.Set(key, string(jsonBytes), ttl)
 	}
-
-	return token, nil
 }

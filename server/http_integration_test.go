@@ -26,13 +26,13 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/oauth2"
 )
 
 var (
@@ -2807,7 +2807,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if ccp != cv1 {
 		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier():\n\t%s\n\t%s", ccp, cv1)
 	}
-	s256 := accesscontrol.Base64urlSha256(cv1)
+	s256 := oauth2.Base64urlSha256(cv1)
 	if ccs != s256 {
 		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
 	}
@@ -2887,7 +2887,7 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	if ct2 != ct1 {
 		t.Errorf("multiple calls to oauth_csrf_token() must return the same value:\n\t%s\n\t%s", ct1, ct2)
 	}
-	s256 := accesscontrol.Base64urlSha256(ct1)
+	s256 := oauth2.Base64urlSha256(ct1)
 	if cht != s256 {
 		t.Errorf("call to oauth_hashed_csrf_token() returns wrong value:\n\tactual: %s\n\texpected: %s", cht, s256)
 	}

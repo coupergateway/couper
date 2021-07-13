@@ -7,6 +7,7 @@ import (
 
 var _ OAuth2AcClient = &OAuth2AC{}
 var _ OAuth2AS = &OAuth2AC{}
+var _ OidcAS = &OAuth2AC{}
 
 // OAuth2AC represents the <OAuth2> access control object.
 type OAuth2AC struct {
@@ -58,6 +59,10 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
+func (oa OAuth2AC) GetName() string {
+	return oa.Name
+}
+
 func (oa OAuth2AC) GetClientID() string {
 	return oa.ClientID
 }
@@ -92,4 +97,13 @@ func (oa OAuth2AC) GetCsrf() *CSRF {
 
 func (oa OAuth2AC) GetPkce() *PKCE {
 	return oa.Pkce
+}
+
+// only OIDC
+func (oa OAuth2AC) GetIssuer() string {
+	return oa.Issuer
+}
+
+func (oa OAuth2AC) GetUserinfoEndpoint() string {
+	return oa.UserinfoEndpoint
 }
