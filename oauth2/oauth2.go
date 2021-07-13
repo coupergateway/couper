@@ -132,14 +132,20 @@ func (c *Client) GetTokenResponse(ctx context.Context) ([]byte, map[string]inter
 	return c.getTokenResponse(ctx, nil)
 }
 
-// Client represents the OAuth2 client using the authorization code flow.
-type AcClient struct {
-	Client
-	jwtParser *jwt.Parser
+// AcClient represents an OAuth2 client using the authorization code flow.
+type AcClient interface {
+	GetName() string
+	GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error)
 }
 
-// NewOAuth2AC creates a new OAuth2 Authorization Code client.
-func NewOAuth2AC(acClientConf config.OAuth2AcClient, oidcAsConf config.OidcAS, backend http.RoundTripper) (*AcClient, error) {
+// OAuth2AcClient represents an OAuth2 client using the (plain) authorization code flow.
+type OAuth2AcClient struct {
+	Client
+	jwtParser *jwt.Parser
+	name      string
+}
+
+func NewOAuth2AC(acClientConf config.OAuth2AcClient, oidcAsConf config.OidcAS, backend http.RoundTripper) (*OAuth2AcClient, error) {
 	if grantType := acClientConf.GetGrantType(); grantType != "authorization_code" {
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
 	}
@@ -197,20 +203,24 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oidcAsConf config.OidcAS, b
 		asConfig:     oidcAsConf,
 		clientConfig: acClientConf,
 	}
-	return &AcClient{client, jwtParser}, nil
+	return &OAuth2AcClient{client, jwtParser, acClientConf.GetName()}, nil
 }
 
-func (a *AcClient) GetAcClientConfig() config.OAuth2AcClient {
-	acClientConfig, _ := a.clientConfig.(config.OAuth2AcClient)
+func (o OAuth2AcClient) GetName() string {
+	return o.name
+}
+
+func (o *OAuth2AcClient) getAcClientConfig() config.OAuth2AcClient {
+	acClientConfig, _ := o.clientConfig.(config.OAuth2AcClient)
 	return acClientConfig
 }
 
-func (a *AcClient) getOidcAsConfig() config.OidcAS {
-	oidcAsConfig, _ := a.asConfig.(config.OidcAS)
+func (o *OAuth2AcClient) getOidcAsConfig() config.OidcAS {
+	oidcAsConfig, _ := o.asConfig.(config.OidcAS)
 	return oidcAsConfig
 }
 
-func (a *AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error) {
+func (o OAuth2AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
@@ -221,7 +231,7 @@ func (a *AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (
 
 	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)
 
-	if pkce := a.GetAcClientConfig().GetPkce(); pkce != nil {
+	if pkce := o.getAcClientConfig().GetPkce(); pkce != nil {
 		v, _ := pkce.Content.Attributes["code_verifier_value"]
 		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
 		codeVerifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
@@ -232,7 +242,7 @@ func (a *AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (
 	}
 
 	var csrfToken, csrfTokenValue string
-	if csrf := a.GetAcClientConfig().GetCsrf(); csrf != nil {
+	if csrf := o.getAcClientConfig().GetCsrf(); csrf != nil {
 		v, _ := csrf.Content.Attributes["token_value"]
 		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
 		csrfTokenValue = strings.TrimSpace(seetie.ValueToString(ctyVal))
@@ -254,13 +264,13 @@ func (a *AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (
 		}
 	}
 
-	tokenResponse, tokenResponseData, accessToken, err := a.getTokenResponse(ctx, requestParams)
+	tokenResponse, tokenResponseData, accessToken, err := o.getTokenResponse(ctx, requestParams)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
-		idToken, _, err := a.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
+		idToken, _, err := o.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
 		if err != nil {
 			return nil, nil, "", err
 		}
@@ -278,11 +288,11 @@ func (a *AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (
 		//    be rejected if the ID Token does not list the Client as a valid
 		//    audience, or if it contains additional audiences not trusted by
 		//    the Client.
-		if err := idToken.Claims.Valid(a.jwtParser.ValidationHelper); err != nil {
+		if err := idToken.Claims.Valid(o.jwtParser.ValidationHelper); err != nil {
 			return nil, nil, "", err
 		}
 
-		idtc, userinfo, err := a.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, csrfTokenValue, accessToken)
+		idtc, userinfo, err := o.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, csrfTokenValue, accessToken)
 		if err != nil {
 			return nil, nil, "", err
 		}
@@ -294,7 +304,7 @@ func (a *AcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (
 	return tokenResponse, tokenResponseData, accessToken, nil
 }
 
-func (a *AcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, csrfTokenValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
+func (o *OAuth2AcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, csrfTokenValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
@@ -321,12 +331,12 @@ func (a *AcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims,
 	}
 	// 5. If an azp (authorized party) Claim is present, the Client SHOULD
 	//    verify that its client_id is the Claim Value.
-	if azpExists && azp != a.clientConfig.GetClientID() {
-		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, a.clientConfig.GetClientID())
+	if azpExists && azp != o.clientConfig.GetClientID() {
+		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, o.clientConfig.GetClientID())
 	}
 
 	// validate nonce claim value against CSRF token
-	csrf := a.GetAcClientConfig().GetCsrf()
+	csrf := o.getAcClientConfig().GetCsrf()
 	if csrf != nil && csrf.TokenParam == "nonce" {
 		// 11. If a nonce value was sent in the Authentication Request, a nonce
 		//     Claim MUST be present and its value checked to verify that it is the
@@ -355,7 +365,7 @@ func (a *AcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims,
 		return nil, nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
 	}
 
-	userinfoResponse, err := a.requestUserinfo(ctx, accessToken)
+	userinfoResponse, err := o.requestUserinfo(ctx, accessToken)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -381,31 +391,31 @@ func (a *AcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims,
 	return idTokenClaims, userinfoData, nil
 }
 
-func (a *AcClient) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
-	userinfoReq, err := a.newUserinfoRequest(ctx, accessToken)
+func (o *OAuth2AcClient) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
+	userinfoReq, err := o.newUserinfoRequest(ctx, accessToken)
 	if err != nil {
 		return nil, err
 	}
 
-	userinfoRes, err := a.Backend.RoundTrip(userinfoReq)
+	userinfoRes, err := o.Backend.RoundTrip(userinfoReq)
 	if err != nil {
 		return nil, err
 	}
 
 	userinfoResBytes, err := ioutil.ReadAll(userinfoRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(a.asConfig.Reference()).Message("userinfo request read error").With(err)
+		return nil, errors.Backend.Label(o.asConfig.Reference()).Message("userinfo request read error").With(err)
 	}
 
 	if userinfoRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(a.asConfig.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
+		return nil, errors.Backend.Label(o.asConfig.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
 	}
 
 	return userinfoResBytes, nil
 }
 
-func (a *AcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	userinfoEndpoint := a.getOidcAsConfig().GetUserinfoEndpoint()
+func (o *OAuth2AcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
+	userinfoEndpoint := o.getOidcAsConfig().GetUserinfoEndpoint()
 	if userinfoEndpoint == "" {
 		return nil, errors.Oauth2.Message("missing userinfo_endpoint in config")
 	}
