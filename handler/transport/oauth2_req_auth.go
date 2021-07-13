@@ -39,6 +39,10 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	if data := oa.memStore.Get(storageKey); data != "" {
 		token, terr := oa.readAccessToken(data)
 		if terr != nil {
+			// TODO this error is not connected to the OAuth2 client's backend
+			// In fact this can only be a JSON parse error or a missing access_token,
+			// which will occur after having requested the token from the authorization
+			// server. So the erroneous response will never be stored.
 			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
 		}
 
