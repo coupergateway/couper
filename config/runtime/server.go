@@ -356,7 +356,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			beConf.OAuth2.Retries = &one
 		}
 
-		oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, beConf.OAuth2, authBackend)
+		oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, authBackend)
 		if err != nil {
 			return nil, err
 		}
@@ -486,6 +486,28 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			}
 
 			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
+				return nil, confErr.With(err)
+			}
+		}
+
+		for _, oidcConf := range conf.Definitions.OIDC {
+			confErr := errors.Configuration.Label(oidcConf.Name)
+			backend, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcClient, err := oauth2.NewOidc(oidcConf, backend)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oa, err := ac.NewOAuth2Callback(oidcClient)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
 			}
 		}

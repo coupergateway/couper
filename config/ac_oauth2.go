@@ -7,9 +7,8 @@ import (
 
 var _ OAuth2AcClient = &OAuth2AC{}
 var _ OAuth2AS = &OAuth2AC{}
-var _ OidcAS = &OAuth2AC{}
 
-// OAuth2AC represents the <OAuth2> access control object.
+// OAuth2AC represents represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
 	AccessControlSetter
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
@@ -18,7 +17,6 @@ type OAuth2AC struct {
 	ClientSecret            string   `hcl:"client_secret"`
 	Csrf                    *CSRF    `hcl:"csrf,block"`
 	GrantType               string   `hcl:"grant_type"`
-	Issuer                  string   `hcl:"issuer,optional"`
 	Name                    string   `hcl:"name,label"`
 	Pkce                    *PKCE    `hcl:"pkce,block"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
@@ -26,7 +24,6 @@ type OAuth2AC struct {
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	UserinfoEndpoint        string   `hcl:"userinfo_endpoint,optional"`
 	// internally used
 	Backend hcl.Body
 }
@@ -97,13 +94,4 @@ func (oa OAuth2AC) GetCsrf() *CSRF {
 
 func (oa OAuth2AC) GetPkce() *PKCE {
 	return oa.Pkce
-}
-
-// only OIDC
-func (oa OAuth2AC) GetIssuer() string {
-	return oa.Issuer
-}
-
-func (oa OAuth2AC) GetUserinfoEndpoint() string {
-	return oa.UserinfoEndpoint
 }

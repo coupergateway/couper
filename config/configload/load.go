@@ -158,6 +158,18 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 			}
 
+			for _, oidcConfig := range couperConfig.Definitions.OIDC {
+				err := uniqueAttributeKey(oidcConfig.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				oidcConfig.Backend, err = newBackend(definedBackends, oidcConfig)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			// access control - error_handler
 			var acErrorHandler []AccessControlSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
@@ -170,6 +182,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 			for _, acConfig := range couperConfig.Definitions.OAuth2AC {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.OIDC {
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 
