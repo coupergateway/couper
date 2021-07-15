@@ -104,7 +104,12 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
-	if tokenURL := c.asConfig.GetTokenEndpoint(); tokenURL != "" {
+	tokenURL, err := c.asConfig.GetTokenEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	if tokenURL != "" {
 		outCtx = context.WithValue(outCtx, request.URLAttribute, tokenURL)
 	}
 

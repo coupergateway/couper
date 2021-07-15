@@ -24,6 +24,16 @@ type OAuth2AcClient interface {
 	GetRedirectURI() *string
 }
 
+type OAuth2Authorization interface {
+	GetAuthorizationEndpoint() (string, error)
+	GetClientID() string
+	GetCsrf() *CSRF
+	GetName() string
+	GetPkce() *PKCE
+	GetRedirectURI() *string
+	GetScope() *string
+}
+
 type PKCE struct {
 	CodeChallengeMethod string   `hcl:"code_challenge_method"`
 	Remain              hcl.Body `hcl:",remain"`

@@ -6,7 +6,8 @@ import (
 )
 
 var _ OAuth2AcClient = &OAuth2AC{}
-var _ OAuth2AS = &OAuth2AC{}
+var _ OAuth2AcAS = &OAuth2AC{}
+var _ OAuth2Authorization = &OAuth2AC{}
 
 // OAuth2AC represents represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
@@ -80,8 +81,12 @@ func (oa OAuth2AC) GetRedirectURI() *string {
 	return oa.RedirectURI
 }
 
-func (oa OAuth2AC) GetTokenEndpoint() string {
-	return oa.TokenEndpoint
+func (oa OAuth2AC) GetAuthorizationEndpoint() (string, error) {
+	return oa.AuthorizationEndpoint, nil
+}
+
+func (oa OAuth2AC) GetTokenEndpoint() (string, error) {
+	return oa.TokenEndpoint, nil
 }
 
 func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {

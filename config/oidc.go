@@ -1,31 +1,37 @@
 package config
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"time"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/cache"
+	"github.com/avenga/couper/config/request"
 )
 
 var _ OAuth2AcClient = &OIDC{}
-var _ OAuth2AS = &OIDC{}
-var _ OidcAS = &OIDC{}
 
 // OIDC represents an oidc block.
 type OIDC struct {
 	AccessControlSetter
-	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
+	ConfigurationURL        string   `hcl:"configuration_url"`
 	Csrf                    *CSRF    `hcl:"csrf,block"`
-	Issuer                  string   `hcl:"issuer"`
 	Name                    string   `hcl:"name,label"`
 	Pkce                    *PKCE    `hcl:"pkce,block"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
-	TokenEndpoint           string   `hcl:"token_endpoint"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	UserinfoEndpoint        string   `hcl:"userinfo_endpoint"`
+	TTL                     string   `hcl:"ttl"`
 	// internally used
 	Backend hcl.Body
 }
@@ -82,10 +88,6 @@ func (o OIDC) GetRedirectURI() *string {
 	return o.RedirectURI
 }
 
-func (o OIDC) GetTokenEndpoint() string {
-	return o.TokenEndpoint
-}
-
 func (o OIDC) GetTokenEndpointAuthMethod() *string {
 	return o.TokenEndpointAuthMethod
 }
@@ -98,10 +100,115 @@ func (o OIDC) GetPkce() *PKCE {
 	return o.Pkce
 }
 
-func (o OIDC) GetIssuer() string {
-	return o.Issuer
+type OpenidConfiguration struct {
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	Issuer                string `json:"issuer"`
+	TokenEndpoint         string `json:"token_endpoint"`
+	UserinfoEndpoint      string `json:"userinfo_endpoint"`
 }
 
-func (o OIDC) GetUserinfoEndpoint() string {
-	return o.UserinfoEndpoint
+var _ OidcAS = &OidcConfig{}
+var _ OAuth2Authorization = &OidcConfig{}
+
+type OidcConfig struct {
+	*OIDC
+	Backend               http.RoundTripper
+	memStore              *cache.MemoryStore
+	ttl                   int64
+	AuthorizationEndpoint string
+	Issuer                string
+	TokenEndpoint         string
+	UserinfoEndpoint      string
+}
+
+func NewOidcConfig(oidc *OIDC, backend http.RoundTripper, memStore *cache.MemoryStore) (*OidcConfig, error) {
+	ttl, parseErr := time.ParseDuration(oidc.TTL)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	return &OidcConfig{OIDC: oidc, Backend: backend, memStore: memStore, ttl: (int64)(ttl)}, nil
+}
+
+func (o *OidcConfig) Reference() string {
+	return o.OIDC.BackendName
+}
+
+func (o *OidcConfig) GetAuthorizationEndpoint() (string, error) {
+	err := o.getFreshIfExpired()
+	if err != nil {
+		return "", err
+	}
+
+	return o.AuthorizationEndpoint, nil
+}
+
+func (o *OidcConfig) GetIssuer() (string, error) {
+	err := o.getFreshIfExpired()
+	if err != nil {
+		return "", err
+	}
+
+	return o.Issuer, nil
+}
+
+func (o *OidcConfig) GetTokenEndpoint() (string, error) {
+	err := o.getFreshIfExpired()
+	if err != nil {
+		return "", err
+	}
+
+	return o.TokenEndpoint, nil
+}
+
+func (o *OidcConfig) GetUserinfoEndpoint() (string, error) {
+	err := o.getFreshIfExpired()
+	if err != nil {
+		return "", err
+	}
+
+	return o.UserinfoEndpoint, nil
+}
+
+func (o *OidcConfig) getFreshIfExpired() error {
+	if o.memStore.Get(o.ConfigurationURL) == "" {
+		openidConfiguration, err := o.fetchOpenidConfiguration()
+		if err != nil {
+			return err
+		}
+
+		o.AuthorizationEndpoint = openidConfiguration.AuthorizationEndpoint
+		o.Issuer = openidConfiguration.Issuer
+		o.TokenEndpoint = openidConfiguration.TokenEndpoint
+		o.UserinfoEndpoint = openidConfiguration.UserinfoEndpoint
+	}
+	return nil
+}
+
+func (o *OidcConfig) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
+	req, err := http.NewRequest(http.MethodGet, "", nil)
+	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
+	req = req.WithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := o.Backend.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	openidConfiguration := &OpenidConfiguration{}
+	ocBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(ocBytes))
+	err = decoder.Decode(openidConfiguration)
+	if err != nil {
+		return nil, err
+	}
+
+	o.memStore.Set(o.ConfigurationURL, string(ocBytes), o.ttl)
+	return openidConfiguration, nil
 }

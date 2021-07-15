@@ -94,7 +94,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	evalContext := conf.Context.Value(eval.ContextType).(*eval.Context)
 	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
-	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore)
+	oidcConfigs, ocErr := configureOidcConfigs(conf, confCtx, log, memStore)
+	if ocErr != nil {
+		return nil, ocErr
+	}
+	evalContext = evalContext.WithOidcConfig(oidcConfigs)
+
+	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
 		return nil, acErr
 	}
@@ -403,7 +409,29 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (ACDefinitions, error) {
+func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*config.OidcConfig, error) {
+	oidcConfigs := make(map[string]*config.OidcConfig)
+	if conf.Definitions != nil {
+		for _, oidcConf := range conf.Definitions.OIDC {
+			confErr := errors.Configuration.Label(oidcConf.Name)
+			backend, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcConfig, err := config.NewOidcConfig(oidcConf, backend, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcConfigs[oidcConf.Name] = oidcConfig
+		}
+	}
+
+	return oidcConfigs, nil
+}
+
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*config.OidcConfig) (ACDefinitions, error) {
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
@@ -492,12 +520,8 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			oidcClient, err := oauth2.NewOidc(oidcConf, backend)
+			oidcConfig := oidcConfigs[oidcConf.Name]
+			oidcClient, err := oauth2.NewOidc(oidcConfig)
 			if err != nil {
 				return nil, confErr.With(err)
 			}

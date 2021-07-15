@@ -10,14 +10,12 @@ server "client" {
 }
 definitions {
   beta_oidc "ac" {
-    redirect_uri = "http://localhost:8080/cb" # value is not checked
-    issuer = "https://authorization.server"
-    authorization_endpoint = "https://authorization.server/oauth2/authorize"
-    scope = "openid profile email"
-    token_endpoint = "{{.asOrigin}}/token"
-    userinfo_endpoint = "{{.asOrigin}}/userinfo"
+    configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
+    ttl = "1h"
     client_id = "foo"
     client_secret = "etbinbp4in"
+    redirect_uri = "http://localhost:8080/cb" # value is not checked
+    scope = "openid profile email"
     csrf {
       token_param = "nonce"
       token_value = request.cookies.nnc

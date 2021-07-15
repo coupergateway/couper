@@ -22,10 +22,10 @@ const (
 	CcmS256                 = "S256"
 )
 
-func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier func() (*pkce.CodeVerifier, error)) function.Function {
-	oauth2s := make(map[string]*config.OAuth2AC)
+func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error)) function.Function {
+	oauth2s := make(map[string]config.OAuth2Authorization)
 	for _, o := range oauth2Configs {
-		oauth2s[o.Name] = o
+		oauth2s[o.GetName()] = o
 	}
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
@@ -39,34 +39,39 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []*config.OAuth2AC, verifier
 			label := args[0].AsString()
 			oauth2 := oauth2s[label]
 
-			oauthAuthorizationUrl, err := url.Parse(oauth2.AuthorizationEndpoint)
+			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()
+			if err != nil {
+				return cty.StringVal(""), err
+			}
+
+			oauthAuthorizationUrl, err := url.Parse(authorizationEndpoint)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
 
 			query := oauthAuthorizationUrl.Query()
 			query.Set("response_type", "code")
-			query.Set("client_id", oauth2.ClientID)
-			query.Set("redirect_uri", *oauth2.RedirectURI)
-			if oauth2.Scope != nil {
-				query.Set("scope", *oauth2.Scope)
+			query.Set("client_id", oauth2.GetClientID())
+			query.Set("redirect_uri", *oauth2.GetRedirectURI())
+			if scope := oauth2.GetScope(); scope != nil {
+				query.Set("scope", *scope)
 			}
 
-			if oauth2.Pkce != nil && oauth2.Pkce.CodeChallengeMethod != "" {
-				query.Set("code_challenge_method", oauth2.Pkce.CodeChallengeMethod)
-				codeChallenge, err := createCodeChallenge(verifier, oauth2.Pkce.CodeChallengeMethod)
+			if pkce := oauth2.GetPkce(); pkce != nil && pkce.CodeChallengeMethod != "" {
+				query.Set("code_challenge_method", pkce.CodeChallengeMethod)
+				codeChallenge, err := createCodeChallenge(verifier, pkce.CodeChallengeMethod)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
 				query.Set("code_challenge", codeChallenge)
-			} else if oauth2.Csrf != nil && (oauth2.Csrf.TokenParam == "state" || oauth2.Csrf.TokenParam == "nonce") {
+			} else if csrf := oauth2.GetCsrf(); csrf != nil && (csrf.TokenParam == "state" || csrf.TokenParam == "nonce") {
 				hashedCsrfToken, err := createCodeChallenge(verifier, CcmS256)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
-				query.Set(oauth2.Csrf.TokenParam, hashedCsrfToken)
+				query.Set(csrf.TokenParam, hashedCsrfToken)
 			}
 			oauthAuthorizationUrl.RawQuery = query.Encode()
 

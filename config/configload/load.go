@@ -281,7 +281,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 	couperConfig.Context = evalContext.
 		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
-		WithOAuth2(couperConfig.Definitions.OAuth2AC).
+		WithOAuth2AC(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.

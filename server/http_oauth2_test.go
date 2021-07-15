@@ -276,6 +276,17 @@ func TestOAuth2AccessControl(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))

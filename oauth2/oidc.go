@@ -14,15 +14,28 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
+// OIDC represents an oidc configuration.
+type OidcConfiguration struct {
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	Issuer                string `json:"issuer"`
+	TokenEndpoint         string `json:"token_endpoint"`
+	UserinfoEndpoint      string `json:"userinfo_endpoint"`
+}
+
 // OidcClient represents an OIDC client using the authorization code flow.
 type OidcClient struct {
 	*OAuth2AcClient
 	jwtParser *jwt.Parser
 }
 
-// NewOidc() creates a new OIDC client.
-func NewOidc(conf *config.OIDC, backend http.RoundTripper) (*OidcClient, error) {
-	acClient, err := NewOAuth2AC(conf, conf, backend)
+// NewOidc creates a new OIDC client.
+func NewOidc(oidcConfig *config.OidcConfig) (*OidcClient, error) {
+	acClient, err := NewOAuth2AC(oidcConfig, oidcConfig, oidcConfig.Backend)
+	if err != nil {
+		return nil, err
+	}
+
+	issuer, err := oidcConfig.GetIssuer()
 	if err != nil {
 		return nil, err
 	}
@@ -33,14 +46,14 @@ func NewOidc(conf *config.OIDC, backend http.RoundTripper) (*OidcClient, error) 
 		// 2. The Issuer Identifier for the OpenID Provider (which is typically
 		//    obtained during Discovery) MUST exactly match the value of the iss
 		//    (issuer) Claim.
-		jwt.WithIssuer(conf.GetIssuer()),
+		jwt.WithIssuer(issuer),
 		// 3. The Client MUST validate that the aud (audience) Claim contains its
 		//    client_id value registered at the Issuer identified by the iss
 		//    (issuer) Claim as an audience. The aud (audience) Claim MAY contain
 		//    an array with more than one element. The ID Token MUST be rejected if
 		//    the ID Token does not list the Client as a valid audience, or if it
 		//    contains additional audiences not trusted by the Client.
-		jwt.WithAudience(conf.GetClientID()),
+		jwt.WithAudience(oidcConfig.GetClientID()),
 	}
 	jwtParser := jwt.NewParser(options...)
 
@@ -203,9 +216,9 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 }
 
 func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	userinfoEndpoint := o.getOidcAsConfig().GetUserinfoEndpoint()
-	if userinfoEndpoint == "" {
-		return nil, errors.Oauth2.Message("missing userinfo_endpoint in config")
+	userinfoEndpoint, err := o.getOidcAsConfig().GetUserinfoEndpoint()
+	if err != nil {
+		return nil, err
 	}
 
 	// url will be configured via backend roundtrip

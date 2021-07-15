@@ -48,7 +48,7 @@ type Context struct {
 	eval         *hcl.EvalContext
 	inner        context.Context
 	memorize     map[string]interface{}
-	oauth2       []*config.OAuth2AC
+	oauth2       []config.OAuth2Authorization
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
 }
@@ -220,11 +220,24 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	return c
 }
 
-// WithOAuth2 initially setup the lib.FnOAuthAuthorizationUrl function.
-func (c *Context) WithOAuth2(o []*config.OAuth2AC) *Context {
-	c.oauth2 = o
+// WithOAuth2AC adds the OAuth2AC config structs.
+func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 	if c.oauth2 == nil {
-		c.oauth2 = make([]*config.OAuth2AC, 0)
+		c.oauth2 = make([]config.OAuth2Authorization, 0)
+	}
+	for _, o := range os {
+		c.oauth2 = append(c.oauth2, *o)
+	}
+	return c
+}
+
+// WithOidcConfig adds the OidcConfig config structs.
+func (c *Context) WithOidcConfig(os map[string]*config.OidcConfig) *Context {
+	if c.oauth2 == nil {
+		c.oauth2 = make([]config.OAuth2Authorization, 0)
+	}
+	for _, o := range os {
+		c.oauth2 = append(c.oauth2, o)
 	}
 	return c
 }
