@@ -449,7 +449,7 @@ gateway instance.
 |`xfh`  |bool|`false`|Option to use the `X-Forwarded-Host` header as the request host  |-|-|
 | `request_id_format`|string|`common`| If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields  |-|-|
 |`secure_cookies`|string|`""` | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.    |-|-|
-|`accept_forwarded_url`|list |empty| Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.proto`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-|`accept_forwarded_url = ["proto","host","port"]`|
+|`accept_forwarded_url`|list |empty| Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-|`accept_forwarded_url = ["proto","host","port"]`|
 
 ## Access Control
 
