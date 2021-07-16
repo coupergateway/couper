@@ -80,8 +80,11 @@ func (o OIDC) GetGrantType() string {
 	return "authorization_code"
 }
 
-func (o OIDC) GetScope() *string {
-	return o.Scope
+func (o OIDC) GetScope() string {
+	if o.Scope == nil {
+		return "openid"
+	}
+	return "openid " + *o.Scope
 }
 
 func (o OIDC) GetRedirectURI() *string {

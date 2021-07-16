@@ -73,8 +73,11 @@ func (oa OAuth2AC) GetGrantType() string {
 	return oa.GrantType
 }
 
-func (oa OAuth2AC) GetScope() *string {
-	return oa.Scope
+func (oa OAuth2AC) GetScope() string {
+	if oa.Scope == nil {
+		return ""
+	}
+	return *oa.Scope
 }
 
 func (oa OAuth2AC) GetRedirectURI() *string {

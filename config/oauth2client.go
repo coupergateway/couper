@@ -11,7 +11,7 @@ type OAuth2Client interface {
 	GetClientID() string
 	GetClientSecret() string
 	GetGrantType() string
-	GetScope() *string
+	GetScope() string
 	GetTokenEndpointAuthMethod() *string
 }
 
@@ -31,7 +31,7 @@ type OAuth2Authorization interface {
 	GetName() string
 	GetPkce() *PKCE
 	GetRedirectURI() *string
-	GetScope() *string
+	GetScope() string
 }
 
 type PKCE struct {
