@@ -1,10 +1,7 @@
-server "oauth-functions" {
+server "oidc-functions" {
   endpoint "/pkce-ok" {
     response {
       headers = {
-        x-cv-1 = beta_oauth_code_verifier()
-        x-cv-2 = beta_oauth_code_verifier()
-        x-cc-plain = beta_oauth_code_challenge("plain")
         x-cc-s256 = beta_oauth_code_challenge("S256")
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
       }
@@ -13,10 +10,8 @@ server "oauth-functions" {
   endpoint "/csrf" {
     response {
       headers = {
-        x-ct-1 = beta_oauth_csrf_token()
-        x-ct-2 = beta_oauth_csrf_token()
         x-cht = beta_oauth_hashed_csrf_token()
-        x-au-state = beta_oauth_authorization_url("ac-state")
+        x-au-nonce = beta_oauth_authorization_url("ac-nonce")
       }
     }
   }
@@ -29,11 +24,10 @@ server "oauth-functions" {
   }
 }
 definitions {
-  beta_oauth2 "ac-pkce" {
-    grant_type = "authorization_code"
-    authorization_endpoint = "https://authorization.server/oauth/authorize"
-    scope = "openid profile email"
-    token_endpoint = "https://authorization.server/oauth/token"
+  beta_oidc "ac-pkce" {
+    configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
+    ttl = "1h"
+    scope = "profile email"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
     client_secret = "5eCr3t"
@@ -42,16 +36,15 @@ definitions {
       code_verifier_value = "not_used_here"
     }
   }
-  beta_oauth2 "ac-state" {
-    grant_type = "authorization_code"
-    authorization_endpoint = "https://authorization.server/oauth/authorize"
-    scope = "openid profile"
-    token_endpoint = "https://authorization.server/oauth/token"
+  beta_oidc "ac-nonce" {
+    configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
+    ttl = "1h"
+    scope = "profile"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
     client_secret = "5eCr3t"
     csrf {
-      token_param = "state"
+      token_param = "nonce"
       token_value = "not_used_here"
     }
   }

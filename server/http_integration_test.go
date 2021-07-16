@@ -2870,7 +2870,7 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 
 	helper := test.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -2918,9 +2918,134 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
-	au, err = url.Parse(res.Header.Get("x-au-nonce"))
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
 	helper.Must(err)
-	auq = au.Query()
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	ct1_n := res.Header.Get("x-ct-1")
+	if ct1_n == ct1 {
+		t.Errorf("calls to oauth_csrf_token() on different requests must not return the same value:\n\t%s\n\t%s", ct1, ct1_n)
+	}
+}
+
+func TestOIDCPKCEFunctions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	ccs := res.Header.Get("x-cc-s256")
+	au, err := url.Parse(res.Header.Get("x-au-pkce"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile email" {
+		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+	}
+	if auq.Get("code_challenge_method") != "S256" {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+	}
+	if auq.Get("code_challenge") != ccs {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != "" {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-nok", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 500 {
+		t.Errorf("/pkce-nok: expected Status %d, got: %d", 500, res.StatusCode)
+		return
+	}
+}
+
+func TestOIDCCSRFFunctions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	cht := res.Header.Get("x-cht")
+	au, err := url.Parse(res.Header.Get("x-au-nonce"))
+	helper.Must(err)
+	auq := au.Query()
 	if auq.Get("response_type") != "code" {
 		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
@@ -2944,16 +3069,5 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
-	}
-
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
-	helper.Must(err)
-
-	res, err = client.Do(req)
-	helper.Must(err)
-
-	ct1_n := res.Header.Get("x-ct-1")
-	if ct1_n == ct1 {
-		t.Errorf("calls to oauth_csrf_token() on different requests must not return the same value:\n\t%s\n\t%s", ct1, ct1_n)
 	}
 }
