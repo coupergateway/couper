@@ -16,7 +16,7 @@ var OAuthBlockSchema = &hcl.BodySchema{
 var _ OAuth2Client = &OAuth2ReqAuth{}
 var _ OAuth2AS = &OAuth2ReqAuth{}
 
-// OAuth2ReqAuth represents the <OAuth2ReqAuth> object.
+// OAuth2ReqAuth represents the the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`

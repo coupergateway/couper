@@ -103,6 +103,7 @@ func (o OIDC) GetPkce() *PKCE {
 	return o.Pkce
 }
 
+// OpenidConfiguration represents an OpenID configuration (.../.well-known/openid-configuration)
 type OpenidConfiguration struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	Issuer                string `json:"issuer"`
@@ -113,6 +114,7 @@ type OpenidConfiguration struct {
 var _ OidcAS = &OidcConfig{}
 var _ OAuth2Authorization = &OidcConfig{}
 
+// OidcConfig represents the configuration for an OIDC client
 type OidcConfig struct {
 	*OIDC
 	Backend               http.RoundTripper
@@ -124,6 +126,7 @@ type OidcConfig struct {
 	UserinfoEndpoint      string
 }
 
+// NewOidcConfig creates a new configuration for an OIDC client
 func NewOidcConfig(oidc *OIDC, backend http.RoundTripper, memStore *cache.MemoryStore) (*OidcConfig, error) {
 	ttl, parseErr := time.ParseDuration(oidc.TTL)
 	if parseErr != nil {
