@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"fmt"
 	"net/url"
 
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
@@ -18,7 +17,6 @@ const (
 	FnOAuthCsrfToken        = "beta_oauth_csrf_token"
 	FnOAuthHashedCsrfToken  = "beta_oauth_hashed_csrf_token"
 	CodeVerifier            = "code_verifier"
-	CcmPlain                = "plain"
 	CcmS256                 = "S256"
 )
 
@@ -59,14 +57,14 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 
 			if pkce := oauth2.GetPkce(); pkce != nil && pkce.CodeChallengeMethod != "" {
 				query.Set("code_challenge_method", pkce.CodeChallengeMethod)
-				codeChallenge, err := createCodeChallenge(verifier, pkce.CodeChallengeMethod)
+				codeChallenge, err := createCodeChallenge(verifier)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
 				query.Set("code_challenge", codeChallenge)
 			} else if csrf := oauth2.GetCsrf(); csrf != nil && (csrf.TokenParam == "state" || csrf.TokenParam == "nonce") {
-				hashedCsrfToken, err := createCodeChallenge(verifier, CcmS256)
+				hashedCsrfToken, err := createCodeChallenge(verifier)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
@@ -97,16 +95,10 @@ func NewOAuthCodeVerifierFunction(verifier func() (*pkce.CodeVerifier, error)) f
 
 func NewOAuthCodeChallengeFunction(verifier func() (*pkce.CodeVerifier, error)) function.Function {
 	return function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "code_challenge_method",
-				Type: cty.String,
-			},
-		},
-		Type: function.StaticReturnType(cty.String),
+		Params: []function.Parameter{},
+		Type:   function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			method := args[0].AsString()
-			codeChallenge, err := createCodeChallenge(verifier, method)
+			codeChallenge, err := createCodeChallenge(verifier)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -121,7 +113,7 @@ func NewOAuthHashedCsrfTokenFunction(verifier func() (*pkce.CodeVerifier, error)
 		Params: []function.Parameter{},
 		Type:   function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			hashedCsrfToken, err := createCodeChallenge(verifier, CcmS256)
+			hashedCsrfToken, err := createCodeChallenge(verifier)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -131,18 +123,11 @@ func NewOAuthHashedCsrfTokenFunction(verifier func() (*pkce.CodeVerifier, error)
 	})
 }
 
-func createCodeChallenge(verifier func() (*pkce.CodeVerifier, error), method string) (string, error) {
+func createCodeChallenge(verifier func() (*pkce.CodeVerifier, error)) (string, error) {
 	codeVerifier, err := verifier()
 	if err != nil {
 		return "", err
 	}
 
-	switch method {
-	case CcmS256:
-		return codeVerifier.CodeChallengeS256(), nil
-	case CcmPlain:
-		return codeVerifier.CodeChallengePlain(), nil
-	default:
-		return "", fmt.Errorf("unsupported code challenge method: %s", method)
-	}
+	return codeVerifier.CodeChallengeS256(), nil
 }

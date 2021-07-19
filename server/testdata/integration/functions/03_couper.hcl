@@ -1,8 +1,8 @@
 server "oidc-functions" {
-  endpoint "/pkce-ok" {
+  endpoint "/pkce" {
     response {
       headers = {
-        x-cc-s256 = beta_oauth_code_challenge("S256")
+        x-cc-s256 = beta_oauth_code_challenge()
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
       }
     }
@@ -12,13 +12,6 @@ server "oidc-functions" {
       headers = {
         x-cht = beta_oauth_hashed_csrf_token()
         x-au-nonce = beta_oauth_authorization_url("ac-nonce")
-      }
-    }
-  }
-  endpoint "/pkce-nok" {
-    response {
-      headers = {
-        x-cc-nok = beta_oauth_code_challenge("nok")
       }
     }
   }

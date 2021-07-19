@@ -2786,7 +2786,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 
 	helper := test.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -2799,17 +2799,13 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 
 	cv1 := res.Header.Get("x-cv-1")
 	cv2 := res.Header.Get("x-cv-2")
-	ccp := res.Header.Get("x-cc-plain")
 	ccs := res.Header.Get("x-cc-s256")
 	if cv2 != cv1 {
 		t.Errorf("multiple calls to oauth_code_verifier() must return the same value:\n\t%s\n\t%s", cv1, cv2)
 	}
-	if ccp != cv1 {
-		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier():\n\t%s\n\t%s", ccp, cv1)
-	}
 	s256 := oauth2.Base64urlSha256(cv1)
 	if ccs != s256 {
-		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
+		t.Errorf("call to oauth_code_challenge() returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
 	}
 	au, err := url.Parse(res.Header.Get("x-au-pkce"))
 	helper.Must(err)
@@ -2839,7 +2835,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
 
 	res, err = client.Do(req)
@@ -2848,17 +2844,6 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	cv1_n := res.Header.Get("x-cv-1")
 	if cv1_n == cv1 {
 		t.Errorf("calls to oauth_code_verifier() on different requests must not return the same value:\n\t%s\n\t%s", cv1, cv1_n)
-	}
-
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-nok", nil)
-	helper.Must(err)
-
-	res, err = client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != 500 {
-		t.Errorf("/pkce-nok: expected Status %d, got: %d", 500, res.StatusCode)
-		return
 	}
 }
 
@@ -2955,7 +2940,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
 	defer shutdown()
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -2993,17 +2978,6 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
-	}
-
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-nok", nil)
-	helper.Must(err)
-
-	res, err = client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != 500 {
-		t.Errorf("/pkce-nok: expected Status %d, got: %d", 500, res.StatusCode)
-		return
 	}
 }
 

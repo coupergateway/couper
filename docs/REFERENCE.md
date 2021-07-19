@@ -391,7 +391,7 @@ Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatrac
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `code_challenge_method` | string | - | The method to calculate the PKCE code challenge. |&#9888; required, available values: `S256` or (not recommended) `plain`|-|
+| `code_challenge_method` | string | - | The method to calculate the PKCE code challenge. |&#9888; required, available values: `S256`|-|
 | `code_verifier_value` | string or expression | - | The value of the code verifier. |&#9888; required; e.g. using cookie value created with [`beta_oauth_code_verifier()` function](#functions)|`code_verifier_value = request.cookies.code_verifier` |
 
 ### CSRF Block

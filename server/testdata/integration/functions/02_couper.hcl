@@ -1,11 +1,10 @@
 server "oauth-functions" {
-  endpoint "/pkce-ok" {
+  endpoint "/pkce" {
     response {
       headers = {
         x-cv-1 = beta_oauth_code_verifier()
         x-cv-2 = beta_oauth_code_verifier()
-        x-cc-plain = beta_oauth_code_challenge("plain")
-        x-cc-s256 = beta_oauth_code_challenge("S256")
+        x-cc-s256 = beta_oauth_code_challenge()
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
       }
     }
@@ -17,13 +16,6 @@ server "oauth-functions" {
         x-ct-2 = beta_oauth_csrf_token()
         x-cht = beta_oauth_hashed_csrf_token()
         x-au-state = beta_oauth_authorization_url("ac-state")
-      }
-    }
-  }
-  endpoint "/pkce-nok" {
-    response {
-      headers = {
-        x-cc-nok = beta_oauth_code_challenge("nok")
       }
     }
   }

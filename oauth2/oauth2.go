@@ -244,7 +244,7 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2A
 		csrf.Content = content
 	}
 	if pkce != nil {
-		if pkce.CodeChallengeMethod != lib.CcmPlain && pkce.CodeChallengeMethod != lib.CcmS256 {
+		if pkce.CodeChallengeMethod != lib.CcmS256 {
 			return nil, fmt.Errorf("code_challenge_method %s not supported", pkce.CodeChallengeMethod)
 		}
 		content, _, diags := pkce.HCLBody().PartialContent(pkce.Schema(true))
