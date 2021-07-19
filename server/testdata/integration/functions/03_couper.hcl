@@ -15,6 +15,15 @@ server "oidc-functions" {
       }
     }
   }
+  endpoint "/default" {
+    response {
+      headers = {
+        x-cc-s256 = beta_oauth_code_challenge()
+        x-cht = beta_oauth_hashed_csrf_token()
+        x-au-default = beta_oauth_authorization_url("ac-default")
+      }
+    }
+  }
 }
 definitions {
   beta_oidc "ac-pkce" {
@@ -35,6 +44,15 @@ definitions {
     client_id = "foo"
     client_secret = "5eCr3t"
     verifier_method = "nonce"
+    verifier_value = "not_used_here"
+  }
+  beta_oidc "ac-default" {
+    configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
+    ttl = "1h"
+    scope = "profile email address"
+    redirect_uri = "http://localhost:8085/oidc/callback"
+    client_id = "foo"
+    client_secret = "5eCr3t"
     verifier_value = "not_used_here"
   }
 }

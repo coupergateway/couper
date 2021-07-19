@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -184,20 +185,37 @@ func (o *OidcConfig) GetUserinfoEndpoint() (string, error) {
 }
 
 func (o *OidcConfig) getFreshIfExpired() error {
-	if o.memStore.Get(o.ConfigurationURL) == "" {
-		openidConfiguration, err := o.fetchOpenidConfiguration()
+	stored := o.memStore.Get(o.ConfigurationURL)
+	var (
+		openidConfiguration *OpenidConfiguration
+		err                 error
+	)
+	if stored != "" {
+		openidConfiguration = &OpenidConfiguration{}
+		decoder := json.NewDecoder(strings.NewReader(stored))
+		err = decoder.Decode(openidConfiguration)
 		if err != nil {
 			return err
 		}
-
-		o.AuthorizationEndpoint = openidConfiguration.AuthorizationEndpoint
-		o.Issuer = openidConfiguration.Issuer
-		o.TokenEndpoint = openidConfiguration.TokenEndpoint
-		o.UserinfoEndpoint = openidConfiguration.UserinfoEndpoint
-		if o.OIDC.VerifierMethod == "" && supportsS256(openidConfiguration.CodeChallengeMethodsSupported) {
-			o.OIDC.VerifierMethod = CcmS256
+	} else {
+		openidConfiguration, err = o.fetchOpenidConfiguration()
+		if err != nil {
+			return err
 		}
 	}
+
+	o.AuthorizationEndpoint = openidConfiguration.AuthorizationEndpoint
+	o.Issuer = openidConfiguration.Issuer
+	o.TokenEndpoint = openidConfiguration.TokenEndpoint
+	o.UserinfoEndpoint = openidConfiguration.UserinfoEndpoint
+	if o.OIDC.VerifierMethod == "" {
+		if supportsS256(openidConfiguration.CodeChallengeMethodsSupported) {
+			o.OIDC.VerifierMethod = CcmS256
+		} else {
+			o.OIDC.VerifierMethod = "nonce"
+		}
+	}
+
 	return nil
 }
 
