@@ -20,8 +20,6 @@
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
     - [OAuth2 AC Block (Beta)](#oauth2-ac-block-beta)
-    - [PKCE Block](#pkce-block)
-    - [CSRF Block](#csrf-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
     - [Defaults Block](#defaults-block)
@@ -364,7 +362,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [PKCE Block](#pkce-block), [CSRF Block](#csrf-block) |
+|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | - |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -378,34 +376,10 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
 | `scope` |string|-| A space separated list of requested scopes for the access token.|Use at least `openid` for OpenID Connect| `scope = "openid profile read"` |
+| `verifier_method` | string | - | The method to verify the integrity of the authorization code flow | &#9888; required, available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `state` (`state` parameter) | `verifier_method = "ccm_s256"` |
+| `verifier_value` | string or expression | - | The value of the (unhashed) verifier. | &#9888; required; e.g. using cookie value created with [`beta_oauth_code_verifier()` function](#functions) | `verifier_value = request.cookies.verifier` |
 
-To configure protection of the OAuth2 flow against Cross-Site Request Forgery (CSRF) use either the [PKCE](#pkce-block) or the [CSRF Block](#csrf-block). If the authorization server supports PKCE, we recommend `pkce`.
-
-### PKCE Block
-
-Use PKCE (Proof Key for Code Exchange) as defined in [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636) for protection against CSRF and code injection.
-
-|Block name|Context|Label|Nested block(s)|
-| :---------| :-----------| :-----------| :-----------|
-|`pkce`| [OAuth2 AC Block](#oauth2-ac-block-beta)| no label |-|
-
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `code_challenge_method` | string | - | The method to calculate the PKCE code challenge. |&#9888; required, available values: `S256`|-|
-| `code_verifier_value` | string or expression | - | The value of the code verifier. |&#9888; required; e.g. using cookie value created with [`beta_oauth_code_verifier()` function](#functions)|`code_verifier_value = request.cookies.code_verifier` |
-
-### CSRF Block
-
-Use `state` or `nonce` for protection against CSRF.
-
-|Block name|Context|Label|Nested block(s)|
-| :------| :-----------| :-----------| :-----------|
-|`csrf`| [OAuth2 AC Block](#oauth2-ac-block-beta)| no label |-|
-
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `token_param`  | string | - | The name of the query parameter for the hashed CSRF token. |&#9888; required, available values: `state`, `nonce`.|-|
-| `token_value`  | string or expression | - | The value of the CSRF token. | &#9888; required; e.g. using cookie value created with [`beta_oauth_csrf_token()` function](#functions) |`token_value = request.cookies.csrf_token` |
+If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
 
 ### SAML Block
 
@@ -605,8 +579,8 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `jwt_sign`      | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 |
 | `merge`         | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. |
 | `beta_oauth_authorization_url` | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta).                                                                                                                                                                                            |
-| `beta_oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636, e.g. to be used in a cookie, when using the PKCE for CSRF protection. Multiple calls of this function in the same client request context return the same value.                                                          |
-| `beta_oauth_csrf_token`     | Alias for `beta_oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using the `state` parameter for CSRF protection.                                                                                                                                         |
+| `beta_oauth_code_verifier`  | Creates an OAuth2 PKCE code verifier, as specified in RFC 7636, e.g. to be used in a cookie, when using `verifier_method = "ccm_s256"`. Multiple calls of this function in the same client request context return the same value.                                                          |
+| `beta_oauth_csrf_token`     | Alias for `beta_oauth_code_verifier()` creating a CSRF token, e.g. to be used in a cookie, when using `verifier_method = "state"` or `verifier_method = "nonce"`.                                                                                                                                         |
 | `saml_sso_url`  | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 |
 | `to_lower`      | Converts a given string to lowercase.                                                                                                                                                                                                                                                                |
 | `to_upper`      | Converts a given string to uppercase.                                                                                                                                                                                                                                                                |

@@ -30,6 +30,16 @@ type OidcClient struct {
 
 // NewOidc creates a new OIDC client.
 func NewOidc(oidcConfig *config.OidcConfig) (*OidcClient, error) {
+	verifierMethod, err := oidcConfig.GetVerifierMethod()
+	if err != nil {
+		return nil, err
+	}
+
+	confErr := errors.Configuration.Label(oidcConfig.GetName())
+	if verifierMethod != config.CcmS256 && verifierMethod != "nonce" {
+		return nil, confErr.Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
+	}
+
 	acClient, err := NewOAuth2AC(oidcConfig, oidcConfig, oidcConfig.Backend)
 	if err != nil {
 		return nil, err
@@ -67,7 +77,7 @@ func (o *OidcClient) getOidcAsConfig() config.OidcAS {
 	return oidcAsConfig
 }
 
-func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, csrfToken, csrfTokenValue, accessToken string) error {
+func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, csrfToken, verifierValue, accessToken string) error {
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
 		idToken, _, err := o.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
 		if err != nil {
@@ -91,7 +101,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 			return err
 		}
 
-		idtc, userinfo, err := o.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, csrfTokenValue, accessToken)
+		idtc, userinfo, err := o.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, verifierValue, accessToken)
 		if err != nil {
 			return err
 		}
@@ -105,7 +115,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	return errors.Oauth2.Message("missing id_token in token response")
 }
 
-func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, csrfTokenValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
+func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
@@ -136,9 +146,13 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, o.clientConfig.GetClientID())
 	}
 
+	verifierMethod, err := o.getAcClientConfig().GetVerifierMethod()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// validate nonce claim value against CSRF token
-	csrf := o.getAcClientConfig().GetCsrf()
-	if csrf != nil && csrf.TokenParam == "nonce" {
+	if verifierMethod == "nonce" {
 		// 11. If a nonce value was sent in the Authentication Request, a nonce
 		//     Claim MUST be present and its value checked to verify that it is the
 		//     same value as the one that was sent in the Authentication Request.
@@ -152,7 +166,7 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		}
 
 		if csrfToken != nonce {
-			return nil, nil, errors.Oauth2.Messagef("CSRF token mismatch: %q (from nonce claim) vs. %q (s256: %q)", nonce, csrfTokenValue, csrfToken)
+			return nil, nil, errors.Oauth2.Messagef("nonce mismatch: %q (from nonce claim) vs. %q (verifier_value: %q)", nonce, csrfToken, verifierValue)
 		}
 	}
 

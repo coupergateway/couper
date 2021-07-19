@@ -16,17 +16,17 @@ type OAuth2AC struct {
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
-	Csrf                    *CSRF    `hcl:"csrf,block"`
 	GrantType               string   `hcl:"grant_type"`
 	Name                    string   `hcl:"name,label"`
-	Pkce                    *PKCE    `hcl:"pkce,block"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
+	VerifierMethod          string   `hcl:"verifier_method"`
 	// internally used
-	Backend hcl.Body
+	Backend     hcl.Body
+	BodyContent *hcl.BodyContent
 }
 
 func (oa OAuth2AC) HCLBody() hcl.Body {
@@ -37,6 +37,10 @@ func (oa OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
+func (oa *OAuth2AC) GetBodyContent() *hcl.BodyContent {
+	return oa.BodyContent
+}
+
 func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
@@ -44,7 +48,8 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend *Backend `hcl:"backend,block"`
+		Backend       *Backend `hcl:"backend,block"`
+		VerifierValue string   `hcl:"verifier_value"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -96,10 +101,7 @@ func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
 	return oa.TokenEndpointAuthMethod
 }
 
-func (oa OAuth2AC) GetCsrf() *CSRF {
-	return oa.Csrf
-}
-
-func (oa OAuth2AC) GetPkce() *PKCE {
-	return oa.Pkce
+// GetVerifierMethod retrieves the verifier method (ccm_s256 or state)
+func (oa OAuth2AC) GetVerifierMethod() (string, error) {
+	return oa.VerifierMethod, nil
 }

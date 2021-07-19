@@ -29,10 +29,8 @@ definitions {
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
     client_secret = "5eCr3t"
-    pkce {
-      code_challenge_method = "S256"
-      code_verifier_value = "not_used_here"
-    }
+    verifier_method = "ccm_s256"
+    verifier_value = "not_used_here"
   }
   beta_oauth2 "ac-state" {
     grant_type = "authorization_code"
@@ -42,9 +40,7 @@ definitions {
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
     client_secret = "5eCr3t"
-    csrf {
-      token_param = "state"
-      token_value = "not_used_here"
-    }
+    verifier_method = "state"
+    verifier_value = "not_used_here"
   }
 }

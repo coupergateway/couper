@@ -24,10 +24,8 @@ definitions {
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
     client_secret = "5eCr3t"
-    pkce {
-      code_challenge_method = "S256"
-      code_verifier_value = "not_used_here"
-    }
+    verifier_method = "ccm_s256"
+    verifier_value = "not_used_here"
   }
   beta_oidc "ac-nonce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
@@ -36,9 +34,7 @@ definitions {
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
     client_secret = "5eCr3t"
-    csrf {
-      token_param = "nonce"
-      token_value = "not_used_here"
-    }
+    verifier_method = "nonce"
+    verifier_value = "not_used_here"
   }
 }

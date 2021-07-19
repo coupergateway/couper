@@ -16,9 +16,7 @@ definitions {
     client_secret = "etbinbp4in"
     redirect_uri = "http://localhost:8080/cb" # value is not checked
     scope = "profile email"
-    csrf {
-      token_param = "nonce"
-      token_value = request.cookies.nnc
-    }
+    verifier_method = "nonce"
+    verifier_value = request.cookies.nnc
   }
 }

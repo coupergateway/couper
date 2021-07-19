@@ -152,6 +152,12 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					return nil, err
 				}
 
+				bodyContent, _, diags := oauth2Config.HCLBody().PartialContent(oauth2Config.Schema(true))
+				if diags.HasErrors() {
+					return nil, diags
+				}
+				oauth2Config.BodyContent = bodyContent
+
 				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
 				if err != nil {
 					return nil, err
@@ -163,6 +169,12 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				if err != nil {
 					return nil, err
 				}
+
+				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
+				if diags.HasErrors() {
+					return nil, diags
+				}
+				oidcConfig.BodyContent = bodyContent
 
 				oidcConfig.Backend, err = newBackend(definedBackends, oidcConfig)
 				if err != nil {

@@ -2,7 +2,10 @@ package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
+)
+
+const (
+	CcmS256 = "ccm_s256"
 )
 
 // OAuth2AS represents the authorization server configuration for OAuth2 clients.
@@ -38,76 +41,18 @@ type OAuth2Client interface {
 type OAuth2AcClient interface {
 	OAuth2Client
 	GetName() string
-	GetCsrf() *CSRF
-	GetPkce() *PKCE
 	GetRedirectURI() *string
+	// GetVerifierMethod retrieves the verifier method (ccm_s256, nonce or state)
+	GetVerifierMethod() (string, error)
+	GetBodyContent() *hcl.BodyContent
 }
 
 // OAuth2Authorization represents the configuration for the OAuth2 authorization URL function
 type OAuth2Authorization interface {
 	GetAuthorizationEndpoint() (string, error)
 	GetClientID() string
-	GetCsrf() *CSRF
 	GetName() string
-	GetPkce() *PKCE
 	GetRedirectURI() *string
 	GetScope() string
-}
-
-// PKCE represents the PKCE configuration.
-type PKCE struct {
-	CodeChallengeMethod string   `hcl:"code_challenge_method"`
-	Remain              hcl.Body `hcl:",remain"`
-	// internally used
-	Content *hcl.BodyContent
-}
-
-// HCLBody implements the <Body> interface.
-func (p PKCE) HCLBody() hcl.Body {
-	return p.Remain
-}
-
-// Schema implements the <Inline> interface.
-func (p PKCE) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(p)
-		return schema
-	}
-
-	type Inline struct {
-		CodeVerifierValue string `hcl:"code_verifier_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
-}
-
-// CSRF represents the CSRF configuration.
-type CSRF struct {
-	TokenParam string   `hcl:"token_param"`
-	Remain     hcl.Body `hcl:",remain"`
-	// internally used
-	Content *hcl.BodyContent
-}
-
-// HCLBody implements the <Body> interface.
-func (c CSRF) HCLBody() hcl.Body {
-	return c.Remain
-}
-
-// Schema implements the <Inline> interface.
-func (c CSRF) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(c)
-		return schema
-	}
-
-	type Inline struct {
-		TokenValue string `hcl:"token_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
+	GetVerifierMethod() (string, error)
 }

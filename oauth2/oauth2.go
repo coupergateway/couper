@@ -15,7 +15,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
+	// "github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -167,36 +167,32 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 
 	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)
 
-	if pkce := a.getAcClientConfig().GetPkce(); pkce != nil {
-		v, _ := pkce.Content.Attributes["code_verifier_value"]
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		codeVerifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
-		if codeVerifierValue == "" {
-			return nil, nil, "", errors.Oauth2.Message("Empty PKCE code_verifier_value")
-		}
-		requestParams["code_verifier"] = codeVerifierValue
+	v, _ := a.getAcClientConfig().GetBodyContent().Attributes["verifier_value"]
+	ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+	verifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
+	if verifierValue == "" {
+		return nil, nil, "", errors.Oauth2.Message("Empty verifier_value")
+	}
+	var csrfToken string
+	verifierMethod, err := a.getAcClientConfig().GetVerifierMethod()
+	if err != nil {
+		return nil, nil, "", err
 	}
 
-	var csrfToken, csrfTokenValue string
-	if csrf := a.getAcClientConfig().GetCsrf(); csrf != nil {
-		v, _ := csrf.Content.Attributes["token_value"]
-		ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-		csrfTokenValue = strings.TrimSpace(seetie.ValueToString(ctyVal))
-		if csrfTokenValue == "" {
-			return nil, nil, "", errors.Oauth2.Message("Empty CSRF token_value")
+	if verifierMethod == config.CcmS256 {
+		requestParams["code_verifier"] = verifierValue
+	} else {
+		csrfToken = Base64urlSha256(verifierValue)
+	}
+
+	if verifierMethod == "state" {
+		stateFromParam := query.Get("state")
+		if stateFromParam == "" {
+			return nil, nil, "", errors.Oauth2.Messagef("missing state query parameter; query=%q", callbackURL.RawQuery)
 		}
-		csrfToken = Base64urlSha256(csrfTokenValue)
 
-		// validate state param value against CSRF token
-		if csrf.TokenParam == "state" {
-			csrfTokenFromParam := query.Get(csrf.TokenParam)
-			if csrfTokenFromParam == "" {
-				return nil, nil, "", errors.Oauth2.Messagef("missing state query parameter; query=%q", callbackURL.RawQuery)
-			}
-
-			if csrfToken != csrfTokenFromParam {
-				return nil, nil, "", errors.Oauth2.Messagef("CSRF token mismatch: %q (from query param) vs. %q (s256: %q)", csrfTokenFromParam, csrfTokenValue, csrfToken)
-			}
+		if csrfToken != stateFromParam {
+			return nil, nil, "", errors.Oauth2.Messagef("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, csrfToken, verifierValue)
 		}
 	}
 
@@ -205,7 +201,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, nil, "", err
 	}
 
-	if err := a.validateTokenResponseData(ctx, tokenResponseData, csrfToken, csrfTokenValue, accessToken); err != nil {
+	if err := a.validateTokenResponseData(ctx, tokenResponseData, csrfToken, verifierValue, accessToken); err != nil {
 		return nil, nil, "", err
 	}
 
@@ -228,30 +224,14 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2A
 			return nil, fmt.Errorf("token_endpoint_auth_method %s not supported", *teAuthMethod)
 		}
 	}
-	csrf := acClientConf.GetCsrf()
-	pkce := acClientConf.GetPkce()
-	if pkce == nil && csrf == nil {
-		return nil, fmt.Errorf("CSRF protection not configured")
+
+	verifierMethod, err := acClientConf.GetVerifierMethod()
+	if err != nil {
+		return nil, err
 	}
-	if csrf != nil {
-		if csrf.TokenParam != "state" && csrf.TokenParam != "nonce" {
-			return nil, fmt.Errorf("csrf_token_param %s not supported", csrf.TokenParam)
-		}
-		content, _, diags := csrf.HCLBody().PartialContent(csrf.Schema(true))
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		csrf.Content = content
-	}
-	if pkce != nil {
-		if pkce.CodeChallengeMethod != lib.CcmS256 {
-			return nil, fmt.Errorf("code_challenge_method %s not supported", pkce.CodeChallengeMethod)
-		}
-		content, _, diags := pkce.HCLBody().PartialContent(pkce.Schema(true))
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		pkce.Content = content
+
+	if verifierMethod != config.CcmS256 && verifierMethod != "nonce" && verifierMethod != "state" {
+		return nil, fmt.Errorf("verifier_method %s not supported", verifierMethod)
 	}
 
 	client := Client{

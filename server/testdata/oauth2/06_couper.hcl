@@ -16,9 +16,7 @@ definitions {
     token_endpoint = "{{.asOrigin}}/token"
     client_id = "foo"
     client_secret = "etbinbp4in"
-    csrf {
-      token_param = "state"
-      token_value = request.cookies.st
-    }
+    verifier_method = "state"
+    verifier_value = request.cookies.st
   }
 }

@@ -17,7 +17,6 @@ const (
 	FnOAuthCsrfToken        = "beta_oauth_csrf_token"
 	FnOAuthHashedCsrfToken  = "beta_oauth_hashed_csrf_token"
 	CodeVerifier            = "code_verifier"
-	CcmS256                 = "S256"
 )
 
 func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error)) function.Function {
@@ -55,21 +54,26 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 				query.Set("scope", scope)
 			}
 
-			if pkce := oauth2.GetPkce(); pkce != nil && pkce.CodeChallengeMethod != "" {
-				query.Set("code_challenge_method", pkce.CodeChallengeMethod)
+			verifierMethod, err := oauth2.GetVerifierMethod()
+			if err != nil {
+				return cty.StringVal(""), err
+			}
+
+			if verifierMethod == config.CcmS256 {
 				codeChallenge, err := createCodeChallenge(verifier)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
+				query.Set("code_challenge_method", "S256")
 				query.Set("code_challenge", codeChallenge)
-			} else if csrf := oauth2.GetCsrf(); csrf != nil && (csrf.TokenParam == "state" || csrf.TokenParam == "nonce") {
-				hashedCsrfToken, err := createCodeChallenge(verifier)
+			} else {
+				hashedVerifier, err := createCodeChallenge(verifier)
 				if err != nil {
 					return cty.StringVal(""), err
 				}
 
-				query.Set(csrf.TokenParam, hashedCsrfToken)
+				query.Set(verifierMethod, hashedVerifier)
 			}
 			oauthAuthorizationUrl.RawQuery = query.Encode()
 
@@ -113,12 +117,12 @@ func NewOAuthHashedCsrfTokenFunction(verifier func() (*pkce.CodeVerifier, error)
 		Params: []function.Parameter{},
 		Type:   function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			hashedCsrfToken, err := createCodeChallenge(verifier)
+			hashedVerifier, err := createCodeChallenge(verifier)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
 
-			return cty.StringVal(hashedCsrfToken), nil
+			return cty.StringVal(hashedVerifier), nil
 		},
 	})
 }

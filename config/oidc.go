@@ -15,8 +15,6 @@ import (
 	"github.com/avenga/couper/config/request"
 )
 
-var _ OAuth2AcClient = &OIDC{}
-
 // OIDC represents an oidc block.
 type OIDC struct {
 	AccessControlSetter
@@ -24,16 +22,16 @@ type OIDC struct {
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
 	ConfigurationURL        string   `hcl:"configuration_url"`
-	Csrf                    *CSRF    `hcl:"csrf,block"`
 	Name                    string   `hcl:"name,label"`
-	Pkce                    *PKCE    `hcl:"pkce,block"`
 	RedirectURI             *string  `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	TTL                     string   `hcl:"ttl"`
+	VerifierMethod          string   `hcl:"verifier_method,optional"`
 	// internally used
-	Backend hcl.Body
+	Backend     hcl.Body
+	BodyContent *hcl.BodyContent
 }
 
 func (o OIDC) HCLBody() hcl.Body {
@@ -44,6 +42,10 @@ func (o OIDC) Reference() string {
 	return o.BackendName
 }
 
+func (o *OIDC) GetBodyContent() *hcl.BodyContent {
+	return o.BodyContent
+}
+
 func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(o)
@@ -51,7 +53,8 @@ func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend *Backend `hcl:"backend,block"`
+		Backend       *Backend `hcl:"backend,block"`
+		VerifierValue string   `hcl:"verifier_value"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -95,24 +98,18 @@ func (o OIDC) GetTokenEndpointAuthMethod() *string {
 	return o.TokenEndpointAuthMethod
 }
 
-func (o OIDC) GetCsrf() *CSRF {
-	return o.Csrf
-}
-
-func (o OIDC) GetPkce() *PKCE {
-	return o.Pkce
-}
-
 // OpenidConfiguration represents an OpenID configuration (.../.well-known/openid-configuration)
 type OpenidConfiguration struct {
-	AuthorizationEndpoint string `json:"authorization_endpoint"`
-	Issuer                string `json:"issuer"`
-	TokenEndpoint         string `json:"token_endpoint"`
-	UserinfoEndpoint      string `json:"userinfo_endpoint"`
+	AuthorizationEndpoint         string   `json:"authorization_endpoint"`
+	Issuer                        string   `json:"issuer"`
+	TokenEndpoint                 string   `json:"token_endpoint"`
+	UserinfoEndpoint              string   `json:"userinfo_endpoint"`
+	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 }
 
 var _ OidcAS = &OidcConfig{}
 var _ OAuth2Authorization = &OidcConfig{}
+var _ OAuth2AcClient = &OidcConfig{}
 
 // OidcConfig represents the configuration for an OIDC client
 type OidcConfig struct {
@@ -137,6 +134,17 @@ func NewOidcConfig(oidc *OIDC, backend http.RoundTripper, memStore *cache.Memory
 
 func (o *OidcConfig) Reference() string {
 	return o.OIDC.BackendName
+}
+
+// GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
+func (o *OidcConfig) GetVerifierMethod() (string, error) {
+	if o.VerifierMethod == "" {
+		err := o.getFreshIfExpired()
+		if err != nil {
+			return "", err
+		}
+	}
+	return o.VerifierMethod, nil
 }
 
 func (o *OidcConfig) GetAuthorizationEndpoint() (string, error) {
@@ -186,8 +194,23 @@ func (o *OidcConfig) getFreshIfExpired() error {
 		o.Issuer = openidConfiguration.Issuer
 		o.TokenEndpoint = openidConfiguration.TokenEndpoint
 		o.UserinfoEndpoint = openidConfiguration.UserinfoEndpoint
+		if o.OIDC.VerifierMethod == "" && supportsS256(openidConfiguration.CodeChallengeMethodsSupported) {
+			o.OIDC.VerifierMethod = CcmS256
+		}
 	}
 	return nil
+}
+
+func supportsS256(codeChallengeMethodsSupported []string) bool {
+	if codeChallengeMethodsSupported == nil {
+		return false
+	}
+	for _, codeChallengeMethod := range codeChallengeMethodsSupported {
+		if codeChallengeMethod == "S256" {
+			return true
+		}
+	}
+	return false
 }
 
 func (o *OidcConfig) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
