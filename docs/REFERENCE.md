@@ -20,6 +20,7 @@
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
     - [OAuth2 AC Block (Beta)](#oauth2-ac-block-beta)
+    - [OIDC Block (Beta)](#oidc-block-beta)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
     - [Defaults Block](#defaults-block)
@@ -370,16 +371,40 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 | `authorization_endpoint` | string |-| The authorization server endpoint URL used for authorization. |&#9888; required|-|
 | `token_endpoint` | string |-| The authorization server endpoint URL used for requesting the token. |&#9888; required|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `userinfo_endpoint` | string |-| The authorization server (OIDC server) endpoint URL used for requesting information about the user. |Only used for OpenID Connect.|-|
 | `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required|-|
 | `grant_type` |string|-| The grant type. |&#9888; required, to be set to: `authorization_code`|`grant_type = "authorization_code"`|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
-| `scope` |string|-| A space separated list of requested scopes for the access token.|Use at least `openid` for OpenID Connect| `scope = "openid profile read"` |
+| `scope` |string|-| A space separated list of requested scopes for the access token.| - | `scope = "read write"` |
 | `verifier_method` | string | - | The method to verify the integrity of the authorization code flow | &#9888; required, available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `state` (`state` parameter) | `verifier_method = "ccm_s256"` |
 | `verifier_value` | string or expression | - | The value of the (unhashed) verifier. | &#9888; required; e.g. using cookie value created with [`beta_oauth_verifier()` function](#functions) | `verifier_value = request.cookies.verifier` |
 
 If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
+
+### OIDC Block (Beta)
+
+The `beta_oidc` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
+control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
+Like all [Access Control](#access-control) types, the `beta_oidc` block is defined in the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its required _label_.
+
+|Block name|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------| :-----------|
+|`beta_oidc`| [Definitions Block](#definitions-block)| &#9888; required | - |
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `backend`                       |string|-|[Backend Block Reference](#backend-block)| &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`! |-|
+| `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
+| `ttl` | duration |-| The duration to cache the OpenID configuration located at `configuration_url`. |&#9888; required| `ttl = "1d"` |
+| `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required|-|
+| `client_id`|  string|-|The client identifier.|&#9888; required|-|
+| `client_secret` |string|-|The client password.|&#9888; required.|-|
+| `scope` |string|-| A space separated list of requested scopes for the access token.|`openid` is automatically added.| `scope = "profile read"` |
+| `verifier_method` | string | - | The method to verify the integrity of the authorization code flow | available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `nonce` (`nonce` parameter) | `verifier_method = "nonce"` |
+| `verifier_value` | string or expression | - | The value of the (unhashed) verifier. | &#9888; required; e.g. using cookie value created with [`beta_oauth_verifier()` function](#functions) | `verifier_value = request.cookies.verifier` |
+
+If the OpenID server supports the `code_challenge_method` `S256` the default value for `verifier_method`is `ccm_s256`, `nonce` otherwise.
 
 ### SAML Block
 
