@@ -2811,28 +2811,28 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile email" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
 	}
 	if auq.Get("code_challenge_method") != "S256" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
 	if auq.Get("code_challenge") != hv {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
 	if auq.Get("nonce") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
@@ -2871,28 +2871,28 @@ func TestOAuthStateFunctions(t *testing.T) {
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
 	}
 	if auq.Get("code_challenge_method") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
 	}
 	if auq.Get("code_challenge") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
 	}
 	if auq.Get("state") != hv {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), hv)
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), hv)
 	}
 	if auq.Get("nonce") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }
 
@@ -2936,28 +2936,28 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile email" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
 	}
 	if auq.Get("code_challenge_method") != "S256" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
 	if auq.Get("code_challenge") != hv {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
 	if auq.Get("nonce") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }
 
@@ -3001,28 +3001,28 @@ func TestOIDCNonceFunctions(t *testing.T) {
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
 	}
 	if auq.Get("code_challenge_method") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
 	}
 	if auq.Get("code_challenge") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
 	if auq.Get("nonce") != hv {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }
 
@@ -3067,28 +3067,28 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile email address" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
 	}
 	if auq.Get("code_challenge_method") != "S256" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
 	if auq.Get("code_challenge") != hv {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
 	if auq.Get("nonce") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }
 
@@ -3132,27 +3132,27 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile email address" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
 	}
 	if auq.Get("code_challenge_method") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
 	}
 	if auq.Get("code_challenge") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
 	if auq.Get("nonce") != hv {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }
