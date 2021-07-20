@@ -138,7 +138,7 @@ func (c *Client) GetTokenResponse(ctx context.Context) ([]byte, map[string]inter
 type AcClient interface {
 	GetName() string
 	GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error)
-	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, csrfToken, csrfTokenValue, accessToken string) error
+	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
 
 type AbstractAcClient struct {
@@ -173,16 +173,17 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	if verifierValue == "" {
 		return nil, nil, "", errors.Oauth2.Message("Empty verifier_value")
 	}
-	var csrfToken string
+
 	verifierMethod, err := a.getAcClientConfig().GetVerifierMethod()
 	if err != nil {
 		return nil, nil, "", err
 	}
 
+	var hashedVerifierValue string
 	if verifierMethod == config.CcmS256 {
 		requestParams["code_verifier"] = verifierValue
 	} else {
-		csrfToken = Base64urlSha256(verifierValue)
+		hashedVerifierValue = Base64urlSha256(verifierValue)
 	}
 
 	if verifierMethod == "state" {
@@ -191,8 +192,8 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 			return nil, nil, "", errors.Oauth2.Messagef("missing state query parameter; query=%q", callbackURL.RawQuery)
 		}
 
-		if csrfToken != stateFromParam {
-			return nil, nil, "", errors.Oauth2.Messagef("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, csrfToken, verifierValue)
+		if hashedVerifierValue != stateFromParam {
+			return nil, nil, "", errors.Oauth2.Messagef("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
 		}
 	}
 
@@ -201,7 +202,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, nil, "", err
 	}
 
-	if err := a.validateTokenResponseData(ctx, tokenResponseData, csrfToken, verifierValue, accessToken); err != nil {
+	if err := a.validateTokenResponseData(ctx, tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
 		return nil, nil, "", err
 	}
 
@@ -244,7 +245,7 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2A
 	return o, nil
 }
 
-func (o *OAuth2AcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, csrfToken, csrfTokenValue, accessToken string) error {
+func (o *OAuth2AcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
 	return nil
 }
 

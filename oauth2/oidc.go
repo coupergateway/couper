@@ -77,7 +77,7 @@ func (o *OidcClient) getOidcAsConfig() config.OidcAS {
 	return oidcAsConfig
 }
 
-func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, csrfToken, verifierValue, accessToken string) error {
+func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
 		idToken, _, err := o.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
 		if err != nil {
@@ -101,7 +101,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 			return err
 		}
 
-		idtc, userinfo, err := o.validateIdTokenClaims(ctx, idToken.Claims, csrfToken, verifierValue, accessToken)
+		idtc, userinfo, err := o.validateIdTokenClaims(ctx, idToken.Claims, hashedVerifierValue, verifierValue, accessToken)
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	return errors.Oauth2.Message("missing id_token in token response")
 }
 
-func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, csrfToken, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
+func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, hashedVerifierValue, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
@@ -165,8 +165,8 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 			return nil, nil, errors.Oauth2.Messagef("missing nonce claim in ID token, claims='%#v'", idTokenClaims)
 		}
 
-		if csrfToken != nonce {
-			return nil, nil, errors.Oauth2.Messagef("nonce mismatch: %q (from nonce claim) vs. %q (verifier_value: %q)", nonce, csrfToken, verifierValue)
+		if hashedVerifierValue != nonce {
+			return nil, nil, errors.Oauth2.Messagef("nonce mismatch: %q (from nonce claim) vs. %q (verifier_value: %q)", nonce, hashedVerifierValue, verifierValue)
 		}
 	}
 

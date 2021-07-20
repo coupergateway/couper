@@ -244,13 +244,13 @@ func (o *OidcConfig) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
 		return nil, err
 	}
 
-	openidConfiguration := &OpenidConfiguration{}
 	ocBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(ocBytes))
+	openidConfiguration := &OpenidConfiguration{}
 	err = decoder.Decode(openidConfiguration)
 	if err != nil {
 		return nil, err
