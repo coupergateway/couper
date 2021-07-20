@@ -2,7 +2,7 @@ server "oidc-functions" {
   endpoint "/pkce" {
     response {
       headers = {
-        x-cc-s256 = beta_oauth_code_challenge()
+        x-hv = internal_oauth_hashed_verifier()
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
       }
     }
@@ -10,7 +10,7 @@ server "oidc-functions" {
   endpoint "/csrf" {
     response {
       headers = {
-        x-cht = beta_oauth_hashed_csrf_token()
+        x-hv = internal_oauth_hashed_verifier()
         x-au-nonce = beta_oauth_authorization_url("ac-nonce")
       }
     }
@@ -18,8 +18,7 @@ server "oidc-functions" {
   endpoint "/default" {
     response {
       headers = {
-        x-cc-s256 = beta_oauth_code_challenge()
-        x-cht = beta_oauth_hashed_csrf_token()
+        x-hv = internal_oauth_hashed_verifier()
         x-au-default = beta_oauth_authorization_url("ac-default")
       }
     }

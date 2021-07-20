@@ -11,12 +11,10 @@ import (
 )
 
 const (
-	FnOAuthAuthorizationUrl = "beta_oauth_authorization_url"
-	FnOAuthCodeVerifier     = "beta_oauth_code_verifier"
-	FnOAuthCodeChallenge    = "beta_oauth_code_challenge"
-	FnOAuthCsrfToken        = "beta_oauth_csrf_token"
-	FnOAuthHashedCsrfToken  = "beta_oauth_hashed_csrf_token"
-	CodeVerifier            = "code_verifier"
+	FnOAuthAuthorizationUrl       = "beta_oauth_authorization_url"
+	FnOAuthVerifier               = "beta_oauth_verifier"
+	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
+	CodeVerifier                  = "code_verifier"
 )
 
 func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error)) function.Function {

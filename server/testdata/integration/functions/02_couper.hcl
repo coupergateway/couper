@@ -2,9 +2,9 @@ server "oauth-functions" {
   endpoint "/pkce" {
     response {
       headers = {
-        x-cv-1 = beta_oauth_code_verifier()
-        x-cv-2 = beta_oauth_code_verifier()
-        x-cc-s256 = beta_oauth_code_challenge()
+        x-v-1 = beta_oauth_verifier()
+        x-v-2 = beta_oauth_verifier()
+        x-hv = internal_oauth_hashed_verifier()
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
       }
     }
@@ -12,9 +12,7 @@ server "oauth-functions" {
   endpoint "/csrf" {
     response {
       headers = {
-        x-ct-1 = beta_oauth_csrf_token()
-        x-ct-2 = beta_oauth_csrf_token()
-        x-cht = beta_oauth_hashed_csrf_token()
+        x-hv = internal_oauth_hashed_verifier()
         x-au-state = beta_oauth_authorization_url("ac-state")
       }
     }

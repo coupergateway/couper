@@ -263,10 +263,8 @@ func (c *Context) createOAuth2Functions() {
 		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
 		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
 	}
-	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.FnOAuthCsrfToken] = c.eval.Functions[lib.FnOAuthCodeVerifier]
-	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {

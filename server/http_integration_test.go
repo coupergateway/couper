@@ -2797,15 +2797,15 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 		return
 	}
 
-	cv1 := res.Header.Get("x-cv-1")
-	cv2 := res.Header.Get("x-cv-2")
-	ccs := res.Header.Get("x-cc-s256")
-	if cv2 != cv1 {
-		t.Errorf("multiple calls to oauth_code_verifier() must return the same value:\n\t%s\n\t%s", cv1, cv2)
+	v1 := res.Header.Get("x-v-1")
+	v2 := res.Header.Get("x-v-2")
+	hv := res.Header.Get("x-hv")
+	if v2 != v1 {
+		t.Errorf("multiple calls to beta_oauth_verifier() must return the same value:\n\t%s\n\t%s", v1, v2)
 	}
-	s256 := oauth2.Base64urlSha256(cv1)
-	if ccs != s256 {
-		t.Errorf("call to oauth_code_challenge() returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
+	s256 := oauth2.Base64urlSha256(v1)
+	if hv != s256 {
+		t.Errorf("call to internal_oauth_hashed_verifier() returns wrong value:\nactual:\t\t%s\nexpected:\t%s", hv, s256)
 	}
 	au, err := url.Parse(res.Header.Get("x-au-pkce"))
 	helper.Must(err)
@@ -2822,8 +2822,8 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if auq.Get("code_challenge_method") != "S256" {
 		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
-	if auq.Get("code_challenge") != ccs {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	if auq.Get("code_challenge") != hv {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
@@ -2841,13 +2841,13 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	res, err = client.Do(req)
 	helper.Must(err)
 
-	cv1_n := res.Header.Get("x-cv-1")
-	if cv1_n == cv1 {
-		t.Errorf("calls to oauth_code_verifier() on different requests must not return the same value:\n\t%s\n\t%s", cv1, cv1_n)
+	cv1_n := res.Header.Get("x-v-1")
+	if cv1_n == v1 {
+		t.Errorf("calls to beta_oauth_verifier() on different requests must not return the same value:\n\t%s\n\t%s", v1, cv1_n)
 	}
 }
 
-func TestOAuthCSRFFunctions(t *testing.T) {
+func TestOAuthStateFunctions(t *testing.T) {
 	client := newClient()
 
 	shutdown, _ := newCouper("testdata/integration/functions/02_couper.hcl", test.New(t))
@@ -2866,16 +2866,7 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 		return
 	}
 
-	ct1 := res.Header.Get("x-ct-1")
-	ct2 := res.Header.Get("x-ct-2")
-	cht := res.Header.Get("x-cht")
-	if ct2 != ct1 {
-		t.Errorf("multiple calls to oauth_csrf_token() must return the same value:\n\t%s\n\t%s", ct1, ct2)
-	}
-	s256 := oauth2.Base64urlSha256(ct1)
-	if cht != s256 {
-		t.Errorf("call to oauth_hashed_csrf_token() returns wrong value:\n\tactual: %s\n\texpected: %s", cht, s256)
-	}
+	hv := res.Header.Get("x-hv")
 	au, err := url.Parse(res.Header.Get("x-au-state"))
 	helper.Must(err)
 	auq := au.Query()
@@ -2894,25 +2885,14 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 	if auq.Get("code_challenge") != "" {
 		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
 	}
-	if auq.Get("state") != cht {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), cht)
+	if auq.Get("state") != hv {
+		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), hv)
 	}
 	if auq.Get("nonce") != "" {
 		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
-	}
-
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
-	helper.Must(err)
-
-	res, err = client.Do(req)
-	helper.Must(err)
-
-	ct1_n := res.Header.Get("x-ct-1")
-	if ct1_n == ct1 {
-		t.Errorf("calls to oauth_csrf_token() on different requests must not return the same value:\n\t%s\n\t%s", ct1, ct1_n)
 	}
 }
 
@@ -2951,7 +2931,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 		return
 	}
 
-	ccs := res.Header.Get("x-cc-s256")
+	hv := res.Header.Get("x-hv")
 	au, err := url.Parse(res.Header.Get("x-au-pkce"))
 	helper.Must(err)
 	auq := au.Query()
@@ -2967,8 +2947,8 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	if auq.Get("code_challenge_method") != "S256" {
 		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
-	if auq.Get("code_challenge") != ccs {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	if auq.Get("code_challenge") != hv {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
@@ -2981,7 +2961,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	}
 }
 
-func TestOIDCCSRFFunctions(t *testing.T) {
+func TestOIDCNonceFunctions(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -3016,7 +2996,7 @@ func TestOIDCCSRFFunctions(t *testing.T) {
 		return
 	}
 
-	cht := res.Header.Get("x-cht")
+	hv := res.Header.Get("x-hv")
 	au, err := url.Parse(res.Header.Get("x-au-nonce"))
 	helper.Must(err)
 	auq := au.Query()
@@ -3038,8 +3018,8 @@ func TestOIDCCSRFFunctions(t *testing.T) {
 	if auq.Get("state") != "" {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
-	if auq.Get("nonce") != cht {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), cht)
+	if auq.Get("nonce") != hv {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
@@ -3082,7 +3062,7 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 		return
 	}
 
-	ccs := res.Header.Get("x-cc-s256")
+	hv := res.Header.Get("x-hv")
 	au, err := url.Parse(res.Header.Get("x-au-default"))
 	helper.Must(err)
 	auq := au.Query()
@@ -3098,8 +3078,8 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	if auq.Get("code_challenge_method") != "S256" {
 		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
-	if auq.Get("code_challenge") != ccs {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	if auq.Get("code_challenge") != hv {
+		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
@@ -3112,7 +3092,7 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	}
 }
 
-func TestOIDCDefaultCSRFFunctions(t *testing.T) {
+func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -3147,7 +3127,7 @@ func TestOIDCDefaultCSRFFunctions(t *testing.T) {
 		return
 	}
 
-	cht := res.Header.Get("x-cht")
+	hv := res.Header.Get("x-hv")
 	au, err := url.Parse(res.Header.Get("x-au-default"))
 	helper.Must(err)
 	auq := au.Query()
@@ -3169,8 +3149,8 @@ func TestOIDCDefaultCSRFFunctions(t *testing.T) {
 	if auq.Get("state") != "" {
 		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
-	if auq.Get("nonce") != cht {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), cht)
+	if auq.Get("nonce") != hv {
+		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
