@@ -22,12 +22,13 @@ import (
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/utils"
 )
 
 var (
 	fields = logrus.Fields{
-		"build":   runtime.BuildName,
-		"version": runtime.VersionName,
+		"build":   utils.BuildName,
+		"version": utils.VersionName,
 	}
 	testHook logrus.Hook
 )

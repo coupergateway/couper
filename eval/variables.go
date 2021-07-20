@@ -24,4 +24,5 @@ const (
 	Protocol         = "protocol"
 	Host             = "host"
 	Port             = "port"
+	Couper           = "couper"
 )

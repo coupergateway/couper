@@ -25,6 +25,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/utils"
 )
 
 type contextKey uint8
@@ -64,6 +65,7 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 
 	variables := make(map[string]cty.Value)
 	variables[Environment] = newCtyEnvMap(envKeys, defaultEnvVariables)
+	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
 		bufferOption: BufferRequest | BufferResponse, // TODO: eval per endpoint body route
@@ -419,6 +421,13 @@ func newCtyEnvMap(envKeys []string, defaultValues map[string]string) cty.Value {
 				ctyMap[key] = cty.StringVal("")
 			}
 		}
+	}
+	return cty.MapVal(ctyMap)
+}
+
+func newCtyCouperVariablesMap() cty.Value {
+	ctyMap := map[string]cty.Value{
+		"version": cty.StringVal(utils.VersionName),
 	}
 	return cty.MapVal(ctyMap)
 }

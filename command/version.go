@@ -4,7 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/utils"
 )
 
 var _ Cmd = &Version{}
@@ -16,7 +16,7 @@ func NewVersion() *Version {
 }
 
 func (v Version) Execute(_ Args, _ *config.Couper, _ *logrus.Entry) error {
-	println(runtime.VersionName + " " + runtime.BuildDate + " " + runtime.BuildName)
+	println(utils.VersionName + " " + utils.BuildDate + " " + utils.BuildName)
 	return nil
 }
 
