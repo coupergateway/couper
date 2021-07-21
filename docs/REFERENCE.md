@@ -24,6 +24,7 @@
     - [CSRF Block](#csrf-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
+    - [Defaults Block](#defaults-block)
   - [Access Control](#access-control)
   - [Health-Check](#health-check)
   - [Variables](#variables)
@@ -433,7 +434,7 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 
 ### Settings Block
 
-The `settings` block let you configure the more basic and global behavior of your
+The `settings` block lets you configure the more basic and global behavior of your
 gateway instance.
 
 |Block name|Context|Label|Nested block(s)|
@@ -451,6 +452,18 @@ gateway instance.
 | `request_id_format`|string|`common`| If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields  |-|-|
 |`secure_cookies`|string|`""` | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.    |-|-|
 |`accept_forwarded_url`|list |empty| Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-|`accept_forwarded_url = ["proto","host","port"]`|
+
+### Defaults Block
+
+The `defaults` block lets you define default values.
+
+|Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------|
+| -| -| -|
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `environment_variables` | map | – | One or more environment variable assigments|-|`ORIGIN = https://httpbin.org`|
 
 ## Access Control
 
@@ -486,6 +499,20 @@ Both durations can be configured via environment variable. Please refer to the [
 
 Environment variables can be accessed everywhere within the configuration file
 since these references get evaluated at start.
+
+You may provide default values by means of `environment_variables` in the [`defaults` block](#defaults-block):
+
+```
+...
+   origin = env.ORIGIN
+...
+defaults {
+  environment_variables = {
+    ORIGIN = "http://localhost/"
+    TIMEOUT = "3s"
+  }
+}
+```
 
 ### `request`
 
