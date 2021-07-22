@@ -18,6 +18,7 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/utils"
 )
 
 func TestNewHTTPContext(t *testing.T) {
@@ -201,6 +202,47 @@ func TestDefaultEnvVariables(t *testing.T) {
 			for key, value := range envVars {
 				if _, isset := tt.want[key]; !isset {
 					t.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
+				}
+			}
+		})
+	}
+}
+
+func TestCouperVariables(t *testing.T) {
+	tests := []struct {
+		name string
+		hcl  string
+		want map[string]string
+	}{
+		{
+			"test",
+			`
+			server "test" {
+				api {}
+			}
+			`,
+			map[string]string{"version": utils.VersionName},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+
+			couperVars := seetie.ValueToMap(hclContext.Variables["couper"])
+
+			if len(couperVars) != len(tt.want) {
+				t.Errorf("Unexpected 'couper' variables:\nWant:\t%q\nGot:\t%q", tt.want, couperVars)
+			}
+			for key, expectedValue := range tt.want {
+				value := couperVars[key]
+				if value != expectedValue {
+					t.Errorf("Unexpected value for variable:\nWant:\tcouper.%s=%q\nGot:\tcouper.%s=%q", key, expectedValue, key, value)
 				}
 			}
 		})

@@ -4,7 +4,7 @@ WORKDIR /go/src/app
 COPY . .
 
 ENV GOFLAGS="-mod=vendor" \
-    VERSION_PACKAGE="github.com/avenga/couper/config/runtime"
+    VERSION_PACKAGE="github.com/avenga/couper/utils"
 
 RUN go generate && \
 	CGO_ENABLED=0 go build -v \

@@ -27,6 +27,7 @@
   - [Access Control](#access-control)
   - [Health-Check](#health-check)
   - [Variables](#variables)
+    - [couper](#couper)
     - [env](#env)
     - [request](#request)
     - [backend_requests](#backend_requests)
@@ -474,6 +475,12 @@ The shutdown timings defaults to `0` which means no delaying with development se
 Both durations can be configured via environment variable. Please refer to the [docker document](./../DOCKER.md).
 
 ## Variables
+
+### `couper`
+
+| Variable                         | Description                                                                                                                                                                                                                                                                         |
+| :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                        | Couper's version number                                                                                                                                                                                                                                                             |
 
 ### `env`
 
