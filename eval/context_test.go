@@ -235,6 +235,10 @@ func TestCouperVariables(t *testing.T) {
 			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
 
 			couperVars := seetie.ValueToMap(hclContext.Variables["couper"])
+
+			if len(couperVars) != len(tt.want) {
+				t.Errorf("Unexpected 'couper' variables:\nWant:\t%q\nGot:\t%q", tt.want, couperVars)
+			}
 			for key, expectedValue := range tt.want {
 				value := couperVars[key]
 				if value != expectedValue {
