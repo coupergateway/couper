@@ -10,6 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * No GZIP compression for small response bodies ([#186](https://github.com/avenga/couper/issues/186))
+  * Missing error type for [request](docs/REFERENCE.md#request-block)/[response](docs/REFERENCE.md#response-block) body, json_body or form_body related HCL evaluation errors ([#276](https://github.com/avenga/couper/pull/276))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions), [`beta_oauth_code_verifier()`](./docs/REFERENCE.md#functions) and [`beta_oauth_csrf_token()` functions](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
