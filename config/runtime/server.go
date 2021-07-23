@@ -468,23 +468,24 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		}
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
+			confErr := errors.Configuration.Label(oauth2Conf.Name)
 			authBackend, authErr := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if authErr != nil {
-				return nil, fmt.Errorf("loading oauth2 definition failed: %s", authErr)
+				return nil, confErr.With(authErr)
 			}
 
 			oauth2, err := transport.NewOAuth2(oauth2Conf, authBackend)
 			if err != nil {
-				return nil, fmt.Errorf("loading oauth2 definition failed: %s", err)
+				return nil, confErr.With(err)
 			}
 
 			oa, err := ac.NewOAuth2Callback(oauth2Conf, oauth2)
 			if err != nil {
-				return nil, fmt.Errorf("loading oauth2 definition failed: %s", err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.With(err)
 			}
 		}
 	}

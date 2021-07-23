@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -31,32 +32,30 @@ type OAuth2Callback struct {
 
 // NewOAuth2Callback creates a new AC-OAuth2 object
 func NewOAuth2Callback(conf *config.OAuth2AC, oauth2 *transport.OAuth2) (*OAuth2Callback, error) {
-	confErr := errors.Configuration.Label(conf.Name)
-
 	const grantType = "authorization_code"
 	if conf.GrantType != grantType {
-		return nil, confErr.Messagef("grant_type %s not supported", conf.GrantType)
+		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 	if conf.Pkce == nil && conf.Csrf == nil {
-		return nil, confErr.Message("CSRF protection not configured")
+		return nil, fmt.Errorf("CSRF protection not configured")
 	}
 	if conf.Csrf != nil {
 		if conf.Csrf.TokenParam != "state" && conf.Csrf.TokenParam != "nonce" {
-			return nil, confErr.Messagef("csrf_token_param %s not supported", conf.Csrf.TokenParam)
+			return nil, fmt.Errorf("csrf_token_param %s not supported", conf.Csrf.TokenParam)
 		}
 		content, _, diags := conf.Csrf.HCLBody().PartialContent(conf.Csrf.Schema(true))
 		if diags.HasErrors() {
-			return nil, errors.Evaluation.With(diags)
+			return nil, diags
 		}
 		conf.Csrf.Content = content
 	}
 	if conf.Pkce != nil {
 		if conf.Pkce.CodeChallengeMethod != lib.CcmPlain && conf.Pkce.CodeChallengeMethod != lib.CcmS256 {
-			return nil, confErr.Messagef("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
+			return nil, fmt.Errorf("code_challenge_method %s not supported", conf.Pkce.CodeChallengeMethod)
 		}
 		content, _, diags := conf.Pkce.HCLBody().PartialContent(conf.Pkce.Schema(true))
 		if diags.HasErrors() {
-			return nil, errors.Evaluation.With(diags)
+			return nil, diags
 		}
 		conf.Pkce.Content = content
 	}
