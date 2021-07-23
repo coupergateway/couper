@@ -410,11 +410,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
-				return nil, confErr.Message("loading basic_auth definition failed").With(err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
-				return nil, confErr.Message("adding basic_auth definition failed").With(err)
+				return nil, confErr.With(err)
 			}
 		}
 
@@ -429,7 +429,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
 				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
 				if diags.HasErrors() {
-					return nil, diags
+					return nil, confErr.With(diags)
 				}
 				claims = c
 			}
@@ -442,11 +442,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
 			if err != nil {
-				return nil, confErr.Message("loading jwt definition failed").With(err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
-				return nil, confErr.Message("adding jwt definition failed").With(err)
+				return nil, confErr.With(err)
 			}
 		}
 
@@ -459,11 +459,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
-				return nil, confErr.Message("loading saml definition failed").With(err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
-				return nil, confErr.Message("adding saml definition failed").With(err)
+				return nil, confErr.With(err)
 			}
 		}
 
