@@ -454,9 +454,9 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 
 	attr, ok = content.Attributes["form_body"]
 	if ok {
-		val, err := attr.Expr.Value(ctx)
-		if err != nil {
-			return "", "", err
+		val, diags := attr.Expr.Value(ctx)
+		if diags.HasErrors() {
+			return "", "", errors.Evaluation.With(diags)
 		}
 
 		if valType := val.Type(); !(valType.IsObjectType() || valType.IsMapType()) {
