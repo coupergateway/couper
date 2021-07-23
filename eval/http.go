@@ -3,7 +3,6 @@ package eval
 import (
 	"bytes"
 	"context"
-	er "errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -439,14 +438,14 @@ func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (
 func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
 	attr, ok := content.Attributes["json_body"]
 	if ok {
-		val, err := attr.Expr.Value(ctx)
-		if err != nil {
-			return "", "", err
+		val, diags := attr.Expr.Value(ctx)
+		if diags.HasErrors() {
+			return "", "", errors.Evaluation.With(diags)
 		}
 
-		val, err1 := stdlib.JSONEncodeFunc.Call([]cty.Value{val})
-		if err1 != nil {
-			return "", "", err1
+		val, err := stdlib.JSONEncodeFunc.Call([]cty.Value{val})
+		if err != nil {
+			return "", "", errors.Server.With(err)
 		}
 
 		return val.AsString(), "application/json", nil
@@ -460,7 +459,7 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 		}
 
 		if valType := val.Type(); !(valType.IsObjectType() || valType.IsMapType()) {
-			return "", "", er.New("value of form_body must be object")
+			return "", "", errors.Evaluation.Message("value of form_body must be object")
 		}
 
 		data := url.Values{}
@@ -475,9 +474,9 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 
 	attr, ok = content.Attributes["body"]
 	if ok {
-		val, err := attr.Expr.Value(ctx)
-		if err != nil {
-			return "", "", err
+		val, diags := attr.Expr.Value(ctx)
+		if diags.HasErrors() {
+			return "", "", errors.Evaluation.With(diags)
 		}
 
 		return seetie.ValueToString(val), "text/plain", nil
