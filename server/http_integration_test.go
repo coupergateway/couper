@@ -1946,10 +1946,10 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 	}
 
 	type testCase struct {
-		name       string
-		header     http.Header
-		exp        expectation
-		wantErrLog string
+		name                  string
+		header                http.Header
+		exp                   expectation
+		wantDaemonLogMessages []string
 	}
 
 	for _, tc := range []testCase{
@@ -1963,7 +1963,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/path",
 			},
-			"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http",
+			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http", "couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost:8080", "couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port 8080"},
 		},
 		{
 			"proto, host, no port",
@@ -1978,7 +1978,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "https://www.example.com",
 				Url:      "https://www.example.com/path",
 			},
-			"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port ",
+			[]string{"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port "},
 		},
 		{
 			"proto, port, no host",
@@ -1993,7 +1993,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "https://localhost:8443",
 				Url:      "https://localhost:8443/path",
 			},
-			"couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost",
+			[]string{"couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost"},
 		},
 		{
 			"host, port, no proto",
@@ -2008,7 +2008,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "http://www.example.com:8443",
 				Url:      "http://www.example.com:8443/path",
 			},
-			"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http",
+			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http"},
 		},
 		{
 			"proto, host, port",
@@ -2024,7 +2024,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "https://www.example.com:8443",
 				Url:      "https://www.example.com:8443/path",
 			},
-			"",
+			[]string{},
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2054,14 +2054,14 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			message := getAccessControlMessages(hook)
-			if tc.wantErrLog == "" {
-				if message != "" {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
-				}
+			messages := getAllDaemonMessages(hook)
+			if len(messages) != len(tc.wantDaemonLogMessages) {
+				t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages, messages)
 			} else {
-				if message != tc.wantErrLog {
-					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+				for i, msg := range messages {
+					if tc.wantDaemonLogMessages[i] != msg {
+						t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages[i], msg)
+					}
 				}
 			}
 		})
@@ -2453,6 +2453,17 @@ func getAccessControlMessages(hook *logrustest.Hook) string {
 	}
 
 	return ""
+}
+
+func getAllDaemonMessages(hook *logrustest.Hook) []string {
+	var msgs []string
+	for _, entry := range hook.AllEntries() {
+		if entry.Message != "" {
+			msgs = append(msgs, entry.Message)
+		}
+	}
+
+	return msgs
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
