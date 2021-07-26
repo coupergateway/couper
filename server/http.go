@@ -268,7 +268,11 @@ func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
 func (s *HTTPServer) getHost(req *http.Request) string {
 	host := req.Host
 	if s.settings.XForwardedHost {
-		host = req.Header.Get("X-Forwarded-Host")
+		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
+			host = xfh
+		} else {
+			s.log.Warnf("couper trying to use X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host %s", host)
+		}
 	}
 
 	host = strings.ToLower(host)
