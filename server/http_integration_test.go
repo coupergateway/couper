@@ -1950,6 +1950,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 		header                http.Header
 		exp                   expectation
 		wantDaemonLogMessages []string
+		wantAccessLogUrl      string
 	}
 
 	for _, tc := range []testCase{
@@ -1964,6 +1965,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "http://localhost:8080/path",
 			},
 			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http", "couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost:8080", "couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port 8080"},
+			"http://localhost:8080/path",
 		},
 		{
 			"proto, host, no port",
@@ -1979,6 +1981,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "https://www.example.com/path",
 			},
 			[]string{"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port "},
+			"https://www.example.com/path",
 		},
 		{
 			"proto, port, no host",
@@ -1994,6 +1997,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "https://localhost:8443/path",
 			},
 			[]string{"couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost"},
+			"https://localhost:8443/path",
 		},
 		{
 			"host, port, no proto",
@@ -2009,6 +2013,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "http://www.example.com:8443/path",
 			},
 			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http"},
+			"http://www.example.com:8443/path",
 		},
 		{
 			"proto, host, port",
@@ -2025,6 +2030,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "https://www.example.com:8443/path",
 			},
 			[]string{},
+			"https://www.example.com:8443/path",
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2063,6 +2069,11 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 						t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages[i], msg)
 					}
 				}
+			}
+
+			url := getAccessLogUrl(hook)
+			if url != tc.wantAccessLogUrl {
+				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
 			}
 		})
 	}
@@ -2464,6 +2475,18 @@ func getAllDaemonMessages(hook *logrustest.Hook) []string {
 	}
 
 	return msgs
+}
+
+func getAccessLogUrl(hook *logrustest.Hook) string {
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["url"] != "" {
+			if url, ok := entry.Data["url"].(string); ok {
+				return url
+			}
+		}
+	}
+
+	return ""
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
