@@ -319,7 +319,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 "${backend_responses.default.json_body.not-there}" = "my-val-0-${backend_responses.default.json_body.origin}"
 "${request.json_body.client}-my-val-a" = "my-val-b-${backend_responses.default.json_body.client}"
 }`, "",
-			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
+			test.Header{"true-my-val-a": "my-val-b-false"}},
 		{"json_body null value", `set_response_headers = { "x-null" = "${backend_responses.default.json_body.nil}" }`, "", test.Header{"x-null": ""}},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
