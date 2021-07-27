@@ -401,17 +401,13 @@ func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.
 	// sort and apply header values in hierarchical and logical order: delete, set, add
 	h := []string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}
 	err = applyHeaderOps(attrs, h, httpCtx, headers...)
-	if err != nil {
-		return errors.Evaluation.With(err)
-	}
-
-	return nil
+	return err
 }
 
 func getAllAttributes(body hcl.Body) (map[string]*hcl.Attribute, error) {
 	bodyContent, _, diags := body.PartialContent(meta.AttributesSchema)
 	if diags.HasErrors() {
-		return nil, diags
+		return nil, errors.Evaluation.With(diags)
 	}
 
 	// map to name
@@ -479,7 +475,7 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 		}
 
 		if valType := val.Type(); !(valType.IsObjectType() || valType.IsMapType()) {
-			return "", "", errors.Evaluation.Message("value of form_body must be object")
+			return "", "", errors.Configuration.Message("value of form_body must be an object")
 		}
 
 		data := url.Values{}
