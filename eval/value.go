@@ -52,7 +52,8 @@ func Value(ctx *hcl.EvalContext, exp hcl.Expression) (cty.Value, error) {
 	if diags.HasErrors() {
 		return v, errors.Evaluation.With(diags)
 	}
-	return v, nil
+
+	return finalize(v), nil
 }
 
 func walk(variables, parentVariables cty.Value, traversal hcl.Traversal) cty.Value {
@@ -139,4 +140,35 @@ func walk(variables, parentVariables cty.Value, traversal hcl.Traversal) cty.Val
 	default:
 		panic(reflect.TypeOf(t))
 	}
+}
+
+// finalize will modify the given cty.Value if the corresponding key value
+// is a cty.Map with cty.NilVal's. This map will be replaced with a cty.NilVal.
+//
+// This is necessary for populated "nil paths" which have shared nested references.
+func finalize(v cty.Value) cty.Value {
+	if !v.CanIterateElements() {
+		return v
+	}
+
+	vmap := v.AsValueMap()
+	for k, mv := range vmap {
+		if !mv.CanIterateElements() {
+			continue
+		}
+
+		nonNilStop := mv.ForEachElement(isNilElement)
+		if !nonNilStop {
+			vmap[k] = cty.NilVal
+		}
+	}
+	return cty.ObjectVal(vmap)
+}
+
+// isNilElement is used as iterate callback and returns true if a non NilVal gets passed.
+func isNilElement(_ cty.Value, val cty.Value) (stop bool) {
+	if val.Equals(cty.NilVal) == cty.BoolVal(false) {
+		return true
+	}
+	return false
 }
