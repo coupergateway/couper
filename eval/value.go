@@ -213,7 +213,7 @@ func isTemplateTraversal(split hcl.TraversalSplit, tplVars []hcl.Traversal) bool
 //
 // This is necessary for populated "nil paths" which have shared nested references.
 func finalize(v cty.Value) cty.Value {
-	if !v.CanIterateElements() {
+	if !v.CanIterateElements() || !v.Type().IsMapType() {
 		return v
 	}
 
