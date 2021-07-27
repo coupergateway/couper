@@ -448,17 +448,15 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 
 func newCtyEnvMap(defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
+	for k, v := range defaultValues {
+		ctyMap[k] = cty.StringVal(v)
+	}
+
 	for _, pair := range os.Environ() {
 		key := strings.Split(pair, "=")[0]
 		value := os.Getenv(key)
-		if _, ok := ctyMap[key]; !ok {
-			if val, set := defaultValues[key]; set && value == "" {
-				ctyMap[key] = cty.StringVal(val)
-				continue
-			}
-			if value != "" { // do not set empty string, fallback to nilVal per default
-				ctyMap[key] = cty.StringVal(value)
-			}
+		if value != "" { // do not set empty string, fallback to nilVal per default
+			ctyMap[key] = cty.StringVal(value)
 		}
 	}
 	return cty.MapVal(ctyMap)
