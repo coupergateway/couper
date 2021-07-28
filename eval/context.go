@@ -147,7 +147,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
-		URL:       cty.StringVal(newRawURL(req.URL).String()),
+		URL:       cty.StringVal(req.URL.String()),
 		Origin:    cty.StringVal(newRawOrigin(req.URL).String()),
 		Protocol:  cty.StringVal(req.URL.Scheme),
 		Host:      cty.StringVal(req.URL.Hostname()),
@@ -188,7 +188,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			Method:   cty.StringVal(bereq.Method),
 			Path:     cty.StringVal(bereq.URL.Path),
 			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
-			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
+			URL:      cty.StringVal(bereq.URL.String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
 		var body, jsonBody cty.Value
@@ -364,16 +364,11 @@ func parseJSONBytes(b []byte) cty.Value {
 	return val
 }
 
-func newRawURL(u *url.URL) *url.URL {
-	rawURL := *u
-	rawURL.RawQuery = ""
-	rawURL.Fragment = ""
-	return &rawURL
-}
-
 func newRawOrigin(u *url.URL) *url.URL {
-	rawOrigin := *newRawURL(u)
+	rawOrigin := *u
 	rawOrigin.Path = ""
+	rawOrigin.RawQuery = ""
+	rawOrigin.Fragment = ""
 	return &rawOrigin
 }
 
