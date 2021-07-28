@@ -139,10 +139,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	port, _ := strconv.ParseInt(p, 10, 64)
 	body, jsonBody := parseReqBody(req)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
-		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		Body:      body,
-		JsonBody:  jsonBody,
 		Method:    cty.StringVal(req.Method),
 		PathParam: seetie.MapToValue(pathParams),
 		URL:       cty.StringVal(req.URL.String()),
@@ -152,6 +149,9 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		Port:      cty.NumberIntVal(port),
 		Path:      cty.StringVal(req.URL.Path),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
+		Body:      body,
+		JsonBody:  jsonBody,
+		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
 	updateFunctions(ctx)
@@ -192,8 +192,8 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			}
 		}
 		port, _ := strconv.ParseInt(p, 10, 64)
+		body, jsonBody := parseReqBody(bereq)
 		bereqs[name] = cty.ObjectVal(ContextMap{
-			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 			Method:   cty.StringVal(bereq.Method),
 			URL:      cty.StringVal(bereq.URL.String()),
 			Origin:   cty.StringVal(newRawOrigin(bereq.URL).String()),
@@ -202,16 +202,19 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			Port:     cty.NumberIntVal(port),
 			Path:     cty.StringVal(bereq.URL.Path),
 			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
+			Body:     body,
+			JsonBody: jsonBody,
+			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var body, jsonBody cty.Value
+		var respBody, respJsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
-			body, jsonBody = parseRespBody(beresp)
+			respBody, respJsonBody = parseRespBody(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
-			JsonBody:   jsonBody,
-			Body:       body,
+			JsonBody:   respJsonBody,
+			Body:       respBody,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 

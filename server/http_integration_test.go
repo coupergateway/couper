@@ -2232,12 +2232,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 	client := newClient()
 
 	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/resource" {
-			rw.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		rw.WriteHeader(http.StatusNotFound)
+		rw.WriteHeader(http.StatusNoContent)
 	}))
 	defer ResourceOrigin.Close()
 
@@ -2246,14 +2241,25 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 	defer shutdown()
 
 	type expectation struct {
-		Method   string              `json:"method"`
-		Protocol string              `json:"protocol"`
-		Host     string              `json:"host"`
-		Port     int64               `json:"port"`
-		Path     string              `json:"path"`
-		Query    map[string][]string `json:"query"`
-		Origin   string              `json:"origin"`
-		Url      string              `json:"url"`
+		Method   string                 `json:"method"`
+		Protocol string                 `json:"protocol"`
+		Host     string                 `json:"host"`
+		Port     int64                  `json:"port"`
+		Path     string                 `json:"path"`
+		Query    map[string][]string    `json:"query"`
+		Origin   string                 `json:"origin"`
+		Url      string                 `json:"url"`
+		Body     string                 `json:"body"`
+		JsonBody map[string]interface{} `json:"json_body"`
+		FormBody map[string][]string    `json:"form_body"`
+	}
+
+	type testCase struct {
+		name   string
+		relUrl string
+		header http.Header
+		body   io.Reader
+		exp    expectation
 	}
 
 	helper := test.New(t)
@@ -2261,36 +2267,216 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 	helper.Must(err)
 
 	port, _ := strconv.ParseInt(resourceOrigin.Port(), 10, 64)
-	exp := expectation{
-		Method:   "POST",
-		Protocol: resourceOrigin.Scheme,
-		Host:     resourceOrigin.Hostname(),
-		Port:     port,
-		Path:     "/resource",
-		Query:    map[string][]string{"foo": []string{"bar"}},
-		Origin:   ResourceOrigin.URL,
-		Url:      ResourceOrigin.URL + "/resource?foo=bar",
+
+	for _, tc := range []testCase{
+		{
+			"body",
+			"/body",
+			http.Header{},
+			strings.NewReader(`abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: resourceOrigin.Scheme,
+				Host:     resourceOrigin.Hostname(),
+				Port:     port,
+				Path:     "/resource",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   ResourceOrigin.URL,
+				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				Body:     "abcd1234",
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"json_body",
+			"/json_body",
+			http.Header{"Content-Type": []string{"application/json"}},
+			strings.NewReader(`{"s":"abcd1234"}`),
+			expectation{
+				Method:   "POST",
+				Protocol: resourceOrigin.Scheme,
+				Host:     resourceOrigin.Hostname(),
+				Port:     port,
+				Path:     "/resource",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   ResourceOrigin.URL,
+				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				Body:     `{"s":"abcd1234"}`,
+				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				FormBody: map[string][]string{},
+			},
+		},
+		/*
+			// FIXME: FormBody is currently empty
+			{
+				"form_body",
+				"/form_body",
+				http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				strings.NewReader(`s=abcd1234`),
+				expectation{
+					Method:   "POST",
+					Protocol: resourceOrigin.Scheme,
+					Host:     resourceOrigin.Hostname(),
+					Port:     port,
+					Path:     "/resource",
+					Query:    map[string][]string{"foo": []string{"bar"}},
+					Origin:   ResourceOrigin.URL,
+					Url:      ResourceOrigin.URL + "/resource?foo=bar",
+					Body:     `s=abcd1234`,
+					JsonBody: map[string]interface{}{},
+					FormBody: map[string][]string{"s": []string{"abcd1234"}},
+				},
+			},
+		*/
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
+			helper.Must(err)
+
+			for k, v := range tc.header {
+				req.Header.Set(k, v[0])
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+			}
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+			}
+		})
 	}
-	hook.Reset()
+}
 
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
-	helper.Must(err)
+func TestHTTPServer_request_variables(t *testing.T) {
+	client := newClient()
 
-	res, err := client.Do(req)
-	helper.Must(err)
+	confPath := path.Join("testdata/integration/endpoint_eval/19_couper.hcl")
+	shutdown, hook := newCouper(confPath, test.New(t))
+	defer shutdown()
 
-	resBytes, err := ioutil.ReadAll(res.Body)
-	helper.Must(err)
-
-	_ = res.Body.Close()
-
-	var jsonResult expectation
-	err = json.Unmarshal(resBytes, &jsonResult)
-	if err != nil {
-		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	type expectation struct {
+		Method   string                 `json:"method"`
+		Protocol string                 `json:"protocol"`
+		Host     string                 `json:"host"`
+		Port     int64                  `json:"port"`
+		Path     string                 `json:"path"`
+		Query    map[string][]string    `json:"query"`
+		Origin   string                 `json:"origin"`
+		Url      string                 `json:"url"`
+		Body     string                 `json:"body"`
+		JsonBody map[string]interface{} `json:"json_body"`
+		FormBody map[string][]string    `json:"form_body"`
 	}
-	if !reflect.DeepEqual(jsonResult, exp) {
-		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+
+	type testCase struct {
+		name   string
+		relUrl string
+		header http.Header
+		body   io.Reader
+		exp    expectation
+	}
+
+	for _, tc := range []testCase{
+		{
+			"body",
+			"/body?foo=bar",
+			http.Header{},
+			strings.NewReader(`abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Path:     "/body",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/body?foo=bar",
+				Body:     "abcd1234",
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"json_body",
+			"/json_body?foo=bar",
+			http.Header{"Content-Type": []string{"application/json"}},
+			strings.NewReader(`{"s":"abcd1234"}`),
+			expectation{
+				Method:   "POST",
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Path:     "/json_body",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/json_body?foo=bar",
+				Body:     `{"s":"abcd1234"}`,
+				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"form_body",
+			"/form_body?foo=bar",
+			http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			strings.NewReader(`s=abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Path:     "/form_body",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/form_body?foo=bar",
+				Body:     `s=abcd1234`,
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{"s": []string{"abcd1234"}},
+			},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
+			helper.Must(err)
+
+			for k, v := range tc.header {
+				req.Header.Set(k, v[0])
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+			}
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+			}
+		})
 	}
 }
 
