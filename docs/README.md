@@ -137,6 +137,10 @@ definitions {
 settings {
   # ...
 }
+
+defaults {
+  # ...
+}
 ```
 
 - `server` main configuration block(s)
@@ -152,6 +156,7 @@ settings {
     - `response` configuration block for a manual client response
 - `definitions` block for predefined configurations, that can be referenced
 - `settings` block for server configuration which applies to the running instance
+- `defaults` block for default/fallback values
 
 > See also: [Configuration Reference](REFERENCE.md)
 
