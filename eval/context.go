@@ -212,7 +212,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			respBody, respJsonBody = parseRespBody(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
-			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
+			HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
 			JsonBody:   respJsonBody,
 			Body:       respBody,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
