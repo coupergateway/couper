@@ -144,14 +144,14 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		Body:      body,
 		JsonBody:  jsonBody,
 		Method:    cty.StringVal(req.Method),
-		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
-		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		URL:       cty.StringVal(req.URL.String()),
 		Origin:    cty.StringVal(newRawOrigin(req.URL).String()),
 		Protocol:  cty.StringVal(req.URL.Scheme),
 		Host:      cty.StringVal(req.URL.Hostname()),
 		Port:      cty.NumberIntVal(port),
+		Path:      cty.StringVal(req.URL.Path),
+		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
 	updateFunctions(ctx)
@@ -183,12 +183,25 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 			name = n
 		}
+		p := bereq.URL.Port()
+		if p == "" {
+			if bereq.URL.Scheme == "https" {
+				p = "443"
+			} else {
+				p = "80"
+			}
+		}
+		port, _ := strconv.ParseInt(p, 10, 64)
 		bereqs[name] = cty.ObjectVal(ContextMap{
 			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 			Method:   cty.StringVal(bereq.Method),
+			URL:      cty.StringVal(bereq.URL.String()),
+			Origin:   cty.StringVal(newRawOrigin(bereq.URL).String()),
+			Protocol: cty.StringVal(bereq.URL.Scheme),
+			Host:     cty.StringVal(bereq.URL.Hostname()),
+			Port:     cty.NumberIntVal(port),
 			Path:     cty.StringVal(bereq.URL.Path),
 			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
-			URL:      cty.StringVal(bereq.URL.String()),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
 		var body, jsonBody cty.Value

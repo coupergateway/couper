@@ -2228,6 +2228,72 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_backend_requests_variables(t *testing.T) {
+	client := newClient()
+
+	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/resource" {
+			rw.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	defer ResourceOrigin.Close()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/18_couper.hcl")
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": ResourceOrigin.URL})
+	defer shutdown()
+
+	type expectation struct {
+		Method   string              `json:"method"`
+		Protocol string              `json:"protocol"`
+		Host     string              `json:"host"`
+		Port     int64               `json:"port"`
+		Path     string              `json:"path"`
+		Query    map[string][]string `json:"query"`
+		Origin   string              `json:"origin"`
+		Url      string              `json:"url"`
+	}
+
+	helper := test.New(t)
+	resourceOrigin, err := url.Parse(ResourceOrigin.URL)
+	helper.Must(err)
+
+	port, _ := strconv.ParseInt(resourceOrigin.Port(), 10, 64)
+	exp := expectation{
+		Method:   "POST",
+		Protocol: resourceOrigin.Scheme,
+		Host:     resourceOrigin.Hostname(),
+		Port:     port,
+		Path:     "/resource",
+		Query:    map[string][]string{"foo": []string{"bar"}},
+		Origin:   ResourceOrigin.URL,
+		Url:      ResourceOrigin.URL + "/resource?foo=bar",
+	}
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	resBytes, err := ioutil.ReadAll(res.Body)
+	helper.Must(err)
+
+	_ = res.Body.Close()
+
+	var jsonResult expectation
+	err = json.Unmarshal(resBytes, &jsonResult)
+	if err != nil {
+		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+	}
+	if !reflect.DeepEqual(jsonResult, exp) {
+		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+	}
+}
+
 func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 	client := newClient()
 

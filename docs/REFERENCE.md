@@ -519,7 +519,6 @@ defaults {
 | :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`                             | Unique request id                                                                                                                                                                                                                                                                   |
 | `method`                         | HTTP method                                                                                                                                                                                                                                                                         |
-| `path`                           | Request URL path                                                                                                                                                                                                                                                                            |
 | `endpoint`                       | Matched endpoint pattern                                                                                                                                                                                                                                                            |
 | `headers.<name>`                 | HTTP request header value for requested lower-case key                                                                                                                                                                                                                              |
 | `cookies.<name>`                 | Value from `Cookie` request header for requested key (&#9888; last wins!)                                                                                                                                                                                                           |
@@ -531,9 +530,10 @@ defaults {
 | `context.<name>.<property_name>` | Request context containing information from the [Access Control](#access-control). |
 | `url`                            | Request URL |
 | `origin`                         | Origin of the request URL |
-| `protocol`                       | The request protocol (`http` or `https`) |
+| `protocol`                       | Request protocol (`http` or `https`) |
 | `host`                           | Host of the request URL |
 | `port`                           | Port of the request URL |
+| `path`                           | Request URL path                                                                                                                                                                                                                                                                    |
 
 The value of `context.<name>` depends on the type of block referenced by `<name>`.
 
@@ -569,13 +569,17 @@ To access the HTTP method of the `default` request use `backend_requests.default
 | :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`                             | Unique request id                                                                                                                                                                                                                                                                   |
 | `method`                         | HTTP method                                                                                                                                                                                                                                                                         |
-| `path`                           | Backend request URL path                                                                                                                                                                                                                                                                            |
 | `headers.<name>`                 | HTTP request header value for requested lower-case key                                                                                                                                                                                                                              |
 | `cookies.<name>`                 | Value from `Cookie` request header for requested key (&#9888; last wins!)                                                                                                                                                                                                           |
 | `query.<name>`                   | Query parameter values (&#9888; last wins!)                                                                                                                                                                                                                                         |
 | `form_body.<name>`               | Parameter in a `application/x-www-form-urlencoded` body                                                                                                                                                                                                                             |
 | `context.<name>.<property_name>` | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name |
-| `url`                            | Backend request URL                                                                                                                                                                                                                                                                  |
+| `url`                            | Backend request URL                                                                                                                                                                                                                                                                 |
+| `origin`                         | Origin of the backend request URL |
+| `protocol`                       | Backend request protocol (`http` or `https`) |
+| `host`                           | Host of the backend request URL |
+| `port`                           | Port of the backend request URL |
+| `path`                           | Backend request URL path                                                                                                                                                                                                                                                            |
 
 ### `backend_responses`
 
