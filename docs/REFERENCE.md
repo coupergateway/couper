@@ -502,10 +502,10 @@ since these references get evaluated at start.
 
 You may provide default values by means of `environment_variables` in the [`defaults` block](#defaults-block):
 
-```
-...
+```hcl
+// ...
    origin = env.ORIGIN
-...
+// ...
 defaults {
   environment_variables = {
     ORIGIN = "http://localhost/"
