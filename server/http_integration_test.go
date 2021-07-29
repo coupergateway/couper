@@ -30,6 +30,7 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
@@ -2434,11 +2435,14 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := "loading jwt definition failed: configuration error"
+	expectedMsg := "configuration error: missing-source: token source is invalid"
 
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
-	if err == nil || err.Error() != expectedMsg {
-		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, err)
+	logErr, _ := err.(errors.GoError)
+	if logErr == nil {
+		t.Error("logErr should not be nil")
+	} else if logErr.LogError() != expectedMsg {
+		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, logErr.LogError())
 	}
 }
 

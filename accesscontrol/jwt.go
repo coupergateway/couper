@@ -75,8 +75,6 @@ func NewJWTSource(cookie, header string) JWTSource {
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
-	confErr := errors.Configuration.Label(options.Name)
-
 	jwtAC := &JWT{
 		algorithm:      NewAlgorithm(options.Algorithm),
 		claims:         options.Claims,
@@ -86,16 +84,16 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 	}
 
 	if jwtAC.source.Type == Invalid {
-		return nil, confErr.Message("token source is invalid")
+		return nil, fmt.Errorf("token source is invalid")
 	}
 
 	if jwtAC.algorithm == AlgorithmUnknown {
-		return nil, confErr.Message("algorithm is not supported")
+		return nil, fmt.Errorf("algorithm is not supported")
 	}
 
 	parser, err := newParser(jwtAC.algorithm, jwtAC.claims)
 	if err != nil {
-		return nil, confErr.With(err)
+		return nil, err
 	}
 	jwtAC.parser = parser
 
@@ -106,7 +104,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 	pubKey, err := parsePublicPEMKey(options.Key)
 	if err != nil {
-		return nil, confErr.With(err)
+		return nil, err
 	}
 
 	jwtAC.pubKey = pubKey

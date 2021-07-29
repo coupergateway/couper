@@ -407,27 +407,29 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 	if conf.Definitions != nil {
 		for _, baConf := range conf.Definitions.BasicAuth {
+			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
-				return nil, err
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.With(err)
 			}
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
+			confErr := errors.Configuration.Label(jwtConf.Name)
 			key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 			if err != nil {
-				return nil, errors.Configuration.Label(jwtConf.Name).With(err)
+				return nil, confErr.With(err)
 			}
 
 			var claims map[string]interface{}
 			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
 				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
 				if diags.HasErrors() {
-					return nil, diags
+					return nil, confErr.With(diags)
 				}
 				claims = c
 			}
@@ -440,47 +442,50 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("loading jwt definition failed: %s", err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.With(err)
 			}
 		}
 
 		for _, saml := range conf.Definitions.SAML {
+			confErr := errors.Configuration.Label(saml.Name)
 			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
 			if err != nil {
-				return nil, errors.Configuration.Label(saml.Name).With(err)
+				return nil, confErr.With(err)
 			}
+
 			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
 			if err != nil {
-				return nil, fmt.Errorf("loading saml definition failed: %s", err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.With(err)
 			}
 		}
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
+			confErr := errors.Configuration.Label(oauth2Conf.Name)
 			authBackend, authErr := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if authErr != nil {
-				return nil, fmt.Errorf("loading oauth2 definition failed: %s", authErr)
+				return nil, confErr.With(authErr)
 			}
 
 			oauth2, err := transport.NewOAuth2(oauth2Conf, authBackend)
 			if err != nil {
-				return nil, fmt.Errorf("loading oauth2 definition failed: %s", err)
+				return nil, confErr.With(err)
 			}
 
 			oa, err := ac.NewOAuth2Callback(oauth2Conf, oauth2)
 			if err != nil {
-				return nil, fmt.Errorf("loading oauth2 definition failed: %s", err)
+				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
-				return nil, err
+				return nil, confErr.With(err)
 			}
 		}
 	}

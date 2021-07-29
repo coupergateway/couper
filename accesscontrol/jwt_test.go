@@ -93,7 +93,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 			{"Priv", fields{
 				algorithm: alg,
 				pubKey:    privKeyBytes,
-			}, "configuration error: test_ac: key is not a valid RSA public key"},
+			}, "key is not a valid RSA public key"},
 		}
 
 		for _, tt := range tests {
@@ -118,9 +118,8 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 					Source:         ac.NewJWTSource("", "Authorization"),
 				})
 				if jerr != nil {
-					gerr := jerr.(errors.GoError)
-					if tt.wantErr != gerr.LogError() {
-						subT.Errorf("error: %v, want: %v", gerr.LogError(), tt.wantErr)
+					if tt.wantErr != jerr.Error() {
+						subT.Errorf("error: %v, want: %v", jerr.Error(), tt.wantErr)
 					}
 				} else if tt.wantErr != "" {
 					subT.Errorf("error expected: %v", tt.wantErr)
