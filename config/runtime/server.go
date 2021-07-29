@@ -31,6 +31,7 @@ import (
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
+	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
 )
 
@@ -409,8 +410,8 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*config.OidcConfig, error) {
-	oidcConfigs := make(map[string]*config.OidcConfig)
+func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*oidc.OidcConfig, error) {
+	oidcConfigs := make(map[string]*oidc.OidcConfig)
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
@@ -419,7 +420,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				return nil, confErr.With(err)
 			}
 
-			oidcConfig, err := config.NewOidcConfig(oidcConf, backend, memStore)
+			oidcConfig, err := oidc.NewOidcConfig(oidcConf, backend, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -431,7 +432,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	return oidcConfigs, nil
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*config.OidcConfig) (ACDefinitions, error) {
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*oidc.OidcConfig) (ACDefinitions, error) {
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {

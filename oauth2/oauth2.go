@@ -15,7 +15,6 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	// "github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 )
 

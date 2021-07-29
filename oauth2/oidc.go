@@ -12,15 +12,8 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/oauth2/oidc"
 )
-
-// OIDC represents an oidc configuration.
-type OidcConfiguration struct {
-	AuthorizationEndpoint string `json:"authorization_endpoint"`
-	Issuer                string `json:"issuer"`
-	TokenEndpoint         string `json:"token_endpoint"`
-	UserinfoEndpoint      string `json:"userinfo_endpoint"`
-}
 
 // OidcClient represents an OIDC client using the authorization code flow.
 type OidcClient struct {
@@ -29,7 +22,7 @@ type OidcClient struct {
 }
 
 // NewOidc creates a new OIDC client.
-func NewOidc(oidcConfig *config.OidcConfig) (*OidcClient, error) {
+func NewOidc(oidcConfig *oidc.OidcConfig) (*OidcClient, error) {
 	verifierMethod, err := oidcConfig.GetVerifierMethod()
 	if err != nil {
 		return nil, err

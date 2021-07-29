@@ -25,6 +25,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
 )
 
@@ -232,7 +233,7 @@ func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 }
 
 // WithOidcConfig adds the OidcConfig config structs.
-func (c *Context) WithOidcConfig(os map[string]*config.OidcConfig) *Context {
+func (c *Context) WithOidcConfig(os map[string]*oidc.OidcConfig) *Context {
 	if c.oauth2 == nil {
 		c.oauth2 = make([]config.OAuth2Authorization, 0)
 	}
