@@ -1,10 +1,10 @@
 package writer_test
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
+	"os"
 	"testing"
 	"time"
 
@@ -16,7 +16,7 @@ func TestGzip_Flush(t *testing.T) {
 	helper := test.New(t)
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		bytes, err := ioutil.ReadFile("gzip.go")
+		bytes, err := os.ReadFile("gzip.go")
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			_, _ = rw.Write([]byte(err.Error()))

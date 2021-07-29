@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,7 +51,7 @@ func (c *Client) requestToken(ctx context.Context, requestParams map[string]stri
 		return nil, err
 	}
 
-	tokenResBytes, err := ioutil.ReadAll(tokenRes.Body)
+	tokenResBytes, err := io.ReadAll(tokenRes.Body)
 	if err != nil {
 		return nil, errors.Backend.Label(c.asConfig.Reference()).Message("token request read error").With(err)
 	}

@@ -2,7 +2,6 @@ package docs_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -51,7 +50,7 @@ func TestDocs_Links(t *testing.T) {
 		if file.IsDir() || !isMarkdownFilename(file.Name()) {
 			continue
 		}
-		raw, readErr := ioutil.ReadFile(file.Name())
+		raw, readErr := os.ReadFile(file.Name())
 		helper.Must(readErr)
 
 		regexLinks := regexp.MustCompile(`]\((\w+\.md)?#([^)]+)\)`)

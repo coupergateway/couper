@@ -3,7 +3,6 @@ package validation_test
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -29,7 +28,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ct := req.Header.Get("Content-Type")
 		if ct != "" {
-			n, err := io.Copy(ioutil.Discard, req.Body)
+			n, err := io.Copy(io.Discard, req.Body)
 			helper.Must(err)
 			if n == 0 {
 				t.Error("Expected body content")
@@ -102,7 +101,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 
 			if tt.wantBody {
 				var n int64
-				n, err = io.Copy(ioutil.Discard, res.Body)
+				n, err = io.Copy(io.Discard, res.Body)
 				if err != nil {
 					t.Error(err)
 				}

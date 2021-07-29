@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -152,7 +151,7 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response, requestValidationInput
 	}
 
 	responseValidationInput := &openapi3filter.ResponseValidationInput{
-		Body:                   ioutil.NopCloser(&bytes.Buffer{}),
+		Body:                   io.NopCloser(&bytes.Buffer{}),
 		Header:                 beresp.Header.Clone(),
 		Options:                v.options.filterOptions,
 		RequestValidationInput: requestValidationInput,

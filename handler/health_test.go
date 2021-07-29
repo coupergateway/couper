@@ -2,7 +2,7 @@ package handler_test
 
 import (
 	"compress/gzip"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -87,7 +87,7 @@ func TestHealth_ServeHTTP(t *testing.T) {
 			}
 
 			if tt.fields.gzip && rw.Header().Get("Content-Encoding") != "gzip" {
-				b, _ := ioutil.ReadAll(res.Body)
+				b, _ := io.ReadAll(res.Body)
 				subT.Errorf("Expected gzip response, got: %q", string(b))
 				return
 			}
@@ -100,7 +100,7 @@ func TestHealth_ServeHTTP(t *testing.T) {
 				}
 				body = b
 			}
-			bytes, err := ioutil.ReadAll(body)
+			bytes, err := io.ReadAll(body)
 			if err != nil {
 				subT.Error(err)
 			}

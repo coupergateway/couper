@@ -1,7 +1,7 @@
 package reader
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/avenga/couper/errors"
@@ -32,7 +32,7 @@ func ReadFromFile(context, path string) ([]byte, error) {
 	if err != nil {
 		return nil, readErr.With(err)
 	}
-	b, err := ioutil.ReadFile(absPath)
+	b, err := os.ReadFile(absPath)
 	if err != nil {
 		return nil, readErr.With(err)
 	}

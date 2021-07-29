@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
@@ -321,7 +320,7 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 	}
 
 	body, _ := req.GetBody()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return cty.NilVal, jsonBody
 	}
@@ -339,7 +338,7 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	b, err := ioutil.ReadAll(beresp.Body)
+	b, err := io.ReadAll(beresp.Body)
 	if err != nil {
 		return cty.NilVal, jsonBody
 	}

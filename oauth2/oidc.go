@@ -3,7 +3,7 @@ package oauth2
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -210,7 +210,7 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 		return nil, err
 	}
 
-	userinfoResBytes, err := ioutil.ReadAll(userinfoRes.Body)
+	userinfoResBytes, err := io.ReadAll(userinfoRes.Body)
 	if err != nil {
 		return nil, errors.Backend.Label(o.asConfig.Reference()).Message("userinfo request read error").With(err)
 	}

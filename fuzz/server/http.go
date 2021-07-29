@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -123,7 +122,7 @@ func Fuzz(data []byte) int {
 		return 1 // useful input
 	}
 
-	logData, err := ioutil.ReadAll(logs)
+	logData, err := io.ReadAll(logs)
 	if err != nil {
 		panic("reading log-data:" + err.Error())
 	}

@@ -2,7 +2,7 @@ package server_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path"
 	"testing"
@@ -135,7 +135,7 @@ func TestIntegration_FormParams(t *testing.T) {
 			req, err := http.NewRequest(tc.method, "http://example.com:8080/", nil)
 			helper.Must(err)
 
-			req.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(tc.post)))
+			req.Body = io.NopCloser(bytes.NewBuffer([]byte(tc.post)))
 			if tc.ct != "" {
 				req.Header.Set("Content-Type", tc.ct)
 			}
@@ -153,7 +153,7 @@ func TestIntegration_FormParams(t *testing.T) {
 				t.Errorf("%d: Expected message log: %s", i, tc.expErr)
 			}
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()

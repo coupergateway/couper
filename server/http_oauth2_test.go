@@ -3,7 +3,7 @@ package server_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -146,7 +146,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 
 		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.URL.Path == "/options" {
-				reqBody, _ := ioutil.ReadAll(req.Body)
+				reqBody, _ := io.ReadAll(req.Body)
 				authorization := req.Header.Get("Authorization")
 
 				if tc.expBody != string(reqBody) {
@@ -348,7 +348,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 				subT.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
-			tokenResBytes, err := ioutil.ReadAll(res.Body)
+			tokenResBytes, err := io.ReadAll(res.Body)
 			var jData map[string]interface{}
 			json.Unmarshal(tokenResBytes, &jData)
 			if params, ok := jData["form_params"]; ok {

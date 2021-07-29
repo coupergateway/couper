@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -380,7 +379,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				res, err := client.Do(req)
 				helper.Must(err)
 
-				resBytes, err := ioutil.ReadAll(res.Body)
+				resBytes, err := io.ReadAll(res.Body)
 				helper.Must(err)
 
 				_ = res.Body.Close()
@@ -430,7 +429,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -456,7 +455,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -493,7 +492,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -603,10 +602,10 @@ func TestHTTPServer_Gzip(t *testing.T) {
 				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
 			}
 
-			resBytes, err := ioutil.ReadAll(body)
+			resBytes, err := io.ReadAll(body)
 			helper.Must(err)
 
-			srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
+			srcBytes, err := os.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
 			helper.Must(err)
 
 			if !bytes.Equal(resBytes, srcBytes) {
@@ -701,7 +700,7 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -765,7 +764,7 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -952,7 +951,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				t.Errorf("Missing or invalid header Add-Me-2: %s", a2)
 			}
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -992,7 +991,7 @@ func TestHTTPServer_LogFields(t *testing.T) {
 		t.Fatalf("Unexpected number of log lines: %d", l)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	helper.Must(res.Body.Close())
 
@@ -1043,7 +1042,7 @@ func TestHTTPServer_QueryEncoding(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -1166,7 +1165,7 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1216,7 +1215,7 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -1282,7 +1281,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1580,7 +1579,7 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1689,7 +1688,7 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1741,7 +1740,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -1778,7 +1777,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -1832,7 +1831,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -1888,7 +1887,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -2041,7 +2040,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -2114,7 +2113,7 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				res, err := client.Do(req)
 				helper.Must(err)
 
-				resBytes, err := ioutil.ReadAll(res.Body)
+				resBytes, err := io.ReadAll(res.Body)
 				helper.Must(err)
 
 				_ = res.Body.Close()
@@ -2257,7 +2256,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 				t.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
 			}
 
-			b, err := ioutil.ReadAll(res.Body)
+			b, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			type payload struct {
@@ -2345,7 +2344,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 				return
 			}
 
-			b, err := ioutil.ReadAll(res.Body)
+			b, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			type payload struct {
@@ -2578,7 +2577,7 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -2680,7 +2679,7 @@ func TestEndpoint_Response(t *testing.T) {
 				helper.Must(err)
 			}
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			helper.Must(res.Body.Close())
 

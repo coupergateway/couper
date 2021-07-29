@@ -2,7 +2,6 @@ package configload
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func LoadFile(filePath string) (*config.Couper, error) {
 
 	filename := filepath.Base(filePath)
 
-	src, err := ioutil.ReadFile(filename)
+	src, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}

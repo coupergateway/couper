@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -65,7 +65,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 	helper.Must(err)
 
-	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
+	spaContent, err := os.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
 	port := runtime.Port(conf.Settings.DefaultPort)
@@ -104,7 +104,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 			t.Errorf("%.2d: expected status %d, got %d", i+1, testCase.expectedStatus, res.StatusCode)
 		}
 
-		result, err := ioutil.ReadAll(res.Body)
+		result, err := io.ReadAll(res.Body)
 		helper.Must(err)
 		helper.Must(res.Body.Close())
 
@@ -155,7 +155,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	helper.Must(err)
 
 	error404Content := []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>")
-	spaContent, err := ioutil.ReadFile(conf.Servers[0].Spa.BootstrapFile)
+	spaContent, err := os.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
 	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
@@ -223,7 +223,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 			t.Fatalf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
 		}
 
-		result, err := ioutil.ReadAll(res.Body)
+		result, err := io.ReadAll(res.Body)
 		helper.Must(err)
 		helper.Must(res.Body.Close())
 
@@ -341,7 +341,7 @@ server "zipzip" {
 		}
 	}
 
-	b, err := ioutil.ReadAll(res.Body)
+	b, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	helper.Must(res.Body.Close())
 
