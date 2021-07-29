@@ -2328,21 +2328,21 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
-			helper := test.New(subT)
+			h := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
-			helper.Must(err)
+			h.Must(err)
 
 			for k, v := range tc.header {
 				req.Header.Set(k, v[0])
 			}
 
 			res, err := client.Do(req)
-			helper.Must(err)
+			h.Must(err)
 
 			resBytes, err := io.ReadAll(res.Body)
-			helper.Must(err)
+			h.Must(err)
 
 			_ = res.Body.Close()
 
