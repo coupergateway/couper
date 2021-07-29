@@ -2307,28 +2307,25 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				FormBody: map[string][]string{},
 			},
 		},
-		/*
-			// FIXME: FormBody is currently empty
-			{
-				"form_body",
-				"/form_body",
-				http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
-				strings.NewReader(`s=abcd1234`),
-				expectation{
-					Method:   "POST",
-					Protocol: resourceOrigin.Scheme,
-					Host:     resourceOrigin.Hostname(),
-					Port:     port,
-					Path:     "/resource",
-					Query:    map[string][]string{"foo": []string{"bar"}},
-					Origin:   ResourceOrigin.URL,
-					Url:      ResourceOrigin.URL + "/resource?foo=bar",
-					Body:     `s=abcd1234`,
-					JsonBody: map[string]interface{}{},
-					FormBody: map[string][]string{"s": []string{"abcd1234"}},
-				},
+		{
+			"form_body",
+			"/form_body",
+			http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			strings.NewReader(`s=abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: resourceOrigin.Scheme,
+				Host:     resourceOrigin.Hostname(),
+				Port:     port,
+				Path:     "/resource",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   ResourceOrigin.URL,
+				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				Body:     `s=abcd1234`,
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{"s": []string{"abcd1234"}},
 			},
-		*/
+		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)

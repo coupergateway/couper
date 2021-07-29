@@ -72,10 +72,6 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 		// reset body initially, additional body reads which are not depending on http.Request
 		// internals like form parsing should just call GetBody() and use the returned reader.
 		SetBody(req, buf.Bytes())
-
-		// parsing form data now since they read/write request attributes which could be
-		// difficult with multiple routines later on.
-		parseForm(req)
 	}
 
 	return nil
@@ -96,6 +92,10 @@ func SetBody(req *http.Request, body []byte) {
 	cl := len(bodyBytes)
 	req.Header.Set("Content-Length", strconv.Itoa(cl))
 	req.ContentLength = int64(cl)
+
+	// parsing form data now since they read/write request attributes which could be
+	// difficult with multiple routines later on.
+	parseForm(req)
 }
 
 func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) error {

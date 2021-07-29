@@ -24,9 +24,6 @@ server "backend_requests" {
       method    = "POST"
       url       = "{{.rsOrigin}}/resource?foo=bar"
       form_body = request.form_body
-#      form_body = {
-#        s = "abcd1234"
-#      }
     }
     response {
       json_body = backend_requests.default
