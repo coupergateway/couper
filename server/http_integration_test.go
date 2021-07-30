@@ -2195,7 +2195,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
