@@ -72,7 +72,7 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 		post.Set("scope", scope)
 	}
 	if acClientConfig, ok := c.clientConfig.(config.OAuth2AcClient); ok && grantType == "authorization_code" {
-		post.Set("redirect_uri", *acClientConfig.GetRedirectURI())
+		post.Set("redirect_uri", acClientConfig.GetRedirectURI())
 	}
 	if requestParams != nil {
 		for key, value := range requestParams {

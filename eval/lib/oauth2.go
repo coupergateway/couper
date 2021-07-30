@@ -47,7 +47,7 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 			query := oauthAuthorizationUrl.Query()
 			query.Set("response_type", "code")
 			query.Set("client_id", oauth2.GetClientID())
-			query.Set("redirect_uri", *oauth2.GetRedirectURI())
+			query.Set("redirect_uri", oauth2.GetRedirectURI())
 			if scope := oauth2.GetScope(); scope != "" {
 				query.Set("scope", scope)
 			}

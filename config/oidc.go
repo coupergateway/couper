@@ -13,7 +13,7 @@ type OIDC struct {
 	ClientSecret            string   `hcl:"client_secret"`
 	ConfigurationURL        string   `hcl:"configuration_url"`
 	Name                    string   `hcl:"name,label"`
-	RedirectURI             *string  `hcl:"redirect_uri"`
+	RedirectURI             string   `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
@@ -80,7 +80,7 @@ func (o OIDC) GetScope() string {
 	return "openid " + *o.Scope
 }
 
-func (o OIDC) GetRedirectURI() *string {
+func (o OIDC) GetRedirectURI() string {
 	return o.RedirectURI
 }
 
