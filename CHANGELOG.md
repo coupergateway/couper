@@ -14,7 +14,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Missing error type for [request](docs/REFERENCE.md#request-block)/[response](docs/REFERENCE.md#response-block) body, json_body or form_body related HCL evaluation errors ([#276](https://github.com/avenga/couper/pull/276))
 
 * [**Beta**](./docs/BETA.md)
-  * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions), [`beta_oauth_code_verifier()`](./docs/REFERENCE.md#functions) and [`beta_oauth_csrf_token()` functions](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
+  * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
+  * OIDC Authorization Code Grant Flow: [`beta_oidc {}` block](./docs/REFERENCE.md#oidc-block-beta) ([#273](https://github.com/avenga/couper/pull/273))
 
 ---
 

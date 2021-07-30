@@ -3,7 +3,7 @@ package server_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,9 +12,9 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
-	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/oauth2"
 )
 
 func TestEndpoints_OAuth2(t *testing.T) {
@@ -146,7 +146,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 
 		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.URL.Path == "/options" {
-				reqBody, _ := ioutil.ReadAll(req.Body)
+				reqBody, _ := io.ReadAll(req.Body)
 				authorization := req.Header.Get("Authorization")
 
 				if tc.expBody != string(reqBody) {
@@ -204,7 +204,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 	helper := test.New(t)
 
 	st := "qeirtbnpetrbi"
-	state := accesscontrol.Base64urlSha256(st)
+	state := oauth2.Base64urlSha256(st)
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/token" {
@@ -276,6 +276,17 @@ func TestOAuth2AccessControl(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
@@ -296,13 +307,13 @@ func TestOAuth2AccessControl(t *testing.T) {
 		{"no code, but error", "04_couper.hcl", "/cb?error=qeuboub", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: missing code query parameter; query=\"error=qeuboub\""},
 		{"no code; error handler", "05_couper.hcl", "/cb?error=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusBadRequest, "", "", "access control error: ac: missing code query parameter; query=\"error=qeuboub\""},
 		{"code, missing state param", "06_couper.hcl", "/cb?code=qeuboub", http.Header{"Cookie": []string{"st=qerbnr"}}, http.StatusForbidden, "", "", "access control error: ac: missing state query parameter; query=\"code=qeuboub\""},
-		{"code, wrong state param", "06_couper.hcl", "/cb?code=qeuboub&state=wrong", http.Header{"Cookie": []string{"st=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: \"wrong\" (from query param) vs. \"qeirtbnpetrbi\" (s256: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\")"},
-		{"code, state param, wrong CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (from query param) vs. \"qeirtbnpetrbi-wrong\" (s256: \"Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A\")"},
-		{"code, state param, missing CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty CSRF token_value"},
+		{"code, wrong state param", "06_couper.hcl", "/cb?code=qeuboub&state=wrong", http.Header{"Cookie": []string{"st=" + st}}, http.StatusForbidden, "", "", "access control error: ac: state mismatch: \"wrong\" (from query param) vs. \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (verifier_value: \"qeirtbnpetrbi\")"},
+		{"code, state param, wrong CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: state mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (from query param) vs. \"Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A\" (verifier_value: \"qeirtbnpetrbi-wrong\")"},
+		{"code, state param, missing CSRF token", "06_couper.hcl", "/cb?code=qeuboub&state=" + state, http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty verifier_value"},
 		{"code, missing nonce", "07_couper.hcl", "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing nonce claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"sub\":\"myself\"}'"},
-		{"code, wrong nonce", "07_couper.hcl", "/cb?code=qeuboub-wn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ-wrong\" (from nonce claim) vs. \"qeirtbnpetrbi\" (s256: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\")"},
-		{"code, nonce, wrong CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: CSRF token mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (from nonce claim) vs. \"qeirtbnpetrbi-wrong\" (s256: \"Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A\")"},
-		{"code, nonce, missing CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty CSRF token_value"},
+		{"code, wrong nonce", "07_couper.hcl", "/cb?code=qeuboub-wn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: nonce mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ-wrong\" (from nonce claim) vs. \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (verifier_value: \"qeirtbnpetrbi\")"},
+		{"code, nonce, wrong CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: nonce mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (from nonce claim) vs. \"Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A\" (verifier_value: \"qeirtbnpetrbi-wrong\")"},
+		{"code, nonce, missing CSRF token", "07_couper.hcl", "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty verifier_value"},
 		{"code, missing sub claim", "07_couper.hcl", "/cb?code=qeuboub-msub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing sub claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\"}'"},
 		{"code, sub mismatch", "07_couper.hcl", "/cb?code=qeuboub-wsub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: subject mismatch, in ID token \"me\", in userinfo response \"myself\""},
 		{"code, missing exp claim", "07_couper.hcl", "/cb?code=qeuboub-mexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: missing exp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
@@ -337,7 +348,7 @@ func TestOAuth2AccessControl(t *testing.T) {
 				subT.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
-			tokenResBytes, err := ioutil.ReadAll(res.Body)
+			tokenResBytes, err := io.ReadAll(res.Body)
 			var jData map[string]interface{}
 			json.Unmarshal(tokenResBytes, &jData)
 			if params, ok := jData["form_params"]; ok {

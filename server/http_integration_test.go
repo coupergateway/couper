@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -26,13 +25,13 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/oauth2"
 )
 
 var (
@@ -380,7 +379,7 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				res, err := client.Do(req)
 				helper.Must(err)
 
-				resBytes, err := ioutil.ReadAll(res.Body)
+				resBytes, err := io.ReadAll(res.Body)
 				helper.Must(err)
 
 				_ = res.Body.Close()
@@ -430,7 +429,7 @@ func TestHTTPServer_HostHeader(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -456,7 +455,7 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -493,7 +492,7 @@ func TestHTTPServer_XFHHeader(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -603,10 +602,10 @@ func TestHTTPServer_Gzip(t *testing.T) {
 				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
 			}
 
-			resBytes, err := ioutil.ReadAll(body)
+			resBytes, err := io.ReadAll(body)
 			helper.Must(err)
 
-			srcBytes, err := ioutil.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
+			srcBytes, err := os.ReadFile(filepath.Join(testWorkingDir, "testdata/integration/files/htdocs_c_gzip"+tc.path))
 			helper.Must(err)
 
 			if !bytes.Equal(resBytes, srcBytes) {
@@ -701,7 +700,7 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -765,7 +764,7 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -952,7 +951,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				t.Errorf("Missing or invalid header Add-Me-2: %s", a2)
 			}
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -992,7 +991,7 @@ func TestHTTPServer_LogFields(t *testing.T) {
 		t.Fatalf("Unexpected number of log lines: %d", l)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	helper.Must(res.Body.Close())
 
@@ -1043,7 +1042,7 @@ func TestHTTPServer_QueryEncoding(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -1166,7 +1165,7 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1216,7 +1215,7 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -1282,7 +1281,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1580,7 +1579,7 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1689,7 +1688,7 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			res.Body.Close()
 
@@ -1741,7 +1740,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -1778,7 +1777,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -1832,7 +1831,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -1888,7 +1887,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
 	_ = res.Body.Close()
@@ -2041,7 +2040,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -2114,7 +2113,7 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				res, err := client.Do(req)
 				helper.Must(err)
 
-				resBytes, err := ioutil.ReadAll(res.Body)
+				resBytes, err := io.ReadAll(res.Body)
 				helper.Must(err)
 
 				_ = res.Body.Close()
@@ -2257,7 +2256,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 				t.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
 			}
 
-			b, err := ioutil.ReadAll(res.Body)
+			b, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			type payload struct {
@@ -2345,7 +2344,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 				return
 			}
 
-			b, err := ioutil.ReadAll(res.Body)
+			b, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			type payload struct {
@@ -2578,7 +2577,7 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -2680,7 +2679,7 @@ func TestEndpoint_Response(t *testing.T) {
 				helper.Must(err)
 			}
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 			helper.Must(res.Body.Close())
 
@@ -2786,7 +2785,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 
 	helper := test.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -2797,72 +2796,57 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 		return
 	}
 
-	cv1 := res.Header.Get("x-cv-1")
-	cv2 := res.Header.Get("x-cv-2")
-	ccp := res.Header.Get("x-cc-plain")
-	ccs := res.Header.Get("x-cc-s256")
-	if cv2 != cv1 {
-		t.Errorf("multiple calls to oauth_code_verifier() must return the same value:\n\t%s\n\t%s", cv1, cv2)
+	v1 := res.Header.Get("x-v-1")
+	v2 := res.Header.Get("x-v-2")
+	hv := res.Header.Get("x-hv")
+	if v2 != v1 {
+		t.Errorf("multiple calls to beta_oauth_verifier() must return the same value:\n\t%s\n\t%s", v1, v2)
 	}
-	if ccp != cv1 {
-		t.Errorf("call to oauth_code_challenge(\"plain\") must return the same value as call to oauth_code_verifier():\n\t%s\n\t%s", ccp, cv1)
-	}
-	s256 := accesscontrol.Base64urlSha256(cv1)
-	if ccs != s256 {
-		t.Errorf("call to oauth_code_challenge(\"S256\") returns wrong value:\nactual:\t\t%s\nexpected:\t%s", ccs, s256)
+	s256 := oauth2.Base64urlSha256(v1)
+	if hv != s256 {
+		t.Errorf("call to internal_oauth_hashed_verifier() returns wrong value:\nactual:\t\t%s\nexpected:\t%s", hv, s256)
 	}
 	au, err := url.Parse(res.Header.Get("x-au-pkce"))
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile email" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
 	}
 	if auq.Get("code_challenge_method") != "S256" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
-	if auq.Get("code_challenge") != ccs {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), ccs)
+	if auq.Get("code_challenge") != hv {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
 	if auq.Get("nonce") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
 
 	res, err = client.Do(req)
 	helper.Must(err)
 
-	cv1_n := res.Header.Get("x-cv-1")
-	if cv1_n == cv1 {
-		t.Errorf("calls to oauth_code_verifier() on different requests must not return the same value:\n\t%s\n\t%s", cv1, cv1_n)
-	}
-
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-nok", nil)
-	helper.Must(err)
-
-	res, err = client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != 500 {
-		t.Errorf("/pkce-nok: expected Status %d, got: %d", 500, res.StatusCode)
-		return
+	cv1_n := res.Header.Get("x-v-1")
+	if cv1_n == v1 {
+		t.Errorf("calls to beta_oauth_verifier() on different requests must not return the same value:\n\t%s\n\t%s", v1, cv1_n)
 	}
 }
 
-func TestOAuthCSRFFunctions(t *testing.T) {
+func TestOAuthStateFunctions(t *testing.T) {
 	client := newClient()
 
 	shutdown, _ := newCouper("testdata/integration/functions/02_couper.hcl", test.New(t))
@@ -2870,7 +2854,7 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 
 	helper := test.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
 	helper.Must(err)
 
 	res, err := client.Do(req)
@@ -2881,79 +2865,293 @@ func TestOAuthCSRFFunctions(t *testing.T) {
 		return
 	}
 
-	ct1 := res.Header.Get("x-ct-1")
-	ct2 := res.Header.Get("x-ct-2")
-	cht := res.Header.Get("x-cht")
-	if ct2 != ct1 {
-		t.Errorf("multiple calls to oauth_csrf_token() must return the same value:\n\t%s\n\t%s", ct1, ct2)
-	}
-	s256 := accesscontrol.Base64urlSha256(ct1)
-	if cht != s256 {
-		t.Errorf("call to oauth_hashed_csrf_token() returns wrong value:\n\tactual: %s\n\texpected: %s", cht, s256)
-	}
+	hv := res.Header.Get("x-hv")
 	au, err := url.Parse(res.Header.Get("x-au-state"))
 	helper.Must(err)
 	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
 	if auq.Get("scope") != "openid profile" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
 	}
 	if auq.Get("code_challenge_method") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
 	}
 	if auq.Get("code_challenge") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
 	}
-	if auq.Get("state") != cht {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), cht)
+	if auq.Get("state") != hv {
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), hv)
 	}
 	if auq.Get("nonce") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
-	au, err = url.Parse(res.Header.Get("x-au-nonce"))
+}
+
+func TestOIDCPKCEFunctions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
-	auq = au.Query()
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	hv := res.Header.Get("x-hv")
+	au, err := url.Parse(res.Header.Get("x-au-pkce"))
+	helper.Must(err)
+	auq := au.Query()
 	if auq.Get("response_type") != "code" {
-		t.Errorf("oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
 	}
 	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
-		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
 	}
-	if auq.Get("scope") != "openid profile" {
-		t.Errorf("oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+	if auq.Get("scope") != "openid profile email" {
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
 	}
-	if auq.Get("code_challenge_method") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	if auq.Get("code_challenge_method") != "S256" {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
 	}
-	if auq.Get("code_challenge") != "" {
-		t.Errorf("oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	if auq.Get("code_challenge") != hv {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
 	}
 	if auq.Get("state") != "" {
-		t.Errorf("oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
 	}
-	if auq.Get("nonce") != cht {
-		t.Errorf("oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), cht)
+	if auq.Get("nonce") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
 	}
 	if auq.Get("client_id") != "foo" {
-		t.Errorf("oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestOIDCNonceFunctions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
 	}
 
-	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce-ok", nil)
+	hv := res.Header.Get("x-hv")
+	au, err := url.Parse(res.Header.Get("x-au-nonce"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile" {
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+	}
+	if auq.Get("code_challenge_method") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	}
+	if auq.Get("code_challenge") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != hv {
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestOIDCDefaultPKCEFunctions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo",
+			"code_challenge_methods_supported": ["S256"]
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/default", nil)
 	helper.Must(err)
 
-	res, err = client.Do(req)
+	res, err := client.Do(req)
 	helper.Must(err)
 
-	ct1_n := res.Header.Get("x-ct-1")
-	if ct1_n == ct1 {
-		t.Errorf("calls to oauth_csrf_token() on different requests must not return the same value:\n\t%s\n\t%s", ct1, ct1_n)
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	hv := res.Header.Get("x-hv")
+	au, err := url.Parse(res.Header.Get("x-au-default"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile email address" {
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile email")
+	}
+	if auq.Get("code_challenge_method") != "S256" {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "S256")
+	}
+	if auq.Get("code_challenge") != hv {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), hv)
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), "")
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestOIDCDefaultNonceFunctions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/default", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 200 {
+		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
+		return
+	}
+
+	hv := res.Header.Get("x-hv")
+	au, err := url.Parse(res.Header.Get("x-au-default"))
+	helper.Must(err)
+	auq := au.Query()
+	if auq.Get("response_type") != "code" {
+		t.Errorf("beta_oauth_authorization_url(): wrong response_type query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("response_type"), "code")
+	}
+	if auq.Get("redirect_uri") != "http://localhost:8085/oidc/callback" {
+		t.Errorf("beta_oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://localhost:8085/oidc/callback")
+	}
+	if auq.Get("scope") != "openid profile email address" {
+		t.Errorf("beta_oauth_authorization_url(): wrong scope query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("scope"), "openid profile")
+	}
+	if auq.Get("code_challenge_method") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge_method:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge_method"), "")
+	}
+	if auq.Get("code_challenge") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong code_challenge:\nactual:\t\t%s\nexpected:\t%s", auq.Get("code_challenge"), "")
+	}
+	if auq.Get("state") != "" {
+		t.Errorf("beta_oauth_authorization_url(): wrong state:\nactual:\t\t%s\nexpected:\t%s", auq.Get("state"), "")
+	}
+	if auq.Get("nonce") != hv {
+		t.Errorf("beta_oauth_authorization_url(): wrong nonce:\nactual:\t\t%s\nexpected:\t%s", auq.Get("nonce"), hv)
+	}
+	if auq.Get("client_id") != "foo" {
+		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
 }

@@ -2,7 +2,6 @@ package configload
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func LoadFile(filePath string) (*config.Couper, error) {
 
 	filename := filepath.Base(filePath)
 
-	src, err := ioutil.ReadFile(filename)
+	src, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -152,7 +151,31 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					return nil, err
 				}
 
+				bodyContent, _, diags := oauth2Config.HCLBody().PartialContent(oauth2Config.Schema(true))
+				if diags.HasErrors() {
+					return nil, diags
+				}
+				oauth2Config.BodyContent = bodyContent
+
 				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			for _, oidcConfig := range couperConfig.Definitions.OIDC {
+				err := uniqueAttributeKey(oidcConfig.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
+				if diags.HasErrors() {
+					return nil, diags
+				}
+				oidcConfig.BodyContent = bodyContent
+
+				oidcConfig.Backend, err = newBackend(definedBackends, oidcConfig)
 				if err != nil {
 					return nil, err
 				}
@@ -170,6 +193,9 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 			for _, acConfig := range couperConfig.Definitions.OAuth2AC {
+				acErrorHandler = append(acErrorHandler, acConfig)
+			}
+			for _, acConfig := range couperConfig.Definitions.OIDC {
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}
 
@@ -266,7 +292,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 	couperConfig.Context = evalContext.
 		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
-		WithOAuth2(couperConfig.Definitions.OAuth2AC).
+		WithOAuth2AC(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.

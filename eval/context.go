@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
@@ -25,6 +24,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
 )
 
@@ -48,7 +48,7 @@ type Context struct {
 	eval         *hcl.EvalContext
 	inner        context.Context
 	memorize     map[string]interface{}
-	oauth2       []*config.OAuth2AC
+	oauth2       []config.OAuth2Authorization
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
 }
@@ -220,11 +220,24 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	return c
 }
 
-// WithOAuth2 initially setup the lib.FnOAuthAuthorizationUrl function.
-func (c *Context) WithOAuth2(o []*config.OAuth2AC) *Context {
-	c.oauth2 = o
+// WithOAuth2AC adds the OAuth2AC config structs.
+func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 	if c.oauth2 == nil {
-		c.oauth2 = make([]*config.OAuth2AC, 0)
+		c.oauth2 = make([]config.OAuth2Authorization, 0)
+	}
+	for _, o := range os {
+		c.oauth2 = append(c.oauth2, *o)
+	}
+	return c
+}
+
+// WithOidcConfig adds the OidcConfig config structs.
+func (c *Context) WithOidcConfig(os map[string]*oidc.OidcConfig) *Context {
+	if c.oauth2 == nil {
+		c.oauth2 = make([]config.OAuth2Authorization, 0)
+	}
+	for _, o := range os {
+		c.oauth2 = append(c.oauth2, o)
 	}
 	return c
 }
@@ -250,10 +263,8 @@ func (c *Context) createOAuth2Functions() {
 		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
 		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
 	}
-	c.eval.Functions[lib.FnOAuthCodeVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.FnOAuthCsrfToken] = c.eval.Functions[lib.FnOAuthCodeVerifier]
-	c.eval.Functions[lib.FnOAuthCodeChallenge] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.FnOAuthHashedCsrfToken] = lib.NewOAuthHashedCsrfTokenFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
@@ -309,7 +320,7 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 	}
 
 	body, _ := req.GetBody()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return cty.NilVal, jsonBody
 	}
@@ -327,7 +338,7 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	b, err := ioutil.ReadAll(beresp.Body)
+	b, err := io.ReadAll(beresp.Body)
 	if err != nil {
 		return cty.NilVal, jsonBody
 	}

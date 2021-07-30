@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"flag"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -200,7 +200,7 @@ func newLogger(format string, pretty bool) *logrus.Entry {
 
 	if testHook != nil {
 		logger.AddHook(testHook)
-		logger.Out = ioutil.Discard
+		logger.Out = io.Discard
 	}
 
 	settings := &config.Settings{

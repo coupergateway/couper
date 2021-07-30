@@ -2,7 +2,7 @@ package validation
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -32,7 +32,7 @@ func NewOpenAPIOptions(openapi *config.OpenAPI) (*OpenAPIOptions, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
 	}

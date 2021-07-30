@@ -2,50 +2,47 @@ package transport
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/oauth2"
 )
 
 var _ http.RoundTripper = &OAuth2ReqAuth{}
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
-	oauth2   *OAuth2
-	config   *config.OAuth2ReqAuth
-	memStore *cache.MemoryStore
-	next     http.RoundTripper
+	oauth2Client *oauth2.Client
+	config       *config.OAuth2ReqAuth
+	memStore     *cache.MemoryStore
+	next         http.RoundTripper
 }
 
 // NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2 *OAuth2, next http.RoundTripper) (http.RoundTripper, error) {
-	const grantType = "client_credentials"
-	if conf.GrantType != grantType {
-		return nil, errors.Backend.Label(conf.BackendName).Message("grant_type not supported: " + conf.GrantType)
-	}
-
+	oauth2Client *oauth2.Client, next http.RoundTripper) (http.RoundTripper, error) {
 	return &OAuth2ReqAuth{
-		config:   conf,
-		oauth2:   oauth2,
-		memStore: memStore,
-		next:     next,
+		config:       conf,
+		oauth2Client: oauth2Client,
+		memStore:     memStore,
+		next:         next,
 	}, nil
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
-	requestConfig, err := oa.oauth2.GetRequestConfig(req)
-	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
-	}
-
-	if data := oa.memStore.Get(requestConfig.StorageKey); data != "" {
-		token, terr := readAccessToken(data)
+	storageKey := fmt.Sprintf("%p|%s|%s", &oa.oauth2Client.Backend, oa.config.ClientID, oa.config.ClientSecret)
+	if data := oa.memStore.Get(storageKey); data != "" {
+		token, terr := oa.readAccessToken(data)
 		if terr != nil {
+			// TODO this error is not connected to the OAuth2 client's backend
+			// In fact this can only be a JSON parse error or a missing access_token,
+			// which will occur after having requested the token from the authorization
+			// server. So the erroneous response will never be stored.
 			return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
 		}
 
@@ -54,21 +51,21 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 		return oa.next.RoundTrip(req)
 	}
 
-	tokenResponse, err := oa.oauth2.RequestToken(req.Context(), requestConfig)
-
-	token, err := oa.updateAccessToken(tokenResponse, requestConfig.StorageKey)
+	ctx := req.Context()
+	tokenResponse, tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
 	if err != nil {
-		return nil, errors.Backend.Label(oa.config.BackendName).Message("token update error").With(err)
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
 	}
+
+	oa.updateAccessToken(tokenResponse, tokenResponseData, storageKey)
 
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	res, err := oa.next.RoundTrip(req)
 
 	if res != nil && res.StatusCode == http.StatusUnauthorized {
-		oa.memStore.Del(requestConfig.StorageKey)
+		oa.memStore.Del(storageKey)
 
-		ctx := req.Context()
 		if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
 			ctx = context.WithValue(ctx, request.TokenRequestRetries, retries+1)
 
@@ -82,8 +79,8 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	return res, err
 }
 
-func readAccessToken(data string) (string, error) {
-	_, token, err := ParseAccessToken([]byte(data))
+func (oa *OAuth2ReqAuth) readAccessToken(data string) (string, error) {
+	_, token, err := oauth2.ParseTokenResponse([]byte(data))
 	if err != nil {
 		return "", err
 	}
@@ -91,12 +88,7 @@ func readAccessToken(data string) (string, error) {
 	return token, nil
 }
 
-func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string, error) {
-	jData, token, err := ParseAccessToken(jsonBytes)
-	if err != nil {
-		return "", err
-	}
-
+func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]interface{}, key string) {
 	if oa.memStore != nil {
 		var ttl int64
 		if t, ok := jData["expires_in"].(float64); ok {
@@ -105,6 +97,4 @@ func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, key string) (string
 
 		oa.memStore.Set(key, string(jsonBytes), ttl)
 	}
-
-	return token, nil
 }

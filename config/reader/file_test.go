@@ -1,7 +1,7 @@
 package reader_test
 
 import (
-	"io/ioutil"
+	"os"
 	"reflect"
 	"runtime"
 	"testing"
@@ -11,7 +11,7 @@ import (
 
 func TestReadFromAttrFile(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
-	expBytes, ferr := ioutil.ReadFile(file)
+	expBytes, ferr := os.ReadFile(file)
 	if ferr != nil {
 		t.Fatal(ferr)
 	}

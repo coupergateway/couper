@@ -5,7 +5,7 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"encoding/xml"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"strings"
 	"testing"
@@ -123,7 +123,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 			h.Must(err)
 
 			fr := flate.NewReader(bytes.NewReader(b64Decoded))
-			deflated, err := ioutil.ReadAll(fr)
+			deflated, err := io.ReadAll(fr)
 			h.Must(err)
 
 			var x interface{}

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path"
 	"reflect"
@@ -54,7 +54,7 @@ func TestEndpoints_Protected404(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			resBytes, err := ioutil.ReadAll(res.Body)
+			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
 
 			_ = res.Body.Close()
@@ -105,7 +105,7 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 		t.Errorf("Expected status 404, given %d", res.StatusCode)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 
@@ -140,7 +140,7 @@ func TestEndpoints_BerespBody(t *testing.T) {
 		t.Fatalf("Expected status 200, given %d", res.StatusCode)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 
@@ -180,7 +180,7 @@ func TestEndpoints_ReqBody(t *testing.T) {
 		t.Fatalf("Expected status 200, given %d", res.StatusCode)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 
@@ -288,7 +288,7 @@ func TestEndpoints_Res(t *testing.T) {
 		t.Errorf("Expected status 200, given %d", res.StatusCode)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 
@@ -317,7 +317,7 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 		t.Fatalf("Expected status 200, given %d", res.StatusCode)
 	}
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 
@@ -352,7 +352,7 @@ func TestEndpoints_Muxing(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 
@@ -374,7 +374,7 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	resBytes, err := ioutil.ReadAll(res.Body)
+	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
 	res.Body.Close()
 

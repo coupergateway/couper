@@ -2,7 +2,7 @@ package test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -66,7 +66,7 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 
 		_ = req.ParseForm()
 
-		body, _ := ioutil.ReadAll(req.Body)
+		body, _ := io.ReadAll(req.Body)
 
 		resp := &anything{
 			Args:           req.Form,

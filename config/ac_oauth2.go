@@ -5,28 +5,28 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ OAuth2 = &OAuth2AC{}
+var _ OAuth2AcClient = &OAuth2AC{}
+var _ OAuth2AcAS = &OAuth2AC{}
+var _ OAuth2Authorization = &OAuth2AC{}
 
-// OAuth2AC represents the <OAuth2> access control object.
+// OAuth2AC represents represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
 	AccessControlSetter
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
-	Csrf                    *CSRF    `hcl:"csrf,block"`
 	GrantType               string   `hcl:"grant_type"`
-	Issuer                  string   `hcl:"issuer,optional"`
 	Name                    string   `hcl:"name,label"`
-	Pkce                    *PKCE    `hcl:"pkce,block"`
-	RedirectURI             *string  `hcl:"redirect_uri"`
+	RedirectURI             string   `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	UserinfoEndpoint        string   `hcl:"userinfo_endpoint,optional"`
+	VerifierMethod          string   `hcl:"verifier_method"`
 	// internally used
-	Backend hcl.Body
+	Backend     hcl.Body
+	BodyContent *hcl.BodyContent
 }
 
 func (oa OAuth2AC) HCLBody() hcl.Body {
@@ -37,6 +37,10 @@ func (oa OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
+func (oa *OAuth2AC) GetBodyContent() *hcl.BodyContent {
+	return oa.BodyContent
+}
+
 func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
@@ -44,7 +48,8 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		Backend *Backend `hcl:"backend,block"`
+		Backend       *Backend `hcl:"backend,block"`
+		VerifierValue string   `hcl:"verifier_value"`
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
@@ -55,6 +60,10 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, oa.HCLBody())
+}
+
+func (oa OAuth2AC) GetName() string {
+	return oa.Name
 }
 
 func (oa OAuth2AC) GetClientID() string {
@@ -69,70 +78,30 @@ func (oa OAuth2AC) GetGrantType() string {
 	return oa.GrantType
 }
 
-func (oa OAuth2AC) GetScope() *string {
-	return oa.Scope
+func (oa OAuth2AC) GetScope() string {
+	if oa.Scope == nil {
+		return ""
+	}
+	return *oa.Scope
 }
 
-func (oa OAuth2AC) GetTokenEndpoint() string {
-	return oa.TokenEndpoint
+func (oa OAuth2AC) GetRedirectURI() string {
+	return oa.RedirectURI
+}
+
+func (oa OAuth2AC) GetAuthorizationEndpoint() (string, error) {
+	return oa.AuthorizationEndpoint, nil
+}
+
+func (oa OAuth2AC) GetTokenEndpoint() (string, error) {
+	return oa.TokenEndpoint, nil
 }
 
 func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
 	return oa.TokenEndpointAuthMethod
 }
 
-type PKCE struct {
-	CodeChallengeMethod string   `hcl:"code_challenge_method"`
-	Remain              hcl.Body `hcl:",remain"`
-	// internally used
-	Content *hcl.BodyContent
-}
-
-// HCLBody implements the <Body> interface.
-func (p PKCE) HCLBody() hcl.Body {
-	return p.Remain
-}
-
-// Schema implements the <Inline> interface.
-func (p PKCE) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(p)
-		return schema
-	}
-
-	type Inline struct {
-		CodeVerifierValue string `hcl:"code_verifier_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
-}
-
-type CSRF struct {
-	TokenParam string   `hcl:"token_param"`
-	Remain     hcl.Body `hcl:",remain"`
-	// internally used
-	Content *hcl.BodyContent
-}
-
-// HCLBody implements the <Body> interface.
-func (c CSRF) HCLBody() hcl.Body {
-	return c.Remain
-}
-
-// Schema implements the <Inline> interface.
-func (c CSRF) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(c)
-		return schema
-	}
-
-	type Inline struct {
-		TokenValue string `hcl:"token_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	return schema
+// GetVerifierMethod retrieves the verifier method (ccm_s256 or state)
+func (oa OAuth2AC) GetVerifierMethod() (string, error) {
+	return oa.VerifierMethod, nil
 }

@@ -3,8 +3,8 @@ package errors
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -47,7 +47,7 @@ func NewTemplateFromFile(path string, logger *logrus.Entry) (*Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	tplFile, err := ioutil.ReadFile(absPath)
+	tplFile, err := os.ReadFile(absPath)
 	if err != nil {
 		return nil, err
 	}

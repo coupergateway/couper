@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -58,7 +57,7 @@ func init() {
 `))
 
 	for _, asset := range assets {
-		raw, err := ioutil.ReadFile(path.Join(filesDir, asset.Name()))
+		raw, err := os.ReadFile(path.Join(filesDir, asset.Name()))
 		must(err)
 
 		println("\t" + asset.Name())

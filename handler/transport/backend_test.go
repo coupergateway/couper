@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -153,7 +152,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 		t.Errorf("Unexpected C/L: %s", l)
 	}
 
-	n, err := io.Copy(ioutil.Discard, res.Body)
+	n, err := io.Copy(io.Discard, res.Body)
 	helper.Must(err)
 
 	if n != 6993 {
@@ -365,7 +364,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 	originPayload := []byte(`{ "client": false, "origin": true }`)
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		clientData, err := ioutil.ReadAll(r.Body)
+		clientData, err := io.ReadAll(r.Body)
 		helper.Must(err)
 		if !bytes.Equal(clientData, clientPayload) {
 			t.Errorf("Expected a request with client payload, got %q", string(clientData))
@@ -435,7 +434,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
 			}
 
-			originData, err := ioutil.ReadAll(res.Body)
+			originData, err := io.ReadAll(res.Body)
 			h.Must(err)
 
 			if !bytes.Equal(originPayload, originData) {

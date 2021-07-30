@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -258,7 +257,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 	originPayload := []byte(`{ "client": false, "origin": true, "nil": null }`)
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		clientData, err := ioutil.ReadAll(r.Body)
+		clientData, err := io.ReadAll(r.Body)
 		helper.Must(err)
 		if !bytes.Equal(clientData, clientPayload) {
 			t.Errorf("Expected a request with client payload, got %q", string(clientData))
@@ -349,7 +348,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
 			}
 
-			originData, err := ioutil.ReadAll(res.Body)
+			originData, err := io.ReadAll(res.Body)
 			h.Must(err)
 
 			if !bytes.Equal(originPayload, originData) {

@@ -30,6 +30,8 @@ import (
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/oauth2"
+	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
 )
 
@@ -93,7 +95,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	evalContext := conf.Context.Value(eval.ContextType).(*eval.Context)
 	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
-	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore)
+	oidcConfigs, ocErr := configureOidcConfigs(conf, confCtx, log, memStore)
+	if ocErr != nil {
+		return nil, ocErr
+	}
+	evalContext = evalContext.WithOidcConfig(oidcConfigs)
+
+	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
 		return nil, acErr
 	}
@@ -355,12 +363,12 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			beConf.OAuth2.Retries = &one
 		}
 
-		oauth2, err := transport.NewOAuth2(beConf.OAuth2, authBackend)
+		oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, authBackend)
 		if err != nil {
 			return nil, err
 		}
 
-		return transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2, backend)
+		return transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client, backend)
 	}
 
 	return backend, nil
@@ -402,7 +410,29 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (ACDefinitions, error) {
+func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*oidc.OidcConfig, error) {
+	oidcConfigs := make(map[string]*oidc.OidcConfig)
+	if conf.Definitions != nil {
+		for _, oidcConf := range conf.Definitions.OIDC {
+			confErr := errors.Configuration.Label(oidcConf.Name)
+			backend, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcConfig, err := oidc.NewOidcConfig(oidcConf, backend, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcConfigs[oidcConf.Name] = oidcConfig
+		}
+	}
+
+	return oidcConfigs, nil
+}
+
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*oidc.OidcConfig) (ACDefinitions, error) {
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
@@ -469,22 +499,40 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			authBackend, authErr := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
-			if authErr != nil {
-				return nil, confErr.With(authErr)
-			}
-
-			oauth2, err := transport.NewOAuth2(oauth2Conf, authBackend)
+			backend, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
-			oa, err := ac.NewOAuth2Callback(oauth2Conf, oauth2)
+			oauth2Client, err := oauth2.NewOAuth2AC(oauth2Conf, oauth2Conf, backend)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oa, err := ac.NewOAuth2Callback(oauth2Client)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
 			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
+				return nil, confErr.With(err)
+			}
+		}
+
+		for _, oidcConf := range conf.Definitions.OIDC {
+			confErr := errors.Configuration.Label(oidcConf.Name)
+			oidcConfig := oidcConfigs[oidcConf.Name]
+			oidcClient, err := oauth2.NewOidc(oidcConfig)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oa, err := ac.NewOAuth2Callback(oidcClient)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
 			}
 		}
