@@ -2628,7 +2628,7 @@ func getAllDaemonMessages(hook *logrustest.Hook) []string {
 
 func getAccessLogUrl(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
-		if entry.Data["url"] != "" {
+		if entry.Data["type"] == "couper_access" && entry.Data["url"] != "" {
 			if url, ok := entry.Data["url"].(string); ok {
 				return url
 			}
