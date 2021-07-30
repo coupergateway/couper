@@ -90,11 +90,11 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 			continue
 		}
 
-		eval.SetBody(outreq, []byte(body))
-
 		if defaultContentType != "" {
 			outreq.Header.Set("Content-Type", defaultContentType)
 		}
+
+		eval.SetBody(outreq, []byte(body))
 
 		*outreq = *outreq.WithContext(outCtx)
 		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
