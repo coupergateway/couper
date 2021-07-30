@@ -10,6 +10,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Default values for environment variable by means of `environment_variables` within `defaults` block. ([#271](https://github.com/avenga/couper/pull/271))
   * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests`](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
 
+* **Changed**
+  * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
+
 * **Fixed**
   * No GZIP compression for small response bodies ([#186](https://github.com/avenga/couper/issues/186))
   * Missing error type for [request](docs/REFERENCE.md#request-block)/[response](docs/REFERENCE.md#response-block) body, json_body or form_body related HCL evaluation errors ([#276](https://github.com/avenga/couper/pull/276))
