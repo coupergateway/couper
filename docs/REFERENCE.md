@@ -371,7 +371,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 | `authorization_endpoint` | string |-| The authorization server endpoint URL used for authorization. |&#9888; required|-|
 | `token_endpoint` | string |-| The authorization server endpoint URL used for requesting the token. |&#9888; required|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
 | `grant_type` |string|-| The grant type. |&#9888; required, to be set to: `authorization_code`|`grant_type = "authorization_code"`|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
@@ -397,7 +397,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
 | `ttl` | duration |-| The duration to cache the OpenID configuration located at `configuration_url`. |&#9888; required| `ttl = "1d"` |
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
 | `scope` |string|-| A space separated list of requested scopes for the access token.|`openid` is automatically added.| `scope = "profile read"` |
@@ -421,7 +421,7 @@ required _label_.
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 |`idp_metadata_file`|string|-|File reference to the Identity Provider metadata XML file.|&#9888; required|-|
-|`sp_acs_url`  |string|-|The URL of the Service Provider's ACS endpoint.|&#9888; required|-|
+|`sp_acs_url`  |string|-|The URL of the Service Provider's ACS endpoint.|&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
 | `sp_entity_id`   |string|-|The Service Provider's entity ID.|&#9888; required|-|
 | `array_attributes`|string|-|A list of assertion attributes that may have several values.|-|-|
 
