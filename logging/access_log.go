@@ -82,10 +82,8 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 	requestFields["path"] = path.String()
 
-	if req.Host != "" {
-		requestFields["addr"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
-	}
+	requestFields["addr"] = req.URL.Host
+	requestFields["host"], requestFields["port"] = splitHostPort(req.URL.Host)
 
 	if req.URL.User != nil && req.URL.User.Username() != "" {
 		fields["auth_user"] = req.URL.User.Username()
@@ -126,7 +124,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		}
 	}
 
-	fields["url"] = fields["scheme"].(string) + "://" + req.Host + path.String()
+	fields["url"] = fields["scheme"].(string) + "://" + req.URL.Host + path.String()
 
 	var err errors.GoError
 	fields["client_ip"], _ = splitHostPort(req.RemoteAddr)
