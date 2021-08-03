@@ -8,6 +8,7 @@ server "client" {
     }
   }
 }
+
 definitions {
   beta_oidc "ac" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
@@ -20,6 +21,7 @@ definitions {
     verifier_value = request.cookies.nnc
   }
 }
+
 settings {
   accept_forwarded_url = [ "proto", "host" ]
 }

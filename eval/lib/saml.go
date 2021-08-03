@@ -69,7 +69,7 @@ func NewSamlSsoUrlFunction(configs []*config.SAML, origin *url.URL) function.Fun
 
 			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
-			absAcsUrl, err := MakeUrlAbsolute(ent.config.SpAcsUrl, origin)
+			absAcsUrl, err := AbsoluteURL(ent.config.SpAcsUrl, origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}

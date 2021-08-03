@@ -162,7 +162,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 
 	requestParams := map[string]string{"code": code}
 	origin := eval.NewRawOrigin(callbackURL)
-	absRedirectUri, err := lib.MakeUrlAbsolute(a.getAcClientConfig().GetRedirectURI(), origin)
+	absRedirectUri, err := lib.AbsoluteURL(a.getAcClientConfig().GetRedirectURI(), origin)
 	if err != nil {
 		return nil, nil, "", err
 	}

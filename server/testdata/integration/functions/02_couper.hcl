@@ -10,6 +10,7 @@ server "oauth-functions" {
       }
     }
   }
+
   endpoint "/csrf" {
     response {
       headers = {
@@ -19,6 +20,7 @@ server "oauth-functions" {
     }
   }
 }
+
 definitions {
   beta_oauth2 "ac-pkce" {
     grant_type = "authorization_code"
@@ -31,6 +33,7 @@ definitions {
     verifier_method = "ccm_s256"
     verifier_value = "not_used_here"
   }
+
   beta_oauth2 "ac-pkce-relative" {
     grant_type = "authorization_code"
     authorization_endpoint = "https://authorization.server/oauth/authorize"
@@ -42,6 +45,7 @@ definitions {
     verifier_method = "ccm_s256"
     verifier_value = "not_used_here"
   }
+
   beta_oauth2 "ac-state" {
     grant_type = "authorization_code"
     authorization_endpoint = "https://authorization.server/oauth/authorize"

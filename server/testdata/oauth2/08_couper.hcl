@@ -8,6 +8,7 @@ server "client" {
     }
   }
 }
+
 definitions {
   beta_oauth2 "ac" {
     grant_type = "authorization_code"
@@ -20,6 +21,7 @@ definitions {
     verifier_value = request.cookies.pkcecv
   }
 }
+
 settings {
   accept_forwarded_url = [ "proto", "host" ]
 }

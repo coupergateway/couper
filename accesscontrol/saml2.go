@@ -83,7 +83,7 @@ func (s *Saml2) Validate(req *http.Request) error {
 	}
 
 	origin := eval.NewRawOrigin(req.URL)
-	absAcsUrl, err := lib.MakeUrlAbsolute(s.sp.AssertionConsumerServiceURL, origin)
+	absAcsUrl, err := lib.AbsoluteURL(s.sp.AssertionConsumerServiceURL, origin)
 	if err != nil {
 		return err
 	}

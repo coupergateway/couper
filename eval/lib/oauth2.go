@@ -47,7 +47,7 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 			query := oauthAuthorizationUrl.Query()
 			query.Set("response_type", "code")
 			query.Set("client_id", oauth2.GetClientID())
-			absRedirectUri, err := MakeUrlAbsolute(oauth2.GetRedirectURI(), origin)
+			absRedirectUri, err := AbsoluteURL(oauth2.GetRedirectURI(), origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}

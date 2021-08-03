@@ -8,6 +8,7 @@ server "client" {
     }
   }
 }
+
 definitions {
   beta_oidc "ac" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"

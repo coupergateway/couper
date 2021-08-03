@@ -27,14 +27,14 @@ func newUrlEncodeFunction() function.Function {
 	})
 }
 
-func MakeUrlAbsolute(urlRef string, origin *url.URL) (string, error) {
+func AbsoluteURL(urlRef string, origin *url.URL) (string, error) {
 	u, err := url.Parse(urlRef)
 	if err != nil {
 		return "", err
 	}
+
 	if !u.IsAbs() {
 		return origin.ResolveReference(u).String(), nil
-	} else {
-		return urlRef, nil
 	}
+	return urlRef, nil
 }
