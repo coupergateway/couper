@@ -3265,6 +3265,12 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
+	au, err = url.Parse(res.Header.Get("x-au-pkce-rel"))
+	helper.Must(err)
+	auq = au.Query()
+	if auq.Get("redirect_uri") != "http://example.com:8080/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://example.com:8080/oidc/callback")
+	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
@@ -3389,6 +3395,12 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+	au, err = url.Parse(res.Header.Get("x-au-pkce-rel"))
+	helper.Must(err)
+	auq = au.Query()
+	if auq.Get("redirect_uri") != "http://example.com:8080/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://example.com:8080/oidc/callback")
 	}
 }
 

@@ -6,9 +6,11 @@ server "oauth-functions" {
         x-v-2 = beta_oauth_verifier()
         x-hv = internal_oauth_hashed_verifier()
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
+        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative")
       }
     }
   }
+
   endpoint "/csrf" {
     response {
       headers = {
@@ -18,6 +20,7 @@ server "oauth-functions" {
     }
   }
 }
+
 definitions {
   beta_oauth2 "ac-pkce" {
     grant_type = "authorization_code"
@@ -30,6 +33,19 @@ definitions {
     verifier_method = "ccm_s256"
     verifier_value = "not_used_here"
   }
+
+  beta_oauth2 "ac-pkce-relative" {
+    grant_type = "authorization_code"
+    authorization_endpoint = "https://authorization.server/oauth/authorize"
+    scope = "openid profile email"
+    token_endpoint = "https://authorization.server/oauth/token"
+    redirect_uri = "/oidc/callback"
+    client_id = "foo"
+    client_secret = "5eCr3t"
+    verifier_method = "ccm_s256"
+    verifier_value = "not_used_here"
+  }
+
   beta_oauth2 "ac-state" {
     grant_type = "authorization_code"
     authorization_endpoint = "https://authorization.server/oauth/authorize"

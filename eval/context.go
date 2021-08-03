@@ -107,8 +107,6 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		saml:         c.saml[:],
 	}
 
-	ctx.createOAuth2Functions()
-
 	if rc := req.Context(); rc != nil {
 		ctx.inner = context.WithValue(rc, ContextType, ctx)
 	}
@@ -138,12 +136,14 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
 	body, jsonBody := parseReqBody(req)
+
+	origin := NewRawOrigin(req.URL)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
 		ID:        cty.StringVal(id),
 		Method:    cty.StringVal(req.Method),
 		PathParam: seetie.MapToValue(pathParams),
 		URL:       cty.StringVal(req.URL.String()),
-		Origin:    cty.StringVal(newRawOrigin(req.URL).String()),
+		Origin:    cty.StringVal(origin.String()),
 		Protocol:  cty.StringVal(req.URL.Scheme),
 		Host:      cty.StringVal(req.URL.Hostname()),
 		Port:      cty.NumberIntVal(port),
@@ -153,6 +153,8 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		JsonBody:  jsonBody,
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
+
+	ctx.createClientRequestRelatedFunctions(origin)
 
 	updateFunctions(ctx)
 
@@ -196,7 +198,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		bereqs[name] = cty.ObjectVal(ContextMap{
 			Method:   cty.StringVal(bereq.Method),
 			URL:      cty.StringVal(bereq.URL.String()),
-			Origin:   cty.StringVal(newRawOrigin(bereq.URL).String()),
+			Origin:   cty.StringVal(NewRawOrigin(bereq.URL).String()),
 			Protocol: cty.StringVal(bereq.URL.Scheme),
 			Host:     cty.StringVal(bereq.URL.Hostname()),
 			Port:     cty.NumberIntVal(port),
@@ -258,14 +260,12 @@ func (c *Context) WithOidcConfig(os map[string]*oidc.OidcConfig) *Context {
 	return c
 }
 
-// WithSAML initially setup the lib.FnSamlSsoUrl function.
+// WithSAML initially setup the saml configuration.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
 	if c.saml == nil {
 		c.saml = make([]*config.SAML, 0)
 	}
-	samlfn := lib.NewSamlSsoUrlFunction(c.saml)
-	c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	return c
 }
 
@@ -273,14 +273,19 @@ func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
 }
 
-// createOAuth2Functions creates the listed OAuth2 functions for the client request context.
-func (c *Context) createOAuth2Functions() {
+// createClientRequestRelatedFunctions creates the listed functions for the client request context.
+func (c *Context) createClientRequestRelatedFunctions(origin *url.URL) {
 	if c.oauth2 != nil {
-		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier, origin)
 		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+
+	if c.saml != nil {
+		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)
+		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
+	}
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
@@ -380,7 +385,7 @@ func parseJSONBytes(b []byte) cty.Value {
 	return val
 }
 
-func newRawOrigin(u *url.URL) *url.URL {
+func NewRawOrigin(u *url.URL) *url.URL {
 	rawOrigin := *u
 	rawOrigin.Path = ""
 	rawOrigin.RawQuery = ""
