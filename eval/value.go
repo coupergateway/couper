@@ -155,24 +155,24 @@ func walk(variables, parentVariables, fallback cty.Value, traversal hcl.Traversa
 }
 
 func templateVariables(exp hcl.Expression) (vars []hcl.Traversal) {
-	objExp, ok := exp.(*hclsyntax.ObjectConsExpr)
-	if !ok {
-		return vars
-	}
+	switch impl := exp.(type) {
+	case *hclsyntax.ObjectConsExpr:
+		// ObjValueMap could have expressions within the key and expression. Lookup both.
+		for _, item := range impl.Items {
+			switch keyItem := item.KeyExpr.(type) {
+			case *hclsyntax.ObjectConsKeyExpr:
+				if _, tplOk := keyItem.Wrapped.(*hclsyntax.TemplateWrapExpr); tplOk {
+					vars = append(vars, keyItem.Variables()...)
+				}
+			}
 
-	// ObjValueMap could have expressions within the key and expression. Lookup both.
-	for _, item := range objExp.Items {
-		switch keyItem := item.KeyExpr.(type) {
-		case *hclsyntax.ObjectConsKeyExpr:
-			if _, tplOk := keyItem.Wrapped.(*hclsyntax.TemplateWrapExpr); tplOk {
-				vars = append(vars, keyItem.Variables()...)
+			switch item.ValueExpr.(type) {
+			case *hclsyntax.TemplateExpr:
+				vars = append(vars, item.ValueExpr.Variables()...)
 			}
 		}
-
-		switch item.ValueExpr.(type) {
-		case *hclsyntax.TemplateExpr:
-			vars = append(vars, item.ValueExpr.Variables()...)
-		}
+	case *hclsyntax.TemplateExpr:
+		vars = append(vars, impl.Variables()...)
 	}
 
 	return vars
