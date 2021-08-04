@@ -16,6 +16,9 @@ func getUID(s *HTTPServer, req *http.Request) (string, error) {
 
 	if afh := s.settings.RequestIDAcceptFromHeader; afh != "" {
 		h := req.Header.Get(afh)
+		if h == "" {
+			return uid, nil
+		}
 
 		if !regexUID.MatchString(h) {
 			return uid, errors.ClientRequest.Messagef("invalid request-ID %q given in header %q", h, afh)
