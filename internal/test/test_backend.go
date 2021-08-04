@@ -136,14 +136,12 @@ func echo(rw http.ResponseWriter, req *http.Request) {
 
 	go func(c net.Conn) {
 		time.Sleep(time.Second)
-		for {
-			p := make([]byte, 4)
-			conn.Read(p)
-			if string(p) == "ping" {
-				conn.Write([]byte("pong"))
-				wg.Done()
-			}
-			return
+
+		p := make([]byte, 4)
+		conn.Read(p)
+		if string(p) == "ping" {
+			conn.Write([]byte("pong"))
+			wg.Done()
 		}
 	}(conn)
 
