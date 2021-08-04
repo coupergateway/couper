@@ -470,6 +470,15 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 				proxyConfig.Name = defaultNameLabel
 			}
 
+			if proxyConfig.AllowWebsockets {
+				if proxyConfig.Name != defaultNameLabel {
+					return errors.Configuration.Message("the allow_websockets attribute is only allowed in a 'default' proxy block")
+				}
+				if proxyRequestLabelRequired || endpoint.Response != nil {
+					return errors.Configuration.Message("websockets are allowed in the endpoint; other 'proxy', 'request' or 'response' blocks are not allowed")
+				}
+			}
+
 			proxyConfig.Remain = proxyBlock.Body
 
 			err := uniqueAttributeKey(proxyConfig.Remain)

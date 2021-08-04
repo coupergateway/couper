@@ -32,7 +32,7 @@ func (h *Helper) NewProxy(conf *transport.Config, backendContext, proxyContext h
 	log := logger.WithContext(context.Background())
 	backend := transport.NewBackend(backendContext, config, nil, log)
 
-	proxy := handler.NewProxy(backend, proxyCtx, log)
+	proxy := handler.NewProxy(backend, proxyCtx, false, log)
 	return proxy
 }
 

@@ -92,7 +92,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		if berr != nil {
 			return nil, berr
 		}
-		proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), log)
+		proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), proxyConf.AllowWebsockets, log)
 		p := &producer.Proxy{
 			Name:      proxyConf.Name,
 			RoundTrip: proxyHandler,
