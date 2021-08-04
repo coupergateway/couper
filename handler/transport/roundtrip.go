@@ -21,12 +21,14 @@ type Recorder struct {
 	body       *bytes.Buffer
 	err        error
 	header     http.Header
+	rw         http.Hijacker
 	statusCode int
 }
 
-func NewRecorder() *Recorder {
+func NewRecorder(rw http.Hijacker) *Recorder {
 	return &Recorder{
 		body: &bytes.Buffer{},
+		rw:   rw,
 	}
 }
 
@@ -71,5 +73,5 @@ func (r *Recorder) SetError(err error) {
 // Hijack should pipe the client ResponseWriter if explicitly enabled (websockets option?)
 // TODO: allow WS with proxy
 func (r *Recorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	panic("implement me")
+	return r.rw.Hijack()
 }
