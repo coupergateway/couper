@@ -23,17 +23,19 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
-	backend      http.RoundTripper
-	context      hcl.Body
-	logger       *logrus.Entry
-	reverseProxy *httputil.ReverseProxy
+	allowWebsockets bool
+	backend         http.RoundTripper
+	context         hcl.Body
+	logger          *logrus.Entry
+	reverseProxy    *httputil.ReverseProxy
 }
 
 func NewProxy(backend http.RoundTripper, ctx hcl.Body, allowWebsockets bool, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
-		backend: backend,
-		context: ctx,
-		logger:  logger,
+		allowWebsockets: allowWebsockets,
+		backend:         backend,
+		context:         ctx,
+		logger:          logger,
 	}
 	rp := &httputil.ReverseProxy{
 		Director: proxy.director,
@@ -44,10 +46,6 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, allowWebsockets bool, log
 		},
 		ErrorLog:  newErrorLogWrapper(logger),
 		Transport: backend,
-	}
-
-	if allowWebsockets {
-		rp.ModifyResponse = proxy.switchProtocol
 	}
 
 	proxy.reverseProxy = rp
@@ -71,7 +69,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	rw := req.Context().Value(request.RW).(*writer.Response)
 	rec := transport.NewRecorder(rw)
 
-	if p.reverseProxy.ModifyResponse != nil {
+	if p.allowWebsockets {
 		ctx := context.WithValue(req.Context(), request.AllowWebsockets, true)
 		*req = *req.WithContext(ctx)
 	}
@@ -89,21 +87,6 @@ func (p *Proxy) director(req *http.Request) {
 	for _, key := range headerBlacklist {
 		req.Header.Del(key)
 	}
-}
-
-func (p *Proxy) switchProtocol(res *http.Response) error {
-	// fmt.Printf("switchProtocol\n")
-
-	// if res.StatusCode != http.StatusSwitchingProtocols {
-	// 	return nil
-	// }
-
-	// req := res.Request
-	// rw := req.Context().Value("RW").(*writer.Response)
-
-	// fmt.Printf("switchProtocol DONE %#v\n", rw)
-
-	return nil
 }
 
 // ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.

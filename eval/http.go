@@ -286,9 +286,6 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 }
 
 func upgradeType(h http.Header) string {
-	// if !httpguts.HeaderValuesContainsToken(h["Connection"], "Upgrade") {
-	// 	return ""
-	// }
 	return strings.ToLower(h.Get("Upgrade"))
 }
 
@@ -300,7 +297,7 @@ func CheckUpgradeResponse(req *http.Request, res *http.Response) bool {
 	reqUpType := upgradeType(req.Header)
 	resUpType := upgradeType(res.Header)
 
-	if reqUpType != resUpType {
+	if reqUpType != resUpType || reqUpType != "websocket" {
 		return false
 	}
 

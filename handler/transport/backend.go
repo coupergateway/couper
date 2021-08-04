@@ -104,6 +104,11 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	setUserAgent(req)
 	req.Close = false
 
+	if _, ok := req.Context().Value(request.AllowWebsockets).(bool); !ok {
+		req.Header.Del("Connection")
+		req.Header.Del("Upgrade")
+	}
+
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
 		beresp, err = b.openAPIValidate(req, tc, deadlineErr)

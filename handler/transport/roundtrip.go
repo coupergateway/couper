@@ -70,8 +70,6 @@ func (r *Recorder) SetError(err error) {
 	r.err = err
 }
 
-// Hijack should pipe the client ResponseWriter if explicitly enabled (websockets option?)
-// TODO: allow WS with proxy
 func (r *Recorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return r.rw.Hijack()
 }
