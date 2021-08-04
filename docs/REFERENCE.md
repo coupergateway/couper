@@ -456,13 +456,16 @@ gateway instance.
 
 The `defaults` block lets you define default values.
 
-|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------|
-| -| -| -|
+| Block name  |Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------| :-----------|
+| `defaults`  | -| -| -|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `environment_variables` | map | – | One or more environment variable assigments|-|`environment_variables = {ORIGIN = "https://httpbin.org" ...}`|
+
+Examples:
+- [`environment_variables`](https://github.com/avenga/couper-examples/blob/master/env-var/README.md).
 
 ## Access Control
 
