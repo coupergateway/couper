@@ -2856,7 +2856,6 @@ func getAccessLogUrl(hook *logrustest.Hook) string {
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
-	t.Skip("TODO fix hijack and endpoint handling for ws")
 	helper := test.New(t)
 	shutdown, _ := newCouper("testdata/integration/api/04_couper.hcl", test.New(t))
 	defer shutdown()
@@ -2876,11 +2875,11 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 
 	helper.Must(conn.SetDeadline(time.Time{}))
 
-	p := make([]byte, 77)
+	p := make([]byte, 87)
 	_, err = conn.Read(p)
 	helper.Must(err)
 
-	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")) {
+	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nAbc: 123\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")) {
 		t.Errorf("Expected 101 status and related headers, got:\n%q", string(p))
 	}
 
