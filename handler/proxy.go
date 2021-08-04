@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/server/writer"
 )
 
 // headerBlacklist lists all header keys which will be removed after
@@ -28,7 +29,7 @@ type Proxy struct {
 	reverseProxy *httputil.ReverseProxy
 }
 
-func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx hcl.Body, allowWebsockets bool, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,
@@ -44,6 +45,11 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 		ErrorLog:  newErrorLogWrapper(logger),
 		Transport: backend,
 	}
+
+	if allowWebsockets {
+		rp.ModifyResponse = proxy.switchProtocol
+	}
+
 	proxy.reverseProxy = rp
 	return proxy
 }
@@ -62,7 +68,14 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		*req = *req.WithContext(ctx)
 	}
 
-	rec := transport.NewRecorder()
+	rw := req.Context().Value(request.RW).(*writer.Response)
+	rec := transport.NewRecorder(rw)
+
+	if p.reverseProxy.ModifyResponse != nil {
+		ctx := context.WithValue(req.Context(), request.AllowWebsockets, true)
+		*req = *req.WithContext(ctx)
+	}
+
 	p.reverseProxy.ServeHTTP(rec, req)
 	beresp, err := rec.Response(req)
 	if err != nil {
@@ -76,6 +89,21 @@ func (p *Proxy) director(req *http.Request) {
 	for _, key := range headerBlacklist {
 		req.Header.Del(key)
 	}
+}
+
+func (p *Proxy) switchProtocol(res *http.Response) error {
+	// fmt.Printf("switchProtocol\n")
+
+	// if res.StatusCode != http.StatusSwitchingProtocols {
+	// 	return nil
+	// }
+
+	// req := res.Request
+	// rw := req.Context().Value("RW").(*writer.Response)
+
+	// fmt.Printf("switchProtocol DONE %#v\n", rw)
+
+	return nil
 }
 
 // ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.

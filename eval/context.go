@@ -210,8 +210,10 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
 		var respBody, respJsonBody cty.Value
-		if (ctx.bufferOption & BufferResponse) == BufferResponse {
-			respBody, respJsonBody = parseRespBody(beresp)
+		if !CheckUpgradeResponse(bereq, beresp) {
+			if (ctx.bufferOption & BufferResponse) == BufferResponse {
+				respBody, respJsonBody = parseRespBody(beresp)
+			}
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),

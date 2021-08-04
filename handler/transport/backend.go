@@ -115,7 +115,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	setGzipReader(beresp)
+	if !eval.CheckUpgradeResponse(req, beresp) {
+		setGzipReader(beresp)
+	}
 
 	if !isProxyReq {
 		removeConnectionHeaders(req.Header)

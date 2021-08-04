@@ -285,6 +285,28 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	return nil
 }
 
+func upgradeType(h http.Header) string {
+	// if !httpguts.HeaderValuesContainsToken(h["Connection"], "Upgrade") {
+	// 	return ""
+	// }
+	return strings.ToLower(h.Get("Upgrade"))
+}
+
+func CheckUpgradeResponse(req *http.Request, res *http.Response) bool {
+	if _, ok := req.Context().Value(request.AllowWebsockets).(bool); !ok {
+		return false
+	}
+
+	reqUpType := upgradeType(req.Header)
+	resUpType := upgradeType(res.Header)
+
+	if reqUpType != resUpType {
+		return false
+	}
+
+	return true
+}
+
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
@@ -292,6 +314,10 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 	if err := ApplyResponseHeaderOps(ctx, body, beresp.Header); err != nil {
 		return err
+	}
+
+	if CheckUpgradeResponse(beresp.Request, beresp) {
+		return nil
 	}
 
 	content, _, _ := body.PartialContent(config.BackendInlineSchema)
