@@ -15,6 +15,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * No GZIP compression for small response bodies ([#186](https://github.com/avenga/couper/issues/186))
+  * Missing synchronization for OAuth2 access token requests ([#270](https://github.com/avenga/couper/issues/270))
   * Missing error type for [request](docs/REFERENCE.md#request-block)/[response](docs/REFERENCE.md#response-block) body, json_body or form_body related HCL evaluation errors ([#276](https://github.com/avenga/couper/pull/276))
   * [`request.url`](./docs/REFERENCE.md#request) and [`backend_requests.<label>.url`](./docs/REFERENCE.md#backend_requests) now contain a query string if present ([#278](https://github.com/avenga/couper/pull/278))
   * [`backend_responses.<label>.status`](./docs/REFERENCE.md#backend_responses) is now integer ([#278](https://github.com/avenga/couper/pull/278))
