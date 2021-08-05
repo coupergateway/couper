@@ -290,7 +290,13 @@ func upgradeType(h http.Header) string {
 }
 
 func CheckUpgradeResponse(req *http.Request, res *http.Response) bool {
+	if req == nil {
+		return false
+	}
 	if _, ok := req.Context().Value(request.AllowWebsockets).(bool); !ok {
+		return false
+	}
+	if res == nil {
 		return false
 	}
 
