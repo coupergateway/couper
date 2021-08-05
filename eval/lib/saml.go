@@ -3,6 +3,7 @@ package lib
 import (
 	"encoding/xml"
 	"fmt"
+	"net/url"
 
 	saml2 "github.com/russellhaering/gosaml2"
 	"github.com/russellhaering/gosaml2/types"
@@ -17,7 +18,7 @@ const (
 	NameIdFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
 )
 
-func NewSamlSsoUrlFunction(configs []*config.SAML) function.Function {
+func NewSamlSsoUrlFunction(configs []*config.SAML, origin *url.URL) function.Function {
 	type entity struct {
 		config     *config.SAML
 		descriptor *types.EntityDescriptor
@@ -68,8 +69,13 @@ func NewSamlSsoUrlFunction(configs []*config.SAML) function.Function {
 
 			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
+			absAcsUrl, err := AbsoluteURL(ent.config.SpAcsUrl, origin)
+			if err != nil {
+				return cty.StringVal(""), err
+			}
+
 			sp := &saml2.SAMLServiceProvider{
-				AssertionConsumerServiceURL: ent.config.SpAcsUrl,
+				AssertionConsumerServiceURL: absAcsUrl,
 				IdentityProviderSSOURL:      ssoUrl,
 				ServiceProviderIssuer:       ent.config.SpEntityId,
 				SignAuthnRequests:           false,

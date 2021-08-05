@@ -8,11 +8,19 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [Run option](./docs/CLI.md#run-options) `-accept-forwarded-url` and [setting](./docs/REFERENCE.md#settings-block) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers, affecting new [client request variables](./docs/REFERENCE.md#request) `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
   * [`couper.version` variable](docs/REFERENCE.md#couper) ([#274](https://github.com/avenga/couper/pull/274))
   * Default values for environment variable by means of `environment_variables` within `defaults` block. ([#271](https://github.com/avenga/couper/pull/271))
+  * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests`](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
+
+* **Changed**
+  * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
 
 * **Fixed**
   * No GZIP compression for small response bodies ([#186](https://github.com/avenga/couper/issues/186))
   * Too many parallel access token requests ([#270](https://github.com/avenga/couper/issues/270))
   * Missing error type for [request](docs/REFERENCE.md#request-block)/[response](docs/REFERENCE.md#response-block) body, json_body or form_body related HCL evaluation errors ([#276](https://github.com/avenga/couper/pull/276))
+  * [`request.url`](./docs/REFERENCE.md#request) and [`backend_requests.<label>.url`](./docs/REFERENCE.md#backend_requests) now contain a query string if present ([#278](https://github.com/avenga/couper/pull/278))
+  * [`backend_responses.<label>.status`](./docs/REFERENCE.md#backend_responses) is now integer ([#278](https://github.com/avenga/couper/pull/278))
+  * [`backend_requests.<label>.form_body`](./docs/REFERENCE.md#backend_requests) was always empty ([#278](https://github.com/avenga/couper/pull/278))
+  * Documentation of [`request.query.<name>`](./docs/REFERENCE.md#request) ([#278](https://github.com/avenga/couper/pull/278))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))

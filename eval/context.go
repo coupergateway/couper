@@ -107,8 +107,6 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		saml:         c.saml[:],
 	}
 
-	ctx.createOAuth2Functions()
-
 	if rc := req.Context(); rc != nil {
 		ctx.inner = context.WithValue(rc, ContextType, ctx)
 	}
@@ -138,21 +136,25 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
 	body, jsonBody := parseReqBody(req)
+
+	origin := NewRawOrigin(req.URL)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
-		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 		ID:        cty.StringVal(id),
-		Body:      body,
-		JsonBody:  jsonBody,
 		Method:    cty.StringVal(req.Method),
-		Path:      cty.StringVal(req.URL.Path),
 		PathParam: seetie.MapToValue(pathParams),
-		Query:     seetie.ValuesMapToValue(req.URL.Query()),
-		URL:       cty.StringVal(newRawURL(req.URL).String()),
-		Origin:    cty.StringVal(newRawOrigin(req.URL).String()),
+		URL:       cty.StringVal(req.URL.String()),
+		Origin:    cty.StringVal(origin.String()),
 		Protocol:  cty.StringVal(req.URL.Scheme),
 		Host:      cty.StringVal(req.URL.Hostname()),
 		Port:      cty.NumberIntVal(port),
+		Path:      cty.StringVal(req.URL.Path),
+		Query:     seetie.ValuesMapToValue(req.URL.Query()),
+		Body:      body,
+		JsonBody:  jsonBody,
+		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
+
+	ctx.createClientRequestRelatedFunctions(origin)
 
 	updateFunctions(ctx)
 
@@ -183,22 +185,38 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 			name = n
 		}
+		p := bereq.URL.Port()
+		if p == "" {
+			if bereq.URL.Scheme == "https" {
+				p = "443"
+			} else {
+				p = "80"
+			}
+		}
+		port, _ := strconv.ParseInt(p, 10, 64)
+		body, jsonBody := parseReqBody(bereq)
 		bereqs[name] = cty.ObjectVal(ContextMap{
-			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 			Method:   cty.StringVal(bereq.Method),
+			URL:      cty.StringVal(bereq.URL.String()),
+			Origin:   cty.StringVal(NewRawOrigin(bereq.URL).String()),
+			Protocol: cty.StringVal(bereq.URL.Scheme),
+			Host:     cty.StringVal(bereq.URL.Hostname()),
+			Port:     cty.NumberIntVal(port),
 			Path:     cty.StringVal(bereq.URL.Path),
 			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
-			URL:      cty.StringVal(newRawURL(bereq.URL).String()),
+			Body:     body,
+			JsonBody: jsonBody,
+			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
-		var body, jsonBody cty.Value
+		var respBody, respJsonBody cty.Value
 		if (ctx.bufferOption & BufferResponse) == BufferResponse {
-			body, jsonBody = parseRespBody(beresp)
+			respBody, respJsonBody = parseRespBody(beresp)
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
-			HttpStatus: cty.StringVal(strconv.Itoa(beresp.StatusCode)),
-			JsonBody:   jsonBody,
-			Body:       body,
+			HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
+			JsonBody:   respJsonBody,
+			Body:       respBody,
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
@@ -242,14 +260,12 @@ func (c *Context) WithOidcConfig(os map[string]*oidc.OidcConfig) *Context {
 	return c
 }
 
-// WithSAML initially setup the lib.FnSamlSsoUrl function.
+// WithSAML initially setup the saml configuration.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
 	if c.saml == nil {
 		c.saml = make([]*config.SAML, 0)
 	}
-	samlfn := lib.NewSamlSsoUrlFunction(c.saml)
-	c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
 	return c
 }
 
@@ -257,14 +273,19 @@ func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
 }
 
-// createOAuth2Functions creates the listed OAuth2 functions for the client request context.
-func (c *Context) createOAuth2Functions() {
+// createClientRequestRelatedFunctions creates the listed functions for the client request context.
+func (c *Context) createClientRequestRelatedFunctions(origin *url.URL) {
 	if c.oauth2 != nil {
-		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier)
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier, origin)
 		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+
+	if c.saml != nil {
+		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)
+		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
+	}
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
@@ -364,16 +385,11 @@ func parseJSONBytes(b []byte) cty.Value {
 	return val
 }
 
-func newRawURL(u *url.URL) *url.URL {
-	rawURL := *u
-	rawURL.RawQuery = ""
-	rawURL.Fragment = ""
-	return &rawURL
-}
-
-func newRawOrigin(u *url.URL) *url.URL {
-	rawOrigin := *newRawURL(u)
+func NewRawOrigin(u *url.URL) *url.URL {
+	rawOrigin := *u
 	rawOrigin.Path = ""
+	rawOrigin.RawQuery = ""
+	rawOrigin.Fragment = ""
 	return &rawOrigin
 }
 

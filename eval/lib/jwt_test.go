@@ -461,8 +461,9 @@ func TestJwtSignDynamic(t *testing.T) {
 			if resultClaims["x-status"] == nil {
 				t.Errorf("Expected x-status claim, got: %#v", body)
 			}
-			if resultClaims["x-status"] != "200" {
-				t.Errorf("Expected: %d, got: %s", http.StatusOK, resultClaims["x-status"])
+			status := int64(resultClaims["x-status"].(float64))
+			if status != 200 {
+				t.Errorf("Expected: %d, got: %d", http.StatusOK, status)
 			}
 		})
 	}

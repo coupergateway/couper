@@ -4,9 +4,11 @@ server "oidc-functions" {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
         x-au-pkce = beta_oauth_authorization_url("ac-pkce")
+        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative")
       }
     }
   }
+
   endpoint "/csrf" {
     response {
       headers = {
@@ -15,6 +17,7 @@ server "oidc-functions" {
       }
     }
   }
+
   endpoint "/default" {
     response {
       headers = {
@@ -24,6 +27,7 @@ server "oidc-functions" {
     }
   }
 }
+
 definitions {
   beta_oidc "ac-pkce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
@@ -35,6 +39,18 @@ definitions {
     verifier_method = "ccm_s256"
     verifier_value = "not_used_here"
   }
+
+  beta_oidc "ac-pkce-relative" {
+    configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
+    ttl = "1h"
+    scope = "profile email"
+    redirect_uri = "/oidc/callback"
+    client_id = "foo"
+    client_secret = "5eCr3t"
+    verifier_method = "ccm_s256"
+    verifier_value = "not_used_here"
+  }
+
   beta_oidc "ac-nonce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     ttl = "1h"
@@ -45,6 +61,7 @@ definitions {
     verifier_method = "nonce"
     verifier_value = "not_used_here"
   }
+
   beta_oidc "ac-default" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     ttl = "1h"

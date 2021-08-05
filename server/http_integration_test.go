@@ -1807,7 +1807,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "http://example.com:8080/req",
+		Url: "http://example.com:8080/req?foo=bar",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -1861,7 +1861,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "http://example.com:8080/req",
+		Url: "http://example.com:8080/req?foo=bar",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -1922,7 +1922,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "http://example.com:8080/req",
+		Url: "http://example.com:8080/req?foo=bar",
 	}
 
 	if fmt.Sprint(jsonResult) != fmt.Sprint(exp) {
@@ -1946,10 +1946,11 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 	}
 
 	type testCase struct {
-		name       string
-		header     http.Header
-		exp        expectation
-		wantErrLog string
+		name                  string
+		header                http.Header
+		exp                   expectation
+		wantDaemonLogMessages []string
+		wantAccessLogUrl      string
 	}
 
 	for _, tc := range []testCase{
@@ -1963,7 +1964,8 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/path",
 			},
-			"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http",
+			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http", "couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost:8080", "couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port 8080"},
+			"http://localhost:8080/path",
 		},
 		{
 			"proto, host, no port",
@@ -1978,7 +1980,8 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "https://www.example.com",
 				Url:      "https://www.example.com/path",
 			},
-			"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port ",
+			[]string{"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port "},
+			"https://www.example.com/path",
 		},
 		{
 			"proto, port, no host",
@@ -1993,7 +1996,8 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "https://localhost:8443",
 				Url:      "https://localhost:8443/path",
 			},
-			"couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost",
+			[]string{"couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost"},
+			"https://localhost:8443/path",
 		},
 		{
 			"host, port, no proto",
@@ -2008,7 +2012,8 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "http://www.example.com:8443",
 				Url:      "http://www.example.com:8443/path",
 			},
-			"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http",
+			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http"},
+			"http://www.example.com:8443/path",
 		},
 		{
 			"proto, host, port",
@@ -2024,7 +2029,8 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Origin:   "https://www.example.com:8443",
 				Url:      "https://www.example.com:8443/path",
 			},
-			"",
+			[]string{},
+			"https://www.example.com:8443/path",
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2054,15 +2060,418 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			message := getAccessControlMessages(hook)
-			if tc.wantErrLog == "" {
-				if message != "" {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
-				}
+			messages := getAllDaemonMessages(hook)
+			if len(messages) != len(tc.wantDaemonLogMessages) {
+				t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages, messages)
 			} else {
-				if message != tc.wantErrLog {
-					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+				for i, msg := range messages {
+					if tc.wantDaemonLogMessages[i] != msg {
+						t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages[i], msg)
+					}
 				}
+			}
+
+			url := getAccessLogUrl(hook)
+			if url != tc.wantAccessLogUrl {
+				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
+			}
+		})
+	}
+}
+
+func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/settings/06_couper.hcl")
+	shutdown, hook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type expectation struct {
+		Protocol string `json:"protocol"`
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Origin   string `json:"origin"`
+		Url      string `json:"url"`
+	}
+
+	type testCase struct {
+		name                  string
+		header                http.Header
+		exp                   expectation
+		wantDaemonLogMessages []string
+		wantAccessLogUrl      string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"no proto, host, or port",
+			http.Header{},
+			expectation{
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/path",
+			},
+			[]string{"couper trying to use X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost:8080", "couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http", "couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port 8080"},
+			"http://localhost:8080/path",
+		},
+		{
+			"proto, host, no port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     443,
+				Origin:   "https://www.example.com",
+				Url:      "https://www.example.com/path",
+			},
+			[]string{"couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port "},
+			"https://www.example.com/path",
+		},
+		{
+			"proto, port, no host",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Port":  []string{"8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "localhost",
+				Port:     8443,
+				Origin:   "https://localhost:8443",
+				Url:      "https://localhost:8443/path",
+			},
+			[]string{"couper trying to use X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host localhost:8080"},
+			"https://localhost:8443/path",
+		},
+		{
+			"host, port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com"},
+				"X-Forwarded-Port": []string{"8443"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "http://www.example.com:8443",
+				Url:      "http://www.example.com:8443/path",
+			},
+			[]string{"couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol http"},
+			"http://www.example.com:8443/path",
+		},
+		{
+			"proto, host, port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com"},
+				"X-Forwarded-Port":  []string{"8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "https://www.example.com:8443",
+				Url:      "https://www.example.com:8443/path",
+			},
+			[]string{},
+			"https://www.example.com:8443/path",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/path", nil)
+			helper.Must(err)
+			for k, v := range tc.header {
+				req.Header.Set(k, v[0])
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+			}
+
+			messages := getAllDaemonMessages(hook)
+			if len(messages) != len(tc.wantDaemonLogMessages) {
+				t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages, messages)
+			} else {
+				for i, msg := range messages {
+					if tc.wantDaemonLogMessages[i] != msg {
+						t.Errorf("Expected daemon messages: %#v, actual: %#v", tc.wantDaemonLogMessages[i], msg)
+					}
+				}
+			}
+
+			url := getAccessLogUrl(hook)
+			if url != tc.wantAccessLogUrl {
+				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
+			}
+		})
+	}
+}
+
+func TestHTTPServer_backend_requests_variables(t *testing.T) {
+	client := newClient()
+
+	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer ResourceOrigin.Close()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/18_couper.hcl")
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": ResourceOrigin.URL})
+	defer shutdown()
+
+	type expectation struct {
+		Method   string                 `json:"method"`
+		Protocol string                 `json:"protocol"`
+		Host     string                 `json:"host"`
+		Port     int64                  `json:"port"`
+		Path     string                 `json:"path"`
+		Query    map[string][]string    `json:"query"`
+		Origin   string                 `json:"origin"`
+		Url      string                 `json:"url"`
+		Body     string                 `json:"body"`
+		JsonBody map[string]interface{} `json:"json_body"`
+		FormBody map[string][]string    `json:"form_body"`
+	}
+
+	type testCase struct {
+		name   string
+		relUrl string
+		header http.Header
+		body   io.Reader
+		exp    expectation
+	}
+
+	helper := test.New(t)
+	resourceOrigin, err := url.Parse(ResourceOrigin.URL)
+	helper.Must(err)
+
+	port, _ := strconv.ParseInt(resourceOrigin.Port(), 10, 64)
+
+	for _, tc := range []testCase{
+		{
+			"body",
+			"/body",
+			http.Header{},
+			strings.NewReader(`abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: resourceOrigin.Scheme,
+				Host:     resourceOrigin.Hostname(),
+				Port:     port,
+				Path:     "/resource",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   ResourceOrigin.URL,
+				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				Body:     "abcd1234",
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"json_body",
+			"/json_body",
+			http.Header{"Content-Type": []string{"application/json"}},
+			strings.NewReader(`{"s":"abcd1234"}`),
+			expectation{
+				Method:   "POST",
+				Protocol: resourceOrigin.Scheme,
+				Host:     resourceOrigin.Hostname(),
+				Port:     port,
+				Path:     "/resource",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   ResourceOrigin.URL,
+				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				Body:     `{"s":"abcd1234"}`,
+				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"form_body",
+			"/form_body",
+			http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			strings.NewReader(`s=abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: resourceOrigin.Scheme,
+				Host:     resourceOrigin.Hostname(),
+				Port:     port,
+				Path:     "/resource",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   ResourceOrigin.URL,
+				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				Body:     `s=abcd1234`,
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{"s": []string{"abcd1234"}},
+			},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
+			h.Must(err)
+
+			for k, v := range tc.header {
+				req.Header.Set(k, v[0])
+			}
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			h.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+			}
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+			}
+		})
+	}
+}
+
+func TestHTTPServer_request_variables(t *testing.T) {
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/endpoint_eval/19_couper.hcl")
+	shutdown, hook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type expectation struct {
+		Method   string                 `json:"method"`
+		Protocol string                 `json:"protocol"`
+		Host     string                 `json:"host"`
+		Port     int64                  `json:"port"`
+		Path     string                 `json:"path"`
+		Query    map[string][]string    `json:"query"`
+		Origin   string                 `json:"origin"`
+		Url      string                 `json:"url"`
+		Body     string                 `json:"body"`
+		JsonBody map[string]interface{} `json:"json_body"`
+		FormBody map[string][]string    `json:"form_body"`
+	}
+
+	type testCase struct {
+		name   string
+		relUrl string
+		header http.Header
+		body   io.Reader
+		exp    expectation
+	}
+
+	for _, tc := range []testCase{
+		{
+			"body",
+			"/body?foo=bar",
+			http.Header{},
+			strings.NewReader(`abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Path:     "/body",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/body?foo=bar",
+				Body:     "abcd1234",
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"json_body",
+			"/json_body?foo=bar",
+			http.Header{"Content-Type": []string{"application/json"}},
+			strings.NewReader(`{"s":"abcd1234"}`),
+			expectation{
+				Method:   "POST",
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Path:     "/json_body",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/json_body?foo=bar",
+				Body:     `{"s":"abcd1234"}`,
+				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				FormBody: map[string][]string{},
+			},
+		},
+		{
+			"form_body",
+			"/form_body?foo=bar",
+			http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			strings.NewReader(`s=abcd1234`),
+			expectation{
+				Method:   "POST",
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8080,
+				Path:     "/form_body",
+				Query:    map[string][]string{"foo": []string{"bar"}},
+				Origin:   "http://localhost:8080",
+				Url:      "http://localhost:8080/form_body?foo=bar",
+				Body:     `s=abcd1234`,
+				JsonBody: map[string]interface{}{},
+				FormBody: map[string][]string{"s": []string{"abcd1234"}},
+			},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
+			helper.Must(err)
+
+			for k, v := range tc.header {
+				req.Header.Set(k, v[0])
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			var jsonResult expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+			}
+			if !reflect.DeepEqual(jsonResult, tc.exp) {
+				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2455,6 +2864,29 @@ func getAccessControlMessages(hook *logrustest.Hook) string {
 	return ""
 }
 
+func getAllDaemonMessages(hook *logrustest.Hook) []string {
+	var msgs []string
+	for _, entry := range hook.AllEntries() {
+		if entry.Message != "" {
+			msgs = append(msgs, entry.Message)
+		}
+	}
+
+	return msgs
+}
+
+func getAccessLogUrl(hook *logrustest.Hook) string {
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] == "couper_access" && entry.Data["url"] != "" {
+			if url, ok := entry.Data["url"].(string); ok {
+				return url
+			}
+		}
+	}
+
+	return ""
+}
+
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 	t.Skip("TODO fix hijack and endpoint handling for ws")
 	helper := test.New(t)
@@ -2833,6 +3265,12 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
 	}
+	au, err = url.Parse(res.Header.Get("x-au-pkce-rel"))
+	helper.Must(err)
+	auq = au.Query()
+	if auq.Get("redirect_uri") != "http://example.com:8080/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://example.com:8080/oidc/callback")
+	}
 
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
 	helper.Must(err)
@@ -2957,6 +3395,12 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+	au, err = url.Parse(res.Header.Get("x-au-pkce-rel"))
+	helper.Must(err)
+	auq = au.Query()
+	if auq.Get("redirect_uri") != "http://example.com:8080/oidc/callback" {
+		t.Errorf("oauth_authorization_url(): wrong redirect_uri query param:\nactual:\t\t%s\nexpected:\t%s", auq.Get("redirect_uri"), "http://example.com:8080/oidc/callback")
 	}
 }
 

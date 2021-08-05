@@ -26,3 +26,15 @@ func newUrlEncodeFunction() function.Function {
 		},
 	})
 }
+
+func AbsoluteURL(urlRef string, origin *url.URL) (string, error) {
+	u, err := url.Parse(urlRef)
+	if err != nil {
+		return "", err
+	}
+
+	if !u.IsAbs() {
+		return origin.ResolveReference(u).String(), nil
+	}
+	return urlRef, nil
+}
