@@ -76,9 +76,21 @@ type Settings struct {
 	RequestIDBackendHeader    string   `hcl:"request_id_backend_header,optional"`
 	RequestIDClientHeader     string   `hcl:"request_id_client_header,optional"`
 	SecureCookies             string   `hcl:"secure_cookies,optional"`
+	TLSDevProxy               List     `hcl:"https_dev_proxy,optional"`
 	XForwardedHost            bool     `hcl:"xfh,optional"`
 	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
 	AcceptForwarded           *AcceptForwarded
+}
+
+type List []string
+
+func (s *List) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *List) Set(val string) error {
+	*s = append(*s, strings.Split(val, ",")...)
+	return nil
 }
 
 func (s *Settings) SetAcceptForwarded() error {

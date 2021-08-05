@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -39,6 +41,7 @@ func NewRun(ctx context.Context) *Run {
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
 	set.Var(&AcceptForwardedValue{settings: &settings}, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
+	set.Var(&settings.TLSDevProxy, "https-dev-proxy", "-https-dev-proxy 8443:8080,9443:9000")
 	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.RequestIDAcceptFromHeader, "request-id-accept-from-header", settings.RequestIDAcceptFromHeader, "-request-id-accept-from-header X-UID")
@@ -113,13 +116,49 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 	errors.SetLogger(logEntry)
 
+	var tlsDevPorts map[string]string
+	if len(config.Settings.TLSDevProxy) > 0 {
+		tlsDevPorts = make(map[string]string)
+		for _, ports := range config.Settings.TLSDevProxy {
+			pair := strings.Split(ports, ":")
+			if len(pair) != 2 {
+				return errors.Configuration.Message("https_dev_proxy: invalid port mapping")
+			}
+			for _, definedPort := range tlsDevPorts {
+				if definedPort == pair[0] {
+					return errors.Configuration.Messagef("https_dev_proxy: tls port already defined: %s", ports)
+				}
+			}
+			tlsDevPorts[pair[1]] = pair[0]
+		}
+	}
+
 	serverList, listenCmdShutdown := server.NewServerList(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
+	var tlsServer []*http.Server
 	for _, srv := range serverList {
 		if listenErr := srv.Listen(); listenErr != nil {
 			return listenErr
 		}
+
+		_, port, splitErr := net.SplitHostPort(srv.Addr())
+		if err != nil {
+			return splitErr
+		}
+
+		if tlsPort, exist := tlsDevPorts[port]; exist {
+			tlsSrv, tlsErr := server.NewTLSProxy(srv.Addr(), tlsPort, logEntry)
+			if tlsErr != nil {
+				return tlsErr
+			}
+			tlsServer = append(tlsServer, tlsSrv)
+			logEntry.Infof("couper is serving tls: %s -> %s", tlsPort, port)
+		}
 	}
 	listenCmdShutdown()
+	for _, s := range tlsServer {
+		_ = s.Close()
+		logEntry.Infof("Server closed: %s", s.Addr)
+	}
 	return nil
 }
 

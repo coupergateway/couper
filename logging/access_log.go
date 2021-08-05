@@ -115,7 +115,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	fields["scheme"] = "http"
 	if req.URL.Scheme != "" {
 		fields["scheme"] = req.URL.Scheme
+	} else if req.TLS != nil && req.TLS.HandshakeComplete {
+		fields["scheme"] = "https"
 	}
+
 	if requestFields["port"] == "" {
 		if fields["scheme"] == "https" {
 			requestFields["port"] = "443"
