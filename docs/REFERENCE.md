@@ -138,8 +138,9 @@ The `proxy` block creates and executes a proxy request to a backend service.
 | :-----------| :-----------| :-----------| :-----------|
 |`proxy`|[Endpoint Block](#endpoint-block)|&#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| Attribute(s) | Type | Default | Description | Characteristic(s) | Example |
+| :----------- | :--- | :------ | :---------- | :---------------- | :------ |
+| `allow_websockets` | bool | false | Allows support for websockets. This attribute is only allowed in the 'default' `proxy` block. Other `proxy` blocks, [Request Blocks](#request-block) or [Response Blocks](#response-block) are not allowed in the current [Endpoint Block](#endpoint-block). | - | `allow_websockets = true` |
 | `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
 | `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|
 |[Modifiers](#modifiers)|-|-|-|-|-|
