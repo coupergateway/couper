@@ -82,7 +82,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 
 	httpProxy := httputil.NewSingleHostReverseProxy(origin)
 
-	headers := []string{"Connection", "Upgrade"}
+	headers := []string{"Connection", "Upgrade", "Forwarded"}
 	accessLog := logging.NewAccessLog(&logging.Config{RequestHeaders: headers, ResponseHeaders: headers}, log)
 
 	initialConfig, err := getTLSConfig(&tls.ClientHelloInfo{})
@@ -102,6 +102,11 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 			ctx := context.WithValue(req.Context(), request.ServerName, "couper_tls")
 			ctx = context.WithValue(ctx, request.UID, xid.New())
 			req.URL.Host = req.Host
+			req.Header.Set("Forwarded", fmt.Sprintf("for=%s;proto=https;host=%s;by=%s", req.RemoteAddr, req.Host, listener.Addr().String()))
+			req.Header.Set("Via", "couper-https-dev-proxy")
+			req.Header.Set("X-Forwarded-For", req.RemoteAddr+", "+listener.Addr().String())
+			req.Header.Set("X-Forwarded-Host", req.Host)
+			req.Header.Set("X-Forwarded-Proto", "https")
 			respW := writer.NewResponseWriter(rw, "")
 			accessLog.ServeHTTP(respW, req.WithContext(ctx), httpProxy, time.Now())
 		}),
