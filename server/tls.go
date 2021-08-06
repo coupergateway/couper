@@ -78,12 +78,12 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 		return nil, err
 	}
 
-	log := logger.WithField("type", "couper_access_tls")
+	logEntry := logger.WithField("type", "couper_access_tls")
 
 	httpProxy := httputil.NewSingleHostReverseProxy(origin)
 
 	headers := []string{"Connection", "Upgrade", "Forwarded"}
-	accessLog := logging.NewAccessLog(&logging.Config{RequestHeaders: headers, ResponseHeaders: headers}, log)
+	accessLog := logging.NewAccessLog(&logging.Config{RequestHeaders: headers, ResponseHeaders: headers}, logEntry)
 
 	initialConfig, err := getTLSConfig(&tls.ClientHelloInfo{})
 	if err != nil {
@@ -97,7 +97,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 
 	tlsServer := &http.Server{
 		Addr:     ":" + port,
-		ErrorLog: newErrorLogWrapper(log),
+		ErrorLog: newErrorLogWrapper(logEntry),
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			ctx := context.WithValue(req.Context(), request.ServerName, "couper_tls")
 			ctx = context.WithValue(ctx, request.UID, xid.New())
@@ -117,7 +117,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 	return tlsServer, err
 }
 
-var tlsConfigurations = sync.Map{}
+var tlsConfigurations = map[string]*tls.Config{}
 var tlsLock = sync.RWMutex{}
 
 func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
@@ -132,7 +132,7 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 	tlsLock.Lock()
 	defer tlsLock.Unlock()
 
-	storedCert, ok := tlsConfigurations.Load(key)
+	tlsConfig, ok := tlsConfigurations[key]
 	if !ok {
 		cert, _, err := newCertificate(time.Hour*24, hosts, nil)
 		if err != nil {
@@ -143,11 +143,11 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 			GetConfigForClient: getTLSConfig,
 		}
 
-		tlsConfigurations.Store(key, tlsConf)
+		tlsConfigurations[key] = tlsConf
 		return tlsConf, nil
 	}
 
-	return storedCert.(*tls.Config), nil
+	return tlsConfig, nil
 }
 
 // newCertificate creates a certificate with given host and duration.
@@ -236,7 +236,6 @@ func publicKey(priv interface{}) interface{} {
 }
 
 // ErrorWrapper logs incoming Write bytes with the context filled logrus.FieldLogger.
-// Created to keep the ReverseProxy file as clean as possible and dependency free.
 type ErrorWrapper struct{ l logrus.FieldLogger }
 
 func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
