@@ -363,3 +363,28 @@ server "zipzip" {
 		}
 	}
 }
+
+func TestHTTPServer_Errors(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	confPath := "testdata/settings/03_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	logHook.Reset()
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	req.Host = "foo::"
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	// Wait for log
+	time.Sleep(300 * time.Millisecond)
+
+	e := logHook.LastEntry()
+	if e == nil {
+		t.Fatalf("Missing log line")
+	}
+}
