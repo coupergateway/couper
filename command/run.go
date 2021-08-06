@@ -116,20 +116,10 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 	errors.SetLogger(logEntry)
 
-	var tlsDevPorts map[string]string
-	if len(config.Settings.TLSDevProxy) > 0 {
-		tlsDevPorts = make(map[string]string)
-		for _, ports := range config.Settings.TLSDevProxy {
-			pair := strings.Split(ports, ":")
-			if len(pair) != 2 {
-				return errors.Configuration.Message("https_dev_proxy: invalid port mapping")
-			}
-			for _, definedPort := range tlsDevPorts {
-				if definedPort == pair[0] {
-					return errors.Configuration.Messagef("https_dev_proxy: tls port already defined: %s", ports)
-				}
-			}
-			tlsDevPorts[pair[1]] = pair[0]
+	tlsDevPorts := make(server.TLSDevPorts)
+	for _, ports := range config.Settings.TLSDevProxy {
+		if err = tlsDevPorts.Add(ports); err != nil {
+			return err
 		}
 	}
 
@@ -145,7 +135,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 			return splitErr
 		}
 
-		if tlsPort, exist := tlsDevPorts[port]; exist {
+		for _, tlsPort := range tlsDevPorts.Get(port) {
 			tlsSrv, tlsErr := server.NewTLSProxy(srv.Addr(), tlsPort, logEntry)
 			if tlsErr != nil {
 				return tlsErr
@@ -154,7 +144,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 			logEntry.Infof("couper is serving tls: %s -> %s", tlsPort, port)
 		}
 	}
+
 	listenCmdShutdown()
+
 	for _, s := range tlsServer {
 		_ = s.Close()
 		logEntry.Infof("Server closed: %s", s.Addr)

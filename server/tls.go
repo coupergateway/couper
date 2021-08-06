@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -25,9 +26,51 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 )
+
+type ListenPort string
+type Ports []string
+type TLSDevPorts map[ListenPort]Ports
+
+const tlsProxyOption = "https_dev_proxy"
+
+func (tdp TLSDevPorts) Add(pair string) error {
+	ports := strings.Split(pair, ":")
+	if len(ports) != 2 {
+		return errors.Configuration.Messagef("%s: invalid port mapping: %s", tlsProxyOption, pair)
+	}
+	for _, p := range ports {
+		if _, err := strconv.Atoi(p); err != nil {
+			return errors.Configuration.Messagef("%s: invalid format: %s", tlsProxyOption, pair).With(err)
+		}
+	}
+
+	if dp, exist := tdp[ListenPort(ports[1])]; exist && dp.Contains(ports[0]) {
+		return errors.Configuration.Messagef("https_dev_proxy: tls port already defined: %s", pair)
+	}
+
+	tdp[ListenPort(ports[1])] = append(tdp[ListenPort(ports[1])], ports[0])
+	return nil
+}
+
+func (tdp TLSDevPorts) Get(p string) []string {
+	if result, exist := tdp[ListenPort(p)]; exist {
+		return result
+	}
+	return nil
+}
+
+func (tp Ports) Contains(needle string) bool {
+	for _, p := range tp {
+		if p == needle {
+			return true
+		}
+	}
+	return false
+}
 
 func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, error) {
 	origin, err := url.Parse(fmt.Sprintf("http://%s/", addr))

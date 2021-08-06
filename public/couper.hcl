@@ -1,5 +1,5 @@
 server "couper" {
   files {
-    document_root = "./htdocs"
+    document_root = "/htdocs"
   }
 }
