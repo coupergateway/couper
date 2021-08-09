@@ -57,7 +57,7 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 		envVal = strings.Split(envVal, ",")[0]
 
 		mapVal, exist := envMap[envVal]
-		if !exist {
+		if !exist || mapVal == "" {
 			continue
 		}
 
