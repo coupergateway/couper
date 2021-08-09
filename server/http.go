@@ -193,26 +193,29 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
 	defer gw.Close()
 
+	var h http.Handler
+
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
-		errors.DefaultHTML.ServeError(errors.ClientRequest).ServeHTTP(w, req)
+		h = errors.DefaultHTML.ServeError(errors.ClientRequest)
 	}
 
 	mux, ok := s.muxers[host]
 	if !ok {
 		mux, ok = s.muxers["*"]
-		if !ok {
-			errors.DefaultHTML.ServeError(errors.Configuration).ServeHTTP(w, req)
+		if !ok && h == nil {
+			h = errors.DefaultHTML.ServeError(errors.Configuration)
 		}
 	}
 
-	h := mux.FindHandler(req)
+	if h == nil {
+		h = mux.FindHandler(req)
+	}
 
 	clientReq := req.Clone(req.Context())
 
-	if err = s.setGetBody(h, clientReq); err != nil {
-		mux.opts.ServerOptions.ServerErrTpl.ServeError(err).ServeHTTP(w, clientReq)
-		return
+	if err = s.setGetBody(h, clientReq); err != nil && h != nil {
+		h = mux.opts.ServerOptions.ServerErrTpl.ServeError(err)
 	}
 
 	clientReq.URL.Host = req.Host
