@@ -91,7 +91,7 @@ func (s *List) String() string {
 }
 
 func (s *List) Set(val string) error {
-	if len(*s) > 0 { // environment priority
+	if len(*s) > 0 { // argument priority over settings
 		*s = nil
 	}
 	*s = append(*s, strings.Split(val, ",")...)
