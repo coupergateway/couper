@@ -214,7 +214,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	clientReq := req.Clone(req.Context())
 
-	if err = s.setGetBody(h, clientReq); err != nil && h != nil {
+	if err = s.setGetBody(h, clientReq); err != nil {
 		h = mux.opts.ServerOptions.ServerErrTpl.ServeError(err)
 	}
 
