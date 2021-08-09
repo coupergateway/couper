@@ -28,6 +28,7 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
@@ -475,11 +476,14 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 
-	os.Setenv("COUPER_XFH", "true")
+	env.OsEnviron = func() []string {
+		return []string{"COUPER_XFH=true"}
+	}
+	defer func() { env.OsEnviron = os.Environ }()
+
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
 	shutdown, logHook := newCouper(confPath, test.New(t))
 	defer shutdown()
-	os.Setenv("COUPER_XFH", "")
 
 	helper := test.New(t)
 	logHook.Reset()
@@ -964,6 +968,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 
 			jsonResult.Headers.Del("User-Agent")
 			jsonResult.Headers.Del("X-Forwarded-For")
+			jsonResult.Headers.Del("Couper-Request-Id")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
 				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
@@ -1795,6 +1800,9 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 	if err != nil {
 		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 	}
+
+	delete(jsonResult.Headers, "couper-request-id")
+
 	exp := Expectation{
 		Method: http.MethodPost,
 		FormBody: map[string][]string{
@@ -1849,6 +1857,9 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	if err != nil {
 		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 	}
+
+	delete(jsonResult.Headers, "couper-request-id")
+
 	exp := Expectation{
 		Method: http.MethodGet,
 		JSONBody: map[string]interface{}{
@@ -1905,6 +1916,8 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 	if err != nil {
 		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 	}
+
+	delete(jsonResult.Headers, "couper-request-id")
 
 	exp := Expectation{
 		Method: http.MethodGet,
@@ -2280,7 +2293,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Host:     resourceOrigin.Hostname(),
 				Port:     port,
 				Path:     "/resource",
-				Query:    map[string][]string{"foo": []string{"bar"}},
+				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   ResourceOrigin.URL,
 				Url:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     "abcd1234",
@@ -2299,7 +2312,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Host:     resourceOrigin.Hostname(),
 				Port:     port,
 				Path:     "/resource",
-				Query:    map[string][]string{"foo": []string{"bar"}},
+				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   ResourceOrigin.URL,
 				Url:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     `{"s":"abcd1234"}`,
@@ -2318,12 +2331,12 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Host:     resourceOrigin.Hostname(),
 				Port:     port,
 				Path:     "/resource",
-				Query:    map[string][]string{"foo": []string{"bar"}},
+				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   ResourceOrigin.URL,
 				Url:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     `s=abcd1234`,
 				JsonBody: map[string]interface{}{},
-				FormBody: map[string][]string{"s": []string{"abcd1234"}},
+				FormBody: map[string][]string{"s": {"abcd1234"}},
 			},
 		},
 	} {
@@ -2399,7 +2412,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Host:     "localhost",
 				Port:     8080,
 				Path:     "/body",
-				Query:    map[string][]string{"foo": []string{"bar"}},
+				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/body?foo=bar",
 				Body:     "abcd1234",
@@ -2418,7 +2431,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Host:     "localhost",
 				Port:     8080,
 				Path:     "/json_body",
-				Query:    map[string][]string{"foo": []string{"bar"}},
+				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/json_body?foo=bar",
 				Body:     `{"s":"abcd1234"}`,
@@ -2437,12 +2450,12 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Host:     "localhost",
 				Port:     8080,
 				Path:     "/form_body",
-				Query:    map[string][]string{"foo": []string{"bar"}},
+				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/form_body?foo=bar",
 				Body:     `s=abcd1234`,
 				JsonBody: map[string]interface{}{},
-				FormBody: map[string][]string{"s": []string{"abcd1234"}},
+				FormBody: map[string][]string{"s": {"abcd1234"}},
 			},
 		},
 	} {

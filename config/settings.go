@@ -49,28 +49,36 @@ func (a AcceptForwarded) String() string {
 
 // DefaultSettings defines the <DefaultSettings> object.
 var DefaultSettings = Settings{
-	DefaultPort:        8080,
-	HealthPath:         "/healthz",
-	LogFormat:          "common",
-	NoProxyFromEnv:     false,
-	RequestIDFormat:    "common",
-	XForwardedHost:     false,
-	AcceptForwarded:    &AcceptForwarded{},
-	AcceptForwardedURL: []string{},
+	DefaultPort:               8080,
+	HealthPath:                "/healthz",
+	LogFormat:                 "common",
+	LogPretty:                 false,
+	NoProxyFromEnv:            false,
+	RequestIDFormat:           "common",
+	RequestIDAcceptFromHeader: "",
+	RequestIDBackendHeader:    "Couper-Request-ID",
+	RequestIDClientHeader:     "Couper-Request-ID",
+	SecureCookies:             "",
+	XForwardedHost:            false,
+	AcceptForwardedURL:        []string{},
+	AcceptForwarded:           &AcceptForwarded{},
 }
 
 // Settings represents the <Settings> object.
 type Settings struct {
-	DefaultPort        int      `hcl:"default_port,optional"`
-	HealthPath         string   `hcl:"health_path,optional"`
-	LogFormat          string   `hcl:"log_format,optional"`
-	LogPretty          bool     `hcl:"log_pretty,optional"`
-	NoProxyFromEnv     bool     `hcl:"no_proxy_from_env,optional"`
-	RequestIDFormat    string   `hcl:"request_id_format,optional"`
-	SecureCookies      string   `hcl:"secure_cookies,optional"`
-	XForwardedHost     bool     `hcl:"xfh,optional"`
-	AcceptForwardedURL []string `hcl:"accept_forwarded_url,optional"`
-	AcceptForwarded    *AcceptForwarded
+	DefaultPort               int      `hcl:"default_port,optional"`
+	HealthPath                string   `hcl:"health_path,optional"`
+	LogFormat                 string   `hcl:"log_format,optional"`
+	LogPretty                 bool     `hcl:"log_pretty,optional"`
+	NoProxyFromEnv            bool     `hcl:"no_proxy_from_env,optional"`
+	RequestIDFormat           string   `hcl:"request_id_format,optional"`
+	RequestIDAcceptFromHeader string   `hcl:"request_id_accept_from_header,optional"`
+	RequestIDBackendHeader    string   `hcl:"request_id_backend_header,optional"`
+	RequestIDClientHeader     string   `hcl:"request_id_client_header,optional"`
+	SecureCookies             string   `hcl:"secure_cookies,optional"`
+	XForwardedHost            bool     `hcl:"xfh,optional"`
+	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
+	AcceptForwarded           *AcceptForwarded
 }
 
 func (s *Settings) SetAcceptForwarded() error {
