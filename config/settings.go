@@ -60,8 +60,10 @@ var DefaultSettings = Settings{
 	RequestIDClientHeader:     "Couper-Request-ID",
 	SecureCookies:             "",
 	XForwardedHost:            false,
-	AcceptForwardedURL:        []string{},
-	AcceptForwarded:           &AcceptForwarded{},
+
+	// TODO: refactor
+	AcceptForwardedURL: []string{},
+	AcceptForwarded:    &AcceptForwarded{},
 }
 
 // Settings represents the <Settings> object.

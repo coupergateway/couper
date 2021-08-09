@@ -81,8 +81,8 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
 
-	if flag := r.flagSet.Lookup("accept-forwarded-url"); flag != nil {
-		if afv, ok := flag.Value.(*AcceptForwardedValue); ok {
+	if f := r.flagSet.Lookup("accept-forwarded-url"); f != nil {
+		if afv, ok := f.Value.(*AcceptForwardedValue); ok {
 			afv.settings = r.settings
 		}
 	}

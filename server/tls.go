@@ -81,6 +81,17 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 	logEntry := logger.WithField("type", "couper_access_tls")
 
 	httpProxy := httputil.NewSingleHostReverseProxy(origin)
+	httpProxy.Transport = &http.Transport{ // http.DefaultTransport /wo Proxy
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 
 	headers := []string{"Connection", "Upgrade", "Forwarded"}
 	accessLog := logging.NewAccessLog(&logging.Config{RequestHeaders: headers, ResponseHeaders: headers}, logEntry)
@@ -120,6 +131,8 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 var tlsConfigurations = map[string]*tls.Config{}
 var tlsLock = sync.RWMutex{}
 
+// getTLSConfig returns a clone from created or memorized tls configuration due to
+// transport protocol upgrades / clones later on which would result in data races.
 func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 	var hosts []string
 	key := "localhost"
@@ -144,10 +157,10 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 		}
 
 		tlsConfigurations[key] = tlsConf
-		return tlsConf, nil
+		return tlsConf.Clone(), nil
 	}
 
-	return tlsConfig, nil
+	return tlsConfig.Clone(), nil
 }
 
 // newCertificate creates a certificate with given host and duration.
