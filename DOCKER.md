@@ -44,8 +44,8 @@ docker run avenga/couper run -watch -p 8081
 |                                      | | |
 | COUPER_REQUEST_ID_FORMAT             | `common` | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |
 | COUPER_REQUEST_ID_ACCEPT_FROM_HEADER | `""` | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured). |
-| COUPER_REQUEST_ID_BACKEND_HEADER     | `Couper-Request-ID` | Name of an HTTP header field which Couper uses to transport the `request.id` to the backend. |
-| COUPER_REQUEST_ID_CLIENT_HEADER      | `Couper-Request-ID` | Name of an HTTP header field which Couper uses to transport the `request.id` to the client. |
+| COUPER_REQUEST_ID_BACKEND_HEADER     | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the backend. |
+| COUPER_REQUEST_ID_CLIENT_HEADER      | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |
 |                                      | | |
 | COUPER_TIMING_IDLE_TIMEOUT           | `60s` | The maximum amount of time to wait for the next request on client connections when keep-alives are enabled. |
 | COUPER_TIMING_READ_HEADER_TIMEOUT    | `10s` | The amount of time allowed to read client request headers. |

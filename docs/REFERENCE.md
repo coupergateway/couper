@@ -450,8 +450,8 @@ gateway instance.
 | `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host. |-|-|
 | `request_id_format`             | string | `common`            | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
 | `request_id_accept_from_header` | string |  `""`               | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured). |-| `X-UID` |
-| `request_id_backend_header`     | string | `Couper-Request-ID` | Name of an HTTP header field which Couper uses to transport the `request.id` to the backend. |-|-|
-| `request_id_client_header`      | string | `Couper-Request-ID` | Name of an HTTP header field which Couper uses to transport the `request.id` to the client. |-|-|
+| `request_id_backend_header`     | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the backend. |-|-|
+| `request_id_client_header`      | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |-|-|
 | `secure_cookies`                | string | `""`                | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
 | `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-| `["proto","host","port"]` |
 
