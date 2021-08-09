@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/xid"
-	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -38,7 +36,7 @@ type HTTPServer struct {
 	shutdownCh chan struct{}
 	srv        *http.Server
 	timings    *runtime.HTTPTimings
-	uidFn      func() string
+	uidFn      uidFunc
 }
 
 // NewServerList creates a list of all configured HTTP server.
@@ -62,16 +60,8 @@ func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, sett
 // New creates a configured HTTP server.
 func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
-	var uidFn func() string
-	if settings.RequestIDFormat == "uuid4" {
-		uidFn = func() string {
-			return uuid.NewV4().String()
-		}
-	} else {
-		uidFn = func() string {
-			return xid.New().String()
-		}
-	}
+
+	uidFn := newUIDFunc(settings)
 
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_access"
@@ -179,7 +169,7 @@ func (s *HTTPServer) listenForCtx() {
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 
-	if err := setUID(s, rw, req); err != nil {
+	if err := s.setUID(rw, req); err != nil {
 		s.accessLog.ServeHTTP(rw, req, errors.DefaultHTML.ServeError(err), startTime)
 		return
 	}
