@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/avenga/couper/config"
 )
 
 const PREFIX = "COUPER_"
@@ -72,7 +74,7 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 			val.Field(i).SetInt(int64(intVal))
 		case string:
 			val.Field(i).SetString(mapVal)
-		case []string:
+		case []string, config.List:
 			slice := strings.Split(mapVal, ",")
 			for idx, v := range slice {
 				slice[idx] = strings.TrimSpace(v)
