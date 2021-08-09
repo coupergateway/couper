@@ -28,6 +28,7 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
@@ -475,11 +476,14 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 
-	os.Setenv("COUPER_XFH", "true")
+	env.OsEnviron = func() []string {
+		return []string{"COUPER_XFH=true"}
+	}
+	defer func() { env.OsEnviron = os.Environ }()
+
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
 	shutdown, logHook := newCouper(confPath, test.New(t))
 	defer shutdown()
-	os.Unsetenv("COUPER_XFH")
 
 	helper := test.New(t)
 	logHook.Reset()
