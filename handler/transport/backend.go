@@ -233,7 +233,7 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 
 	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
-		log.WithError(errors.Evaluation.Label(b.name).With(diags)).Error()
+		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
 	var origin, hostname, proxyURL string
