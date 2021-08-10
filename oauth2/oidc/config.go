@@ -149,6 +149,7 @@ func supportsS256(codeChallengeMethodsSupported []string) bool {
 func (o *OidcConfig) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
 	req, err := http.NewRequest(http.MethodGet, "", nil)
 	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
+	ctx = context.WithValue(ctx, request.RoundTripName, o.Name)
 	req = req.WithContext(ctx)
 	if err != nil {
 		return nil, err
