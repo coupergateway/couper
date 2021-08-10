@@ -51,10 +51,10 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 			if rp == http.ErrAbortHandler {
 				err = errors.Proxy.Message("body copy failed")
 			} else {
-				err = &ResultPanic{
+				err = errors.Server.With(&ResultPanic{
 					err:   fmt.Errorf("%v", rp),
 					stack: debug.Stack(),
-				}
+				})
 			}
 			sendResult(req.Context(), results, &Result{
 				Err:           err,
