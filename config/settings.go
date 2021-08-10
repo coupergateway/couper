@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 )
@@ -83,6 +84,8 @@ type Settings struct {
 	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
 	AcceptForwarded           *AcceptForwarded
 }
+
+var _ flag.Value = &List{}
 
 type List []string
 
