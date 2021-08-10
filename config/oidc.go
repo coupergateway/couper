@@ -17,7 +17,7 @@ type OIDC struct {
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	TTL                     string   `hcl:"ttl"`
+	TTL                     string   `hcl:"ttl,optional"`
 	VerifierMethod          string   `hcl:"verifier_method,optional"`
 	// internally used
 	Backend     hcl.Body

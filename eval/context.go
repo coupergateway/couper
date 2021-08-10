@@ -252,7 +252,7 @@ func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 }
 
 // WithOidcConfig adds the OidcConfig config structs.
-func (c *Context) WithOidcConfig(os map[string]*oidc.OidcConfig) *Context {
+func (c *Context) WithOidcConfig(os map[string]*oidc.Config) *Context {
 	if c.oauth2 == nil {
 		c.oauth2 = make([]config.OAuth2Authorization, 0)
 	}

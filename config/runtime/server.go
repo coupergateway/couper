@@ -410,8 +410,8 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*oidc.OidcConfig, error) {
-	oidcConfigs := make(map[string]*oidc.OidcConfig)
+func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*oidc.Config, error) {
+	oidcConfigs := make(map[string]*oidc.Config)
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
@@ -420,7 +420,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				return nil, confErr.With(err)
 			}
 
-			oidcConfig, err := oidc.NewOidcConfig(oidcConf, backend, memStore)
+			oidcConfig, err := oidc.NewConfig(oidcConf, backend, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -432,7 +432,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	return oidcConfigs, nil
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*oidc.OidcConfig) (ACDefinitions, error) {
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*oidc.Config) (ACDefinitions, error) {
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {

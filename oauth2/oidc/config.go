@@ -23,12 +23,16 @@ type OpenidConfiguration struct {
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 }
 
-var _ config.OidcAS = &OidcConfig{}
-var _ config.OAuth2Authorization = &OidcConfig{}
-var _ config.OAuth2AcClient = &OidcConfig{}
+var (
+	_ config.OidcAS              = &Config{}
+	_ config.OAuth2Authorization = &Config{}
+	_ config.OAuth2AcClient      = &Config{}
 
-// OidcConfig represents the configuration for an OIDC client
-type OidcConfig struct {
+	defaultTTL = time.Hour
+)
+
+// Config represents the configuration for an OIDC client
+type Config struct {
 	*config.OIDC
 	Backend               http.RoundTripper
 	memStore              *cache.MemoryStore
@@ -39,21 +43,26 @@ type OidcConfig struct {
 	UserinfoEndpoint      string
 }
 
-// NewOidcConfig creates a new configuration for an OIDC client
-func NewOidcConfig(oidc *config.OIDC, backend http.RoundTripper, memStore *cache.MemoryStore) (*OidcConfig, error) {
-	ttl, parseErr := time.ParseDuration(oidc.TTL)
-	if parseErr != nil {
-		return nil, parseErr
+// NewConfig creates a new configuration for an OIDC client
+func NewConfig(oidc *config.OIDC, backend http.RoundTripper, memStore *cache.MemoryStore) (*Config, error) {
+	ttl := defaultTTL
+	if oidc.TTL != "" {
+		t, err := time.ParseDuration(oidc.TTL)
+		if err != nil {
+			return nil, err
+		}
+		ttl = t
 	}
-	return &OidcConfig{OIDC: oidc, Backend: backend, memStore: memStore, ttl: (int64)(ttl)}, nil
+
+	return &Config{OIDC: oidc, Backend: backend, memStore: memStore, ttl: (int64)(ttl)}, nil
 }
 
-func (o *OidcConfig) Reference() string {
+func (o *Config) Reference() string {
 	return o.OIDC.BackendName
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
-func (o *OidcConfig) GetVerifierMethod() (string, error) {
+func (o *Config) GetVerifierMethod() (string, error) {
 	if o.VerifierMethod == "" {
 		err := o.getFreshIfExpired()
 		if err != nil {
@@ -63,7 +72,7 @@ func (o *OidcConfig) GetVerifierMethod() (string, error) {
 	return o.VerifierMethod, nil
 }
 
-func (o *OidcConfig) GetAuthorizationEndpoint() (string, error) {
+func (o *Config) GetAuthorizationEndpoint() (string, error) {
 	err := o.getFreshIfExpired()
 	if err != nil {
 		return "", err
@@ -72,7 +81,7 @@ func (o *OidcConfig) GetAuthorizationEndpoint() (string, error) {
 	return o.AuthorizationEndpoint, nil
 }
 
-func (o *OidcConfig) GetIssuer() (string, error) {
+func (o *Config) GetIssuer() (string, error) {
 	err := o.getFreshIfExpired()
 	if err != nil {
 		return "", err
@@ -81,7 +90,7 @@ func (o *OidcConfig) GetIssuer() (string, error) {
 	return o.Issuer, nil
 }
 
-func (o *OidcConfig) GetTokenEndpoint() (string, error) {
+func (o *Config) GetTokenEndpoint() (string, error) {
 	err := o.getFreshIfExpired()
 	if err != nil {
 		return "", err
@@ -90,7 +99,7 @@ func (o *OidcConfig) GetTokenEndpoint() (string, error) {
 	return o.TokenEndpoint, nil
 }
 
-func (o *OidcConfig) GetUserinfoEndpoint() (string, error) {
+func (o *Config) GetUserinfoEndpoint() (string, error) {
 	err := o.getFreshIfExpired()
 	if err != nil {
 		return "", err
@@ -99,7 +108,7 @@ func (o *OidcConfig) GetUserinfoEndpoint() (string, error) {
 	return o.UserinfoEndpoint, nil
 }
 
-func (o *OidcConfig) getFreshIfExpired() error {
+func (o *Config) getFreshIfExpired() error {
 	stored := o.memStore.Get(o.ConfigurationURL)
 	var (
 		openidConfiguration *OpenidConfiguration
@@ -146,7 +155,7 @@ func supportsS256(codeChallengeMethodsSupported []string) bool {
 	return false
 }
 
-func (o *OidcConfig) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
+func (o *Config) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
 	req, err := http.NewRequest(http.MethodGet, "", nil)
 	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
 	ctx = context.WithValue(ctx, request.RoundTripName, o.Name)

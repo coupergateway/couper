@@ -22,7 +22,7 @@ type OidcClient struct {
 }
 
 // NewOidc creates a new OIDC client.
-func NewOidc(oidcConfig *oidc.OidcConfig) (*OidcClient, error) {
+func NewOidc(oidcConfig *oidc.Config) (*OidcClient, error) {
 	verifierMethod, err := oidcConfig.GetVerifierMethod()
 	if err != nil {
 		return nil, err
