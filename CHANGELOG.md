@@ -22,7 +22,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [`backend_responses.<label>.status`](./docs/REFERENCE.md#backend_responses) is now integer ([#278](https://github.com/avenga/couper/pull/278))
   * [`backend_requests.<label>.form_body`](./docs/REFERENCE.md#backend_requests) was always empty ([#278](https://github.com/avenga/couper/pull/278))
   * Documentation of [`request.query.<name>`](./docs/REFERENCE.md#request) ([#278](https://github.com/avenga/couper/pull/278))
-  * Fix missing access log on some error cases ([#267](https://github.com/avenga/couper/issues/267))
+  * Missing access log on some error cases ([#267](https://github.com/avenga/couper/issues/267))
+  * Panic during backend origin / url usage with previous parse error ([#206](https://github.com/avenga/couper/issues/206))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
