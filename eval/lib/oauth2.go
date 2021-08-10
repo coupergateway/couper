@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"net/url"
 
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
@@ -22,6 +23,7 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 	for _, o := range oauth2Configs {
 		oauth2s[o.GetName()] = o
 	}
+
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -32,7 +34,10 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
 			label := args[0].AsString()
-			oauth2 := oauth2s[label]
+			oauth2, exist := oauth2s[label]
+			if !exist {
+				return cty.StringVal(""), fmt.Errorf("undefined reference: %s", label)
+			}
 
 			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()
 			if err != nil {
