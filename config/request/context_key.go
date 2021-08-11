@@ -13,9 +13,9 @@ const (
 	LogEntry
 	OpenAPI
 	PathParams
+	ResponseWriter
 	RoundTripName
 	RoundTripProxy
-	RW
 	ServerName
 	TokenRequest
 	TokenRequestRetries

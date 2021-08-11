@@ -66,7 +66,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		*req = *req.WithContext(ctx)
 	}
 
-	rw := req.Context().Value(request.RW).(*writer.Response)
+	rw := req.Context().Value(request.ResponseWriter).(*writer.Response)
 	rec := transport.NewRecorder(rw)
 
 	if p.allowWebsockets {

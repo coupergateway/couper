@@ -233,7 +233,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	ctx = s.evalCtx.WithClientRequest(clientReq)
-	ctx = context.WithValue(ctx, request.RW, w)
+	ctx = context.WithValue(ctx, request.ResponseWriter, w)
 	*clientReq = *clientReq.WithContext(ctx)
 
 	s.accessLog.ServeHTTP(w, clientReq, h, startTime)
