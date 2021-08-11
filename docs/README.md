@@ -24,7 +24,7 @@ Couper does not need any special development skills and offers easy configuratio
 
 ## Architectural Overview
 
-![architecture](./architecture.png)
+![architecture](./img/architecture.png)
 
 | Entity           | Description                                                                          |
 | :--------------- | :----------------------------------------------------------------------------------- |
