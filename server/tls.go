@@ -94,7 +94,10 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 	}
 
 	headers := []string{"Connection", "Upgrade", "Forwarded"}
-	accessLog := logging.NewAccessLog(&logging.Config{RequestHeaders: headers, ResponseHeaders: headers}, logEntry)
+	accessLog := logging.NewAccessLog(&logging.Config{
+		RequestHeaders:  append(logging.DefaultConfig.RequestHeaders, headers...),
+		ResponseHeaders: append(logging.DefaultConfig.ResponseHeaders, headers...),
+	}, logEntry)
 
 	initialConfig, err := getTLSConfig(&tls.ClientHelloInfo{})
 	if err != nil {
