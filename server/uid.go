@@ -46,6 +46,9 @@ func (s *HTTPServer) getUID(req *http.Request) (string, error) {
 		}
 
 		uid = h
+	} else if httpsDevProxyID := req.Header.Get(httpsDevProxyIDField); httpsDevProxyID != "" {
+		uid = httpsDevProxyID
+		req.Header.Del(httpsDevProxyIDField)
 	}
 
 	return uid, nil

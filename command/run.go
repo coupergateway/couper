@@ -136,7 +136,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 
 		for _, tlsPort := range tlsDevPorts.Get(port) {
-			tlsSrv, tlsErr := server.NewTLSProxy(srv.Addr(), tlsPort, logEntry)
+			tlsSrv, tlsErr := server.NewTLSProxy(srv.Addr(), tlsPort, logEntry, config.Settings)
 			if tlsErr != nil {
 				return tlsErr
 			}

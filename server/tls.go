@@ -25,6 +25,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
@@ -36,6 +37,8 @@ type Ports []string
 type TLSDevPorts map[ListenPort]Ports
 
 const tlsProxyOption = "https_dev_proxy"
+
+var httpsDevProxyIDField = "x-" + xid.New().String()
 
 func (tdp TLSDevPorts) Add(pair string) error {
 	ports := strings.Split(pair, ":")
@@ -72,7 +75,7 @@ func (tp Ports) Contains(needle string) bool {
 	return false
 }
 
-func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, error) {
+func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.Settings) (*http.Server, error) {
 	origin, err := url.Parse(fmt.Sprintf("http://%s/", addr))
 	if err != nil {
 		return nil, err
@@ -109,18 +112,26 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger) (*http.Server, er
 		return nil, err
 	}
 
+	uidFn := newUIDFunc(settings)
+
 	tlsServer := &http.Server{
 		Addr:     ":" + port,
 		ErrorLog: newErrorLogWrapper(logEntry),
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			uid := uidFn()
+			req.Header.Set(httpsDevProxyIDField, uid)
+
 			ctx := context.WithValue(req.Context(), request.ServerName, "couper_tls")
-			ctx = context.WithValue(ctx, request.UID, xid.New())
-			req.URL.Host = req.Host
+			ctx = context.WithValue(ctx, request.UID, uid)
+
 			req.Header.Set("Forwarded", fmt.Sprintf("for=%s;proto=https;host=%s;by=%s", req.RemoteAddr, req.Host, listener.Addr().String()))
 			req.Header.Set("Via", "couper-https-dev-proxy")
 			req.Header.Set("X-Forwarded-For", req.RemoteAddr+", "+listener.Addr().String())
 			req.Header.Set("X-Forwarded-Host", req.Host)
 			req.Header.Set("X-Forwarded-Proto", "https")
+
+			req.URL.Host = req.Host
+
 			respW := writer.NewResponseWriter(rw, "")
 			accessLog.ServeHTTP(respW, req.WithContext(ctx), httpProxy, time.Now())
 		}),
