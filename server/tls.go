@@ -27,6 +27,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
@@ -36,18 +37,18 @@ type ListenPort string
 type Ports []string
 type TLSDevPorts map[ListenPort]Ports
 
-const tlsProxyOption = "https_dev_proxy"
+const TLSProxyOption = "https_dev_proxy"
 
 var httpsDevProxyIDField = "x-" + xid.New().String()
 
 func (tdp TLSDevPorts) Add(pair string) error {
 	ports := strings.Split(pair, ":")
 	if len(ports) != 2 {
-		return errors.Configuration.Messagef("%s: invalid port mapping: %s", tlsProxyOption, pair)
+		return errors.Configuration.Messagef("%s: invalid port mapping: %s", TLSProxyOption, pair)
 	}
 	for _, p := range ports {
 		if _, err := strconv.Atoi(p); err != nil {
-			return errors.Configuration.Messagef("%s: invalid format: %s", tlsProxyOption, pair).With(err)
+			return errors.Configuration.Messagef("%s: invalid format: %s", TLSProxyOption, pair).With(err)
 		}
 	}
 
@@ -73,6 +74,11 @@ func (tp Ports) Contains(needle string) bool {
 		}
 	}
 	return false
+}
+
+func (lp ListenPort) Port() runtime.Port {
+	i, _ := strconv.Atoi(string(lp))
+	return runtime.Port(i)
 }
 
 func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.Settings) (*http.Server, error) {

@@ -125,13 +125,20 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	serverList, listenCmdShutdown := server.NewServerList(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
 	var tlsServer []*http.Server
+
+	for mappedListenPort := range tlsDevPorts {
+		if _, exist := srvConf[mappedListenPort.Port()]; !exist {
+			return errors.Configuration.Messagef("%s: target port not configured: %s", server.TLSProxyOption, mappedListenPort)
+		}
+	}
+
 	for _, srv := range serverList {
 		if listenErr := srv.Listen(); listenErr != nil {
 			return listenErr
 		}
 
 		_, port, splitErr := net.SplitHostPort(srv.Addr())
-		if err != nil {
+		if splitErr != nil {
 			return splitErr
 		}
 
