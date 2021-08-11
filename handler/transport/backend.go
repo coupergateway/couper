@@ -120,7 +120,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if !eval.CheckUpgradeResponse(req, beresp) {
+	if !eval.IsUpgradeResponse(req, beresp) {
 		setGzipReader(beresp)
 	}
 

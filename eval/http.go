@@ -289,7 +289,7 @@ func upgradeType(h http.Header) string {
 	return strings.ToLower(h.Get("Upgrade"))
 }
 
-func CheckUpgradeResponse(req *http.Request, res *http.Response) bool {
+func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 	if req == nil {
 		return false
 	}
@@ -319,7 +319,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		return err
 	}
 
-	if CheckUpgradeResponse(beresp.Request, beresp) {
+	if IsUpgradeResponse(beresp.Request, beresp) {
 		return nil
 	}
 
