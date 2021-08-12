@@ -111,7 +111,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 			}
 
 			if t.Failed() {
-				for _, entry := range hook.Entries {
+				for _, entry := range hook.AllEntries() {
 					t.Log(entry.String())
 				}
 			}
@@ -151,7 +151,7 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 	}
 
 	if t.Failed() {
-		for _, entry := range hook.Entries {
+		for _, entry := range hook.AllEntries() {
 			t.Log(entry.String())
 		}
 	}
@@ -214,7 +214,7 @@ func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
 			}
 
 			if subT.Failed() {
-				for _, entry := range hook.Entries {
+				for _, entry := range hook.AllEntries() {
 					subT.Log(entry.String())
 				}
 			}
@@ -279,7 +279,7 @@ func TestOpenAPIValidator_NonCanonicalServerURL(t *testing.T) {
 			}
 
 			if subT.Failed() {
-				for _, entry := range hook.Entries {
+				for _, entry := range hook.AllEntries() {
 					subT.Log(entry.String())
 				}
 			}
