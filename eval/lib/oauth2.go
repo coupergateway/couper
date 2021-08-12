@@ -140,21 +140,6 @@ func NewOAuthCodeChallengeFunction(verifier func() (*pkce.CodeVerifier, error)) 
 	})
 }
 
-func NewOAuthHashedCsrfTokenFunction(verifier func() (*pkce.CodeVerifier, error)) function.Function {
-	return function.New(&function.Spec{
-		Params: []function.Parameter{},
-		Type:   function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			hashedVerifier, err := createCodeChallenge(verifier)
-			if err != nil {
-				return cty.StringVal(""), err
-			}
-
-			return cty.StringVal(hashedVerifier), nil
-		},
-	})
-}
-
 func createCodeChallenge(verifier func() (*pkce.CodeVerifier, error)) (string, error) {
 	codeVerifier, err := verifier()
 	if err != nil {
