@@ -1,6 +1,6 @@
 # Couper
 
-![Couper](https://raw.githubusercontent.com/avenga/couper/master/docs/couper-logo.svg)
+![Couper](https://raw.githubusercontent.com/avenga/couper/master/docs/img/couper-logo.svg)
 
 Couper is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a frontend gateway component.
 
