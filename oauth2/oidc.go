@@ -139,7 +139,7 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, o.clientConfig.GetClientID())
 	}
 
-	verifierMethod, err := o.getAcClientConfig().GetVerifierMethod()
+	verifierMethod, err := getVerifierMethod(o.asConfig)
 	if err != nil {
 		return nil, nil, err
 	}

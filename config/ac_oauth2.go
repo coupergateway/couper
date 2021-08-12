@@ -9,7 +9,7 @@ var _ OAuth2AcClient = &OAuth2AC{}
 var _ OAuth2AcAS = &OAuth2AC{}
 var _ OAuth2Authorization = &OAuth2AC{}
 
-// OAuth2AC represents represents an oauth2 block for an OAuth2 client using the authorization code flow.
+// OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
 	AccessControlSetter
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
@@ -18,12 +18,12 @@ type OAuth2AC struct {
 	ClientSecret            string   `hcl:"client_secret"`
 	GrantType               string   `hcl:"grant_type"`
 	Name                    string   `hcl:"name,label"`
-	RedirectURI             string   `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	VerifierMethod          string   `hcl:"verifier_method"`
+
 	// internally used
 	Backend     hcl.Body
 	BodyContent *hcl.BodyContent
@@ -49,6 +49,7 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		Backend       *Backend `hcl:"backend,block"`
+		RedirectURI   string   `hcl:"redirect_uri"`
 		VerifierValue string   `hcl:"verifier_value"`
 	}
 
@@ -83,10 +84,6 @@ func (oa OAuth2AC) GetScope() string {
 		return ""
 	}
 	return *oa.Scope
-}
-
-func (oa OAuth2AC) GetRedirectURI() string {
-	return oa.RedirectURI
 }
 
 func (oa OAuth2AC) GetAuthorizationEndpoint() (string, error) {

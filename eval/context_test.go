@@ -187,7 +187,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 			envVars := seetie.ValueToMap(hclContext.Variables["env"])
 			for key, expectedValue := range tt.want {
@@ -232,7 +232,7 @@ func TestCouperVariables(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 			couperVars := seetie.ValueToMap(hclContext.Variables["couper"])
 

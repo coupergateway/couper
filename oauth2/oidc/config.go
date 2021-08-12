@@ -23,6 +23,8 @@ type OpenidConfiguration struct {
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 }
 
+type Configs map[string]*Config
+
 var (
 	_ config.OidcAS              = &Config{}
 	_ config.OAuth2Authorization = &Config{}

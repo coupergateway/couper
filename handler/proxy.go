@@ -12,6 +12,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/handler/transport"
 )
 
@@ -53,7 +54,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	url, err := eval.GetContextAttribute(p.context, req.Context(), "url")
+	url, err := content.GetContextAttribute(p.context, req.Context(), "url")
 	if err != nil {
 		return nil, err
 	}

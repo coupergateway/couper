@@ -15,8 +15,8 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 // Client represents the OAuth2 client.
@@ -148,11 +148,6 @@ func (a AbstractAcClient) GetName() string {
 	return a.name
 }
 
-func (a *AbstractAcClient) getAcClientConfig() config.OAuth2AcClient {
-	acClientConfig, _ := a.clientConfig.(config.OAuth2AcClient)
-	return acClientConfig
-}
-
 func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
@@ -160,24 +155,27 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, nil, "", errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
-	requestParams := map[string]string{"code": code}
-	origin := eval.NewRawOrigin(callbackURL)
-	absRedirectUri, err := lib.AbsoluteURL(a.getAcClientConfig().GetRedirectURI(), origin)
+	callbackURLVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.CallbackURL)
+	if callbackURLVal == "" {
+		return nil, nil, "", fmt.Errorf("%s is required", callbackURL)
+	}
+	absoluteURL, err := lib.AbsoluteURL(callbackURLVal, eval.NewRawOrigin(callbackURL))
 	if err != nil {
 		return nil, nil, "", err
 	}
-	requestParams["redirect_uri"] = absRedirectUri
 
-	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)
+	requestParams := map[string]string{
+		"code":         code,
+		"redirect_uri": absoluteURL,
+	}
 
-	v, _ := a.getAcClientConfig().GetBodyContent().Attributes["verifier_value"]
-	ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
-	verifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
+	verifierVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, "verifier_value")
+	verifierValue := strings.TrimSpace(verifierVal)
 	if verifierValue == "" {
 		return nil, nil, "", errors.Oauth2.Message("Empty verifier_value")
 	}
 
-	verifierMethod, err := a.getAcClientConfig().GetVerifierMethod()
+	verifierMethod, err := getVerifierMethod(a.asConfig)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -205,7 +203,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, nil, "", err
 	}
 
-	if err := a.validateTokenResponseData(ctx, tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
+	if err = a.validateTokenResponseData(ctx, tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
 		return nil, nil, "", err
 	}
 
@@ -274,4 +272,12 @@ func Base64urlSha256(value string) string {
 	h := sha256.New()
 	h.Write([]byte(value))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+}
+
+func getVerifierMethod(conf interface{}) (string, error) {
+	clientConf, ok := conf.(config.OAuth2AcClient)
+	if !ok {
+		return "", fmt.Errorf("could not obtain verifier method configuration")
+	}
+	return clientConf.GetVerifierMethod()
 }

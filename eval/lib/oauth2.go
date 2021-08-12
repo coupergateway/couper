@@ -4,21 +4,25 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/hashicorp/hcl/v2"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/eval/content"
 )
 
 const (
+	CallbackURL                   = "redirect_uri"
+	CodeVerifier                  = "code_verifier"
 	FnOAuthAuthorizationUrl       = "beta_oauth_authorization_url"
 	FnOAuthVerifier               = "beta_oauth_verifier"
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
-	CodeVerifier                  = "code_verifier"
 )
 
-func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error), origin *url.URL) function.Function {
+func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []config.OAuth2Authorization,
+	verifier func() (*pkce.CodeVerifier, error), origin *url.URL) function.Function {
 	oauth2s := make(map[string]config.OAuth2Authorization)
 	for _, o := range oauth2Configs {
 		oauth2s[o.GetName()] = o
@@ -32,7 +36,7 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 			},
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			label := args[0].AsString()
 			oauth2, exist := oauth2s[label]
 			if !exist {
@@ -49,10 +53,27 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 				return cty.StringVal(""), err
 			}
 
+			var callbackURL string
+			if inline, ok := oauth2.(config.Inline); ok {
+				body := inline.HCLBody()
+				bodyContent, _, diags := body.PartialContent(inline.Schema(true))
+				if diags.HasErrors() {
+					return cty.StringVal(""), diags
+				}
+				val, err := content.GetAttribute(ctx, bodyContent, CallbackURL)
+				if err != nil {
+					return cty.StringVal(""), err
+				} else if val == "" {
+					return cty.StringVal(""), fmt.Errorf("%s is required", CallbackURL)
+				}
+
+				callbackURL = val
+			}
+
 			query := oauthAuthorizationUrl.Query()
 			query.Set("response_type", "code")
 			query.Set("client_id", oauth2.GetClientID())
-			absRedirectUri, err := AbsoluteURL(oauth2.GetRedirectURI(), origin)
+			absRedirectUri, err := AbsoluteURL(callbackURL, origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}

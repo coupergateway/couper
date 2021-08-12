@@ -78,7 +78,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	}
 
 	httpSrv := &HTTPServer{
-		evalCtx:    evalCtx.Value(eval.ContextType).(*eval.Context),
+		evalCtx:    evalCtx.Value(request.ContextType).(*eval.Context),
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,

@@ -41,7 +41,6 @@ type OAuth2Client interface {
 type OAuth2AcClient interface {
 	OAuth2Client
 	GetName() string
-	GetRedirectURI() string
 	// GetVerifierMethod retrieves the verifier method (ccm_s256, nonce or state)
 	GetVerifierMethod() (string, error)
 	GetBodyContent() *hcl.BodyContent
@@ -52,7 +51,6 @@ type OAuth2Authorization interface {
 	GetAuthorizationEndpoint() (string, error)
 	GetClientID() string
 	GetName() string
-	GetRedirectURI() string
 	GetScope() string
 	GetVerifierMethod() (string, error)
 }
