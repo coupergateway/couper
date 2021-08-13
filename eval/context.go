@@ -220,6 +220,9 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
 
+	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
+	originUrl, _ := url.Parse(clientOrigin)
+	ctx.updateRequestRelatedFunctions(originUrl)
 	ctx.updateFunctions()
 
 	return ctx

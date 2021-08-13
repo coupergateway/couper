@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -174,6 +175,10 @@ func (o *Config) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
 	ocBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(ocBytes) == 0 {
+		return nil, fmt.Errorf("configuration body is empty: %s", o.ConfigurationURL)
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(ocBytes))
