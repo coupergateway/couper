@@ -272,12 +272,12 @@ func publicKey(priv interface{}) interface{} {
 type ErrorWrapper struct{ l logrus.FieldLogger }
 
 func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
-	msg := strings.Replace(string(p), "\n", "", 1)
-	if strings.HasSuffix(msg, " tls: unknown certificate") {
-		e.l.Warn(msg)
-	} else {
-		e.l.Error(msg)
+	msg := string(p)
+	if strings.HasSuffix(msg, " tls: unknown certificate") ||
+		strings.HasPrefix(msg, "http: TLS handshake error") {
+		return len(p), nil // triggered on first browser connect for self signed certs; skip
 	}
+	e.l.Error(msg)
 	return len(p), nil
 }
 func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
