@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -39,6 +41,7 @@ func NewRun(ctx context.Context) *Run {
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
 	set.Var(&AcceptForwardedValue{settings: &settings}, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
+	set.Var(&settings.TLSDevProxy, "https-dev-proxy", "-https-dev-proxy 8443:8080,9443:9000")
 	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.RequestIDAcceptFromHeader, "request-id-accept-from-header", settings.RequestIDAcceptFromHeader, "-request-id-accept-from-header X-UID")
@@ -78,8 +81,8 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
 
-	if flag := r.flagSet.Lookup("accept-forwarded-url"); flag != nil {
-		if afv, ok := flag.Value.(*AcceptForwardedValue); ok {
+	if f := r.flagSet.Lookup("accept-forwarded-url"); f != nil {
+		if afv, ok := f.Value.(*AcceptForwardedValue); ok {
 			afv.settings = r.settings
 		}
 	}
@@ -113,13 +116,48 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 	errors.SetLogger(logEntry)
 
+	tlsDevPorts := make(server.TLSDevPorts)
+	for _, ports := range config.Settings.TLSDevProxy {
+		if err = tlsDevPorts.Add(ports); err != nil {
+			return err
+		}
+	}
+
 	serverList, listenCmdShutdown := server.NewServerList(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
+	var tlsServer []*http.Server
+
+	for mappedListenPort := range tlsDevPorts {
+		if _, exist := srvConf[mappedListenPort.Port()]; !exist {
+			return errors.Configuration.Messagef("%s: target port not configured: %s", server.TLSProxyOption, mappedListenPort)
+		}
+	}
+
 	for _, srv := range serverList {
 		if listenErr := srv.Listen(); listenErr != nil {
 			return listenErr
 		}
+
+		_, port, splitErr := net.SplitHostPort(srv.Addr())
+		if splitErr != nil {
+			return splitErr
+		}
+
+		for _, tlsPort := range tlsDevPorts.Get(port) {
+			tlsSrv, tlsErr := server.NewTLSProxy(srv.Addr(), tlsPort, logEntry, config.Settings)
+			if tlsErr != nil {
+				return tlsErr
+			}
+			tlsServer = append(tlsServer, tlsSrv)
+			logEntry.Infof("couper is serving tls: %s -> %s", tlsPort, port)
+		}
 	}
+
 	listenCmdShutdown()
+
+	for _, s := range tlsServer {
+		_ = s.Close()
+		logEntry.Infof("Server closed: %s", s.Addr)
+	}
 	return nil
 }
 

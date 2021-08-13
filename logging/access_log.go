@@ -46,7 +46,9 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	backendName, _ := req.Context().Value(request.BackendName).(string)
 	if backendName == "" {
 		endpointName, _ := req.Context().Value(request.Endpoint).(string)
-		fields["endpoint"] = endpointName
+		if endpointName != "" {
+			fields["endpoint"] = endpointName
+		}
 	}
 
 	fields["method"] = req.Method
@@ -65,7 +67,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	// Read out handler kind from stringer interface
 	if h, ok := nextHandler.(fmt.Stringer); ok && h.String() != "" {
 		fields["handler"] = h.String()
-	} else if kind, ok := req.Context().Value(request.EndpointKind).(string); ok { // fallback, e.g. with ErrorHandler
+	} else if kind, k := req.Context().Value(request.EndpointKind).(string); k { // fallback, e.g. with ErrorHandler
 		fields["handler"] = kind
 	}
 
@@ -115,7 +117,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	fields["scheme"] = "http"
 	if req.URL.Scheme != "" {
 		fields["scheme"] = req.URL.Scheme
+	} else if req.TLS != nil && req.TLS.HandshakeComplete {
+		fields["scheme"] = "https"
 	}
+
 	if requestFields["port"] == "" {
 		if fields["scheme"] == "https" {
 			requestFields["port"] = "443"

@@ -10,6 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Default values for environment variable by means of `environment_variables` within `defaults` block. ([#271](https://github.com/avenga/couper/pull/271))
   * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests`](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
   * Settings for accepting a downstream requestID and use this ID instead for logging, `request.id` variable and down-/upstream id-header ([#268](https://github.com/avenga/couper/pull/268))
+  * `https-dev-proxy` option to map and proxy an existing port to a tls one; a SNI based on-the-fly generated certificate gets served from memory ([#281](https://github.com/avenga/couper/pull/281))
 
 * **Changed**
   * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
