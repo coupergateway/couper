@@ -2967,7 +2967,7 @@ func TestWrapperHiJack_WebsocketUpgradeTimeout(t *testing.T) {
 	_, err = conn.Read(p)
 	helper.Must(err)
 
-	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")) {
+	if !bytes.HasPrefix(p, []byte("HTTP/1.1 504 Gateway Timeout\r\n")) {
 		t.Errorf("Expected 504 status and related headers, got:\n%q", string(p))
 	}
 }

@@ -8,7 +8,7 @@ server "ws" {
           path = "/ws"
         }
         websockets {
-          timeout = "1ms"
+          timeout = "1ns"
         }
       }
     }
