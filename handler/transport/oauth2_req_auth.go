@@ -98,8 +98,8 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (oa *OAuth2ReqAuth) readAccessToken(key string) (string, error) {
-	if data := oa.memStore.Get(key); data != "" {
-		_, token, err := oauth2.ParseTokenResponse([]byte(data))
+	if data := oa.memStore.Get(key); data != nil {
+		_, token, err := oauth2.ParseTokenResponse(data.([]byte))
 		if err != nil {
 			return "", errors.Backend.Label(oa.config.BackendName).Message("token read error").With(err)
 		}
@@ -117,6 +117,6 @@ func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]in
 			ttl = (int64)(t * 0.9)
 		}
 
-		oa.memStore.Set(key, string(jsonBytes), ttl)
+		oa.memStore.Set(key, jsonBytes, ttl)
 	}
 }
