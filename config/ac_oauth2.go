@@ -86,11 +86,11 @@ func (oa OAuth2AC) GetScope() string {
 	return *oa.Scope
 }
 
-func (oa OAuth2AC) GetAuthorizationEndpoint() (string, error) {
+func (oa OAuth2AC) GetAuthorizationEndpoint(_ string) (string, error) {
 	return oa.AuthorizationEndpoint, nil
 }
 
-func (oa OAuth2AC) GetTokenEndpoint() (string, error) {
+func (oa OAuth2AC) GetTokenEndpoint(_ string) (string, error) {
 	return oa.TokenEndpoint, nil
 }
 
@@ -99,6 +99,6 @@ func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or state)
-func (oa OAuth2AC) GetVerifierMethod() (string, error) {
+func (oa OAuth2AC) GetVerifierMethod(_ string) (string, error) {
 	return oa.VerifierMethod, nil
 }

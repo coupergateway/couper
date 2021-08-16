@@ -76,7 +76,7 @@ func (oa OAuth2ReqAuth) GetScope() string {
 	return *oa.Scope
 }
 
-func (oa OAuth2ReqAuth) GetTokenEndpoint() (string, error) {
+func (oa OAuth2ReqAuth) GetTokenEndpoint(_ string) (string, error) {
 	return oa.TokenEndpoint, nil
 }
 

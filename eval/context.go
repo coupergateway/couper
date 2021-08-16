@@ -260,7 +260,7 @@ func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
 	return c
 }
 
-// WithSAML initially setup the saml configuration.
+// WithSAML initially set up the saml configuration.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
 	if c.saml == nil {

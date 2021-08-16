@@ -101,7 +101,7 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
-	tokenURL, err := c.asConfig.GetTokenEndpoint()
+	tokenURL, err := c.asConfig.GetTokenEndpoint(ctx.Value(request.UID).(string))
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, nil, "", errors.Oauth2.Message("Empty verifier_value")
 	}
 
-	verifierMethod, err := getVerifierMethod(a.asConfig)
+	verifierMethod, err := getVerifierMethod(ctx, a.asConfig)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -227,13 +227,18 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2A
 		}
 	}
 
-	verifierMethod, err := acClientConf.GetVerifierMethod()
-	if err != nil {
-		return nil, err
-	}
+	switch acClientConf.(type) {
+	case *config.OAuth2AC:
+		verifierMethod, err := acClientConf.GetVerifierMethod("")
+		if err != nil {
+			return nil, err
+		}
 
-	if verifierMethod != config.CcmS256 && verifierMethod != "nonce" && verifierMethod != "state" {
-		return nil, fmt.Errorf("verifier_method %s not supported", verifierMethod)
+		if verifierMethod != config.CcmS256 && verifierMethod != "nonce" && verifierMethod != "state" {
+			return nil, fmt.Errorf("verifier_method %s not supported", verifierMethod)
+		}
+	default:
+		// skip this for oidc configurations due to possible startup errors
 	}
 
 	client := Client{
@@ -246,7 +251,7 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2A
 	return o, nil
 }
 
-func (o *OAuth2AcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
+func (o *OAuth2AcClient) validateTokenResponseData(_ context.Context, _ map[string]interface{}, _, _, _ string) error {
 	return nil
 }
 
@@ -274,10 +279,10 @@ func Base64urlSha256(value string) string {
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 
-func getVerifierMethod(conf interface{}) (string, error) {
+func getVerifierMethod(ctx context.Context, conf interface{}) (string, error) {
 	clientConf, ok := conf.(config.OAuth2AcClient)
 	if !ok {
 		return "", fmt.Errorf("could not obtain verifier method configuration")
 	}
-	return clientConf.GetVerifierMethod()
+	return clientConf.GetVerifierMethod(ctx.Value(request.UID).(string))
 }

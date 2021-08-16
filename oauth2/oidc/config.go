@@ -65,18 +65,19 @@ func (o *Config) Reference() string {
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
-func (o *Config) GetVerifierMethod() (string, error) {
+func (o *Config) GetVerifierMethod(uid string) (string, error) {
 	if o.VerifierMethod == "" {
-		err := o.getFreshIfExpired()
+		err := o.getFreshIfExpired(uid)
 		if err != nil {
 			return "", err
 		}
 	}
+
 	return o.VerifierMethod, nil
 }
 
-func (o *Config) GetAuthorizationEndpoint() (string, error) {
-	err := o.getFreshIfExpired()
+func (o *Config) GetAuthorizationEndpoint(uid string) (string, error) {
+	err := o.getFreshIfExpired(uid)
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +86,7 @@ func (o *Config) GetAuthorizationEndpoint() (string, error) {
 }
 
 func (o *Config) GetIssuer() (string, error) {
-	err := o.getFreshIfExpired()
+	err := o.getFreshIfExpired("")
 	if err != nil {
 		return "", err
 	}
@@ -93,8 +94,8 @@ func (o *Config) GetIssuer() (string, error) {
 	return o.Issuer, nil
 }
 
-func (o *Config) GetTokenEndpoint() (string, error) {
-	err := o.getFreshIfExpired()
+func (o *Config) GetTokenEndpoint(uid string) (string, error) {
+	err := o.getFreshIfExpired(uid)
 	if err != nil {
 		return "", err
 	}
@@ -102,8 +103,8 @@ func (o *Config) GetTokenEndpoint() (string, error) {
 	return o.TokenEndpoint, nil
 }
 
-func (o *Config) GetUserinfoEndpoint() (string, error) {
-	err := o.getFreshIfExpired()
+func (o *Config) GetUserinfoEndpoint(uid string) (string, error) {
+	err := o.getFreshIfExpired(uid)
 	if err != nil {
 		return "", err
 	}
@@ -111,7 +112,7 @@ func (o *Config) GetUserinfoEndpoint() (string, error) {
 	return o.UserinfoEndpoint, nil
 }
 
-func (o *Config) getFreshIfExpired() error {
+func (o *Config) getFreshIfExpired(uid string) error {
 	stored := o.memStore.Get(o.ConfigurationURL)
 	var (
 		openidConfiguration *OpenidConfiguration
@@ -125,7 +126,7 @@ func (o *Config) getFreshIfExpired() error {
 			return err
 		}
 	} else {
-		openidConfiguration, err = o.fetchOpenidConfiguration()
+		openidConfiguration, err = o.fetchOpenidConfiguration(uid)
 		if err != nil {
 			return err
 		}
@@ -158,10 +159,13 @@ func supportsS256(codeChallengeMethodsSupported []string) bool {
 	return false
 }
 
-func (o *Config) fetchOpenidConfiguration() (*OpenidConfiguration, error) {
+func (o *Config) fetchOpenidConfiguration(uid string) (*OpenidConfiguration, error) {
 	req, err := http.NewRequest(http.MethodGet, "", nil)
 	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
 	ctx = context.WithValue(ctx, request.RoundTripName, o.Name)
+	if uid != "" {
+		ctx = context.WithValue(ctx, request.UID, uid)
+	}
 	req = req.WithContext(ctx)
 	if err != nil {
 		return nil, err

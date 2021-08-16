@@ -11,6 +11,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -43,7 +44,8 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []conf
 				return cty.StringVal(""), fmt.Errorf("undefined reference: %s", label)
 			}
 
-			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()
+			uid := seetie.ToString(seetie.ValueToMap(ctx.Variables["request"])["id"])
+			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint(uid)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -82,7 +84,7 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []conf
 				query.Set("scope", scope)
 			}
 
-			verifierMethod, err := oauth2.GetVerifierMethod()
+			verifierMethod, err := oauth2.GetVerifierMethod(uid)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
