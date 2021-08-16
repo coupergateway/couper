@@ -3,11 +3,12 @@ package oidc
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/avenga/couper/cache"
@@ -37,13 +38,11 @@ var (
 // Config represents the configuration for an OIDC client
 type Config struct {
 	*config.OIDC
-	Backend               http.RoundTripper
-	memStore              *cache.MemoryStore
-	ttl                   int64
-	AuthorizationEndpoint string
-	Issuer                string
-	TokenEndpoint         string
-	UserinfoEndpoint      string
+	Backend    http.RoundTripper
+	memStore   *cache.MemoryStore
+	remoteConf *OpenidConfiguration
+	remoteMu   sync.RWMutex
+	ttl        int64
 }
 
 // NewConfig creates a new configuration for an OIDC client
@@ -82,7 +81,9 @@ func (o *Config) GetAuthorizationEndpoint(uid string) (string, error) {
 		return "", err
 	}
 
-	return o.AuthorizationEndpoint, nil
+	o.remoteMu.RLock()
+	defer o.remoteMu.RUnlock()
+	return o.remoteConf.AuthorizationEndpoint, nil
 }
 
 func (o *Config) GetIssuer() (string, error) {
@@ -91,7 +92,9 @@ func (o *Config) GetIssuer() (string, error) {
 		return "", err
 	}
 
-	return o.Issuer, nil
+	o.remoteMu.RLock()
+	defer o.remoteMu.RUnlock()
+	return o.remoteConf.Issuer, nil
 }
 
 func (o *Config) GetTokenEndpoint(uid string) (string, error) {
@@ -100,7 +103,9 @@ func (o *Config) GetTokenEndpoint(uid string) (string, error) {
 		return "", err
 	}
 
-	return o.TokenEndpoint, nil
+	o.remoteMu.RLock()
+	defer o.remoteMu.RUnlock()
+	return o.remoteConf.TokenEndpoint, nil
 }
 
 func (o *Config) GetUserinfoEndpoint(uid string) (string, error) {
@@ -109,35 +114,40 @@ func (o *Config) GetUserinfoEndpoint(uid string) (string, error) {
 		return "", err
 	}
 
-	return o.UserinfoEndpoint, nil
+	o.remoteMu.RLock()
+	defer o.remoteMu.RUnlock()
+	return o.remoteConf.UserinfoEndpoint, nil
 }
 
 func (o *Config) getFreshIfExpired(uid string) error {
-	stored := o.memStore.Get(o.ConfigurationURL)
-	var (
-		openidConfiguration *OpenidConfiguration
-		err                 error
-	)
-	if stored != "" {
-		openidConfiguration = &OpenidConfiguration{}
-		decoder := json.NewDecoder(strings.NewReader(stored))
-		err = decoder.Decode(openidConfiguration)
-		if err != nil {
-			return err
+	key := o.Name + o.ConfigurationURL
+	confVal := o.memStore.Get(key)
+	if oc, ok := confVal.(*OpenidConfiguration); ok {
+
+		o.remoteMu.RLock()
+		if oc.hash() == o.remoteConf.hash() {
+			o.remoteMu.RUnlock()
+			return nil
 		}
-	} else {
-		openidConfiguration, err = o.fetchOpenidConfiguration(uid)
-		if err != nil {
-			return err
-		}
+		o.remoteMu.RUnlock()
+
+		o.remoteMu.Lock()
+		o.remoteConf = oc
+		o.remoteMu.Unlock()
+		return nil
 	}
 
-	o.AuthorizationEndpoint = openidConfiguration.AuthorizationEndpoint
-	o.Issuer = openidConfiguration.Issuer
-	o.TokenEndpoint = openidConfiguration.TokenEndpoint
-	o.UserinfoEndpoint = openidConfiguration.UserinfoEndpoint
+	conf, err := o.fetchConfiguration(uid)
+	if err != nil {
+		return err
+	}
+
+	o.remoteMu.Lock()
+	defer o.remoteMu.Unlock()
+
+	o.remoteConf = conf
 	if o.OIDC.VerifierMethod == "" {
-		if supportsS256(openidConfiguration.CodeChallengeMethodsSupported) {
+		if supportsS256(o.remoteConf.CodeChallengeMethodsSupported) {
 			o.OIDC.VerifierMethod = config.CcmS256
 		} else {
 			o.OIDC.VerifierMethod = "nonce"
@@ -147,19 +157,7 @@ func (o *Config) getFreshIfExpired(uid string) error {
 	return nil
 }
 
-func supportsS256(codeChallengeMethodsSupported []string) bool {
-	if codeChallengeMethodsSupported == nil {
-		return false
-	}
-	for _, codeChallengeMethod := range codeChallengeMethodsSupported {
-		if codeChallengeMethod == "S256" {
-			return true
-		}
-	}
-	return false
-}
-
-func (o *Config) fetchOpenidConfiguration(uid string) (*OpenidConfiguration, error) {
+func (o *Config) fetchConfiguration(uid string) (*OpenidConfiguration, error) {
 	req, err := http.NewRequest(http.MethodGet, "", nil)
 	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
 	ctx = context.WithValue(ctx, request.RoundTripName, o.Name)
@@ -192,6 +190,24 @@ func (o *Config) fetchOpenidConfiguration(uid string) (*OpenidConfiguration, err
 		return nil, err
 	}
 
-	o.memStore.Set(o.ConfigurationURL, string(ocBytes), o.ttl)
+	o.memStore.Set(o.ConfigurationURL, openidConfiguration, o.ttl)
 	return openidConfiguration, nil
+}
+
+func (rc *OpenidConfiguration) hash() string {
+	h := sha256.New()
+	h.Write([]byte(fmt.Sprintf("%v", rc)))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func supportsS256(codeChallengeMethodsSupported []string) bool {
+	if codeChallengeMethodsSupported == nil {
+		return false
+	}
+	for _, codeChallengeMethod := range codeChallengeMethodsSupported {
+		if codeChallengeMethod == "S256" {
+			return true
+		}
+	}
+	return false
 }
