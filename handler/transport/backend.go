@@ -209,8 +209,13 @@ func (b *Backend) getAttribute(req *http.Request, name string) string {
 }
 
 func (b *Backend) withTimeout(req *http.Request) <-chan error {
+	timeout := b.transportConf.Timeout
+	if to, ok := req.Context().Value(request.WebsocketsTimeout).(time.Duration); ok {
+		timeout = to
+	}
+
 	errCh := make(chan error, 1)
-	if b.transportConf.Timeout <= 0 {
+	if timeout <= 0 {
 		return errCh
 	}
 
@@ -218,7 +223,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	*req = *req.WithContext(ctx)
 	go func(cancelFn func(), c context.Context, ec chan error) {
 		defer cancelFn()
-		deadline := time.After(b.transportConf.Timeout)
+		deadline := time.After(timeout)
 		select {
 		case <-deadline:
 			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")

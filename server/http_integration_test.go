@@ -2899,6 +2899,79 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 	}
 }
 
+func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/api/13_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
+	helper.Must(err)
+	req.Close = false
+
+	req.Header.Set("Connection", "upgrade")
+	req.Header.Set("Upgrade", "websocket")
+
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	helper.Must(err)
+	defer conn.Close()
+
+	helper.Must(req.Write(conn))
+
+	helper.Must(conn.SetDeadline(time.Time{}))
+
+	p := make([]byte, 89)
+	_, err = conn.Read(p)
+	helper.Must(err)
+
+	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nEcho: ECHO\r\nUpgrade: websocket\r\n\r\n")) {
+		t.Errorf("Expected 101 status and related headers, got:\n%q", string(p))
+	}
+
+	n, err := conn.Write([]byte("ping"))
+	helper.Must(err)
+
+	if n != 4 {
+		t.Errorf("Expected 4 written bytes for 'ping', got: %d", n)
+	}
+
+	p = make([]byte, 4)
+	_, err = conn.Read(p)
+	helper.Must(err)
+
+	if !bytes.Equal(p, []byte("pong")) {
+		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestWrapperHiJack_WebsocketUpgradeTimeout(t *testing.T) {
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/api/14_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
+	helper.Must(err)
+	req.Close = false
+
+	req.Header.Set("Connection", "upgrade")
+	req.Header.Set("Upgrade", "websocket")
+
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	helper.Must(err)
+	defer conn.Close()
+
+	helper.Must(req.Write(conn))
+
+	helper.Must(conn.SetDeadline(time.Time{}))
+
+	p := make([]byte, 77)
+	_, err = conn.Read(p)
+	helper.Must(err)
+
+	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")) {
+		t.Errorf("Expected 504 status and related headers, got:\n%q", string(p))
+	}
+}
+
 func TestAccessControl_Files_SPA(t *testing.T) {
 	shutdown, _ := newCouper("testdata/file_serving/conf_ac.hcl", test.New(t))
 	defer shutdown()

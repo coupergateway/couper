@@ -20,6 +20,7 @@ const (
 	TokenRequest
 	TokenRequestRetries
 	URLAttribute
+	WebsocketsTimeout
 	Wildcard
 	XFF
 )

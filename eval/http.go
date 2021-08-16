@@ -289,25 +289,29 @@ func upgradeType(h http.Header) string {
 	return strings.ToLower(h.Get("Upgrade"))
 }
 
-func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
+func IsUpgradeRequest(req *http.Request) bool {
 	if req == nil {
 		return false
 	}
 	if _, ok := req.Context().Value(request.AllowWebsockets).(bool); !ok {
 		return false
 	}
-	if res == nil {
+	if conn := strings.ToLower(req.Header.Get("Connection")); !strings.Contains(conn, "upgrade") {
 		return false
 	}
-
-	reqUpType := upgradeType(req.Header)
-	resUpType := upgradeType(res.Header)
-
-	if reqUpType != resUpType || reqUpType != "websocket" {
+	if reqUpType := upgradeType(req.Header); reqUpType != "websocket" {
 		return false
 	}
 
 	return true
+}
+
+func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
+	if !IsUpgradeRequest(req) || res == nil {
+		return false
+	}
+
+	return upgradeType(req.Header) == upgradeType(res.Header)
 }
 
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {

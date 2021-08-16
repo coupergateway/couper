@@ -6,13 +6,16 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/server/writer"
 )
 
@@ -23,19 +26,17 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
-	allowWebsockets bool
-	backend         http.RoundTripper
-	context         hcl.Body
-	logger          *logrus.Entry
-	reverseProxy    *httputil.ReverseProxy
+	backend      http.RoundTripper
+	context      hcl.Body
+	logger       *logrus.Entry
+	reverseProxy *httputil.ReverseProxy
 }
 
-func NewProxy(backend http.RoundTripper, ctx hcl.Body, allowWebsockets bool, logger *logrus.Entry) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
-		allowWebsockets: allowWebsockets,
-		backend:         backend,
-		context:         ctx,
-		logger:          logger,
+		backend: backend,
+		context: ctx,
+		logger:  logger,
 	}
 	rp := &httputil.ReverseProxy{
 		Director: proxy.director,
@@ -57,6 +58,46 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
+	content, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	if wss := content.Blocks.OfType("websockets"); len(wss) == 1 {
+		ctx := req.Context()
+
+		ctx = context.WithValue(ctx, request.AllowWebsockets, true)
+		*req = *req.WithContext(ctx)
+
+		// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
+		if eval.IsUpgradeRequest(req) {
+			content, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
+			if diags.HasErrors() {
+				return nil, diags
+			}
+			if err := eval.ApplyRequestContext(req.Context(), wss[0].Body, req); err != nil {
+				return nil, err
+			}
+
+			if attr, ok := content.Attributes["timeout"]; ok {
+				val, diags := attr.Expr.Value(nil)
+				if diags.HasErrors() {
+					return nil, diags
+				}
+
+				str := seetie.ValueToString(val)
+
+				timeout, err := time.ParseDuration(str)
+				if str != "" && err != nil {
+					return nil, err
+				}
+
+				ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
+				*req = *req.WithContext(ctx)
+			}
+		}
+	}
+
 	url, err := eval.GetContextAttribute(p.context, req.Context(), "url")
 	if err != nil {
 		return nil, err
@@ -68,11 +109,6 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	rw := req.Context().Value(request.ResponseWriter).(*writer.Response)
 	rec := transport.NewRecorder(rw)
-
-	if p.allowWebsockets {
-		ctx := context.WithValue(req.Context(), request.AllowWebsockets, true)
-		*req = *req.WithContext(ctx)
-	}
 
 	p.reverseProxy.ServeHTTP(rec, req)
 	beresp, err := rec.Response(req)

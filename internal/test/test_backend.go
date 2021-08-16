@@ -129,7 +129,11 @@ func echo(rw http.ResponseWriter, req *http.Request) {
 	// Clear deadlines
 	conn.SetDeadline(time.Time{})
 
-	_, _ = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"))
+	if req.Header.Get("Echo") == "ECHO" {
+		_, _ = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\nEcho: ECHO\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"))
+	} else {
+		_, _ = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"))
+	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
