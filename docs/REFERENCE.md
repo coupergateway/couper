@@ -136,11 +136,11 @@ The `proxy` block creates and executes a proxy request to a backend service.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`proxy`|[Endpoint Block](#endpoint-block)|&#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|
+|`proxy`|[Endpoint Block](#endpoint-block)|&#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.), [Websockets Block](#websockets-block) (&#9888; Either websockets attribute or block is allowed.)|
 
 | Attribute(s) | Type | Default | Description | Characteristic(s) | Example |
 | :----------- | :--- | :------ | :---------- | :---------------- | :------ |
-| `allow_websockets` | bool | false | Allows support for websockets. This attribute is only allowed in the 'default' `proxy` block. Other `proxy` blocks, [Request Blocks](#request-block) or [Response Blocks](#response-block) are not allowed in the current [Endpoint Block](#endpoint-block). | - | `allow_websockets = true` |
+| `websockets` | bool | false | Allows support for websockets. This attribute is only allowed in the 'default' `proxy` block. Other `proxy` blocks, [Request Blocks](#request-block) or [Response Blocks](#response-block) are not allowed in the current [Endpoint Block](#endpoint-block). | &#9888; Either websockets attribute or block is allowed. | `websockets = true` |
 | `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
 | `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|
 |[Modifiers](#modifiers)|-|-|-|-|-|
@@ -278,6 +278,19 @@ The `oauth2` block in the [Backend Block](#backend-block) context configures the
 | `retries` |integer|`1` | The number of retries to get the token and resource, if the resource-request responds with `401 Unauthorized` HTTP status code.|-|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
 | `scope`                      |string|-|  A space separated list of requested scopes for the access token.|-| `scope = "read write"` |
+
+### Websockets Block
+
+The `websockets` block activates support for websocket connection in Couper.
+
+| Block name | Context | Label            | Nested block(s) |
+| :--------- | :------ | :--------------- | :-------------- |
+| `websockets` | [Proxy Block](#proxy-block) | no label | - |
+
+| Attribute(s) | Type | Default | Description | Characteristic(s) | Example |
+| :----------- | :--- | :------ | :---------- | :---------------- | :------ |
+| `timeout` | [duration](#duration) | - | The total deadline duration a websocket connection has to exists. | - | `timeout = 600s` |
+| `set_request_headers` | - | - | - | Same as `set_request_headers` in [Request Header](#request-header). | - |
 
 ### Definitions Block
 
@@ -470,6 +483,7 @@ The `defaults` block lets you define default values.
 | `environment_variables` | map | – | One or more environment variable assigments|-|`environment_variables = {ORIGIN = "https://httpbin.org" ...}`|
 
 Examples:
+
 - [`environment_variables`](https://github.com/avenga/couper-examples/blob/master/env-var/README.md).
 
 ## Access Control
