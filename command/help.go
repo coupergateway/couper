@@ -17,9 +17,9 @@ Couper usage:
   couper <cmd> <options>
 
 Available commands:
+  help		Usage for given command.
   run		Start the server with given configuration file.
   version	Print the current version and build information.
-  help		Usage for given command.
 
 Examples:
   couper run
