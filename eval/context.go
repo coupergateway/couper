@@ -251,11 +251,11 @@ func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 
 // WithOidcConfig adds the OidcConfig config structs.
 func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
-	if c.oauth2 == nil {
-		c.oauth2 = make([]config.OAuth2Authorization, 0)
-	}
 	for _, oidcConf := range confs {
 		c.oauth2 = append(c.oauth2, oidcConf)
+	}
+	if c.oauth2 == nil {
+		c.oauth2 = make([]config.OAuth2Authorization, 0)
 	}
 	return c
 }

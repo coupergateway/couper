@@ -100,7 +100,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	if ocErr != nil {
 		return nil, ocErr
 	}
-	evalContext = evalContext.WithOidcConfig(oidcConfigs)
+	evalContext.WithOidcConfig(oidcConfigs)
 
 	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
