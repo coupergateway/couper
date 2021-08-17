@@ -17,7 +17,7 @@ var _ http.RoundTripper = &OAuth2ReqAuth{}
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
-	oauth2Client *oauth2.Client
+	oauth2Client *oauth2.CcClient
 	config       *config.OAuth2ReqAuth
 	memStore     *cache.MemoryStore
 	locks        sync.Map
@@ -26,7 +26,7 @@ type OAuth2ReqAuth struct {
 
 // NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2Client *oauth2.Client, next http.RoundTripper) (http.RoundTripper, error) {
+	oauth2Client *oauth2.CcClient, next http.RoundTripper) (http.RoundTripper, error) {
 	return &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,

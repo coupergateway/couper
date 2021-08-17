@@ -84,6 +84,7 @@ func (o *OidcClient) getOidcAsConfig() config.OidcAS {
 	return oidcAsConfig
 }
 
+// validateTokenResponseData validates the token response data
 func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
 	if err := o.refreshJWTParser(); err != nil {
 		return err
