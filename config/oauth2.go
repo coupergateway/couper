@@ -48,6 +48,7 @@ type OAuth2AcClient interface {
 
 // OAuth2Authorization represents the configuration for the OAuth2 authorization URL function
 type OAuth2Authorization interface {
+	Inline
 	GetAuthorizationEndpoint(uid string) (string, error)
 	GetClientID() string
 	GetName() string
