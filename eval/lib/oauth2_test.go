@@ -64,8 +64,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			Name: "auth-ref",
 			Remain: hclbody.New(&hcl.BodyContent{
 				Attributes: map[string]*hcl.Attribute{
-					lib.CallbackURL: {
-						Name: lib.CallbackURL,
+					lib.RedirectURI: {
+						Name: lib.RedirectURI,
 						Expr: expFn("request.headers.x-want"),
 					},
 				}})},
@@ -76,8 +76,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 				Name: "auth-ref",
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
-						lib.CallbackURL: {
-							Name: lib.CallbackURL,
+						lib.RedirectURI: {
+							Name: lib.RedirectURI,
 							Expr: expFn("backend_requests.default.headers.x-want"),
 						},
 					}})},
@@ -88,8 +88,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 				Name: "auth-ref",
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
-						lib.CallbackURL: {
-							Name: lib.CallbackURL,
+						lib.RedirectURI: {
+							Name: lib.RedirectURI,
 							Expr: expFn("backend_responses.default.headers.x-want"),
 						},
 					}})},
@@ -133,7 +133,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			authUrlObj, err := url.Parse(authUrl)
 			helper.Must(err)
 
-			if authUrlObj.Query().Get(lib.CallbackURL) != tt.want {
+			if authUrlObj.Query().Get(lib.RedirectURI) != tt.want {
 				t.Errorf("Want: %v; got: %v", tt.want, val)
 			}
 		})

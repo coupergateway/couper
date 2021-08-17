@@ -155,11 +155,11 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, nil, "", errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
-	callbackURLVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.CallbackURL)
-	if callbackURLVal == "" {
-		return nil, nil, "", fmt.Errorf("%s is required", callbackURL)
+	redirectURIVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.RedirectURI)
+	if redirectURIVal == "" {
+		return nil, nil, "", fmt.Errorf("%s is required", lib.RedirectURI)
 	}
-	absoluteURL, err := lib.AbsoluteURL(callbackURLVal, eval.NewRawOrigin(callbackURL))
+	absoluteURL, err := lib.AbsoluteURL(redirectURIVal, eval.NewRawOrigin(callbackURL))
 	if err != nil {
 		return nil, nil, "", err
 	}

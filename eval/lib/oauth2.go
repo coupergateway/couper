@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	CallbackURL                   = "redirect_uri"
+	RedirectURI                   = "redirect_uri"
 	CodeVerifier                  = "code_verifier"
 	FnOAuthAuthorizationUrl       = "beta_oauth_authorization_url"
 	FnOAuthVerifier               = "beta_oauth_verifier"
@@ -55,27 +55,27 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []conf
 				return cty.StringVal(""), err
 			}
 
-			var callbackURL string
+			var redirectURI string
 			if inline, ok := oauth2.(config.Inline); ok {
 				body := inline.HCLBody()
 				bodyContent, _, diags := body.PartialContent(inline.Schema(true))
 				if diags.HasErrors() {
 					return cty.StringVal(""), diags
 				}
-				val, err := content.GetAttribute(ctx, bodyContent, CallbackURL)
+				val, err := content.GetAttribute(ctx, bodyContent, RedirectURI)
 				if err != nil {
 					return cty.StringVal(""), err
 				} else if val == "" {
-					return cty.StringVal(""), fmt.Errorf("%s is required", CallbackURL)
+					return cty.StringVal(""), fmt.Errorf("%s is required", RedirectURI)
 				}
 
-				callbackURL = val
+				redirectURI = val
 			}
 
 			query := oauthAuthorizationUrl.Query()
 			query.Set("response_type", "code")
 			query.Set("client_id", oauth2.GetClientID())
-			absRedirectUri, err := AbsoluteURL(callbackURL, origin)
+			absRedirectUri, err := AbsoluteURL(redirectURI, origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
