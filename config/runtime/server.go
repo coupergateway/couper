@@ -538,11 +538,6 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
 			}
 
-			// Obtain the oidc configuration should not block Couper on startup.
-			if _, err = oidcConfig.GetIssuer(); err != nil {
-				log.Error(err)
-			}
-
 			oa, err := ac.NewOAuth2Callback(oidcClient)
 			if err != nil {
 				return nil, confErr.With(err)

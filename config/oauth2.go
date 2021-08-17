@@ -11,7 +11,7 @@ const (
 // OAuth2AS represents the authorization server configuration for OAuth2 clients.
 type OAuth2AS interface {
 	BackendReference
-	GetTokenEndpoint(uid string) (string, error)
+	GetTokenEndpoint() (string, error)
 }
 
 // OAuth2AcAS represents the authorization server configuration for OAuth2 clients using the authorization code flow.
@@ -24,7 +24,7 @@ type OAuth2AcAS interface {
 type OidcAS interface {
 	OAuth2AcAS
 	GetIssuer() (string, error)
-	GetUserinfoEndpoint(uid string) (string, error)
+	GetUserinfoEndpoint() (string, error)
 }
 
 // OAuth2Client represents the client configuration for OAuth2 clients.

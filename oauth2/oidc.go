@@ -245,7 +245,7 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 }
 
 func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	userinfoEndpoint, err := o.getOidcAsConfig().GetUserinfoEndpoint(ctx.Value(request.UID).(string))
+	userinfoEndpoint, err := o.getOidcAsConfig().GetUserinfoEndpoint()
 	if err != nil {
 		return nil, err
 	}

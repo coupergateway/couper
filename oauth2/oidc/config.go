@@ -97,8 +97,8 @@ func (o *Config) GetIssuer() (string, error) {
 	return o.remoteConf.Issuer, nil
 }
 
-func (o *Config) GetTokenEndpoint(uid string) (string, error) {
-	err := o.getFreshIfExpired(uid)
+func (o *Config) GetTokenEndpoint() (string, error) {
+	err := o.getFreshIfExpired("")
 	if err != nil {
 		return "", err
 	}
@@ -108,8 +108,8 @@ func (o *Config) GetTokenEndpoint(uid string) (string, error) {
 	return o.remoteConf.TokenEndpoint, nil
 }
 
-func (o *Config) GetUserinfoEndpoint(uid string) (string, error) {
-	err := o.getFreshIfExpired(uid)
+func (o *Config) GetUserinfoEndpoint() (string, error) {
+	err := o.getFreshIfExpired("")
 	if err != nil {
 		return "", err
 	}

@@ -90,7 +90,7 @@ func (oa OAuth2AC) GetAuthorizationEndpoint(_ string) (string, error) {
 	return oa.AuthorizationEndpoint, nil
 }
 
-func (oa OAuth2AC) GetTokenEndpoint(_ string) (string, error) {
+func (oa OAuth2AC) GetTokenEndpoint() (string, error) {
 	return oa.TokenEndpoint, nil
 }
 
