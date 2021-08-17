@@ -59,10 +59,6 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper, memStore *cache.Mem
 	return &Config{OIDC: oidc, Backend: backend, memStore: memStore, ttl: (int64)(ttl)}, nil
 }
 
-func (o *Config) Reference() string {
-	return o.OIDC.BackendName
-}
-
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
 func (o *Config) GetVerifierMethod(uid string) (string, error) {
 	if o.VerifierMethod == "" {
