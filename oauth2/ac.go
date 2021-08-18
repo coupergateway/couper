@@ -11,6 +11,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/eval/lib"
@@ -38,16 +39,16 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
-		return nil, fmt.Errorf("missing code query parameter; query=%q", callbackURL.RawQuery)
+		return nil, errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
 	redirectURIVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.RedirectURI)
 	if redirectURIVal == "" {
-		return nil, fmt.Errorf("%s is required", lib.RedirectURI)
+		return nil, errors.Oauth2.Messagef("%s is required", lib.RedirectURI)
 	}
 	absoluteURL, err := lib.AbsoluteURL(redirectURIVal, eval.NewRawOrigin(callbackURL))
 	if err != nil {
-		return nil, err
+		return nil, errors.Oauth2.With(err)
 	}
 
 	requestParams := map[string]string{
@@ -58,12 +59,12 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	verifierVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, "verifier_value")
 	verifierValue := strings.TrimSpace(verifierVal)
 	if verifierValue == "" {
-		return nil, fmt.Errorf("Empty verifier_value")
+		return nil, errors.Oauth2.Messagef("Empty verifier_value")
 	}
 
 	verifierMethod, err := getVerifierMethod(ctx, a.asConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.Oauth2.With(err)
 	}
 
 	var hashedVerifierValue string
@@ -76,21 +77,21 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	if verifierMethod == "state" {
 		stateFromParam := query.Get("state")
 		if stateFromParam == "" {
-			return nil, fmt.Errorf("missing state query parameter; query=%q", callbackURL.RawQuery)
+			return nil, errors.Oauth2.Messagef("missing state query parameter; query=%q", callbackURL.RawQuery)
 		}
 
 		if hashedVerifierValue != stateFromParam {
-			return nil, fmt.Errorf("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
+			return nil, errors.Oauth2.Messagef("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
 		}
 	}
 
 	_, tokenResponseData, accessToken, err := a.getTokenResponse(ctx, requestParams)
 	if err != nil {
-		return nil, err
+		return nil, errors.Oauth2.Message("token request error").With(err)
 	}
 
 	if err = a.validateTokenResponseData(ctx, tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
-		return nil, err
+		return nil, errors.Oauth2.Message("token response validation error").With(err)
 	}
 
 	return tokenResponseData, nil
