@@ -195,7 +195,7 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 }
 
 func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := eval.GetContextAttribute(b.context, req.Context(), name)
+	attrVal, err := eval.GetContextAttribute(req.Context(), b.context, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}

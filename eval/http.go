@@ -405,7 +405,7 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 	return nil
 }
 
-func GetContextAttribute(context hcl.Body, httpContext context.Context, name string) (string, error) {
+func GetContextAttribute(httpContext context.Context, context hcl.Body, name string) (string, error) {
 	ctx, ok := httpContext.Value(ContextType).(*Context)
 	if !ok {
 		return "", nil

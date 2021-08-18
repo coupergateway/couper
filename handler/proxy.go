@@ -53,7 +53,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	url, err := eval.GetContextAttribute(p.context, req.Context(), "url")
+	url, err := eval.GetContextAttribute(req.Context(), p.context, "url")
 	if err != nil {
 		return nil, err
 	}
