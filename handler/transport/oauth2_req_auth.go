@@ -101,7 +101,7 @@ func (oa *OAuth2ReqAuth) readAccessToken(key string) (string, error) {
 	if data := oa.memStore.Get(key); data != nil {
 		_, token, err := oauth2.ParseTokenResponse(data.([]byte))
 		if err != nil {
-			return "", errors.Backend.Label(oa.config.BackendName).Message("token read error").With(err)
+			return "", err
 		}
 
 		return token, nil

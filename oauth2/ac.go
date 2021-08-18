@@ -11,7 +11,6 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/eval/lib"
@@ -39,7 +38,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
-		return nil, nil, "", errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
+		return nil, nil, "", fmt.Errorf("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
 	redirectURIVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.RedirectURI)
@@ -59,7 +58,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	verifierVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, "verifier_value")
 	verifierValue := strings.TrimSpace(verifierVal)
 	if verifierValue == "" {
-		return nil, nil, "", errors.Oauth2.Message("Empty verifier_value")
+		return nil, nil, "", fmt.Errorf("Empty verifier_value")
 	}
 
 	verifierMethod, err := getVerifierMethod(ctx, a.asConfig)
@@ -77,11 +76,11 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	if verifierMethod == "state" {
 		stateFromParam := query.Get("state")
 		if stateFromParam == "" {
-			return nil, nil, "", errors.Oauth2.Messagef("missing state query parameter; query=%q", callbackURL.RawQuery)
+			return nil, nil, "", fmt.Errorf("missing state query parameter; query=%q", callbackURL.RawQuery)
 		}
 
 		if hashedVerifierValue != stateFromParam {
-			return nil, nil, "", errors.Oauth2.Messagef("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
+			return nil, nil, "", fmt.Errorf("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
 		}
 	}
 

@@ -11,7 +11,6 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
 
@@ -22,27 +21,23 @@ type Client struct {
 	clientConfig config.OAuth2Client
 }
 
-func (c *Client) requestToken(ctx context.Context, requestParams map[string]string) ([]byte, error) {
+func (c *Client) requestToken(ctx context.Context, requestParams map[string]string) ([]byte, int, error) {
 	tokenReq, err := c.newTokenRequest(ctx, requestParams)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	tokenRes, err := c.Backend.RoundTrip(tokenReq)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	tokenResBytes, err := io.ReadAll(tokenRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(c.asConfig.Reference()).Message("token request read error").With(err)
+		return nil, 0, err
 	}
 
-	if tokenRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(c.asConfig.Reference()).Messagef("token request failed, response=%q", string(tokenResBytes))
-	}
-
-	return tokenResBytes, nil
+	return tokenResBytes, tokenRes.StatusCode, nil
 }
 
 func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
@@ -95,14 +90,28 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 }
 
 func (c *Client) getTokenResponse(ctx context.Context, requestParams map[string]string) ([]byte, map[string]interface{}, string, error) {
-	tokenResponse, err := c.requestToken(ctx, requestParams)
+	tokenResponse, statusCode, err := c.requestToken(ctx, requestParams)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
 	tokenResponseData, accessToken, err := ParseTokenResponse(tokenResponse)
 	if err != nil {
-		return nil, nil, "", errors.Oauth2.Messagef("parsing token response JSON failed, response=%q", string(tokenResponse)).With(err)
+		return nil, nil, "", err
+	}
+
+	if statusCode != http.StatusOK {
+		e, _ := tokenResponseData["error"].(string)
+		msg := fmt.Sprintf("error=%s", e)
+		errorDescription, dExists := tokenResponseData["error_description"].(string)
+		if dExists {
+			msg += fmt.Sprintf(", error_description=%s", errorDescription)
+		}
+		errorUri, uExists := tokenResponseData["error_uri"].(string)
+		if uExists {
+			msg += fmt.Sprintf(", error_uri=%s", errorUri)
+		}
+		return nil, nil, "", fmt.Errorf(msg)
 	}
 
 	return tokenResponse, tokenResponseData, accessToken, nil
@@ -113,14 +122,14 @@ func ParseTokenResponse(tokenResponse []byte) (map[string]interface{}, string, e
 
 	err := json.Unmarshal(tokenResponse, &tokenResponseData)
 	if err != nil {
-		return nil, "", err
+		return tokenResponseData, "", err
 	}
 
 	var accessToken string
 	if t, ok := tokenResponseData["access_token"].(string); ok {
 		accessToken = t
 	} else {
-		return nil, "", fmt.Errorf("missing access token")
+		accessToken = ""
 	}
 
 	return tokenResponseData, accessToken, nil

@@ -31,7 +31,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 
 	_, tokenResponseData, _, err := oa.oauth2Client.GetTokenResponse(req.Context(), req.URL)
 	if err != nil {
-		return err
+		return errors.Oauth2.With(err)
 	}
 
 	ctx := req.Context()
