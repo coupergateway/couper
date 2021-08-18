@@ -19,7 +19,7 @@ import (
 // AcClient represents an OAuth2 client using the authorization code flow.
 type AcClient interface {
 	GetName() string
-	GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error)
+	GetTokenResponse(ctx context.Context, callbackURL *url.URL) (map[string]interface{}, error)
 	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
 
@@ -34,20 +34,20 @@ func (a AbstractAcClient) GetName() string {
 }
 
 // GetTokenResponse retrieves the response from the token endpoint
-func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) ([]byte, map[string]interface{}, string, error) {
+func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (map[string]interface{}, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
-		return nil, nil, "", fmt.Errorf("missing code query parameter; query=%q", callbackURL.RawQuery)
+		return nil, fmt.Errorf("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
 	redirectURIVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.RedirectURI)
 	if redirectURIVal == "" {
-		return nil, nil, "", fmt.Errorf("%s is required", lib.RedirectURI)
+		return nil, fmt.Errorf("%s is required", lib.RedirectURI)
 	}
 	absoluteURL, err := lib.AbsoluteURL(redirectURIVal, eval.NewRawOrigin(callbackURL))
 	if err != nil {
-		return nil, nil, "", err
+		return nil, err
 	}
 
 	requestParams := map[string]string{
@@ -58,12 +58,12 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	verifierVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, "verifier_value")
 	verifierValue := strings.TrimSpace(verifierVal)
 	if verifierValue == "" {
-		return nil, nil, "", fmt.Errorf("Empty verifier_value")
+		return nil, fmt.Errorf("Empty verifier_value")
 	}
 
 	verifierMethod, err := getVerifierMethod(ctx, a.asConfig)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, err
 	}
 
 	var hashedVerifierValue string
@@ -76,24 +76,24 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	if verifierMethod == "state" {
 		stateFromParam := query.Get("state")
 		if stateFromParam == "" {
-			return nil, nil, "", fmt.Errorf("missing state query parameter; query=%q", callbackURL.RawQuery)
+			return nil, fmt.Errorf("missing state query parameter; query=%q", callbackURL.RawQuery)
 		}
 
 		if hashedVerifierValue != stateFromParam {
-			return nil, nil, "", fmt.Errorf("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
+			return nil, fmt.Errorf("state mismatch: %q (from query param) vs. %q (verifier_value: %q)", stateFromParam, hashedVerifierValue, verifierValue)
 		}
 	}
 
-	tokenResponse, tokenResponseData, accessToken, err := a.getTokenResponse(ctx, requestParams)
+	_, tokenResponseData, accessToken, err := a.getTokenResponse(ctx, requestParams)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, err
 	}
 
 	if err = a.validateTokenResponseData(ctx, tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
-		return nil, nil, "", err
+		return nil, err
 	}
 
-	return tokenResponse, tokenResponseData, accessToken, nil
+	return tokenResponseData, nil
 }
 
 // OAuth2AcClient represents an OAuth2 client using the (plain) authorization code flow.

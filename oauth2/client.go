@@ -122,7 +122,7 @@ func ParseTokenResponse(tokenResponse []byte) (map[string]interface{}, string, e
 
 	err := json.Unmarshal(tokenResponse, &tokenResponseData)
 	if err != nil {
-		return tokenResponseData, "", err
+		return nil, "", err
 	}
 
 	var accessToken string

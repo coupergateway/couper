@@ -101,6 +101,7 @@ func (oa *OAuth2ReqAuth) readAccessToken(key string) (string, error) {
 	if data := oa.memStore.Get(key); data != nil {
 		_, token, err := oauth2.ParseTokenResponse(data.([]byte))
 		if err != nil {
+			// err can only be JSON parse error, however non-JSON data should never be stored
 			return "", err
 		}
 
