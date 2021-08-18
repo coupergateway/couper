@@ -4,8 +4,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-var _ Body = &JWT{}
-
 // Claims represents the <Claims> object.
 type Claims hcl.Expression
 
@@ -21,11 +19,5 @@ type JWT struct {
 	Name               string   `hcl:"name,label"`
 	PostParam          string   `hcl:"post_param,optional"`
 	QueryParam         string   `hcl:"query_param,optional"`
-	Remain             hcl.Body `hcl:",remain"`
 	SignatureAlgorithm string   `hcl:"signature_algorithm"`
-}
-
-// HCLBody implements the <Body> interface.
-func (j *JWT) HCLBody() hcl.Body {
-	return j.Remain
 }

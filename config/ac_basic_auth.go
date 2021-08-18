@@ -7,16 +7,16 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-var _ Body = &BasicAuth{}
-
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
 	AccessControlSetter
-	File   string   `hcl:"htpasswd_file,optional"`
-	Name   string   `hcl:"name,label"`
-	User   string   `hcl:"user,optional"`
-	Pass   string   `hcl:"password,optional"`
-	Realm  string   `hcl:"realm,optional"`
+	File  string `hcl:"htpasswd_file,optional"`
+	Name  string `hcl:"name,label"`
+	User  string `hcl:"user,optional"`
+	Pass  string `hcl:"password,optional"`
+	Realm string `hcl:"realm,optional"`
+
+	// internally used for 'error_handler'
 	Remain hcl.Body `hcl:",remain"`
 }
 

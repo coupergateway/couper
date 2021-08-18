@@ -15,6 +15,7 @@ type ErrorHandler struct {
 	ErrorFile string    `hcl:"error_file,optional"`
 	Remain    hcl.Body  `hcl:",remain"`
 	Response  *Response `hcl:"response,block"`
+
 	// internally configured due to multi-label options
 	Proxies  Proxies
 	Requests Requests
