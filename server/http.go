@@ -216,8 +216,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if xfpr := req.Header.Get("X-Forwarded-Proto"); xfpr != "" {
 			clientReq.URL.Scheme = xfpr
 			clientReq.URL.Host = clientReq.URL.Hostname()
-		} else {
-			s.log.Warnf("couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol %s", clientReq.URL.Scheme)
 		}
 	}
 	if s.settings.AcceptsForwardedHost() {
@@ -226,15 +224,11 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			if clientReq.URL.Port() != "" {
 				clientReq.URL.Host += ":" + clientReq.URL.Port()
 			}
-		} else {
-			s.log.Warnf("couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host %s", clientReq.URL.Host)
 		}
 	}
 	if s.settings.AcceptsForwardedPort() {
 		if xfpo := req.Header.Get("X-Forwarded-Port"); xfpo != "" {
 			clientReq.URL.Host = clientReq.URL.Hostname() + ":" + xfpo
-		} else {
-			s.log.Warnf("couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port %s", clientReq.URL.Port())
 		}
 	}
 
@@ -265,8 +259,6 @@ func (s *HTTPServer) getHost(req *http.Request) string {
 	if s.settings.XForwardedHost {
 		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
 			host = xfh
-		} else {
-			s.log.Warnf("couper trying to use X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host %s", host)
 		}
 	}
 
