@@ -102,7 +102,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	headers := []string{"Connection", "Upgrade", "Forwarded"}
+	headers := []string{"Connection", "Upgrade"}
 	accessLog := logging.NewAccessLog(&logging.Config{
 		RequestHeaders:  append(logging.DefaultConfig.RequestHeaders, headers...),
 		ResponseHeaders: append(logging.DefaultConfig.ResponseHeaders, headers...),
