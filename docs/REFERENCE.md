@@ -445,6 +445,7 @@ gateway instance.
 | `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-| `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
+| `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
 | `log_format`                    | string | `common`            | Switch for tab/field based colored view or json log lines. |-|-|
 | `log_pretty`                    | bool   | `false`             | Global option for `json` log format which pretty prints with basic key coloring. |-|-|
 | `no_proxy_from_env`             | bool   | `false`             | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |-|-|
