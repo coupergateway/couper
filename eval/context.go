@@ -185,6 +185,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 			name = n
 		}
+
 		p := bereq.URL.Port()
 		if p == "" {
 			if bereq.URL.Scheme == "https" {
@@ -194,6 +195,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			}
 		}
 		port, _ := strconv.ParseInt(p, 10, 64)
+
 		body, jsonBody := parseReqBody(bereq)
 		bereqs[name] = cty.ObjectVal(ContextMap{
 			Method:   cty.StringVal(bereq.Method),

@@ -197,6 +197,7 @@ func newLogger(format string, pretty bool) *logrus.Entry {
 	logger.Out = os.Stdout
 
 	logger.AddHook(&errors.LogHook{})
+	logger.AddHook(&logging.ContextHook{})
 
 	if testHook != nil {
 		logger.AddHook(testHook)

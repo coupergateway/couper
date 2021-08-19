@@ -1,9 +1,11 @@
 package transport
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -115,7 +117,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	setGzipReader(beresp)
+	if err = setGzipReader(beresp); err != nil {
+		b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
+	}
 
 	if !isProxyReq {
 		removeConnectionHeaders(req.Header)
@@ -310,13 +314,30 @@ func setUserAgent(outreq *http.Request) {
 	}
 }
 
-func setGzipReader(beresp *http.Response) {
-	if strings.ToLower(beresp.Header.Get(writer.ContentEncodingHeader)) == writer.GzipName {
-		if src, err := gzip.NewReader(beresp.Body); err == nil {
-			beresp.Header.Del(writer.ContentEncodingHeader)
-			beresp.Body = eval.NewReadCloser(src, beresp.Body)
-		}
+// setGzipReader will set the gzip.Reader for Content-Encoding gzip.
+// Invalid header reads will reset the response.Body and return the related error.
+func setGzipReader(beresp *http.Response) error {
+	if strings.ToLower(beresp.Header.Get(writer.ContentEncodingHeader)) != writer.GzipName {
+		return nil
 	}
+
+	buf := &bytes.Buffer{}
+	_, err := buf.ReadFrom(beresp.Body) // TODO: may be optimized with limitReader etc.
+	if err != nil {
+		return errors.Backend.With(err)
+	}
+	b := buf.Bytes()
+
+	var src io.Reader
+	src, err = gzip.NewReader(buf)
+	if err != nil {
+		src = bytes.NewBuffer(b)
+		err = errors.Backend.With(err).Message("body reset")
+	}
+
+	beresp.Header.Del(writer.ContentEncodingHeader)
+	beresp.Body = eval.NewReadCloser(src, beresp.Body)
+	return err
 }
 
 // removeConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
