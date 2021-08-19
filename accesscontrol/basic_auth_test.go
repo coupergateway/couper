@@ -32,6 +32,7 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "", "pass", "", "", false},
 		{"name", "", "", "", "", false},
 		{"name", "user", "pass", "testdata/htpasswd", "", false},
+		{"name", "", "", "testdata/htpasswd", "", false},
 		{"name", "john", "pass", "testdata/htpasswd", "", false},
 		{"name", "user", "pass", "file", "open file: no such file or directory", true},
 		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "parse error: invalid line: 1", true},
@@ -86,6 +87,17 @@ func Test_BasicAuth_Validate(t *testing.T) {
 				t.Errorf("Expected Unauthorized error, got: %v", err)
 			}
 		})
+	}
+
+	ba, err = ac.NewBasicAuth("name", "", "", "testdata/htpasswd")
+	if err != nil || ba == nil {
+		t.Fatal("Expected a basic auth object")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.SetBasicAuth("john", "my-pass")
+	if err := ba.Validate(req); err != nil {
+		t.Errorf("Unexpected error: %#v", err)
 	}
 }
 
