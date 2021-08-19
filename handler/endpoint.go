@@ -102,6 +102,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	e.readResults(subCtx, proxyResults, beresps)
 	e.readResults(subCtx, requestResults, beresps)
 
+	select {
+	case <-req.Context().Done():
+		err = req.Context().Err()
+		*req = *req.WithContext(context.WithValue(req.Context(), request.Error, errors.ClientRequest.With(err)))
+		return
+	default:
+	}
+
 	evalContext := req.Context().Value(request.ContextType).(*eval.Context)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 

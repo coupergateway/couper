@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
@@ -20,6 +21,7 @@ import (
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 	"github.com/sirupsen/logrus"
 )
@@ -417,8 +419,8 @@ IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NE
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
 		Context:  hcl.EmptyBody(),
 		Error:    errors.DefaultJSON,
-		Requests: mockProducer,
 		Proxies:  &mockProducerResult{},
+		Requests: mockProducer,
 	}, log.WithContext(context.Background()), nil)
 
 	ctx := context.Background()
@@ -449,6 +451,59 @@ IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NE
 		if e.Message != "backend error: body reset: gzip: invalid header" {
 			t.Errorf("Unexpected error message: %s", e.Message)
 		}
+	}
+}
+
+func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
+	log, hook := test.NewLogger()
+	slowOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Second * 5)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+
+	ctx, cancelFn := context.WithCancel(context.WithValue(context.Background(), request.UID, "test123"))
+
+	rt := transport.NewBackend(
+		test.NewRemainContext("origin", slowOrigin.URL), &transport.Config{},
+		&transport.BackendOptions{}, log.WithContext(context.Background()))
+
+	mockProducer := &mockProducerResult{rt}
+
+	ep := handler.NewEndpoint(&handler.EndpointOptions{
+		Context:  hcl.EmptyBody(),
+		Error:    errors.DefaultJSON,
+		Proxies:  &mockProducerResult{},
+		Requests: mockProducer,
+	}, log.WithContext(ctx), nil)
+
+	req := httptest.NewRequest(http.MethodGet, "https://couper.io/", nil)
+	ctx = eval.NewContext(nil, nil).WithClientRequest(req.WithContext(ctx))
+
+	start := time.Now()
+	go func() {
+		time.Sleep(time.Second)
+		cancelFn()
+	}()
+
+	rec := httptest.NewRecorder()
+	access := logging.NewAccessLog(&logging.Config{}, log)
+	access.ServeHTTP(rec, req.WithContext(ctx), ep, time.Now())
+	rec.Flush()
+
+	elapsed := time.Now().Sub(start)
+	if elapsed > time.Second+(time.Millisecond*50) {
+		t.Error("Expected canceled request")
+	}
+
+	for _, e := range hook.AllEntries() {
+		if e.Message == "client request error: context canceled" {
+			return
+		}
+	}
+
+	t.Error("Expected context canceled access log, got:\n")
+	for _, e := range hook.AllEntries() {
+		println(e.String())
 	}
 
 }
