@@ -25,6 +25,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Documentation of [`request.query.<name>`](./docs/REFERENCE.md#request) ([#278](https://github.com/avenga/couper/pull/278))
   * Missing access log on some error cases ([#267](https://github.com/avenga/couper/issues/267))
   * Panic during backend origin / url usage with previous parse error ([#206](https://github.com/avenga/couper/issues/206))
+  * Missing error handling for backend gzip header reads ([#291](https://github.com/avenga/couper/pull/291))
+  * ResponseWriter fallback for possible statusCode 0 writes ([#291](https://github.com/avenga/couper/pull/291))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
