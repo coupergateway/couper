@@ -48,8 +48,8 @@ type Config struct {
 // NewConfig creates a new configuration for an OIDC client
 func NewConfig(oidc *config.OIDC, backend http.RoundTripper, memStore *cache.MemoryStore) (*Config, error) {
 	ttl := defaultTTL
-	if oidc.TTL != "" {
-		t, err := time.ParseDuration(oidc.TTL)
+	if oidc.ConfigurationTTL != "" {
+		t, err := time.ParseDuration(oidc.ConfigurationTTL)
 		if err != nil {
 			return nil, err
 		}
