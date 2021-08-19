@@ -166,8 +166,8 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 	defer tlsLock.Unlock()
 
 	tlsConfig, ok := tlsConfigurations[key]
-	if !ok {
-		cert, _, err := newCertificate(time.Hour*24, hosts, nil)
+	if !ok || tlsConfig.Certificates[0].Leaf.NotAfter.Before(time.Now()) {
+		cert, err := newCertificate(time.Hour*24, hosts, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -185,10 +185,10 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 
 // newCertificate creates a certificate with given host and duration.
 // If no hosts are provided all localhost variants will be used.
-func newCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*tls.Certificate, *x509.Certificate, error) {
+func newCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*tls.Certificate, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if len(hosts) == 0 {
@@ -241,20 +241,20 @@ func newCertificate(duration time.Duration, hosts []string, notBefore *time.Time
 	certOut := &bytes.Buffer{}
 	err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	keyOut := &bytes.Buffer{}
 	err = pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	cert, err := tls.X509KeyPair(certOut.Bytes(), keyOut.Bytes())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	x509cert, err := x509.ParseCertificate(derBytes)
-	return &cert, x509cert, err
+	cert.Leaf, err = x509.ParseCertificate(derBytes)
+	return &cert, err
 }
 
 func publicKey(priv interface{}) interface{} {
