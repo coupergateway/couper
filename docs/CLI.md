@@ -31,3 +31,4 @@ _Note_: `log-format` and `log-pretty` also maps to [settings](REFERENCE.md#setti
 | Argument                | Default      | Environment                   | Description  |
 | :---------------------- | :----------- | :---------------------------- | :----------- |
 | `-accept-forwarded-url` | empty string | `COUPER_ACCEPT_FORWARDED_URL` | Which `X-Forwarded-*` request headers should be accepted to change the [variables](./REFERENCE.md#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Comma-separated list of values. Valid values: `proto`, `host`, `port` |
+| `-https-dev-proxy`      | empty string | `COUPER_HTTPS_DEV_PROXY`      | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. |
