@@ -302,16 +302,16 @@ credentials from the `Authorization` request HTTP header field are checked again
 `user`/`password` if the user matches, and against the data in the file referenced
 by `htpasswd_file` otherwise.
 
-|Block name|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-|`basic_auth`| [Definitions Block](#definitions-block)| &#9888; required |-|
+| Block name   | Context | Label | Nested block(s) |
+| :----------- | :------ | :---- | :-------------- |
+| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | - |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `user`          |string|-|The user name.|-|-|
-| `password`      |string|-|The corresponding password.|-|-|
-| `htpasswd_file`      |string|-|>The htpasswd file.|-|-|
-|`realm`     |string|-|The realm to be sent in a `WWW-Authenticate` response HTTP header field.|-|-|
+| Attribute(s)    | Type   | Default | Description | Characteristic(s) | Example |
+| :-------------- | :----- | :------ | :---------- | :---------------- | :------ |
+| `user`          | string | `""`    | The user name. | - | - |
+| `password`      | string | `""`    | The corresponding password. | - | - |
+| `htpasswd_file` | string | `""`    | The htpasswd file. | Couper uses [Apache's httpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) file format. `apr1`, `md5` and `bcrypt` password encryptions are supported. The file is loaded once at startup. Restart Couper after you have changed it. | - |
+| `realm`         | string | `""`    | The realm to be sent in a `WWW-Authenticate` response HTTP header field. | - | - |
 
 ### JWT Block
 

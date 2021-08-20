@@ -49,7 +49,7 @@ settings {
 		},
 	}
 
-	time.Sleep(time.Second) // tls server needs some time.
+	time.Sleep(2 * time.Second) // tls server needs some time.
 
 	for _, p := range []string{"8443", "9443"} {
 		for _, host := range []string{"127.0.0.1", "localhost", "couper.dev"} {

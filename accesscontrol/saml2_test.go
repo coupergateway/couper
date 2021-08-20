@@ -54,6 +54,9 @@ func Test_NewSAML2ACS(t *testing.T) {
 
 func Test_SAML2ACS_Validate(t *testing.T) {
 	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	if err != nil || metadata == nil {
+		t.Fatal("Expected a metadata object")
+	}
 	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
@@ -136,6 +139,9 @@ func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
 
 func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	if err != nil || metadata == nil {
+		t.Fatal("Expected a metadata object")
+	}
 	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")

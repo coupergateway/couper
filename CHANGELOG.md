@@ -25,6 +25,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Documentation of [`request.query.<name>`](./docs/REFERENCE.md#request) ([#278](https://github.com/avenga/couper/pull/278))
   * Missing access log on some error cases ([#267](https://github.com/avenga/couper/issues/267))
   * Panic during backend origin / url usage with previous parse error ([#206](https://github.com/avenga/couper/issues/206))
+  * [Basic Auth](./docs/REFERENCE.md#basic-auth-block) did not work if only the `htpasswd_file` attribute was defined ([#293](https://github.com/avenga/couper/pull/293))
   * Missing error handling for backend gzip header reads ([#291](https://github.com/avenga/couper/pull/291))
   * ResponseWriter fallback for possible statusCode 0 writes ([#291](https://github.com/avenga/couper/pull/291))
 
