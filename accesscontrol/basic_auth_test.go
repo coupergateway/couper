@@ -88,20 +88,9 @@ func Test_BasicAuth_Validate(t *testing.T) {
 			}
 		})
 	}
-
-	ba, err = ac.NewBasicAuth("name", "", "", "testdata/htpasswd")
-	if err != nil || ba == nil {
-		t.Fatal("Expected a basic auth object")
-	}
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.SetBasicAuth("john", "my-pass")
-	if err := ba.Validate(req); err != nil {
-		t.Errorf("Unexpected error: %#v", err)
-	}
 }
 
-func Test_BasicAuth_ValidateEmptyUser(t *testing.T) {
+func Test_BasicAuth_ValidateCases(t *testing.T) {
 	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
 
@@ -109,89 +98,50 @@ func Test_BasicAuth_ValidateEmptyUser(t *testing.T) {
 		t.Errorf("Expected configuration error, got: %v", err)
 	}
 
-	ba, err := ac.NewBasicAuth("name", "", "pass", "")
-	if err != nil || ba == nil {
+	ba1, err := ac.NewBasicAuth("name", "", "pass", "")
+	if err != nil || ba1 == nil {
+		t.Fatal("Expected a basic auth object")
+	}
+	ba2, err := ac.NewBasicAuth("name", "user", "", "")
+	if err != nil || ba2 == nil {
+		t.Fatal("Expected a basic auth object")
+	}
+	ba3, err := ac.NewBasicAuth("name", "", "", "")
+	if err != nil || ba3 == nil {
+		t.Fatal("Expected a basic auth object")
+	}
+	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd")
+	if err != nil || ba4 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
 
 	type testCase struct {
+		ba          *ac.BasicAuth
 		headerValue string
 		expErr      error
 	}
 
 	for _, testcase := range []testCase{
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), nil},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
-	} {
-		t.Run(testcase.headerValue, func(t *testing.T) {
-			req.Header.Set("Authorization", testcase.headerValue)
-			err := ba.Validate(req)
-			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
-				t.Errorf("Expected Unauthorized error, got: %v", err)
-			}
-		})
-	}
-}
-
-func Test_BasicAuth_ValidateEmptyPassword(t *testing.T) {
-	var ba *ac.BasicAuth
-	req := &http.Request{Header: make(http.Header)}
-
-	if err := ba.Validate(req); err != couperErr.Configuration {
-		t.Errorf("Expected NotConfigured error, got: %v", err)
-	}
-
-	ba, err := ac.NewBasicAuth("name", "user", "", "")
-	if err != nil || ba == nil {
-		t.Fatal("Expected a basic auth object")
-	}
-
-	type testCase struct {
-		headerValue string
-		expErr      error
-	}
-
-	for _, testcase := range []testCase{
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
-	} {
-		t.Run(testcase.headerValue, func(t *testing.T) {
-			req.Header.Set("Authorization", testcase.headerValue)
-			err := ba.Validate(req)
-			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
-				t.Errorf("Expected Unauthorized error, got: %v", err)
-			}
-		})
-	}
-}
-
-func Test_BasicAuth_ValidateEmptyUserPassword(t *testing.T) {
-	var ba *ac.BasicAuth
-	req := &http.Request{Header: make(http.Header)}
-
-	if err := ba.Validate(req); err != couperErr.Configuration {
-		t.Errorf("Expected NotConfigured error, got: %v", err)
-	}
-
-	ba, err := ac.NewBasicAuth("name", "", "", "")
-	if err != nil || ba == nil {
-		t.Fatal("Expected a basic auth object")
-	}
-
-	type testCase struct {
-		headerValue string
-		expErr      error
-	}
-
-	for _, testcase := range []testCase{
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
-		{"Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
+		{ba1, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{ba1, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
+		{ba1, "Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), nil},
+		{ba1, "Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
+		{ba2, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{ba2, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
+		{ba2, "Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
+		{ba2, "Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
+		{ba3, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{ba3, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
+		{ba3, "Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
+		{ba3, "Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-pass")), nil},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte("john:")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte(":my-pass")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:pass")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte("user:")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
+		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
 	} {
 		t.Run(testcase.headerValue, func(t *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)
