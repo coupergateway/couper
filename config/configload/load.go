@@ -82,6 +82,10 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 }
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
+	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
+		return nil, diags
+	}
+
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return nil, diags
