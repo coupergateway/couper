@@ -14,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
@@ -340,7 +341,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 				t.Fatal(err)
 			}
 
-			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 			token, err := hclContext.Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err != nil {
@@ -426,7 +427,9 @@ func TestJwtSignDynamic(t *testing.T) {
 				StatusCode: http.StatusOK,
 			}
 
-			evalCtx := cf.Context.Value(eval.ContextType).(*eval.Context).WithClientRequest(req).WithBeresps(beresp)
+			evalCtx := cf.Context.Value(request.ContextType).(*eval.Context).
+				WithClientRequest(req).
+				WithBeresps(beresp)
 
 			now := time.Now().Unix()
 			token, err := evalCtx.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
@@ -591,7 +594,7 @@ func TestJwtSignError(t *testing.T) {
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
 			helper.Must(err)
 
-			hclContext := cf.Context.Value(eval.ContextType).(*eval.Context).HCLContext()
+			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 			_, err = hclContext.Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err == nil {

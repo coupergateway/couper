@@ -3,6 +3,7 @@ package accesscontrol
 import (
 	"net/http"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
@@ -47,7 +48,7 @@ func (i ListItem) Validate(req *http.Request) error {
 		return errors.AccessControl.Label(i.label).Kind(i.kind).With(err)
 	}
 
-	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+	if evalCtx, ok := req.Context().Value(request.ContextType).(*eval.Context); ok {
 		*req = *req.WithContext(evalCtx.WithClientRequest(req))
 	}
 

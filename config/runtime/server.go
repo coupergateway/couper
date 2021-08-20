@@ -22,6 +22,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/reader"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -92,14 +93,14 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	noopReq, _ := http.NewRequest(http.MethodGet, "https://couper.io", nil)
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
-	evalContext := conf.Context.Value(eval.ContextType).(*eval.Context)
+	evalContext := conf.Context.Value(request.ContextType).(*eval.Context)
 	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
 
 	oidcConfigs, ocErr := configureOidcConfigs(conf, confCtx, log, memStore)
 	if ocErr != nil {
 		return nil, ocErr
 	}
-	evalContext = evalContext.WithOidcConfig(oidcConfigs)
+	evalContext.WithOidcConfig(oidcConfigs)
 
 	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
@@ -107,10 +108,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	}
 
 	var (
-		serverConfiguration ServerConfiguration = make(ServerConfiguration)
-		defaultPort         int                 = conf.Settings.DefaultPort
-		endpointHandlers    endpointHandler     = make(endpointHandler)
-		isHostsMandatory    bool                = len(conf.Servers) > 1
+		serverConfiguration = make(ServerConfiguration)
+		defaultPort         = conf.Settings.DefaultPort
+		endpointHandlers    = make(endpointHandler)
+		isHostsMandatory    = len(conf.Servers) > 1
 	)
 
 	for _, srvConf := range conf.Servers {
@@ -410,8 +411,8 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (map[string]*oidc.OidcConfig, error) {
-	oidcConfigs := make(map[string]*oidc.OidcConfig)
+func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (oidc.Configs, error) {
+	oidcConfigs := make(oidc.Configs)
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
@@ -420,7 +421,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				return nil, confErr.With(err)
 			}
 
-			oidcConfig, err := oidc.NewOidcConfig(oidcConf, backend, memStore)
+			oidcConfig, err := oidc.NewConfig(oidcConf, backend, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -432,7 +433,9 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	return oidcConfigs, nil
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore, oidcConfigs map[string]*oidc.OidcConfig) (ACDefinitions, error) {
+func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
+	memStore *cache.MemoryStore, oidcConfigs oidc.Configs) (ACDefinitions, error) {
+
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
@@ -525,6 +528,14 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			oidcClient, err := oauth2.NewOidc(oidcConfig)
 			if err != nil {
 				return nil, confErr.With(err)
+			}
+
+			if oidcConfig.VerifierMethod != "" &&
+				oidcConfig.VerifierMethod != config.CcmS256 &&
+				oidcConfig.VerifierMethod != "nonce" {
+				return nil, errors.Configuration.
+					Label(oidcConf.Name).
+					Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
 			}
 
 			oa, err := ac.NewOAuth2Callback(oidcClient)
