@@ -12,7 +12,6 @@ server "client" {
 definitions {
   beta_oidc "ac" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
-    ttl = "1h"
     client_id = "foo"
     client_secret = "etbinbp4in"
     redirect_uri = "/cb" # value is not checked

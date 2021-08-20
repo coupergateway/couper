@@ -1,17 +1,24 @@
 package cache_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/avenga/couper/cache"
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestCache_All(t *testing.T) {
-	ms := cache.New(nil, nil)
+	log, _ := test.NewLogger()
+	logger := log.WithContext(context.Background())
 
-	if v := ms.Get("key"); v != "" {
-		t.Errorf("Empty string expected, given %q", v)
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	ms := cache.New(logger, quitCh)
+
+	if v := ms.Get("key"); v != nil {
+		t.Errorf("Nil expected, given %q", v)
 	}
 
 	go ms.Set("key", "val", 2)
@@ -31,8 +38,8 @@ func TestCache_All(t *testing.T) {
 
 	time.Sleep(1700 * time.Millisecond)
 
-	if v := ms.Get("key"); v != "" {
-		t.Errorf("Empty string expected, given %q", v)
+	if v := ms.Get("key"); v != nil {
+		t.Errorf("Nil expected, given %q", v)
 	}
 	if v := ms.Get("del"); v != "del" {
 		t.Errorf("Expected 'del', given %q", v)

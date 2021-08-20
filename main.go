@@ -15,6 +15,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
@@ -169,7 +170,10 @@ func realmain(arguments []string) int {
 				continue
 			}
 			// dry run configuration
-			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), nil)
+			tmpStoreCh := make(chan struct{})
+			tmpMemStore := cache.New(logger, tmpStoreCh)
+			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), tmpMemStore)
+			close(tmpStoreCh)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)

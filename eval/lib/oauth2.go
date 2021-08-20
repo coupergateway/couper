@@ -1,27 +1,34 @@
 package lib
 
 import (
+	"fmt"
 	"net/url"
 
+	"github.com/hashicorp/hcl/v2"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
+	RedirectURI                   = "redirect_uri"
+	CodeVerifier                  = "code_verifier"
 	FnOAuthAuthorizationUrl       = "beta_oauth_authorization_url"
 	FnOAuthVerifier               = "beta_oauth_verifier"
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
-	CodeVerifier                  = "code_verifier"
 )
 
-func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization, verifier func() (*pkce.CodeVerifier, error), origin *url.URL) function.Function {
+func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []config.OAuth2Authorization,
+	verifier func() (*pkce.CodeVerifier, error), origin *url.URL) function.Function {
 	oauth2s := make(map[string]config.OAuth2Authorization)
 	for _, o := range oauth2Configs {
 		oauth2s[o.GetName()] = o
 	}
+
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -30,11 +37,15 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 			},
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			label := args[0].AsString()
-			oauth2 := oauth2s[label]
+			oauth2, exist := oauth2s[label]
+			if !exist {
+				return cty.StringVal(""), fmt.Errorf("undefined reference: %s", label)
+			}
 
-			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()
+			uid := seetie.ToString(seetie.ValueToMap(ctx.Variables["request"])["id"])
+			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint(uid)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -44,19 +55,32 @@ func NewOAuthAuthorizationUrlFunction(oauth2Configs []config.OAuth2Authorization
 				return cty.StringVal(""), err
 			}
 
-			query := oauthAuthorizationUrl.Query()
-			query.Set("response_type", "code")
-			query.Set("client_id", oauth2.GetClientID())
-			absRedirectUri, err := AbsoluteURL(oauth2.GetRedirectURI(), origin)
+			body := oauth2.HCLBody()
+			bodyContent, _, diags := body.PartialContent(oauth2.Schema(true))
+			if diags.HasErrors() {
+				return cty.StringVal(""), diags
+			}
+			redirectURI, err := content.GetAttribute(ctx, bodyContent, RedirectURI)
+			if err != nil {
+				return cty.StringVal(""), err
+			} else if redirectURI == "" {
+				return cty.StringVal(""), fmt.Errorf("%s is required", RedirectURI)
+			}
+
+			absRedirectUri, err := AbsoluteURL(redirectURI, origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
+
+			query := oauthAuthorizationUrl.Query()
+			query.Set("response_type", "code")
+			query.Set("client_id", oauth2.GetClientID())
 			query.Set("redirect_uri", absRedirectUri)
 			if scope := oauth2.GetScope(); scope != "" {
 				query.Set("scope", scope)
 			}
 
-			verifierMethod, err := oauth2.GetVerifierMethod()
+			verifierMethod, err := oauth2.GetVerifierMethod(uid)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -110,21 +134,6 @@ func NewOAuthCodeChallengeFunction(verifier func() (*pkce.CodeVerifier, error)) 
 			}
 
 			return cty.StringVal(codeChallenge), nil
-		},
-	})
-}
-
-func NewOAuthHashedCsrfTokenFunction(verifier func() (*pkce.CodeVerifier, error)) function.Function {
-	return function.New(&function.Spec{
-		Params: []function.Parameter{},
-		Type:   function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			hashedVerifier, err := createCodeChallenge(verifier)
-			if err != nil {
-				return cty.StringVal(""), err
-			}
-
-			return cty.StringVal(hashedVerifier), nil
 		},
 	})
 }

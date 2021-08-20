@@ -121,6 +121,11 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 		time.Sleep(time.Second / 2)
 	}
 	shutdownFn := func() {
+		if helper.TestFailed() { // log on error
+			for _, entry := range hook.AllEntries() {
+				helper.Logf(entry.String())
+			}
+		}
 		cleanup(cancelFn, helper)
 	}
 

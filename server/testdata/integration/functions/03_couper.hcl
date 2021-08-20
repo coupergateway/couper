@@ -31,7 +31,7 @@ server "oidc-functions" {
 definitions {
   beta_oidc "ac-pkce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
-    ttl = "1h"
+    configuration_ttl = "1h"
     scope = "profile email"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
@@ -42,7 +42,7 @@ definitions {
 
   beta_oidc "ac-pkce-relative" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
-    ttl = "1h"
+    configuration_ttl = "1h"
     scope = "profile email"
     redirect_uri = "/oidc/callback"
     client_id = "foo"
@@ -53,7 +53,7 @@ definitions {
 
   beta_oidc "ac-nonce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
-    ttl = "1h"
+    configuration_ttl = "1h"
     scope = "profile"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
@@ -64,7 +64,7 @@ definitions {
 
   beta_oidc "ac-default" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
-    ttl = "1h"
+    configuration_ttl = "1h"
     scope = "profile email address"
     redirect_uri = "http://localhost:8085/oidc/callback"
     client_id = "foo"
