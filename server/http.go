@@ -176,13 +176,13 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer span.End()
 
 	ctx = context.WithValue(ctx, request.XFF, req.Header.Get("X-Forwarded-For"))
+	ctx = context.WithValue(ctx, request.LogEntry, s.log)
 	*req = *req.WithContext(ctx)
 
 	if err := s.setUID(rw, req); err != nil {
 		s.accessLog.ServeHTTP(rw, req, errors.DefaultHTML.ServeError(err), startTime)
 		return
 	}
-	*req = *req.WithContext(ctx)
 
 	req.Host = s.getHost(req)
 

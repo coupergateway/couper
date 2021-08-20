@@ -58,7 +58,6 @@ func (s *HTTPServer) setUID(rw http.ResponseWriter, req *http.Request) error {
 	uid, err := s.getUID(req)
 
 	ctx := context.WithValue(req.Context(), request.UID, uid)
-	ctx = context.WithValue(ctx, request.LogEntry, s.log.WithField("uid", uid))
 
 	if h := s.settings.RequestIDBackendHeader; h != "" {
 		req.Header.Set(h, uid)
