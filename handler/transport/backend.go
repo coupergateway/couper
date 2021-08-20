@@ -1,9 +1,11 @@
 package transport
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
@@ -121,7 +124,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !eval.IsUpgradeResponse(req, beresp) {
-		setGzipReader(beresp)
+		if err = setGzipReader(beresp); err != nil {
+			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
+		}
 	}
 
 	if !isProxyReq {
@@ -131,7 +136,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Backend response context creates the beresp variables in first place and applies this context
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
 	// from this result. Fallback case is for testing purposes.
-	if evalCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+	if evalCtx, ok := req.Context().Value(request.ContextType).(*eval.Context); ok {
 		evalCtx = evalCtx.WithBeresps(beresp)
 		err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
 	} else {
@@ -201,7 +206,7 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 }
 
 func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := eval.GetContextAttribute(b.context, req.Context(), name)
+	attrVal, err := content.GetContextAttribute(b.context, req.Context(), name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}
@@ -237,13 +242,13 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 
 func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 	var httpContext *hcl.EvalContext
-	if httpCtx, ok := req.Context().Value(eval.ContextType).(*eval.Context); ok {
+	if httpCtx, ok := req.Context().Value(request.ContextType).(*eval.Context); ok {
 		httpContext = httpCtx.HCLContext()
 	}
 
 	log := b.upstreamLog.LogEntry()
 
-	content, _, diags := b.context.PartialContent(config.BackendInlineSchema)
+	bodyContent, _, diags := b.context.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
@@ -258,7 +263,7 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
 	} {
-		if v, err := eval.GetAttribute(httpContext, content, p.attrName); err != nil {
+		if v, err := content.GetAttribute(httpContext, bodyContent, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
 		} else if v != "" {
 			*p.target = v
@@ -322,13 +327,30 @@ func setUserAgent(outreq *http.Request) {
 	}
 }
 
-func setGzipReader(beresp *http.Response) {
-	if strings.ToLower(beresp.Header.Get(writer.ContentEncodingHeader)) == writer.GzipName {
-		if src, err := gzip.NewReader(beresp.Body); err == nil {
-			beresp.Header.Del(writer.ContentEncodingHeader)
-			beresp.Body = eval.NewReadCloser(src, beresp.Body)
-		}
+// setGzipReader will set the gzip.Reader for Content-Encoding gzip.
+// Invalid header reads will reset the response.Body and return the related error.
+func setGzipReader(beresp *http.Response) error {
+	if strings.ToLower(beresp.Header.Get(writer.ContentEncodingHeader)) != writer.GzipName {
+		return nil
 	}
+
+	buf := &bytes.Buffer{}
+	_, err := buf.ReadFrom(beresp.Body) // TODO: may be optimized with limitReader etc.
+	if err != nil {
+		return errors.Backend.With(err)
+	}
+	b := buf.Bytes()
+
+	var src io.Reader
+	src, err = gzip.NewReader(buf)
+	if err != nil {
+		src = bytes.NewBuffer(b)
+		err = errors.Backend.With(err).Message("body reset")
+	}
+
+	beresp.Header.Del(writer.ContentEncodingHeader)
+	beresp.Body = eval.NewReadCloser(src, beresp.Body)
+	return err
 }
 
 // removeConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.

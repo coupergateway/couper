@@ -102,7 +102,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	e.readResults(subCtx, proxyResults, beresps)
 	e.readResults(subCtx, requestResults, beresps)
 
-	evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+	evalContext := req.Context().Value(request.ContextType).(*eval.Context)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
 	// assume prio or err on conf load if set with response

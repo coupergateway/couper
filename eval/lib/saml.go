@@ -45,17 +45,10 @@ func NewSamlSsoUrlFunction(configs []*config.SAML, origin *url.URL) function.Fun
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			if len(samlEntities) == 0 {
-				return cty.StringVal(""), fmt.Errorf("missing saml2 definitions")
-			}
-
-			if len(args) == 0 {
-				return cty.StringVal(""), fmt.Errorf("missing saml2 definition reference")
-			}
-
-			ent := samlEntities[args[0].AsString()]
-			if ent.err != nil {
-				return cty.StringVal(""), ent.err
+			label := args[0].AsString()
+			ent, exist := samlEntities[label]
+			if !exist {
+				return cty.StringVal(""), fmt.Errorf("undefined reference: %s", label)
 			}
 
 			metadata := ent.descriptor

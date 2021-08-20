@@ -10,7 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Default values for environment variable by means of `environment_variables` within `defaults` block. ([#271](https://github.com/avenga/couper/pull/271))
   * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests`](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
   * Settings for accepting a downstream requestID and use this ID instead for logging, `request.id` variable and down-/upstream id-header ([#268](https://github.com/avenga/couper/pull/268))
-  * `https-dev-proxy` option to map and proxy an existing port to a tls one; a SNI based on-the-fly generated certificate gets served from memory ([#281](https://github.com/avenga/couper/pull/281))
+  [`https-dev-proxy` option](./docs/REFERENCE.md#settings-block) to listen and proxy from a given tls port to an existing Couper port; a SNI based on-the-fly generated certificate gets served from memory ([#281](https://github.com/avenga/couper/pull/281))
   * [`websockets`](docs/REFERENCE.md#websockets-block) option for `proxy` requests to re-support websocket upgrades ([#198](https://github.com/avenga/couper/issues/198))
 
 * **Changed**
@@ -26,6 +26,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Documentation of [`request.query.<name>`](./docs/REFERENCE.md#request) ([#278](https://github.com/avenga/couper/pull/278))
   * Missing access log on some error cases ([#267](https://github.com/avenga/couper/issues/267))
   * Panic during backend origin / url usage with previous parse error ([#206](https://github.com/avenga/couper/issues/206))
+  * Missing error handling for backend gzip header reads ([#291](https://github.com/avenga/couper/pull/291))
+  * ResponseWriter fallback for possible statusCode 0 writes ([#291](https://github.com/avenga/couper/pull/291))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))

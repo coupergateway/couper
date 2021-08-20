@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -18,29 +19,39 @@ import (
 // OidcClient represents an OIDC client using the authorization code flow.
 type OidcClient struct {
 	*OAuth2AcClient
+	config    *oidc.Config
+	issLock   sync.RWMutex
+	issuer    string
 	jwtParser *jwt.Parser
 }
 
 // NewOidc creates a new OIDC client.
-func NewOidc(oidcConfig *oidc.OidcConfig) (*OidcClient, error) {
-	verifierMethod, err := oidcConfig.GetVerifierMethod()
-	if err != nil {
-		return nil, err
-	}
-
-	confErr := errors.Configuration.Label(oidcConfig.GetName())
-	if verifierMethod != config.CcmS256 && verifierMethod != "nonce" {
-		return nil, confErr.Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
-	}
-
+func NewOidc(oidcConfig *oidc.Config) (*OidcClient, error) {
 	acClient, err := NewOAuth2AC(oidcConfig, oidcConfig, oidcConfig.Backend)
 	if err != nil {
 		return nil, err
 	}
 
-	issuer, err := oidcConfig.GetIssuer()
+	o := &OidcClient{
+		OAuth2AcClient: acClient,
+		config:         oidcConfig,
+	}
+	o.AcClient = o
+	return o, nil
+}
+
+func (o *OidcClient) refreshJWTParser() error {
+	o.issLock.RLock()
+	iss := o.issuer
+	o.issLock.RUnlock()
+
+	confIssuer, err := o.config.GetIssuer()
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	if iss == confIssuer {
+		return nil
 	}
 
 	options := []jwt.ParserOption{
@@ -49,20 +60,23 @@ func NewOidc(oidcConfig *oidc.OidcConfig) (*OidcClient, error) {
 		// 2. The Issuer Identifier for the OpenID Provider (which is typically
 		//    obtained during Discovery) MUST exactly match the value of the iss
 		//    (issuer) Claim.
-		jwt.WithIssuer(issuer),
+		jwt.WithIssuer(confIssuer),
 		// 3. The Client MUST validate that the aud (audience) Claim contains its
 		//    client_id value registered at the Issuer identified by the iss
 		//    (issuer) Claim as an audience. The aud (audience) Claim MAY contain
 		//    an array with more than one element. The ID Token MUST be rejected if
 		//    the ID Token does not list the Client as a valid audience, or if it
 		//    contains additional audiences not trusted by the Client.
-		jwt.WithAudience(oidcConfig.GetClientID()),
+		jwt.WithAudience(o.config.GetClientID()),
 	}
 	jwtParser := jwt.NewParser(options...)
 
-	o := &OidcClient{acClient, jwtParser}
-	o.AcClient = o
-	return o, nil
+	o.issLock.Lock()
+	o.issuer = confIssuer
+	o.jwtParser = jwtParser
+	o.issLock.Unlock()
+
+	return nil
 }
 
 func (o *OidcClient) getOidcAsConfig() config.OidcAS {
@@ -70,9 +84,18 @@ func (o *OidcClient) getOidcAsConfig() config.OidcAS {
 	return oidcAsConfig
 }
 
+// validateTokenResponseData validates the token response data
 func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
+	if err := o.refreshJWTParser(); err != nil {
+		return err
+	}
+
+	o.issLock.RLock()
+	jwtParser := o.jwtParser
+	o.issLock.RUnlock()
+
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
-		idToken, _, err := o.jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
+		idToken, _, err := jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
 		if err != nil {
 			return err
 		}
@@ -90,7 +113,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 		//    be rejected if the ID Token does not list the Client as a valid
 		//    audience, or if it contains additional audiences not trusted by
 		//    the Client.
-		if err := idToken.Claims.Valid(o.jwtParser.ValidationHelper); err != nil {
+		if err = idToken.Claims.Valid(jwtParser.ValidationHelper); err != nil {
 			return err
 		}
 
@@ -139,7 +162,7 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, o.clientConfig.GetClientID())
 	}
 
-	verifierMethod, err := o.getAcClientConfig().GetVerifierMethod()
+	verifierMethod, err := getVerifierMethod(ctx, o.asConfig)
 	if err != nil {
 		return nil, nil, err
 	}

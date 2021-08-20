@@ -9,6 +9,7 @@ import (
 	"net/textproto"
 	"strconv"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/logging"
 	"github.com/hashicorp/hcl/v2"
@@ -122,7 +123,13 @@ func (r *Response) WriteHeader(statusCode int) {
 
 	r.configureHeader()
 	r.applyModifier()
-	r.rw.WriteHeader(statusCode)
+
+	if statusCode == 0 {
+		r.rw.Header().Set(errors.HeaderErrorCode, errors.Server.Error())
+		r.rw.WriteHeader(errors.Server.HTTPStatus())
+	} else {
+		r.rw.WriteHeader(statusCode)
+	}
 	r.statusWritten = true
 	r.statusCode = statusCode
 }

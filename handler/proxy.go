@@ -14,6 +14,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/server/writer"
@@ -58,12 +59,12 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	content, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
+	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
-	if wss := content.Blocks.OfType("websockets"); len(wss) == 1 {
+	if wss := bodyContent.Blocks.OfType("websockets"); len(wss) == 1 {
 		ctx := req.Context()
 
 		ctx = context.WithValue(ctx, request.AllowWebsockets, true)
@@ -71,7 +72,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
 		if eval.IsUpgradeRequest(req) {
-			content, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
+			bodyContent, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
 			if diags.HasErrors() {
 				return nil, diags
 			}
@@ -79,7 +80,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 				return nil, err
 			}
 
-			if attr, ok := content.Attributes["timeout"]; ok {
+			if attr, ok := bodyContent.Attributes["timeout"]; ok {
 				val, diags := attr.Expr.Value(nil)
 				if diags.HasErrors() {
 					return nil, diags
@@ -98,7 +99,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	url, err := eval.GetContextAttribute(p.context, req.Context(), "url")
+	url, err := content.GetContextAttribute(p.context, req.Context(), "url")
 	if err != nil {
 		return nil, err
 	}

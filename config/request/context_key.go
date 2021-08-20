@@ -3,7 +3,7 @@ package request
 type ContextKey uint8
 
 const (
-	UID ContextKey = iota
+	ContextType ContextKey = iota
 	AccessControls
 	AllowWebsockets
 	BackendName
@@ -19,6 +19,7 @@ const (
 	ServerName
 	TokenRequest
 	TokenRequestRetries
+	UID
 	URLAttribute
 	WebsocketsTimeout
 	Wildcard

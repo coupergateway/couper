@@ -14,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
@@ -93,7 +94,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 				h.Must(err)
 			}
 
-			evalContext := cf.Context.Value(eval.ContextType).(*eval.Context)
+			evalContext := cf.Context.Value(request.ContextType).(*eval.Context)
 			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
 			h.Must(err)
 			evalContext = evalContext.WithClientRequest(req)

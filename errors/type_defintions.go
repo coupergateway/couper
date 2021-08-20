@@ -15,5 +15,5 @@ var Definitions = []*Error{
 
 	AccessControl.Kind("saml2"),
 
-	AccessControl.Kind("oauth2"),
+	OAuth2.Kind("oauth2"),
 }
