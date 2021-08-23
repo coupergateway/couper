@@ -20,7 +20,7 @@ definitions {
     verifier_value = request.cookies.nnc
     error_handler {
       response {
-        status = 400
+        status = 418
       }
     }
   }

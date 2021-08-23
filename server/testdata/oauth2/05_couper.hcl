@@ -21,7 +21,7 @@ definitions {
     client_secret = "etbinbp4in"
     error_handler {
       response {
-        status = 400
+        status = 418
       }
     }
   }
