@@ -286,7 +286,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta)|
+|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta), [OIDC Block(s)](#oidc-block-beta)|
 
 <!-- TODO: add link to (still missing) example -->
 
@@ -304,7 +304,7 @@ by `htpasswd_file` otherwise.
 
 | Block name   | Context | Label | Nested block(s) |
 | :----------- | :------ | :---- | :-------------- |
-| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | - |
+| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s)    | Type   | Default | Description | Characteristic(s) | Example |
 | :-------------- | :----- | :------ | :---------- | :---------------- | :------ |
@@ -322,7 +322,7 @@ required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`jwt`| [Definitions Block](#definitions-block)| &#9888; required |-|
+|`jwt`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -363,7 +363,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | - |
+|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -389,7 +389,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oidc`| [Definitions Block](#definitions-block)| &#9888; required | - |
+|`beta_oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -416,7 +416,7 @@ required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :--------| :-----------| :-----------| :-----------|
-|`saml`| [Definitions Block](#definitions-block)| &#9888; required |-|
+|`saml`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
