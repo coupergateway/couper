@@ -105,12 +105,6 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 		return errors.Configuration
 	}
 
-	if ba.pass == "" {
-		// prevent granting access if password is no set
-		// or evaluated to an empty string.
-		return errors.BasicAuth.Message("no password configured")
-	}
-
 	user, pass, ok := req.BasicAuth()
 	if !ok { // false is unspecific, determine if credentials are set
 		const prefix = "Basic "
@@ -121,10 +115,16 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	if ba.user == user {
-		if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
-			return nil
+		if ba.pass != "" {
+			if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
+				return nil
+			}
+			return errors.BasicAuth.Message("credential mismatch")
 		}
-		return errors.BasicAuth.Message("credential mismatch")
+
+		if len(ba.htFile) == 0 {
+			return errors.BasicAuth.Message("no password configured")
+		}
 	}
 
 	if len(ba.htFile) > 0 {
