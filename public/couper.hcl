@@ -1,4 +1,5 @@
 server "couper" {
+<<<<<<< HEAD
   files {
 <<<<<<< HEAD
     document_root = env.DOC_DIR
@@ -11,5 +12,16 @@ defaults {
 =======
     document_root = "./"
 >>>>>>> Changes by Marcels advice for simpler execution
+=======
+  # --> type: couper_access
+  endpoint "/" {
+    proxy {
+//      url = "https://httpbin.org/anything" # --> backend
+      backend { # --> type: couper_backend
+        origin = "https://httpbin.org"
+        path = "/anything"
+      }
+    }
+>>>>>>> Implemented changes for uniform Log-Format fields
   }
 }

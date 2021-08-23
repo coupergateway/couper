@@ -61,6 +61,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
+		"method":  req.Method,
 	}
 	fields["request"] = requestFields
 
@@ -88,8 +89,8 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 	requestFields["path"] = path.String()
 
-	requestFields["addr"] = req.URL.Host
-	requestFields["host"], requestFields["port"] = splitHostPort(req.URL.Host)
+	requestFields["origin"] = req.URL.Host
+	requestFields["host"], fields["port"] = splitHostPort(req.URL.Host)
 
 	if req.URL.User != nil && req.URL.User.Username() != "" {
 		fields["auth_user"] = req.URL.User.Username()
@@ -106,6 +107,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	fields["realtime"] = roundMS(serveDone.Sub(startTime))
 	fields["status"] = statusCode
+	requestFields["status"] = statusCode
 
 	responseFields := Fields{
 		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
@@ -118,22 +120,22 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	requestFields["tls"] = req.TLS != nil
-	fields["scheme"] = "http"
+	fields["proto"] = "http"
 	if req.URL.Scheme != "" {
-		fields["scheme"] = req.URL.Scheme
+		fields["proto"] = req.URL.Scheme
 	} else if req.TLS != nil && req.TLS.HandshakeComplete {
-		fields["scheme"] = "https"
+		fields["proto"] = "https"
 	}
 
-	if requestFields["port"] == "" {
-		if fields["scheme"] == "https" {
-			requestFields["port"] = "443"
+	if fields["port"] == "" {
+		if fields["proto"] == "https" {
+			fields["port"] = "443"
 		} else {
-			requestFields["port"] = "80"
+			fields["port"] = "80"
 		}
 	}
 
-	fields["url"] = fields["scheme"].(string) + "://" + req.URL.Host + path.String()
+	fields["url"] = fields["proto"].(string) + "://" + req.URL.Host + path.String()
 
 	var err errors.GoError
 	fields["client_ip"], _ = splitHostPort(req.RemoteAddr)

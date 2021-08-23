@@ -53,8 +53,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	requestFields := Fields{
-		"method": req.Method,
 		"name":   req.Context().Value(request.RoundTripName),
+		"method": req.Method,
 	}
 
 	if req.ContentLength > 0 {
@@ -68,6 +68,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
+	fields["method"] = req.Method
 	fields["request"] = requestFields
 
 	oCtx, openAPIContext := validation.NewWithContext(req.Context())
@@ -78,10 +79,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	rtDone := time.Now()
 
 	if req.Host != "" {
-		requestFields["addr"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
-		if requestFields["port"] == "" {
-			delete(requestFields, "port")
+		requestFields["origin"] = req.Host
+		requestFields["host"], fields["port"] = splitHostPort(req.Host)
+		if fields["port"] == "" {
+			delete(fields, "port")
 		}
 	}
 
@@ -94,6 +95,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	requestFields["path"] = path.String()
 	requestFields["headers"] = filterHeader(u.config.RequestHeaders, req.Header)
+	requestFields["tls"] = beresp.TLS != nil
 
 	fields["url"] = req.URL.String()
 
@@ -102,8 +104,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
 		fields["auth_user"] = user
 	}
-	requestFields["proto"] = req.Proto
-	requestFields["scheme"] = req.URL.Scheme
+	requestFields["proto"] = req.URL.Scheme
 
 	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
@@ -118,11 +119,11 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["status"] = 0
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
+		requestFields["status"] = beresp.StatusCode
 
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
-			"proto":   beresp.Proto,
-			"tls":     beresp.TLS != nil,
+			"proto":   req.URL.Scheme,
 		}
 		fields["response"] = responseFields
 	}
