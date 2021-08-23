@@ -48,7 +48,7 @@ The full list of features of Couper 1.0 is [here](FEATURES.md) or at [https://co
 ## Developers
 
 *Developers* requiring [Go](https://golang.org/) to start with `make build`.
-Couper requires a configuration file. You can start with a simple one and use:
+Couper requires a [configuration file](./docs/README.md#configuration-file). You can start with a simple one and use:
 
 ```console
 ./couper run -f public/couper.hcl
