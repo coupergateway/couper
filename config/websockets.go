@@ -28,8 +28,13 @@ func (w Websockets) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	type Inline struct {
-		SetRequestHeaders map[string]string `hcl:"set_request_headers,optional"`
-		Timeout           string            `hcl:"timeout,optional"`
+		AddRequestHeaders  map[string]string `hcl:"add_request_headers,optional"`
+		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
+		DelRequestHeaders  []string          `hcl:"remove_request_headers,optional"`
+		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
+		SetRequestHeaders  map[string]string `hcl:"set_request_headers,optional"`
+		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
+		Timeout            string            `hcl:"timeout,optional"`
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
