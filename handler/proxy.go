@@ -59,44 +59,8 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	if wss := bodyContent.Blocks.OfType("websockets"); len(wss) == 1 {
-		ctx := req.Context()
-
-		ctx = context.WithValue(ctx, request.AllowWebsockets, true)
-		*req = *req.WithContext(ctx)
-
-		// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
-		if eval.IsUpgradeRequest(req) {
-			bodyContent, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
-			if diags.HasErrors() {
-				return nil, diags
-			}
-			if err := eval.ApplyRequestContext(req.Context(), wss[0].Body, req); err != nil {
-				return nil, err
-			}
-
-			if attr, ok := bodyContent.Attributes["timeout"]; ok {
-				val, diags := attr.Expr.Value(nil)
-				if diags.HasErrors() {
-					return nil, diags
-				}
-
-				str := seetie.ValueToString(val)
-
-				timeout, err := time.ParseDuration(str)
-				if str != "" && err != nil {
-					return nil, err
-				}
-
-				ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
-				*req = *req.WithContext(ctx)
-			}
-		}
+	if err := p.applyWebsockets(req); err != nil {
+		return nil, err
 	}
 
 	url, err := content.GetContextAttribute(p.context, req.Context(), "url")
@@ -133,6 +97,51 @@ func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
 	e.l.Error(strings.Replace(string(p), "\n", "", 1))
 	return len(p), nil
 }
+
 func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
 	return log.New(&ErrorWrapper{logger}, "", log.Lshortfile)
+}
+
+func (p *Proxy) applyWebsockets(req *http.Request) error {
+	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
+	if diags.HasErrors() {
+		return diags
+	}
+
+	if wss := bodyContent.Blocks.OfType("websockets"); len(wss) == 1 {
+		ctx := req.Context()
+
+		ctx = context.WithValue(ctx, request.AllowWebsockets, true)
+		*req = *req.WithContext(ctx)
+
+		// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
+		if eval.IsUpgradeRequest(req) {
+			bodyContent, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
+			if diags.HasErrors() {
+				return diags
+			}
+			if err := eval.ApplyRequestContext(req.Context(), wss[0].Body, req); err != nil {
+				return err
+			}
+
+			if attr, ok := bodyContent.Attributes["timeout"]; ok {
+				val, diags := attr.Expr.Value(nil)
+				if diags.HasErrors() {
+					return diags
+				}
+
+				str := seetie.ValueToString(val)
+
+				timeout, err := time.ParseDuration(str)
+				if str != "" && err != nil {
+					return err
+				}
+
+				ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
+				*req = *req.WithContext(ctx)
+			}
+		}
+	}
+
+	return nil
 }
