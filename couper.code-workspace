@@ -22,7 +22,7 @@
 				"request": "launch",
 				"mode": "debug",
 				"program": "${workspaceFolder}/main.go",
-				"args": ["run"]
+				"args": ["run", "-f", "./public/couper.hcl"]
 			},
 		]
 	}
