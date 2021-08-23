@@ -29,6 +29,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [Basic Auth](./docs/REFERENCE.md#basic-auth-block) did not work if only the `htpasswd_file` attribute was defined ([#293](https://github.com/avenga/couper/pull/293))
   * Missing error handling for backend gzip header reads ([#291](https://github.com/avenga/couper/pull/291))
   * ResponseWriter fallback for possible statusCode 0 writes ([#291](https://github.com/avenga/couper/pull/291))
+  * Proper client-request canceling ([#294](https://github.com/avenga/couper/pull/294))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))

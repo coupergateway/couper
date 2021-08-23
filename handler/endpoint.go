@@ -62,7 +62,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var (
 		clientres    *http.Response
 		err          error
-		log          = e.log.WithField("uid", req.Context().Value(request.UID))
+		log          = e.log.WithContext(req.Context())
 		isErrHandler = strings.HasPrefix(e.opts.LogHandlerKind, "error_") // weak ref
 	)
 
@@ -101,6 +101,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// TODO: read parallel, proxy first for now
 	e.readResults(subCtx, proxyResults, beresps)
 	e.readResults(subCtx, requestResults, beresps)
+
+	select {
+	case <-req.Context().Done():
+		err = req.Context().Err()
+		log.WithError(errors.ClientRequest.With(err)).Error()
+		return
+	default:
+	}
 
 	evalContext := req.Context().Value(request.ContextType).(*eval.Context)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
