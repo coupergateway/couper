@@ -627,11 +627,7 @@ func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
 		return *proxyConfig.Websockets, body, nil
 	}
 
-	if len(content.Blocks) > 0 {
-		return true, nil, nil
-	}
-
-	return false, nil, nil
+	return len(content.Blocks) > 0, nil, nil
 }
 
 func verifyBodyAttributes(content *hcl.BodyContent) error {
