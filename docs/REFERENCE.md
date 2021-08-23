@@ -281,7 +281,7 @@ The `oauth2` block in the [Backend Block](#backend-block) context configures the
 
 ### Websockets Block
 
-The `websockets` block activates support for websocket connection in Couper.
+The `websockets` block activates support for websocket connections in Couper.
 
 | Block name | Context | Label            | Nested block(s) |
 | :--------- | :------ | :--------------- | :-------------- |
