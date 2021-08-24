@@ -1,0 +1,163 @@
+package logging_test
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"testing"
+	"time"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
+)
+
+func TestAccessLog_ServeHTTP(t *testing.T) {
+	logger, hook := test.NewLogger()
+
+	defer func() {
+		if t.Failed() {
+			for _, e := range hook.AllEntries() {
+				t.Log(e.String())
+			}
+		}
+	}()
+
+	accessLog := logging.NewAccessLog(logging.DefaultConfig, logger)
+
+	handler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusNoContent)
+	})
+
+	type testcase struct {
+		description string
+		url         string
+		expFields   logrus.Fields
+	}
+
+	testcases := []testcase{
+		{
+			description: "proto https",
+			url:         "https://example.com",
+			expFields: logrus.Fields{
+				"request": logrus.Fields{
+					"tls": true,
+				},
+				"proto": "https",
+			},
+		},
+		{
+			description: "proto http",
+			url:         "http://example.com",
+			expFields: logrus.Fields{
+				"request": logrus.Fields{
+					"tls": false,
+				},
+				"proto": "http",
+			},
+		},
+		{
+			description: "required request fields",
+			url:         "http://localhost:8080/test",
+			expFields: logrus.Fields{
+				"request": logrus.Fields{
+					"tls":    false,
+					"host":   "localhost",
+					"origin": "localhost:8080",
+					"path":   "/test",
+					"method": http.MethodGet,
+					"status": 0,
+				},
+				"method": http.MethodGet,
+				"proto":  "http",
+				"port":   "8080",
+				"uid":    "veryRandom123",
+				"status": 0,
+			},
+		},
+		{
+			description: "method status constant",
+			url:         "http://example.com",
+			expFields: logrus.Fields{
+				"request": logrus.Fields{
+					"method": http.MethodGet,
+					"status": 0,
+				},
+				"method": http.MethodGet,
+				"status": 0,
+			},
+		},
+		{
+			description: "implicit port",
+			url:         "https://couper.io/",
+			expFields: logrus.Fields{
+				"request": logrus.Fields{
+					"host":   "couper.io",
+					"origin": "couper.io",
+					"path":   "/",
+				},
+			},
+		},
+		{
+			description: "pathless url",
+			url:         "http://test.com",
+			expFields: logrus.Fields{
+				"request": logrus.Fields{
+					"path": "",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.description, func(st *testing.T) {
+
+			hook.Reset()
+
+			req := httptest.NewRequest(http.MethodGet, tc.url, nil)
+
+			ctx := context.Background()
+			ctx = context.WithValue(ctx, request.UID, "veryRandom123")
+			//ctx = context.WithValue(ctx, request.ServerName, "myTestServer")
+			req = req.WithContext(ctx)
+
+			rec := httptest.NewRecorder()
+			accessLog.ServeHTTP(rec, req, handler, time.Now())
+
+			entry := hook.LastEntry()
+			for key, expFields := range tc.expFields {
+				value, exist := entry.Data[key]
+				if !exist {
+					st.Errorf("Expected log field %s, got nothing", key)
+				}
+
+				switch ef := expFields.(type) {
+				case logrus.Fields:
+					for k, v := range ef {
+						expected := v
+
+						switch fields := value.(type) {
+						case logging.Fields:
+							exp, ok := fields[k]
+							if !ok {
+								st.Errorf("Expected log field %s.%s, got nothing", key, k)
+							}
+							expected = exp
+						}
+
+						if !reflect.DeepEqual(expected, v) {
+							st.Errorf("Want: %v for key %s, got: %v", expected, k, v)
+						}
+					}
+				default:
+					if !reflect.DeepEqual(expFields, value) {
+						st.Errorf("Want: %v for key %s, got: %v", expFields, key, value)
+					}
+				}
+			}
+		})
+	}
+}
