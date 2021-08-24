@@ -105,7 +105,13 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", r.rw)
 	}
-	return hijack.Hijack()
+
+	conn, rw, err := hijack.Hijack()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conn, rw, err
 }
 
 // Flush implements the <http.Flusher> interface.
@@ -160,7 +166,7 @@ func (r *Response) WrittenBytes() int {
 
 func (r *Response) AddModifier(evalCtx *eval.Context, modifier []hcl.Body) {
 	r.evalCtx = evalCtx
-	r.modifier = modifier
+	r.modifier = append(r.modifier, modifier...)
 }
 
 func (r *Response) applyModifier() {

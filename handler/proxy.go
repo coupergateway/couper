@@ -55,18 +55,18 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
-	// 1. Apply proxy-body
-	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
-		return nil, err
-	}
-
-	// 2. Apply proxy blacklist
+	// 1. Apply proxy blacklist
 	for _, key := range headerBlacklist {
 		req.Header.Del(key)
 	}
 
+	// 2. Apply proxy-body
+	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
+		return nil, err
+	}
+
 	// 3. Apply websockets-body
-	if err := p.applyWebsockets(req); err != nil {
+	if err := p.applyWebsocketsRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -81,6 +81,10 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	rw := req.Context().Value(request.ResponseWriter).(*writer.Response)
 	rec := transport.NewRecorder(rw)
+
+	if err := p.registerWebsocketsResponse(req, rw); err != nil {
+		return nil, err
+	}
 
 	p.reverseProxy.ServeHTTP(rec, req)
 	beresp, err := rec.Response(req)
@@ -106,17 +110,7 @@ func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
 	return log.New(&ErrorWrapper{logger}, "", log.Lshortfile)
 }
 
-func (p *Proxy) applyWebsockets(req *http.Request) error {
-	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
-	if diags.HasErrors() {
-		return diags
-	}
-
-	wss := bodyContent.Blocks.OfType("websockets")
-	if len(wss) != 1 {
-		return nil
-	}
-
+func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 	ctx := req.Context()
 
 	ctx = context.WithValue(ctx, request.AllowWebsockets, true)
@@ -127,11 +121,16 @@ func (p *Proxy) applyWebsockets(req *http.Request) error {
 		return nil
 	}
 
-	bodyContent, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
+	wsBody, err := p.getWebsocketsBody()
+	if err != nil {
+		return err
+	}
+
+	bodyContent, _, diags := wsBody.PartialContent(config.WebsocketsInlineSchema)
 	if diags.HasErrors() {
 		return diags
 	}
-	if err := eval.ApplyRequestContext(req.Context(), wss[0].Body, req); err != nil {
+	if err := eval.ApplyRequestContext(req.Context(), wsBody, req); err != nil {
 		return err
 	}
 
@@ -156,4 +155,40 @@ func (p *Proxy) applyWebsockets(req *http.Request) error {
 	*req = *req.WithContext(ctx)
 
 	return nil
+}
+
+func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Response) error {
+	ctx := req.Context()
+
+	ctx = context.WithValue(ctx, request.AllowWebsockets, true)
+	*req = *req.WithContext(ctx)
+
+	// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
+	if !eval.IsUpgradeRequest(req) {
+		return nil
+	}
+
+	wsBody, err := p.getWebsocketsBody()
+	if err != nil {
+		return err
+	}
+
+	evalCtx := req.Context().Value(request.ContextType).(*eval.Context)
+	rw.AddModifier(evalCtx, []hcl.Body{wsBody, p.context})
+
+	return nil
+}
+
+func (p *Proxy) getWebsocketsBody() (hcl.Body, error) {
+	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	wss := bodyContent.Blocks.OfType("websockets")
+	if len(wss) != 1 {
+		return nil, nil
+	}
+
+	return wss[0].Body, nil
 }

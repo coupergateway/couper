@@ -11,6 +11,10 @@ server "ws" {
           set_request_headers = {
             Echo = "ECHO"
           }
+
+          set_response_headers = {
+            Abc = "123"
+          }
         }
       }
     }
