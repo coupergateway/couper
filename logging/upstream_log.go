@@ -95,7 +95,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	requestFields["path"] = path.String()
 	requestFields["headers"] = filterHeader(u.config.RequestHeaders, req.Header)
-	requestFields["tls"] = beresp.TLS != nil
 
 	fields["url"] = req.URL.String()
 
@@ -120,6 +119,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
 		requestFields["status"] = beresp.StatusCode
+		requestFields["tls"] = beresp.TLS != nil
 
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
