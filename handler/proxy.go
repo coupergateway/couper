@@ -55,10 +55,17 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
+	// 1. Apply proxy-body
 	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
 		return nil, err
 	}
 
+	// 2. Apply proxy blacklist
+	for _, key := range headerBlacklist {
+		req.Header.Del(key)
+	}
+
+	// 3. Apply websockets-body
 	if err := p.applyWebsockets(req); err != nil {
 		return nil, err
 	}
@@ -84,11 +91,8 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
-func (p *Proxy) director(req *http.Request) {
-	for _, key := range headerBlacklist {
-		req.Header.Del(key)
-	}
-}
+// httputil.ReverseProxy needs this no-op method.
+func (p *Proxy) director(req *http.Request) {}
 
 // ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.
 type ErrorWrapper struct{ l logrus.FieldLogger }
