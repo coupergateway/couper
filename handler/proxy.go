@@ -108,40 +108,48 @@ func (p *Proxy) applyWebsockets(req *http.Request) error {
 		return diags
 	}
 
-	if wss := bodyContent.Blocks.OfType("websockets"); len(wss) == 1 {
-		ctx := req.Context()
-
-		ctx = context.WithValue(ctx, request.AllowWebsockets, true)
-		*req = *req.WithContext(ctx)
-
-		// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
-		if eval.IsUpgradeRequest(req) {
-			bodyContent, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
-			if diags.HasErrors() {
-				return diags
-			}
-			if err := eval.ApplyRequestContext(req.Context(), wss[0].Body, req); err != nil {
-				return err
-			}
-
-			if attr, ok := bodyContent.Attributes["timeout"]; ok {
-				val, diags := attr.Expr.Value(nil)
-				if diags.HasErrors() {
-					return diags
-				}
-
-				str := seetie.ValueToString(val)
-
-				timeout, err := time.ParseDuration(str)
-				if str != "" && err != nil {
-					return err
-				}
-
-				ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
-				*req = *req.WithContext(ctx)
-			}
-		}
+	wss := bodyContent.Blocks.OfType("websockets")
+	if len(wss) != 1 {
+		return nil
 	}
+
+	ctx := req.Context()
+
+	ctx = context.WithValue(ctx, request.AllowWebsockets, true)
+	*req = *req.WithContext(ctx)
+
+	// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
+	if !eval.IsUpgradeRequest(req) {
+		return nil
+	}
+
+	bodyContent, _, diags = wss[0].Body.PartialContent(config.WebsocketsInlineSchema)
+	if diags.HasErrors() {
+		return diags
+	}
+	if err := eval.ApplyRequestContext(req.Context(), wss[0].Body, req); err != nil {
+		return err
+	}
+
+	attr, ok := bodyContent.Attributes["timeout"]
+	if !ok {
+		return nil
+	}
+
+	val, diags := attr.Expr.Value(nil)
+	if diags.HasErrors() {
+		return diags
+	}
+
+	str := seetie.ValueToString(val)
+
+	timeout, err := time.ParseDuration(str)
+	if str != "" && err != nil {
+		return err
+	}
+
+	ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
+	*req = *req.WithContext(ctx)
 
 	return nil
 }
