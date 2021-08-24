@@ -1,5 +1,6 @@
 server "couper" {
 <<<<<<< HEAD
+<<<<<<< HEAD
   files {
 <<<<<<< HEAD
     document_root = env.DOC_DIR
@@ -23,5 +24,9 @@ defaults {
       }
     }
 >>>>>>> Implemented changes for uniform Log-Format fields
+=======
+  files {
+    document_root = "/htdocs"
+>>>>>>> Adjusted changelog, reset changes in couper.hcl
   }
 }

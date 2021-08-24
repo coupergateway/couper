@@ -44,7 +44,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	serveDone := time.Now()
 
 	fields := Fields{
-		"proto": req.Proto,
+		"proto": "https",
 	}
 
 	backendName, _ := req.Context().Value(request.BackendName).(string)
@@ -120,7 +120,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	requestFields["tls"] = req.TLS != nil
-	fields["proto"] = "http"
 	if req.URL.Scheme != "" {
 		fields["proto"] = req.URL.Scheme
 	} else if req.TLS != nil && req.TLS.HandshakeComplete {
