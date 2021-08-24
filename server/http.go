@@ -181,9 +181,17 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	gw := writer.NewGzipWriter(rw, req.Header)
 	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
+
 	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
 	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
-	defer gw.Close()
+	defer func() {
+		select { // do not close on cancel since we may have nothing to write and the client may be gone anyways.
+		case <-req.Context().Done():
+			return
+		default:
+			gw.Close()
+		}
+	}()
 
 	var h http.Handler
 
