@@ -95,8 +95,8 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
-// httputil.ReverseProxy needs this no-op method.
-func (p *Proxy) director(req *http.Request) {}
+// director no-op method is still required by httputil.ReverseProxy.
+func (p *Proxy) director(_ *http.Request) {}
 
 // ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.
 type ErrorWrapper struct{ l logrus.FieldLogger }

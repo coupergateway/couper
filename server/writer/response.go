@@ -29,12 +29,15 @@ var (
 	_ writer               = &Response{}
 	_ modifier             = &Response{}
 	_ logging.RecorderInfo = &Response{}
+
+	endOfHeader = []byte("\r\n\r\n")
 )
 
 // Response wraps the http.ResponseWriter.
 type Response struct {
 	rw            http.ResponseWriter
 	headerBuffer  *bytes.Buffer
+	hijackedConn  net.Conn
 	httpStatus    []byte
 	httpLineDelim []byte
 	secureCookies string
@@ -74,6 +77,13 @@ func (r *Response) Write(p []byte) (int, error) {
 			if l >= 2 {
 				r.httpLineDelim = p[l-2 : l]
 			}
+			// Flush case in combination with bufio.Writer.
+			// httpStatus contains all bytes already.
+			if l > 4 && bytes.Equal(p[l-4:l], endOfHeader) {
+				i := bytes.Index(p, r.httpLineDelim)
+				r.headerBuffer.Write(p[i+2 : l-2]) // 2 = delimLength
+				r.flushHeader()
+			}
 
 			return l, nil
 		}
@@ -81,12 +91,7 @@ func (r *Response) Write(p []byte) (int, error) {
 		// End-of-header
 		// http.Response.Write() EOH chunk is: '\r\n'
 		if bytes.Equal(r.httpLineDelim, p) {
-			reader := textproto.NewReader(bufio.NewReader(r.headerBuffer))
-			header, _ := reader.ReadMIMEHeader()
-			for k := range header {
-				r.rw.Header()[k] = header.Values(k)
-			}
-			r.WriteHeader(r.parseStatusCode(r.httpStatus))
+			r.flushHeader()
 		}
 
 		if l >= 2 {
@@ -106,12 +111,10 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", r.rw)
 	}
 
-	conn, rw, err := hijack.Hijack()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return conn, rw, err
+	conn, brw, err := hijack.Hijack()
+	r.hijackedConn = conn
+	brw.Writer.Reset(r)
+	return conn, brw, err
 }
 
 // Flush implements the <http.Flusher> interface.
@@ -119,6 +122,15 @@ func (r *Response) Flush() {
 	if rw, ok := r.rw.(http.Flusher); ok {
 		rw.Flush()
 	}
+}
+
+func (r *Response) flushHeader() {
+	reader := textproto.NewReader(bufio.NewReader(r.headerBuffer))
+	header, _ := reader.ReadMIMEHeader()
+	for k := range header {
+		r.rw.Header()[k] = header.Values(k)
+	}
+	r.WriteHeader(r.parseStatusCode(r.httpStatus))
 }
 
 // WriteHeader wraps the WriteHeader method of the <http.ResponseWriter>.
@@ -130,14 +142,28 @@ func (r *Response) WriteHeader(statusCode int) {
 	r.configureHeader()
 	r.applyModifier()
 
+	writeStatusCode := statusCode
 	if statusCode == 0 {
 		r.rw.Header().Set(errors.HeaderErrorCode, errors.Server.Error())
-		r.rw.WriteHeader(errors.Server.HTTPStatus())
-	} else {
-		r.rw.WriteHeader(statusCode)
+		writeStatusCode = errors.Server.HTTPStatus()
 	}
+
+	if r.hijackedConn != nil {
+		r1 := &http.Response{
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+			Header:     r.rw.Header(),
+			StatusCode: writeStatusCode,
+		}
+		if err := r1.Write(r.hijackedConn); err != nil {
+			panic(err)
+		}
+	} else {
+		r.rw.WriteHeader(writeStatusCode)
+	}
+
 	r.statusWritten = true
-	r.statusCode = statusCode
+	r.statusCode = writeStatusCode
 }
 
 func (r *Response) configureHeader() {
