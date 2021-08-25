@@ -148,10 +148,9 @@ func (r *Response) WriteHeader(statusCode int) {
 	r.configureHeader()
 	r.applyModifier()
 
-	writeStatusCode := statusCode
 	if statusCode == 0 {
 		r.rw.Header().Set(errors.HeaderErrorCode, errors.Server.Error())
-		writeStatusCode = errors.Server.HTTPStatus()
+		statusCode = errors.Server.HTTPStatus()
 	}
 
 	if r.hijackedConn != nil {
@@ -159,17 +158,17 @@ func (r *Response) WriteHeader(statusCode int) {
 			ProtoMajor: 1,
 			ProtoMinor: 1,
 			Header:     r.rw.Header(),
-			StatusCode: writeStatusCode,
+			StatusCode: statusCode,
 		}
 		if err := r1.Write(r.hijackedConn); err != nil {
 			panic(err)
 		}
 	} else {
-		r.rw.WriteHeader(writeStatusCode)
+		r.rw.WriteHeader(statusCode)
 	}
 
 	r.statusWritten = true
-	r.statusCode = writeStatusCode
+	r.statusCode = statusCode
 }
 
 func (r *Response) configureHeader() {
