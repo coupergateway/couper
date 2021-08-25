@@ -113,7 +113,9 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 	conn, brw, err := hijack.Hijack()
 	r.hijackedConn = conn
-	brw.Writer.Reset(r)
+	if brw != nil {
+		brw.Writer.Reset(r)
+	}
 	return conn, brw, err
 }
 
