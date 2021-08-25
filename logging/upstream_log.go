@@ -43,7 +43,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	timings, timingsMu := u.withTraceContext(req)
 
 	fields := Fields{
-		"uid": req.Context().Value(request.UID),
+		"uid":    req.Context().Value(request.UID),
+		"method": req.Method,
 	}
 	if h, ok := u.next.(fmt.Stringer); ok {
 		fields["handler"] = h.String()
@@ -68,7 +69,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	fields["method"] = req.Method
 	fields["request"] = requestFields
 
 	oCtx, openAPIContext := validation.NewWithContext(req.Context())
@@ -119,7 +119,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
 		requestFields["status"] = beresp.StatusCode
-		requestFields["tls"] = beresp.TLS != nil
+		requestFields["tls"] = req.TLS != nil
 
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),

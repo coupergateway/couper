@@ -6,32 +6,34 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
 )
 
-func TestAccessLog_ServeHTTP(t *testing.T) {
+var _ http.RoundTripper = &testRoundTripper{}
+
+type testRoundTripper struct {
+	response *http.Response
+}
+
+func (t *testRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp := *t.response
+	resp.Request = req
+	return &resp, nil
+}
+
+func TestUpstreamLog_RoundTrip(t *testing.T) {
+	helper := test.New(t)
 	logger, hook := test.NewLogger()
-
-	defer func() {
-		if t.Failed() {
-			for _, e := range hook.AllEntries() {
-				t.Log(e.String())
-			}
-		}
-	}()
-
-	accessLog := logging.NewAccessLog(logging.DefaultConfig, logger)
-
-	handler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.WriteHeader(http.StatusNoContent)
-	})
+	myRT := &testRoundTripper{
+		response: &http.Response{
+			StatusCode: http.StatusOK,
+			//TLS:        &tls.ConnectionState{HandshakeComplete: true},
+		},
+	}
 
 	type testcase struct {
 		description string
@@ -75,10 +77,10 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
 					"method": http.MethodGet,
-					"status": 204,
+					"status": 200,
 				},
 				"method": http.MethodGet,
-				"status": 204,
+				"status": 200,
 			},
 		},
 		{
@@ -102,7 +104,6 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 					"origin": "couper.io",
 					"path":   "/",
 				},
-				"port": "443",
 			},
 		},
 		{
@@ -114,7 +115,6 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 					"origin": "example.com",
 					"path":   "",
 				},
-				"port": "80",
 			},
 		},
 		{
@@ -127,13 +127,13 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 					"origin": "localhost:8080",
 					"path":   "/test",
 					"method": http.MethodGet,
-					"status": 204,
+					"status": 200,
 					"proto":  "http",
 				},
 				"method": http.MethodGet,
 				"port":   "8080",
-				"uid":    "veryRandom123",
-				"status": 204,
+				"uid":    nil,
+				"status": 200,
 			},
 		},
 	}
@@ -143,17 +143,18 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 
 			hook.Reset()
 
+			upstreamLog := logging.NewUpstreamLog(logger.WithContext(context.TODO()), myRT, true)
+
 			req := httptest.NewRequest(http.MethodGet, tc.url, nil)
+			res, err := upstreamLog.RoundTrip(req)
+			helper.Must(err)
 
-			ctx := context.Background()
-			ctx = context.WithValue(ctx, request.UID, "veryRandom123")
-			//ctx = context.WithValue(ctx, request.ServerName, "myTestServer")
-			req = req.WithContext(ctx)
+			//println(res.StatusCode)
+			res = res
 
-			rec := httptest.NewRecorder()
-			rw := writer.NewResponseWriter(rec, "")
-			accessLog.ServeHTTP(rw, req, handler, time.Now())
-
+			/*for _, e := range hook.AllEntries() {
+				println(e.String())
+			}*/
 			entry := hook.LastEntry()
 			for key, expFields := range tc.expFields {
 				value, exist := entry.Data[key]
