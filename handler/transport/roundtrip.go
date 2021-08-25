@@ -3,6 +3,7 @@ package transport
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -71,5 +72,8 @@ func (r *Recorder) SetError(err error) {
 }
 
 func (r *Recorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if r.rw == nil {
+		return nil, nil, fmt.Errorf("recorder type error: hijacker is nil")
+	}
 	return r.rw.Hijack()
 }

@@ -79,10 +79,13 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		*req = *req.WithContext(ctx)
 	}
 
-	rw := req.Context().Value(request.ResponseWriter).(*writer.Response)
+	var rw *writer.Response
+	if hj, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
+		rw = hj
+	}
 	rec := transport.NewRecorder(rw)
 
-	if err := p.registerWebsocketsResponse(req, rw); err != nil {
+	if err = p.registerWebsocketsResponse(req, rw); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +177,9 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Respons
 	}
 
 	evalCtx := req.Context().Value(request.ContextType).(*eval.Context)
-	rw.AddModifier(evalCtx, []hcl.Body{wsBody, p.context})
+	if rw != nil {
+		rw.AddModifier(evalCtx, []hcl.Body{wsBody, p.context})
+	}
 
 	return nil
 }
