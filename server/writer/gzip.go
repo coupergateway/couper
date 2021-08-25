@@ -29,6 +29,7 @@ var (
 type Gzip struct {
 	buffer     *bytes.Buffer
 	enabled    bool
+	hijacked   bool
 	headerSent bool
 	statusCode int
 	writeErr   error
@@ -133,7 +134,9 @@ func (g *Gzip) writeHeader() {
 		g.rw.Header().Set(ContentEncodingHeader, GzipName)
 	}
 
-	g.rw.WriteHeader(g.statusCode)
+	if !g.hijacked {
+		g.rw.WriteHeader(g.statusCode)
+	}
 }
 
 func (g *Gzip) Flush() {
@@ -159,6 +162,10 @@ func (g *Gzip) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker gzip writer type %T", g.rw)
 	}
+
+	g.enabled = false
+	g.hijacked = true
+
 	return hijack.Hijack()
 }
 

@@ -107,6 +107,11 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	setUserAgent(req)
 	req.Close = false
 
+	if _, ok := req.Context().Value(request.WebsocketsAllowed).(bool); !ok {
+		req.Header.Del("Connection")
+		req.Header.Del("Upgrade")
+	}
+
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
 		beresp, err = b.openAPIValidate(req, tc, deadlineErr)
@@ -118,8 +123,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if err = setGzipReader(beresp); err != nil {
-		b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
+	if !eval.IsUpgradeResponse(req, beresp) {
+		if err = setGzipReader(beresp); err != nil {
+			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
+		}
 	}
 
 	if !isProxyReq {
@@ -207,8 +214,13 @@ func (b *Backend) getAttribute(req *http.Request, name string) string {
 }
 
 func (b *Backend) withTimeout(req *http.Request) <-chan error {
+	timeout := b.transportConf.Timeout
+	if to, ok := req.Context().Value(request.WebsocketsTimeout).(time.Duration); ok {
+		timeout = to
+	}
+
 	errCh := make(chan error, 1)
-	if b.transportConf.Timeout <= 0 {
+	if timeout <= 0 {
 		return errCh
 	}
 
@@ -216,7 +228,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	*req = *req.WithContext(ctx)
 	go func(cancelFn func(), c context.Context, ec chan error) {
 		defer cancelFn()
-		deadline := time.After(b.transportConf.Timeout)
+		deadline := time.After(timeout)
 		select {
 		case <-deadline:
 			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")

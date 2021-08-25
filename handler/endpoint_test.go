@@ -428,7 +428,7 @@ IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NE
 	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
 	ctx = context.WithValue(ctx, request.UID, "test123")
 
-	rec := transport.NewRecorder()
+	rec := transport.NewRecorder(nil)
 	rw := writer.NewResponseWriter(rec, "")
 	ep.ServeHTTP(rw, req.Clone(ctx))
 	res, err := rec.Response(req)
@@ -505,5 +505,4 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	for _, e := range hook.AllEntries() {
 		println(e.String())
 	}
-
 }

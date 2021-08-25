@@ -204,8 +204,17 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
-	if r, ok := rw.(*writer.Response); ok {
-		r.AddModifier(evalContext, e.modifier)
+	w, ok := rw.(*writer.Response)
+	if !ok {
+		log.Errorf("response writer: type error")
+	} else {
+		if w.IsHijacked() {
+			// clientres is a faulty response object due to a websocket hijack.
+			return
+		}
+
+		w.AddModifier(evalContext, e.modifier)
+		rw = w
 	}
 
 	if err = clientres.Write(rw); err != nil {

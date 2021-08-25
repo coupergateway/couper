@@ -287,6 +287,35 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	return nil
 }
 
+func upgradeType(h http.Header) string {
+	return strings.ToLower(h.Get("Upgrade"))
+}
+
+func IsUpgradeRequest(req *http.Request) bool {
+	if req == nil {
+		return false
+	}
+	if _, ok := req.Context().Value(request.WebsocketsAllowed).(bool); !ok {
+		return false
+	}
+	if conn := strings.ToLower(req.Header.Get("Connection")); !strings.Contains(conn, "upgrade") {
+		return false
+	}
+	if reqUpType := upgradeType(req.Header); reqUpType != "websocket" {
+		return false
+	}
+
+	return true
+}
+
+func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
+	if !IsUpgradeRequest(req) || res == nil {
+		return false
+	}
+
+	return upgradeType(req.Header) == upgradeType(res.Header)
+}
+
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
@@ -296,8 +325,12 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		return err
 	}
 
-	bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
-	if attr, ok := bodyContent.Attributes["set_response_status"]; ok {
+	if IsUpgradeResponse(beresp.Request, beresp) {
+		return nil
+	}
+
+	content, _, _ := body.PartialContent(config.BackendInlineSchema)
+	if attr, ok := content.Attributes["set_response_status"]; ok {
 		_, err := ApplyResponseStatus(ctx, attr, beresp)
 		return err
 	}

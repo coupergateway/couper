@@ -12,6 +12,7 @@ const (
 	LogEntry
 	OpenAPI
 	PathParams
+	ResponseWriter
 	RoundTripName
 	RoundTripProxy
 	ServerName
@@ -19,6 +20,8 @@ const (
 	TokenRequestRetries
 	UID
 	URLAttribute
+	WebsocketsAllowed
+	WebsocketsTimeout
 	Wildcard
 	XFF
 )

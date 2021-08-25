@@ -6,14 +6,18 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/handler/transport"
+	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/server/writer"
 )
 
 // headerBlacklist lists all header keys which will be removed after
@@ -45,12 +49,24 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 		ErrorLog:  newErrorLogWrapper(logger),
 		Transport: backend,
 	}
+
 	proxy.reverseProxy = rp
 	return proxy
 }
 
 func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
+	// 1. Apply proxy blacklist
+	for _, key := range headerBlacklist {
+		req.Header.Del(key)
+	}
+
+	// 2. Apply proxy-body
 	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
+		return nil, err
+	}
+
+	// 3. Apply websockets-body
+	if err := p.applyWebsocketsRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -63,7 +79,16 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		*req = *req.WithContext(ctx)
 	}
 
-	rec := transport.NewRecorder()
+	var rw *writer.Response
+	if hj, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
+		rw = hj
+	}
+	rec := transport.NewRecorder(rw)
+
+	if err = p.registerWebsocketsResponse(req, rw); err != nil {
+		return nil, err
+	}
+
 	p.reverseProxy.ServeHTTP(rec, req)
 	beresp, err := rec.Response(req)
 	if err != nil {
@@ -73,11 +98,8 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	return beresp, err
 }
 
-func (p *Proxy) director(req *http.Request) {
-	for _, key := range headerBlacklist {
-		req.Header.Del(key)
-	}
-}
+// director no-op method is still required by httputil.ReverseProxy.
+func (p *Proxy) director(_ *http.Request) {}
 
 // ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.
 type ErrorWrapper struct{ l logrus.FieldLogger }
@@ -86,6 +108,92 @@ func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
 	e.l.Error(strings.Replace(string(p), "\n", "", 1))
 	return len(p), nil
 }
+
 func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
 	return log.New(&ErrorWrapper{logger}, "", log.Lshortfile)
+}
+
+func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
+	ctx := req.Context()
+
+	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
+	*req = *req.WithContext(ctx)
+
+	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
+	if !eval.IsUpgradeRequest(req) {
+		return nil
+	}
+
+	wsBody, err := p.getWebsocketsBody()
+	if err != nil {
+		return err
+	}
+
+	bodyContent, _, diags := wsBody.PartialContent(config.WebsocketsInlineSchema)
+	if diags.HasErrors() {
+		return diags
+	}
+	if err := eval.ApplyRequestContext(req.Context(), wsBody, req); err != nil {
+		return err
+	}
+
+	attr, ok := bodyContent.Attributes["timeout"]
+	if !ok {
+		return nil
+	}
+
+	val, diags := attr.Expr.Value(nil)
+	if diags.HasErrors() {
+		return diags
+	}
+
+	str := seetie.ValueToString(val)
+
+	timeout, err := time.ParseDuration(str)
+	if str != "" && err != nil {
+		return err
+	}
+
+	ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
+	*req = *req.WithContext(ctx)
+
+	return nil
+}
+
+func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Response) error {
+	ctx := req.Context()
+
+	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
+	*req = *req.WithContext(ctx)
+
+	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
+	if !eval.IsUpgradeRequest(req) {
+		return nil
+	}
+
+	wsBody, err := p.getWebsocketsBody()
+	if err != nil {
+		return err
+	}
+
+	evalCtx := req.Context().Value(request.ContextType).(*eval.Context)
+	if rw != nil {
+		rw.AddModifier(evalCtx, []hcl.Body{wsBody, p.context})
+	}
+
+	return nil
+}
+
+func (p *Proxy) getWebsocketsBody() (hcl.Body, error) {
+	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	wss := bodyContent.Blocks.OfType("websockets")
+	if len(wss) != 1 {
+		return nil, nil
+	}
+
+	return wss[0].Body, nil
 }
