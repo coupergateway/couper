@@ -101,7 +101,7 @@ func (t *Template) ServeError(err error) http.Handler {
 
 		*req = *req.WithContext(context.WithValue(req.Context(), request.Error, goErr))
 
-		rw.Header().Set(HeaderErrorCode, fmt.Sprintf(err.Error()))
+		rw.Header().Set(HeaderErrorCode, fmt.Sprint(err.Error()))
 
 		if t.ctxHandler != nil {
 			t.ctxHandler.ServeHTTP(rw, req)

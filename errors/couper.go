@@ -17,7 +17,6 @@ var (
 	ClientRequest     = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
 	Evaluation        = &Error{synopsis: "expression evaluation error", kinds: []string{"evaluation"}, httpStatus: http.StatusInternalServerError}
 	Configuration     = &Error{synopsis: "configuration error", kinds: []string{"configuration"}, httpStatus: http.StatusInternalServerError}
-	OAuth2            = &Error{synopsis: "oauth2 error", httpStatus: http.StatusBadRequest}
 	Proxy             = &Error{synopsis: "proxy error", httpStatus: http.StatusBadGateway}
 	Request           = &Error{synopsis: "request error", httpStatus: http.StatusBadGateway}
 	RouteNotFound     = &Error{synopsis: "route not found error", httpStatus: http.StatusNotFound}
