@@ -5,7 +5,6 @@ type ContextKey uint8
 const (
 	ContextType ContextKey = iota
 	AccessControls
-	AllowWebsockets
 	BackendName
 	Endpoint
 	EndpointKind
@@ -21,6 +20,7 @@ const (
 	TokenRequestRetries
 	UID
 	URLAttribute
+	WebsocketsAllowed
 	WebsocketsTimeout
 	Wildcard
 	XFF

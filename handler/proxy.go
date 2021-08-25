@@ -116,10 +116,10 @@ func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
 func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 	ctx := req.Context()
 
-	ctx = context.WithValue(ctx, request.AllowWebsockets, true)
+	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
 	*req = *req.WithContext(ctx)
 
-	// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
+	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
 	if !eval.IsUpgradeRequest(req) {
 		return nil
 	}
@@ -163,10 +163,10 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Response) error {
 	ctx := req.Context()
 
-	ctx = context.WithValue(ctx, request.AllowWebsockets, true)
+	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
 	*req = *req.WithContext(ctx)
 
-	// This method needs the 'request.AllowWebsockets' flag in the 'req.context'.
+	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
 	if !eval.IsUpgradeRequest(req) {
 		return nil
 	}

@@ -107,7 +107,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	setUserAgent(req)
 	req.Close = false
 
-	if _, ok := req.Context().Value(request.AllowWebsockets).(bool); !ok {
+	if _, ok := req.Context().Value(request.WebsocketsAllowed).(bool); !ok {
 		req.Header.Del("Connection")
 		req.Header.Del("Upgrade")
 	}
