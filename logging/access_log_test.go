@@ -44,9 +44,9 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 			url:         "https://example.com",
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
-					"tls": true,
+					"tls":   true,
+					"proto": "https",
 				},
-				"proto": "https",
 			},
 		},
 		{
@@ -54,9 +54,9 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 			url:         "http://example.com",
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
-					"tls": false,
+					"tls":   false,
+					"proto": "http",
 				},
-				"proto": "http",
 			},
 		},
 		{
@@ -70,9 +70,9 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 					"path":   "/test",
 					"method": http.MethodGet,
 					"status": 0,
+					"proto":  "http",
 				},
 				"method": http.MethodGet,
-				"proto":  "http",
 				"port":   "8080",
 				"uid":    "veryRandom123",
 				"status": 0,

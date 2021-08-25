@@ -43,9 +43,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
 
-	fields := Fields{
-		"proto": "https",
-	}
+	fields := Fields{}
 
 	backendName, _ := req.Context().Value(request.BackendName).(string)
 	if backendName == "" {
@@ -62,6 +60,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
 		"method":  req.Method,
+		"proto":   "https",
 	}
 	fields["request"] = requestFields
 
@@ -121,20 +120,20 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	requestFields["tls"] = req.TLS != nil
 	if req.URL.Scheme != "" {
-		fields["proto"] = req.URL.Scheme
+		requestFields["proto"] = req.URL.Scheme
 	} else if req.TLS != nil && req.TLS.HandshakeComplete {
-		fields["proto"] = "https"
+		requestFields["proto"] = "https"
 	}
 
 	if fields["port"] == "" {
-		if fields["proto"] == "https" {
+		if requestFields["proto"] == "https" {
 			fields["port"] = "443"
 		} else {
 			fields["port"] = "80"
 		}
 	}
 
-	fields["url"] = fields["proto"].(string) + "://" + req.URL.Host + path.String()
+	fields["url"] = requestFields["proto"].(string) + "://" + req.URL.Host + path.String()
 
 	var err errors.GoError
 	fields["client_ip"], _ = splitHostPort(req.RemoteAddr)

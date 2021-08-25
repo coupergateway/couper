@@ -123,7 +123,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
-			"proto":   req.URL.Scheme,
 		}
 		fields["response"] = responseFields
 	}
@@ -200,7 +199,7 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 		ConnectDone: func(network, addr string, err error) {
 			if err == nil {
 				mapMu.Lock()
-				timings["connect"] = roundMS(time.Since(timeConnect))
+				timings["tcp"] = roundMS(time.Since(timeConnect))
 				mapMu.Unlock()
 			}
 		},
