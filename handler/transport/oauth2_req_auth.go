@@ -70,7 +70,7 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	tokenResponse, tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
 	if err != nil {
 		mutex.Unlock()
-		return nil, errors.Backend.Label(oa.config.BackendName).With(err)
+		return nil, errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
 	}
 
 	oa.updateAccessToken(tokenResponse, tokenResponseData, storageKey)

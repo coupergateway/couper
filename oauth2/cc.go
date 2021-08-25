@@ -32,7 +32,7 @@ func NewOAuth2CC(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*CcClie
 func (c *CcClient) GetTokenResponse(ctx context.Context) ([]byte, map[string]interface{}, string, error) {
 	tokenResponse, tokenResponseData, accessToken, err := c.getTokenResponse(ctx, nil)
 	if err != nil {
-		return nil, nil, "", errors.Oauth2.Message("token request error").With(err)
+		return nil, nil, "", err
 	}
 
 	return tokenResponse, tokenResponseData, accessToken, nil

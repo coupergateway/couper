@@ -7,10 +7,10 @@ var (
 	BasicAuthCredentialsMissing = Definitions[1]
 	Jwt                         = Definitions[2]
 	JwtTokenExpired             = Definitions[3]
-	JwtTokenMissing             = Definitions[4]
-	JwtTokenInvalid             = Definitions[5]
-	Saml2                       = Definitions[6]
-	Oauth2                      = Definitions[7]
+	JwtTokenInvalid             = Definitions[4]
+	JwtTokenMissing             = Definitions[5]
+	Oauth2                      = Definitions[6]
+	Saml2                       = Definitions[7]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -24,10 +24,10 @@ var types = typeDefinitions{
 	"basic_auth_credentials_missing": BasicAuthCredentialsMissing,
 	"jwt":                            Jwt,
 	"jwt_token_expired":              JwtTokenExpired,
-	"jwt_token_missing":              JwtTokenMissing,
 	"jwt_token_invalid":              JwtTokenInvalid,
-	"saml2":                          Saml2,
+	"jwt_token_missing":              JwtTokenMissing,
 	"oauth2":                         Oauth2,
+	"saml2":                          Saml2,
 }
 
 // IsKnown tells the configuration callee if Couper
