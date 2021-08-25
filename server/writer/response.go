@@ -117,6 +117,10 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return conn, brw, err
 }
 
+func (r *Response) IsHijacked() bool {
+	return r.hijackedConn != nil
+}
+
 // Flush implements the <http.Flusher> interface.
 func (r *Response) Flush() {
 	if rw, ok := r.rw.(http.Flusher); ok {

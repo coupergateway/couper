@@ -2934,12 +2934,22 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 
 	helper.Must(conn.SetDeadline(time.Time{}))
 
-	p := make([]byte, 89)
-	_, err = conn.Read(p)
+	textConn := textproto.NewConn(conn)
+	_, _, _ = textConn.ReadResponse(http.StatusSwitchingProtocols) // ignore short resp error
+	header, err := textConn.ReadMIMEHeader()
 	helper.Must(err)
 
-	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nEcho: ECHO\r\nUpgrade: websocket\r\n\r\n")) {
-		t.Errorf("Expected 101 status and related headers, got:\n%q", string(p))
+	expectedHeader := textproto.MIMEHeader{
+		"Abc":               []string{"123"},
+		"Echo":              []string{"ECHO"},
+		"Connection":        []string{"Upgrade"},
+		"Couper-Request-Id": header.Values("Couper-Request-Id"), // dynamic
+		"Server":            []string{"couper.io"},
+		"Upgrade":           []string{"websocket"},
+	}
+
+	if !reflect.DeepEqual(expectedHeader, header) {
+		t.Errorf("Want: %v, got: %v", expectedHeader, header)
 	}
 
 	n, err := conn.Write([]byte("ping"))
@@ -2949,7 +2959,7 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 		t.Errorf("Expected 4 written bytes for 'ping', got: %d", n)
 	}
 
-	p = make([]byte, 4)
+	p := make([]byte, 4)
 	_, err = conn.Read(p)
 	helper.Must(err)
 
