@@ -56,6 +56,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	requestFields := Fields{
 		"name":   req.Context().Value(request.RoundTripName),
 		"method": req.Method,
+		"proto":  req.URL.Scheme,
 	}
 
 	if req.ContentLength > 0 {
@@ -103,7 +104,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
 		fields["auth_user"] = user
 	}
-	requestFields["proto"] = req.URL.Scheme
 
 	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
