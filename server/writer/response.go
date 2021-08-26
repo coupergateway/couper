@@ -79,7 +79,7 @@ func (r *Response) Write(p []byte) (int, error) {
 		bufLen := len(r.httpHeaderBuffer)
 		// More than http header related bytes? Write body.
 		if !bytes.HasSuffix(r.httpHeaderBuffer, endOfLine) && bufLen > idx+4 {
-			n, writeErr := r.rw.Write(r.httpHeaderBuffer[idx+4:])
+			n, writeErr := r.rw.Write(r.httpHeaderBuffer[idx+4:]) // len(endOfHeader) -> 4
 			r.bytesWritten += n
 			return l, writeErr
 		}
