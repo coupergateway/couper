@@ -12,7 +12,7 @@ Release date: 2021-08-26
 
 This release introduces [_Beta Features_](./docs/BETA.md). We use beta features to develop and experiment with new, complex features for you while still being able to maintain our compatibility promise. You can see beta features as a feature preview. To make users aware that a beta feature is used their configuration items are prefixed with `beta_`.
 
-The first beta features incorporate the OAuth2 functionality into the Access Control capabilities of Couper. The [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta) implements OAuth2 Authorization Code Grant Flows. The companion block [`beta_oidc {}`](./docs/REFERENCE.md#oidc-block-beta) implements OIDC, which allows simple integration of 3rd-party systems such as Google, Github or Keycloak for SSO (Single-Sign-On).
+The first beta features incorporate the OAuth2 functionality into the Access Control capabilities of Couper. The [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta) implements OAuth2 Authorization Code Grant Flows. The companion block [`beta_oidc {}`](./docs/REFERENCE.md#oidc-block-beta) implements [OIDC](https://openid.net/connect/), which allows simple integration of 3rd-party systems such as Google, Github or Keycloak for SSO (Single-Sign-On).
 
 Together with transparent [Websockets](docs/REFERENCE.md#websockets-block) support that you can enable in your `proxy {}` block, you can guard existing Web applications with Couper via OIDC.
 
