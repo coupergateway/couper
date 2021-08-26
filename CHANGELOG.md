@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.3.1...master)
+## [Unreleased](https://github.com/avenga/couper/compare/1.4...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.4](https://github.com/avenga/couper/releases/tag/1.4)
 
 * **Added**
   * [Run option](./docs/CLI.md#run-options) `-accept-forwarded-url` and [setting](./docs/REFERENCE.md#settings-block) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers, affecting new [client request variables](./docs/REFERENCE.md#request) `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
@@ -35,8 +39,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
   * OIDC Authorization Code Grant Flow: [`beta_oidc {}` block](./docs/REFERENCE.md#oidc-block-beta) ([#273](https://github.com/avenga/couper/pull/273))
-
----
 
 ## [1.3.1](https://github.com/avenga/couper/compare/1.3...1.3.1)
 
