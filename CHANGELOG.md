@@ -8,21 +8,25 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 ## [1.4](https://github.com/avenga/couper/releases/tag/1.4)
 
+Release date: 2021-08-26
+
 * **Added**
-  * [Run option](./docs/CLI.md#run-options) `-accept-forwarded-url` and [setting](./docs/REFERENCE.md#settings-block) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers, affecting new [client request variables](./docs/REFERENCE.md#request) `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
+  * `environment_variables` map in the [`defaults`](./docs/REFERENCE.md#defaults-block) block to define default values for environment variables ([#271](https://github.com/avenga/couper/pull/271))
+  * [`https-dev-proxy` option](./docs/REFERENCE.md#settings-block) creates a TLS server listing on the given TLS port. Requests are forwarded to the given `server` port. The certificate is generated on-the-fly. This function is intended for local development setups to support browser features requiring HTTPS connections, such as secure cookies. ([#281](https://github.com/avenga/couper/pull/281))
+  * [`websockets`](docs/REFERENCE.md#websockets-block) option in `proxy` block enables transparent websocket support when proxying to upstream backends ([#198](https://github.com/avenga/couper/issues/198))
+  * Client request [variables](./docs/REFERENCE.md#request) `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
+  * [Run option](./docs/CLI.md#run-options) `-accept-forwarded-url` and [setting](./docs/REFERENCE.md#settings-block) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers ([#255](https://github.com/avenga/couper/pull/255))
+  * Couper sends its request ID as `Couper-Request-Id` HTTP header in backend requests and client responses. This can be configured with the `request_id_backend_header` and `request_id_client_header` [settings](./docs/REFERENCE.md#settings-block)
+  * [`request_id_accept_from_header` setting](./docs/REFERENCE.md#settings-block) configures Couper to use a downstream request ID instead of generating its own in order to help correlating log events accross services ([#268](https://github.com/avenga/couper/pull/268))
   * [`couper.version` variable](docs/REFERENCE.md#couper) ([#274](https://github.com/avenga/couper/pull/274))
-  * Default values for environment variable by means of `environment_variables` within [`defaults`](./docs/REFERENCE.md#defaults-block) block. ([#271](https://github.com/avenga/couper/pull/271))
-  * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests`](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
-  * [Settings](./docs/REFERENCE.md#settings-block) for accepting a downstream requestID and use this ID instead for logging, `request.id` variable and down-/upstream id-header ([#268](https://github.com/avenga/couper/pull/268))
-  [`https-dev-proxy` option](./docs/REFERENCE.md#settings-block) to listen and proxy from a given tls port to an existing Couper port; a SNI based on-the-fly generated certificate gets served from memory ([#281](https://github.com/avenga/couper/pull/281))
-  * [`websockets`](docs/REFERENCE.md#websockets-block) option for `proxy` requests to re-support websocket upgrades ([#198](https://github.com/avenga/couper/issues/198))
+  * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests` variable](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
+  * Locking to avoid concurrent requests to renew [OAuth2 Client Credentials](./docs/REFERENCE.md#oauth2-cc-block) access tokens ([#270](https://github.com/avenga/couper/issues/270))
 
 * **Changed**
   * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
 
 * **Fixed**
   * No GZIP compression for small response bodies ([#186](https://github.com/avenga/couper/issues/186))
-  * Missing synchronization for OAuth2 access token requests ([#270](https://github.com/avenga/couper/issues/270))
   * Missing error type for [request](docs/REFERENCE.md#request-block)/[response](docs/REFERENCE.md#response-block) body, json_body or form_body related HCL evaluation errors ([#276](https://github.com/avenga/couper/pull/276))
   * [`request.url`](./docs/REFERENCE.md#request) and [`backend_requests.<label>.url`](./docs/REFERENCE.md#backend_requests) now contain a query string if present ([#278](https://github.com/avenga/couper/pull/278))
   * [`backend_responses.<label>.status`](./docs/REFERENCE.md#backend_responses) is now integer ([#278](https://github.com/avenga/couper/pull/278))
