@@ -2754,6 +2754,11 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 	}
 }
 
+func Test_LoadAccessControl(t *testing.T) {
+	shutdown, _ := newCouper("testdata/integration/config/07_couper.hcl", test.New(t))
+	defer shutdown()
+}
+
 func TestJWTAccessControl(t *testing.T) {
 	client := newClient()
 
