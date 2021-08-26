@@ -2761,6 +2761,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 }
 
 func Test_LoadAccessControl(t *testing.T) {
+	// Tests the config load with ACs and "error_handler" blocks...
 	shutdown, _ := newCouper("testdata/integration/config/07_couper.hcl", test.New(t))
 	defer shutdown()
 }
