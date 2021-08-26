@@ -2,6 +2,7 @@ package logging_test
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -28,17 +29,12 @@ func (t *testRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 func TestUpstreamLog_RoundTrip(t *testing.T) {
 	helper := test.New(t)
 	logger, hook := test.NewLogger()
-	myRT := &testRoundTripper{
-		response: &http.Response{
-			StatusCode: http.StatusOK,
-			//TLS:        &tls.ConnectionState{HandshakeComplete: true},
-		},
-	}
 
 	type testcase struct {
 		description string
 		url         string
 		expFields   logrus.Fields
+		enableTLS   bool
 	}
 
 	testcases := []testcase{
@@ -56,18 +52,23 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 			url:         "https://example.com",
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
-					"tls":   true,
 					"proto": "https",
 				},
+				"response": logrus.Fields{
+					"tls": true,
+				},
 			},
+			enableTLS: true,
 		},
 		{
 			description: "proto http",
 			url:         "http://example.com",
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
-					"tls":   false,
 					"proto": "http",
+				},
+				"response": logrus.Fields{
+					"tls": false,
 				},
 			},
 		},
@@ -77,6 +78,8 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
 					"method": http.MethodGet,
+				},
+				"response": logrus.Fields{
 					"status": 200,
 				},
 				"method": http.MethodGet,
@@ -122,13 +125,15 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 			url:         "http://localhost:8080/test",
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
-					"tls":    false,
 					"host":   "localhost",
 					"origin": "localhost:8080",
 					"path":   "/test",
 					"method": http.MethodGet,
-					"status": 200,
 					"proto":  "http",
+				},
+				"response": logrus.Fields{
+					"tls":    false,
+					"status": 200,
 				},
 				"method": http.MethodGet,
 				"port":   "8080",
@@ -143,18 +148,23 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 
 			hook.Reset()
 
+			var tlsOption *tls.ConnectionState
+			if tc.enableTLS {
+				tlsOption = &tls.ConnectionState{HandshakeComplete: true}
+			}
+			myRT := &testRoundTripper{
+				response: &http.Response{
+					StatusCode: http.StatusOK,
+					TLS:        tlsOption,
+				},
+			}
+
 			upstreamLog := logging.NewUpstreamLog(logger.WithContext(context.TODO()), myRT, true)
 
 			req := httptest.NewRequest(http.MethodGet, tc.url, nil)
-			res, err := upstreamLog.RoundTrip(req)
+			_, err := upstreamLog.RoundTrip(req)
 			helper.Must(err)
 
-			//println(res.StatusCode)
-			res = res
-
-			/*for _, e := range hook.AllEntries() {
-				println(e.String())
-			}*/
 			entry := hook.LastEntry()
 			for key, expFields := range tc.expFields {
 				value, exist := entry.Data[key]

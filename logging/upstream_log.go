@@ -118,11 +118,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["status"] = 0
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
-		requestFields["status"] = beresp.StatusCode
-		requestFields["tls"] = req.TLS != nil
-
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
+			"tls":     beresp.TLS != nil && beresp.TLS.HandshakeComplete,
+			"status":  beresp.StatusCode,
 		}
 		fields["response"] = responseFields
 	}
