@@ -68,6 +68,10 @@ func TestResponse_ProtoWrite(t *testing.T) {
 		t.Error("Expected Content-Length header")
 	}
 
+	if res.Header.Get("Test") != "Value" {
+		t.Errorf("Expected Test header, got: %q", res.Header.Get("Test"))
+	}
+
 	b, err := io.ReadAll(res.Body)
 	helper.Must(err)
 
@@ -77,5 +81,36 @@ func TestResponse_ProtoWrite(t *testing.T) {
 
 	if w.WrittenBytes() != 11 {
 		t.Errorf("Expected 11 written bytes, got: %d", w.WrittenBytes())
+	}
+}
+
+func TestResponse_ProtoWriteAll(t *testing.T) {
+	helper := test.New(t)
+
+	rec := httptest.NewRecorder()
+	w := writer.NewResponseWriter(rec, "")
+
+	response := &http.Response{
+		StatusCode: http.StatusForbidden,
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header: http.Header{
+			"Test": []string{"Value"},
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	helper.Must(response.Write(buf))
+
+	_, err := buf.WriteTo(w)
+	helper.Must(err)
+
+	res := rec.Result()
+	if res.StatusCode != http.StatusForbidden || w.StatusCode() != http.StatusForbidden {
+		t.Errorf("Want: %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	if res.Header.Get("Test") != "Value" {
+		t.Errorf("Expected Test header, got: %q", res.Header.Get("Test"))
 	}
 }
