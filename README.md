@@ -45,6 +45,15 @@ Key features are:
 
 The full list of features of Couper 1.x is [here](FEATURES.md) or at [couper.io](https://couper.io/en/features).
 
+## Developers
+
+*Developers* requiring [Go](https://golang.org/) to start with `make build`.
+Couper requires a [configuration file](./docs/README.md#configuration-file). You can start with a simple one and use:
+
+```ps
+./couper run -f public/couper.hcl
+```
+
 ## Contributing
 
 Thanks for your interest in contributing.

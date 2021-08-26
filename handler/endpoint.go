@@ -62,7 +62,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var (
 		clientres    *http.Response
 		err          error
-		log          = e.log.WithField("uid", req.Context().Value(request.UID))
+		log          = e.log.WithContext(req.Context())
 		isErrHandler = strings.HasPrefix(e.opts.LogHandlerKind, "error_") // weak ref
 	)
 
@@ -102,7 +102,15 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	e.readResults(subCtx, proxyResults, beresps)
 	e.readResults(subCtx, requestResults, beresps)
 
-	evalContext := req.Context().Value(eval.ContextType).(*eval.Context)
+	select {
+	case <-req.Context().Done():
+		err = req.Context().Err()
+		log.WithError(errors.ClientRequest.With(err)).Error()
+		return
+	default:
+	}
+
+	evalContext := req.Context().Value(request.ContextType).(*eval.Context)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
 	// assume prio or err on conf load if set with response
@@ -196,8 +204,17 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
-	if r, ok := rw.(*writer.Response); ok {
-		r.AddModifier(evalContext, e.modifier)
+	w, ok := rw.(*writer.Response)
+	if !ok {
+		log.Errorf("response writer: type error")
+	} else {
+		if w.IsHijacked() {
+			// clientres is a faulty response object due to a websocket hijack.
+			return
+		}
+
+		w.AddModifier(evalContext, e.modifier)
+		rw = w
 	}
 
 	if err = clientres.Write(rw); err != nil {

@@ -29,8 +29,12 @@ type RecorderInfo interface {
 }
 
 func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
+	conf := c
+	if conf == nil {
+		conf = DefaultConfig
+	}
 	return &AccessLog{
-		conf:   c,
+		conf:   conf,
 		logger: logger,
 	}
 }

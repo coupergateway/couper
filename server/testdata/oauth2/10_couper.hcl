@@ -8,7 +8,6 @@ server "client" {
     }
   }
 }
-
 definitions {
   beta_oidc "ac" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
@@ -19,5 +18,10 @@ definitions {
     scope = "profile email"
     verifier_method = "nonce"
     verifier_value = request.cookies.nnc
+    error_handler {
+      response {
+        status = 418
+      }
+    }
   }
 }

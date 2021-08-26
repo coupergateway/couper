@@ -72,9 +72,8 @@ func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
 		if block.Type == "backend" && len(block.LabelNames) > 0 {
 			// Check if a backend block could be parsed w/ label, otherwise its an inline one w/o label.
 			content, _, _ := body.PartialContent(schema)
-			if content == nil || len(content.Blocks) == 0 {
+			if content == nil || len(content.Blocks.OfType("backend")) == 0 {
 				schema.Blocks[i].LabelNames = nil
-
 				break
 			}
 		}

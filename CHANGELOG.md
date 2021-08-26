@@ -7,10 +7,11 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * [Run option](./docs/CLI.md#run-options) `-accept-forwarded-url` and [setting](./docs/REFERENCE.md#settings-block) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers, affecting new [client request variables](./docs/REFERENCE.md#request) `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
   * [`couper.version` variable](docs/REFERENCE.md#couper) ([#274](https://github.com/avenga/couper/pull/274))
-  * Default values for environment variable by means of `environment_variables` within `defaults` block. ([#271](https://github.com/avenga/couper/pull/271))
+  * Default values for environment variable by means of `environment_variables` within [`defaults`](./docs/REFERENCE.md#defaults-block) block. ([#271](https://github.com/avenga/couper/pull/271))
   * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests`](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
-  * Settings for accepting a downstream requestID and use this ID instead for logging, `request.id` variable and down-/upstream id-header ([#268](https://github.com/avenga/couper/pull/268))
-  * `https-dev-proxy` option to map and proxy an existing port to a tls one; a SNI based on-the-fly generated certificate gets served from memory ([#281](https://github.com/avenga/couper/pull/281))
+  * [Settings](./docs/REFERENCE.md#settings-block) for accepting a downstream requestID and use this ID instead for logging, `request.id` variable and down-/upstream id-header ([#268](https://github.com/avenga/couper/pull/268))
+  [`https-dev-proxy` option](./docs/REFERENCE.md#settings-block) to listen and proxy from a given tls port to an existing Couper port; a SNI based on-the-fly generated certificate gets served from memory ([#281](https://github.com/avenga/couper/pull/281))
+  * [`websockets`](docs/REFERENCE.md#websockets-block) option for `proxy` requests to re-support websocket upgrades ([#198](https://github.com/avenga/couper/issues/198))
 
 * **Changed**
   * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
@@ -25,6 +26,11 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Documentation of [`request.query.<name>`](./docs/REFERENCE.md#request) ([#278](https://github.com/avenga/couper/pull/278))
   * Missing access log on some error cases ([#267](https://github.com/avenga/couper/issues/267))
   * Panic during backend origin / url usage with previous parse error ([#206](https://github.com/avenga/couper/issues/206))
+  * [Basic Auth](./docs/REFERENCE.md#basic-auth-block) did not work if only the `htpasswd_file` attribute was defined ([#293](https://github.com/avenga/couper/pull/293))
+  * Missing error handling for backend gzip header reads ([#291](https://github.com/avenga/couper/pull/291))
+  * ResponseWriter fallback for possible statusCode 0 writes ([#291](https://github.com/avenga/couper/pull/291))
+  * ResponseWriter buffer behaviour; prepared chunk writes ([#301](https://github.com/avenga/couper/pull/301))
+  * Proper client-request canceling ([#294](https://github.com/avenga/couper/pull/294))
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))

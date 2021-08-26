@@ -6,12 +6,10 @@ server "ws" {
           origin = env.COUPER_TEST_BACKEND_ADDR
           # /ws path is a echo websocket upgrade handler at our test-backend
           path = "/ws"
-
-          set_response_headers = {
-            Abc = "123"
-          }
         }
-        websockets = true
+        websockets {
+          timeout = "1ns"
+        }
       }
     }
   }

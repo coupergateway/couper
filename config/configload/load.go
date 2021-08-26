@@ -470,6 +470,24 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 				proxyConfig.Name = defaultNameLabel
 			}
 
+			wsEnabled, wsBody, wsErr := getWebsocketsConfig(proxyConfig)
+			if wsErr != nil {
+				return wsErr
+			}
+
+			if wsEnabled {
+				if proxyConfig.Name != defaultNameLabel {
+					return errors.Configuration.Message("websockets attribute or block is only allowed in a 'default' proxy block")
+				}
+				if proxyRequestLabelRequired || endpoint.Response != nil {
+					return errors.Configuration.Message("websockets are allowed in the endpoint; other 'proxy', 'request' or 'response' blocks are not allowed")
+				}
+
+				if wsBody != nil {
+					proxyBlock.Body = MergeBodies([]hcl.Body{proxyBlock.Body, wsBody})
+				}
+			}
+
 			proxyConfig.Remain = proxyBlock.Body
 
 			err := uniqueAttributeKey(proxyConfig.Remain)
@@ -580,6 +598,36 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 	}
 
 	return nil
+}
+
+func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
+	content, _, diags := proxyConfig.Remain.PartialContent(
+		&hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{{Type: "websockets"}}},
+	)
+	if diags.HasErrors() {
+		return false, nil, diags
+	}
+
+	if proxyConfig.Websockets != nil && len(content.Blocks.OfType("websockets")) > 0 {
+		return false, nil, fmt.Errorf("either websockets attribute or block is allowed")
+	}
+
+	if proxyConfig.Websockets != nil {
+		var body hcl.Body
+
+		if *proxyConfig.Websockets {
+			block := &hcl.Block{
+				Type: "websockets",
+				Body: EmptyBody(),
+			}
+
+			body = hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{block}})
+		}
+
+		return *proxyConfig.Websockets, body, nil
+	}
+
+	return len(content.Blocks) > 0, nil, nil
 }
 
 func verifyBodyAttributes(content *hcl.BodyContent) error {

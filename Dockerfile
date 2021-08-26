@@ -20,7 +20,8 @@ COPY --from=builder /couper /couper
 COPY public/couper.hcl /conf/
 COPY public/index.html /htdocs/
 WORKDIR /conf
-ENV COUPER_LOG_FORMAT=json
+ENV COUPER_LOG_FORMAT=json \
+    DOC_DIR=/htdocs
 EXPOSE 8080
 USER 1000:1000
 ENTRYPOINT ["/couper"]

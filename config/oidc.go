@@ -18,11 +18,10 @@ type OIDC struct {
 	ClientSecret            string   `hcl:"client_secret"`
 	ConfigurationURL        string   `hcl:"configuration_url"`
 	Name                    string   `hcl:"name,label"`
-	RedirectURI             string   `hcl:"redirect_uri"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	TTL                     string   `hcl:"ttl"`
+	ConfigurationTTL        string   `hcl:"configuration_ttl,optional"`
 	VerifierMethod          string   `hcl:"verifier_method,optional"`
 
 	// internally used
@@ -49,6 +48,7 @@ func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 
 	type Inline struct {
 		Backend       *Backend `hcl:"backend,block"`
+		RedirectURI   string   `hcl:"redirect_uri"`
 		VerifierValue string   `hcl:"verifier_value"`
 	}
 
@@ -87,10 +87,6 @@ func (o OIDC) GetScope() string {
 		return "openid"
 	}
 	return "openid " + *o.Scope
-}
-
-func (o OIDC) GetRedirectURI() string {
-	return o.RedirectURI
 }
 
 func (o OIDC) GetTokenEndpointAuthMethod() *string {

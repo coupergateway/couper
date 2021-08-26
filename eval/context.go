@@ -28,10 +28,6 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-type contextKey uint8
-
-const ContextType contextKey = iota
-
 var _ context.Context = &Context{}
 
 type ContextMap map[string]cty.Value
@@ -90,7 +86,7 @@ func (c *Context) Err() error {
 }
 
 func (c *Context) Value(key interface{}) interface{} {
-	if key == ContextType {
+	if key == request.ContextType {
 		return c
 	}
 	return c.inner.Value(key)
@@ -99,7 +95,7 @@ func (c *Context) Value(key interface{}) interface{} {
 func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx := &Context{
 		bufferOption: c.bufferOption,
-		eval:         cloneContext(c.eval),
+		eval:         c.cloneEvalContext(),
 		inner:        c.inner,
 		memorize:     make(map[string]interface{}),
 		oauth2:       c.oauth2[:],
@@ -108,7 +104,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	}
 
 	if rc := req.Context(); rc != nil {
-		ctx.inner = context.WithValue(rc, ContextType, ctx)
+		ctx.inner = context.WithValue(rc, request.ContextType, ctx)
 	}
 
 	ctxMap := ContextMap{}
@@ -154,9 +150,8 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
-	ctx.createClientRequestRelatedFunctions(origin)
-
-	updateFunctions(ctx)
+	ctx.updateRequestRelatedFunctions(origin)
+	ctx.updateFunctions()
 
 	return ctx
 }
@@ -164,14 +159,14 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx := &Context{
 		bufferOption: c.bufferOption,
-		eval:         cloneContext(c.eval),
+		eval:         c.cloneEvalContext(),
 		inner:        c.inner,
 		memorize:     c.memorize,
 		oauth2:       c.oauth2[:],
 		profiles:     c.profiles[:],
 		saml:         c.saml[:],
 	}
-	ctx.inner = context.WithValue(c.inner, ContextType, ctx)
+	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
 
 	resps := make(ContextMap)
 	bereqs := make(ContextMap)
@@ -185,6 +180,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 			name = n
 		}
+
 		p := bereq.URL.Port()
 		if p == "" {
 			if bereq.URL.Scheme == "https" {
@@ -194,6 +190,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			}
 		}
 		port, _ := strconv.ParseInt(p, 10, 64)
+
 		body, jsonBody := parseReqBody(bereq)
 		bereqs[name] = cty.ObjectVal(ContextMap{
 			Method:   cty.StringVal(bereq.Method),
@@ -210,8 +207,10 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
 
 		var respBody, respJsonBody cty.Value
-		if (ctx.bufferOption & BufferResponse) == BufferResponse {
-			respBody, respJsonBody = parseRespBody(beresp)
+		if !IsUpgradeResponse(bereq, beresp) {
+			if (ctx.bufferOption & BufferResponse) == BufferResponse {
+				respBody, respJsonBody = parseRespBody(beresp)
+			}
 		}
 		resps[name] = cty.ObjectVal(ContextMap{
 			HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
@@ -223,7 +222,10 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
 
-	updateFunctions(ctx)
+	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
+	originUrl, _ := url.Parse(clientOrigin)
+	ctx.updateRequestRelatedFunctions(originUrl)
+	ctx.updateFunctions()
 
 	return ctx
 }
@@ -234,7 +236,7 @@ func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context
 	if c.profiles == nil {
 		c.profiles = make([]*config.JWTSigningProfile, 0)
 	}
-	updateFunctions(c)
+	c.updateFunctions()
 	return c
 }
 
@@ -244,23 +246,23 @@ func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 		c.oauth2 = make([]config.OAuth2Authorization, 0)
 	}
 	for _, o := range os {
-		c.oauth2 = append(c.oauth2, *o)
-	}
-	return c
-}
-
-// WithOidcConfig adds the OidcConfig config structs.
-func (c *Context) WithOidcConfig(os map[string]*oidc.OidcConfig) *Context {
-	if c.oauth2 == nil {
-		c.oauth2 = make([]config.OAuth2Authorization, 0)
-	}
-	for _, o := range os {
 		c.oauth2 = append(c.oauth2, o)
 	}
 	return c
 }
 
-// WithSAML initially setup the saml configuration.
+// WithOidcConfig adds the OidcConfig config structs.
+func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
+	for _, oidcConf := range confs {
+		c.oauth2 = append(c.oauth2, oidcConf)
+	}
+	if c.oauth2 == nil {
+		c.oauth2 = make([]config.OAuth2Authorization, 0)
+	}
+	return c
+}
+
+// WithSAML initially set up the saml configuration.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
 	c.saml = s
 	if c.saml == nil {
@@ -271,21 +273,6 @@ func (c *Context) WithSAML(s []*config.SAML) *Context {
 
 func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
-}
-
-// createClientRequestRelatedFunctions creates the listed functions for the client request context.
-func (c *Context) createClientRequestRelatedFunctions(origin *url.URL) {
-	if c.oauth2 != nil {
-		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.oauth2, c.getCodeVerifier, origin)
-		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
-	}
-	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
-	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
-
-	if c.saml != nil {
-		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)
-		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
-	}
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
@@ -305,10 +292,42 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 	return codeVerifier, nil
 }
 
-// updateFunctions recreates the listed functions with latest evaluation context.
-func updateFunctions(ctx *Context) {
-	jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
-	ctx.eval.Functions[lib.FnJWTSign] = jwtfn
+// updateFunctions recreates the listed functions with the current evaluation context.
+func (c *Context) updateFunctions() {
+	jwtfn := lib.NewJwtSignFunction(c.profiles, c.eval)
+	c.eval.Functions[lib.FnJWTSign] = jwtfn
+}
+
+// updateRequestRelatedFunctions re-creates the listed functions for the client request context.
+func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
+	if c.oauth2 != nil {
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.eval, c.oauth2, c.getCodeVerifier, origin)
+		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
+	}
+	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
+	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+
+	if c.saml != nil {
+		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)
+		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
+	}
+}
+
+func (c *Context) cloneEvalContext() *hcl.EvalContext {
+	ctx := &hcl.EvalContext{
+		Variables: make(map[string]cty.Value),
+		Functions: make(map[string]function.Function),
+	}
+
+	for key, val := range c.eval.Variables {
+		ctx.Variables[key] = val
+	}
+
+	for key, val := range c.eval.Functions {
+		ctx.Functions[key] = val
+	}
+
+	return ctx
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
@@ -391,22 +410,6 @@ func NewRawOrigin(u *url.URL) *url.URL {
 	rawOrigin.RawQuery = ""
 	rawOrigin.Fragment = ""
 	return &rawOrigin
-}
-
-func cloneContext(ctx *hcl.EvalContext) *hcl.EvalContext {
-	c := &hcl.EvalContext{
-		Variables: make(map[string]cty.Value),
-		Functions: make(map[string]function.Function),
-	}
-
-	for key, val := range ctx.Variables {
-		c.Variables[key] = val
-	}
-
-	for key, val := range ctx.Functions {
-		c.Functions[key] = val
-	}
-	return c
 }
 
 func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) ContextMap {

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"net/url"
 	"os"
 	"path"
@@ -121,6 +122,11 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 		time.Sleep(time.Second / 2)
 	}
 	shutdownFn := func() {
+		if helper.TestFailed() { // log on error
+			for _, entry := range hook.AllEntries() {
+				helper.Logf(entry.String())
+			}
+		}
 		cleanup(cancelFn, helper)
 	}
 
@@ -2861,9 +2867,115 @@ func getAccessLogUrl(hook *logrustest.Hook) string {
 }
 
 func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
-	t.Skip("TODO fix hijack and endpoint handling for ws")
 	helper := test.New(t)
 	shutdown, _ := newCouper("testdata/integration/api/04_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
+	helper.Must(err)
+	req.Close = false
+
+	req.Header.Set("Connection", "upgrade")
+	req.Header.Set("Upgrade", "websocket")
+
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	helper.Must(err)
+	defer conn.Close()
+
+	helper.Must(req.Write(conn))
+
+	helper.Must(conn.SetDeadline(time.Time{}))
+
+	textConn := textproto.NewConn(conn)
+	_, _, _ = textConn.ReadResponse(http.StatusSwitchingProtocols) // ignore short resp error
+	header, err := textConn.ReadMIMEHeader()
+	helper.Must(err)
+
+	expectedHeader := textproto.MIMEHeader{
+		"Abc":               []string{"123"},
+		"Connection":        []string{"Upgrade"},
+		"Couper-Request-Id": header.Values("Couper-Request-Id"), // dynamic
+		"Server":            []string{"couper.io"},
+		"Upgrade":           []string{"websocket"},
+	}
+
+	if !reflect.DeepEqual(expectedHeader, header) {
+		t.Errorf("Want: %v, got: %v", expectedHeader, header)
+	}
+
+	n, err := conn.Write([]byte("ping"))
+	helper.Must(err)
+
+	if n != 4 {
+		t.Errorf("Expected 4 written bytes for 'ping', got: %d", n)
+	}
+
+	p := make([]byte, 4)
+	_, err = conn.Read(p)
+	helper.Must(err)
+
+	if !bytes.Equal(p, []byte("pong")) {
+		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/api/13_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
+	helper.Must(err)
+	req.Close = false
+
+	req.Header.Set("Connection", "upgrade")
+	req.Header.Set("Upgrade", "websocket")
+
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	helper.Must(err)
+	defer conn.Close()
+
+	helper.Must(req.Write(conn))
+
+	helper.Must(conn.SetDeadline(time.Time{}))
+
+	textConn := textproto.NewConn(conn)
+	_, _, _ = textConn.ReadResponse(http.StatusSwitchingProtocols) // ignore short resp error
+	header, err := textConn.ReadMIMEHeader()
+	helper.Must(err)
+
+	expectedHeader := textproto.MIMEHeader{
+		"Abc":               []string{"123"},
+		"Echo":              []string{"ECHO"},
+		"Connection":        []string{"Upgrade"},
+		"Couper-Request-Id": header.Values("Couper-Request-Id"), // dynamic
+		"Server":            []string{"couper.io"},
+		"Upgrade":           []string{"websocket"},
+	}
+
+	if !reflect.DeepEqual(expectedHeader, header) {
+		t.Errorf("Want: %v, got: %v", expectedHeader, header)
+	}
+
+	n, err := conn.Write([]byte("ping"))
+	helper.Must(err)
+
+	if n != 4 {
+		t.Errorf("Expected 4 written bytes for 'ping', got: %d", n)
+	}
+
+	p := make([]byte, 4)
+	_, err = conn.Read(p)
+	helper.Must(err)
+
+	if !bytes.Equal(p, []byte("pong")) {
+		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestWrapperHiJack_WebsocketUpgradeTimeout(t *testing.T) {
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/api/14_couper.hcl", test.New(t))
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
@@ -2885,23 +2997,8 @@ func TestWrapperHiJack_WebsocketUpgrade(t *testing.T) {
 	_, err = conn.Read(p)
 	helper.Must(err)
 
-	if !bytes.Equal(p, []byte("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")) {
-		t.Errorf("Expected 101 status and related headers, got:\n%q", string(p))
-	}
-
-	n, err := conn.Write([]byte("ping"))
-	helper.Must(err)
-
-	if n != 4 {
-		t.Errorf("Expected 4 written bytes for 'ping', got: %d", n)
-	}
-
-	p = make([]byte, 4)
-	_, err = conn.Read(p)
-	helper.Must(err)
-
-	if !bytes.Equal(p, []byte("pong")) {
-		t.Errorf("Expected pong answer, got: %q", string(p))
+	if !bytes.HasPrefix(p, []byte("HTTP/1.1 504 Gateway Timeout\r\n")) {
+		t.Errorf("Expected 504 status and related headers, got:\n%q", string(p))
 	}
 }
 

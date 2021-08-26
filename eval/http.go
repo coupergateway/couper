@@ -19,6 +19,7 @@ import (
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -43,8 +44,9 @@ const (
 )
 
 // SetGetBody determines if we have to buffer a request body for further processing.
-// First of all the user has a related reference within a related options context declaration.
-// Additionally the request body is nil or a NoBody type and the http method has no body restrictions like 'TRACE'.
+// First the user has a related reference within a related options' context declaration.
+// Additionally, the request body is nil or a NoBody-Type and the http method has no
+// http-body restrictions like 'TRACE'.
 func SetGetBody(req *http.Request, bodyLimit int64) error {
 	if req.Method == http.MethodTrace {
 		return nil
@@ -104,7 +106,7 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	}
 
 	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(ContextType).(*Context); ok {
+	if c, ok := ctx.Value(request.ContextType).(content.Context); ok {
 		httpCtx = c.HCLContext()
 	}
 
@@ -115,12 +117,12 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		return err
 	}
 
-	if err := evalURLPath(req, attrs, httpCtx); err != nil {
+	if err = evalURLPath(req, attrs, httpCtx); err != nil {
 		return err
 	}
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
-	if err := applyHeaderOps(attrs,
+	if err = applyHeaderOps(attrs,
 		[]string{attrDelReqHeaders, attrSetReqHeaders, attrAddReqHeaders}, httpCtx, headerCtx); err != nil {
 		return err
 	}
@@ -285,6 +287,35 @@ func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hc
 	return nil
 }
 
+func upgradeType(h http.Header) string {
+	return strings.ToLower(h.Get("Upgrade"))
+}
+
+func IsUpgradeRequest(req *http.Request) bool {
+	if req == nil {
+		return false
+	}
+	if _, ok := req.Context().Value(request.WebsocketsAllowed).(bool); !ok {
+		return false
+	}
+	if conn := strings.ToLower(req.Header.Get("Connection")); !strings.Contains(conn, "upgrade") {
+		return false
+	}
+	if reqUpType := upgradeType(req.Header); reqUpType != "websocket" {
+		return false
+	}
+
+	return true
+}
+
+func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
+	if !IsUpgradeRequest(req) || res == nil {
+		return false
+	}
+
+	return upgradeType(req.Header) == upgradeType(res.Header)
+}
+
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
@@ -292,6 +323,10 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 	if err := ApplyResponseHeaderOps(ctx, body, beresp.Header); err != nil {
 		return err
+	}
+
+	if IsUpgradeResponse(beresp.Request, beresp) {
+		return nil
 	}
 
 	content, _, _ := body.PartialContent(config.BackendInlineSchema)
@@ -305,8 +340,8 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.Response) (int, error) {
 	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(ContextType).(*Context); ok {
-		httpCtx = c.eval
+	if c, ok := ctx.Value(request.ContextType).(content.Context); ok {
+		httpCtx = c.HCLContext()
 	}
 
 	val, attrDiags := attr.Expr.Value(httpCtx)
@@ -339,8 +374,8 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 
 func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {
 	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(ContextType).(*Context); ok {
-		httpCtx = c.eval
+	if c, ok := ctx.Value(request.ContextType).(content.Context); ok {
+		httpCtx = c.HCLContext()
 	}
 
 	attrs, err := getAllAttributes(body)
@@ -359,7 +394,7 @@ func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.
 }
 
 func getAllAttributes(body hcl.Body) (map[string]*hcl.Attribute, error) {
-	content, _, diags := body.PartialContent(meta.AttributesSchema)
+	bodyContent, _, diags := body.PartialContent(meta.AttributesSchema)
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -368,7 +403,7 @@ func getAllAttributes(body hcl.Body) (map[string]*hcl.Attribute, error) {
 	// TODO: sorted data structure on load
 	// TODO: func
 	attrs := make(map[string]*hcl.Attribute)
-	for _, attr := range content.Attributes {
+	for _, attr := range bodyContent.Attributes {
 		attrs[attr.Name] = attr
 	}
 
@@ -403,36 +438,6 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 		}
 	}
 	return nil
-}
-
-func GetContextAttribute(httpContext context.Context, context hcl.Body, name string) (string, error) {
-	ctx, ok := httpContext.Value(ContextType).(*Context)
-	if !ok {
-		return "", nil
-	}
-	evalCtx := ctx.HCLContext()
-
-	schema := &hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: name}}}
-	content, _, _ := context.PartialContent(schema)
-	if content == nil || len(content.Attributes) == 0 {
-		return "", nil
-	}
-
-	return GetAttribute(evalCtx, content, name)
-}
-
-func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (string, error) {
-	attr := content.Attributes
-	if _, ok := attr[name]; !ok {
-		return "", nil
-	}
-
-	val, diags := attr[name].Expr.Value(ctx)
-	if diags.HasErrors() {
-		return "", diags
-	}
-
-	return seetie.ValueToString(val), nil
 }
 
 func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
