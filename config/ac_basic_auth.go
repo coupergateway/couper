@@ -7,20 +7,23 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
+// Internally used for 'error_handler'.
 var _ Body = &BasicAuth{}
 
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
 	AccessControlSetter
-	File   string   `hcl:"htpasswd_file,optional"`
-	Name   string   `hcl:"name,label"`
-	User   string   `hcl:"user,optional"`
-	Pass   string   `hcl:"password,optional"`
-	Realm  string   `hcl:"realm,optional"`
+	File  string `hcl:"htpasswd_file,optional"`
+	Name  string `hcl:"name,label"`
+	User  string `hcl:"user,optional"`
+	Pass  string `hcl:"password,optional"`
+	Realm string `hcl:"realm,optional"`
+
+	// Internally used for 'error_handler'.
 	Remain hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Inline> interface. Internally used for 'error_handler'.
 func (b *BasicAuth) HCLBody() hcl.Body {
 	return b.Remain
 }

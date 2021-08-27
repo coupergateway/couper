@@ -18,6 +18,7 @@ type Endpoint struct {
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
 	Response             *Response `hcl:"response,block"`
+
 	// internally configured due to multi-label options
 	Proxies  Proxies
 	Requests Requests
@@ -44,6 +45,8 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 		Requests       Requests `hcl:"request,block"`
 		ResponseStatus *uint8   `hcl:"set_response_status,optional"`
 	}
+
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+
 	return schema
 }

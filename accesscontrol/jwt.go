@@ -270,11 +270,11 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 			}
 			return nil, jwt.ErrNotRSAPublicKey
 		}
-		if k, ok := pkixKey.(*rsa.PublicKey); !ok {
+		k, ok := pkixKey.(*rsa.PublicKey)
+		if !ok {
 			return nil, jwt.ErrNotRSAPublicKey
-		} else {
-			pubKey = k
 		}
+		pubKey = k
 	}
 	return pubKey, nil
 }

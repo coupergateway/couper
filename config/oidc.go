@@ -5,6 +5,11 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
+var (
+	_ BackendReference = &OIDC{}
+	_ Inline           = &OIDC{}
+)
+
 // OIDC represents an oidc block.
 type OIDC struct {
 	AccessControlSetter
@@ -24,18 +29,17 @@ type OIDC struct {
 	BodyContent *hcl.BodyContent
 }
 
-func (o OIDC) HCLBody() hcl.Body {
-	return o.Remain
-}
-
+// Reference implements the <BackendReference> interface.
 func (o OIDC) Reference() string {
 	return o.BackendName
 }
 
-func (o *OIDC) GetBodyContent() *hcl.BodyContent {
-	return o.BodyContent
+// HCLBody implements the <Inline> interface.
+func (o OIDC) HCLBody() hcl.Body {
+	return o.Remain
 }
 
+// Schema implements the <Inline> interface.
 func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(o)
@@ -56,6 +60,10 @@ func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, o.HCLBody())
+}
+
+func (o *OIDC) GetBodyContent() *hcl.BodyContent {
+	return o.BodyContent
 }
 
 func (o OIDC) GetName() string {
