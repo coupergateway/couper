@@ -84,5 +84,5 @@ merge([1, null, "text"], [2, "test", true])
 ## Navigation
 
 * &#8673; [Configuration Reference](README.md)
-* &#8672; [Command Line Interface](cli.md)
+* &#8672; [Configuration File](config-file.md)
 * &#8674; [Environment](environment.md)

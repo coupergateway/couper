@@ -1,7 +1,7 @@
 # Configuration Reference ~ Beta Features
 
 We use Beta Features to have the possibility to develop new, complex features for
-you while still being able to maintain our compatibility promise.
+You while still being able to maintain our compatibility promise.
 
 You can see beta features as a feature preview. We will announce new Beta Features
 in the Changelog and document them on this page.
@@ -13,18 +13,18 @@ on it. You can expect Beta Features to evolve.
 ! Beta Features can change with every release.
 ```
 
-We recommended you to pin Couper to a specific [docker tag](https://hub.docker.com/r/avenga/couper/tags)
-to avoid unintended updates. (Add tests to your code to make sure that nothing is
-going to break when you want to update to a newer version).
+We recommended You to pin Couper to a specific [docker tag](https://hub.docker.com/r/avenga/couper/tags)
+to avoid unintended updates. (Add tests to Your code to make sure that nothing is
+going to break when You want to update to a newer version).
 
-To make you and your colleagues aware that a beta feature is used, we will prefix
+To make You and Your colleagues aware that a beta feature is used, we will prefix
 all configuration items such as config blocks or functions with `beta_`.
 
 ## Feedback more than welcome
 
-We need your feedback to make Beta Features to proper features. Please leave your
+We need Your feedback to make Beta Features to proper features. Please leave Your
 feedback and questions [here](https://github.com/avenga/couper/discussions), or open
-an [issue](https://github.com/avenga/couper/issues). Thank you! :)
+an [issue](https://github.com/avenga/couper/issues). Thank You! :)
 
 ## Current Beta Features
 

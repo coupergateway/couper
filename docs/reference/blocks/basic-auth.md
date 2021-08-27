@@ -27,7 +27,7 @@ in other [Blocks](../blocks.md) by its required `label`.
 ```
 
 ```diff
-! The file referenced by "htpasswd_file" is loaded once at startup. Restart Couper after you have changed it.
+! The file referenced by "htpasswd_file" is loaded once at startup. Restart Couper after You have changed it.
 ```
 
 -----

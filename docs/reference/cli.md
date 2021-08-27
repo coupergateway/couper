@@ -21,7 +21,7 @@ Couper is build as binary called `couper` with the following commands:
 
 | Argument             | Default        | Environment                | Description |
 | -------------------- | -------------- | -------------------------- | ----------- |
-| `-f`                 | `"couper.hcl"` | `COUPER_FILE`              | File path to your Couper configuration file. |
+| `-f`                 | `"couper.hcl"` | `COUPER_FILE`              | File path to the Couper configuration file. |
 | `-log-format`        | `"common"`     | `COUPER_LOG_FORMAT`        | Can be set to `json` output format. |
 | `-log-pretty`        | `false`        | `COUPER_LOG_PRETTY`        | Option for `json` log format which pretty prints with basic key coloring. |
 | `-watch`             | `false`        | `COUPER_WATCH`             | Watch for configuration file changes and reload on modifications. |
@@ -68,4 +68,4 @@ Couper is build as binary called `couper` with the following commands:
 
 * &#8673; [Configuration Reference](README.md)
 * &#8672; [Blocks](blocks.md)
-* &#8674; [Configuration Types](config-types.md)
+* &#8674; [Configuration File](config-file.md)

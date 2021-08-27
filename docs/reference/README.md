@@ -10,6 +10,8 @@
 
 ## [Command Line Interface](cli.md)
 
+## [Configuration File](config-file.md)
+
 ## [Configuration Types](config-types.md)
 
 ## [Environment](environment.md)

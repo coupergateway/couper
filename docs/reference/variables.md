@@ -1,5 +1,14 @@
 # Configuration Reference ~ Variables
 
+The configuration file allows the usage of some predefined variables. There are
+two phases when those variables get evaluated:
+
+1. At config load which is currently related to [`couper`](variables/couper.md),
+[`env`](variables/env.md) and a simple usage of [Functions](functions.md).
+2. During the request/response handling.
+
+## Variables
+
 Click on the variable name to see more details.
 
 | Variable                                              | Description |

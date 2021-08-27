@@ -13,7 +13,7 @@
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
 * The [documentation](https://github.com/avenga/couper/tree/master/docs) gives an introduction to Couper.
 * Check out the [example repository](https://github.com/avenga/couper-examples) to learn about Couper's features in detail.
-* Dive into the [Configuration Reference](docs/REFERENCE.md)
+* Dive into the [Configuration Reference](docs/reference/README.md)
 * Use-cases can be found on [couper.io](https://couper.io).
 
 ## Features
