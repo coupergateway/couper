@@ -42,7 +42,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		return nil, errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
-	redirectURIVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, lib.RedirectURI)
+	redirectURIVal, err := content.GetContextAttribute(ctx, a.clientConfig.HCLBody(), lib.RedirectURI)
 	if redirectURIVal == "" {
 		return nil, errors.Oauth2.Messagef("%s is required", lib.RedirectURI)
 	}
@@ -56,7 +56,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		"redirect_uri": absoluteURL,
 	}
 
-	verifierVal, err := content.GetContextAttribute(a.clientConfig.HCLBody(), ctx, "verifier_value")
+	verifierVal, err := content.GetContextAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
 	verifierValue := strings.TrimSpace(verifierVal)
 	if verifierValue == "" {
 		return nil, errors.Oauth2.Messagef("Empty verifier_value")

@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	_ Inline           = &Backend{}
 	_ BackendReference = &Backend{}
+	_ Inline           = &Backend{}
 
 	BackendInlineSchema = Backend{}.Schema(true)
 )
@@ -31,14 +31,14 @@ type Backend struct {
 	OAuth2 *OAuth2ReqAuth
 }
 
+// Reference implements the <BackendReference> interface.
+func (b Backend) Reference() string {
+	return b.Name
+}
+
 // HCLBody implements the <Inline> interface.
 func (b Backend) HCLBody() hcl.Body {
 	return b.Remain
-}
-
-// Reference implements the <Inline> interface.
-func (b Backend) Reference() string {
-	return b.Name
 }
 
 // Schema implements the <Inline> interface.
@@ -59,7 +59,6 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
-
 	return schema
 }
 

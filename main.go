@@ -242,9 +242,10 @@ func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, ret
 					logger.Errorf("giving up after %d retries: %v", errors, fileErr)
 					close(reloadCh)
 					return
-				} else {
-					logger.WithFields(fields).Error(fileErr)
 				}
+
+				logger.WithFields(fields).Error(fileErr)
+
 				time.Sleep(retryDelay)
 				continue
 			}

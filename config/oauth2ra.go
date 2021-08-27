@@ -13,8 +13,12 @@ var OAuthBlockSchema = &hcl.BodySchema{
 	},
 }
 
-var _ OAuth2Client = &OAuth2ReqAuth{}
-var _ OAuth2AS = &OAuth2ReqAuth{}
+var (
+	_ BackendReference = &OAuth2ReqAuth{}
+	_ Inline           = &OAuth2ReqAuth{}
+	_ OAuth2Client     = &OAuth2ReqAuth{}
+	_ OAuth2AS         = &OAuth2ReqAuth{}
+)
 
 // OAuth2ReqAuth represents the the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
@@ -29,14 +33,17 @@ type OAuth2ReqAuth struct {
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 }
 
-func (oa OAuth2ReqAuth) HCLBody() hcl.Body {
-	return oa.Remain
-}
-
+// Reference implements the <BackendReference> interface.
 func (oa OAuth2ReqAuth) Reference() string {
 	return oa.BackendName
 }
 
+// HCLBody implements the <Inline> interface.
+func (oa OAuth2ReqAuth) HCLBody() hcl.Body {
+	return oa.Remain
+}
+
+// Schema implements the <Inline> interface.
 func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
