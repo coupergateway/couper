@@ -54,6 +54,7 @@ var DefaultSettings = Settings{
 	HealthPath:                "/healthz",
 	LogFormat:                 "common",
 	LogPretty:                 false,
+	LogLevel:                  "info",
 	NoProxyFromEnv:            false,
 	RequestIDFormat:           "common",
 	RequestIDAcceptFromHeader: "",
@@ -73,6 +74,7 @@ type Settings struct {
 	HealthPath                string   `hcl:"health_path,optional"`
 	LogFormat                 string   `hcl:"log_format,optional"`
 	LogPretty                 bool     `hcl:"log_pretty,optional"`
+	LogLevel                  string   `hcl:"log_level,optional"`
 	NoProxyFromEnv            bool     `hcl:"no_proxy_from_env,optional"`
 	RequestIDFormat           string   `hcl:"request_id_format,optional"`
 	RequestIDAcceptFromHeader string   `hcl:"request_id_accept_from_header,optional"`
