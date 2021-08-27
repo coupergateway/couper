@@ -136,10 +136,11 @@ The `proxy` block creates and executes a proxy request to a backend service.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`proxy`|[Endpoint Block](#endpoint-block)|&#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.)|
+|`proxy`|[Endpoint Block](#endpoint-block)|&#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.), [Websockets Block](#websockets-block) (&#9888; Either websockets attribute or block is allowed.)|
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| Attribute(s) | Type | Default | Description | Characteristic(s) | Example |
+| :----------- | :--- | :------ | :---------- | :---------------- | :------ |
+| `websockets` | bool | false | Allows support for websockets. This attribute is only allowed in the 'default' `proxy` block. Other `proxy` blocks, [Request Blocks](#request-block) or [Response Blocks](#response-block) are not allowed in the current [Endpoint Block](#endpoint-block). | &#9888; Either websockets attribute or block is allowed. | `websockets = true` |
 | `backend` |string|-|[Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)|&#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined.|`backend = "foo"`|
 | `url` |string|-|If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).|-|-|
 |[Modifiers](#modifiers)|-|-|-|-|-|
@@ -278,6 +279,19 @@ The `oauth2` block in the [Backend Block](#backend-block) context configures the
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
 | `scope`                      |string|-|  A space separated list of requested scopes for the access token.|-| `scope = "read write"` |
 
+### Websockets Block
+
+The `websockets` block activates support for websocket connections in Couper.
+
+| Block name | Context | Label            | Nested block(s) |
+| :--------- | :------ | :--------------- | :-------------- |
+| `websockets` | [Proxy Block](#proxy-block) | no label | - |
+
+| Attribute(s) | Type | Default | Description | Characteristic(s) | Example |
+| :----------- | :--- | :------ | :---------- | :---------------- | :------ |
+| `timeout` | [duration](#duration) | - | The total deadline duration a websocket connection has to exists. | - | `timeout = 600s` |
+| `set_request_headers` | - | - | - | Same as `set_request_headers` in [Request Header](#request-header). | - |
+
 ### Definitions Block
 
 Use the `definitions` block to define configurations you want to reuse.
@@ -286,7 +300,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta)|
+|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta), [OIDC Block(s)](#oidc-block-beta)|
 
 <!-- TODO: add link to (still missing) example -->
 
@@ -302,16 +316,16 @@ credentials from the `Authorization` request HTTP header field are checked again
 `user`/`password` if the user matches, and against the data in the file referenced
 by `htpasswd_file` otherwise.
 
-|Block name|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-|`basic_auth`| [Definitions Block](#definitions-block)| &#9888; required |-|
+| Block name   | Context | Label | Nested block(s) |
+| :----------- | :------ | :---- | :-------------- |
+| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
-| :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `user`          |string|-|The user name.|-|-|
-| `password`      |string|-|The corresponding password.|-|-|
-| `htpasswd_file`      |string|-|>The htpasswd file.|-|-|
-|`realm`     |string|-|The realm to be sent in a `WWW-Authenticate` response HTTP header field.|-|-|
+| Attribute(s)    | Type   | Default | Description | Characteristic(s) | Example |
+| :-------------- | :----- | :------ | :---------- | :---------------- | :------ |
+| `user`          | string | `""`    | The user name. | - | - |
+| `password`      | string | `""`    | The corresponding password. | - | - |
+| `htpasswd_file` | string | `""`    | The htpasswd file. | Couper uses [Apache's httpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) file format. `apr1`, `md5` and `bcrypt` password encryptions are supported. The file is loaded once at startup. Restart Couper after you have changed it. | - |
+| `realm`         | string | `""`    | The realm to be sent in a `WWW-Authenticate` response HTTP header field. | - | - |
 
 ### JWT Block
 
@@ -322,7 +336,7 @@ required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`jwt`| [Definitions Block](#definitions-block)| &#9888; required |-|
+|`jwt`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -363,7 +377,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | - |
+|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -389,13 +403,13 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oidc`| [Definitions Block](#definitions-block)| &#9888; required | - |
+|`beta_oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `backend`                       |string|-|[Backend Block Reference](#backend-block)| &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`! |-|
 | `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
-| `ttl` | duration |-| The duration to cache the OpenID configuration located at `configuration_url`. |&#9888; required| `ttl = "1d"` |
+| `configuration_ttl` | duration | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
 | `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
@@ -416,7 +430,7 @@ required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :--------| :-----------| :-----------| :-----------|
-|`saml`| [Definitions Block](#definitions-block)| &#9888; required |-|
+|`saml`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -445,6 +459,7 @@ gateway instance.
 | `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-| `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
+| `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
 | `log_format`                    | string | `common`            | Switch for tab/field based colored view or json log lines. |-|-|
 | `log_pretty`                    | bool   | `false`             | Global option for `json` log format which pretty prints with basic key coloring. |-|-|
 | `no_proxy_from_env`             | bool   | `false`             | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |-|-|
@@ -469,6 +484,7 @@ The `defaults` block lets you define default values.
 | `environment_variables` | map | – | One or more environment variable assigments|-|`environment_variables = {ORIGIN = "https://httpbin.org" ...}`|
 
 Examples:
+
 - [`environment_variables`](https://github.com/avenga/couper-examples/blob/master/env-var/README.md).
 
 ## Access Control

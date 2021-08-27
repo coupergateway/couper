@@ -17,7 +17,7 @@ var _ http.RoundTripper = &OAuth2ReqAuth{}
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
-	oauth2Client *oauth2.Client
+	oauth2Client *oauth2.CcClient
 	config       *config.OAuth2ReqAuth
 	memStore     *cache.MemoryStore
 	locks        sync.Map
@@ -26,7 +26,7 @@ type OAuth2ReqAuth struct {
 
 // NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2Client *oauth2.Client, next http.RoundTripper) (http.RoundTripper, error) {
+	oauth2Client *oauth2.CcClient, next http.RoundTripper) (http.RoundTripper, error) {
 	return &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,
@@ -98,10 +98,11 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (oa *OAuth2ReqAuth) readAccessToken(key string) (string, error) {
-	if data := oa.memStore.Get(key); data != "" {
-		_, token, err := oauth2.ParseTokenResponse([]byte(data))
+	if data := oa.memStore.Get(key); data != nil {
+		_, token, err := oauth2.ParseTokenResponse(data.([]byte))
 		if err != nil {
-			return "", errors.Backend.Label(oa.config.BackendName).Message("token read error").With(err)
+			// err can only be JSON parse error, however non-JSON data should never be stored
+			return "", err
 		}
 
 		return token, nil
@@ -117,6 +118,6 @@ func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]in
 			ttl = (int64)(t * 0.9)
 		}
 
-		oa.memStore.Set(key, string(jsonBytes), ttl)
+		oa.memStore.Set(key, jsonBytes, ttl)
 	}
 }

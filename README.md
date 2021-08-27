@@ -43,10 +43,21 @@ Key features are:
 * Error Handling
 * Observability
 
-The full list of features of Couper 1.0 is [here](FEATURES.md) or at [https://couper.io/features](https://couper.io/features).
+The full list of features of Couper 1.x is [here](FEATURES.md) or at [couper.io](https://couper.io/en/features).
+
+## Developers
+
+*Developers* requiring [Go](https://golang.org/) to start with `make build`.
+Couper requires a [configuration file](./docs/README.md#configuration-file). You can start with a simple one and use:
+
+```ps
+./couper run -f public/couper.hcl
+```
 
 ## Contributing
 
 Thanks for your interest in contributing.
+
 If you have any questions or feedback you are welcome to start a [discussion](https://github.com/avenga/couper/discussions).
+
 If you have an issue please open an [issue](https://github.com/avenga/couper/issues).

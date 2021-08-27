@@ -8,18 +8,22 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
+	"github.com/sirupsen/logrus"
 )
 
 func TestEndpoint_RoundTrip_Eval(t *testing.T) {
@@ -242,7 +246,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 	}
 }
 
-// TestProxy_SetRoundtripContext_Null_Eval tests the handling with non existing references or cty.Null evaluations.
+// TestProxy_SetRoundtripContext_Null_Eval tests the handling with non-existing references or cty.Null evaluations.
 func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 	helper := test.New(t)
 
@@ -362,5 +366,143 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			}
 		})
 
+	}
+}
+
+type mockProducerResult struct {
+	rt http.RoundTripper
+}
+
+func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results chan<- *producer.Result) {
+	if m == nil || m.rt == nil {
+		close(results)
+		return
+	}
+
+	res, err := m.rt.RoundTrip(r)
+	results <- &producer.Result{
+		RoundTripName: "default",
+		Beresp:        res,
+		Err:           err,
+	}
+	close(results)
+}
+
+func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
+	log, hook := test.NewLogger()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		png := []byte(`�PNG
+
+
+IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NET v3.5.100�r�pIDAThC���	�0���b!K�$�������1x={+��^��h
+�)��6���z�Qj�h
+�)��0�N4��FS�7l�5��"Ma4��F�=q���ь�FS�7l|�Ұ��nW�i�0IEND�B`)
+
+		rw.Header().Set("Content-Encoding", "gzip")  // wrong
+		rw.Header().Set("Content-Type", "text/html") // wrong
+		rw.Header().Set("Cache-Control", "no-cache, no-store, max-age=0")
+
+		_, err := rw.Write(png)
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+	defer origin.Close()
+
+	rt := transport.NewBackend(
+		test.NewRemainContext("origin", origin.URL), &transport.Config{},
+		&transport.BackendOptions{}, log.WithContext(context.Background()))
+
+	mockProducer := &mockProducerResult{rt}
+
+	ep := handler.NewEndpoint(&handler.EndpointOptions{
+		Context:  hcl.EmptyBody(),
+		Error:    errors.DefaultJSON,
+		Proxies:  &mockProducerResult{},
+		Requests: mockProducer,
+	}, log.WithContext(context.Background()), nil)
+
+	ctx := context.Background()
+	req := httptest.NewRequest(http.MethodGet, "http://", nil).WithContext(ctx)
+	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
+	ctx = context.WithValue(ctx, request.UID, "test123")
+
+	rec := transport.NewRecorder(nil)
+	rw := writer.NewResponseWriter(rec, "")
+	ep.ServeHTTP(rw, req.Clone(ctx))
+	res, err := rec.Response(req)
+	if err != nil {
+		t.Error(err)
+	}
+	if res.StatusCode == 0 {
+		t.Errorf("Fatal error: response status is zero")
+		if res.Header.Get("Couper-Error") != "internal server error" {
+			t.Errorf("Expected internal server error, got: %s", res.Header.Get("Couper-Error"))
+		}
+	} else if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status ok, got: %v", res.StatusCode)
+	}
+
+	for _, e := range hook.AllEntries() {
+		if e.Level != logrus.ErrorLevel {
+			continue
+		}
+		if e.Message != "backend error: body reset: gzip: invalid header" {
+			t.Errorf("Unexpected error message: %s", e.Message)
+		}
+	}
+}
+
+func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
+	log, hook := test.NewLogger()
+	slowOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Second * 5)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+
+	ctx, cancelFn := context.WithCancel(context.WithValue(context.Background(), request.UID, "test123"))
+
+	rt := transport.NewBackend(
+		test.NewRemainContext("origin", slowOrigin.URL), &transport.Config{},
+		&transport.BackendOptions{}, log.WithContext(context.Background()))
+
+	mockProducer := &mockProducerResult{rt}
+
+	ep := handler.NewEndpoint(&handler.EndpointOptions{
+		Context:  hcl.EmptyBody(),
+		Error:    errors.DefaultJSON,
+		Proxies:  &mockProducerResult{},
+		Requests: mockProducer,
+	}, log.WithContext(ctx), nil)
+
+	req := httptest.NewRequest(http.MethodGet, "https://couper.io/", nil)
+	ctx = eval.NewContext(nil, nil).WithClientRequest(req.WithContext(ctx))
+
+	start := time.Now()
+	go func() {
+		time.Sleep(time.Second)
+		cancelFn()
+	}()
+
+	rec := httptest.NewRecorder()
+	access := logging.NewAccessLog(&logging.Config{}, log)
+	access.ServeHTTP(rec, req.WithContext(ctx), ep, time.Now())
+	rec.Flush()
+
+	elapsed := time.Now().Sub(start)
+	if elapsed > time.Second+(time.Millisecond*50) {
+		t.Error("Expected canceled request")
+	}
+
+	for _, e := range hook.AllEntries() {
+		if e.Message == "client request error: context canceled" {
+			return
+		}
+	}
+
+	t.Error("Expected context canceled access log, got:\n")
+	for _, e := range hook.AllEntries() {
+		println(e.String())
 	}
 }

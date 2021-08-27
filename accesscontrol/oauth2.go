@@ -26,10 +26,10 @@ func NewOAuth2Callback(oauth2Client oauth2.AcClient) (*OAuth2Callback, error) {
 // Validate implements the AccessControl interface
 func (oa *OAuth2Callback) Validate(req *http.Request) error {
 	if req.Method != http.MethodGet {
-		return errors.Oauth2.Messagef("wrong method: %s", req.Method)
+		return errors.Oauth2.Messagef("wrong method (%s)", req.Method)
 	}
 
-	_, tokenResponseData, _, err := oa.oauth2Client.GetTokenResponse(req.Context(), req.URL)
+	tokenResponseData, err := oa.oauth2Client.GetTokenResponse(req.Context(), req.URL)
 	if err != nil {
 		return err
 	}

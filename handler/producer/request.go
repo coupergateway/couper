@@ -8,10 +8,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/hashicorp/hcl/v2"
+	"github.com/avenga/couper/eval/content"
 )
 
 // Request represents the producer <Request> object.
@@ -40,31 +42,31 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		}
 	}()
 
-	evalctx := ctx.Value(eval.ContextType).(*eval.Context)
+	evalctx := ctx.Value(request.ContextType).(*eval.Context)
 	updated := evalctx.WithClientRequest(req)
 
 	for _, or := range r {
 		outCtx := withRoundTripName(ctx, or.Name)
 
-		content, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
+		bodyContent, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
 		if diags.HasErrors() {
 			sendResult(ctx, results, &Result{Err: diags})
 			continue
 		}
 
-		method, err := eval.GetAttribute(updated.HCLContext(), content, "method")
+		method, err := content.GetAttribute(updated.HCLContext(), bodyContent, "method")
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
-		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), content)
+		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), bodyContent)
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue
 		}
 
-		url, err := eval.GetAttribute(updated.HCLContext(), content, "url")
+		url, err := content.GetAttribute(updated.HCLContext(), bodyContent, "url")
 		if err != nil {
 			sendResult(ctx, results, &Result{Err: err})
 			continue

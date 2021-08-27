@@ -9,6 +9,7 @@ import (
 	"net/textproto"
 	"strconv"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/logging"
 	"github.com/hashicorp/hcl/v2"
@@ -28,16 +29,18 @@ var (
 	_ writer               = &Response{}
 	_ modifier             = &Response{}
 	_ logging.RecorderInfo = &Response{}
+
+	endOfHeader = []byte("\r\n\r\n")
+	endOfLine   = []byte("\r\n")
 )
 
 // Response wraps the http.ResponseWriter.
 type Response struct {
-	rw            http.ResponseWriter
-	headerBuffer  *bytes.Buffer
-	httpStatus    []byte
-	httpLineDelim []byte
-	secureCookies string
-	statusWritten bool
+	hijackedConn     net.Conn
+	httpHeaderBuffer []byte
+	rw               http.ResponseWriter
+	secureCookies    string
+	statusWritten    bool
 	// logging info
 	statusCode      int
 	rawBytesWritten int
@@ -51,7 +54,6 @@ type Response struct {
 func NewResponseWriter(rw http.ResponseWriter, secureCookies string) *Response {
 	return &Response{
 		rw:            rw,
-		headerBuffer:  &bytes.Buffer{},
 		secureCookies: secureCookies,
 	}
 }
@@ -65,33 +67,23 @@ func (r *Response) Header() http.Header {
 func (r *Response) Write(p []byte) (int, error) {
 	l := len(p)
 	r.rawBytesWritten += l
-	if !r.statusWritten {
-		if len(r.httpStatus) == 0 {
-			r.httpStatus = p[:]
-			// required for short writes without any additional header
-			// to detect EOH chunk later on
-			if l >= 2 {
-				r.httpLineDelim = p[l-2 : l]
-			}
-
+	if !r.statusWritten { // buffer all until end-of-header chunk: '\r\n'
+		r.httpHeaderBuffer = append(r.httpHeaderBuffer, p...)
+		idx := bytes.Index(r.httpHeaderBuffer, endOfHeader)
+		if idx == -1 {
 			return l, nil
 		}
 
-		// End-of-header
-		// http.Response.Write() EOH chunk is: '\r\n'
-		if bytes.Equal(r.httpLineDelim, p) {
-			reader := textproto.NewReader(bufio.NewReader(r.headerBuffer))
-			header, _ := reader.ReadMIMEHeader()
-			for k := range header {
-				r.rw.Header()[k] = header.Values(k)
-			}
-			r.WriteHeader(r.parseStatusCode(r.httpStatus))
-		}
+		r.flushHeader()
 
-		if l >= 2 {
-			r.httpLineDelim = p[l-2 : l]
+		bufLen := len(r.httpHeaderBuffer)
+		// More than http header related bytes? Write body.
+		if !bytes.HasSuffix(r.httpHeaderBuffer, endOfLine) && bufLen > idx+4 {
+			n, writeErr := r.rw.Write(r.httpHeaderBuffer[idx+4:]) // len(endOfHeader) -> 4
+			r.bytesWritten += n
+			return l, writeErr
 		}
-		return r.headerBuffer.Write(p)
+		return l, nil
 	}
 
 	n, writeErr := r.rw.Write(p)
@@ -104,7 +96,17 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", r.rw)
 	}
-	return hijack.Hijack()
+
+	conn, brw, err := hijack.Hijack()
+	r.hijackedConn = conn
+	if brw != nil {
+		brw.Writer.Reset(r)
+	}
+	return conn, brw, err
+}
+
+func (r *Response) IsHijacked() bool {
+	return r.hijackedConn != nil
 }
 
 // Flush implements the <http.Flusher> interface.
@@ -112,6 +114,16 @@ func (r *Response) Flush() {
 	if rw, ok := r.rw.(http.Flusher); ok {
 		rw.Flush()
 	}
+}
+
+func (r *Response) flushHeader() {
+	reader := textproto.NewReader(bufio.NewReader(bytes.NewBuffer(r.httpHeaderBuffer)))
+	headerLine, _ := reader.ReadLineBytes()
+	header, _ := reader.ReadMIMEHeader()
+	for k := range header {
+		r.rw.Header()[k] = header.Values(k)
+	}
+	r.WriteHeader(r.parseStatusCode(headerLine))
 }
 
 // WriteHeader wraps the WriteHeader method of the <http.ResponseWriter>.
@@ -122,7 +134,26 @@ func (r *Response) WriteHeader(statusCode int) {
 
 	r.configureHeader()
 	r.applyModifier()
-	r.rw.WriteHeader(statusCode)
+
+	if statusCode == 0 {
+		r.rw.Header().Set(errors.HeaderErrorCode, errors.Server.Error())
+		statusCode = errors.Server.HTTPStatus()
+	}
+
+	if r.hijackedConn != nil {
+		r1 := &http.Response{
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+			Header:     r.rw.Header(),
+			StatusCode: statusCode,
+		}
+		if err := r1.Write(r.hijackedConn); err != nil {
+			panic(err)
+		}
+	} else {
+		r.rw.WriteHeader(statusCode)
+	}
+
 	r.statusWritten = true
 	r.statusCode = statusCode
 }
@@ -153,7 +184,7 @@ func (r *Response) WrittenBytes() int {
 
 func (r *Response) AddModifier(evalCtx *eval.Context, modifier []hcl.Body) {
 	r.evalCtx = evalCtx
-	r.modifier = modifier
+	r.modifier = append(r.modifier, modifier...)
 }
 
 func (r *Response) applyModifier() {

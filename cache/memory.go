@@ -11,7 +11,7 @@ import (
 const maxExpiresIn = 86400
 
 type entry struct {
-	value string
+	value interface{}
 	expAt int64
 }
 
@@ -46,23 +46,22 @@ func (ms *MemoryStore) Del(k string) {
 }
 
 // Get return the value by the key if the ttl is not expired from the <MemoryStore>.
-func (ms *MemoryStore) Get(k string) string {
+func (ms *MemoryStore) Get(k string) interface{} {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
 	if v, ok := ms.db[k]; ok {
 		if time.Now().Unix() >= v.expAt {
-			return ""
+			return nil
 		}
-
 		return v.value
 	}
 
-	return ""
+	return nil
 }
 
 // Set stores a key/value pair for <ttl> second(s) into the <MemoryStore>.
-func (ms *MemoryStore) Set(k, v string, ttl int64) {
+func (ms *MemoryStore) Set(k string, v interface{}, ttl int64) {
 	if ttl < 0 {
 		ttl = 0
 	} else if ttl > maxExpiresIn {

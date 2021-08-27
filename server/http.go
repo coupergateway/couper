@@ -78,7 +78,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	}
 
 	httpSrv := &HTTPServer{
-		evalCtx:    evalCtx.Value(eval.ContextType).(*eval.Context),
+		evalCtx:    evalCtx.Value(request.ContextType).(*eval.Context),
 		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
@@ -181,9 +181,17 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	gw := writer.NewGzipWriter(rw, req.Header)
 	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
+
 	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
 	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
-	defer gw.Close()
+	defer func() {
+		select { // do not close on cancel since we may have nothing to write and the client may be gone anyways.
+		case <-req.Context().Done():
+			return
+		default:
+			gw.Close()
+		}
+	}()
 
 	var h http.Handler
 
@@ -216,8 +224,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if xfpr := req.Header.Get("X-Forwarded-Proto"); xfpr != "" {
 			clientReq.URL.Scheme = xfpr
 			clientReq.URL.Host = clientReq.URL.Hostname()
-		} else {
-			s.log.Warnf("couper accepting X-Forwarded-Proto, but no X-Forwarded-Proto request header found, using default protocol %s", clientReq.URL.Scheme)
 		}
 	}
 	if s.settings.AcceptsForwardedHost() {
@@ -226,19 +232,16 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			if clientReq.URL.Port() != "" {
 				clientReq.URL.Host += ":" + clientReq.URL.Port()
 			}
-		} else {
-			s.log.Warnf("couper accepting X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host %s", clientReq.URL.Host)
 		}
 	}
 	if s.settings.AcceptsForwardedPort() {
 		if xfpo := req.Header.Get("X-Forwarded-Port"); xfpo != "" {
 			clientReq.URL.Host = clientReq.URL.Hostname() + ":" + xfpo
-		} else {
-			s.log.Warnf("couper accepting X-Forwarded-Port, but no X-Forwarded-Port request header found, using default port %s", clientReq.URL.Port())
 		}
 	}
 
 	ctx = s.evalCtx.WithClientRequest(clientReq)
+	ctx = context.WithValue(ctx, request.ResponseWriter, w)
 	*clientReq = *clientReq.WithContext(ctx)
 
 	s.accessLog.ServeHTTP(w, clientReq, h, startTime)
@@ -265,8 +268,6 @@ func (s *HTTPServer) getHost(req *http.Request) string {
 	if s.settings.XForwardedHost {
 		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
 			host = xfh
-		} else {
-			s.log.Warnf("couper trying to use X-Forwarded-Host, but no X-Forwarded-Host request header found, using default host %s", host)
 		}
 	}
 

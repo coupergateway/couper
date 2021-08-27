@@ -34,6 +34,10 @@ func (i BufferOption) GoString() string {
 func MustBuffer(body hcl.Body) BufferOption {
 	result := BufferNone
 
+	if body == nil {
+		return result
+	}
+
 	attrs, err := body.JustAttributes()
 	if err != nil {
 		return result

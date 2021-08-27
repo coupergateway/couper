@@ -3,7 +3,7 @@ package request
 type ContextKey uint8
 
 const (
-	UID ContextKey = iota
+	ContextType ContextKey = iota
 	AccessControls
 	BackendName
 	Endpoint
@@ -12,12 +12,16 @@ const (
 	LogEntry
 	OpenAPI
 	PathParams
+	ResponseWriter
 	RoundTripName
 	RoundTripProxy
 	ServerName
 	TokenRequest
 	TokenRequestRetries
+	UID
 	URLAttribute
+	WebsocketsAllowed
+	WebsocketsTimeout
 	Wildcard
 	XFF
 )
