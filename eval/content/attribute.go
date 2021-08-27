@@ -13,7 +13,7 @@ type Context interface {
 	HCLContext() *hcl.EvalContext
 }
 
-func GetContextAttribute(context hcl.Body, httpContext context.Context, name string) (string, error) {
+func GetContextAttribute(httpContext context.Context, context hcl.Body, name string) (string, error) {
 	ctx, ok := httpContext.Value(request.ContextType).(Context)
 	if !ok {
 		return "", nil

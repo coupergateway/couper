@@ -5,9 +5,13 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var _ OAuth2AcClient = &OAuth2AC{}
-var _ OAuth2AcAS = &OAuth2AC{}
-var _ OAuth2Authorization = &OAuth2AC{}
+var (
+	_ BackendReference    = &OAuth2AC{}
+	_ Inline              = &OAuth2AC{}
+	_ OAuth2AcClient      = &OAuth2AC{}
+	_ OAuth2AcAS          = &OAuth2AC{}
+	_ OAuth2Authorization = &OAuth2AC{}
+)
 
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
@@ -29,18 +33,17 @@ type OAuth2AC struct {
 	BodyContent *hcl.BodyContent
 }
 
-func (oa OAuth2AC) HCLBody() hcl.Body {
-	return oa.Remain
-}
-
+// Reference implements the <BackendReference> interface.
 func (oa OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
-func (oa *OAuth2AC) GetBodyContent() *hcl.BodyContent {
-	return oa.BodyContent
+// HCLBody implements the <Inline> interface.
+func (oa OAuth2AC) HCLBody() hcl.Body {
+	return oa.Remain
 }
 
+// Schema implements the <Inline> interface.
 func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
@@ -61,6 +64,10 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, oa.HCLBody())
+}
+
+func (oa *OAuth2AC) GetBodyContent() *hcl.BodyContent {
+	return oa.BodyContent
 }
 
 func (oa OAuth2AC) GetName() string {

@@ -40,7 +40,8 @@ type Backend struct {
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
 func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
-	logEntry := log
+	var logEntry *logrus.Entry
+
 	if tc.BackendName != "" {
 		logEntry = log.WithField("backend", tc.BackendName)
 	} else {
@@ -206,7 +207,7 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 }
 
 func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := content.GetContextAttribute(b.context, req.Context(), name)
+	attrVal, err := content.GetContextAttribute(req.Context(), b.context, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}

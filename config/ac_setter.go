@@ -1,7 +1,7 @@
 package config
 
 type AccessControlSetter struct {
-	ErrorHandler []*ErrorHandler `hcl:"error_handler"`
+	ErrorHandler []*ErrorHandler `hcl:"error_handler,block"`
 }
 
 func (acs *AccessControlSetter) Set(ehConf *ErrorHandler) {
