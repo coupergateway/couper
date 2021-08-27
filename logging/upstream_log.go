@@ -113,8 +113,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	fields["realtime"] = roundMS(rtDone.Sub(rtStart))
-
 	fields["status"] = 0
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
@@ -129,15 +127,15 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["validation"] = validationErrors
 	}
 
-	timingResults := Fields{}
+	timingResults := Fields{
+		"total": roundMS(rtDone.Sub(rtStart)),
+	}
 	timingsMu.RLock()
 	for f, v := range timings { // clone
 		timingResults[f] = v
 	}
 	timingsMu.RUnlock()
 	fields["timings"] = timingResults
-	timingResults["total"] = fields["realtime"]
-	delete(fields, "realtime")
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
 	entry := u.log.WithFields(logrus.Fields(fields))
