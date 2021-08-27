@@ -99,11 +99,11 @@ func realmain(arguments []string) int {
 	if flags.LogFormat != config.DefaultSettings.LogFormat {
 		confFile.Settings.LogFormat = flags.LogFormat
 	}
-	if flags.LogPretty != config.DefaultSettings.LogPretty {
-		confFile.Settings.LogPretty = flags.LogPretty
-	}
 	if flags.LogLevel != config.DefaultSettings.LogLevel {
 		confFile.Settings.LogLevel = flags.LogLevel
+	}
+	if flags.LogPretty != config.DefaultSettings.LogPretty {
+		confFile.Settings.LogPretty = flags.LogPretty
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
