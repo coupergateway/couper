@@ -43,7 +43,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	timings, timingsMu := u.withTraceContext(req)
 
 	fields := Fields{
-		"uid": req.Context().Value(request.UID),
+		"uid":    req.Context().Value(request.UID),
+		"method": req.Method,
 	}
 	if h, ok := u.next.(fmt.Stringer); ok {
 		fields["handler"] = h.String()
@@ -53,8 +54,9 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	requestFields := Fields{
-		"method": req.Method,
 		"name":   req.Context().Value(request.RoundTripName),
+		"method": req.Method,
+		"proto":  req.URL.Scheme,
 	}
 
 	if req.ContentLength > 0 {
@@ -78,10 +80,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	rtDone := time.Now()
 
 	if req.Host != "" {
-		requestFields["addr"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
-		if requestFields["port"] == "" {
-			delete(requestFields, "port")
+		requestFields["origin"] = req.Host
+		requestFields["host"], fields["port"] = splitHostPort(req.Host)
+		if fields["port"] == "" {
+			delete(fields, "port")
 		}
 	}
 
@@ -102,8 +104,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
 		fields["auth_user"] = user
 	}
-	requestFields["proto"] = req.Proto
-	requestFields["scheme"] = req.URL.Scheme
 
 	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
@@ -113,16 +113,12 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	fields["realtime"] = roundMS(rtDone.Sub(rtStart))
-
 	fields["status"] = 0
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
-
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
-			"proto":   beresp.Proto,
-			"tls":     beresp.TLS != nil,
+			"status":  beresp.StatusCode,
 		}
 		fields["response"] = responseFields
 	}
@@ -131,7 +127,9 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["validation"] = validationErrors
 	}
 
-	timingResults := Fields{}
+	timingResults := Fields{
+		"total": roundMS(rtDone.Sub(rtStart)),
+	}
 	timingsMu.RLock()
 	for f, v := range timings { // clone
 		timingResults[f] = v
@@ -199,7 +197,7 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 		ConnectDone: func(network, addr string, err error) {
 			if err == nil {
 				mapMu.Lock()
-				timings["connect"] = roundMS(time.Since(timeConnect))
+				timings["tcp"] = roundMS(time.Since(timeConnect))
 				mapMu.Unlock()
 			}
 		},
