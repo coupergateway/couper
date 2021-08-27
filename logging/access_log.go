@@ -104,7 +104,9 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		writtenBytes = recorder.WrittenBytes()
 	}
 
-	fields["realtime"] = roundMS(serveDone.Sub(startTime))
+	timingResults := Fields{}
+	fields["timings"] = timingResults
+	timingResults["total"] = roundMS(serveDone.Sub(startTime))
 	fields["status"] = statusCode
 	requestFields["status"] = statusCode
 

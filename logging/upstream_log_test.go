@@ -2,7 +2,6 @@ package logging_test
 
 import (
 	"context"
-	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -34,7 +33,6 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 		description string
 		url         string
 		expFields   logrus.Fields
-		enableTLS   bool
 	}
 
 	testcases := []testcase{
@@ -54,11 +52,7 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 				"request": logrus.Fields{
 					"proto": "https",
 				},
-				"response": logrus.Fields{
-					"tls": true,
-				},
 			},
-			enableTLS: true,
 		},
 		{
 			description: "proto http",
@@ -66,9 +60,6 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 			expFields: logrus.Fields{
 				"request": logrus.Fields{
 					"proto": "http",
-				},
-				"response": logrus.Fields{
-					"tls": false,
 				},
 			},
 		},
@@ -132,7 +123,6 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 					"proto":  "http",
 				},
 				"response": logrus.Fields{
-					"tls":    false,
 					"status": 200,
 				},
 				"method": http.MethodGet,
@@ -148,14 +138,9 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 
 			hook.Reset()
 
-			var tlsOption *tls.ConnectionState
-			if tc.enableTLS {
-				tlsOption = &tls.ConnectionState{HandshakeComplete: true}
-			}
 			myRT := &testRoundTripper{
 				response: &http.Response{
 					StatusCode: http.StatusOK,
-					TLS:        tlsOption,
 				},
 			}
 

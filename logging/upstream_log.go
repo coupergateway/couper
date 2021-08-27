@@ -120,7 +120,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["status"] = beresp.StatusCode
 		responseFields := Fields{
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
-			"tls":     beresp.TLS != nil && beresp.TLS.HandshakeComplete,
 			"status":  beresp.StatusCode,
 		}
 		fields["response"] = responseFields
@@ -137,6 +136,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	timingsMu.RUnlock()
 	fields["timings"] = timingResults
+	timingResults["total"] = fields["realtime"]
+	delete(fields, "realtime")
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
 	entry := u.log.WithFields(logrus.Fields(fields))
