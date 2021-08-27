@@ -54,7 +54,7 @@ var DefaultSettings = Settings{
 	HealthPath:                "/healthz",
 	LogFormat:                 "common",
 	LogPretty:                 false,
-	LogLevel:                  "info",
+	LogLevel:                  "",
 	NoProxyFromEnv:            false,
 	RequestIDFormat:           "common",
 	RequestIDAcceptFromHeader: "",
