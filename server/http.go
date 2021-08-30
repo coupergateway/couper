@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
@@ -21,6 +22,7 @@ import (
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
+	"github.com/avenga/couper/telemetry"
 )
 
 type muxers map[string]*Mux
@@ -38,7 +40,6 @@ type HTTPServer struct {
 	shutdownCh chan struct{}
 	srv        *http.Server
 	timings    *runtime.HTTPTimings
-	tracer     trace.Tracer
 	uidFn      uidFunc
 }
 
@@ -90,13 +91,12 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		settings:   settings,
 		shutdownCh: shutdownCh,
 		timings:    timings,
-		tracer:     otel.Tracer("couper/server"),
 		uidFn:      uidFn,
 	}
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
-		Handler:           httpSrv,
+		Handler:           telemetry.NewTraceHandler("couper")(httpSrv),
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
 	}
@@ -172,10 +172,12 @@ func (s *HTTPServer) listenForCtx() {
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
-	ctx, span := s.tracer.Start(req.Context(), "serve")
-	defer span.End()
 
-	ctx = context.WithValue(ctx, request.XFF, req.Header.Get("X-Forwarded-For"))
+	meter := global.Meter("couper/server")
+	counter := metric.Must(meter).NewInt64Counter("request")
+	meter.RecordBatch(req.Context(), []attribute.KeyValue{}, counter.Measurement(1))
+
+	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
 	ctx = context.WithValue(ctx, request.LogEntry, s.log)
 	*req = *req.WithContext(ctx)
 
@@ -255,11 +257,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
-	ctx, span := s.tracer.Start(req.Context(), "serve/readBody")
-	defer span.End()
-
-	*req = *req.WithContext(ctx)
-
 	outer := h
 	if inner, protected := outer.(ac.ProtectedHandler); protected {
 		outer = inner.Child()
