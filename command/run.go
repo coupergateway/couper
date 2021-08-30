@@ -18,6 +18,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/server"
 	"github.com/avenga/couper/server/writer"
+	"github.com/avenga/couper/telemetry"
 )
 
 var _ Cmd = &Run{}
@@ -152,12 +153,21 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 	}
 
+	metrics, err := telemetry.NewMetrics(nil, logEntry)
+	if err != nil {
+		return err
+	}
+	go metrics.ListenAndServe()
+
 	listenCmdShutdown()
 
 	for _, s := range tlsServer {
 		_ = s.Close()
 		logEntry.Infof("Server closed: %s", s.Addr)
 	}
+
+	_ = metrics.Close()
+
 	return nil
 }
 

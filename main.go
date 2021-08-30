@@ -15,18 +15,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
-	// For experimental metrics support
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
-	"go.opentelemetry.io/otel/metric/global"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
-
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
@@ -118,54 +106,6 @@ func realmain(arguments []string) int {
 		confFile.Settings.LogPretty = flags.LogPretty
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
-
-	// telemetry
-	traceExporter, err := stdouttrace.New(
-		stdouttrace.WithPrettyPrint(),
-	)
-	if err != nil {
-		logger.WithError(err).Fatalf("failed to initialize stdouttrace export pipeline: %v", err)
-	}
-
-	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
-	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(bsp))
-	defer func() {
-		if err = tp.Shutdown(ctx); err != nil {
-			logger.WithError(err).Error()
-		}
-	}()
-
-	metricExporter, err := stdoutmetric.New(
-		stdoutmetric.WithPrettyPrint(),
-	)
-	if err != nil {
-		logger.WithError(err).Fatalf("failed to initialize stdoutmetric export pipeline: %v", err)
-	}
-
-	pusher := controller.New(
-		processor.New(
-			simple.NewWithExactDistribution(),
-			metricExporter,
-		),
-		controller.WithExporter(metricExporter),
-		controller.WithCollectPeriod(5*time.Second),
-	)
-
-	err = pusher.Start(ctx)
-	if err != nil {
-		logger.WithError(err).Fatalf("failed to initialize metric controller: %v", err)
-	}
-
-	defer func() {
-		if err = pusher.Stop(ctx); err != nil {
-			logger.WithError(err).Error()
-		}
-	}()
-
-	otel.SetTracerProvider(tp)
-	global.SetMeterProvider(pusher.MeterProvider())
-	propagator := propagation.NewCompositeTextMapPropagator(propagation.Baggage{}, propagation.TraceContext{})
-	otel.SetTextMapPropagator(propagator)
 
 	wd, err := os.Getwd()
 	if err != nil {
