@@ -54,8 +54,12 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	fields["method"] = req.Method
-	fields["server"] = req.Context().Value(request.ServerName)
-	fields["uid"] = req.Context().Value(request.UID)
+	if server := req.Context().Value(request.ServerName); server != nil {
+		fields["server"] = server
+	}
+	if uid := req.Context().Value(request.UID); uid != nil {
+		fields["uid"] = uid
+	}
 
 	requestFields := Fields{
 		"headers": filterHeader(log.conf.RequestHeaders, req.Header),
@@ -88,6 +92,9 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 	requestFields["path"] = path.String()
 
+	if req.URL.Host == "" {
+		req.URL.Host = req.Host // fallback e.g. metrics
+	}
 	requestFields["origin"] = req.URL.Host
 	requestFields["host"], fields["port"] = splitHostPort(req.URL.Host)
 
