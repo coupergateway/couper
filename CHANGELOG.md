@@ -38,6 +38,7 @@ If your applications are running in multiple setups, like testing and production
   * [`couper.version` variable](docs/REFERENCE.md#couper) ([#274](https://github.com/avenga/couper/pull/274))
   * `protocol`, `host`, `port`, `origin`, `body`, `json_body` to [`backend_requests` variable](./docs/REFERENCE.md#backend_requests) ([#278](https://github.com/avenga/couper/pull/278))
   * Locking to avoid concurrent requests to renew [OAuth2 Client Credentials](./docs/REFERENCE.md#oauth2-cc-block) access tokens ([#270](https://github.com/avenga/couper/issues/270))
+  * `log-level` in the [`settings`](./docs/REFERENCE.md#settings-block) block to define when a log is printed ([#306](https://github.com/avenga/couper/pull/306))
 
 * **Changed**
   * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
