@@ -35,6 +35,7 @@
 | COUPER_TIMING_SHUTDOWN_TIMEOUT       | `0` | The maximum amount of time allowed to close the server with all running connections. |
 | **Logging**                          | | |
 | COUPER_LOG_FORMAT                    | `"common"` | Can be set to `json` output which is the _container default_. |
+| COUPER_LOG_LEVEL                     | `info` | Set the log-level to one of: `debug`, `error`, `fatal`, `info`, `panic`, `trace`, `warn`. |
 | COUPER_LOG_PARENT_FIELD              | `""` | An option for `json` log format to add all log fields as child properties. |
 | COUPER_LOG_PRETTY                    | `false` | Global option for `json` log format which pretty prints with basic key coloring. |
 | COUPER_LOG_TYPE_VALUE                | `"couper_daemon"` | Value for the runtime log field `type`. |

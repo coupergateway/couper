@@ -23,6 +23,7 @@ Couper is build as binary called `couper` with the following commands:
 | -------------------- | -------------- | -------------------------- | ----------- |
 | `-f`                 | `"couper.hcl"` | `COUPER_FILE`              | File path to the Couper configuration file. |
 | `-log-format`        | `"common"`     | `COUPER_LOG_FORMAT`        | Can be set to `json` output format. |
+| `-log-level`         | `info`         | `COUPER_LOG_LEVEL`         | Set the log-level to one of: `debug`, `error`, `fatal`, `info`, `panic`, `trace`, `warn`. |
 | `-log-pretty`        | `false`        | `COUPER_LOG_PRETTY`        | Option for `json` log format which pretty prints with basic key coloring. |
 | `-watch`             | `false`        | `COUPER_WATCH`             | Watch for configuration file changes and reload on modifications. |
 | `-watch-retries`     | `5`            | `COUPER_WATCH_RETRIES`     | Maximal retry count for configuration reloads which could not bind the configured port. |

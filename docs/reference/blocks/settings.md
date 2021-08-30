@@ -16,6 +16,7 @@ gateway instance.
 | [`health_path`](../attributes.md)                   | string                          | `"/healthz"`          | Path for health-check requests for all servers and ports. |
 | [`https_dev_proxy`](../attributes.md)               | [list](../config-types.md#list) | `[]`                  | List of TLS port mappings to define the TLS listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. |
 | [`log_format`](../attributes.md)                    | string                          | `"common"`            | Can be set to `json` output format. |
+| [`log_level`](../attributes.md)                     | string                          | `info`                | Set the log-level to one of: `debug`, `error`, `fatal`, `info`, `panic`, `trace`, `warn`. |
 | [`log_pretty`](../attributes.md)                    | bool                            | `false`               | Option for `json` log format which pretty prints with basic key coloring. |
 | [`no_proxy_from_env`](../attributes.md)             | bool                            | `false`               | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |
 | [`request_id_accept_from_header`](../attributes.md) | string                          | `""`                  | Name of a client request HTTP header field that transports the [`request.id`](../variables/request.md) which Couper takes for logging and transport to the backend (if configured). |

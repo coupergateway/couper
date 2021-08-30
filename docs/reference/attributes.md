@@ -66,6 +66,7 @@ attribute_map = {...}
 | `key`                     | string                       | `""`        | [JWT Block](blocks/jwt.md), [JWT Signing Profile Block](blocks/jwt-signing-profile.md) |
 | `key_file`                | string                       | `""`        | [JWT Block](blocks/jwt.md), [JWT Signing Profile Block](blocks/jwt-signing-profile.md) |
 | `log_format`              | string                       | `"common"`  | [Settings Block](blocks/settings.md) |
+| `log_level`               | string                       | `info`      | [Settings Block](blocks/settings.md) |
 | `log_pretty`              | bool                         | `false`     | [Settings Block](blocks/settings.md) |
 | `max_age`         | [duration](config-types.md#duration) | &#10005;    | [CORS Block](blocks/cors.md) |
 | `max_connections`         | integer                      | &#10005;    | [Backend Block](blocks/backend.md) |
