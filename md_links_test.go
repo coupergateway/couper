@@ -1,4 +1,4 @@
-package reference_test
+package main_test
 
 import (
 	"net/http"
@@ -24,7 +24,7 @@ var (
 	regexAnchors = regexp.MustCompile(`(?m)^#+ (.+)$`)
 )
 
-func Test_Links(t *testing.T) {
+func Test_Markdown_Links(t *testing.T) {
 	helper := test.New(t)
 
 	dir, err := filepath.Abs("./")
@@ -45,8 +45,10 @@ func Test_Links(t *testing.T) {
 
 			for _, anchor := range anchors {
 				if anchor != "" {
-					if _, ok := data[link].(*item).anchors[anchor]; !ok {
-						t.Errorf("Link to '%s%s' referenced in '%s' does not exists.", link, anchor, file)
+					if _, ok := data[link].(*item); ok {
+						if _, ok := data[link].(*item).anchors[anchor]; !ok {
+							t.Errorf("Link to '%s%s' referenced in '%s' does not exists.", link, anchor, file)
+						}
 					}
 				}
 			}
@@ -60,6 +62,10 @@ func parseFiles(t *testing.T, dir string, data list, helper *test.Helper) {
 
 	for _, file := range files {
 		abs := dir + "/" + file.Name()
+
+		if strings.Contains(abs, "/vendor/") {
+			continue
+		}
 
 		if file.IsDir() {
 			parseFiles(t, abs, data, helper)
