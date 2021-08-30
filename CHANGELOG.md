@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Changed**
+  * Organized log format fields for uniform access and upstream log ([#300](https://github.com/avenga/couper/pull/300))
+
 ---
 
 ## [1.4](https://github.com/avenga/couper/releases/tag/1.4)
@@ -39,7 +42,6 @@ If your applications are running in multiple setups, like testing and production
 
 * **Changed**
   * The `sp_acs_url` in the [SAML Block](./docs/REFERENCE.md#saml-block) may now be relative ([#265](https://github.com/avenga/couper/pull/265))
-  * Organized log format fields for uniform access and upstream log ([#300](https://github.com/avenga/couper/pull/300))
 
 * **Fixed**
   * No GZIP compression for small response bodies ([#186](https://github.com/avenga/couper/issues/186))
