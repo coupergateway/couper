@@ -1,10 +1,14 @@
 # Introduction
 
-Couper is a lightweight open-source API gateway that acts as an entry point for clients to your application (frontend API gateway) and an exit point to upstream services (upstream API gateway).
+Couper is a lightweight open-source API gateway that acts as an entry point for
+clients to your application (frontend API gateway) and an exit point to upstream
+services (upstream API gateway).
 
-It adds access control, observability, and back-end connectivity on a separate layer. This will keep your core application code more simple.
+It adds access control, observability, and back-end connectivity on a separate layer.
+This will keep your core application code more simple.
 
-Couper does not need any special development skills and offers easy configuration and integration.
+Couper does not need any special development skills and offers easy configuration
+and integration.
 
 ## Architectural Overview
 
@@ -21,11 +25,11 @@ Couper does not need any special development skills and offers easy configuratio
 
 ## Getting Started
 
-Couper is available as _docker
-image_ from [Docker Hub](https://hub.docker.com/r/avenga/couper)
+Couper is available as _docker image_ from [Docker Hub](https://hub.docker.com/r/avenga/couper).
 
 Running Couper requires a working [Docker](https://www.docker.com/) setup on your
-computer. Please visit the [get started guide](https://docs.docker.com/get-started/) to get prepared.
+computer. Please visit the [get started guide](https://docs.docker.com/get-started/)
+to get prepared.
 
 To download/install Couper, open a terminal and execute:
 
@@ -49,7 +53,8 @@ server "hello" {
 }
 ```
 
-Now `cd` into the directory with the configuration file and start Couper in a docker container:
+Now `cd` into the directory with the configuration file and start Couper in a docker
+container:
 
 ```sh
 $ docker run --rm -p 8080:8080 -v "$(pwd)":/conf avenga/couper
@@ -64,4 +69,6 @@ Press `CTRL+c` to stop the container.
 -----
 
 Please refer to the full [Configuration](reference/README.md) reference.
-If you prefer to learn about Couper by checking out certain features, visit the [example repository](https://github.com/avenga/couper-examples).
+
+If you prefer to learn about Couper by checking out certain features, visit the
+[example repository](https://github.com/avenga/couper-examples).

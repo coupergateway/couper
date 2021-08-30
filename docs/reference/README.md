@@ -1,5 +1,7 @@
 # Configuration Reference
 
+![Couper](../img/couper-logo.svg)
+
 ## [Access Control](access-control.md)
 
 ## [Attributes](attributes.md)

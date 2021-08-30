@@ -6,7 +6,8 @@
 
 ![Couper](docs/img/couper-logo.svg)
 
-**Couper** is a lightweight API gateway designed to support developers in building and operating API-driven Web projects.
+**Couper** is a lightweight API gateway designed to support developers in building
+and operating API-driven Web projects.
 
 ## Getting started
 
@@ -48,7 +49,8 @@ The full list of features of Couper 1.x is [here](FEATURES.md) or at [couper.io]
 ## Developers
 
 *Developers* requiring [Go](https://golang.org/) to start with `make build`.
-Couper requires a [configuration file](./docs/README.md#configuration-file). You can start with a simple one and use:
+Couper requires a [Configuration File](docs/reference/config-file.md). You can start
+with a simple one and use:
 
 ```ps
 ./couper run -f public/couper.hcl
