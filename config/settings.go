@@ -53,7 +53,7 @@ var DefaultSettings = Settings{
 	DefaultPort:               8080,
 	HealthPath:                "/healthz",
 	LogFormat:                 "common",
-	LogLevel:                  "",
+	LogLevel:                  "info",
 	LogPretty:                 false,
 	NoProxyFromEnv:            false,
 	RequestIDFormat:           "common",

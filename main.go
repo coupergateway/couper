@@ -48,8 +48,8 @@ func realmain(arguments []string) int {
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
 		FileWatchRetries    int           `env:"watch_retries"`
 		LogFormat           string        `env:"log_format"`
-		LogPretty           bool          `env:"log_pretty"`
 		LogLevel            string        `env:"log_level"`
+		LogPretty           bool          `env:"log_pretty"`
 	}
 	var flags globalFlags
 
