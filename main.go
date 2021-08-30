@@ -48,6 +48,7 @@ func realmain(arguments []string) int {
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
 		FileWatchRetries    int           `env:"watch_retries"`
 		LogFormat           string        `env:"log_format"`
+		LogLevel            string        `env:"log_level"`
 		LogPretty           bool          `env:"log_pretty"`
 	}
 	var flags globalFlags
@@ -58,6 +59,7 @@ func realmain(arguments []string) int {
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
 	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=json")
+	set.StringVar(&flags.LogLevel, "log-level", config.DefaultSettings.LogLevel, "-log-level info")
 	set.BoolVar(&flags.LogPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
 
 	if len(args) == 0 || command.NewCommand(ctx, args[0]) == nil {
@@ -81,14 +83,14 @@ func realmain(arguments []string) int {
 
 	err := set.Parse(args.Filter(set))
 	if err != nil {
-		newLogger(flags.LogFormat, flags.LogPretty).Error(err)
+		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).Error(err)
 		return 1
 	}
 	env.Decode(&flags)
 
 	confFile, err := configload.LoadFile(flags.FilePath)
 	if err != nil {
-		newLogger(flags.LogFormat, flags.LogPretty).WithError(err).Error()
+		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
 	}
 
@@ -97,10 +99,13 @@ func realmain(arguments []string) int {
 	if flags.LogFormat != config.DefaultSettings.LogFormat {
 		confFile.Settings.LogFormat = flags.LogFormat
 	}
+	if flags.LogLevel != config.DefaultSettings.LogLevel {
+		confFile.Settings.LogLevel = flags.LogLevel
+	}
 	if flags.LogPretty != config.DefaultSettings.LogPretty {
 		confFile.Settings.LogPretty = flags.LogPretty
 	}
-	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogPretty)
+	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -196,9 +201,15 @@ func realmain(arguments []string) int {
 // newLogger creates a log instance with the configured formatter.
 // Since the format option may required to be correct in early states
 // we parse the env configuration on every call.
-func newLogger(format string, pretty bool) *logrus.Entry {
+func newLogger(format, level string, pretty bool) *logrus.Entry {
 	logger := logrus.New()
 	logger.Out = os.Stdout
+	parsedLevel, err := logrus.ParseLevel(level)
+	if err != nil {
+		parsedLevel = logrus.InfoLevel
+		logger.Error("parsing log level, falling back to info level")
+	}
+	logger.Level = parsedLevel
 
 	logger.AddHook(&errors.LogHook{})
 	logger.AddHook(&logging.ContextHook{})
@@ -222,7 +233,6 @@ func newLogger(format string, pretty bool) *logrus.Entry {
 	if settings.LogFormat == "json" {
 		logger.SetFormatter(logging.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
 	}
-	logger.Level = logrus.DebugLevel
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
 
