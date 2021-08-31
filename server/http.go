@@ -94,9 +94,15 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		uidFn:      uidFn,
 	}
 
+	traceHandler := telemetry.NewTraceHandler("couper")(httpSrv)
+	recordHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		statusRW := logging.NewStatusRecorder(rw)
+		traceHandler.ServeHTTP(statusRW, r)
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
-		Handler:           telemetry.NewTraceHandler("couper")(httpSrv),
+		Handler:           recordHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
 	}
