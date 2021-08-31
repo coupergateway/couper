@@ -52,9 +52,15 @@ can be referenced in other [Blocks](../blocks.md) by its required `label`.
 ! If the authorization server supports the "code_challenge_method" "S256" (a.k.a. PKCE, see RFC 7636), we recommend to use the "verifier_method" "ccm_s256"`.
 ```
 
+```diff
+! The HTTP header field "Accept: application/json" is automatically set to the token request. This can be modified with Request Header Modifiers in a Backend Block.
+```
+
 **See also:**
 
 * [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)
+* [Backend Block](backend.md)
+* [Request Header Modifiers](../modifiers.md#request-header-modifiers)
 
 -----
 

@@ -51,6 +51,15 @@ can be referenced in other [Blocks](../blocks.md) by its required `label`.
 ! If the OpenID server supports the "code_challenge_method" "S256" the default value for "verifier_method" is "ccm_s256", "nonce" otherwise.
 ```
 
+```diff
+! The HTTP header field "Accept: application/json" is automatically set to the token request. This can be modified with Request Header Modifiers in a Backend Block.
+```
+
+**See also:**
+
+* [Backend Block](backend.md)
+* [Request Header Modifiers](../modifiers.md#request-header-modifiers)
+
 -----
 
 ## Navigation

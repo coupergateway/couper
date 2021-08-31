@@ -32,6 +32,15 @@ Client Credentials Flow to request a bearer token for the backend request.
 ! If the "token_endpoint_auth_method" is set to "client_secret_post", the client credentials are transported in the request body. If is set to "client_secret_basic", the client credentials are transported via basic authentication.
 ```
 
+```diff
+! The HTTP header field "Accept: application/json" is automatically set to the token request. This can be modified with Request Header Modifiers in a Backend Block.
+```
+
+**See also:**
+
+* [Backend Block](backend.md)
+* [Request Header Modifiers](../modifiers.md#request-header-modifiers)
+
 -----
 
 ## Navigation
