@@ -58,14 +58,14 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	ctx, span := th.tracer.Start(req.Context(), spanName, opts...)
 	defer span.End()
 
+	th.handler.ServeHTTP(rw, req.WithContext(ctx))
+
 	if rsw, ok := rw.(logging.RecorderInfo); ok {
 		attrs := semconv.HTTPAttributesFromHTTPStatusCode(rsw.StatusCode())
 		spanStatus, spanMessage := semconv.SpanStatusFromHTTPStatusCode(rsw.StatusCode())
 		span.SetAttributes(attrs...)
 		span.SetStatus(spanStatus, spanMessage)
 	}
-
-	th.handler.ServeHTTP(rw, req.WithContext(ctx))
 }
 
 func initTracer() *sdktrace.TracerProvider {
