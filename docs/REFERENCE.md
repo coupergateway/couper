@@ -279,6 +279,8 @@ The `oauth2` block in the [Backend Block](#backend-block) context configures the
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
 | `scope`                      |string|-|  A space separated list of requested scopes for the access token.|-| `scope = "read write"` |
 
+The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](#request-header) in a [backend block](#backend-block).
+
 ### Websockets Block
 
 The `websockets` block activates support for websocket connections in Couper.
@@ -395,6 +397,8 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
 
+The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](#request-header) in a [backend block](#backend-block).
+
 ### OIDC Block (Beta)
 
 The `beta_oidc` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
@@ -419,6 +423,8 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | `verifier_value` | string or expression | - | The value of the (unhashed) verifier. | &#9888; required; e.g. using cookie value created with [`beta_oauth_verifier()` function](#functions) | `verifier_value = request.cookies.verifier` |
 
 If the OpenID server supports the `code_challenge_method` `S256` the default value for `verifier_method`is `ccm_s256`, `nonce` otherwise.
+
+The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](#request-header) in a [backend block](#backend-block).
 
 ### SAML Block
 
