@@ -29,6 +29,9 @@ func TestEndpoints_OAuth2(t *testing.T) {
 
 		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.URL.Path == "/oauth2" {
+				if accept := req.Header.Get("Accept"); accept != "application/json" {
+					t.Errorf("expected Accept %q, got: %q", "application/json", accept)
+				}
 				if cl := req.Header.Get("Content-Length"); cl != "29" {
 					t.Errorf("Unexpected C/L given: %s", cl)
 				}
@@ -196,6 +199,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/token" {
+			if accept := req.Header.Get("Accept"); accept != "application/json" {
+				t.Errorf("expected Accept %q, got: %q", "application/json", accept)
+			}
 			_ = req.ParseForm()
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)

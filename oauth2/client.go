@@ -27,6 +27,7 @@ func (c *Client) requestToken(ctx context.Context, requestParams map[string]stri
 		return nil, 0, err
 	}
 
+	tokenReq.Header.Set("Accept", "application/json")
 	tokenRes, err := c.Backend.RoundTrip(tokenReq)
 	if err != nil {
 		return nil, 0, err
