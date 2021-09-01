@@ -1,7 +1,6 @@
 package configload
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 
@@ -11,24 +10,28 @@ import (
 )
 
 const (
-	summUnsupportedAttr  = "Unsupported argument"
-	summUnsupportedBlock = "Unsupported block type"
+	noLabelForErrorHandler = "No labels are expected for error_handler blocks."
+	summUnsupportedAttr    = "Unsupported argument"
+	summUnsupportedBlock   = "Unsupported block type"
 )
 
 var (
 	reFetchUnsupportedName = regexp.MustCompile(`\"(.*)\"`)
 	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\).`)
 	reFetchUnlabeledName   = regexp.MustCompile(`No labels are expected for (.*) blocks.`)
+	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here.`)
 )
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	var errors hcl.Diagnostics
 
-	fmt.Printf("RUN %#v\n", obj)
-
 	attrs, blocks, diags := getSchemaComponents(body, obj)
 	if diags.HasErrors() {
 		for _, err := range diags {
+			if err.Detail == noLabelForErrorHandler {
+				continue
+			}
+
 			matches := reFetchUnsupportedName.FindStringSubmatch(err.Detail)
 			if len(matches) != 2 {
 				match := reFetchLabeledName.MatchString(err.Detail)
@@ -38,6 +41,12 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 				}
 
 				match = reFetchUnlabeledName.MatchString(err.Detail)
+				if match {
+					errors = errors.Append(err)
+					continue
+				}
+
+				match = reFetchUnexpectedArg.MatchString(err.Detail)
 				if match {
 					errors = errors.Append(err)
 					continue
@@ -91,8 +100,6 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 				continue
 			}
 
-			fmt.Printf("> %#v :: %#v\n", field.Tag.Get("hcl"), field.Type.Kind().String())
-
 			if field.Type.Kind() == reflect.Ptr {
 				o := reflect.New(field.Type.Elem()).Interface()
 				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
@@ -108,7 +115,6 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 				if field.Kind() == reflect.Ptr {
 					field = field.Elem()
 				}
-				fmt.Printf(">> %v \n", reflect.ValueOf(v).Interface())
 
 				if field.Kind() == reflect.Struct {
 					o := reflect.New(v.Elem()).Interface()
@@ -119,8 +125,6 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 			}
 		}
 	}
-
-	fmt.Printf("END %#v\n", obj)
 
 	return errors
 }
@@ -133,6 +137,21 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 	)
 
 	schema, _ := gohcl.ImpliedBodySchema(obj)
+	ty := reflect.TypeOf(obj)
+	if ty.Kind() == reflect.Ptr {
+		ty = ty.Elem()
+	}
+
+	ct := ty.NumField()
+	for i := 0; i < ct; i++ {
+		field := ty.Field(i)
+
+		if field.Type.String() == "config.AccessControlSetter" {
+			schema = config.SchemaWithACSetter(schema)
+			break
+		}
+	}
+
 	content, errors := body.Content(schema)
 	diags = diags.Extend(errors)
 
@@ -147,7 +166,27 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 	if i, ok := obj.(config.Inline); ok {
 		schema := i.Schema(true)
 		content, errors := body.Content(schema)
-		diags = diags.Extend(errors)
+
+		for _, diag := range errors {
+			if match := reFetchLabeledName.MatchString(diag.Detail); match {
+				bodyContent := bodyToContent(body)
+
+				added := false
+				for _, block := range bodyContent.Blocks {
+					if block.Type == "proxy" || block.Type == "request" || block.Type == "backend" {
+						blocks = append(blocks, block)
+
+						added = true
+					}
+				}
+
+				if !added {
+					diags = diags.Append(diag)
+				}
+			} else {
+				diags = diags.Append(diag)
+			}
+		}
 
 		if content != nil {
 			for name, attr := range content.Attributes {
