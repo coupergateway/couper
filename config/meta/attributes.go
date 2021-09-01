@@ -10,21 +10,28 @@ var AttributesSchema, _ = gohcl.ImpliedBodySchema(&Attributes{})
 
 // Attributes are commonly shared attributes which gets evaluated during runtime.
 type Attributes struct {
-	// RequestAttributes
-	AddFormParams     map[string]cty.Value `hcl:"add_form_params,optional"`
-	AddQueryParams    map[string]cty.Value `hcl:"add_query_params,optional"`
-	AddRequestHeaders map[string]string    `hcl:"add_request_headers,optional"`
-	DelFormParams     map[string]cty.Value `hcl:"remove_form_params,optional"`
-	DelQueryParams    []string             `hcl:"remove_query_params,optional"`
-	DelRequestHeaders []string             `hcl:"remove_request_headers,optional"`
-	Path              string               `hcl:"path,optional"`
-	SetFormParams     map[string]cty.Value `hcl:"set_form_params,optional"`
-	SetQueryParams    map[string]cty.Value `hcl:"set_query_params,optional"`
-	SetRequestHeaders map[string]string    `hcl:"set_request_headers,optional"`
-	// ResponseAttributes
+	// Form Params
+	AddFormParams map[string]cty.Value `hcl:"add_form_params,optional"`
+	DelFormParams map[string]cty.Value `hcl:"remove_form_params,optional"`
+	SetFormParams map[string]cty.Value `hcl:"set_form_params,optional"`
+
+	// Query Params
+	AddQueryParams map[string]cty.Value `hcl:"add_query_params,optional"`
+	DelQueryParams []string             `hcl:"remove_query_params,optional"`
+	SetQueryParams map[string]cty.Value `hcl:"set_query_params,optional"`
+
+	// Request Header Modifiers
+	AddRequestHeaders map[string]string `hcl:"add_request_headers,optional"`
+	DelRequestHeaders []string          `hcl:"remove_request_headers,optional"`
+	SetRequestHeaders map[string]string `hcl:"set_request_headers,optional"`
+
+	// Response Header Modifiers
 	AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
 	DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
 	SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
+
+	// Other
+	Path string `hcl:"path,optional"`
 }
 
 func SchemaWithAttributes(schema *hcl.BodySchema) *hcl.BodySchema {
