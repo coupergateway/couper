@@ -59,7 +59,8 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
-	return schema
+
+	return meta.SchemaWithAttributes(schema)
 }
 
 func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {

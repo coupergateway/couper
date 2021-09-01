@@ -11,7 +11,7 @@ var _ Inline = &ErrorHandler{}
 
 // ErrorHandler represents a subset of Endpoint.
 type ErrorHandler struct {
-	Kinds     []string
+	Kinds     []string  // FIXME: Why not `hcl:"type,label"`?
 	ErrorFile string    `hcl:"error_file,optional"`
 	Remain    hcl.Body  `hcl:",remain"`
 	Response  *Response `hcl:"response,block"`
@@ -47,5 +47,5 @@ func (e ErrorHandler) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	return schema
+	return meta.SchemaWithAttributes(schema)
 }

@@ -77,5 +77,5 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 		}
 	}
 
-	return schema
+	return meta.SchemaWithAttributes(schema)
 }

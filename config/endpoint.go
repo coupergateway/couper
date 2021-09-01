@@ -48,5 +48,5 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
 
-	return schema
+	return meta.SchemaWithAttributes(schema)
 }
