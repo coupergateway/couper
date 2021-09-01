@@ -135,10 +135,14 @@ func TestDefaultEnvVariables(t *testing.T) {
 			"test",
 			`
 			server "test" {
-				api {
+			  endpoint "/" {
+				proxy {
+				  backend {
 					origin = env.ORIGIN
 					timeout = env.TIMEOUT
+				  }
 				}
+			  }
 			}
 
 			defaults {
@@ -156,10 +160,14 @@ func TestDefaultEnvVariables(t *testing.T) {
 			"no-environment_variables-block",
 			`
 			server "test" {
-				api {
+			  endpoint "/" {
+				proxy {
+				  backend {
 					origin = env.ORIGIN
 					timeout = env.TIMEOUT
+				  }
 				}
+			  }
 			}
 
 			defaults {}
@@ -170,10 +178,14 @@ func TestDefaultEnvVariables(t *testing.T) {
 			"no-defaults-block",
 			`
 			server "test" {
-				api {
+			  endpoint "/" {
+				proxy {
+				  backend {
 					origin = env.ORIGIN
 					timeout = env.TIMEOUT
+				  }
 				}
+			  }
 			}
 			`,
 			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
