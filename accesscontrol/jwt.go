@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
+	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
@@ -25,7 +26,6 @@ const (
 var _ AccessControl = &JWT{}
 
 type (
-	Algorithm     int
 	JWTSourceType uint8
 	JWTSource     struct {
 		Name string
@@ -34,7 +34,7 @@ type (
 )
 
 type JWT struct {
-	algorithm      Algorithm
+	algorithm      acjwt.Algorithm
 	claims         map[string]interface{}
 	claimsRequired []string
 	source         JWTSource
@@ -76,7 +76,7 @@ func NewJWTSource(cookie, header string) JWTSource {
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
 	jwtAC := &JWT{
-		algorithm:      NewAlgorithm(options.Algorithm),
+		algorithm:      acjwt.NewAlgorithm(options.Algorithm),
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
@@ -87,7 +87,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("token source is invalid")
 	}
 
-	if jwtAC.algorithm == AlgorithmUnknown {
+	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm is not supported")
 	}
 
@@ -169,9 +169,9 @@ func (j *JWT) Validate(req *http.Request) error {
 
 func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
 	switch j.algorithm {
-	case AlgorithmRSA256, AlgorithmRSA384, AlgorithmRSA512:
+	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
 		return j.pubKey, nil
-	case AlgorithmHMAC256, AlgorithmHMAC384, AlgorithmHMAC512:
+	case acjwt.AlgorithmHMAC256, acjwt.AlgorithmHMAC384, acjwt.AlgorithmHMAC512:
 		return j.hmacSecret, nil
 	default: // this error case gets normally caught on configuration level
 		return nil, errors.Configuration.Message("algorithm is not supported")
@@ -220,7 +220,7 @@ func getBearer(val string) (string, error) {
 	return "", errors.JwtTokenExpired.Message("bearer required with authorization header")
 }
 
-func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
+func newParser(algo acjwt.Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),

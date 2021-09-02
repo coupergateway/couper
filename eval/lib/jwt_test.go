@@ -15,6 +15,7 @@ import (
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
@@ -472,6 +473,50 @@ func TestJwtSignDynamic(t *testing.T) {
 	}
 }
 
+func TestJwtSignConfigError(t *testing.T) {
+	tests := []struct {
+		name     string
+		hcl      string
+		jspLabel string
+		claims   string
+		wantErr  string
+	}{
+		{
+			"unsupported signature algorithm",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "invalid"
+					key = "$3cRe4"
+					ttl = "0"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: algorithm is not supported",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(st *testing.T) {
+			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if err == nil {
+				t.Error("expected an error, got nothing")
+				return
+			}
+			logErr, _ := err.(errors.GoError)
+			if logErr == nil {
+				t.Error("logErr should not be nil")
+			} else if logErr.LogError() != tt.wantErr {
+				t.Errorf("\nwant:\t%s\ngot:\t%v", tt.wantErr, logErr.LogError())
+			}
+		})
+	}
+}
+
 func TestJwtSignError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -566,23 +611,6 @@ func TestJwtSignError(t *testing.T) {
 			"MyToken",
 			`"no object"`,
 			"json: cannot unmarshal string into Go value of type map[string]interface {}",
-		},
-		{
-			"unsupported signature algorithm",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "invalid"
-					key = "$3cRe4"
-					ttl = "0"
-				}
-			}
-			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			"no signing method for given algorithm: invalid",
 		},
 	}
 

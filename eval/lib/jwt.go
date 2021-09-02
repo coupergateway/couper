@@ -13,6 +13,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
+	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -29,7 +30,11 @@ type JWTSigningConfig struct {
 	TTL                string
 }
 
-func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) *JWTSigningConfig {
+func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWTSigningConfig, error) {
+	if alg := acjwt.NewAlgorithm(j.SignatureAlgorithm); alg == acjwt.AlgorithmUnknown {
+		return nil, fmt.Errorf("algorithm is not supported")
+	}
+
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
 		KeyBytes:           j.KeyBytes,
@@ -37,7 +42,7 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) *JWTS
 		SignatureAlgorithm: j.SignatureAlgorithm,
 		TTL:                j.TTL,
 	}
-	return c
+	return c, nil
 }
 
 func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
