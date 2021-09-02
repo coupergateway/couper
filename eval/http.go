@@ -329,8 +329,8 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		return nil
 	}
 
-	content, _, _ := body.PartialContent(config.BackendInlineSchema)
-	if attr, ok := content.Attributes["set_response_status"]; ok {
+	bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
+	if attr, ok := bodyContent.Attributes["set_response_status"]; ok {
 		_, err := ApplyResponseStatus(ctx, attr, beresp)
 		return err
 	}

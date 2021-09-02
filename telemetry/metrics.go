@@ -1,14 +1,12 @@
 package telemetry
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/export/metric"
 
 	"github.com/avenga/couper/logging"
@@ -19,38 +17,6 @@ type Metrics struct {
 	log          *logrus.Entry
 	promExporter *prometheus.Exporter
 	server       *http.Server
-}
-
-type Options struct {
-	exporter string
-	port     string
-}
-
-func NewMetrics(opts *Options, log *logrus.Entry) (*Metrics, error) {
-	var exporter string
-	if opts == nil || opts.exporter == "" {
-		exporter = "prometheus"
-	} else {
-		exporter = opts.exporter
-	}
-
-	metrics := &Metrics{
-		log: log.WithField("type", "couper_metrics"),
-	}
-
-	switch exporter {
-	case "prometheus":
-		promExporter, err := newPromExporter(log)
-		if err != nil {
-			return nil, err
-		}
-		metrics.promExporter = promExporter
-	default:
-		return nil, fmt.Errorf("metrics: unsupported exporter: %s", exporter)
-	}
-
-	global.SetMeterProvider(metrics.promExporter.MeterProvider())
-	return metrics, nil
 }
 
 func (m *Metrics) ListenAndServe() {
@@ -71,7 +37,7 @@ func (m *Metrics) ListenAndServe() {
 }
 
 func (m *Metrics) Close() error {
-	if m.server == nil {
+	if m == nil || m.server == nil {
 		return nil
 	}
 	return m.server.Close()
