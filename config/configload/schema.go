@@ -23,61 +23,8 @@ var (
 )
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
-	var errors hcl.Diagnostics
-
 	attrs, blocks, diags := getSchemaComponents(body, obj)
-	if diags.HasErrors() {
-		for _, err := range diags {
-			if err.Detail == noLabelForErrorHandler {
-				continue
-			}
-
-			matches := reFetchUnsupportedName.FindStringSubmatch(err.Detail)
-			if len(matches) != 2 {
-				match := reFetchLabeledName.MatchString(err.Detail)
-				if match {
-					errors = errors.Append(err)
-					continue
-				}
-
-				match = reFetchUnlabeledName.MatchString(err.Detail)
-				if match {
-					errors = errors.Append(err)
-					continue
-				}
-
-				match = reFetchUnexpectedArg.MatchString(err.Detail)
-				if match {
-					errors = errors.Append(err)
-					continue
-				}
-
-				errors = errors.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Subject:  err.Subject,
-					Summary:  "cannot match argument name from: " + err.Detail,
-				})
-
-				continue
-			}
-
-			name := matches[1]
-
-			if err.Summary == summUnsupportedAttr {
-				if _, ok := attrs[name]; ok {
-					continue
-				}
-
-				errors = errors.Append(err)
-			} else if err.Summary == summUnsupportedBlock {
-				if len(blocks.OfType(name)) > 0 {
-					continue
-				}
-
-				errors = errors.Append(err)
-			}
-		}
-	}
+	errors := filterValidErrors(attrs, blocks, diags)
 
 	typ := reflect.TypeOf(obj)
 	if typ.Kind() == reflect.Ptr {
@@ -93,6 +40,11 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 		for i := 0; i < typ.NumField(); i++ {
 			field := typ.Field(i)
 
+			// FIXME: AccessControlSetter matches this condition.
+			// if field.Anonymous {
+			// 	return ValidateConfigSchema(body, field)
+			// }
+			// FIXME: AccessControlSetter matches this condition.
 			if _, ok := field.Tag.Lookup("hcl"); !ok {
 				continue
 			}
@@ -198,4 +150,56 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 	}
 
 	return attrs, blocks, diags
+}
+
+func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagnostics) hcl.Diagnostics {
+	var errors hcl.Diagnostics
+
+	for _, err := range diags {
+		if err.Detail == noLabelForErrorHandler {
+			continue
+		}
+
+		matches := reFetchUnsupportedName.FindStringSubmatch(err.Detail)
+		if len(matches) != 2 {
+			if match := reFetchLabeledName.MatchString(err.Detail); match {
+				errors = errors.Append(err)
+				continue
+			}
+			if match := reFetchUnlabeledName.MatchString(err.Detail); match {
+				errors = errors.Append(err)
+				continue
+			}
+			if match := reFetchUnexpectedArg.MatchString(err.Detail); match {
+				errors = errors.Append(err)
+				continue
+			}
+
+			errors = errors.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Subject:  err.Subject,
+				Summary:  "cannot match argument name from: " + err.Detail,
+			})
+
+			continue
+		}
+
+		name := matches[1]
+
+		if err.Summary == summUnsupportedAttr {
+			if _, ok := attrs[name]; ok {
+				continue
+			}
+
+			errors = errors.Append(err)
+		} else if err.Summary == summUnsupportedBlock {
+			if len(blocks.OfType(name)) > 0 {
+				continue
+			}
+
+			errors = errors.Append(err)
+		}
+	}
+
+	return errors
 }
