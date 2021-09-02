@@ -348,7 +348,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				subT.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
-			tokenResBytes, err := io.ReadAll(res.Body)
+			tokenResBytes, _ := io.ReadAll(res.Body)
 			var jData map[string]interface{}
 			json.Unmarshal(tokenResBytes, &jData)
 			if params, ok := jData["form_params"]; ok {
@@ -356,16 +356,16 @@ func TestOAuth2_AccessControl(t *testing.T) {
 					subT.Errorf("%q: expected params %s, got: %s", tc.name, tc.params, params)
 				}
 			} else {
-				if "" != tc.params {
+				if tc.params != "" {
 					subT.Errorf("%q: expected params %s, got no", tc.name, tc.params)
 				}
 			}
 			if authorization, ok := jData["authorization"]; ok {
-				if authorization != tc.authorization {
+				if tc.authorization != authorization {
 					subT.Errorf("%q: expected authorization %s, got: %s", tc.name, tc.authorization, authorization)
 				}
 			} else {
-				if "" != tc.authorization {
+				if tc.authorization != "" {
 					subT.Errorf("%q: expected authorization %s, got no", tc.name, tc.authorization)
 				}
 			}
