@@ -3198,7 +3198,7 @@ func TestEndpoint_Response(t *testing.T) {
 			}
 
 			if len(resBytes) > 0 {
-				b, exist := logHook.LastEntry().Data["bytes"]
+				b, exist := logHook.LastEntry().Data["response"].(logging.Fields)["bytes"]
 				if !exist || b != len(resBytes) {
 					t.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
