@@ -346,9 +346,17 @@ required _label_.
 | `header`          |string|-|-|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.|`header = "Authorization"` |
 | `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
-|  `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+| `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 | `claims`               |string|-|Equals/in comparison with JWT payload.|-|-|
 | `required_claims`      | string|-|list of claims that must be given for a valid token |-|-|
+
+The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `signing_key`       |string|-|Private key (in PEM format) for `RS*` variants.|-|-|
+| `signing_key_file`  |string|-|Optional file reference instead of `signing_key` usage.|-|-|
+| `signing_ttl`       |string|-|The token's time-to-live (creates the `exp` claim).|-|-|
 
 ### JWT Signing Profile Block
 
@@ -636,7 +644,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `coalesce`                     |                 | Returns the first of the given arguments that is not null.                                                                                                                                                                                                                                           | `arg...` (various)                  | `coalesce(request.cookies.foo, "bar")`               |
 | `json_decode`                  | various         | Parses the given JSON string and, if it is valid, returns the value it represents.                                                                                                                                                                                                                   | `encoded` (string)                  | `json_decode("{\"foo\": 1}")`                        |
 | `json_encode`                  | string          | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     | `val` (various)                     | `json_encode(request.context.myJWT)`                 |
-| `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
+| `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) (or [JWT Block](#jwt-block) with `signing_ttl`) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
 | `merge`                        | object or tuple | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. | `arg...` (object or tuple)          | `merge(request.headers, { x-additional = "myval" })` |
 | `beta_oauth_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block-beta).                                                                                                                                                                                                      | `label` (string)                    | `beta_oauth_authorization_url("myOAuth2")`           |
 | `beta_oauth_verifier`          | string          | Creates a cryptographically random key as specified in RFC 7636, applicable for all verifier methods; e.g. to be set as a cookie and read into `verifier_value`. Multiple calls of this function in the same client request context return the same value.                                           |                                     | `beta_oauth_verifier()`                         |

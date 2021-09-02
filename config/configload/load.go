@@ -299,6 +299,15 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 		jwtSigningConfigs = append(jwtSigningConfigs, config)
 	}
+	for _, jwt := range couperConfig.Definitions.JWT {
+		config, err := lib.NewJWTSigningConfigFromJWT(jwt)
+		if err != nil {
+			return nil, errors.Configuration.Label(jwt.Name).With(err)
+		}
+		if config != nil {
+			jwtSigningConfigs = append(jwtSigningConfigs, config)
+		}
+	}
 
 	couperConfig.Context = evalContext.
 		WithJWTSigningConfigs(jwtSigningConfigs).

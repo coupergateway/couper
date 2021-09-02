@@ -15,6 +15,7 @@ import (
 
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -41,6 +42,41 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWT
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
 		TTL:                j.TTL,
+	}
+	return c, nil
+}
+
+func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
+	if j.SigningTTL == "" {
+		return nil, nil
+	}
+
+	var (
+		signingKey, signingKeyFile string
+	)
+	alg := acjwt.NewAlgorithm(j.SignatureAlgorithm)
+	if alg == acjwt.AlgorithmUnknown {
+		return nil, fmt.Errorf("algorithm is not supported")
+	}
+
+	if alg.IsHMAC() {
+		signingKey = j.Key
+		signingKeyFile = j.KeyFile
+	} else {
+		signingKey = j.SigningKey
+		signingKeyFile = j.SigningKeyFile
+	}
+	keyBytes, err := reader.ReadFromAttrFile("jwt signing key", signingKey, signingKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &JWTSigningConfig{
+		Claims:             j.Claims,
+		KeyBytes:           keyBytes,
+		Name:               j.Name,
+		SignatureAlgorithm: j.SignatureAlgorithm,
+		TTL:                j.SigningTTL,
 	}
 	return c, nil
 }
@@ -75,13 +111,13 @@ func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.Eval
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
 			if len(signingConfigs) == 0 {
-				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile definitions")
+				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt definitions")
 			}
 
 			label := args[0].AsString()
 			signingConfig := signingConfigs[label]
 			if signingConfig == nil {
-				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile for given label: %s", label)
+				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt for given label: %s", label)
 			}
 
 			mapClaims := jwt.MapClaims{}
