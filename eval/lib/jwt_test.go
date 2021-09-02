@@ -615,6 +615,23 @@ func TestJwtSignConfigError(t *testing.T) {
 			"configuration error: MyToken: jwt_signing_profile key: read error: required: configured attribute or file",
 		},
 		{
+			"Invalid ttl value",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "invalid"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: time: invalid duration \"invalid\"",
+		},
+		{
 			"jwt / missing signing key or key_file",
 			`
 			server "test" {
@@ -630,6 +647,23 @@ func TestJwtSignConfigError(t *testing.T) {
 			"MySelfSignedToken",
 			`{"sub": "12345"}`,
 			"configuration error: MySelfSignedToken: jwt signing key: read error: required: configured attribute or file",
+		},
+		{
+			"jwt / Invalid signing_ttl value",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					signing_key = "$3cRe4"
+					signing_ttl = "invalid"
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub": "12345"}`,
+			"configuration error: MySelfSignedToken: time: invalid duration \"invalid\"",
 		},
 	}
 
@@ -722,23 +756,6 @@ func TestJwtSignError(t *testing.T) {
 			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
 		},
 		{
-			"Invalid ttl value",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "HS256"
-					key = "$3cRe4"
-					ttl = "invalid"
-				}
-			}
-			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			"time: invalid duration ",
-		},
-		{
 			"argument claims no object",
 			`
 			server "test" {
@@ -775,23 +792,6 @@ func TestJwtSignError(t *testing.T) {
 			"NoProfileForThisLabel",
 			`{"sub":"12345"}`,
 			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
-		},
-		{
-			"jwt / Invalid signing_ttl value",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt "MySelfSignedToken" {
-					signature_algorithm = "HS256"
-					key = "$3cRe4"
-					signing_ttl = "invalid"
-				}
-			}
-			`,
-			"MySelfSignedToken",
-			`{"sub": "12345"}`,
-			"time: invalid duration ",
 		},
 	}
 

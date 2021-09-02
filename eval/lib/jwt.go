@@ -28,7 +28,7 @@ type JWTSigningConfig struct {
 	KeyBytes           []byte
 	Name               string
 	SignatureAlgorithm string
-	TTL                string
+	TTL                time.Duration
 }
 
 func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWTSigningConfig, error) {
@@ -36,12 +36,23 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWT
 		return nil, fmt.Errorf("algorithm is not supported")
 	}
 
+	var (
+		ttl      time.Duration
+		parseErr error
+	)
+	if j.TTL != "0" {
+		ttl, parseErr = time.ParseDuration(j.TTL)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+	}
+
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
 		KeyBytes:           j.KeyBytes,
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
-		TTL:                j.TTL,
+		TTL:                ttl,
 	}
 	return c, nil
 }
@@ -51,13 +62,25 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, nil
 	}
 
-	var (
-		signingKey, signingKeyFile string
-	)
 	alg := acjwt.NewAlgorithm(j.SignatureAlgorithm)
 	if alg == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm is not supported")
 	}
+
+	var (
+		ttl      time.Duration
+		parseErr error
+	)
+	if j.SigningTTL != "0" {
+		ttl, parseErr = time.ParseDuration(j.SigningTTL)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+	}
+
+	var (
+		signingKey, signingKeyFile string
+	)
 
 	if alg.IsHMAC() {
 		signingKey = j.Key
@@ -76,7 +99,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		KeyBytes:           keyBytes,
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
-		TTL:                j.SigningTTL,
+		TTL:                ttl,
 	}
 	return c, nil
 }
@@ -135,12 +158,8 @@ func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.Eval
 			for k, v := range defaultClaims {
 				mapClaims[k] = v
 			}
-			if signingConfig.TTL != "0" {
-				ttl, parseErr := time.ParseDuration(signingConfig.TTL)
-				if parseErr != nil {
-					return cty.StringVal(""), parseErr
-				}
-				mapClaims["exp"] = time.Now().Unix() + int64(ttl.Seconds())
+			if signingConfig.TTL != 0 {
+				mapClaims["exp"] = time.Now().Unix() + int64(signingConfig.TTL.Seconds())
 			}
 
 			// get claims from function argument
