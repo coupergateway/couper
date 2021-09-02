@@ -85,8 +85,8 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 					"host":   "localhost",
 					"origin": "localhost:8080",
 					"path":   "/",
+					"port":   "8080",
 				},
-				"port": "8080",
 			},
 		},
 		{
@@ -121,12 +121,12 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 					"path":   "/test",
 					"method": http.MethodGet,
 					"proto":  "http",
+					"port":   "8080",
 				},
 				"response": logrus.Fields{
 					"status": 200,
 				},
 				"method": http.MethodGet,
-				"port":   "8080",
 				"uid":    nil,
 				"status": 200,
 			},
