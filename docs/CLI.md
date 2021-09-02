@@ -11,6 +11,7 @@ Couper is build as binary called `couper` with the following commands:
 | `run`     | Start the server with given configuration file.                                                                                               |
 |           | _Note_: `run` options can also be configured with [settings](REFERENCE.md#settings-block) or related [environment variables](./../DOCKER.md). |
 | `help`    | Print the usage for the given command: `help run`                                                                                             |
+| `verify`  | Verify the syntax of the given configuration file.                                                                                            |
 | `version` | Print the current version and build information.                                                                                              |
 
 ## Global Options
