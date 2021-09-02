@@ -31,29 +31,51 @@ type JWTSigningConfig struct {
 	TTL                time.Duration
 }
 
-func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWTSigningConfig, error) {
-	if alg := acjwt.NewAlgorithm(j.SignatureAlgorithm); alg == acjwt.AlgorithmUnknown {
-		return nil, fmt.Errorf("algorithm is not supported")
-	}
-
+func checkData(ttl, signatureAlgorithm string) (time.Duration, acjwt.Algorithm, error) {
 	var (
-		ttl      time.Duration
+		dur      time.Duration
 		parseErr error
 	)
-	if j.TTL != "0" {
-		ttl, parseErr = time.ParseDuration(j.TTL)
+
+	alg := acjwt.NewAlgorithm(signatureAlgorithm)
+	if alg == acjwt.AlgorithmUnknown {
+		return dur, alg, fmt.Errorf("algorithm is not supported")
+	}
+
+	if ttl != "0" {
+		dur, parseErr = time.ParseDuration(ttl)
+		if parseErr != nil {
+			return dur, alg, parseErr
+		}
+	}
+
+	return dur, alg, nil
+}
+
+func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
+	var (
+		key      interface{}
+		parseErr error
+	)
+	key = keyBytes
+	if strings.HasPrefix(signatureAlgorithm, "RS") {
+		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
 		if parseErr != nil {
 			return nil, parseErr
 		}
 	}
+	return key, nil
+}
 
-	var key interface{}
-	key = j.KeyBytes
-	if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
-		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(j.KeyBytes)
-		if parseErr != nil {
-			return nil, parseErr
-		}
+func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWTSigningConfig, error) {
+	ttl, _, err := checkData(j.TTL, j.SignatureAlgorithm)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := getKey(j.KeyBytes, j.SignatureAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 
 	c := &JWTSigningConfig{
@@ -71,20 +93,9 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, nil
 	}
 
-	alg := acjwt.NewAlgorithm(j.SignatureAlgorithm)
-	if alg == acjwt.AlgorithmUnknown {
-		return nil, fmt.Errorf("algorithm is not supported")
-	}
-
-	var (
-		ttl      time.Duration
-		parseErr error
-	)
-	if j.SigningTTL != "0" {
-		ttl, parseErr = time.ParseDuration(j.SigningTTL)
-		if parseErr != nil {
-			return nil, parseErr
-		}
+	ttl, alg, err := checkData(j.SigningTTL, j.SignatureAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 
 	var (
@@ -103,13 +114,9 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, err
 	}
 
-	var key interface{}
-	key = keyBytes
-	if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
-		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
-		if parseErr != nil {
-			return nil, parseErr
-		}
+	key, err := getKey(keyBytes, j.SignatureAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 
 	c := &JWTSigningConfig{
