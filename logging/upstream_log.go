@@ -2,7 +2,6 @@ package logging
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -46,9 +45,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		"uid":    req.Context().Value(request.UID),
 		"method": req.Method,
 	}
-	if h, ok := u.next.(fmt.Stringer); ok {
-		fields["handler"] = h.String()
-	}
+
 	if u.config.TypeFieldKey != "" {
 		fields["type"] = u.config.TypeFieldKey
 	}
@@ -81,7 +78,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if req.Host != "" {
 		requestFields["origin"] = req.Host
-		requestFields["host"], fields["port"] = splitHostPort(req.Host)
+		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
 		if fields["port"] == "" {
 			delete(fields, "port")
 		}
