@@ -632,6 +632,23 @@ func TestJwtSignConfigError(t *testing.T) {
 			"configuration error: MyToken: time: invalid duration \"invalid\"",
 		},
 		{
+			"invalid PEM key format",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "RS256"
+					key = "invalid"
+					ttl = 0
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+		},
+		{
 			"jwt / missing signing key or key_file",
 			`
 			server "test" {
@@ -664,6 +681,23 @@ func TestJwtSignConfigError(t *testing.T) {
 			"MySelfSignedToken",
 			`{"sub": "12345"}`,
 			"configuration error: MySelfSignedToken: time: invalid duration \"invalid\"",
+		},
+		{
+			"jwt / invalid PEM key format",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "RS256"
+					signing_key = "invalid"
+					signing_ttl = "0"
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub": "12345"}`,
+			"configuration error: MySelfSignedToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
 		},
 	}
 
@@ -716,23 +750,6 @@ func TestJwtSignError(t *testing.T) {
 			"MyToken",
 			`{"sub": "12345"}`,
 			"missing jwt_signing_profile or jwt definitions",
-		},
-		{
-			"invalid PEM key format",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "RS256"
-					key = "invalid"
-					ttl = 0
-				}
-			}
-			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			"could not parse rsa private key from pem: MyToken",
 		},
 		{
 			"No profile for label",

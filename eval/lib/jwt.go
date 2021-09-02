@@ -25,7 +25,7 @@ var rsaParseError = &rsa.PrivateKey{}
 
 type JWTSigningConfig struct {
 	Claims             config.Claims
-	KeyBytes           []byte
+	Key                interface{}
 	Name               string
 	SignatureAlgorithm string
 	TTL                time.Duration
@@ -47,9 +47,18 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWT
 		}
 	}
 
+	var key interface{}
+	key = j.KeyBytes
+	if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
+		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(j.KeyBytes)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+	}
+
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
-		KeyBytes:           j.KeyBytes,
+		Key:                key,
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
 		TTL:                ttl,
@@ -94,9 +103,18 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, err
 	}
 
+	var key interface{}
+	key = keyBytes
+	if strings.HasPrefix(j.SignatureAlgorithm, "RS") {
+		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+	}
+
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
-		KeyBytes:           keyBytes,
+		Key:                key,
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
 		TTL:                ttl,
@@ -106,18 +124,8 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 
 func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
 	signingConfigs := make(map[string]*JWTSigningConfig)
-	rsaKeys := make(map[string]*rsa.PrivateKey)
-
 	for _, jsc := range jwtSigningConfigs {
 		signingConfigs[jsc.Name] = jsc
-		if strings.HasPrefix(jsc.SignatureAlgorithm, "RS") {
-			key, err := jwt.ParseRSAPrivateKeyFromPEM(jsc.KeyBytes)
-			if err != nil {
-				rsaKeys[jsc.Name] = rsaParseError
-				continue
-			}
-			rsaKeys[jsc.Name] = key
-		}
 	}
 
 	return function.New(&function.Spec{
@@ -177,17 +185,7 @@ func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.Eval
 				mapClaims[k] = v
 			}
 
-			var key interface{}
-			if rsaKey, exist := rsaKeys[signingConfig.Name]; exist {
-				if rsaKey == rsaParseError {
-					return cty.StringVal(""), fmt.Errorf("could not parse rsa private key from pem: %s", signingConfig.Name)
-				}
-				key = rsaKey
-			} else {
-				key = signingConfig.KeyBytes
-			}
-
-			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, key, mapClaims)
+			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, mapClaims)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
