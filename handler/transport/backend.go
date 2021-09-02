@@ -13,6 +13,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
@@ -22,6 +24,7 @@ import (
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
+	"github.com/avenga/couper/telemetry"
 	"github.com/avenga/couper/utils"
 )
 
@@ -65,9 +68,20 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
+	traceOpts := []trace.SpanStartOption{
+		trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", req)...),
+		trace.WithAttributes(telemetry.KeyBackend.String(b.name)),
+	}
+	spanName := "backend"
+	if b.name != "" {
+		spanName += "." + b.name
+	}
+	ctx, span := telemetry.NewSpanFromContext(req.Context(), spanName, traceOpts...)
+	defer span.End()
+
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {
+	if err := eval.ApplyRequestContext(ctx, b.context, req); err != nil {
 		return nil, err
 	}
 
@@ -81,6 +95,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.URL.Host = tc.Origin
 	req.URL.Scheme = tc.Scheme
 	req.Host = tc.Hostname
+
+	span.SetAttributes(telemetry.KeyOrigin.String(tc.Origin))
+	span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(req)...)
 
 	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)

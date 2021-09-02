@@ -44,6 +44,8 @@ func NewRun(ctx context.Context) *Run {
 	set.Var(&AcceptForwardedValue{settings: &settings}, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
 	set.Var(&settings.TLSDevProxy, "https-dev-proxy", "-https-dev-proxy 8443:8080,9443:9000")
 	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
+	set.BoolVar(&settings.TelemetryTraces, "telemetry-traces", settings.TelemetryTraces, "-telemetry-traces")
+	set.BoolVar(&settings.TelemetryMetrics, "telemetry-metrics", settings.TelemetryMetrics, "-telemetry-metrics")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.RequestIDAcceptFromHeader, "request-id-accept-from-header", settings.RequestIDAcceptFromHeader, "-request-id-accept-from-header X-UID")
 	set.StringVar(&settings.RequestIDBackendHeader, "request-id-backend-header", settings.RequestIDBackendHeader, "-request-id-backend-header Couper-Request-ID")
@@ -153,11 +155,13 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 	}
 
-	metrics, err := telemetry.NewMetrics(nil, logEntry)
-	if err != nil {
-		return err
-	}
-	go metrics.ListenAndServe()
+	telog := logEntry.WithField("type", "couper_telemetry")
+	telemetry.InitExporter(r.context, &telemetry.Options{
+		Exporter:    "otlp",
+		Metrics:     r.settings.TelemetryMetrics,
+		ServiceName: "couper",
+		Traces:      r.settings.TelemetryTraces,
+	}, telog)
 
 	listenCmdShutdown()
 
@@ -165,8 +169,6 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		_ = s.Close()
 		logEntry.Infof("Server closed: %s", s.Addr)
 	}
-
-	_ = metrics.Close()
 
 	return nil
 }

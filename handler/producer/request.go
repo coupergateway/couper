@@ -9,11 +9,14 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/telemetry"
 )
 
 // Request represents the producer <Request> object.
@@ -29,6 +32,9 @@ type Requests []*Request
 func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
+
+	producerCtx, rootSpan := telemetry.NewSpanFromContext(ctx, "requests", trace.WithSpanKind(trace.SpanKindProducer))
+	defer rootSpan.End()
 
 	defer func() {
 		if rp := recover(); rp != nil {
@@ -46,29 +52,30 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	updated := evalctx.WithClientRequest(req)
 
 	for _, or := range r {
-		outCtx := withRoundTripName(ctx, or.Name)
+		// span end by result reader
+		outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(producerCtx, or.Name), or.Name, trace.WithSpanKind(trace.SpanKindClient))
 
 		bodyContent, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
 		if diags.HasErrors() {
-			sendResult(ctx, results, &Result{Err: diags})
+			sendResult(outCtx, results, &Result{Err: diags})
 			continue
 		}
 
 		method, err := content.GetAttribute(updated.HCLContext(), bodyContent, "method")
 		if err != nil {
-			sendResult(ctx, results, &Result{Err: err})
+			sendResult(outCtx, results, &Result{Err: err})
 			continue
 		}
 
 		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), bodyContent)
 		if err != nil {
-			sendResult(ctx, results, &Result{Err: err})
+			sendResult(outCtx, results, &Result{Err: err})
 			continue
 		}
 
 		url, err := content.GetAttribute(updated.HCLContext(), bodyContent, "url")
 		if err != nil {
-			sendResult(ctx, results, &Result{Err: err})
+			sendResult(outCtx, results, &Result{Err: err})
 			continue
 		}
 
@@ -88,7 +95,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		// see <go roundtrip()> at the end of current for-loop.
 		outreq, err := http.NewRequest(strings.ToUpper(method), "", nil)
 		if err != nil {
-			sendResult(ctx, results, &Result{Err: err})
+			sendResult(outCtx, results, &Result{Err: err})
 			continue
 		}
 
@@ -101,9 +108,11 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		*outreq = *outreq.WithContext(outCtx)
 		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
 		if err != nil {
-			sendResult(ctx, results, &Result{Err: err})
+			sendResult(outCtx, results, &Result{Err: err})
 			continue
 		}
+
+		span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(outreq)...)
 
 		wg.Add(1)
 		go roundtrip(or.Backend, outreq, results, wg)
