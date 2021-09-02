@@ -21,19 +21,38 @@ const FnJWTSign = "jwt_sign"
 
 var rsaParseError = &rsa.PrivateKey{}
 
-func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx *hcl.EvalContext) function.Function {
-	signingProfiles := make(map[string]*config.JWTSigningProfile)
+type JWTSigningConfig struct {
+	Claims             config.Claims
+	KeyBytes           []byte
+	Name               string
+	SignatureAlgorithm string
+	TTL                string
+}
+
+func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) *JWTSigningConfig {
+	c := &JWTSigningConfig{
+		Claims:             j.Claims,
+		KeyBytes:           j.KeyBytes,
+		Name:               j.Name,
+		SignatureAlgorithm: j.SignatureAlgorithm,
+		TTL:                j.TTL,
+	}
+	return c
+}
+
+func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
+	signingConfigs := make(map[string]*JWTSigningConfig)
 	rsaKeys := make(map[string]*rsa.PrivateKey)
 
-	for _, sp := range jwtSigningProfiles {
-		signingProfiles[sp.Name] = sp
-		if strings.HasPrefix(sp.SignatureAlgorithm, "RS") {
-			key, err := jwt.ParseRSAPrivateKeyFromPEM(sp.KeyBytes)
+	for _, jsc := range jwtSigningConfigs {
+		signingConfigs[jsc.Name] = jsc
+		if strings.HasPrefix(jsc.SignatureAlgorithm, "RS") {
+			key, err := jwt.ParseRSAPrivateKeyFromPEM(jsc.KeyBytes)
 			if err != nil {
-				rsaKeys[sp.Name] = rsaParseError
+				rsaKeys[jsc.Name] = rsaParseError
 				continue
 			}
-			rsaKeys[sp.Name] = key
+			rsaKeys[jsc.Name] = key
 		}
 	}
 
@@ -50,13 +69,13 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			if len(signingProfiles) == 0 {
+			if len(signingConfigs) == 0 {
 				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile definitions")
 			}
 
 			label := args[0].AsString()
-			signingProfile := signingProfiles[label]
-			if signingProfile == nil {
+			signingConfig := signingConfigs[label]
+			if signingConfig == nil {
 				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile for given label: %s", label)
 			}
 
@@ -64,8 +83,8 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			var defaultClaims, argumentClaims map[string]interface{}
 
 			// get claims from signing profile
-			if signingProfile.Claims != nil {
-				c, diags := seetie.ExpToMap(confCtx, signingProfile.Claims)
+			if signingConfig.Claims != nil {
+				c, diags := seetie.ExpToMap(confCtx, signingConfig.Claims)
 				if diags.HasErrors() {
 					return cty.StringVal(""), diags
 				}
@@ -75,8 +94,8 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			for k, v := range defaultClaims {
 				mapClaims[k] = v
 			}
-			if signingProfile.TTL != "0" {
-				ttl, parseErr := time.ParseDuration(signingProfile.TTL)
+			if signingConfig.TTL != "0" {
+				ttl, parseErr := time.ParseDuration(signingConfig.TTL)
 				if parseErr != nil {
 					return cty.StringVal(""), parseErr
 				}
@@ -99,16 +118,16 @@ func NewJwtSignFunction(jwtSigningProfiles []*config.JWTSigningProfile, confCtx 
 			}
 
 			var key interface{}
-			if rsaKey, exist := rsaKeys[signingProfile.Name]; exist {
+			if rsaKey, exist := rsaKeys[signingConfig.Name]; exist {
 				if rsaKey == rsaParseError {
-					return cty.StringVal(""), fmt.Errorf("could not parse rsa private key from pem: %s", signingProfile.Name)
+					return cty.StringVal(""), fmt.Errorf("could not parse rsa private key from pem: %s", signingConfig.Name)
 				}
 				key = rsaKey
 			} else {
-				key = signingProfile.KeyBytes
+				key = signingConfig.KeyBytes
 			}
 
-			tokenString, err := CreateJWT(signingProfile.SignatureAlgorithm, key, mapClaims)
+			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, key, mapClaims)
 			if err != nil {
 				return cty.StringVal(""), err
 			}

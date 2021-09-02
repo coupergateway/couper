@@ -40,13 +40,13 @@ func (m ContextMap) Merge(other ContextMap) ContextMap {
 }
 
 type Context struct {
-	bufferOption BufferOption
-	eval         *hcl.EvalContext
-	inner        context.Context
-	memorize     map[string]interface{}
-	oauth2       []config.OAuth2Authorization
-	profiles     []*config.JWTSigningProfile
-	saml         []*config.SAML
+	bufferOption      BufferOption
+	eval              *hcl.EvalContext
+	inner             context.Context
+	memorize          map[string]interface{}
+	oauth2            []config.OAuth2Authorization
+	jwtSigningConfigs []*lib.JWTSigningConfig
+	saml              []*config.SAML
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
@@ -94,13 +94,13 @@ func (c *Context) Value(key interface{}) interface{} {
 
 func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx := &Context{
-		bufferOption: c.bufferOption,
-		eval:         c.cloneEvalContext(),
-		inner:        c.inner,
-		memorize:     make(map[string]interface{}),
-		oauth2:       c.oauth2[:],
-		profiles:     c.profiles[:],
-		saml:         c.saml[:],
+		bufferOption:      c.bufferOption,
+		eval:              c.cloneEvalContext(),
+		inner:             c.inner,
+		memorize:          make(map[string]interface{}),
+		oauth2:            c.oauth2[:],
+		jwtSigningConfigs: c.jwtSigningConfigs[:],
+		saml:              c.saml[:],
 	}
 
 	if rc := req.Context(); rc != nil {
@@ -158,13 +158,13 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 
 func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx := &Context{
-		bufferOption: c.bufferOption,
-		eval:         c.cloneEvalContext(),
-		inner:        c.inner,
-		memorize:     c.memorize,
-		oauth2:       c.oauth2[:],
-		profiles:     c.profiles[:],
-		saml:         c.saml[:],
+		bufferOption:      c.bufferOption,
+		eval:              c.cloneEvalContext(),
+		inner:             c.inner,
+		memorize:          c.memorize,
+		oauth2:            c.oauth2[:],
+		jwtSigningConfigs: c.jwtSigningConfigs[:],
+		saml:              c.saml[:],
 	}
 	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
 
@@ -230,11 +230,11 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	return ctx
 }
 
-// WithJWTProfiles initially setup the lib.FnJWTSign function.
-func (c *Context) WithJWTProfiles(profiles []*config.JWTSigningProfile) *Context {
-	c.profiles = profiles
-	if c.profiles == nil {
-		c.profiles = make([]*config.JWTSigningProfile, 0)
+// WithJWTSigningConfigs initially sets up the lib.FnJWTSign function.
+func (c *Context) WithJWTSigningConfigs(configs []*lib.JWTSigningConfig) *Context {
+	c.jwtSigningConfigs = configs
+	if c.jwtSigningConfigs == nil {
+		c.jwtSigningConfigs = make([]*lib.JWTSigningConfig, 0)
 	}
 	c.updateFunctions()
 	return c
@@ -294,7 +294,7 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 
 // updateFunctions recreates the listed functions with the current evaluation context.
 func (c *Context) updateFunctions() {
-	jwtfn := lib.NewJwtSignFunction(c.profiles, c.eval)
+	jwtfn := lib.NewJwtSignFunction(c.jwtSigningConfigs, c.eval)
 	c.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 

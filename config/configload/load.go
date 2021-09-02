@@ -19,6 +19,7 @@ import (
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
 )
 
 const (
@@ -290,8 +291,13 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		saml.MetadataBytes = metadata
 	}
 
+	jwtSigningConfigs := make([]*lib.JWTSigningConfig, 0)
+	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
+		jwtSigningConfigs = append(jwtSigningConfigs, lib.NewJWTSigningConfigFromJWTSigningProfile(profile))
+	}
+
 	couperConfig.Context = evalContext.
-		WithJWTProfiles(couperConfig.Definitions.JWTSigningProfile).
+		WithJWTSigningConfigs(jwtSigningConfigs).
 		WithOAuth2AC(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
