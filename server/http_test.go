@@ -61,7 +61,7 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_test.hcl")
+	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_test.hcl", false)
 	helper.Must(err)
 	conf.Settings.DefaultPort = 0
 
@@ -154,7 +154,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_fileserving.hcl")
+	conf, err := configload.LoadBytes(confBytes.Bytes(), "conf_fileserving.hcl", false)
 	helper.Must(err)
 
 	error404Content := []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>")

@@ -24,6 +24,7 @@ func Test_realmain(t *testing.T) {
 		wantLog string
 		want    int
 	}{
+		{"verify -f w/o file", []string{"couper", "verify", "-f", base + "/10_couper.hcl"}, nil, `10_couper.hcl:1,8-9: Missing name for server; All server blocks must have 1 labels (name).`, 1},
 		{"common log format & info log level /wo file", []string{"couper", "run"}, nil, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
 		{"common log format via env /wo file", []string{"couper", "run", "-log-format", "json"}, []string{"COUPER_LOG_FORMAT=common"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
 		{"info log level via env /wo file", []string{"couper", "run", "-log-level", "debug"}, []string{"COUPER_LOG_LEVEL=info"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
@@ -52,6 +53,9 @@ func Test_realmain(t *testing.T) {
 				t.Errorf("realmain() = %v, want %v", got, tt.want)
 			}
 			env.OsEnviron = os.Environ
+
+			// e := localHook.LastEntry()
+			// t.Errorf("%#v", e.Message)
 
 			entry, _ := localHook.LastEntry().String()
 			//println(entry)

@@ -86,7 +86,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
 			h := test.New(st)
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				if tt.wantErr {
 					return

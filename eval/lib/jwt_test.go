@@ -332,7 +332,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -414,7 +414,7 @@ func TestJwtSignDynamic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			helper := test.New(t)
 
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			helper.Must(err)
 
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
@@ -589,7 +589,7 @@ func TestJwtSignError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
 			helper := test.New(st)
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			helper.Must(err)
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
 			helper.Must(err)

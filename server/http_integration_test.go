@@ -79,7 +79,7 @@ func teardown() {
 	testBackend.Close()
 }
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file), false)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -107,7 +107,7 @@ func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]int
 }
 
 func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl")
+	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl", false)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -2829,7 +2829,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl", false)
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
