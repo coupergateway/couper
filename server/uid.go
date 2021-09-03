@@ -7,10 +7,12 @@ import (
 
 	"github.com/rs/xid"
 	uuid "github.com/satori/go.uuid"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/telemetry"
 )
 
 var regexUID = regexp.MustCompile(`^[a-zA-Z0-9@=/+-]{12,64}$`)
@@ -58,6 +60,9 @@ func (s *HTTPServer) setUID(rw http.ResponseWriter, req *http.Request) error {
 	uid, err := s.getUID(req)
 
 	ctx := context.WithValue(req.Context(), request.UID, uid)
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(telemetry.KeyUID.String(uid))
 
 	if h := s.settings.RequestIDBackendHeader; h != "" {
 		req.Header.Set(h, uid)
