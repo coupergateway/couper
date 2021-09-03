@@ -348,7 +348,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				subT.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
-			tokenResBytes, _ := io.ReadAll(res.Body)
+			tokenResBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
 			var jData map[string]interface{}
 			json.Unmarshal(tokenResBytes, &jData)
 			if params, ok := jData["form_params"]; ok {
