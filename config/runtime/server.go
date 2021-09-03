@@ -558,9 +558,13 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
+		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		if err != nil {
+			return nil, err
+		}
 		list = append(
 			list,
-			ac.NewItem(acName, m[acName].Control, newErrorHandler(ctx, opts, log, m, acName)),
+			ac.NewItem(acName, m[acName].Control, eh),
 		)
 	}
 
@@ -571,7 +575,7 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 }
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, references ...string) http.Handler {
+	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
 		for _, h := range defs[ref].ErrorHandler {
@@ -595,7 +599,10 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 					epConf.Response = &config.Response{Remain: emptyBody}
 				}
 
-				epOpts, _ := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
+				epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
+				if err != nil {
+					return nil, err
+				}
 				if epOpts.Error == nil || h.ErrorFile == "" {
 					epOpts.Error = opts.epOpts.Error
 				}
@@ -614,7 +621,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 	}
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error)
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
 }
 
 func setRoutesFromHosts(
