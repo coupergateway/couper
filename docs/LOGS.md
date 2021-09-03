@@ -1,21 +1,30 @@
-# Log Functionality Couper
+- [Introduction](#introduction)
+  - [Log Types](#log-types)
+  - [Fields](#fields)
+    - [Access Fields](#access-fields)
+    - [TLS Access Fields](#tls-access-fields)
+    - [Backend Fields](#backend-fields)
+    - [Daemon Fields](#daemon-fields)
+  - [Features](#features)
 
-__Logs__ are the information being printed in the console upon the execution of __Couper__. There are a few different [Log Types](#log-types) and several different [Fields](#fields) containing useful information given in said __Logs__ to be remembered, but you can adjust the __Logs'__ appearance and verbosity with a variety of [Features](#features) to make sure that the information you seek is available as easily as possible.
+# Introduction
 
-These __Logs__ are still _subject to change_ however. We aspire to make __Couper__ as stable as possible and that includes these __Logs__, so until we believe to have achieved that goal you should expect to see some changes.
+_Logs_ are the information being printed in the console upon the execution of Couper. There are a few different [Log Types](#log-types) and several different [Fields](#fields) containing useful information given in said _Logs_ to be remembered, but you can adjust the _Logs'_ appearance and verbosity with a variety of [Features](#features) to make sure that the information you seek is available as easily as possible.
+
+These _Logs_ are however still subject to change. We aspire to make Couper as stable as possible and that includes the _Logs_, so until we believe to have achieved that goal you should expect to see some changes.
 
 ## Log Types
 
-| Type                  | Description                                                                                                                                   |
-| :-------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
-| `couper_access`       | Provides information about the frontend side of things. For information about its [Fields](#fields), see [Access Fields](#access-fields).     |
-| `couper_access_tls`   | For information about its [Fields](#fields), see [TLS Access Fields](#tls-access-fields).                                                     |
-| `couper_backend`      | Provides information about the backend side of things. For information about its [Fields](#fields), see [Backend Fields](#backend-fields).    |
-| `couper_daemon`       | Provides information about the start-up and shut-down of __Couper__ in the form of multiple __Logs__. It is here where the main purpose of the `message` [Field](#fields) lies, as each printed __Log__ of this type will contain a `message` entry regarding either the start-up or shut-down of __Couper__. For information about its [Fields](#fields), see [Daemon Fields](#daemon-fields). |
+| Type                  | Description                                                                                                                                       |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `couper_access`       | Provides information about the frontend side of things. For information about its [Fields](#fields), see [Access Fields](#access-fields).         |
+| `couper_access_tls`   | Provides information about connection to TLS proxies. For information about its [Fields](#fields), see [TLS Access Fields](#tls-access-fields).   |
+| `couper_backend`      | Provides information about the backend side of things. For information about its [Fields](#fields), see [Backend Fields](#backend-fields).        |
+| `couper_daemon`       | Provides information about the start-up and shut-down of Couper in the form of multiple _Logs_. It is here where the main purpose of the `message` [Field](#fields) lies, as each printed _Log_ of this type will contain a `message` entry regarding either the start-up or shut-down of Couper. For information about its [Fields](#fields), see [Daemon Fields](#daemon-fields). |
 
 ## Fields
 
-Given the large amount of information contained in several __Logs__, see [Features](#features) to change the format or level of intricacy with which __Logs__ are printed.
+Given the large amount of information contained in several _Logs_, see [Features](#features) to change the format or level of intricacy with which _Logs_ are printed.
 
 ### Common Fields
 
@@ -45,7 +54,7 @@ These are found in the [Log Type](#log-types) `couper_access` in addition to the
 | `"request": {`            | field regarding request information |
 | &nbsp;&nbsp;`"bytes"`     | body size of request |
 | &nbsp;&nbsp;`"headers"`   | field regarding keys and values originating from configured keys/header names |
-| &nbsp;&nbsp;`"host"`      | f |
+| &nbsp;&nbsp;`"host"`      | . |
 | &nbsp;&nbsp;`"method"`    | mirroring top level |
 | &nbsp;&nbsp;`"origin"`    | . | 
 | &nbsp;&nbsp;`"path"`      | . |
@@ -110,12 +119,19 @@ These are the [Fields](#fields) found in the [Log Type](#log-types) `couper_back
 
 These are found in the [Log Type](#log-types) `couper_daemon` in addition to the [Common Fields](#common-fields).
 
-| Name                      | Description   |
-| :------------------------ | :------------ |
-|                           |               |
+| Name                          | Description   |
+| :---------------------------- | :------------ |
+| `"deadline"`                  | . |
+| `"delay"`                     | . |
+| `"watch": {`                  | . |
+| &nbsp;&nbsp;`"max-retries",`  | . |
+| &nbsp;&nbsp;`"retry-delay" }` | . |
 
 ## Features
 
-| Feature   | Description   |
-| :-------- | :------------ |
-|           |               |
+| Feature       | Default   | Description                                                                               |
+| :------------ | :-------- | :---------------------------------------------------------------------------------------- |
+| `log-format`  | `common`  | Can be set to `json` output format.                                                       |
+| `log-level`   | `info`    | Set the log-level to one of: `info`, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`. |
+| `log-pretty`  | `false`   | Option for `json` log format which pretty prints with basic key coloring.                 |
+| `watch`       | `false`   | Watch for configuration file changes and reload on modifications.                         |
