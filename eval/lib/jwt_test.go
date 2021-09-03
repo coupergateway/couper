@@ -699,6 +699,36 @@ func TestJwtSignConfigError(t *testing.T) {
 			`{"sub": "12345"}`,
 			"configuration error: MySelfSignedToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
 		},
+		{
+			"jwt_signing_profile and jwt with same label",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					signing_ttl = "1h"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+				jwt_signing_profile "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"configuration error: jwt_signing_profile or jwt with label MySelfSignedToken already defined",
+		},
 	}
 
 	for _, tt := range tests {

@@ -291,13 +291,13 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		saml.MetadataBytes = metadata
 	}
 
-	jwtSigningConfigs := make([]*lib.JWTSigningConfig, 0)
+	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig, 0)
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
 		config, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
 		}
-		jwtSigningConfigs = append(jwtSigningConfigs, config)
+		jwtSigningConfigs[profile.Name] = config
 	}
 	for _, jwt := range couperConfig.Definitions.JWT {
 		config, err := lib.NewJWTSigningConfigFromJWT(jwt)
@@ -305,7 +305,10 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			return nil, errors.Configuration.Label(jwt.Name).With(err)
 		}
 		if config != nil {
-			jwtSigningConfigs = append(jwtSigningConfigs, config)
+			if _, exists := jwtSigningConfigs[jwt.Name]; exists {
+				return nil, errors.Configuration.Messagef("jwt_signing_profile or jwt with label %s already defined", jwt.Name)
+			}
+			jwtSigningConfigs[jwt.Name] = config
 		}
 	}
 

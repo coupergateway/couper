@@ -352,6 +352,8 @@ required _label_.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
+*Note:* A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
+
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `signing_key`       |string|-|Private key (in PEM format) for `RS*` variants.|-|-|

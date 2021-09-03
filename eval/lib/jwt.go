@@ -129,12 +129,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 	return c, nil
 }
 
-func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
-	signingConfigs := make(map[string]*JWTSigningConfig)
-	for _, jsc := range jwtSigningConfigs {
-		signingConfigs[jsc.Name] = jsc
-	}
-
+func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -148,12 +143,12 @@ func NewJwtSignFunction(jwtSigningConfigs []*JWTSigningConfig, confCtx *hcl.Eval
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			if len(signingConfigs) == 0 {
+			if len(jwtSigningConfigs) == 0 {
 				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt definitions")
 			}
 
 			label := args[0].AsString()
-			signingConfig := signingConfigs[label]
+			signingConfig := jwtSigningConfigs[label]
 			if signingConfig == nil {
 				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt for given label: %s", label)
 			}

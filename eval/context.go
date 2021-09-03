@@ -45,7 +45,7 @@ type Context struct {
 	inner             context.Context
 	memorize          map[string]interface{}
 	oauth2            []config.OAuth2Authorization
-	jwtSigningConfigs []*lib.JWTSigningConfig
+	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
 }
 
@@ -99,7 +99,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		inner:             c.inner,
 		memorize:          make(map[string]interface{}),
 		oauth2:            c.oauth2[:],
-		jwtSigningConfigs: c.jwtSigningConfigs[:],
+		jwtSigningConfigs: c.jwtSigningConfigs,
 		saml:              c.saml[:],
 	}
 
@@ -163,7 +163,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		inner:             c.inner,
 		memorize:          c.memorize,
 		oauth2:            c.oauth2[:],
-		jwtSigningConfigs: c.jwtSigningConfigs[:],
+		jwtSigningConfigs: c.jwtSigningConfigs,
 		saml:              c.saml[:],
 	}
 	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
@@ -231,10 +231,10 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 }
 
 // WithJWTSigningConfigs initially sets up the lib.FnJWTSign function.
-func (c *Context) WithJWTSigningConfigs(configs []*lib.JWTSigningConfig) *Context {
+func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig) *Context {
 	c.jwtSigningConfigs = configs
 	if c.jwtSigningConfigs == nil {
-		c.jwtSigningConfigs = make([]*lib.JWTSigningConfig, 0)
+		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig, 0)
 	}
 	c.updateFunctions()
 	return c
