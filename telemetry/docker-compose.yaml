@@ -46,6 +46,8 @@ services:
 #      - OTA_EXPORTER_ZIPKIN_SERVICE_NAME
       - USER=dev-docker # fromEnv filled attrs
       - COUPER_WATCH=true
+      - COUPER_TELEMETRY_TRACES=true
+      - COUPER_TELEMETRY_METRICS=true
     ports:
       - "8080:8080"
     depends_on:
