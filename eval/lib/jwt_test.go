@@ -582,6 +582,36 @@ func TestJwtSignConfigError(t *testing.T) {
 		wantErr  string
 	}{
 		{
+			"multiple jwt_signing_profile blocks with same label",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"configuration error: jwt_signing_profile block with label MyToken already defined",
+		},
+		{
 			"unsupported signature algorithm",
 			`
 			server "test" {
