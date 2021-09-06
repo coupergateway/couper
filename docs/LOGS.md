@@ -2,7 +2,6 @@
   - [Log Types](#log-types)
   - [Fields](#fields)
     - [Access Fields](#access-fields)
-    - [TLS Access Fields](#tls-access-fields)
     - [Backend Fields](#backend-fields)
     - [Daemon Fields](#daemon-fields)
   - [Features](#features)
@@ -18,9 +17,9 @@ These _Logs_ are however still subject to change. We aspire to make Couper as st
 | Type                | Description                                                                                                                                     |
 | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `couper_access`     | Provides information about the frontend side of things. For information about its [Fields](#fields), see [Access Fields](#access-fields).       |
-| `couper_access_tls` | Provides information about connection to TLS proxies. For information about its [Fields](#fields), see [TLS Access Fields](#tls-access-fields). |
+| `couper_access_tls` | Provides information about connection to TLS proxies. For information about its [Fields](#fields), see [Access Fields](#access-fields). |
 | `couper_backend`    | Provides information about the backend side of things. For information about its [Fields](#fields), see [Backend Fields](#backend-fields).      |
-| `couper_daemon`     | Provides information about the start-up and shut-down of Couper in the form of multiple _Logs_. It is here where the main purpose of the `message` [Field](#fields) lies, as each printed _Log_ of this type will contain a `message` entry regarding either the start-up or shut-down of Couper. For information about its [Fields](#fields), see [Daemon Fields](#daemon-fields).                                                                                                                         |
+| `couper_daemon`     | Provides background information about the execution of Couper. It is here where the main purpose of the `message` [Field](#fields) lies, as each printed _Log_ of this type will contain a `message` entry containing a description of the current actions of Couper. For information about its [Fields](#fields), see [Daemon Fields](#daemon-fields).                                                                                                                                                       |
 
 ## Fields
 
@@ -41,7 +40,7 @@ These are a part of all [Log Types](#log-types) and are hence mentioned seperate
 
 ### Access Fields
 
-These are found in the [Log Type](#log-types) `couper_access` in addition to the [Common Fields](#common-fields).
+These are found in the [Log Types](#log-types) `couper_access` and `couper_access_tls` in addition to the [Common Fields](#common-fields).
 
 | Name                      | Description                                                                                                                  |
 | :------------------------ | :--------------------------------------------------------------------------------------------------------------------------- |
@@ -60,8 +59,8 @@ These are found in the [Log Type](#log-types) `couper_access` in addition to the
 | &nbsp;&nbsp;`"path"`      | path of request                                                                                                              |
 | &nbsp;&nbsp;`"proto"`     | protocol of request                                                                                                          |
 | &nbsp;&nbsp;`"status"`    | status of request                                                                                                            | 
-| &nbsp;&nbsp;`"tls" }`     | TLS used `true`or `false`                                                                                                    |
-| `"response": {`           | field regarding response info                                                                                                |
+| &nbsp;&nbsp;`"tls" }`     | TLS used `true` or `false`                                                                                                   |
+| `"response": {`           | field regarding response information                                                                                         |
 | &nbsp;&nbsp;`"bytes"`     | body size of response                                                                                                        |
 | &nbsp;&nbsp;`"headers" }` | field regarding keys and values originating from configured keys/header names                                                |
 | `"server"`                | server name (defined in couper file)                                                                                         |
@@ -71,14 +70,6 @@ These are found in the [Log Type](#log-types) `couper_access` in addition to the
 | `“uid"`                   | unique request id configurable in [Settings](../docs/REFERENCE.md#settings-block)                                            |
 | `"url"`                   | complete url (`<proto>://<host>:<port><path>` or `<proto>://<origin><path>`)                                                 |
 
-### TLS Access Fields
-
-These are found in the [Log Type](#log-types) `couper_access_tls` in addition to the [Common Fields](#common-fields).
-
-| Name                      | Description   |
-| :------------------------ | :------------ |
-| .                         | . |
-
 ### Backend Fields
 
 These are the [Fields](#fields) found in the [Log Type](#log-types) `couper_backend` in addition to the [Common Fields](#common-fields).
@@ -86,34 +77,34 @@ These are the [Fields](#fields) found in the [Log Type](#log-types) `couper_back
 | Name                     | Description                                                                                                                  |
 | :----------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
 | `"auth_user"`            | backend request basic auth username (if provided)                                                                            |
-| `"backend"`              | name can be set, “default” otherwise                                                                                         |
+| `"backend"`              | configured name, `default` if not provided                                                                                   |
 | `"method"`               | http request method, see [Mozilla Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
-| `"proxy"`                | . |
+| `"proxy"`                | used system proxy url (if configured), see [Proxy Block](../docs/REFERENCE.md#proxy-block)                                   |
 | `"request": {`           | field regarding request information                                                                                          |
 | &nbsp;&nbsp;`"bytes"`    | body size of request                                                                                                         |
 | &nbsp;&nbsp;`"headers"`  | field regarding keys and values originating from configured keys/header names                                                |
 | &nbsp;&nbsp;`"host"`     | host of request                                                                                                              |
 | &nbsp;&nbsp;`"method"`   | http request method, see [Mozilla Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
-| &nbsp;&nbsp;`"name"`     | . | 
+| &nbsp;&nbsp;`"name"`     | configured request name, `default` if not provided                                                                           | 
 | &nbsp;&nbsp;`"origin"`   | origin of request                                                                                                            | 
 | &nbsp;&nbsp;`"path"`     | path of request                                                                                                              |
 | &nbsp;&nbsp;`"port"`     | current port accepting request                                                                                               |
-| &nbsp;&nbsp;`"proto"`    | protocol of request                                                                                                          |
+| &nbsp;&nbsp;`"proto" }`  | protocol of request                                                                                                          |
 | `"response": {`          | field regarding response information                                                                                         |
 | &nbsp;&nbsp;`"headers"`  | field regarding keys and values originating from configured keys/header names                                                |
 | &nbsp;&nbsp;`"status" }` | status of response                                                                                                           |
 | `"status"`               | status of response                                                                                                           | 
 | `"timings": {`           | field regarding timing                                                                                                       |
 | &nbsp;&nbsp;`"dns"`      | time taken by dns                                                                                                            |
-| &nbsp;&nbsp;`"tcp"`      | time taken between attempting and establishing connection                                                                    |
+| &nbsp;&nbsp;`"tcp"`      | time taken between attempting and establishing tcp connection                                                                |
 | &nbsp;&nbsp;`"tls"`      | time taken between attempt and success at tls handshake                                                                      |
 | &nbsp;&nbsp;`"total"`    | total time taken                                                                                                             | 
 | &nbsp;&nbsp;`"ttfb" }`   | time to first byte/between establishing connection and receiving first byte                                                  |
-| `"token_request"`        | . |
+| `"token_request"`        | entry regarding request for token                                                                                            |
 | `"token_request_retry"`  | how many attempts at `token_request`                                                                                         |
-| `"uid"`                  | . |
-| `"url"`                  | . |
-| `"validation"`           | validation result for open api (link to config pending) |
+| `"uid"`                  | unique request id configurable in [Settings](../docs/REFERENCE.md#settings-block)                                            |
+| `"url"`                  | complete url (`<proto>://<host>:<port><path>` or `<proto>://<origin><path>`)                                                 |
+| `"validation"`           | validation result for open api, see [OpenAPI Block](../docs/REFERENCE.md#openapi-block)                                      |
 
 ### Daemon Fields
 
@@ -121,15 +112,15 @@ These are found in the [Log Type](#log-types) `couper_daemon` in addition to the
 
 | Name                          | Description                                                                                                                |
 | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| `"deadline"`                  | . |
-| `"delay"`                     | . |
+| `"deadline"`                  | shutdown parameter, see [Health-Check](../docs/REFERENCE.md#health-check)                                                  |
+| `"delay"`                     | shutdown parameter, see [Health-Check](../docs/REFERENCE.md#health-check)                                                  |
 | `"watch": {`                  | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Features](#features) |
 | &nbsp;&nbsp;`"max-retries",`  | maximum retry count, see [Global Options](../docs/CLI.md#global-options)                                                   |
 | &nbsp;&nbsp;`"retry-delay" }` | configured delay of each retry, see [Global Options](../docs/CLI.md#global-options)                                        |
 
 ## Features
 
-For more information regarding the usage of these features, see the documentations regarding the [Command Line Interface](../docs/CLI.md#global-options), [Enviromment Options](../DOCKER.md#environment-options) and/or [Settings](REFERENCE.md#settings-block).
+For more information regarding the usage of these features, see the documentations regarding the [Command Line Interface](../docs/CLI.md#global-options), [Environment Options](../DOCKER.md#environment-options) and/or [Settings](REFERENCE.md#settings-block).
 
 | Feature      | Description                                                                                                                         |
 | :----------- | :---------------------------------------------------------------------------------------------------------------------------------- |
