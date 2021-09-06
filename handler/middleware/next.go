@@ -2,6 +2,4 @@ package middleware
 
 import "net/http"
 
-type NextHandler interface {
-	ServeNextHTTP(http.ResponseWriter, http.Handler, *http.Request)
-}
+type Next func(http.Handler) http.Handler

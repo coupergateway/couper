@@ -1,36 +1,25 @@
-package telemetry
+package middleware
 
 import (
 	"net/http"
 
-	"go.opentelemetry.io/otel"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/utils"
+	"github.com/avenga/couper/telemetry"
 )
-
-var InstrumentationName = "github.com/avenga/couper/telemetry"
-var InstrumentationVersion = utils.VersionName
 
 type TraceHandler struct {
 	service string
-	tracer  trace.Tracer
 	handler http.Handler
 }
 
-func NewTraceHandler(service string) func(http.Handler) http.Handler {
-	traceProvider := otel.GetTracerProvider()
-	tracer := traceProvider.Tracer(
-		InstrumentationName,
-		trace.WithInstrumentationVersion(InstrumentationVersion),
-	)
-
+func NewTraceHandler(service string) Next {
 	return func(handler http.Handler) http.Handler {
 		return &TraceHandler{
 			service: service,
-			tracer:  tracer,
 			handler: handler,
 		}
 	}
@@ -43,10 +32,10 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		trace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(req)...),
 		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(th.service, spanName, req)...),
 		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(telemetry.KeyUID.String(req.Context().Value(request.UID).(string))),
 	}
-	span := trace.SpanFromContext(req.Context())
-	span.SetName(spanName)
-	ctx, span := th.tracer.Start(req.Context(), spanName, opts...)
+
+	ctx, span := telemetry.NewSpanFromContext(req.Context(), spanName, opts...)
 	defer span.End()
 
 	th.handler.ServeHTTP(rw, req.WithContext(ctx))

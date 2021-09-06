@@ -20,9 +20,9 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/telemetry"
 )
 
 type muxers map[string]*Mux
@@ -40,7 +40,6 @@ type HTTPServer struct {
 	shutdownCh chan struct{}
 	srv        *http.Server
 	timings    *runtime.HTTPTimings
-	uidFn      uidFunc
 }
 
 // NewServerList creates a list of all configured HTTP server.
@@ -64,8 +63,6 @@ func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, sett
 // New creates a configured HTTP server.
 func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
-
-	uidFn := newUIDFunc(settings)
 
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_access"
@@ -91,14 +88,12 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		settings:   settings,
 		shutdownCh: shutdownCh,
 		timings:    timings,
-		uidFn:      uidFn,
 	}
 
-	traceHandler := telemetry.NewTraceHandler("couper")(httpSrv)
-	recordHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		statusRW := logging.NewStatusRecorder(rw)
-		traceHandler.ServeHTTP(statusRW, r)
-	})
+	// order matters
+	traceHandler := middleware.NewTraceHandler("couper")(httpSrv)
+	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
+	recordHandler := middleware.NewStatusRecordHandler()(uidHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
@@ -186,11 +181,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
 	ctx = context.WithValue(ctx, request.LogEntry, s.log)
 	*req = *req.WithContext(ctx)
-
-	if err := s.setUID(rw, req); err != nil {
-		s.accessLog.ServeHTTP(rw, req, errors.DefaultHTML.ServeError(err), startTime)
-		return
-	}
 
 	req.Host = s.getHost(req)
 
