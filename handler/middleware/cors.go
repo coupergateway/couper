@@ -12,10 +12,7 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-var (
-	_ NextHandler  = &CORS{}
-	_ http.Handler = &CORS{}
-)
+var _ http.Handler = &CORS{}
 
 type CORS struct {
 	options     *CORSOptions

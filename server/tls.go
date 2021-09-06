@@ -29,6 +29,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 )
@@ -118,7 +119,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.
 		return nil, err
 	}
 
-	uidFn := newUIDFunc(settings)
+	uidFn := middleware.NewUIDFunc(settings.RequestIDFormat)
 
 	tlsServer := &http.Server{
 		Addr:     ":" + port,
