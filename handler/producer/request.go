@@ -33,8 +33,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 
-	producerCtx, rootSpan := telemetry.NewSpanFromContext(ctx, "requests", trace.WithSpanKind(trace.SpanKindProducer))
-	defer rootSpan.End()
+	var rootSpan trace.Span
+	if len(r) > 0 {
+		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "requests", trace.WithSpanKind(trace.SpanKindProducer))
+	}
 
 	defer func() {
 		if rp := recover(); rp != nil {
@@ -53,7 +55,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 	for _, or := range r {
 		// span end by result reader
-		outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(producerCtx, or.Name), or.Name, trace.WithSpanKind(trace.SpanKindClient))
+		outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(ctx, or.Name), or.Name, trace.WithSpanKind(trace.SpanKindClient))
 
 		bodyContent, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
 		if diags.HasErrors() {
@@ -116,6 +118,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		wg.Add(1)
 		go roundtrip(or.Backend, outreq, results, wg)
+	}
+
+	if rootSpan != nil {
+		rootSpan.End()
 	}
 
 	go func() {
