@@ -68,20 +68,15 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	traceOpts := []trace.SpanStartOption{
-		trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", req)...),
-		trace.WithAttributes(telemetry.KeyBackend.String(b.name)),
-	}
 	spanName := "backend"
 	if b.name != "" {
 		spanName += "." + b.name
 	}
-	ctx, span := telemetry.NewSpanFromContext(req.Context(), spanName, traceOpts...)
-	defer span.End()
+	span := trace.SpanFromContext(req.Context())
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(ctx, b.context, req); err != nil {
+	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +113,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	b.withBasicAuth(req)
-	if err := b.withPathPrefix(req); err != nil {
+	if err = b.withPathPrefix(req); err != nil {
 		return nil, err
 	}
 
@@ -130,12 +125,14 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del("Upgrade")
 	}
 
+	span.AddEvent(spanName + ".request")
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
 		beresp, err = b.openAPIValidate(req, tc, deadlineErr)
 	} else {
 		beresp, err = b.innerRoundTrip(req, tc, deadlineErr)
 	}
+	span.AddEvent(spanName + ".response")
 
 	if err != nil {
 		return nil, err

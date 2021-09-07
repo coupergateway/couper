@@ -24,8 +24,10 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 
-	producerCtx, rootSpan := telemetry.NewSpanFromContext(ctx, "proxies", trace.WithSpanKind(trace.SpanKindProducer))
-	defer rootSpan.End()
+	var rootSpan trace.Span
+	if len(pr) > 0 {
+		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "proxies", trace.WithSpanKind(trace.SpanKindProducer))
+	}
 
 	defer func() {
 		if rp := recover(); rp != nil {
@@ -41,7 +43,7 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 
 	for _, proxy := range pr {
 		currentName = proxy.Name
-		outCtx := withRoundTripName(producerCtx, proxy.Name)
+		outCtx := withRoundTripName(ctx, proxy.Name)
 		outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
 
 		// span end by result reader
@@ -52,6 +54,10 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 
 		wg.Add(1)
 		go roundtrip(proxy.RoundTrip, outReq, results, wg)
+	}
+
+	if rootSpan != nil {
+		rootSpan.End()
 	}
 
 	go func() {
