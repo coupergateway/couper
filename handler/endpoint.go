@@ -26,10 +26,9 @@ var _ http.Handler = &Endpoint{}
 var _ EndpointLimit = &Endpoint{}
 
 type Endpoint struct {
-	log            *logrus.Entry
-	logHandlerKind string
-	modifier       []hcl.Body
-	opts           *EndpointOptions
+	log      *logrus.Entry
+	modifier []hcl.Body
+	opts     *EndpointOptions
 }
 
 type EndpointOptions struct {
@@ -273,5 +272,5 @@ func (e *Endpoint) RequestLimit() int64 {
 
 // String interface maps to the access log handler field.
 func (e *Endpoint) String() string {
-	return e.logHandlerKind
+	return e.opts.LogHandlerKind
 }
