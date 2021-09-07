@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"go.opentelemetry.io/otel"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -35,10 +36,12 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		trace.WithAttributes(telemetry.KeyUID.String(req.Context().Value(request.UID).(string))),
 	}
 
-	ctx, span := telemetry.NewSpanFromContext(req.Context(), spanName, opts...)
+	tracer := otel.GetTracerProvider().Tracer(telemetry.InstrumentationName)
+	ctx, span := tracer.Start(req.Context(), spanName, opts...)
 	defer span.End()
 
-	th.handler.ServeHTTP(rw, req.WithContext(ctx))
+	*req = *req.WithContext(ctx)
+	th.handler.ServeHTTP(rw, req)
 
 	if rsw, ok := rw.(logging.RecorderInfo); ok {
 		attrs := semconv.HTTPAttributesFromHTTPStatusCode(rsw.StatusCode())

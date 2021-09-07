@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/grpc"
+
+	"github.com/avenga/couper/utils"
 )
 
 const (
@@ -56,39 +59,37 @@ func InitExporter(ctx context.Context, opts *Options, log *logrus.Entry) {
 }
 
 func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) error {
-	clientOps := []otlptracegrpc.Option{
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
-	}
-
+	endpoint := "localhost:4317"
 	if opts.AgentAddr != "" {
-		clientOps = append(clientOps, otlptracegrpc.WithEndpoint(opts.AgentAddr))
+		endpoint = opts.AgentAddr
+	} else if ep := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); ep != "" {
+		endpoint = ep
 	}
 
 	traceClient := otlptracegrpc.NewClient(
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()))
-
-	traceExp := otlptrace.NewUnstarted(traceClient)
-
-	res, err := resource.New(ctx,
-		resource.WithFromEnv(),
-		resource.WithProcess(),
-		resource.WithTelemetrySDK(),
-		resource.WithHost(),
-		resource.WithAttributes(
-			// the service name used to display traces in backends
-			semconv.ServiceNameKey.String(opts.ServiceName),
-		),
+		otlptracegrpc.WithDialOption(grpc.WithBlock()),
+		otlptracegrpc.WithEndpoint(endpoint),
 	)
+	traceExp, err := otlptrace.New(ctx, traceClient)
 	if err != nil {
 		return err
 	}
 
+	hostname, err := os.Hostname()
+	otel.Handle(err)
+
+	resources := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.HostNameKey.String(hostname),
+		semconv.ServiceNameKey.String(opts.ServiceName),
+		semconv.ServiceVersionKey.String(utils.VersionName),
+	)
+
 	bsp := sdktrace.NewBatchSpanProcessor(traceExp)
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(res),
+		sdktrace.WithResource(resources),
 		sdktrace.WithSpanProcessor(bsp),
 	)
 
@@ -96,13 +97,9 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) er
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	otel.SetTracerProvider(tracerProvider)
 
-	go func() { // TODO: why this hangs/block?
-		otel.Handle(traceExp.Start(ctx))
-	}()
-
 	go pushOnShutdown(ctx, traceExp.Shutdown)
 
-	log.Info("couper is pushing traces")
+	log.WithField("endpoint", endpoint).Info("couper is pushing traces")
 
 	return nil
 
