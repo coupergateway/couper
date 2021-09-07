@@ -4,11 +4,11 @@
     - [Access Fields](#access-fields)
     - [Backend Fields](#backend-fields)
     - [Daemon Fields](#daemon-fields)
-  - [Features](#features)
+  - [Settings](#settings)
 
 # Introduction
 
-_Logs_ are the information being printed in the console upon the execution of Couper. There are a few different [Log Types](#log-types) and several different [Fields](#fields) containing useful information given in said _Logs_ to be remembered, but you can adjust the _Logs'_ appearance and verbosity with a variety of [Features](#features) to make sure that the information you seek is available as easily as possible.
+_Logs_ are the information being printed in the console upon the execution of Couper. There are a few different [Log Types](#log-types) and several different [Fields](#fields) containing useful information given in said _Logs_ to be remembered, but you can adjust the _Logs'_ appearance and verbosity with a variety of [Settings](#settings) to make sure that the information you seek is available as easily as possible.
 
 These _Logs_ are however still subject to change. We aspire to make Couper as stable as possible and that includes the _Logs_, so until we believe to have achieved that goal you should expect to see some changes.
 
@@ -17,13 +17,13 @@ These _Logs_ are however still subject to change. We aspire to make Couper as st
 | Type                | Description                                                                                                                                     |
 | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `couper_access`     | Provides information about the frontend side of things. For information about its [Fields](#fields), see [Access Fields](#access-fields).       |
-| `couper_access_tls` | Provides information about connection to TLS proxies. For information about its [Fields](#fields), see [Access Fields](#access-fields). |
+| `couper_access_tls` | Provides information about connections via configured [https_dev_proxy](./REFERENCE.md#settings). For information about its [Fields](#fields), see [Access Fields](#access-fields).                                                                                                                                        |
 | `couper_backend`    | Provides information about the backend side of things. For information about its [Fields](#fields), see [Backend Fields](#backend-fields).      |
 | `couper_daemon`     | Provides background information about the execution of Couper. It is here where the main purpose of the `message` [Field](#fields) lies, as each printed _Log_ of this type will contain a `message` entry containing a description of the current actions of Couper. For information about its [Fields](#fields), see [Daemon Fields](#daemon-fields).                                                                                                                                                       |
 
 ## Fields
 
-Given the large amount of information contained in several _Logs_, see [Features](#features) to change the format or level of intricacy with which _Logs_ are printed.
+Given the large amount of information contained in several _Logs_, see [Settings](#settings) to change the format or level of intricacy with which _Logs_ are printed.
 
 ### Common Fields
 
@@ -31,7 +31,7 @@ These are a part of all [Log Types](#log-types) and are hence mentioned seperate
 
 | Name          | Description                                       |
 | :------------ | :------------------------------------------------ |
-| `"build”`     | git short hash                                    |
+| `"build”`     | git short hash during build time                  |
 | `"level"`     | configured log level, determines verbosity of log |
 | `"message”`   | context based, mainly used in `couper_daemon`     |
 | `"timestamp"` | request starting time                             |
@@ -67,7 +67,7 @@ These are found in the [Log Types](#log-types) `couper_access` and `couper_acces
 | `"status"`                | response status code                                                                                                         |
 | `"timings": {`            | field regarding timing                                                                                                       |
 | &nbsp;&nbsp;`"total" }`   | total time taken                                                                                                             |
-| `“uid"`                   | unique request id configurable in [Settings](../docs/REFERENCE.md#settings-block)                                            |
+| `“uid"`                   | unique request id configurable in [Settings](./REFERENCE.md#settings-block)                                                  |
 | `"url"`                   | complete url (`<proto>://<host>:<port><path>` or `<proto>://<origin><path>`)                                                 |
 
 ### Backend Fields
@@ -79,7 +79,7 @@ These are the [Fields](#fields) found in the [Log Type](#log-types) `couper_back
 | `"auth_user"`            | backend request basic auth username (if provided)                                                                            |
 | `"backend"`              | configured name, `default` if not provided                                                                                   |
 | `"method"`               | http request method, see [Mozilla Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
-| `"proxy"`                | used system proxy url (if configured), see [Proxy Block](../docs/REFERENCE.md#proxy-block)                                   |
+| `"proxy"`                | used system proxy url (if configured), see [Proxy Block](./REFERENCE.md#proxy-block)                                         |
 | `"request": {`           | field regarding request information                                                                                          |
 | &nbsp;&nbsp;`"bytes"`    | body size of request                                                                                                         |
 | &nbsp;&nbsp;`"headers"`  | field regarding keys and values originating from configured keys/header names                                                |
@@ -101,10 +101,10 @@ These are the [Fields](#fields) found in the [Log Type](#log-types) `couper_back
 | &nbsp;&nbsp;`"total"`    | total time taken                                                                                                             | 
 | &nbsp;&nbsp;`"ttfb" }`   | time to first byte/between establishing connection and receiving first byte                                                  |
 | `"token_request"`        | entry regarding request for token                                                                                            |
-| `"token_request_retry"`  | how many attempts at `token_request`                                                                                         |
-| `"uid"`                  | unique request id configurable in [Settings](../docs/REFERENCE.md#settings-block)                                            |
+| `"token_request_retry"`  | how many `token_request` attempts were made                                                                                  |
+| `"uid"`                  | unique request id configurable in [Settings](./REFERENCE.md#settings-block)                                                  |
 | `"url"`                  | complete url (`<proto>://<host>:<port><path>` or `<proto>://<origin><path>`)                                                 |
-| `"validation"`           | validation result for open api, see [OpenAPI Block](../docs/REFERENCE.md#openapi-block)                                      |
+| `"validation"`           | validation result for open api, see [OpenAPI Block](./REFERENCE.md#openapi-block)                                            |
 
 ### Daemon Fields
 
@@ -112,15 +112,15 @@ These are found in the [Log Type](#log-types) `couper_daemon` in addition to the
 
 | Name                          | Description                                                                                                                |
 | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| `"deadline"`                  | shutdown parameter, see [Health-Check](../docs/REFERENCE.md#health-check)                                                  |
-| `"delay"`                     | shutdown parameter, see [Health-Check](../docs/REFERENCE.md#health-check)                                                  |
-| `"watch": {`                  | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Features](#features) |
-| &nbsp;&nbsp;`"max-retries",`  | maximum retry count, see [Global Options](../docs/CLI.md#global-options)                                                   |
-| &nbsp;&nbsp;`"retry-delay" }` | configured delay of each retry, see [Global Options](../docs/CLI.md#global-options)                                        |
+| `"deadline"`                  | shutdown parameter, see [Health-Check](./REFERENCE.md#health-check)                                                        |
+| `"delay"`                     | shutdown parameter, see [Health-Check](./REFERENCE.md#health-check)                                                        |
+| `"watch": {`                  | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](#settings) |
+| &nbsp;&nbsp;`"max-retries",`  | maximum retry count, see [Global Options](./CLI.md#global-options)                                                         |
+| &nbsp;&nbsp;`"retry-delay" }` | configured delay of each retry, see [Global Options](./CLI.md#global-options)                                              |
 
-## Features
+## Settings
 
-For more information regarding the usage of these features, see the documentations regarding the [Command Line Interface](../docs/CLI.md#global-options), [Environment Options](../DOCKER.md#environment-options) and/or [Settings](REFERENCE.md#settings-block).
+For more information regarding the usage of these settings, see the documentations regarding [Command Line Interface](./CLI.md#global-options), [Environment Options](./../DOCKER.md#environment-options) and/or [All Settings](./REFERENCE.md#settings-block).
 
 | Feature      | Description                                                                                                                         |
 | :----------- | :---------------------------------------------------------------------------------------------------------------------------------- |
