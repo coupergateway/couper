@@ -9,6 +9,7 @@ const (
 	Endpoint
 	EndpointKind
 	Error
+	Handler
 	LogEntry
 	OpenAPI
 	PathParams
