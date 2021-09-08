@@ -36,6 +36,7 @@ var _ http.RoundTripper = &Backend{}
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
+	logEntry         *logrus.Entry
 	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
@@ -61,6 +62,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend := &Backend{
 		context:          ctx,
+		logEntry:         logEntry,
 		openAPIValidator: openAPI,
 		options:          opts,
 		transportConf:    tc,
@@ -192,7 +194,7 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 }
 
 func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
-	t := Get(tc)
+	t := Get(tc, b.logEntry)
 	beresp, err := t.RoundTrip(req)
 
 	if err != nil {
