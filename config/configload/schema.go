@@ -37,43 +37,85 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	}
 
 	for _, block := range blocks {
-		for i := 0; i < typ.NumField(); i++ {
-			field := typ.Field(i)
+		errors = errors.Extend(checkFields(block, typ, val))
+	}
 
-			// FIXME: AccessControlSetter matches this condition.
-			// if field.Anonymous {
-			// 	return ValidateConfigSchema(body, field)
-			// }
-			// FIXME: AccessControlSetter matches this condition.
-			if _, ok := field.Tag.Lookup("hcl"); !ok {
-				continue
+	return uniqueErrors(errors)
+}
+
+func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
+	var unique hcl.Diagnostics
+
+	for _, diag := range errors {
+		var contains bool
+
+		for _, is := range unique {
+			if reflect.DeepEqual(diag, is) {
+				contains = true
+				break
 			}
-			if field.Tag.Get("hcl") != block.Type+",block" {
-				continue
+		}
+
+		if !contains {
+			unique = unique.Append(diag)
+		}
+	}
+
+	return unique
+}
+
+func checkFields(block *hcl.Block, typ reflect.Type, val reflect.Value) hcl.Diagnostics {
+	var errors hcl.Diagnostics
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		if field.Anonymous {
+			o := reflect.New(field.Type).Interface()
+
+			tp := reflect.TypeOf(o)
+			if tp.Kind() == reflect.Ptr {
+				tp = tp.Elem()
 			}
 
-			if field.Type.Kind() == reflect.Ptr {
-				o := reflect.New(field.Type.Elem()).Interface()
+			vl := reflect.ValueOf(o)
+			if vl.Kind() == reflect.Ptr {
+				vl = vl.Elem()
+			}
+
+			errors = errors.Extend(checkFields(block, tp, vl))
+
+			continue
+		}
+
+		if _, ok := field.Tag.Lookup("hcl"); !ok {
+			continue
+		}
+		if field.Tag.Get("hcl") != block.Type+",block" {
+			continue
+		}
+
+		if field.Type.Kind() == reflect.Ptr {
+			o := reflect.New(field.Type.Elem()).Interface()
+			errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+
+			continue
+		} else if field.Type.Kind() == reflect.Slice {
+			v := reflect.TypeOf(val.Field(i).Interface())
+			if v.Kind() == reflect.Slice {
+				v = v.Elem()
+			}
+
+			field := reflect.ValueOf(v)
+			if field.Kind() == reflect.Ptr {
+				field = field.Elem()
+			}
+
+			if field.Kind() == reflect.Struct {
+				o := reflect.New(v.Elem()).Interface()
 				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
 
 				continue
-			} else if field.Type.Kind() == reflect.Slice {
-				v := reflect.TypeOf(val.Field(i).Interface())
-				if v.Kind() == reflect.Slice {
-					v = v.Elem()
-				}
-
-				field := reflect.ValueOf(v)
-				if field.Kind() == reflect.Ptr {
-					field = field.Elem()
-				}
-
-				if field.Kind() == reflect.Struct {
-					o := reflect.New(v.Elem()).Interface()
-					errors = errors.Extend(ValidateConfigSchema(block.Body, o))
-
-					continue
-				}
 			}
 		}
 	}
@@ -105,7 +147,27 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 	}
 
 	content, errors := body.Content(schema)
-	diags = diags.Extend(errors)
+
+	for _, diag := range errors {
+		if match := reFetchUnlabeledName.MatchString(diag.Detail); match {
+			bodyContent := bodyToContent(body)
+
+			added := false
+			for _, block := range bodyContent.Blocks {
+				if block.Type == "error_handler" {
+					blocks = append(blocks, block)
+
+					added = true
+				}
+			}
+
+			if !added {
+				diags = diags.Append(diag)
+			}
+		} else {
+			diags = diags.Append(diag)
+		}
+	}
 
 	if content != nil {
 		for name, attr := range content.Attributes {
