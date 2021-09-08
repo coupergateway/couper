@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	prompkg "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
@@ -107,7 +109,7 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) er
 
 func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry) error {
 	if parseExporter(opts.Exporter) == ExporterPrometheus {
-		promExporter, err := newPromExporter(log)
+		promExporter, err := newPromExporter()
 		if err != nil {
 			return err
 		}
@@ -121,6 +123,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry) e
 
 		return nil
 	}
+
 	clientOps := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithReconnectionPeriod(time.Second * 5),
@@ -171,8 +174,14 @@ func pushOnShutdown(ctx context.Context, shutdownFdn func(ctx context.Context) e
 	otel.Handle(shutdownFdn(shtctx))
 }
 
-func newPromExporter(_ *logrus.Entry) (*prometheus.Exporter, error) {
-	config := prometheus.Config{} // configured by otel; todo: promHTTPhandler opts/error logging can't be set this way
+func newPromExporter() (*prometheus.Exporter, error) {
+	config := prometheus.Config{
+		Registry: prompkg.NewRegistry(),
+	}
+
+	config.Registry.MustRegister(collectors.NewGoCollector())
+	config.Registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+
 	ctlr := controller.New(
 		processor.New(
 			selector.NewWithHistogramDistribution(
