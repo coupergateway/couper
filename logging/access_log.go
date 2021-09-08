@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -72,11 +71,11 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		requestFields["bytes"] = req.ContentLength
 	}
 
-	// Read out handler kind from stringer interface
-	if h, ok := nextHandler.(fmt.Stringer); ok && h.String() != "" {
-		fields["handler"] = h.String()
-	} else if kind, k := req.Context().Value(request.EndpointKind).(string); k { // fallback, e.g. with ErrorHandler
-		fields["handler"] = kind
+	// Read out handler kind from context set by muxer
+	if handlerName, ok := req.Context().Value(request.Handler).(string); ok {
+		fields["handler"] = handlerName
+	} else if handlerName, ok = req.Context().Value(request.EndpointKind).(string); ok {
+		fields["handler"] = handlerName // fallback, e.g. with ErrorHandler
 	}
 
 	if log.conf.TypeFieldKey != "" {

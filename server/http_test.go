@@ -552,9 +552,9 @@ func TestHTTPServer_RequestID(t *testing.T) {
 					}
 				}
 			} else {
-				exp := fmt.Sprintf("client request error: invalid request-ID \"%s\" given in header \"Client-Request-ID\"", tc.uid)
+				exp := fmt.Sprintf("client request error: invalid request-id header value: Client-Request-ID: %s", tc.uid)
 				if lastLog.Message != exp {
-					subT.Errorf("Unexpected log message given: %s", lastLog.Message)
+					subT.Errorf("\nWant:\t%s\nGot:\t%s", exp, lastLog.Message)
 				}
 
 				for k := range tc.expToClient.Headers {

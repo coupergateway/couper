@@ -180,7 +180,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	}
 
 	ctx = context.WithValue(ctx, request.PathParams, pathParams)
-	*req = *req.Clone(ctx)
+	*req = *req.WithContext(ctx)
 
 	return route.Handler
 }

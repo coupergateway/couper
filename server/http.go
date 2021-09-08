@@ -2,15 +2,13 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
@@ -22,7 +20,6 @@ import (
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
 )
 
 type muxers map[string]*Mux
@@ -90,10 +87,15 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		timings:    timings,
 	}
 
+	accessLog := logging.NewAccessLog(&logConf, log)
+
 	// order matters
 	traceHandler := middleware.NewTraceHandler("couper")(httpSrv)
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
-	recordHandler := middleware.NewStatusRecordHandler()(uidHandler)
+	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		accessLog.ServeHTTP(rw, req, uidHandler, time.Now())
+	})
+	recordHandler := middleware.NewRecordHandler(settings.SecureCookies)(logHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
@@ -172,34 +174,9 @@ func (s *HTTPServer) listenForCtx() {
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	startTime := time.Now()
-
-	meter := global.Meter("couper/server")
-	counter := metric.Must(meter).NewInt64Counter("request")
-	meter.RecordBatch(req.Context(), []attribute.KeyValue{}, counter.Measurement(1))
-
-	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
-	ctx = context.WithValue(ctx, request.LogEntry, s.log)
-	*req = *req.WithContext(ctx)
-
-	req.Host = s.getHost(req)
-
-	gw := writer.NewGzipWriter(rw, req.Header)
-	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
-
-	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
-	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
-	defer func() {
-		select { // do not close on cancel since we may have nothing to write and the client may be gone anyways.
-		case <-req.Context().Done():
-			return
-		default:
-			gw.Close()
-		}
-	}()
-
 	var h http.Handler
 
+	req.Host = s.getHost(req)
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
 		h = errors.DefaultHTML.ServeError(errors.ClientRequest)
@@ -217,39 +194,42 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		h = mux.FindHandler(req)
 	}
 
-	clientReq := req.Clone(req.Context())
-
-	if err = s.setGetBody(h, clientReq); err != nil {
+	if err = s.setGetBody(h, req); err != nil {
 		h = mux.opts.ServerOptions.ServerErrTpl.ServeError(err)
 	}
 
-	clientReq.URL.Host = req.Host
-	clientReq.URL.Scheme = "http"
+	req.URL.Host = req.Host
+	req.URL.Scheme = "http"
 	if s.settings.AcceptsForwardedProtocol() {
 		if xfpr := req.Header.Get("X-Forwarded-Proto"); xfpr != "" {
-			clientReq.URL.Scheme = xfpr
-			clientReq.URL.Host = clientReq.URL.Hostname()
+			req.URL.Scheme = xfpr
+			req.URL.Host = req.URL.Hostname()
 		}
 	}
 	if s.settings.AcceptsForwardedHost() {
 		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
-			clientReq.URL.Host = xfh
-			if clientReq.URL.Port() != "" {
-				clientReq.URL.Host += ":" + clientReq.URL.Port()
+			req.URL.Host = xfh
+			if req.URL.Port() != "" {
+				req.URL.Host += ":" + req.URL.Port()
 			}
 		}
 	}
 	if s.settings.AcceptsForwardedPort() {
 		if xfpo := req.Header.Get("X-Forwarded-Port"); xfpo != "" {
-			clientReq.URL.Host = clientReq.URL.Hostname() + ":" + xfpo
+			req.URL.Host = req.URL.Hostname() + ":" + xfpo
 		}
 	}
 
-	ctx = s.evalCtx.WithClientRequest(clientReq)
-	ctx = context.WithValue(ctx, request.ResponseWriter, w)
-	*clientReq = *clientReq.WithContext(ctx)
+	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
+	ctx = context.WithValue(ctx, request.LogEntry, s.log)
+	if hs, stringer := h.(fmt.Stringer); stringer {
+		ctx = context.WithValue(ctx, request.Handler, hs.String())
+	}
 
-	s.accessLog.ServeHTTP(w, clientReq, h, startTime)
+	// due to the middleware callee stack we have to update the 'req' value.
+	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
+
+	h.ServeHTTP(rw, req)
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
