@@ -13,6 +13,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -134,9 +137,20 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	span.AddEvent(spanName + ".response")
 
+	meter := global.Meter("couper/backend")
+	counter := metric.Must(meter).NewInt64Counter("backend_request_count")
+	attrs := []attribute.KeyValue{
+		attribute.String("origin", tc.Origin),
+		attribute.String("hostname", tc.Hostname),
+		attribute.String("backend_name", b.name),
+		attribute.Bool("error", err != nil),
+	}
+
 	if err != nil {
+		meter.RecordBatch(req.Context(), attrs, counter.Measurement(1))
 		return nil, err
 	}
+	meter.RecordBatch(req.Context(), append(attrs, attribute.Int("response_status", beresp.StatusCode)), counter.Measurement(1))
 
 	if !eval.IsUpgradeResponse(req, beresp) {
 		if err = setGzipReader(beresp); err != nil {

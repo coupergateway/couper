@@ -4,6 +4,9 @@ import (
 	"net/http"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -43,11 +46,20 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	*req = *req.WithContext(ctx)
 	th.handler.ServeHTTP(rw, req)
 
+	metricsAttrs := []attribute.KeyValue{
+		attribute.String("host", req.Host),
+	}
+
 	if rsw, ok := rw.(logging.RecorderInfo); ok {
 		attrs := semconv.HTTPAttributesFromHTTPStatusCode(rsw.StatusCode())
 		spanStatus, spanMessage := semconv.SpanStatusFromHTTPStatusCode(rsw.StatusCode())
 		span.SetAttributes(attrs...)
 		span.SetStatus(spanStatus, spanMessage)
+
+		metricsAttrs = append(metricsAttrs, attribute.Int("response_status", rsw.StatusCode()))
 	}
 
+	meter := global.Meter("couper/server")
+	counter := metric.Must(meter).NewInt64Counter("client_request_count")
+	meter.RecordBatch(req.Context(), metricsAttrs, counter.Measurement(1))
 }

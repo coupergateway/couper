@@ -7,8 +7,8 @@ exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: prom-dev
-    const_labels:
-      label1: value1
+#    const_labels:
+#      label1: value1
   logging:
 
   zipkin:
