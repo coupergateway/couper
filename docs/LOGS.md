@@ -10,7 +10,7 @@
 
 Upon the execution of Couper all log events are sent to the standard output. You can adjust the appearance and verbosity of the logs with a variety of [Settings](#settings). There are different [Log Types](#log-types) and [Fields](#fields) containing useful information.```
 
-These _Logs_ are however still subject to change. We aspire to make Couper as stable as possible and that includes the _Logs_, so until we believe to have achieved that goal you should expect to see some changes.
+> We aspire to make Couper as stable as possible so these logs are still subject to change.
 
 ## Log Types
 
