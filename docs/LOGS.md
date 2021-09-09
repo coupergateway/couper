@@ -123,7 +123,7 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 ## Settings
 
-For more information regarding the usage of these settings, see the documentations regarding [Command Line Interface](./CLI.md#global-options), [Environment Options](./../DOCKER.md#environment-options) and/or [All Settings](./REFERENCE.md#settings-block).
+For more information regarding the usage of these settings, compare the [Command Line Interface](./CLI.md#global-options) documentation, Couper's [Environment Options](./../DOCKER.md#environment-options) and/or the [Settings Block](./REFERENCE.md#settings-block) reference.
 
 | Feature      | Description                                                                                                                         |
 | :----------- | :---------------------------------------------------------------------------------------------------------------------------------- |
