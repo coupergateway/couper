@@ -116,7 +116,7 @@ func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := "<nil>: Missing required argument; The argument \"grant_type\" is required, but was not set."
+	expectedMsg := "03_couper.hcl:24,5-11: Missing required argument; The argument \"grant_type\" is required, but was not set."
 
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	if err == nil {

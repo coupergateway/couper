@@ -105,11 +105,18 @@ func (mb mergedBodies) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
 	return attrs, diags
 }
 
+// MissingItemRange returns the first non-empty range if any.
 func (mb mergedBodies) MissingItemRange() hcl.Range {
 	if len(mb) == 0 {
 		// Nothing useful to return here, so we'll return some garbage.
 		return hcl.Range{
 			Filename: "<empty>",
+		}
+	}
+
+	for _, b := range mb {
+		if !b.MissingItemRange().Empty() {
+			return b.MissingItemRange()
 		}
 	}
 
@@ -196,7 +203,7 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 					thisContentBlock.Body, // keep child blocks
 					hclbody.New(&hcl.BodyContent{
 						Attributes:       contentAttrs,
-						MissingItemRange: thisContentBlock.DefRange,
+						MissingItemRange: content.Blocks[idx].DefRange,
 					}),
 				})
 			}
@@ -209,12 +216,18 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 			continue
 		}
 
+		itemRange := content.MissingItemRange
+		if itemRange.Empty() { // use parent range as fallback
+			itemRange = mb.MissingItemRange()
+		}
+
 		if content.Attributes[attrS.Name] == nil {
 			// We don't have any context here to produce a good diagnostic,
 			// which is why we warn in the Content docstring to minimize the
 			// use of required attributes on merged bodies.
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
+				Subject:  &itemRange,
 				Summary:  "Missing required argument",
 				Detail: fmt.Sprintf(
 					"The argument %q is required, but was not set.",
