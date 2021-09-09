@@ -1,4 +1,7 @@
-- [Introduction](#introduction)
+# Logging 
+
+- [Logging](#logging) 
+  - [Introduction](#introduction)
   - [Log Types](#log-types)
   - [Fields](#fields)
     - [Access Fields](#access-fields)
