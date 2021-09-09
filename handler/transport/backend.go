@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/unit"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -29,6 +30,11 @@ import (
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
 	"github.com/avenga/couper/utils"
+)
+
+const (
+	metricsRequest         = "backend_request_total"
+	metricsRequestDuration = "backend_request_duration_seconds"
 )
 
 var _ http.RoundTripper = &Backend{}
@@ -73,12 +79,6 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	spanName := "backend"
-	if b.name != "" {
-		spanName += "." + b.name
-	}
-	span := trace.SpanFromContext(req.Context())
-
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
 	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {
@@ -95,9 +95,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.URL.Host = tc.Origin
 	req.URL.Scheme = tc.Scheme
 	req.Host = tc.Hostname
-
-	span.SetAttributes(telemetry.KeyOrigin.String(tc.Origin))
-	span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(req)...)
 
 	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
@@ -130,29 +127,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del("Upgrade")
 	}
 
-	span.AddEvent(spanName + ".request")
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
 		beresp, err = b.openAPIValidate(req, tc, deadlineErr)
 	} else {
 		beresp, err = b.innerRoundTrip(req, tc, deadlineErr)
 	}
-	span.AddEvent(spanName + ".response")
-
-	meter := global.Meter("couper/backend")
-	counter := metric.Must(meter).NewInt64Counter("backend_request_count")
-	attrs := []attribute.KeyValue{
-		attribute.String("origin", tc.Origin),
-		attribute.String("hostname", tc.Hostname),
-		attribute.String("backend_name", b.name),
-		attribute.Bool("error", err != nil),
-	}
-
-	if err != nil {
-		meter.RecordBatch(req.Context(), attrs, counter.Measurement(1))
-		return nil, err
-	}
-	meter.RecordBatch(req.Context(), append(attrs, attribute.Int("response_status", beresp.StatusCode)), counter.Measurement(1))
 
 	if !eval.IsUpgradeResponse(req, beresp) {
 		if err = setGzipReader(beresp); err != nil {
@@ -194,10 +174,37 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 }
 
 func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
+	span := trace.SpanFromContext(req.Context())
+	span.SetAttributes(telemetry.KeyOrigin.String(tc.Origin))
+	span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(req)...)
+
+	spanMsg := "backend"
+	if b.name != "" {
+		spanMsg += "." + b.name
+	}
+
+	meter := global.Meter("couper/backend")
+	counter := metric.Must(meter).NewInt64Counter(metricsRequest, metric.WithDescription(string(unit.Dimensionless)))
+	duration := metric.Must(meter).
+		NewFloat64ValueRecorder(metricsRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+	attrs := []attribute.KeyValue{
+		attribute.String("origin", tc.Origin),
+		attribute.String("hostname", tc.Hostname),
+		attribute.String("backend_name", tc.BackendName),
+	}
+
 	t := Get(tc, b.logEntry)
+	start := time.Now()
+	span.AddEvent(spanMsg + ".request")
 	beresp, err := t.RoundTrip(req)
+	span.AddEvent(spanMsg + ".response")
+	endSeconds := time.Since(start).Seconds()
 
 	if err != nil {
+		defer meter.RecordBatch(req.Context(),
+			append(attrs, attribute.Int("response_status", 0)),
+			counter.Measurement(1),
+			duration.Measurement(endSeconds))
 		select {
 		case derr := <-deadlineErr:
 			if derr != nil {
@@ -207,6 +214,11 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
+
+	meter.RecordBatch(req.Context(),
+		append(attrs, attribute.Int("response_status", beresp.StatusCode)),
+		counter.Measurement(1),
+		duration.Measurement(endSeconds))
 
 	return beresp, nil
 }

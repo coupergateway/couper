@@ -11,14 +11,15 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
 )
 
 const (
-	MetricConnections              = "connections_count"
-	MetricConnectionsTotal         = "connections_total_count"
-	MetricConnectionsLifetimeTotal = "connections_lifetime_total"
+	MetricConnections         = "connections_count"
+	MetricConnectionsTotal    = "connections_total"
+	MetricConnectionsLifetime = "connections_lifetime_seconds"
 
 	eventOpen  = "open"
 	eventClose = "close"
@@ -68,8 +69,8 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 
 	meter := global.Meter("couper/connection")
 
-	counter := metric.Must(meter).NewInt64Counter(MetricConnectionsTotal)
-	gauge := metric.Must(meter).NewFloat64UpDownCounter(MetricConnections)
+	counter := metric.Must(meter).NewInt64Counter(MetricConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
+	gauge := metric.Must(meter).NewFloat64UpDownCounter(MetricConnections, metric.WithDescription(string(unit.Dimensionless)))
 	meter.RecordBatch(ctx, o.labels,
 		counter.Measurement(1),
 		gauge.Measurement(1),
@@ -86,15 +87,16 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 		"remoteAddr":  o.RemoteAddr().String(),
 	}
 
-	var d time.Duration
 	if event == eventClose {
-		d = time.Now().Sub(o.createdAt) / time.Millisecond
+		since := time.Since(o.createdAt)
 
 		meter := global.Meter("couper/connection")
-		counter := metric.Must(meter).NewFloat64Counter(MetricConnectionsLifetimeTotal)
-		meter.RecordBatch(context.Background(), o.labels, counter.Measurement(float64(d)))
-		fields["lifetime"] = d
+		duration := metric.Must(meter).
+			NewFloat64ValueRecorder(MetricConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
+		meter.RecordBatch(context.Background(), o.labels, duration.Measurement(since.Seconds()))
+		fields["lifetime"] = since.Milliseconds()
 	}
+
 	return logrus.Fields{
 		"connection": fields,
 	}

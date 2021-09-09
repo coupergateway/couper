@@ -2,17 +2,24 @@ package middleware
 
 import (
 	"net/http"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/unit"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/telemetry"
+)
+
+const (
+	metricsRequest         = "client_request_total"
+	metricsRequestDuration = "client_request_duration_seconds"
 )
 
 type TraceHandler struct {
@@ -44,7 +51,9 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer span.End()
 
 	*req = *req.WithContext(ctx)
+	start := time.Now()
 	th.handler.ServeHTTP(rw, req)
+	end := time.Since(start)
 
 	metricsAttrs := []attribute.KeyValue{
 		attribute.String("host", req.Host),
@@ -60,6 +69,11 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	meter := global.Meter("couper/server")
-	counter := metric.Must(meter).NewInt64Counter("client_request_count")
-	meter.RecordBatch(req.Context(), metricsAttrs, counter.Measurement(1))
+	counter := metric.Must(meter).NewInt64Counter(metricsRequest, metric.WithDescription(string(unit.Dimensionless)))
+	duration := metric.Must(meter).
+		NewFloat64ValueRecorder(metricsRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+	meter.RecordBatch(req.Context(), metricsAttrs,
+		counter.Measurement(1),
+		duration.Measurement(end.Seconds()),
+	)
 }
