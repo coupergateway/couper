@@ -19,6 +19,7 @@ services:
 
   # Collector
   otel-collector:
+    hostname: otel-collector
     image: 'otel/opentelemetry-collector-contrib-dev:latest'
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
@@ -60,3 +61,15 @@ services:
       - $PWD/telemetry/prometheus.yaml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - $PWD/grafana.json:/etc/grafana/provisioning/dashboards/couper.json
+      - $PWD/telemetry/grafana_datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml
+      - /var/lib/grafana
+    ports:
+      - "3000:3000"
