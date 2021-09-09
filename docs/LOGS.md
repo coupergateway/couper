@@ -22,7 +22,7 @@ Upon the execution of Couper all log events are sent to the standard output. You
 | `couper_access`     | Provides information about the frontend side of things. Compare [Access Fields](#access-fields).       |
 | `couper_access_tls` | Provides information about connections via configured [https_dev_proxy](./REFERENCE.md#settings). Compare [Access Fields](#access-fields).                                                                                                                                        |
 | `couper_backend`    | Provides information about the backend side of things. Compare [Backend Fields](#backend-fields).      |
-| `couper_daemon`     | Provides background information about the execution of Couper. It is here where the main purpose of the `message` [Field](#fields) lies, as each printed _Log_ of this type will contain a `message` entry containing a description of the current actions of Couper. For information about its [Fields](#fields), see [Daemon Fields](#daemon-fields).                                                                                                                                                       |
+| `couper_daemon`     | Provides background information about the execution of Couper. Each printed log of this type contains a `message` entry describing the current actions of Couper. Compare [Daemon Fields](#daemon-fields).                                                                                                                                                       |
 
 ## Fields
 
