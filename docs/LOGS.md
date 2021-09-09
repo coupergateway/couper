@@ -111,7 +111,7 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 
 ### Daemon Fields
 
-These are found in the [Log Type](#log-types) `couper_daemon` in addition to the [Common Fields](#common-fields).
+These fields are found in the [Log Type](#log-types) `couper_daemon` in addition to the [Common Fields](#common-fields).
 
 | Name                          | Description                                                                                                                |
 | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
