@@ -8,7 +8,7 @@
 
 # Introduction
 
-_Logs_ are the information being printed in the console upon the execution of Couper. There are a few different [Log Types](#log-types) and several different [Fields](#fields) containing useful information given in said _Logs_ to be remembered, but you can adjust the _Logs'_ appearance and verbosity with a variety of [Settings](#settings) to make sure that the information you seek is available as easily as possible.
+Upon the execution of Couper all log events are sent to the standard output. You can adjust the appearance and verbosity of the logs with a variety of [Settings](#settings). There are different [Log Types](#log-types) and [Fields](#fields) containing useful information.```
 
 These _Logs_ are however still subject to change. We aspire to make Couper as stable as possible and that includes the _Logs_, so until we believe to have achieved that goal you should expect to see some changes.
 
