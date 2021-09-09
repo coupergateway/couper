@@ -30,7 +30,7 @@ Given the large amount of information contained in several _Logs_, see [Settings
 
 ### Common Fields
 
-These are a part of all [Log Types](#log-types) and are hence mentioned seperately to avoid unnecessary redundancy.
+These fields are part of all [Log Types](#log-types) and therefore mentioned separately to avoid unnecessary redundancy.
 
 | Name          | Description                                       |
 | :------------ | :------------------------------------------------ |
