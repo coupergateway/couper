@@ -98,9 +98,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, err
 	}
 
-	var (
-		signingKey, signingKeyFile string
-	)
+	var signingKey, signingKeyFile string
 
 	if alg.IsHMAC() {
 		signingKey = j.Key
