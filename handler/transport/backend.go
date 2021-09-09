@@ -70,6 +70,9 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 		transportConf:    tc,
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
+
+	go tc.Probe(backend)
+
 	return backend.upstreamLog
 }
 
