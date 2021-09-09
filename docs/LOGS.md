@@ -43,7 +43,7 @@ These fields are part of all [Log Types](#log-types) and therefore mentioned sep
 
 ### Access Fields
 
-These are found in the [Log Types](#log-types) `couper_access` and `couper_access_tls` in addition to the [Common Fields](#common-fields).
+These fields are found in the [Log Types](#log-types) `couper_access` and `couper_access_tls` in addition to the [Common Fields](#common-fields).
 
 | Name                      | Description                                                                                                                       |
 | :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------- |
