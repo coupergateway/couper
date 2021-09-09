@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	reFetchUnsupportedName = regexp.MustCompile(`\"(.*)\"`)
+	reFetchUnsupportedName = regexp.MustCompile(`\"([^"]+)\"`)
 	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\).`)
 	reFetchUnlabeledName   = regexp.MustCompile(`No labels are expected for (.*) blocks.`)
 	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here.`)
