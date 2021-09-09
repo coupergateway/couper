@@ -9,7 +9,7 @@
     - [Daemon Fields](#daemon-fields)
   - [Settings](#settings)
 
-# Introduction
+## Introduction
 
 Upon the execution of Couper all log events are sent to the standard output. You can adjust the appearance and verbosity of the logs with a variety of [Settings](#settings). There are different [Log Types](#log-types) and [Fields](#fields) containing useful information.```
 
