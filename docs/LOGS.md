@@ -75,7 +75,7 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 
 ### Backend Fields
 
-These are the [Fields](#fields) found in the [Log Type](#log-types) `couper_backend` in addition to the [Common Fields](#common-fields).
+These fields are found in the [Log Type](#log-types) `couper_backend` in addition to the [Common Fields](#common-fields).
 
 | Name                     | Description                                                                                                                       |
 | :----------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
