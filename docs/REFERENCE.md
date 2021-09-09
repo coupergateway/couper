@@ -358,7 +358,7 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `signing_key`       |string|-|Private key (in PEM format) for `RS*` variants.|-|-|
 | `signing_key_file`  |string|-|Optional file reference instead of `signing_key` usage.|-|-|
-| `signing_ttl`       |string|-|The token's time-to-live (creates the `exp` claim).|-|-|
+| `signing_ttl`       |duration|-|The token's time-to-live (creates the `exp` claim).|-|-|
 
 ### JWT Signing Profile Block
 
@@ -378,7 +378,7 @@ An example can be found
 | `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
-|`ttl`  |string|-|The token's time-to-live (creates the `exp` claim).|-|-|
+|`ttl`  |duration|-|The token's time-to-live (creates the `exp` claim).|-|-|
 | `claims` |string|-|Default claims for the JWT payload.|-|-|
 
 ### OAuth2 AC Block (Beta)
