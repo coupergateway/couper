@@ -26,7 +26,7 @@ Upon the execution of Couper all log events are sent to the standard output. You
 
 ## Fields
 
-Given the large amount of information contained in several _Logs_, see [Settings](#settings) to change the format or level of intricacy with which _Logs_ are printed.
+Given the large amount of information contained in some logs, it might come handy to change the format or log level (see [Settings](#settings)).
 
 ### Common Fields
 
