@@ -1,40 +1,38 @@
 package transport
 
 import (
-	"context"
-	"net"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 type probeOptions struct {
-	t time.Duration
-}
-
-func newClient(c *Config) *http.Client {
-	dialer := &net.Dialer{}
-	return &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dialer.DialContext(ctx, "tcp4", c.Origin)
-			},
-			DisableCompression: true,
-		},
-	}
+	time             time.Duration
+	failureThreshold int
 }
 
 func (c *Config) Probe(b *Backend) {
-	counter := 0
 	probeOpts := &probeOptions{
-		t: time.Second,
+		time:             time.Second,
+		failureThreshold: 5,
 	}
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	for {
-		time.Sleep(probeOpts.t)
-		c, _ = b.evalTransport(req)
-		req, _ = http.NewRequest(http.MethodGet, c.Scheme+"://"+c.Origin, nil)
-		_, err := newClient(c).Do(req)
-		println("healthcheck:", counter, err == nil)
-		counter++
+	c, _ = b.evalTransport(req)
+	req, _ = http.NewRequest(http.MethodGet, c.Scheme+"://"+c.Origin, nil)
+
+	for counter, failure := 1, 0; true; counter++ {
+		time.Sleep(probeOpts.time)
+		_, err := http.DefaultClient.Do(req)
+
+		state := "OK"
+		if err == nil {
+			failure = 0
+		} else if failure++; failure <= probeOpts.failureThreshold {
+			state = "DEGRADED " + strconv.Itoa(failure) + "/" + strconv.Itoa(probeOpts.failureThreshold)
+		} else {
+			state = "DOWN " + strconv.Itoa(failure) + "/" + strconv.Itoa(probeOpts.failureThreshold)
+		}
+
+		println("healthcheck", counter, state)
 	}
 }
