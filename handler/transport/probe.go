@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+const (
+	stateInvalid = iota
+	stateOk
+	stateDegraded
+	stateDown
+)
+
+type state int
+
 type probe struct {
 	//configurable settings
 	backend          *Backend
@@ -17,8 +26,21 @@ type probe struct {
 	//variables reflecting status of probe
 	counter int
 	failure int
-	state   string
+	state   state
 	status  int
+}
+
+func (state *state) toString(f int, ft int) string {
+	switch *state {
+	case stateOk:
+		return "OK"
+	case stateDegraded:
+		return "DEGRADED " + strconv.Itoa(f) + "/" + strconv.Itoa(ft)
+	case stateDown:
+		return "DOWN " + strconv.Itoa(f) + "/" + strconv.Itoa(ft)
+	default:
+		return "INVALID"
+	}
 }
 
 func newProbe(time, timeOut time.Duration, failureThreshold int, backend *Backend) {
@@ -48,20 +70,21 @@ func (p *probe) probe() {
 		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.timeOut))
 		res, err := http.DefaultClient.Do(req.WithContext(ctx))
 
-		p.state = "OK"
+		p.state = stateInvalid
 		p.status = 0
 		if err != nil {
 			if p.failure++; p.failure <= p.failureThreshold {
-				p.state = "DEGRADED " + strconv.Itoa(p.failure) + "/" + strconv.Itoa(p.failureThreshold)
+				p.state = stateDegraded
 			} else {
-				p.state = "DOWN " + strconv.Itoa(p.failure) + "/" + strconv.Itoa(p.failureThreshold)
+				p.state = stateDown
 			}
 		} else {
 			p.failure = 0
+			p.state = stateOk
 			p.status = res.StatusCode
 		}
 
-		print("healthcheck ", p.counter, ", state ", p.state, ", status code ", p.status, "\n")
+		print("healthcheck ", p.counter, ", state ", p.state.toString(p.failure, p.failureThreshold), ", status code ", p.status, "\n")
 		cancel()
 		p.counter++
 	}
