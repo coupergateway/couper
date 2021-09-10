@@ -75,7 +75,7 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 | `"timings":`  |             | field regarding timing                                                                                                            |
 |               | `{`         |                                                                                                                                   |
 |               | `"total"`   | total time taken                                                                                                                  |
-|               | `)`         |                                                                                                                                   |
+|               | `}`         |                                                                                                                                   |
 | `“uid"`       |             | unique request id configurable in [Settings](./REFERENCE.md#settings-block)                                                       |
 | `"url"`       |             | complete url (`<proto>://<host>:<port><path>` or `<origin><path>`)                                                                |
 
@@ -114,7 +114,7 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 |                         | `"tls"`     | time taken between attempt and success at tls handshake                                                                           |
 |                         | `"total"`   | total time taken                                                                                                                  | 
 |                         | `"ttfb"`    | time to first byte/between establishing connection and receiving first byte                                                       |
-|                         | `)`         |                                                                                                                                   |
+|                         | `}`         |                                                                                                                                   |
 | `"token_request"`       |             | entry regarding request for token                                                                                                 |
 | `"token_request_retry"` |             | how many `token_request` attempts were made                                                                                       |
 | `"uid"`                 |             | unique request id configurable in [Settings](./REFERENCE.md#settings-block)                                                       |
@@ -133,7 +133,7 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 |              | `{`             |                                                                                                                            |
 |              | `"max-retries"` | maximum retry count, see [Global Options](./CLI.md#global-options)                                                         |
 |              | `"retry-delay"` | configured delay of each retry, see [Global Options](./CLI.md#global-options)                                              |
-|              | `)`             |                                                                                                                            |
+|              | `}`             |                                                                                                                            |
 
 ## Settings
 
