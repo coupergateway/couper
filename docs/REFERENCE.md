@@ -346,9 +346,19 @@ required _label_.
 | `header`          |string|-|-|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.|`header = "Authorization"` |
 | `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
-|  `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+| `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 | `claims`               |string|-|Equals/in comparison with JWT payload.|-|-|
 | `required_claims`      | string|-|list of claims that must be given for a valid token |-|-|
+
+The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
+
+*Note:* A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
+
+| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
+| `signing_key`       |string|-|Private key (in PEM format) for `RS*` variants.|-|-|
+| `signing_key_file`  |string|-|Optional file reference instead of `signing_key` usage.|-|-|
+| `signing_ttl`       |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 
 ### JWT Signing Profile Block
 
@@ -368,7 +378,7 @@ An example can be found
 | `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
-|`ttl`  |string|-|The token's time-to-live (creates the `exp` claim).|-|-|
+|`ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 | `claims` |string|-|Default claims for the JWT payload.|-|-|
 
 ### OAuth2 AC Block (Beta)
@@ -413,7 +423,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `backend`                       |string|-|[Backend Block Reference](#backend-block)| &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`! |-|
 | `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
-| `configuration_ttl` | duration | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
+| `configuration_ttl` | [duration](#duration) | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
 | `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
@@ -636,7 +646,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `coalesce`                     |                 | Returns the first of the given arguments that is not null.                                                                                                                                                                                                                                           | `arg...` (various)                  | `coalesce(request.cookies.foo, "bar")`               |
 | `json_decode`                  | various         | Parses the given JSON string and, if it is valid, returns the value it represents.                                                                                                                                                                                                                   | `encoded` (string)                  | `json_decode("{\"foo\": 1}")`                        |
 | `json_encode`                  | string          | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     | `val` (various)                     | `json_encode(request.context.myJWT)`                 |
-| `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
+| `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) (or [JWT Block](#jwt-block) with `signing_ttl`) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
 | `merge`                        | object or tuple | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. | `arg...` (object or tuple)          | `merge(request.headers, { x-additional = "myval" })` |
 | `beta_oauth_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block-beta).                                                                                                                                                                                                      | `label` (string)                    | `beta_oauth_authorization_url("myOAuth2")`           |
 | `beta_oauth_verifier`          | string          | Creates a cryptographically random key as specified in RFC 7636, applicable for all verifier methods; e.g. to be set as a cookie and read into `verifier_value`. Multiple calls of this function in the same client request context return the same value.                                           |                                     | `beta_oauth_verifier()`                         |
