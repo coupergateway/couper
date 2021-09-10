@@ -358,7 +358,7 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `signing_key`       |string|-|Private key (in PEM format) for `RS*` variants.|-|-|
 | `signing_key_file`  |string|-|Optional file reference instead of `signing_key` usage.|-|-|
-| `signing_ttl`       |duration|-|The token's time-to-live (creates the `exp` claim).|-|-|
+| `signing_ttl`       |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 
 ### JWT Signing Profile Block
 
@@ -378,7 +378,7 @@ An example can be found
 | `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
-|`ttl`  |duration|-|The token's time-to-live (creates the `exp` claim).|-|-|
+|`ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 | `claims` |string|-|Default claims for the JWT payload.|-|-|
 
 ### OAuth2 AC Block (Beta)
@@ -423,7 +423,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `backend`                       |string|-|[Backend Block Reference](#backend-block)| &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`! |-|
 | `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
-| `configuration_ttl` | duration | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
+| `configuration_ttl` | [duration](#duration) | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
 | `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
