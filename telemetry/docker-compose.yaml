@@ -74,6 +74,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - $PWD/grafana.json:/etc/grafana/provisioning/dashboards/couper.json
+      - $PWD/telemetry/grafana_dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yml
       - $PWD/telemetry/grafana_datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml
       - /var/lib/grafana
     ports:
