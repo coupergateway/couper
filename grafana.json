@@ -54,10 +54,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -91,7 +87,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(couper_client_request_total [$__interval:1s]))",
+          "expr": "sum(count_over_time(client_request_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s]))",
           "interval": "",
           "legendFormat": "HTTP Status {{response_status}}",
           "refId": "A"
@@ -117,12 +113,16 @@
                 "value": null
               },
               {
+                "color": "#EAB839",
+                "value": 2000
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 5000
               }
             ]
           },
-          "unit": "short"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -152,7 +152,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "quantile_over_time(0.95,couper_client_request_duration_seconds{response_status=\"200\"} [$__interval:1s])",
+          "expr": "quantile_over_time(0.95,client_request_duration_seconds{response_status=\"200\", job=\"$job\", service_name=\"$service\"} [$__interval:1s]) or quantile_over_time(0.95,client_request_duration_seconds_sum{response_status=\"200\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -177,8 +177,12 @@
                 "value": null
               },
               {
+                "color": "#EAB839",
+                "value": 10
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 30
               }
             ]
           }
@@ -211,7 +215,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(couper_client_request_total{response_status=~\"500\"} [$__interval:1s])) / (sum(count_over_time(couper_client_request_total{response_status!=\"500\"} [$__interval:1s])) / 100 )",
+          "expr": "sum(count_over_time(client_request_total{response_status=~\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])) / (sum(count_over_time(client_request_total{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])) / 100 )",
           "hide": false,
           "interval": "",
           "legendFormat": "",
@@ -267,10 +271,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -327,7 +327,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (response_status) (couper_client_request_total)",
+          "expr": "sum by (response_status) (client_request_total{job=\"$job\", service_name=\"$service\"})",
           "interval": "1",
           "intervalFactor": 1,
           "legendFormat": "Status {{response_status}}",
@@ -394,10 +394,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -426,7 +422,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(origin) (increase(couper_backend_request_total [5m:1s]))",
+          "expr": "sum by(origin) (increase(backend_request_total{job=\"$job\", service_name=\"$service\"} [5m:1s]))",
           "interval": "1",
           "legendFormat": "",
           "refId": "A"
@@ -479,10 +475,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -537,7 +529,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (hostname) (quantile_over_time(0.95,couper_backend_request_duration_seconds{response_status!=\"500\"} [$__interval:1s]))",
+          "expr": "sum by (hostname) (quantile_over_time(0.95,backend_request_duration_seconds{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])) or sum by (hostname) (quantile_over_time(0.95,backend_request_duration_seconds_sum{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s]))",
           "interval": "",
           "legendFormat": "{{hostname}}",
           "refId": "A"
@@ -598,7 +590,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(origin) (couper_connections_count)",
+          "expr": "sum by(origin) (connections_count{job=\"$job\", service_name=\"$service\"})",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -654,10 +646,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -686,7 +674,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(origin) (increase(couper_connections_total [$__interval:1s]))",
+          "expr": "sum by(origin) (increase(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s]))",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -711,10 +699,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -748,7 +732,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(couper_connections_lifetime_seconds [$__interval:1s])/(count_over_time(couper_connections_total [$__interval:1s])))",
+          "expr": "sum(count_over_time(connections_lifetime_seconds{job=\"$job\", service_name=\"$service\"} [$__interval:1s])/(count_over_time(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s]))) or sum(count_over_time(connections_lifetime_seconds_sum{job=\"$job\", service_name=\"$service\"} [$__interval:1s])/(count_over_time(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s])))",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -759,7 +743,7 @@
       "type": "stat"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "datasource": null,
       "gridPos": {
         "h": 1,
@@ -771,6 +755,240 @@
       "panels": [],
       "title": "Process",
       "type": "row"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "go_goroutines{job=\"$job\"}",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Goroutines",
+      "type": "timeseries"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 12,
+        "y": 28
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "go_memstats_heap_alloc_bytes{job=\"$job\"}",
+          "interval": "",
+          "legendFormat": "alloc",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "go_memstats_heap_sys_bytes{job=\"$job\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "sys",
+          "refId": "B"
+        },
+        {
+          "exemplar": true,
+          "expr": "go_memstats_heap_idle_bytes{job=\"$job\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "idle",
+          "refId": "C"
+        }
+      ],
+      "title": "Heap Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 19,
+        "y": 28
+      },
+      "id": 24,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.1.3",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "go_threads{job=\"$job\"}",
+          "interval": "",
+          "legendFormat": "alloc",
+          "refId": "A"
+        }
+      ],
+      "title": "Threads",
+      "type": "stat"
     }
   ],
   "schemaVersion": 30,
@@ -779,19 +997,63 @@
   "templating": {
     "list": [
       {
-        "description": null,
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "couper-dev",
+          "value": "couper-dev"
+        },
+        "datasource": null,
+        "definition": "label_values(client_request_total, job)",
+        "description": "filter metrics by scrape job",
         "error": null,
-        "hide": 2,
-        "label": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Scrape Job",
+        "multi": false,
         "name": "job",
-        "query": "couper",
+        "options": [],
+        "query": {
+          "query": "label_values(client_request_total, job)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
-        "type": "constant"
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "couper",
+          "value": "couper"
+        },
+        "datasource": null,
+        "definition": "label_values(client_request_total, service_name)",
+        "description": "filter metrics by service name",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Service",
+        "multi": false,
+        "name": "service",
+        "options": [],
+        "query": {
+          "query": "label_values(client_request_total, service_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},

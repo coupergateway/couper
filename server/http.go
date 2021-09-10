@@ -90,7 +90,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	accessLog := logging.NewAccessLog(&logConf, log)
 
 	// order matters
-	traceHandler := middleware.NewTraceHandler("couper")(httpSrv)
+	traceHandler := middleware.NewTraceHandler()(httpSrv)
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		accessLog.ServeHTTP(rw, req, uidHandler, time.Now())

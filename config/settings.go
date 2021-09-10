@@ -48,20 +48,24 @@ func (a AcceptForwarded) String() string {
 	return strings.Join(parts, ",")
 }
 
+const otelCollectorEndpoint = "localhost:4317"
+
 // DefaultSettings defines the <DefaultSettings> object.
 var DefaultSettings = Settings{
-	DefaultPort:               8080,
-	HealthPath:                "/healthz",
-	LogFormat:                 "common",
-	LogLevel:                  "info",
-	LogPretty:                 false,
-	NoProxyFromEnv:            false,
-	RequestIDFormat:           "common",
-	RequestIDAcceptFromHeader: "",
-	RequestIDBackendHeader:    "Couper-Request-ID",
-	RequestIDClientHeader:     "Couper-Request-ID",
-	SecureCookies:             "",
-	XForwardedHost:            false,
+	DefaultPort:              8080,
+	HealthPath:               "/healthz",
+	LogFormat:                "common",
+	LogLevel:                 "info",
+	LogPretty:                false,
+	NoProxyFromEnv:           false,
+	RequestIDBackendHeader:   "Couper-Request-ID",
+	RequestIDClientHeader:    "Couper-Request-ID",
+	RequestIDFormat:          "common",
+	TelemetryMetricsEndpoint: otelCollectorEndpoint,
+	TelemetryMetricsExporter: "otlp",
+	TelemetryMetricsPort:     9090, // default prometheus port
+	TelemetryTracesEndpoint:  otelCollectorEndpoint,
+	XForwardedHost:           false,
 
 	// TODO: refactor
 	AcceptForwardedURL: []string{},
@@ -85,8 +89,12 @@ type Settings struct {
 	RequestIDFormat           string   `hcl:"request_id_format,optional"`
 	SecureCookies             string   `hcl:"secure_cookies,optional"`
 	TLSDevProxy               List     `hcl:"https_dev_proxy,optional"`
-	TelemetryMetrics          bool     `hcl:"telemetry_metrics,optional"`
-	TelemetryTraces           bool     `hcl:"telemetry_traces,optional"`
+	TelemetryMetrics          bool     `hcl:"metrics,optional"`
+	TelemetryMetricsPort      int      `hcl:"metrics_port,optional"`
+	TelemetryMetricsEndpoint  string   `hcl:"metrics_endpoint,optional"`
+	TelemetryMetricsExporter  string   `hcl:"metrics_exporter,optional"`
+	TelemetryTraces           bool     `hcl:"traces,optional"`
+	TelemetryTracesEndpoint   string   `hcl:"traces_endpoint,optional"`
 	XForwardedHost            bool     `hcl:"xfh,optional"`
 }
 

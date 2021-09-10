@@ -3,11 +3,11 @@ package telemetry
 import "time"
 
 type Options struct {
-	AgentAddr     string
-	CollectPeriod time.Duration
-	Exporter      string
-	Metrics       bool
-	ScrapePort    string
-	ServiceName   string
-	Traces        bool
+	Metrics              bool
+	MetricsCollectPeriod time.Duration // internal collect for pusher configuration
+	MetricsEndpoint      string
+	MetricsExporter      string
+	MetricsPort          int
+	Traces               bool
+	TracesEndpoint       string
 }
