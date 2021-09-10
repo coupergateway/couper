@@ -1,38 +1,68 @@
 package transport
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-type probeOptions struct {
-	time             time.Duration
+type probe struct {
+	//configurable settings
+	backend          *Backend
 	failureThreshold int
+	time             time.Duration
+	timeOut          time.Duration
+
+	//variables reflecting status of probe
+	counter int
+	failure int
+	state   string
+	status  int
 }
 
-func (c *Config) Probe(b *Backend) {
-	probeOpts := &probeOptions{
-		time:             time.Second,
-		failureThreshold: 5,
+func newProbe(time, timeOut time.Duration, failureThreshold int, backend *Backend) {
+	p := &probe{
+		backend:          backend,
+		failureThreshold: failureThreshold,
+		time:             time,
+		timeOut:          timeOut,
+
+		counter: 1,
+		failure: 0,
 	}
+	go p.probe()
+}
+
+func (p *probe) probe() {
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	c, _ = b.evalTransport(req)
+	c, err := p.backend.evalTransport(req)
+	if err != nil {
+		p.backend.upstreamLog.LogEntry().WithError(err).Error()
+		return
+	}
 	req, _ = http.NewRequest(http.MethodGet, c.Scheme+"://"+c.Origin, nil)
 
-	for counter, failure := 1, 0; true; counter++ {
-		time.Sleep(probeOpts.time)
-		_, err := http.DefaultClient.Do(req)
+	for {
+		time.Sleep(p.time)
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.timeOut))
+		res, err := http.DefaultClient.Do(req.WithContext(ctx))
 
-		state := "OK"
-		if err == nil {
-			failure = 0
-		} else if failure++; failure <= probeOpts.failureThreshold {
-			state = "DEGRADED " + strconv.Itoa(failure) + "/" + strconv.Itoa(probeOpts.failureThreshold)
+		p.state = "OK"
+		p.status = 0
+		if err != nil {
+			if p.failure++; p.failure <= p.failureThreshold {
+				p.state = "DEGRADED " + strconv.Itoa(p.failure) + "/" + strconv.Itoa(p.failureThreshold)
+			} else {
+				p.state = "DOWN " + strconv.Itoa(p.failure) + "/" + strconv.Itoa(p.failureThreshold)
+			}
 		} else {
-			state = "DOWN " + strconv.Itoa(failure) + "/" + strconv.Itoa(probeOpts.failureThreshold)
+			p.failure = 0
+			p.status = res.StatusCode
 		}
 
-		println("healthcheck", counter, state)
+		print("healthcheck ", p.counter, ", state ", p.state, ", status code ", p.status, "\n")
+		cancel()
+		p.counter++
 	}
 }
