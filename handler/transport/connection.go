@@ -47,11 +47,17 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 	if conf.BackendName != "" {
 		backendName = conf.BackendName
 	}
+
+	var reqID string
+	if uid, ok := ctx.Value(request.UID).(string); ok {
+		reqID = uid
+	}
+
 	o := &OriginConn{
 		Conn:         conn,
 		conf:         conf,
 		createdAt:    time.Now(),
-		initialReqID: ctx.Value(request.UID).(string),
+		initialReqID: reqID,
 		labels: []attribute.KeyValue{
 			attribute.String("origin", conf.Origin),
 			attribute.String("host", conf.Hostname),
