@@ -87,7 +87,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(client_request_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s]))",
+          "expr": "sum(count_over_time(client_request_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s]))",
           "interval": "",
           "legendFormat": "HTTP Status {{response_status}}",
           "refId": "A"
@@ -152,7 +152,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "quantile_over_time(0.95,client_request_duration_seconds{response_status=\"200\", job=\"$job\", service_name=\"$service\"} [$__interval:1s]) or quantile_over_time(0.95,client_request_duration_seconds_sum{response_status=\"200\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])",
+          "expr": "quantile_over_time(0.95,client_request_duration_seconds{response_status=\"200\", job=\"$job\", service_name=\"$service\"} [$__interval:10s]) or quantile_over_time(0.95,client_request_duration_seconds_sum{response_status=\"200\", job=\"$job\", service_name=\"$service\"} [$__interval:10s])",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -215,7 +215,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(client_request_total{response_status=~\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])) / (sum(count_over_time(client_request_total{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])) / 100 )",
+          "expr": "sum(count_over_time(client_request_total{response_status=~\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:10s])) / (sum(count_over_time(client_request_total{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:10s])) / 100 )",
           "hide": false,
           "interval": "",
           "legendFormat": "",
@@ -422,7 +422,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(origin) (increase(backend_request_total{job=\"$job\", service_name=\"$service\"} [5m:1s]))",
+          "expr": "sum by(origin) (increase(backend_request_total{job=\"$job\", service_name=\"$service\"} [5m:10s]))",
           "interval": "1",
           "legendFormat": "",
           "refId": "A"
@@ -529,7 +529,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (hostname) (quantile_over_time(0.95,backend_request_duration_seconds{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s])) or sum by (hostname) (quantile_over_time(0.95,backend_request_duration_seconds_sum{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:1s]))",
+          "expr": "sum by (hostname) (quantile_over_time(0.95,backend_request_duration_seconds{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:10s])) or sum by (hostname) (quantile_over_time(0.95,backend_request_duration_seconds_sum{response_status!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:10s]))",
           "interval": "",
           "legendFormat": "{{hostname}}",
           "refId": "A"
@@ -674,7 +674,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(origin) (increase(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s]))",
+          "expr": "sum by(origin) (increase(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s]))",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -732,7 +732,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(connections_lifetime_seconds{job=\"$job\", service_name=\"$service\"} [$__interval:1s])/(count_over_time(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s]))) or sum(count_over_time(connections_lifetime_seconds_sum{job=\"$job\", service_name=\"$service\"} [$__interval:1s])/(count_over_time(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:1s])))",
+          "expr": "sum(count_over_time(connections_lifetime_seconds{job=\"$job\", service_name=\"$service\"} [$__interval:10s])/(count_over_time(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s]))) or sum(count_over_time(connections_lifetime_seconds_sum{job=\"$job\", service_name=\"$service\"} [$__interval:10s])/(count_over_time(connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s])))",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
