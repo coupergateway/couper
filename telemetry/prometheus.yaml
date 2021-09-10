@@ -4,3 +4,7 @@ scrape_configs:
     static_configs:
       - targets: ['otel-collector:8889']
       - targets: ['otel-collector:8888']
+  - job_name: 'couper-dev'
+    scrape_interval: 2s
+    static_configs:
+      - targets: ["couper:9999"]

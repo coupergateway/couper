@@ -14,7 +14,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry"
+	"github.com/avenga/couper/telemetry/instrumentation"
 )
 
 const (
@@ -23,14 +23,12 @@ const (
 )
 
 type TraceHandler struct {
-	service string
 	handler http.Handler
 }
 
-func NewTraceHandler(service string) Next {
+func NewTraceHandler() Next {
 	return func(handler http.Handler) http.Handler {
 		return &TraceHandler{
-			service: service,
 			handler: handler,
 		}
 	}
@@ -41,12 +39,12 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	opts := []trace.SpanStartOption{
 		trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", req)...),
 		trace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(req)...),
-		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(th.service, spanName, req)...),
+		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest("couper", spanName, req)...),
 		trace.WithSpanKind(trace.SpanKindServer),
-		trace.WithAttributes(telemetry.KeyUID.String(req.Context().Value(request.UID).(string))),
+		trace.WithAttributes(attribute.String("couper.uid", req.Context().Value(request.UID).(string))),
 	}
 
-	tracer := otel.GetTracerProvider().Tracer(telemetry.InstrumentationName)
+	tracer := otel.GetTracerProvider().Tracer(instrumentation.Name)
 	ctx, span := tracer.Start(req.Context(), spanName, opts...)
 	defer span.End()
 

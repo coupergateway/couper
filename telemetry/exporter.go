@@ -18,7 +18,6 @@ import (
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	export "go.opentelemetry.io/otel/sdk/export/metric"
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -39,6 +38,11 @@ const (
 	ExporterStdout
 )
 
+const (
+	serviceName        = "couper"
+	otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
+)
+
 func InitExporter(ctx context.Context, opts *Options, log *logrus.Entry) {
 	otel.SetErrorHandler(ErrorHandleFunc(func(e error) { // configure otel to use our logger for error handling
 		if e != nil {
@@ -46,9 +50,9 @@ func InitExporter(ctx context.Context, opts *Options, log *logrus.Entry) {
 		}
 	}))
 
-	exporter := parseExporter(opts.Exporter)
+	exporter := parseExporter(opts.MetricsExporter)
 	if exporter == ExporterInvalid {
-		otel.Handle(fmt.Errorf("telemetry: unknown Exporter: %s", opts.Exporter))
+		otel.Handle(fmt.Errorf("metrics: unknown exporter: %s", opts.MetricsExporter))
 		return
 	}
 
@@ -61,10 +65,8 @@ func InitExporter(ctx context.Context, opts *Options, log *logrus.Entry) {
 }
 
 func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) error {
-	endpoint := "localhost:4317"
-	if opts.AgentAddr != "" {
-		endpoint = opts.AgentAddr
-	} else if ep := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); ep != "" {
+	endpoint := opts.TracesEndpoint
+	if ep := os.Getenv(otlpExporterEnvKey); ep != "" {
 		endpoint = ep
 	}
 
@@ -84,7 +86,7 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) er
 	resources := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.HostNameKey.String(hostname),
-		semconv.ServiceNameKey.String(opts.ServiceName),
+		semconv.ServiceNameKey.String(serviceName),
 		semconv.ServiceVersionKey.String(utils.VersionName),
 	)
 
@@ -108,14 +110,14 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) er
 }
 
 func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry) error {
-	if parseExporter(opts.Exporter) == ExporterPrometheus {
+	if parseExporter(opts.MetricsExporter) == ExporterPrometheus {
 		promExporter, err := newPromExporter()
 		if err != nil {
 			return err
 		}
 		global.SetMeterProvider(promExporter.MeterProvider())
 		go func() {
-			metrics := &Metrics{log: log}
+			metrics := NewMetricsServer(log, promExporter, opts.MetricsPort)
 			go metrics.ListenAndServe()
 			<-ctx.Done()
 			otel.Handle(metrics.Close())
@@ -124,17 +126,18 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry) e
 		return nil
 	}
 
+	endpoint := opts.TracesEndpoint
+	if ep := os.Getenv(otlpExporterEnvKey); ep != "" {
+		endpoint = ep
+	}
+
 	clientOps := []otlpmetricgrpc.Option{
+		otlpmetricgrpc.WithEndpoint(endpoint),
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithReconnectionPeriod(time.Second * 5),
 	}
 
-	addr := opts.AgentAddr
-	if addr != "" {
-		clientOps = append(clientOps, otlpmetricgrpc.WithEndpoint(addr))
-	}
-
-	collectPeriod := opts.CollectPeriod
+	collectPeriod := opts.MetricsCollectPeriod
 	if collectPeriod.Milliseconds() == 0 {
 		collectPeriod = time.Second * 2
 	}
@@ -184,12 +187,15 @@ func newPromExporter() (*prometheus.Exporter, error) {
 
 	ctlr := controller.New(
 		processor.New(
-			selector.NewWithHistogramDistribution(
-				histogram.WithExplicitBoundaries(config.DefaultHistogramBoundaries),
-			),
+			selector.NewWithHistogramDistribution(),
 			export.CumulativeExportKindSelector(),
 			processor.WithMemory(true),
 		),
+		controller.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersionKey.String(utils.VersionName),
+		)),
 	)
 	promExporter, err := prometheus.New(config, ctlr)
 	return promExporter, err

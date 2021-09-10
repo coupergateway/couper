@@ -39,23 +39,28 @@ services:
     build:
       dockerfile: $PWD/Dockerfile
       context: $PWD
+    hostname: couper
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
 #      - OTA_EXPORTER_JAEGER_ENDPOINT
 #      - OTA_EXPORTER_JAEGER_SERVICE_NAME
 #      - OTA_EXPORTER_ZIPKIN_ENDPOINT
 #      - OTA_EXPORTER_ZIPKIN_SERVICE_NAME
-      - USER=dev-docker # fromEnv filled attrs
       - COUPER_WATCH=true
-      - COUPER_TELEMETRY_TRACES=true
-      - COUPER_TELEMETRY_METRICS=true
+      - COUPER_TRACES=true
+      - COUPER_METRICS=true
+      - COUPER_METRICS_EXPORTER=prometheus
+      - COUPER_METRICS_PORT=9999
+    volumes:
+      - $PWD/public/couper.hcl:/conf/couper.hcl
     ports:
       - "8080:8080"
+      - "9999:9999"
     depends_on:
       - otel-collector
 
   prometheus:
-    container_name: prometheus
+    hostname: prometheus
     image: prom/prometheus:latest
     volumes:
       - $PWD/telemetry/prometheus.yaml:/etc/prometheus/prometheus.yml
@@ -63,7 +68,7 @@ services:
       - "9090:9090"
 
   grafana:
-    container_name: grafana
+    hostname: grafana
     image: grafana/grafana
     environment:
       - GF_USERS_ALLOW_SIGN_UP=false
