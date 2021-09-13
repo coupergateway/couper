@@ -206,7 +206,7 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 		}
 
 		if val != v {
-			return nil, errors.JwtTokenInvalid.Messagef("unexpected value for claim %s: %s", k, val)
+			return nil, errors.JwtTokenInvalid.Messagef("unexpected value for claim %s: %q, expected %q", k, val, v)
 		}
 	}
 	return tokenClaims, nil
