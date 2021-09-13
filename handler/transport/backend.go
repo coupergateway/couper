@@ -74,7 +74,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 
-	newProbe(time.Second, time.Second, 5, backend)
+	NewProbe(time.Second, time.Second, 5, backend)
 
 	return backend.upstreamLog
 }
