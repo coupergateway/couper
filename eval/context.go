@@ -23,6 +23,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
+	probe "github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -159,6 +160,41 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
 	ctx.updateRequestRelatedFunctions(origin)
+	ctx.updateFunctions()
+
+	return ctx
+}
+
+func (c *Context) WithBeprobe() *Context {
+	ctx := &Context{
+		eval:              c.cloneEvalContext(),
+		inner:             c.inner,
+		memorize:          c.memorize,
+		oauth2:            c.oauth2[:],
+		jwtSigningConfigs: c.jwtSigningConfigs,
+		saml:              c.saml[:],
+		syncedVariables:   c.syncedVariables,
+	}
+	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
+
+	beprobes := probe.GetBackendProbes()
+	probes := make(ContextMap)
+
+	for name, beprobe := range beprobes {
+		if beprobe == "" {
+			continue
+		}
+
+		probes[name] = cty.ObjectVal(ContextMap{
+			BackendProbes: cty.StringVal(beprobe),
+		})
+	}
+
+	ctx.eval.Variables[BackendProbes] = cty.ObjectVal(probes)
+
+	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
+	originUrl, _ := url.Parse(clientOrigin)
+	ctx.updateRequestRelatedFunctions(originUrl)
 	ctx.updateFunctions()
 
 	return ctx

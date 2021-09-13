@@ -6,6 +6,7 @@ const (
 	BackendResponse  = "backend_response"
 	BackendResponses = "backend_responses"
 	BackendDefault   = "default"
+	BackendProbes    = "INVALID"
 	Body             = "body"
 	ClientRequest    = "request"
 	CTX              = "context"
