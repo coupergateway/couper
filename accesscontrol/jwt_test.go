@@ -1,6 +1,7 @@
 package accesscontrol_test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -12,12 +13,15 @@ import (
 	"testing"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -26,7 +30,7 @@ func Test_JWT_NewJWT_RSA(t *testing.T) {
 
 	type fields struct {
 		algorithm      string
-		claims         map[string]interface{}
+		claims         hcl.Expression
 		claimsRequired []string
 		pubKey         []byte
 		pubKeyPath     string
@@ -136,7 +140,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 func Test_JWT_Validate(t *testing.T) {
 	type fields struct {
 		algorithm      acjwt.Algorithm
-		claims         map[string]interface{}
+		claims         map[string]string
 		claimsRequired []string
 		source         ac.JWTSource
 		pubKey         []byte
@@ -179,40 +183,40 @@ func Test_JWT_Validate(t *testing.T) {
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
-			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
+			}, setContext(httptest.NewRequest(http.MethodGet, "/", nil)), true},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), false},
 			{"src: header /w no cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
+			}, setContext(httptest.NewRequest(http.MethodGet, "/", nil)), true},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), true},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", "")), true},
 			{"src: header /w valid cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token)), false},
 			{"src: header /w valid bearer & claims", fields{
 				algorithm: algo,
-				claims: map[string]interface{}{
+				claims: map[string]string{
 					"aud":     "peter",
 					"test123": "value123",
 				},
 				claimsRequired: []string{"aud"},
 				source:         ac.NewJWTSource("", "Authorization"),
 				pubKey:         pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), false},
 			{"src: header /w valid bearer & w/o claims", fields{
 				algorithm: algo,
-				claims: map[string]interface{}{
+				claims: map[string]string{
 					"aud":  "peter",
 					"cptn": "hook",
 				},
@@ -221,7 +225,7 @@ func Test_JWT_Validate(t *testing.T) {
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
 			{"src: header /w valid bearer & w/o required claims", fields{
 				algorithm: algo,
-				claims: map[string]interface{}{
+				claims: map[string]string{
 					"aud": "peter",
 				},
 				claimsRequired: []string{"exp"},
@@ -231,9 +235,13 @@ func Test_JWT_Validate(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
+				claimValMap := make(map[string]cty.Value)
+				for k, v := range tt.fields.claims {
+					claimValMap[k] = cty.StringVal(v)
+				}
 				j, err := ac.NewJWT(&ac.JWTOptions{
 					Algorithm:      tt.fields.algorithm.String(),
-					Claims:         tt.fields.claims,
+					Claims:         hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
 					ClaimsRequired: tt.fields.claimsRequired,
 					Name:           "test_ac",
 					Source:         tt.fields.source,
@@ -286,5 +294,11 @@ func newRSAKeyPair() (pubKeyBytes []byte, privKey *rsa.PrivateKey) {
 func setCookieAndHeader(req *http.Request, key, value string) *http.Request {
 	req.Header.Set(key, value)
 	req.Header.Set("Cookie", key+"="+value)
+	return req
+}
+
+func setContext(req *http.Request) *http.Request {
+	ctx := context.WithValue(req.Context(), request.ContextType, eval.NewContext(nil, nil))
+	*req = *req.WithContext(ctx)
 	return req
 }
