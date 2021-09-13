@@ -159,16 +159,16 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
-	states := probe.GetBackendProbes()
+	beprobes := probe.GetBackendProbes()
 	probes := make(ContextMap)
 
-	for name, state := range states {
-		if state == "" {
+	for name, beprobe := range beprobes {
+		if beprobe == "" {
 			continue
 		}
 
 		probes[name] = cty.ObjectVal(ContextMap{
-			State: cty.StringVal(state),
+			BackendProbes: cty.StringVal(beprobe),
 		})
 	}
 
