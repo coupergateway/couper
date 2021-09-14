@@ -508,7 +508,7 @@ Examples:
 ## Access Control
 
 The configuration of access control is twofold in Couper: You define the particular
-type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
+type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label (must not be one of the reserved names: `scopes`).
 Anywhere in the `server` block those labels can be used in the `access_control`
 list to protect that block. &#9888; access rights are inherited by nested blocks.
 You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`,
