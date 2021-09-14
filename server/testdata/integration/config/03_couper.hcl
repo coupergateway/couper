@@ -114,6 +114,16 @@ server "acs" {
       }
     }
   }
+
+  endpoint "/jwks/rsa/remote" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKSRemote"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKSRemote.sub
+      }
+    }
+  }
 }
 
 definitions {
@@ -143,6 +153,10 @@ definitions {
   jwt "JWKS" {
     header = "Authorization"
     jwks_uri = "file:../files/jwks.json"
+  }
+  jwt "JWKSRemote" {
+    header = "Authorization"
+    jwks_uri = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
   }
   backend "test" {
     origin = env.COUPER_TEST_BACKEND_ADDR

@@ -2793,8 +2793,8 @@ func TestJWTAccessControl(t *testing.T) {
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"}}, http.StatusOK, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, http.StatusForbidden, "access control error: JWKS: token signature is invalid"},
-
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
+		{"remote RSA JWKS", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

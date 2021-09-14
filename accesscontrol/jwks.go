@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/avenga/couper/config/reader"
+	"io/ioutil"
+	"net/http"
 	"time"
 )
 
@@ -68,8 +70,17 @@ func (self *JWKS) Load() error {
 		}
 		rawJSON = j
 	} else if self.uri[0:5] == "http:" || self.uri[0:6] == "https:" {
-		// TODO HTTP request
-		return fmt.Errorf("Could not fetch JWKS from %q", self.uri)
+		response, err := http.Get(self.uri)
+		if err != nil {
+			return fmt.Errorf("Could not fetch JWKS: %v", err)
+		}
+		defer response.Body.Close()
+
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return fmt.Errorf("Error reading JWKS response for %q: %v", self.uri, err)
+		}
+		rawJSON = body
 	} else {
 		return fmt.Errorf("Unsupported JWKS URI scheme: %q", self.uri)
 	}
