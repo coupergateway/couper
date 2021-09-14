@@ -93,6 +93,12 @@ func GoToValue(v interface{}) cty.Value {
 		return cty.NumberIntVal(v.(int64))
 	case float64:
 		return cty.NumberFloatVal(v.(float64))
+	case []string:
+		var list []interface{}
+		for _, s := range v.([]string) {
+			list = append(list, s)
+		}
+		return ListToValue(list)
 	case []interface{}:
 		return ListToValue(v.([]interface{}))
 	case map[string]interface{}:

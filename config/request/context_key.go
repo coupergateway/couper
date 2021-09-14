@@ -15,6 +15,7 @@ const (
 	ResponseWriter
 	RoundTripName
 	RoundTripProxy
+	Scopes
 	ServerName
 	TokenRequest
 	TokenRequestRetries

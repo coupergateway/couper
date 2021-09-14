@@ -22,6 +22,7 @@ type JWT struct {
 	Name               string   `hcl:"name,label"`
 	PostParam          string   `hcl:"post_param,optional"`
 	QueryParam         string   `hcl:"query_param,optional"`
+	ScopeClaim         string   `hcl:"beta_scope_claim,optional"`
 	SignatureAlgorithm string   `hcl:"signature_algorithm"`
 	SigningKey         string   `hcl:"signing_key,optional"`
 	SigningKeyFile     string   `hcl:"signing_key_file,optional"`
