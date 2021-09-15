@@ -327,7 +327,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (response_status) (client_request_total{job=\"$job\", service_name=\"$service\"})",
+          "expr": "sum by (response_status) (increase(client_request_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s])>0)",
           "interval": "1",
           "intervalFactor": 1,
           "legendFormat": "Status {{response_status}}",
