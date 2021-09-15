@@ -63,7 +63,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 12,
+        "w": 6,
         "x": 0,
         "y": 1
       },
@@ -307,8 +307,8 @@
         ]
       },
       "gridPos": {
-        "h": 6,
-        "w": 24,
+        "h": 7,
+        "w": 12,
         "x": 0,
         "y": 7
       },
@@ -338,13 +338,95 @@
       "type": "timeseries"
     },
     {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "id": 25,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.1.3",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum by(__name__)({job=\"$job\", service_name=\"$service\", error=\"true\"})",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Errors by type",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 14
       },
       "id": 11,
       "panels": [],
@@ -405,7 +487,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 15
       },
       "id": 14,
       "options": {
@@ -512,7 +594,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 15
       },
       "id": 16,
       "options": {
@@ -568,7 +650,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 20
+        "y": 21
       },
       "id": 15,
       "options": {
@@ -657,7 +739,7 @@
         "h": 7,
         "w": 8,
         "x": 12,
-        "y": 20
+        "y": 21
       },
       "id": 17,
       "options": {
@@ -710,7 +792,7 @@
         "h": 7,
         "w": 4,
         "x": 20,
-        "y": 20
+        "y": 21
       },
       "id": 18,
       "options": {
@@ -749,7 +831,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 28
       },
       "id": 20,
       "panels": [],
@@ -813,7 +895,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 28
+        "y": 29
       },
       "id": 22,
       "options": {
@@ -892,7 +974,7 @@
         "h": 8,
         "w": 7,
         "x": 12,
-        "y": 28
+        "y": 29
       },
       "id": 23,
       "options": {
@@ -959,7 +1041,7 @@
         "h": 8,
         "w": 5,
         "x": 19,
-        "y": 28
+        "y": 29
       },
       "id": 24,
       "options": {
@@ -1053,7 +1135,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
