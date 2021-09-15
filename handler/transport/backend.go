@@ -140,8 +140,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	if !isProxyReq {
-		removeConnectionHeaders(req.Header)
+	if !isProxyReq && beresp != nil {
+		removeConnectionHeaders(beresp.Header)
+		removeHopHeaders(beresp.Header)
 	}
 
 	// Backend response context creates the beresp variables in first place and applies this context
