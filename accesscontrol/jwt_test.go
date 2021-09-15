@@ -399,7 +399,7 @@ func TestJwtConfig(t *testing.T) {
 			"", // FIXME Missing myac
 		},
 		{
-			"missing both signature_algorithm/jwks_url",
+			"missing both signature_algorithm/jwks_uri",
 			`
 			server "test" {}
 			definitions {
@@ -407,7 +407,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // signature_algorithm or jwks_url required
+			"signature_algorithm or jwks_uri required",
 		},
 		{
 			"signature_algorithm, missing key/key_file",
@@ -420,7 +420,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // required: configured attribute or file
+			"jwt key: read error: required: configured attribute or file",
 		},
 		{
 			"signature_algorithm + key",
@@ -475,7 +475,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // signature_algorithm cannot be used together with jwks_url
+			"signature_algorithm cannot be used together with jwks_uri",
 		},
 		{
 			"key + jwks_uri",
@@ -489,7 +489,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // key cannot be used together with jwks_url
+			"key cannot be used together with jwks_uri",
 		},
 		{
 			"key_file + jwks_uri",
@@ -503,7 +503,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // key_file cannot be used together with jwks_url
+			"key_file cannot be used together with jwks_uri",
 		},
 		{
 			"backend reference, missing jwks_uri",
@@ -516,7 +516,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // backend requires jwks_uri
+			"backend requires jwks_uri",
 		},
 		{
 			"inline backend block, missing jwks_uri",
@@ -530,7 +530,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // backend requires jwks_uri
+			"backend requires jwks_uri",
 		},
 		{
 			"inline backend block, missing jwks_uri",
@@ -545,7 +545,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"configuration error", // backend must be either block or attribute
+			"backend must be either block or attribute",
 		},
 	}
 
@@ -558,11 +558,17 @@ func TestJwtConfig(t *testing.T) {
 
 			var error = ""
 			if err != nil {
-				error = err.Error()
+				error = err.(errors.GoError).LogError()
 			}
 
-			if (tt.error == "" && error != "") || !strings.Contains(error, tt.error) {
-				t.Errorf("Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.error, error)
+			if tt.error == "" && error == "" {
+				return
+			}
+
+			expectedError := "configuration error: myac: " + tt.error
+
+			if expectedError != error {
+				t.Errorf("Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", expectedError, error)
 			}
 		})
 	}
