@@ -6,6 +6,10 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -153,6 +157,17 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	entry.Time = startTime
 
 	if err != nil {
+		meter := global.Meter("couper/errors")
+		counter := metric.Must(meter).
+			NewInt64Counter("client_request+"+err.Error()+"_total",
+				metric.WithDescription(string(unit.Dimensionless)),
+			)
+		meter.RecordBatch(req.Context(), []attribute.KeyValue{
+			attribute.String("host", req.Host),
+			attribute.Bool("error", true),
+		},
+			counter.Measurement(1),
+		)
 		entry.WithError(err).Error()
 	} else {
 		entry.Info()
