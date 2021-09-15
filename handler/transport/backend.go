@@ -133,14 +133,17 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	} else {
 		beresp, err = b.innerRoundTrip(req, tc, deadlineErr)
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	if err == nil && !eval.IsUpgradeResponse(req, beresp) {
+	if !eval.IsUpgradeResponse(req, beresp) {
 		if err = setGzipReader(beresp); err != nil {
 			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
 		}
 	}
 
-	if !isProxyReq && beresp != nil {
+	if !isProxyReq {
 		removeConnectionHeaders(beresp.Header)
 		removeHopHeaders(beresp.Header)
 	}
