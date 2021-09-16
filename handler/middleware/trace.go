@@ -50,6 +50,7 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	metricsAttrs := []attribute.KeyValue{
 		attribute.String("host", req.Host),
+		attribute.String("method", req.Method),
 	}
 
 	if rsw, ok := rw.(logging.RecorderInfo); ok {
@@ -58,7 +59,7 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		span.SetAttributes(attrs...)
 		span.SetStatus(spanStatus, spanMessage)
 
-		metricsAttrs = append(metricsAttrs, attribute.Int("response_status", rsw.StatusCode()))
+		metricsAttrs = append(metricsAttrs, attribute.Int("code", rsw.StatusCode()))
 	}
 
 	meter := global.Meter("couper/server")

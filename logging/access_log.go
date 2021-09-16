@@ -3,6 +3,7 @@ package logging
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -160,12 +161,12 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	if err != nil {
 		meter := global.Meter("couper/errors")
 		counter := metric.Must(meter).
-			NewInt64Counter(instrumentation.Prefix+"client_request+"+err.Error()+"_total",
+			NewInt64Counter(instrumentation.Prefix+"client_request_error_types_total",
 				metric.WithDescription(string(unit.Dimensionless)),
 			)
 		meter.RecordBatch(req.Context(), []attribute.KeyValue{
 			attribute.String("host", req.Host),
-			attribute.Bool("error", true),
+			attribute.String("error", strings.Replace(err.Error(), " ", "_", -1)),
 		},
 			counter.Measurement(1),
 		)

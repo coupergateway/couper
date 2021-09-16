@@ -189,9 +189,10 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	duration := metric.Must(meter).
 		NewFloat64ValueRecorder(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
 	attrs := []attribute.KeyValue{
-		attribute.String("origin", tc.Origin),
-		attribute.String("hostname", tc.Hostname),
 		attribute.String("backend_name", tc.BackendName),
+		attribute.String("hostname", tc.Hostname),
+		attribute.String("method", req.Method),
+		attribute.String("origin", tc.Origin),
 	}
 
 	t := Get(tc, b.logEntry)
@@ -201,9 +202,10 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	span.AddEvent(spanMsg + ".response")
 	endSeconds := time.Since(start).Seconds()
 
+	statusKey := attribute.Key("code")
 	if err != nil {
 		defer meter.RecordBatch(req.Context(),
-			append(attrs, attribute.Int("response_status", 0)),
+			append(attrs, statusKey.Int(0)),
 			counter.Measurement(1),
 			duration.Measurement(endSeconds))
 		select {
@@ -217,7 +219,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter.RecordBatch(req.Context(),
-		append(attrs, attribute.Int("response_status", beresp.StatusCode)),
+		append(attrs, statusKey.Int(beresp.StatusCode)),
 		counter.Measurement(1),
 		duration.Measurement(endSeconds))
 
