@@ -11,6 +11,7 @@ const (
 	Error
 	Handler
 	LogEntry
+	LogDebugLevel
 	OpenAPI
 	PathParams
 	ResponseWriter

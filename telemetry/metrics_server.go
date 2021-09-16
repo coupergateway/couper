@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
 )
@@ -23,7 +25,8 @@ func NewMetricsServer(log *logrus.Entry, exporter *prometheus.Exporter, port int
 
 	uidHandler := middleware.NewUIDHandler(&config.DefaultSettings, "")(exporter)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		accessLog.ServeHTTP(rw, req, uidHandler, time.Now())
+		r := req.WithContext(context.WithValue(req.Context(), request.LogDebugLevel, true))
+		accessLog.ServeHTTP(rw, r, uidHandler, time.Now())
 	})
 
 	server := &http.Server{
