@@ -110,7 +110,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
 	ctx := req.Context()
-	cctx, ok := req.Context().Value(request.ContextType).(content.Context)
+	cctx, ok := ctx.Value(request.ContextType).(content.Context)
 	if !ok {
 		return fmt.Errorf("HTTP context must have content.Context")
 	}
