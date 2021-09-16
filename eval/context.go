@@ -160,42 +160,22 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
-	ctx.updateRequestRelatedFunctions(origin)
-	ctx.updateFunctions()
-
-	return ctx
-}
-
-func (c *Context) WithBeprobe() *Context {
-	ctx := &Context{
-		bufferOption:      c.bufferOption,
-		eval:              c.cloneEvalContext(),
-		inner:             c.inner,
-		memorize:          c.memorize,
-		oauth2:            c.oauth2[:],
-		jwtSigningConfigs: c.jwtSigningConfigs,
-		saml:              c.saml[:],
-	}
-	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
-
-	beprobes := probe.GetBackendProbes()
+	states := probe.GetBackendProbes()
 	probes := make(ContextMap)
 
-	for name, beprobe := range beprobes {
-		if beprobe == "" {
+	for name, state := range states {
+		if state == "" {
 			continue
 		}
 
 		probes[name] = cty.ObjectVal(ContextMap{
-			BackendProbes: cty.StringVal(beprobe),
+			State: cty.StringVal(state),
 		})
 	}
 
 	ctx.eval.Variables[BackendProbes] = cty.ObjectVal(probes)
 
-	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
-	originUrl, _ := url.Parse(clientOrigin)
-	ctx.updateRequestRelatedFunctions(originUrl)
+	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
 
 	return ctx
