@@ -1017,6 +1017,48 @@ func TestJwtConfig(t *testing.T) {
 			`,
 			"configuration error", // key_file cannot be used together with jwks_url
 		},
+		{
+			"backend reference, missing jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				backend = "..."
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // backend requires jwks_uri
+		},
+		{
+			"inline backend block, missing jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				backend {
+				}
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // backend requires jwks_uri
+		},
+		{
+			"inline backend block, missing jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				backend = "foo"
+				backend {
+				}
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // backend must be either block or attribute
+		},
 	}
 
 	for _, tt := range tests {
