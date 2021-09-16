@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/avenga/couper/eval"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
 )
 
@@ -15,6 +16,8 @@ const (
 	stateDegraded
 	stateDown
 )
+
+var _ context.Context = &eval.Context{}
 
 type state int
 
@@ -63,15 +66,7 @@ func NewProbe(time, timeOut time.Duration, failureThreshold int, backend *Backen
 		failure: 0,
 	}
 	go p.probe()
-	//go p.check()
 }
-
-/*func (p *probe) check() {
-	for {
-		time.Sleep(p.time)
-		print("name: ", p.backend.name, ", state: ", backend_probes.name(p.backend.name), "\n")
-	}
-}*/
 
 func (p *Probe) probe() {
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
@@ -102,7 +97,7 @@ func (p *Probe) probe() {
 			p.status = res.StatusCode
 		}
 
-		print("healthcheck ", p.counter, ", state ", p.state.Print(p.failure, p.failureThreshold), ", status code ", p.status, "\n")
+		print("backend: ", p.backend.name, ",  state: ", p.state.Print(p.failure, p.failureThreshold), ",  status: ", p.status, ",  cycle: ", p.counter, "\n")
 		probe.SetBackendProbe(p.backend.name, p.state.String())
 		cancel()
 	}
