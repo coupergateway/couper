@@ -64,6 +64,28 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 	return result
 }
 
+func ValueToScopeMap(val cty.Value) (map[string]string, error) {
+	scopeMap := make(map[string]string)
+	switch val.Type() {
+	case cty.NilType:
+		return nil, nil
+	case cty.String:
+		scopeMap["*"] = val.AsString()
+		return scopeMap, nil
+	default:
+		if val.Type().IsObjectType() {
+			for k, v := range val.AsValueMap() {
+				if v.Type() != cty.String {
+					return nil, fmt.Errorf("unsupported value for operation %q in beta_scope", k)
+				}
+				scopeMap[strings.ToUpper(k)] = v.AsString()
+			}
+			return scopeMap, nil
+		}
+	}
+	return nil, fmt.Errorf("unsupported value for beta_scope")
+}
+
 func ValuesMapToValue(m url.Values) cty.Value {
 	result := make(map[string]interface{})
 	for k, v := range m {

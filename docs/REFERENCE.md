@@ -105,6 +105,7 @@ as json error with an error body payload. This can be customized via `error_file
 |`base_path`|string|-|Configures the path prefix for all requests.|&#9888; Must be unique if multiple `api` blocks are defined.| `base_path = "/v1"`|
 | `error_file` |string|-|Location of the error file template.|-|`error_file = "./my_error_body.json"`|
 | `access_control` |list|-|Sets predefined [Access Control](#access-control) for `api` block context.|&#9888; Inherited by nested blocks.| `access_control = ["foo"]`|
+| `beta_scope` |string or object|-|Scope value required to use this API (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
 
 ### Endpoint Block
 
@@ -125,6 +126,7 @@ produce an explicit or implicit client response.
 |`request_body_limit`  |string|`64MiB`|Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.|&#9888; Valid units are: `KiB, MiB, GiB`|`request_body_limit = "200KiB"`|
 | `path`|string|-|Changeable part of the upstream URL. Changes the path suffix of the outgoing request.|-|-|
 |`access_control`   |list|-|Sets predefined [Access Control](#access-control) for `endpoint` block context.|-| `access_control = ["foo"]`|
+| `beta_scope` |string or object|-|Scope value required to use this endpoint (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
 |[Modifiers](#modifiers) |-|-|-|-|-|
 
 ### Proxy Block
