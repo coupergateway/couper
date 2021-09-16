@@ -14,6 +14,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -134,7 +135,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 
 func Test_JWT_Validate(t *testing.T) {
 	type fields struct {
-		algorithm      ac.Algorithm
+		algorithm      acjwt.Algorithm
 		claims         map[string]interface{}
 		claimsRequired []string
 		source         ac.JWTSource
@@ -155,7 +156,7 @@ func Test_JWT_Validate(t *testing.T) {
 		var token string
 		var tokenErr error
 
-		algo := ac.NewAlgorithm(signingMethod.Alg())
+		algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
 		if algo.IsHMAC() {
 			pubKeyBytes = []byte("mySecretK3y")

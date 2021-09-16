@@ -1,4 +1,8 @@
-package accesscontrol
+package jwt
+
+type (
+	Algorithm int
+)
 
 const (
 	AlgorithmUnknown Algorithm = iota - 1
