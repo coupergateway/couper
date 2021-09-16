@@ -110,11 +110,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
 	ctx := req.Context()
-	cctx, ok := ctx.Value(request.ContextType).(content.Context)
-	if !ok {
-		return fmt.Errorf("HTTP context must have content.Context")
-	}
-
+	cctx := ctx.Value(request.ContextType).(content.Context)
 	evalCtx := cctx.HCLContext()
 	claims, diags := seetie.ExpToMap(evalCtx, j.claims)
 	if diags != nil {

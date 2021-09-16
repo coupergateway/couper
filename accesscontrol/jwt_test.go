@@ -222,7 +222,7 @@ func Test_JWT_Validate(t *testing.T) {
 				},
 				source: ac.NewJWTSource("", "Authorization"),
 				pubKey: pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
 			{"src: header /w valid bearer & w/o required claims", fields{
 				algorithm: algo,
 				claims: map[string]string{
@@ -231,7 +231,7 @@ func Test_JWT_Validate(t *testing.T) {
 				claimsRequired: []string{"exp"},
 				source:         ac.NewJWTSource("", "Authorization"),
 				pubKey:         pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), true},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
