@@ -13,6 +13,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/telemetry/instrumentation"
 )
 
 type RoundtripHandlerFunc http.HandlerFunc
@@ -159,7 +160,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	if err != nil {
 		meter := global.Meter("couper/errors")
 		counter := metric.Must(meter).
-			NewInt64Counter("client_request+"+err.Error()+"_total",
+			NewInt64Counter(instrumentation.Prefix+"client_request+"+err.Error()+"_total",
 				metric.WithDescription(string(unit.Dimensionless)),
 			)
 		meter.RecordBatch(req.Context(), []attribute.KeyValue{

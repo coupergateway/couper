@@ -29,12 +29,8 @@ import (
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
+	"github.com/avenga/couper/telemetry/instrumentation"
 	"github.com/avenga/couper/utils"
-)
-
-const (
-	metricsRequest         = "backend_request_total"
-	metricsRequestDuration = "backend_request_duration_seconds"
 )
 
 var _ http.RoundTripper = &Backend{}
@@ -189,9 +185,9 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := global.Meter("couper/backend")
-	counter := metric.Must(meter).NewInt64Counter(metricsRequest, metric.WithDescription(string(unit.Dimensionless)))
+	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
-		NewFloat64ValueRecorder(metricsRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+		NewFloat64ValueRecorder(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
 	attrs := []attribute.KeyValue{
 		attribute.String("origin", tc.Origin),
 		attribute.String("hostname", tc.Hostname),

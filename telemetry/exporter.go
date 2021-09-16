@@ -183,7 +183,9 @@ func newPromExporter() (*prometheus.Exporter, error) {
 	}
 
 	config.Registry.MustRegister(collectors.NewGoCollector())
-	config.Registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	config.Registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
+		Namespace: serviceName,
+	}))
 
 	ctlr := controller.New(
 		processor.New(

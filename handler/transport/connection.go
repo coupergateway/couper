@@ -14,13 +14,10 @@ import (
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/telemetry/instrumentation"
 )
 
 const (
-	MetricConnections         = "connections_count"
-	MetricConnectionsTotal    = "connections_total"
-	MetricConnectionsLifetime = "connections_lifetime_seconds"
-
 	eventOpen  = "open"
 	eventClose = "close"
 )
@@ -75,8 +72,8 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 
 	meter := global.Meter("couper/connection")
 
-	counter := metric.Must(meter).NewInt64Counter(MetricConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
-	gauge := metric.Must(meter).NewFloat64UpDownCounter(MetricConnections, metric.WithDescription(string(unit.Dimensionless)))
+	counter := metric.Must(meter).NewInt64Counter(instrumentation.ConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
+	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.Connections, metric.WithDescription(string(unit.Dimensionless)))
 	meter.RecordBatch(ctx, o.labels,
 		counter.Measurement(1),
 		gauge.Measurement(1),
@@ -98,7 +95,7 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 
 		meter := global.Meter("couper/connection")
 		duration := metric.Must(meter).
-			NewFloat64ValueRecorder(MetricConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
+			NewFloat64ValueRecorder(instrumentation.ConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
 		meter.RecordBatch(context.Background(), o.labels, duration.Measurement(since.Seconds()))
 		fields["lifetime"] = since.Milliseconds()
 	}
@@ -120,7 +117,7 @@ func (o *OriginConn) Close() error {
 	o.log.WithFields(o.logFields(eventClose)).Debug()
 
 	meter := global.Meter("couper/connection")
-	gauge := metric.Must(meter).NewFloat64UpDownCounter(MetricConnections)
+	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.Connections)
 	meter.RecordBatch(context.Background(), o.labels,
 		gauge.Measurement(-1),
 	)
