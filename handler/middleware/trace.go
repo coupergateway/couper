@@ -17,11 +17,6 @@ import (
 	"github.com/avenga/couper/telemetry/instrumentation"
 )
 
-const (
-	metricsRequest         = "client_request_total"
-	metricsRequestDuration = "client_request_duration_seconds"
-)
-
 type TraceHandler struct {
 	handler http.Handler
 }
@@ -67,9 +62,9 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	meter := global.Meter("couper/server")
-	counter := metric.Must(meter).NewInt64Counter(metricsRequest, metric.WithDescription(string(unit.Dimensionless)))
+	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
-		NewFloat64ValueRecorder(metricsRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+		NewFloat64ValueRecorder(instrumentation.ClientRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
 	meter.RecordBatch(req.Context(), metricsAttrs,
 		counter.Measurement(1),
 		duration.Measurement(end.Seconds()),
