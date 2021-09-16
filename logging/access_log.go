@@ -170,6 +170,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		)
 		entry.WithError(err).Error()
 	} else {
+		if l, ok := req.Context().Value(request.LogDebugLevel).(bool); ok && l {
+			entry.Debug()
+			return
+		}
 		entry.Info()
 	}
 }
