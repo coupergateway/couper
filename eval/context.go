@@ -159,42 +159,22 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
-	ctx.updateRequestRelatedFunctions(origin)
-	ctx.updateFunctions()
-
-	return ctx
-}
-
-func (c *Context) WithBeprobe() *Context {
-	ctx := &Context{
-		eval:              c.cloneEvalContext(),
-		inner:             c.inner,
-		memorize:          c.memorize,
-		oauth2:            c.oauth2[:],
-		jwtSigningConfigs: c.jwtSigningConfigs,
-		saml:              c.saml[:],
-		syncedVariables:   c.syncedVariables,
-	}
-	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
-
-	beprobes := probe.GetBackendProbes()
+	states := probe.GetBackendProbes()
 	probes := make(ContextMap)
 
-	for name, beprobe := range beprobes {
-		if beprobe == "" {
+	for name, state := range states {
+		if state == "" {
 			continue
 		}
 
 		probes[name] = cty.ObjectVal(ContextMap{
-			BackendProbes: cty.StringVal(beprobe),
+			State: cty.StringVal(state),
 		})
 	}
 
 	ctx.eval.Variables[BackendProbes] = cty.ObjectVal(probes)
 
-	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
-	originUrl, _ := url.Parse(clientOrigin)
-	ctx.updateRequestRelatedFunctions(originUrl)
+	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
 
 	return ctx

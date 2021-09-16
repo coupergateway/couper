@@ -8,12 +8,12 @@ type BackendProbes map[string]string
 
 var (
 	probeMutex       sync.RWMutex
-	BackendProbesMap = make(BackendProbes)
+	backendProbesMap = make(BackendProbes)
 )
 
 func SetBackendProbe(name string, state string) {
 	probeMutex.Lock()
-	BackendProbesMap[name] = state
+	backendProbesMap[name] = state
 	probeMutex.Unlock()
 }
 
@@ -21,7 +21,7 @@ func GetBackendProbes() BackendProbes {
 	cp := make(BackendProbes)
 
 	probeMutex.RLock()
-	for name, state := range BackendProbesMap {
+	for name, state := range backendProbesMap {
 		cp[name] = state
 	}
 	probeMutex.RUnlock()

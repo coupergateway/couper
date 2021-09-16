@@ -55,12 +55,6 @@ type Backend struct {
 func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var logEntry *logrus.Entry
 
-	if tc.BackendName != "" {
-		logEntry = log.WithField("backend", tc.BackendName)
-	} else {
-		logEntry = log.WithField("backend", "default")
-	}
-
 	var openAPI *validation.OpenAPI
 	var tr TokenRequest
 	if opts != nil {
@@ -76,9 +70,20 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 		tokenRequest:     tr,
 		transportConf:    tc,
 	}
+
+	distinct := false
+	if tc.BackendName != "" {
+		logEntry = log.WithField("backend", tc.BackendName)
+		backend.name = tc.BackendName
+		distinct = true
+	} else {
+		logEntry = log.WithField("backend", "default")
+	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 
-	NewProbe(time.Second, time.Second, 5, backend)
+	if distinct {
+		NewProbe(time.Second, time.Second, 5, backend)
+	}
 
 	return backend.upstreamLog
 }
