@@ -1086,7 +1086,7 @@
           "value": "couper-dev"
         },
         "datasource": null,
-        "definition": "label_values(client_request_total, job)",
+        "definition": "label_values(couper_client_request_total, job)",
         "description": "filter metrics by scrape job",
         "error": null,
         "hide": 0,
@@ -1096,7 +1096,7 @@
         "name": "job",
         "options": [],
         "query": {
-          "query": "label_values(client_request_total, job)",
+          "query": "label_values(couper_client_request_total, job)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
