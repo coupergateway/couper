@@ -50,12 +50,12 @@ func NewRun(ctx context.Context) *Run {
 	set.StringVar(&settings.RequestIDClientHeader, "request-id-client-header", settings.RequestIDClientHeader, "-request-id-client-header Couper-Request-ID")
 	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
 	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
-	set.BoolVar(&settings.TelemetryMetrics, "metrics", settings.TelemetryMetrics, "-metrics")
-	set.IntVar(&settings.TelemetryMetricsPort, "metrics-port", settings.TelemetryMetricsPort, "-metrics-port 9090")
-	set.StringVar(&settings.TelemetryMetricsEndpoint, "metrics-endpoint", settings.TelemetryMetricsEndpoint, "-metrics-endpoint [host:port]")
-	set.StringVar(&settings.TelemetryMetricsExporter, "metrics-exporter", settings.TelemetryMetricsExporter, "-metrics-exporter [name]")
-	set.BoolVar(&settings.TelemetryTraces, "traces", settings.TelemetryTraces, "-traces")
-	set.StringVar(&settings.TelemetryTracesEndpoint, "traces-endpoint", settings.TelemetryTracesEndpoint, "-traces-endpoint [host:port]")
+	set.BoolVar(&settings.TelemetryMetrics, "beta-metrics", settings.TelemetryMetrics, "-metrics")
+	set.IntVar(&settings.TelemetryMetricsPort, "beta-metrics-port", settings.TelemetryMetricsPort, "-metrics-port 9090")
+	set.StringVar(&settings.TelemetryMetricsEndpoint, "beta-metrics-endpoint", settings.TelemetryMetricsEndpoint, "-metrics-endpoint [host:port]")
+	set.StringVar(&settings.TelemetryMetricsExporter, "beta-metrics-exporter", settings.TelemetryMetricsExporter, "-metrics-exporter [name]")
+	set.BoolVar(&settings.TelemetryTraces, "beta-traces", settings.TelemetryTraces, "-traces")
+	set.StringVar(&settings.TelemetryTracesEndpoint, "beta-traces-endpoint", settings.TelemetryTracesEndpoint, "-traces-endpoint [host:port]")
 	return &Run{
 		context:  ctx,
 		flagSet:  set,
