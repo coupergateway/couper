@@ -43,7 +43,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "semi-dark-purple",
+            "fixedColor": "dark-purple",
             "mode": "fixed"
           },
           "decimals": 0,
@@ -64,13 +64,13 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 12,
+        "w": 6,
         "x": 0,
         "y": 1
       },
       "id": 2,
       "options": {
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
@@ -90,11 +90,80 @@
           "exemplar": true,
           "expr": "sum(increase(couper_client_request_total{job=\"$job\", service_name=\"$service\"}[$__range]))",
           "interval": "",
-          "legendFormat": "{{host}}",
+          "legendFormat": "Requests",
           "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(increase(couper_client_connections_total{job=\"$job\", service_name=\"$service\"}[$__range]))",
+          "hide": true,
+          "interval": "",
+          "legendFormat": "Connections",
+          "refId": "B"
         }
       ],
       "title": "Total Requests",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-yellow",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 29,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.1.3",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(couper_client_connections_count{job=\"$job\", service_name=\"$service\"}) ",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "current client connections",
       "transparent": true,
       "type": "stat"
     },
@@ -660,7 +729,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(origin) (couper_connections_count{job=\"$job\", service_name=\"$service\"})",
+          "expr": "sum by(origin) (couper_backend_connections_count{job=\"$job\", service_name=\"$service\"})",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -745,7 +814,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(increase(couper_connections_total{job=\"$job\", service_name=\"$service\"} [2m])) by (origin)",
+          "expr": "sum(increase(couper_backend_connections_total{job=\"$job\", service_name=\"$service\"} [2m])) by (origin)",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -803,7 +872,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(couper_connections_lifetime_seconds{job=\"$job\", service_name=\"$service\"} [$__interval:10s])/(count_over_time(couper_connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s]))) or sum(count_over_time(couper_connections_lifetime_seconds_sum{job=\"$job\", service_name=\"$service\"} [$__interval:10s])/(count_over_time(couper_connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s])))",
+          "expr": "sum(count_over_time(couper_backend_connections_lifetime_seconds{job=\"$job\", service_name=\"$service\"} [$__interval:10s])/(count_over_time(couper_backend_connections_total{job=\"$job\", service_name=\"$service\"} [$__range:10s]))) or sum(count_over_time(couper_backend_connections_lifetime_seconds_sum{job=\"$job\", service_name=\"$service\"} [$__interval:10s])/(count_over_time(couper_backend_connections_total{job=\"$job\", service_name=\"$service\"} [$__range:10s])))",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -882,7 +951,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 29
       },
@@ -961,8 +1030,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 7,
-        "x": 12,
+        "w": 5,
+        "x": 8,
         "y": 29
       },
       "id": 23,
@@ -1009,6 +1078,85 @@
       "fieldConfig": {
         "defaults": {
           "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 13,
+        "y": 29
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "increase(couper_process_cpu_seconds_total{job=\"$job\"} [$__range])",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU seconds",
+      "type": "timeseries"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
             "mode": "thresholds"
           },
           "mappings": [],
@@ -1028,8 +1176,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 5,
-        "x": 19,
+        "w": 3,
+        "x": 18,
         "y": 29
       },
       "id": 24,
@@ -1059,6 +1207,63 @@
         }
       ],
       "title": "Threads",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 3,
+        "x": 21,
+        "y": 29
+      },
+      "id": 27,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.1.3",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "couper_process_open_fds{job=\"$job\"}",
+          "interval": "",
+          "legendFormat": "alloc",
+          "refId": "A"
+        }
+      ],
+      "title": "Open FDs",
       "type": "stat"
     }
   ],
@@ -1158,6 +1363,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "Couper",
-  "uid": "SeazcVSnz",
+  "uid": "CouperDash",
   "version": 1
 }
