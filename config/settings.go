@@ -62,7 +62,7 @@ var DefaultSettings = Settings{
 	RequestIDClientHeader:    "Couper-Request-ID",
 	RequestIDFormat:          "common",
 	TelemetryMetricsEndpoint: otelCollectorEndpoint,
-	TelemetryMetricsExporter: "otlp",
+	TelemetryMetricsExporter: "prometheus",
 	TelemetryMetricsPort:     9090, // default prometheus port
 	TelemetryTracesEndpoint:  otelCollectorEndpoint,
 	XForwardedHost:           false,
