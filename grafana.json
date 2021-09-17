@@ -88,7 +88,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by(host) (increase(couper_client_request_total{job=\"$job\", service_name=\"$service\"}[$__range])) or sum by(host) (increase(couper_client_request_total{job=\"$job\", service_name=\"$service\"}[5m]))",
+          "expr": "sum(increase(couper_client_request_total{job=\"$job\", service_name=\"$service\"}[$__range]))",
           "interval": "",
           "legendFormat": "{{host}}",
           "refId": "A"
@@ -167,35 +167,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "mode": "thresholds"
           },
           "decimals": 2,
           "mappings": [],
@@ -217,40 +189,80 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 3,
         "w": 6,
         "x": 18,
         "y": 1
       },
       "id": 4,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "single"
-        }
+        "text": {},
+        "textMode": "auto"
       },
       "pluginVersion": "8.1.3",
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(count_over_time(couper_client_request_total{job=\"$job\", service_name=\"$service\", code=~\"5.*\"} [$__range])) by (code) / (sum(count_over_time(couper_client_request_total{job=\"$job\", service_name=\"$service\", code!~\"5.*\"} [$__range])) by (code) / 100)",
+          "expr": "(sum(increase(couper_client_request_total{job=\"$job\", service_name=\"$service\", code=~\"5.*\"} [$__range])) by (code) > 0) * 100 / ignoring(code) ((sum(increase(couper_client_request_total{job=\"$job\", service_name=\"$service\", code!~\"5.*\"} [$__range])) by (code) > 0))",
           "hide": false,
           "interval": "",
           "legendFormat": "{{code}}",
-          "refId": "B"
+          "refId": "A"
         }
       ],
       "title": "5xx requests",
-      "type": "timeseries"
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 18,
+        "y": 4
+      },
+      "id": 26,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Release notes",
+          "url": "https://github.com/avenga/couper/releases/tag/${version}"
+        }
+      ],
+      "options": {
+        "content": "<center>${version}</center>",
+        "mode": "html"
+      },
+      "pluginVersion": "8.1.3",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(couper_client_request_total{}) by (service_version)",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{service_version}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Couper version",
+      "transparent": true,
+      "type": "text"
     },
     {
       "datasource": null,
@@ -281,7 +293,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -326,7 +338,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(increase(couper_client_request_total{job=\"$job\", service_name=\"$service\"} [$__range])) by (code)",
+          "expr": "sum(increase(couper_client_request_total{job=\"$job\", service_name=\"$service\"} [$__range])) by (code) > 0",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{code}}",
@@ -584,7 +596,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (hostname) (quantile_over_time(0.95,couper_backend_request_duration_seconds{code!=\"500\", job=\"$job\", service_name=\"$service\"} [$__interval:10s])) or histogram_quantile(0.95,sum(rate(couper_backend_request_duration_seconds_bucket{code!=\"500\", job=\"$job\", service_name=\"$service\"} [$__rate_interval])) by (le, hostname))",
+          "expr": "sum by (hostname) (quantile_over_time(0.95,couper_backend_request_duration_seconds{code!~\"^5.*\", job=\"$job\", service_name=\"$service\"} [2m])) or histogram_quantile(0.95,sum(increase(couper_backend_request_duration_seconds_bucket{code!~\"^5.*\", job=\"$job\", service_name=\"$service\"} [2m])) by (le, hostname))",
           "interval": "",
           "legendFormat": "{{hostname}}",
           "refId": "A"
@@ -632,10 +644,8 @@
       },
       "id": 15,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "displayMode": "lcd",
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -643,8 +653,8 @@
           "fields": "",
           "values": false
         },
-        "text": {},
-        "textMode": "auto"
+        "showUnfilled": true,
+        "text": {}
       },
       "pluginVersion": "8.1.3",
       "targets": [
@@ -658,7 +668,7 @@
       ],
       "title": "Current Connections",
       "transparent": true,
-      "type": "stat"
+      "type": "bargauge"
     },
     {
       "datasource": null,
@@ -735,7 +745,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(increase(couper_connections_total{job=\"$job\", service_name=\"$service\"} [$__interval:10s])) by (origin)",
+          "expr": "sum(increase(couper_connections_total{job=\"$job\", service_name=\"$service\"} [2m])) by (origin)",
           "interval": "1",
           "legendFormat": "{{origin}}",
           "refId": "A"
@@ -1052,6 +1062,7 @@
       "type": "stat"
     }
   ],
+  "refresh": "30s",
   "schemaVersion": 30,
   "style": "white",
   "tags": [],
@@ -1110,11 +1121,38 @@
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "otel-implementation",
+          "value": "otel-implementation"
+        },
+        "datasource": null,
+        "definition": "label_values(couper_client_request_total,service_version)",
+        "description": null,
+        "error": null,
+        "hide": 2,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "version",
+        "options": [],
+        "query": {
+          "query": "label_values(couper_client_request_total,service_version)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
