@@ -65,7 +65,7 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	meter := global.Meter("couper/server")
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
-		NewFloat64ValueRecorder(instrumentation.ClientRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+		NewFloat64Histogram(instrumentation.ClientRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
 	meter.RecordBatch(req.Context(), metricsAttrs,
 		counter.Measurement(1),
 		duration.Measurement(end.Seconds()),

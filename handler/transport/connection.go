@@ -95,7 +95,7 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 
 		meter := global.Meter("couper/connection")
 		duration := metric.Must(meter).
-			NewFloat64ValueRecorder(instrumentation.BackendConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
+			NewFloat64Histogram(instrumentation.BackendConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
 		meter.RecordBatch(context.Background(), o.labels, duration.Measurement(since.Seconds()))
 		fields["lifetime"] = since.Milliseconds()
 	}
