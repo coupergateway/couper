@@ -60,7 +60,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 			hook.Reset()
 
 			tt.tconf.NoProxyFromEnv = true // use origin addr from transport.Config
-			backend := transport.NewBackend(tt.context, tt.tconf, nil, log)
+			backend := transport.NewBackend(tt.context, eval.NewContext(nil, nil), tt.tconf, nil, log)
 
 			_, err := backend.RoundTrip(tt.req)
 			if err != nil && tt.expectedErr == "" {
@@ -98,7 +98,7 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 			"origin": hcltest.MockExprLiteral(u),
 		}),
 	})
-	backend := transport.NewBackend(hclBody, &transport.Config{}, nil, log)
+	backend := transport.NewBackend(hclBody, eval.NewContext(nil, nil), &transport.Config{}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 	res, err := backend.RoundTrip(req)
@@ -139,7 +139,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 		}),
 	})
 
-	backend := transport.NewBackend(hclBody, &transport.Config{
+	backend := transport.NewBackend(hclBody, eval.NewContext(nil, nil), &transport.Config{
 		Origin: origin.URL,
 	}, nil, log)
 
@@ -239,7 +239,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 				origin = "` + origin.URL + `"
 			`)
 
-			backend := transport.NewBackend(content, &transport.Config{}, &transport.BackendOptions{
+			backend := transport.NewBackend(content, eval.NewContext(nil, nil), &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: openapiValidatorOptions,
 			}, log)
 
@@ -318,7 +318,7 @@ func TestBackend_director(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
-			backend := transport.NewBackend(hclContext, &transport.Config{
+			backend := transport.NewBackend(hclContext, eval.NewContext(nil, nil), &transport.Config{
 				Timeout: time.Second,
 			}, nil, nullLog)
 
@@ -406,7 +406,7 @@ func TestProxy_BufferingOptions(t *testing.T) {
 			backend := transport.NewBackend(configload.MergeBodies([]hcl.Body{
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 				helper.NewInlineContext(tc.remain),
-			}), &transport.Config{}, &transport.BackendOptions{
+			}), eval.NewContext(nil, nil), &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: newOptions(),
 			}, nullLog)
 

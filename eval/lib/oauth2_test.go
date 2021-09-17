@@ -114,7 +114,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			res.Header.Set("x-want", tt.want)
 
 			tc := &transport.Config{}
-			conf, err := oidc.NewConfig(tt.oauth2Config, transport.NewBackend(backend.Config,
+			conf, err := oidc.NewConfig(tt.oauth2Config, transport.NewBackend(backend.Config, eval.NewContext(nil, nil),
 				tc.With("http", "couper.io", "couper.io", ""),
 				&transport.BackendOptions{}, logger), memStore)
 			helper.Must(err)

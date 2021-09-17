@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/avenga/couper/eval"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/zclconf/go-cty/cty"
@@ -57,7 +59,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+	backend := transport.NewBackend(beConf.Remain, eval.NewContext(nil, nil), &transport.Config{}, &transport.BackendOptions{
 		OpenAPI: openAPI,
 	}, logger)
 
@@ -138,7 +140,7 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	helper.Must(err)
 
-	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+	backend := transport.NewBackend(beConf.Remain, eval.NewContext(nil, nil), &transport.Config{}, &transport.BackendOptions{
 		OpenAPI: openAPI,
 	}, logger)
 
@@ -201,7 +203,7 @@ func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
 				}}),
 			}
 
-			backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+			backend := transport.NewBackend(beConf.Remain, eval.NewContext(nil, nil), &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: openAPI,
 			}, logger)
 
@@ -266,7 +268,7 @@ func TestOpenAPIValidator_NonCanonicalServerURL(t *testing.T) {
 				},
 			}})
 
-			backend := transport.NewBackend(Remain, &transport.Config{}, &transport.BackendOptions{
+			backend := transport.NewBackend(Remain, eval.NewContext(nil, nil), &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: openAPI,
 			}, logger)
 			hook.Reset()

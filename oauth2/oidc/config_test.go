@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/avenga/couper/eval"
+
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
@@ -43,7 +45,7 @@ func TestConfig_getFreshIfExpiredSynced(t *testing.T) {
 	defer close(memQuitCh)
 	memStore := cache.New(logger, memQuitCh)
 
-	be := transport.NewBackend(configload.EmptyBody(), &transport.Config{}, nil, logger)
+	be := transport.NewBackend(configload.EmptyBody(), eval.NewContext(nil, nil), &transport.Config{}, nil, logger)
 	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL}, be, memStore)
 	helper.Must(err)
 

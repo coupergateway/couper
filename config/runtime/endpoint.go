@@ -60,7 +60,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 	return endpoints, nil
 }
 
-func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
+func newEndpointOptions(confCtx *eval.Context, endpointConf *config.Endpoint, apiConf *config.API,
 	serverOptions *server.Options, log *logrus.Entry, proxyEnv bool, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
 	var errTpl *errors.Template
 
@@ -114,7 +114,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	backendConf := *DefaultBackendConf
-	if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx.HCLContext(), &backendConf); diags.HasErrors() {
 		return nil, diags
 	}
 	// TODO: redirect

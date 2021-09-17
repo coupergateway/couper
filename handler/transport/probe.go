@@ -6,6 +6,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/avenga/couper/eval/content"
+
+	"github.com/avenga/couper/config/request"
+
 	"github.com/avenga/couper/eval"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
 )
@@ -69,10 +73,13 @@ func NewProbe(time, timeOut time.Duration, failureThreshold int, backend *Backen
 }
 
 func (p *Probe) probe() {
+	// noop request to evaluate transport context
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
+	origin, err := content.GetContextAttribute(p.backend.confContext, p.backend.context, "origin")
+	req = req.WithContext(context.WithValue(p.backend.confContext, request.URLAttribute, origin))
 	c, err := p.backend.evalTransport(req)
 	if err != nil {
-		p.backend.upstreamLog.LogEntry().WithError(err).Error()
+		//p.backend.upstreamLog.LogEntry().WithError(err).Error()
 		return
 	}
 	req, _ = http.NewRequest(http.MethodGet, c.Scheme+"://"+c.Origin, nil)

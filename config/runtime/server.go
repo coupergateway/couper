@@ -30,6 +30,7 @@ import (
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -93,15 +94,15 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	noopResp := httptest.NewRecorder().Result()
 	noopResp.Request = noopReq
 	evalContext := conf.Context.Value(request.ContextType).(*eval.Context)
-	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
+	evalContext = evalContext.WithClientRequest(noopReq).WithBeresps(noopResp)
 
-	oidcConfigs, ocErr := configureOidcConfigs(conf, confCtx, log, memStore)
+	oidcConfigs, ocErr := configureOidcConfigs(evalContext, conf, log, memStore)
 	if ocErr != nil {
 		return nil, ocErr
 	}
 	evalContext.WithOidcConfig(oidcConfigs)
 
-	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
+	accessControls, acErr := configureAccessControls(evalContext, conf, log, memStore, oidcConfigs)
 	if acErr != nil {
 		return nil, acErr
 	}
@@ -156,7 +157,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			h := middleware.NewCORSHandler(corsOptions, spaHandler)
 
-			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
+			spaHandler, err = configureProtectedHandler(evalContext, accessControls,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
 				&protectedOptions{
@@ -193,7 +194,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			h := middleware.NewCORSHandler(corsOptions, fileHandler)
 
-			protectedFileHandler, err := configureProtectedHandler(accessControls, confCtx,
+			protectedFileHandler, err := configureProtectedHandler(evalContext, accessControls,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
 				&protectedOptions{
@@ -242,7 +243,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 			epOpts, err := newEndpointOptions(
-				confCtx, endpointConf, parentAPI, serverOptions,
+				evalContext, endpointConf, parentAPI, serverOptions,
 				log, conf.Settings.NoProxyFromEnv, memStore,
 			)
 			if err != nil {
@@ -266,7 +267,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
 			}
-			endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, confCtx, accessControl,
+			endpointHandlers[endpointConf], err = configureProtectedHandler(evalContext, accessControls, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:       epOpts,
@@ -289,8 +290,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	return serverConfiguration, nil
 }
 
-func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
+func newBackend(ctx *eval.Context, backendCtx hcl.Body, log *logrus.Entry,
 	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, error) {
+	evalCtx := ctx.HCLContext()
+
 	beConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
 		return nil, diags
@@ -333,7 +336,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	options := &transport.BackendOptions{
 		OpenAPI: openAPIopts,
 	}
-	backend := transport.NewBackend(backendCtx, tc, options, log)
+	backend := transport.NewBackend(backendCtx, ctx, tc, options, log)
 
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent == nil {
@@ -352,7 +355,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			return nil, diags
 		}
 		innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-		authBackend, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, memStore)
+		authBackend, authErr := newBackend(ctx, innerBackend.Body, log, ignoreProxyEnv, memStore)
 		if authErr != nil {
 			return nil, authErr
 		}
@@ -410,12 +413,12 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (oidc.Configs, error) {
+func configureOidcConfigs(ctx *eval.Context, conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (oidc.Configs, error) {
 	oidcConfigs := make(oidc.Configs)
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, err := newBackend(ctx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -432,7 +435,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	return oidcConfigs, nil
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
+func configureAccessControls(ctx *eval.Context, conf *config.Couper, log *logrus.Entry,
 	memStore *cache.MemoryStore, oidcConfigs oidc.Configs) (ACDefinitions, error) {
 
 	accessControls := make(ACDefinitions)
@@ -457,6 +460,14 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
+			var claims map[string]interface{}
+			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
+				c, diags := seetie.ExpToMap(ctx.HCLContext(), jwtConf.Claims)
+				if diags.HasErrors() {
+					return nil, confErr.With(diags)
+				}
+				claims = c
+			}
 			jwt, err := ac.NewJWT(&ac.JWTOptions{
 				Algorithm:      jwtConf.SignatureAlgorithm,
 				Claims:         jwtConf.Claims,
@@ -493,7 +504,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, err := newBackend(ctx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -551,7 +562,7 @@ type protectedOptions struct {
 	srvOpts      *server.Options
 }
 
-func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
+func configureProtectedHandler(ctx *eval.Context, m ACDefinitions, parentAC, handlerAC config.AccessControl,
 	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
@@ -574,7 +585,7 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 	return opts.handler, nil
 }
 
-func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
+func newErrorHandler(ctx *eval.Context, opts *protectedOptions, log *logrus.Entry,
 	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
