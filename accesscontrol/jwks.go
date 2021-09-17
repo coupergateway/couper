@@ -10,9 +10,10 @@ import (
 )
 
 type JWKS struct {
-	Keys []JWK `json:"keys"`
-	uri  string
-	ttl  time.Duration
+	Keys   []JWK `json:"keys"`
+	expiry int64
+	uri    string
+	ttl    time.Duration
 }
 
 func NewJWKS(uri string, ttl string) (*JWKS, error) {
@@ -21,7 +22,6 @@ func NewJWKS(uri string, ttl string) (*JWKS, error) {
 	}
 
 	timetolive, err := time.ParseDuration(ttl)
-
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +35,11 @@ func NewJWKS(uri string, ttl string) (*JWKS, error) {
 func (self *JWKS) GetKeys(kid string) []JWK {
 	var keys []JWK
 
-	if err := self.Load(); err != nil {
-		fmt.Printf("Error loading JWKS: %v\n", err)
-		return keys
+	if len(self.Keys) == 0 || self.hasExpired() {
+		if err := self.Load(); err != nil {
+			fmt.Printf("Error loading JWKS: %v\n", err)
+			return keys
+		}
 	}
 
 	for _, key := range self.Keys {
@@ -59,8 +61,6 @@ func (self *JWKS) GetKey(kid string, alg string, use string) *JWK {
 }
 
 func (self *JWKS) Load() error {
-	// TODO Lookup cache
-
 	var rawJSON []byte
 	if self.uri[0:5] == "file:" {
 		filename := self.uri[5:]
@@ -92,7 +92,11 @@ func (self *JWKS) Load() error {
 	}
 
 	self.Keys = jwks.Keys
+	self.expiry = time.Now().Unix() + int64(self.ttl.Seconds())
 
-	// TODO store in cache
 	return nil
+}
+
+func (jwks *JWKS) hasExpired() bool {
+	return time.Now().Unix() > jwks.expiry
 }
