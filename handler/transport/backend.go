@@ -187,7 +187,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	meter := global.Meter("couper/backend")
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
-		NewFloat64ValueRecorder(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
 	attrs := []attribute.KeyValue{
 		attribute.String("backend_name", tc.BackendName),
 		attribute.String("hostname", tc.Hostname),

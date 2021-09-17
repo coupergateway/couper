@@ -16,6 +16,5 @@ definitions {
 }
 
 settings {
-  metrics = true
-  metrics_exporter = "prometheus"
+  beta_metrics = true
 }
