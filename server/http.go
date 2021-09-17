@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/unit"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
@@ -20,6 +23,7 @@ import (
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/telemetry/instrumentation"
 )
 
 type muxers map[string]*Mux
@@ -99,6 +103,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
+		ConnState:         httpSrv.onConnState,
 		Handler:           recordHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
@@ -272,4 +277,23 @@ func (s *HTTPServer) getHost(req *http.Request) string {
 
 func (s *HTTPServer) cleanHostAppendPort(host string) string {
 	return strings.TrimSuffix(host, ".") + ":" + s.port
+}
+
+func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
+	meter := global.Meter("couper/server")
+	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
+	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.ClientConnections, metric.WithDescription(string(unit.Dimensionless)))
+
+	if state == http.StateNew {
+		meter.RecordBatch(context.Background(), nil,
+			counter.Measurement(1),
+			gauge.Measurement(1),
+		)
+		// we have no callback for closing a hijacked one, so count them down too.
+		// TODO: if required we COULD override given conn ptr value with own obj.
+	} else if state == http.StateClosed || state == http.StateHijacked {
+		meter.RecordBatch(context.Background(), nil,
+			gauge.Measurement(-1),
+		)
+	}
 }
