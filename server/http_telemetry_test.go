@@ -46,14 +46,16 @@ func TestServeMetrics(t *testing.T) {
 	}()
 
 	expMetrics := []string{
-		`couper_backend_request_duration_seconds_count{backend_name="anything",hostname="127.0.0.1",origin="127.0.0.1",response_status="200",service_name="couper",service_version="0"} 1`,
-		`couper_backend_request_total{backend_name="anything",hostname="127.0.0.1",origin="127.0.0.1",response_status="200",service_name="couper",service_version="0"} 1`,
-		`couper_client_request_duration_seconds_count{host="localhost:8080",response_status="200",service_name="couper",service_version="0"} 1`,
-		`couper_client_request_total{host="localhost:8080",response_status="200",service_name="couper",service_version="0"} 1`,
-		`couper_client_request_total{host="localhost:8080",response_status="404",service_name="couper",service_version="0"} 1`,
-		`couper_connections_count{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
-		`couper_connections_total{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
-		`couper_client_request_route_not_found_error_total{error="true",host="localhost:8080",service_name="couper",service_version="0"} 1`,
+		`couper_backend_request_duration_seconds_count{backend_name="anything",code="200",hostname="127.0.0.1",method="GET",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
+		`couper_backend_request_total{backend_name="anything",code="200",hostname="127.0.0.1",method="GET",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
+		`couper_client_request_duration_seconds_count{code="200",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
+		`couper_client_request_duration_seconds_count{code="404",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
+		`couper_client_request_total{code="200",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
+		`couper_client_request_total{code="404",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
+		`couper_backend_connections_count{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
+		`couper_backend_connections_total{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
+		`couper_client_request_error_types_total{error="route_not_found_error",host="localhost:8080",service_name="couper",service_version="0"} 1`,
+		`couper_client_connections_total{service_name="couper",service_version="0"} 2`,
 	}
 
 	for _, expMetric := range expMetrics {
