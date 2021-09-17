@@ -3,6 +3,7 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -476,7 +477,8 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			var jwt *ac.JWT
 			if jwtConf.JWKsURI != "" {
-				jwks, err := ac.NewJWKS(jwtConf.JWKsURI, jwtConf.JWKsTTL)
+				noProxy := conf.Settings.NoProxyFromEnv
+				jwks, err := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
 				if err != nil {
 					return nil, confErr.With(err)
 				}
@@ -584,6 +586,26 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	}
 
 	return accessControls, nil
+}
+
+func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*ac.JWKS, error) {
+	var backend http.RoundTripper
+
+	if jwtConf.JWKSBackendBody != nil {
+		b, err := newBackend(confContext, jwtConf.JWKSBackendBody, log, ignoreProxyEnv, memStore)
+		if err != nil {
+			return nil, err
+		}
+		backend = b
+	}
+
+	evalContext := conf.Context.Value(request.ContextType).(context.Context)
+	jwks, err := ac.NewJWKS(jwtConf.JWKsURI, jwtConf.JWKsTTL, backend, evalContext)
+	if err != nil {
+		return nil, err
+	}
+
+	return jwks, nil
 }
 
 type protectedOptions struct {

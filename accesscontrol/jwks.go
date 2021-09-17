@@ -1,6 +1,7 @@
 package accesscontrol
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/avenga/couper/config/reader"
@@ -10,13 +11,17 @@ import (
 )
 
 type JWKS struct {
-	Keys   []JWK `json:"keys"`
-	expiry int64
-	uri    string
-	ttl    time.Duration
+	Keys      []JWK `json:"keys"`
+	context   context.Context
+	expiry    int64
+	file      string
+	request   *http.Request
+	uri       string
+	transport http.RoundTripper
+	ttl       time.Duration
 }
 
-func NewJWKS(uri string, ttl string) (*JWKS, error) {
+func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext context.Context) (*JWKS, error) {
 	if ttl == "" {
 		ttl = "1h"
 	}
@@ -25,10 +30,27 @@ func NewJWKS(uri string, ttl string) (*JWKS, error) {
 	if err != nil {
 		return nil, err
 	}
+	var file string
+	var request *http.Request
+	if uri[0:5] == "file:" {
+		file = uri[5:]
+	} else if uri[0:5] == "http:" || uri[0:6] == "https:" {
+		r, err := http.NewRequest("GET", uri, nil)
+		if err != nil {
+			return nil, err
+		}
+		request = r
+	} else {
+		return nil, fmt.Errorf("Unsupported JWKS URI scheme: %q", uri)
+	}
 
 	return &JWKS{
-		uri: uri,
-		ttl: timetolive,
+		context:   confContext,
+		file:      file,
+		request:   request,
+		uri:       uri,
+		transport: transport,
+		ttl:       timetolive,
 	}, nil
 }
 
@@ -62,18 +84,28 @@ func (self *JWKS) GetKey(kid string, alg string, use string) *JWK {
 
 func (self *JWKS) Load() error {
 	var rawJSON []byte
-	if self.uri[0:5] == "file:" {
-		filename := self.uri[5:]
-		j, err := reader.ReadFromFile("jwks_uri", filename)
+
+	if self.file != "" {
+		j, err := reader.ReadFromFile("jwks_uri", self.file)
 		if err != nil {
 			return err
 		}
 		rawJSON = j
-	} else if self.uri[0:5] == "http:" || self.uri[0:6] == "https:" {
-		response, err := http.Get(self.uri)
-		if err != nil {
-			return fmt.Errorf("Could not fetch JWKS: %v", err)
+	} else if self.request != nil {
+		request := self.request.WithContext(self.context)
+		var response *http.Response
+		var err error
+		if self.transport != nil {
+			response, err = self.transport.RoundTrip(request)
+		} else {
+			client := &http.Client{}
+			response, err = client.Do(request)
 		}
+
+		if err != nil {
+			return err
+		}
+
 		defer response.Body.Close()
 
 		body, err := ioutil.ReadAll(response.Body)
@@ -82,7 +114,7 @@ func (self *JWKS) Load() error {
 		}
 		rawJSON = body
 	} else {
-		return fmt.Errorf("Unsupported JWKS URI scheme: %q", self.uri)
+		return fmt.Errorf("JWKS: missing both file and request!")
 	}
 
 	var jwks JWKS
