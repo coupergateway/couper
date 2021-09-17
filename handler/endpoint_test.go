@@ -83,7 +83,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 			helper.Must(err)
 
 			backend := transport.NewBackend(
-				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()), eval.NewContext(nil, nil),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
@@ -207,7 +207,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				helper := test.New(subT)
 
 				backend := transport.NewBackend(
-					helper.NewInlineContext(tt.inlineCtx),
+					helper.NewInlineContext(tt.inlineCtx), eval.NewContext(nil, nil),
 					&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
@@ -327,7 +327,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			h := test.New(subT)
 
 			backend := transport.NewBackend(
-				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()), eval.NewContext(nil, nil),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
@@ -418,7 +418,7 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	defer origin.Close()
 
 	rt := transport.NewBackend(
-		test.NewRemainContext("origin", origin.URL), &transport.Config{},
+		test.NewRemainContext("origin", origin.URL), eval.NewContext(nil, nil), &transport.Config{},
 		&transport.BackendOptions{}, log.WithContext(context.Background()))
 
 	mockProducer := &mockProducerResult{rt}
@@ -470,7 +470,7 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	ctx = context.WithValue(ctx, request.StartTime, time.Now())
 
 	rt := transport.NewBackend(
-		test.NewRemainContext("origin", slowOrigin.URL), &transport.Config{},
+		test.NewRemainContext("origin", slowOrigin.URL), eval.NewContext(nil, nil), &transport.Config{},
 		&transport.BackendOptions{}, log.WithContext(context.Background()))
 
 	mockProducer := &mockProducerResult{rt}
