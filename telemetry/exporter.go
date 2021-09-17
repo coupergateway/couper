@@ -75,7 +75,10 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) er
 		otlptracegrpc.WithDialOption(grpc.WithBlock()),
 		otlptracegrpc.WithEndpoint(endpoint),
 	)
-	traceExp, err := otlptrace.New(ctx, traceClient)
+
+	withCancel, cancelFn := context.WithDeadline(ctx, time.Now().Add(time.Second))
+	defer cancelFn()
+	traceExp, err := otlptrace.New(withCancel, traceClient)
 	if err != nil {
 		return err
 	}
