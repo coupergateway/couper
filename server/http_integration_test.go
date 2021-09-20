@@ -40,6 +40,7 @@ var (
 	testBackend    *test.Backend
 	testWorkingDir string
 	testProxyAddr  = "http://127.0.0.1:9999"
+	testServerMu   = sync.Mutex{}
 )
 
 func TestMain(m *testing.M) {
@@ -114,13 +115,12 @@ func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.H
 }
 
 func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
+	testServerMu.Lock()
+	defer testServerMu.Unlock()
+
 	log, hook := test.NewLogger()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancelFn := func() {
-		cancel()
-		time.Sleep(time.Second / 2)
-	}
+	ctx, cancelFn := context.WithCancel(context.Background())
 	shutdownFn := func() {
 		if helper.TestFailed() { // log on error
 			for _, entry := range hook.AllEntries() {
@@ -183,6 +183,9 @@ func newClient() *http.Client {
 }
 
 func cleanup(shutdown func(), helper *test.Helper) {
+	testServerMu.Lock()
+	defer testServerMu.Unlock()
+
 	shutdown()
 
 	err := os.Chdir(testWorkingDir)
