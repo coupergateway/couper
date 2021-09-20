@@ -31,6 +31,8 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/oauth2"
@@ -39,8 +41,8 @@ import (
 var (
 	testBackend    *test.Backend
 	testWorkingDir string
-	testProxyAddr  = "http://127.0.0.1:9999"
-	testServerMu   = sync.Mutex{}
+	testProxyAddr                  = "http://127.0.0.1:9999"
+	_              context.Context = &eval.Context{}
 )
 
 func TestMain(m *testing.M) {
@@ -191,6 +193,14 @@ func cleanup(shutdown func(), helper *test.Helper) {
 	err := os.Chdir(testWorkingDir)
 	if err != nil {
 		helper.Must(err)
+	}
+}
+
+func nilToString(in string) string {
+	if in != "" {
+		return ":" + in
+	} else {
+		return " nil"
 	}
 }
 
@@ -2218,126 +2228,62 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 }
 
 func TestHTTPServer_backend_probes(t *testing.T) {
+	helper := test.New(t)
 	client := newClient()
 
-	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.WriteHeader(http.StatusNoContent)
-	}))
-	defer ResourceOrigin.Close()
-
 	confPath := path.Join("testdata/integration/endpoint_eval/20_couper.hcl")
-	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": ResourceOrigin.URL})
+	shutdown, _ := newCouper(confPath, helper)
 	defer shutdown()
 
 	type expectation struct {
-		Method   string                 `json:"method"`
-		Protocol string                 `json:"protocol"`
-		Host     string                 `json:"host"`
-		Port     int64                  `json:"port"`
-		Path     string                 `json:"path"`
-		Query    map[string][]string    `json:"query"`
-		Origin   string                 `json:"origin"`
-		Body     string                 `json:"body"`
-		JsonBody map[string]interface{} `json:"json_body"`
-		FormBody map[string][]string    `json:"form_body"`
+		State  string
+		State2 string
 	}
 
 	type testCase struct {
-		name   string
-		relUrl string
-		header http.Header
-		body   io.Reader
-		exp    expectation
+		name        string
+		path        string
+		expectation expectation
 	}
-
-	helper := test.New(t)
-	resourceOrigin, err := url.Parse(ResourceOrigin.URL)
-	helper.Must(err)
-
-	port, _ := strconv.ParseInt(resourceOrigin.Port(), 10, 64)
 
 	for _, tc := range []testCase{
 		{
-			"body",
-			"/body",
-			http.Header{"State-1": []string{"OK"}},
-			strings.NewReader(`abcd1234`),
-			expectation{
-				Method:   "GET",
-				Protocol: resourceOrigin.Scheme,
-				Host:     resourceOrigin.Hostname(),
-				Port:     port,
-				Path:     "/resource",
-				Query:    map[string][]string{"foo": {"bar"}},
-				Origin:   ResourceOrigin.URL,
-				Body:     "abcd1234",
-				JsonBody: map[string]interface{}{},
-				FormBody: map[string][]string{},
-			},
-		},
-		/*{
-			"json_body",
-			"/json_body",
-			http.Header{"Content-Type": []string{"application/json"}},
-			strings.NewReader(`{"s":"abcd1234"}`),
-			expectation{
-				Method:   "GET",
-				Protocol: resourceOrigin.Scheme,
-				Host:     resourceOrigin.Hostname(),
-				Port:     port,
-				Path:     "/resource",
-				Query:    map[string][]string{"foo": {"bar"}},
-				Origin:   ResourceOrigin.URL,
-				Body:     `{"s":"abcd1234"}`,
-				JsonBody: map[string]interface{}{"s": "abcd1234"},
-				FormBody: map[string][]string{},
+			name: "valid probe and url",
+			path: "/valid",
+			expectation: expectation{
+				State: transport.StateOk.String(),
 			},
 		},
 		{
-			"form_body",
-			"/form_body",
-			http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
-			strings.NewReader(`s=abcd1234`),
-			expectation{
-				Method:   "GET",
-				Protocol: resourceOrigin.Scheme,
-				Host:     resourceOrigin.Hostname(),
-				Port:     port,
-				Path:     "/resource",
-				Query:    map[string][]string{"foo": {"bar"}},
-				Origin:   ResourceOrigin.URL,
-				Body:     `s=abcd1234`,
-				JsonBody: map[string]interface{}{},
-				FormBody: map[string][]string{"s": {"abcd1234"}},
+			name: "invalid url",
+			path: "/invalid",
+			expectation: expectation{
+				State: transport.StateDegraded.String(),
 			},
-		},*/
+		},
+		{
+			name:        "invalid probe",
+			path:        "/vali",
+			expectation: expectation{},
+		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
-			hook.Reset()
 
-			req, err := http.NewRequest(http.MethodGet, resourceOrigin.Scheme+"://"+resourceOrigin.Host, nil)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
 			h.Must(err)
-
-			for k, v := range tc.header {
-				req.Header.Set(k, v[0])
-			}
 
 			res, err := client.Do(req)
 			h.Must(err)
 
-			resBytes, err := io.ReadAll(res.Body)
-			h.Must(err)
-
-			_ = res.Body.Close()
-
-			var jsonResult expectation
-			err = json.Unmarshal(resBytes, &jsonResult)
-			if err != nil {
-				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+			state := nilToString(res.Header.Get("State"))
+			if res.Header.Get("State-2") != "" {
+				state = nilToString(res.Header.Get("State-2"))
 			}
-			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+			exp := nilToString(tc.expectation.State)
+
+			if state != exp {
+				t.Errorf("%s: expected state%s, got%s", tc.name, exp, state)
 			}
 		})
 	}
