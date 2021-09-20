@@ -7,7 +7,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/unit"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
@@ -15,6 +14,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 )
 
 type TraceHandler struct {
@@ -62,7 +62,7 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		metricsAttrs = append(metricsAttrs, attribute.Int("code", rsw.StatusCode()))
 	}
 
-	meter := global.Meter("couper/server")
+	meter := provider.Meter("couper/server")
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
 		NewFloat64Histogram(instrumentation.ClientRequestDuration, metric.WithDescription(string(unit.Dimensionless)))

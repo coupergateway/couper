@@ -1,12 +1,15 @@
 package server_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -16,7 +19,8 @@ func TestServeMetrics(t *testing.T) {
 	defer shutdown()
 
 	client := test.NewHTTPClient()
-	mreq, err := http.NewRequest(http.MethodGet, "http://localhost:9090/metrics", nil)
+	mreq, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("http://localhost:%d/metrics", config.DefaultSettings.TelemetryMetricsPort), nil)
 	helper.Must(err)
 
 	clientReq, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
@@ -32,7 +36,9 @@ func TestServeMetrics(t *testing.T) {
 	helper.Must(res.Body.Close())
 
 	res, err = client.Do(mreq)
-	helper.Must(err)
+	if err != nil {
+		t.Fatalf("metrics endpoint could not be reached: %v", err)
+	}
 
 	b, err := io.ReadAll(res.Body)
 	helper.Must(err)
@@ -54,7 +60,7 @@ func TestServeMetrics(t *testing.T) {
 		`couper_client_request_total{code="404",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
 		`couper_backend_connections_count{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
 		`couper_backend_connections_total{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
-		`couper_client_request_error_types_total{error="route_not_found_error",host="localhost:8080",service_name="couper",service_version="0"} 1`,
+		`couper_client_request_error_types_total{error="route_not_found_error",service_name="couper",service_version="0"} 1`,
 		`couper_client_connections_total{service_name="couper",service_version="0"} 2`,
 	}
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -24,6 +23,7 @@ import (
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 )
 
 type muxers map[string]*Mux
@@ -280,7 +280,7 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 }
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
-	meter := global.Meter("couper/server")
+	meter := provider.Meter("couper/server")
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
 	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.ClientConnections, metric.WithDescription(string(unit.Dimensionless)))
 

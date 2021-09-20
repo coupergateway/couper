@@ -10,11 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 )
 
 const (
@@ -70,7 +70,7 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 	}
 	entry.WithFields(o.logFields(eventOpen)).Debug()
 
-	meter := global.Meter("couper/connection")
+	meter := provider.Meter("couper/connection")
 
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
 	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.BackendConnections, metric.WithDescription(string(unit.Dimensionless)))
@@ -93,7 +93,7 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 	if event == eventClose {
 		since := time.Since(o.createdAt)
 
-		meter := global.Meter("couper/connection")
+		meter := provider.Meter("couper/connection")
 		duration := metric.Must(meter).
 			NewFloat64Histogram(instrumentation.BackendConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
 		meter.RecordBatch(context.Background(), o.labels, duration.Measurement(since.Seconds()))
@@ -116,7 +116,7 @@ func (o *OriginConn) Close() error {
 
 	o.log.WithFields(o.logFields(eventClose)).Debug()
 
-	meter := global.Meter("couper/connection")
+	meter := provider.Meter("couper/connection")
 	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.BackendConnections)
 	meter.RecordBatch(context.Background(), o.labels,
 		gauge.Measurement(-1),
