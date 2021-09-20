@@ -1,31 +1,41 @@
 server "backend_probes" {
-  endpoint "/" {
+  endpoint "/valid" {
     proxy {
-      backend = "invalid"
-      set_response_headers = {
-        state-1 = backend_probes.valid.state
-        state-2 = backend_probes.invalid.state
-      }
+      backend = "valid"
+    }
+    set_response_headers = {
+      state = backend_probes.valid.state
     }
   }
   endpoint "/foo" {
     proxy {
       backend = "invalid"
-      set_response_headers = {
-        state-1 = backend_probes.valid.state
-        state-2 = backend_probes.invalid.state
+    }
+  }
+  endpoint "/invalid" {
+    response {
+      headers = {
+        state = backend_probes.invalid.state
       }
+    }
+  }
+  endpoint "/vali" {
+    proxy {
+      backend = "valid"
+    }
+    set_response_headers = {
+      state = backend_probes.vali.state
+      state-2 = backend_probes.valid
     }
   }
 }
 definitions {
   backend "valid" {
     name = "valid"
-    origin = "https://httpbin.org"
-    path = "/anything"
+    origin = env.COUPER_TEST_BACKEND_ADDR
   }
   backend "invalid" {
     name = "invalid"
-    origin = "http://google"
+    origin = "http://1.2.3.4"
   }
 }

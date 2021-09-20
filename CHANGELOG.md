@@ -7,7 +7,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * Couper [reads and merges configuration files](./docs/CLI.md#global-options) from a given directory ([#437](https://github.com/avenga/couper/pull/437))
     * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
-  * `backend_probes.<name>` as healthckeck option from config or as periodic probes on console _(subject to change)_ ([#313](https://github.com/avenga/couper/pull/313))
+  * `backend_probes.<name>.status` as healthckeck option from config _(subject to change)_ ([#313](https://github.com/avenga/couper/pull/313))
 
 ---
 

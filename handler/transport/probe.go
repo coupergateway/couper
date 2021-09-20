@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	stateInvalid = iota
-	stateOk
-	stateDegraded
-	stateDown
+	StateInvalid state = iota
+	StateOk
+	StateDegraded
+	StateDown
 )
 
 var _ context.Context = &eval.Context{}
@@ -39,20 +39,20 @@ type Probe struct {
 	status  int
 }
 
-func (state *state) String() string {
-	switch *state {
-	case stateOk:
+func (s state) String() string {
+	switch s {
+	case StateOk:
 		return "OK"
-	case stateDegraded:
+	case StateDegraded:
 		return "DEGRADED"
-	case stateDown:
+	case StateDown:
 		return "DOWN"
 	default:
 		return "INVALID"
 	}
 }
 
-func (state *state) Print(f int, ft int) string {
+func (state state) Print(f int, ft int) string {
 	if f != 0 {
 		return state.String() + " " + strconv.Itoa(f) + "/" + strconv.Itoa(ft)
 	}
@@ -69,13 +69,14 @@ func NewProbe(time, timeOut time.Duration, failureThreshold int, backend *Backen
 		counter: 0,
 		failure: 0,
 	}
+	probe.SetBackendProbe(p.backend.name, StateInvalid.String())
 	go p.probe()
 }
 
 func (p *Probe) probe() {
 	// noop request to evaluate transport context
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	origin, err := content.GetContextAttribute(p.backend.confContext, p.backend.context, "origin")
+	origin, _ := content.GetContextAttribute(p.backend.confContext, p.backend.context, "origin")
 	req = req.WithContext(context.WithValue(p.backend.confContext, request.URLAttribute, origin))
 	c, err := p.backend.evalTransport(req)
 	if err != nil {
@@ -85,27 +86,27 @@ func (p *Probe) probe() {
 	req, _ = http.NewRequest(http.MethodGet, c.Scheme+"://"+c.Origin, nil)
 
 	for {
-		time.Sleep(p.time)
 		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.timeOut))
 		res, err := http.DefaultClient.Do(req.WithContext(ctx))
 
 		p.counter++
-		p.state = stateInvalid
+		p.state = StateInvalid
 		p.status = 0
 		if err != nil {
 			if p.failure++; p.failure <= p.failureThreshold {
-				p.state = stateDegraded
+				p.state = StateDegraded
 			} else {
-				p.state = stateDown
+				p.state = StateDown
 			}
 		} else {
 			p.failure = 0
-			p.state = stateOk
+			p.state = StateOk
 			p.status = res.StatusCode
 		}
 
-		print("backend: ", p.backend.name, ",  state: ", p.state.Print(p.failure, p.failureThreshold), ",  status: ", p.status, ",  cycle: ", p.counter, "\n")
+		//print("backend: ", p.backend.name, ",  state: ", p.state.Print(p.failure, p.failureThreshold), ",  status: ", p.status, ",  cycle: ", p.counter, "\n")
 		probe.SetBackendProbe(p.backend.name, p.state.String())
 		cancel()
+		time.Sleep(p.time)
 	}
 }
