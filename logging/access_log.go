@@ -3,18 +3,12 @@ package logging
 import (
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/telemetry/instrumentation"
 )
 
 type RoundtripHandlerFunc http.HandlerFunc
@@ -159,17 +153,6 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	entry.Time = startTime
 
 	if err != nil {
-		meter := global.Meter("couper/errors")
-		counter := metric.Must(meter).
-			NewInt64Counter(instrumentation.Prefix+"client_request_error_types_total",
-				metric.WithDescription(string(unit.Dimensionless)),
-			)
-		meter.RecordBatch(req.Context(), []attribute.KeyValue{
-			attribute.String("host", req.Host),
-			attribute.String("error", strings.Replace(err.Error(), " ", "_", -1)),
-		},
-			counter.Measurement(1),
-		)
 		entry.WithError(err).Error()
 	} else {
 		if l, ok := req.Context().Value(request.LogDebugLevel).(bool); ok && l {

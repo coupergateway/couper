@@ -117,6 +117,16 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
 
+	telemetry.InitExporter(r.context, &telemetry.Options{
+		MetricsCollectPeriod: time.Second * 2,
+		Metrics:              r.settings.TelemetryMetrics,
+		MetricsEndpoint:      r.settings.TelemetryMetricsEndpoint,
+		MetricsExporter:      r.settings.TelemetryMetricsExporter,
+		MetricsPort:          r.settings.TelemetryMetricsPort,
+		Traces:               r.settings.TelemetryTraces,
+		TracesEndpoint:       r.settings.TelemetryTracesEndpoint,
+	}, logEntry)
+
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
 	srvConf, err := runtime.NewServerConfiguration(config, logEntry, cache.New(logEntry, r.context.Done()))
 	if err != nil {
@@ -159,17 +169,6 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 			logEntry.Infof("couper is serving tls: %s -> %s", tlsPort, port)
 		}
 	}
-
-	telog := logEntry.WithField("type", "couper_telemetry")
-	telemetry.InitExporter(r.context, &telemetry.Options{
-		MetricsCollectPeriod: time.Second * 2,
-		Metrics:              r.settings.TelemetryMetrics,
-		MetricsEndpoint:      r.settings.TelemetryMetricsEndpoint,
-		MetricsExporter:      r.settings.TelemetryMetricsExporter,
-		MetricsPort:          r.settings.TelemetryMetricsPort,
-		Traces:               r.settings.TelemetryTraces,
-		TracesEndpoint:       r.settings.TelemetryTracesEndpoint,
-	}, telog)
 
 	listenCmdShutdown()
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	prompkg "github.com/prometheus/client_golang/prometheus"
@@ -27,6 +28,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/grpc"
 
+	"github.com/avenga/couper/telemetry/provider"
 	"github.com/avenga/couper/utils"
 )
 
@@ -43,28 +45,32 @@ const (
 	otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
 )
 
-func InitExporter(ctx context.Context, opts *Options, log *logrus.Entry) {
+// InitExporter initialises configured metrics and/or trace exporter.
+func InitExporter(ctx context.Context, opts *Options, logEntry *logrus.Entry) {
+	log := logEntry.WithField("type", "couper_telemetry")
 	otel.SetErrorHandler(ErrorHandleFunc(func(e error) { // configure otel to use our logger for error handling
 		if e != nil {
 			log.WithError(e).Error()
 		}
 	}))
 
-	exporter := parseExporter(opts.MetricsExporter)
-	if exporter == ExporterInvalid {
-		otel.Handle(fmt.Errorf("metrics: unknown exporter: %s", opts.MetricsExporter))
-		return
+	wg := &sync.WaitGroup{}
+	if opts.Metrics {
+		wg.Add(1)
+		otel.Handle(initMetricExporter(ctx, opts, log, wg))
 	}
 
-	if opts.Metrics {
-		otel.Handle(initMetricExporter(ctx, opts, log))
-	}
 	if opts.Traces {
-		otel.Handle(initTraceExporter(ctx, opts, log))
+		wg.Add(1)
+		otel.Handle(initTraceExporter(ctx, opts, log, wg))
 	}
+
+	wg.Wait()
 }
 
-func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) error {
+func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	endpoint := opts.TracesEndpoint
 	if ep := os.Getenv(otlpExporterEnvKey); ep != "" {
 		endpoint = ep
@@ -112,13 +118,20 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry) er
 
 }
 
-func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry) error {
-	if parseExporter(opts.MetricsExporter) == ExporterPrometheus {
+func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	exporter := parseExporter(opts.MetricsExporter)
+	if exporter == ExporterInvalid {
+		return fmt.Errorf("metrics: unknown exporter: %s", opts.MetricsExporter)
+	}
+
+	if exporter == ExporterPrometheus {
 		promExporter, err := newPromExporter()
 		if err != nil {
 			return err
 		}
-		global.SetMeterProvider(promExporter.MeterProvider())
+		provider.SetMeterProvider(promExporter.MeterProvider())
 		go func() {
 			metrics := NewMetricsServer(log, promExporter, opts.MetricsPort)
 			go metrics.ListenAndServe()

@@ -1,18 +1,13 @@
 package telemetry
 
 import (
-	"context"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/telemetry/handler"
 )
 
 type MetricsServer struct {
@@ -21,17 +16,9 @@ type MetricsServer struct {
 }
 
 func NewMetricsServer(log *logrus.Entry, exporter *prometheus.Exporter, port int) *MetricsServer {
-	accessLog := logging.NewAccessLog(nil, log)
-
-	uidHandler := middleware.NewUIDHandler(&config.DefaultSettings, "")(exporter)
-	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		r := req.WithContext(context.WithValue(req.Context(), request.LogDebugLevel, true))
-		accessLog.ServeHTTP(rw, r, uidHandler, time.Now())
-	})
-
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(port),
-		Handler: logHandler,
+		Handler: handler.NewWrappedHandler(log, exporter),
 	}
 
 	return &MetricsServer{
@@ -53,5 +40,6 @@ func (m *MetricsServer) Close() error {
 	if m == nil || m.server == nil {
 		return nil
 	}
+	m.log.Infof("shutdown metrics server: %s", m.server.Addr)
 	return m.server.Close()
 }

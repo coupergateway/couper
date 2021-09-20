@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/unit"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
@@ -30,6 +29,7 @@ import (
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
 	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 	"github.com/avenga/couper/utils"
 )
 
@@ -184,7 +184,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		spanMsg += "." + b.name
 	}
 
-	meter := global.Meter("couper/backend")
+	meter := provider.Meter("couper/backend")
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
 		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
