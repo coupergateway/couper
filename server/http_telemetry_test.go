@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/internal/test"
