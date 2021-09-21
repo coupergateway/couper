@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -233,36 +232,16 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 					continue
 				}
 				acContent := bodyToContent(acBody.HCLBody())
-				configuredLabels := map[string]struct{}{}
-				for _, block := range acContent.Blocks.OfType(errorHandler) {
-					errHandlerConf, err := newErrorHandlerConf(block.Labels, block.Body, definedBackends)
+
+				ehc, err := newErrorHandlerContent(acContent)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, hc := range ehc {
+					errHandlerConf, err := newErrorHandlerConfig(hc, definedBackends)
 					if err != nil {
 						return nil, err
-					}
-
-					for _, k := range errHandlerConf.Kinds {
-						if _, exist := configuredLabels[k]; exist {
-							return nil, hcl.Diagnostics{&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  fmt.Sprintf("duplicate error type registration: %q", k),
-								Subject:  &block.LabelRanges[0],
-							}}
-						}
-
-						if k != errors.Wildcard && !errors.IsKnown(k) {
-							subjRange := block.DefRange
-							if len(block.LabelRanges) > 0 {
-								subjRange = block.LabelRanges[0]
-							}
-							diag := &hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  fmt.Sprintf("error type is unknown: %q", k),
-								Subject:  &subjRange,
-							}
-							return nil, hcl.Diagnostics{diag}
-						}
-
-						configuredLabels[k] = struct{}{}
 					}
 
 					ac.Set(errHandlerConf)
@@ -270,10 +249,10 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 
 				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
 					defaultHandler := acDefault.DefaultErrorHandler()
-					_, exist := configuredLabels[errors.Wildcard]
+					_, exist := ehc[errors.Wildcard]
 					if !exist {
 						for _, kind := range defaultHandler.Kinds {
-							_, exist = configuredLabels[kind]
+							_, exist = ehc[kind]
 							if exist {
 								break
 							}
@@ -879,43 +858,6 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 			{Type: backend, Body: oauthBackend},
 		},
 	})})
-}
-
-func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
-	var allKinds []string // Support for all events within one label separated by space
-
-	for _, kinds := range kindLabels {
-		all := strings.Split(kinds, " ")
-		for _, a := range all {
-			if a == "" {
-				return nil, errors.Configuration.Messagef("invalid format: %v", kindLabels)
-			}
-		}
-		allKinds = append(allKinds, all...)
-	}
-	if len(allKinds) == 0 {
-		allKinds = append(allKinds, errors.Wildcard)
-	}
-
-	errHandlerConf := &config.ErrorHandler{Kinds: allKinds}
-	if d := gohcl.DecodeBody(body, envContext, errHandlerConf); d.HasErrors() {
-		return nil, d
-	}
-
-	ep := &config.Endpoint{
-		ErrorFile: errHandlerConf.ErrorFile,
-		Response:  errHandlerConf.Response,
-		Remain:    body,
-	}
-
-	if err := refineEndpoints(definedBackends, config.Endpoints{ep}, false); err != nil {
-		return nil, err
-	}
-
-	errHandlerConf.Requests = ep.Requests
-	errHandlerConf.Proxies = ep.Proxies
-
-	return errHandlerConf, nil
 }
 
 func renameAttribute(content *hcl.BodyContent, old, new string) {
