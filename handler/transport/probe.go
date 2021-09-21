@@ -28,6 +28,7 @@ type state int
 type Probe struct {
 	//configurable settings
 	backend          *Backend
+	config           *Config
 	failureThreshold int
 	time             time.Duration
 	timeOut          time.Duration
@@ -59,6 +60,13 @@ func (state state) Print(f int, ft int) string {
 	return state.String()
 }
 
+func (p *Probe) getConfig() (*Config, error) {
+	req, _ := http.NewRequest(http.MethodGet, "", nil)
+	origin, _ := content.GetContextAttribute(p.backend.confContext, p.backend.context, "origin")
+	req = req.WithContext(context.WithValue(p.backend.confContext, request.URLAttribute, origin))
+	return p.backend.evalTransport(req)
+}
+
 func NewProbe(time, timeOut time.Duration, failureThreshold int, backend *Backend) {
 	p := &Probe{
 		backend:          backend,
@@ -70,20 +78,17 @@ func NewProbe(time, timeOut time.Duration, failureThreshold int, backend *Backen
 		failure: 0,
 	}
 	probe.SetBackendProbe(p.backend.name, StateInvalid.String())
+	c, err := p.getConfig()
+	if err != nil {
+		p.backend.upstreamLog.LogEntry().WithError(err).Error()
+		return
+	}
+	p.config = c
 	go p.probe()
 }
 
 func (p *Probe) probe() {
-	// noop request to evaluate transport context
-	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	origin, _ := content.GetContextAttribute(p.backend.confContext, p.backend.context, "origin")
-	req = req.WithContext(context.WithValue(p.backend.confContext, request.URLAttribute, origin))
-	c, err := p.backend.evalTransport(req)
-	if err != nil {
-		//p.backend.upstreamLog.LogEntry().WithError(err).Error()
-		return
-	}
-	req, _ = http.NewRequest(http.MethodGet, c.Scheme+"://"+c.Origin, nil)
+	req, _ := http.NewRequest(http.MethodGet, p.config.Scheme+"://"+p.config.Origin, nil)
 
 	for {
 		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.timeOut))
