@@ -57,8 +57,6 @@ func TestServeMetrics(t *testing.T) {
 		`couper_client_request_duration_seconds_count{code="404",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
 		`couper_client_request_total{code="200",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
 		`couper_client_request_total{code="404",host="localhost:8080",method="GET",service_name="couper",service_version="0"} 1`,
-		`couper_backend_connections_count{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
-		`couper_backend_connections_total{backend="anything",host="127.0.0.1",origin="127.0.0.1",service_name="couper",service_version="0"} 1`,
 		`couper_client_request_error_types_total{error="route_not_found_error",service_name="couper",service_version="0"} 1`,
 		`couper_client_connections_total{service_name="couper",service_version="0"} 2`,
 	}
