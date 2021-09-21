@@ -91,17 +91,9 @@ func (self *JWKS) Load() error {
 			return err
 		}
 		rawJSON = j
-	} else if self.request != nil {
+	} else if self.request != nil && self.transport != nil {
 		request := self.request.WithContext(self.context)
-		var response *http.Response
-		var err error
-		if self.transport != nil {
-			response, err = self.transport.RoundTrip(request)
-		} else {
-			client := &http.Client{}
-			response, err = client.Do(request)
-		}
-
+		response, err := self.transport.RoundTrip(request)
 		if err != nil {
 			return err
 		}

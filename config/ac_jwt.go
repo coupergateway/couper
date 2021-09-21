@@ -2,8 +2,10 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 // Internally used for 'error_handler'.
@@ -35,7 +37,7 @@ type JWT struct {
 	JWKSBackendBody    hcl.Body
 
 	// Internally used for 'error_handler'.
-	Remain hcl.Body `hcl:",remain"`
+	Remain          hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
@@ -57,12 +59,25 @@ func (j *JWT) ParseInlineBackend(evalContext *hcl.EvalContext) error {
 	}
 
 	inlineBackends := content.Blocks.OfType("backend")
-	var err error
 	if len(inlineBackends) > 0 {
 		j.JWKSBackendBody = inlineBackends[0].Body
+		return nil
 	}
 
-	return err
+	if j.JWKSBackendRef == "" && j.JWKsURI != "" {
+		j.JWKSBackendBody = *createBackendBodyFromURI(j.JWKsURI)
+	}
+
+	return nil
+}
+
+func createBackendBodyFromURI(uri string) *hcl.Body {
+	backendConf := fmt.Sprintf("origin = %q", uri)
+	hclFile, diags := hclparse.NewParser().ParseHCL([]byte(backendConf), "")
+	if diags.HasErrors() {
+		return nil
+	}
+	return &hclFile.Body
 }
 
 func (j *JWT) Check() error {

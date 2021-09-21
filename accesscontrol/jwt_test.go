@@ -1,6 +1,7 @@
 package accesscontrol_test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -24,6 +25,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func Test_JWT_NewJWT_RSA(t *testing.T) {
@@ -549,11 +551,13 @@ func TestJwtConfig(t *testing.T) {
 		},
 	}
 
+	log, _ := logrustest.NewNullLogger()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, nil, nil)
+				_, err = runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 			}
 
 			var error = ""
