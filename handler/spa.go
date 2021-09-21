@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -62,7 +61,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if r, ok := rw.(*writer.Response); ok {
-		evalContext := req.Context().Value(request.ContextType).(*eval.Context)
+		evalContext := eval.ContextFromRequest(req)
 		r.AddModifier(evalContext, s.modifier)
 	}
 
