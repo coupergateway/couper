@@ -158,12 +158,6 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 
 	time.Sleep(time.Second / 2)
 
-	for _, entry := range hook.AllEntries() {
-		if entry.Level < logrus.InfoLevel {
-			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
-		}
-	}
-
 	hook.Reset() // no startup logs
 	return shutdownFn, hook
 }

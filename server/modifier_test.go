@@ -109,12 +109,12 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 		},
 		{
 			path:       "/happy-path-only",
-			expMessage: `backend error: unsupported protocol scheme "couper"`,
+			expMessage: `backend error: default: unsupported protocol scheme "couper"`,
 			expStatus:  http.StatusBadGateway,
 		},
 		{
 			path:       "/inception",
-			expMessage: `backend error: unsupported protocol scheme "couper"`,
+			expMessage: `backend error: default: unsupported protocol scheme "couper"`,
 			expStatus:  http.StatusBadGateway,
 		},
 	} {
