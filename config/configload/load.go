@@ -304,14 +304,32 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 	for _, jwt := range couperConfig.Definitions.JWT {
 		config, err := lib.NewJWTSigningConfigFromJWT(jwt)
+		confErr := errors.Configuration.Label(jwt.Name)
+
 		if err != nil {
-			return nil, errors.Configuration.Label(jwt.Name).With(err)
+			return nil, confErr.With(err)
 		}
 		if config != nil {
 			if _, exists := jwtSigningConfigs[jwt.Name]; exists {
 				return nil, errors.Configuration.Messagef("jwt_signing_profile or jwt with label %s already defined", jwt.Name)
 			}
 			jwtSigningConfigs[jwt.Name] = config
+		}
+
+		if err := jwt.ParseInlineBackend(); err != nil {
+			return nil, confErr.With(err)
+		}
+
+		if jwt.JWKSBackendRef != "" {
+			jwt.JWKSBackendBody, err = newBackend(definedBackends, jwt)
+			if err != nil {
+				return nil, err
+			}
+			jwt.JWKSBackendRef = ""
+		}
+
+		if err := jwt.Check(); err != nil {
+			return nil, confErr.With(err)
 		}
 	}
 

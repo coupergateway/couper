@@ -468,13 +468,6 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		for _, jwtConf := range conf.Definitions.JWT {
 			confErr := errors.Configuration.Label(jwtConf.Name)
 
-			if err := jwtConf.ParseInlineBackend(confCtx); err != nil {
-				return nil, confErr.With(err)
-			}
-			if err := jwtConf.Check(); err != nil {
-				return nil, confErr.With(err)
-			}
-
 			var jwt *ac.JWT
 			if jwtConf.JWKsURI != "" {
 				noProxy := conf.Settings.NoProxyFromEnv

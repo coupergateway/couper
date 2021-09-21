@@ -2796,6 +2796,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 		{"remote RSA JWKS", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 		{"remote RSA JWKS w/ backend", "/jwks/rsa/backend", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
+		{"remote RSA JWKS w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

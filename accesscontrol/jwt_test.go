@@ -418,48 +418,48 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-				header = "..."
+			    header = "..."
 			  }
 			}
 			`,
 			"jwt key: read error: required: configured attribute or file",
 		},
 		{
-			"signature_algorithm + key",
+			"ok: signature_algorithm + key",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-				header = "..."
-				key = "..."
+			    header = "..."
+			    key = "..."
 			  }
 			}
 			`,
 			"",
 		},
 		{
-			"signature_algorithm + key_file",
+			"ok: signature_algorithm + key_file",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-				header = "..."
-				key_file = "testdata/secret.txt"
+			    header = "..."
+			    key_file = "testdata/secret.txt"
 			  }
 			}
 			`,
 			"",
 		},
 		{
-			"jwks_uri",
+			"ok: jwks_uri",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-				jwks_uri = "http://..."
-				header = "..."
+			    jwks_uri = "http://..."
+			    header = "..."
 			  }
 			}
 			`,
@@ -471,9 +471,9 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-				signature_algorithm = "HS256"
-				jwks_uri = "http://..."
-				header = "..."
+			    signature_algorithm = "HS256"
+			    jwks_uri = "http://..."
+			    header = "..."
 			  }
 			}
 			`,
@@ -485,9 +485,9 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-				key = "..."
-				jwks_uri = "http://..."
-				header = "..."
+			    key = "..."
+			    jwks_uri = "http://..."
+			    header = "..."
 			  }
 			}
 			`,
@@ -499,9 +499,9 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-				key_file = "..."
-				jwks_uri = "http://..."
-				header = "..."
+			    key_file = "..."
+			    jwks_uri = "http://..."
+			    header = "..."
 			  }
 			}
 			`,
@@ -513,12 +513,28 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-				backend = "..."
-				header = "..."
+			    backend = "foo"
+			    header = "..."
 			  }
+			  backend "foo" {}
 			}
 			`,
 			"backend requires jwks_uri",
+		},
+		{
+			"ok: jwks_uri + backend reference",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    backend = "foo"
+			    header = "..."
+			    jwks_uri = "http://..."
+			  }
+			  backend "foo" {}
+			}
+			`,
+			"",
 		},
 		{
 			"inline backend block, missing jwks_uri",
@@ -533,21 +549,6 @@ func TestJwtConfig(t *testing.T) {
 			}
 			`,
 			"backend requires jwks_uri",
-		},
-		{
-			"inline backend block, missing jwks_uri",
-			`
-			server "test" {}
-			definitions {
-			  jwt "myac" {
-				backend = "foo"
-				backend {
-				}
-				header = "..."
-			  }
-			}
-			`,
-			"backend must be either block or attribute",
 		},
 	}
 
@@ -562,7 +563,11 @@ func TestJwtConfig(t *testing.T) {
 
 			var error = ""
 			if err != nil {
-				error = err.(errors.GoError).LogError()
+				if _, ok := err.(errors.GoError); ok {
+					error = err.(errors.GoError).LogError()
+				} else {
+					error = err.Error()
+				}
 			}
 
 			if tt.error == "" && error == "" {

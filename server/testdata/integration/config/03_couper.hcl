@@ -133,6 +133,15 @@ server "acs" {
       }
     }
   }
+  endpoint "/jwks/rsa/backendref" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKSBackendRef"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKSBackendRef.sub
+      }
+    }
+  }
 }
 
 definitions {
@@ -173,6 +182,14 @@ definitions {
     backend {
       origin = env.COUPER_TEST_BACKEND_ADDR
     }
+  }
+  jwt "JWKSBackendRef" {
+    header = "Authorization"
+    jwks_uri = "http://dummy/jwks.json"
+    backend = "jwks"
+  }
+  backend "jwks" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
   }
   backend "test" {
     origin = env.COUPER_TEST_BACKEND_ADDR

@@ -45,7 +45,7 @@ func (j *JWT) HCLBody() hcl.Body {
 	return j.Remain
 }
 
-func (j *JWT) ParseInlineBackend(evalContext *hcl.EvalContext) error {
+func (j *JWT) ParseInlineBackend() error {
 	type inlineBackend struct {
 		Backend *Backend `hcl:"backend,block"`
 	}
@@ -108,4 +108,14 @@ func (j *JWT) Check() error {
 	}
 
 	return nil
+}
+
+// Reference implements the <BackendReference> interface.
+func (j *JWT) Reference() string {
+	return j.JWKSBackendRef
+}
+
+func (j *JWT) Schema(inline bool) *hcl.BodySchema {
+	schema, _ := gohcl.ImpliedBodySchema(j)
+	return schema
 }
