@@ -204,7 +204,7 @@ func getSchemaComponents(
 			switch typ.String() {
 			// TODO: How to implement this automatically?
 			case "config.BasicAuth", "config.JWT", "config.OAuth2AC", "config.SAML", "config.OIDC":
-				schema = config.SchemaWithACSetter(schema)
+				schema = config.NewErrorSetterSchema(schema)
 
 				triggerBreak = true
 			}

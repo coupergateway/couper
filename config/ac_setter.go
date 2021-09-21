@@ -5,19 +5,18 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-var ACSetterSchema, _ = gohcl.ImpliedBodySchema(&AccessControlSetter{})
-
-type AccessControlSetter struct {
+type ErrorHandlerSetter struct {
 	ErrorHandler []*ErrorHandler `hcl:"error_handler,block"`
 }
 
-func (acs *AccessControlSetter) Set(ehConf *ErrorHandler) {
-	acs.ErrorHandler = append(acs.ErrorHandler, ehConf)
+func (ehs *ErrorHandlerSetter) Set(ehConf *ErrorHandler) {
+	ehs.ErrorHandler = append(ehs.ErrorHandler, ehConf)
 }
 
-func SchemaWithACSetter(schema *hcl.BodySchema) *hcl.BodySchema {
-	schema.Attributes = append(schema.Attributes, ACSetterSchema.Attributes...)
-	schema.Blocks = append(schema.Blocks, ACSetterSchema.Blocks...)
+func NewErrorSetterSchema(schema *hcl.BodySchema) *hcl.BodySchema {
+	errorSetterSchema, _ := gohcl.ImpliedBodySchema(&ErrorHandlerSetter{})
+	schema.Attributes = append(schema.Attributes, errorSetterSchema.Attributes...)
+	schema.Blocks = append(schema.Blocks, errorSetterSchema.Blocks...)
 
 	return schema
 }

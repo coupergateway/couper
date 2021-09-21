@@ -42,10 +42,6 @@ var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 var envContext *hcl.EvalContext
 var configBytes []byte
 
-type AccessControlSetter interface {
-	Set(handler *config.ErrorHandler)
-}
-
 func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
 }
@@ -214,7 +210,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 			}
 
 			// access control - error_handler
-			var acErrorHandler []AccessControlSetter
+			var acErrorHandler []ErrorHandlerSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
 				acErrorHandler = append(acErrorHandler, acConfig)
 			}

@@ -15,7 +15,7 @@ var (
 
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
-	AccessControlSetter
+	ErrorHandlerSetter
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`

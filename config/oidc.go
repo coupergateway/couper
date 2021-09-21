@@ -12,7 +12,7 @@ var (
 
 // OIDC represents an oidc block.
 type OIDC struct {
-	AccessControlSetter
+	ErrorHandlerSetter
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
