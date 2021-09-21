@@ -47,10 +47,9 @@ services:
 #      - OTA_EXPORTER_ZIPKIN_ENDPOINT
 #      - OTA_EXPORTER_ZIPKIN_SERVICE_NAME
       - COUPER_WATCH=true
-      - COUPER_TRACES=true
-      - COUPER_METRICS=true
-      - COUPER_METRICS_EXPORTER=prometheus
-      - COUPER_METRICS_PORT=9999
+      - COUPER_BETA_TRACES=true
+      - COUPER_BETA_METRICS=true
+      - COUPER_BETA_METRICS_PORT=9999
     volumes:
       - $PWD/public/couper.hcl:/conf/couper.hcl
     ports:
