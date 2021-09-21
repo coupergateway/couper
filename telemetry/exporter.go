@@ -16,7 +16,6 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	export "go.opentelemetry.io/otel/sdk/export/metric"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
@@ -142,6 +141,10 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		return nil
 	}
 
+	if exporter != ExporterOTLP {
+		return fmt.Errorf("metrics: unsupported exporter: %s", opts.MetricsExporter)
+	}
+
 	endpoint := opts.TracesEndpoint
 	if ep := os.Getenv(otlpExporterEnvKey); ep != "" {
 		endpoint = ep
@@ -172,11 +175,11 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		controller.WithExporter(metricExp),
 		controller.WithCollectPeriod(collectPeriod),
 	)
-	global.SetMeterProvider(pusher.MeterProvider())
-
 	if err = pusher.Start(ctx); err != nil {
 		return err
 	}
+
+	provider.SetMeterProvider(pusher.MeterProvider())
 
 	go pushOnShutdown(ctx, pusher.Stop)
 
