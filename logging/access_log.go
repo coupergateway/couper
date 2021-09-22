@@ -38,10 +38,10 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	}
 }
 
-func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler, startTime time.Time) {
+func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
 	nextHandler.ServeHTTP(rw, req)
 	serveDone := time.Now()
-
+	startTime := req.Context().Value(request.StartTime).(time.Time)
 	fields := Fields{}
 
 	backendName, _ := req.Context().Value(request.BackendName).(string)

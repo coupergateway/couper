@@ -97,14 +97,18 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	traceHandler := middleware.NewTraceHandler()(httpSrv)
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		accessLog.ServeHTTP(rw, req, uidHandler, time.Now())
+		accessLog.ServeHTTP(rw, req, uidHandler)
 	})
 	recordHandler := middleware.NewRecordHandler(settings.SecureCookies)(logHandler)
+	startTimeHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		recordHandler.ServeHTTP(rw, r.WithContext(
+			context.WithValue(r.Context(), request.StartTime, time.Now())))
+	})
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
 		ConnState:         httpSrv.onConnState,
-		Handler:           recordHandler,
+		Handler:           startTimeHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
 	}

@@ -130,6 +130,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.
 
 			ctx := context.WithValue(req.Context(), request.ServerName, "couper_tls")
 			ctx = context.WithValue(ctx, request.UID, uid)
+			ctx = context.WithValue(ctx, request.StartTime, time.Now())
 
 			req.Header.Set("Forwarded", fmt.Sprintf("for=%s;proto=https;host=%s;by=%s", req.RemoteAddr, req.Host, listener.Addr().String()))
 			req.Header.Set("Via", "couper-https-dev-proxy")
@@ -140,7 +141,7 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.
 			req.URL.Host = req.Host
 
 			respW := writer.NewResponseWriter(rw, "")
-			accessLog.ServeHTTP(respW, req.WithContext(ctx), httpProxy, time.Now())
+			accessLog.ServeHTTP(respW, req.WithContext(ctx), httpProxy)
 		}),
 		TLSConfig: initialConfig,
 	}
