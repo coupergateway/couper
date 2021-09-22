@@ -136,13 +136,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Backend response context creates the beresp variables in first place and applies this context
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
-	// from this result. Fallback case is for testing purposes.
-	if evalCtx, ok := req.Context().Value(request.ContextType).(*eval.Context); ok {
-		evalCtx = evalCtx.WithBeresps(beresp)
-		err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
-	} else {
-		err = eval.ApplyResponseContext(req.Context(), b.context, beresp)
-	}
+	// from this result.
+	evalCtx := eval.ContextFromRequest(req)
+	evalCtx = evalCtx.WithBeresps(beresp)
+	err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
 
 	return beresp, err
 }

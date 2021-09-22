@@ -110,7 +110,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
-	evalContext := req.Context().Value(request.ContextType).(*eval.Context)
+	evalContext := eval.ContextFromRequest(req)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
 	// assume prio or err on conf load if set with response
