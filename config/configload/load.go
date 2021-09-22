@@ -208,23 +208,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 				}
 			}
 
-			// access control - error_handler
-			var acErrorHandler []ErrorHandlerSetter
-			for _, acConfig := range couperConfig.Definitions.BasicAuth {
-				acErrorHandler = append(acErrorHandler, acConfig)
-			}
-			for _, acConfig := range couperConfig.Definitions.JWT {
-				acErrorHandler = append(acErrorHandler, acConfig)
-			}
-			for _, acConfig := range couperConfig.Definitions.SAML {
-				acErrorHandler = append(acErrorHandler, acConfig)
-			}
-			for _, acConfig := range couperConfig.Definitions.OAuth2AC {
-				acErrorHandler = append(acErrorHandler, acConfig)
-			}
-			for _, acConfig := range couperConfig.Definitions.OIDC {
-				acErrorHandler = append(acErrorHandler, acConfig)
-			}
+			acErrorHandler := collectErrorHandlerSetter(couperConfig.Definitions)
 
 			for _, ac := range acErrorHandler {
 				acBody, ok := ac.(config.Body)
