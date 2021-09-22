@@ -21,6 +21,7 @@ import (
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/health_check"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
@@ -326,6 +327,13 @@ func newBackend(ctx *eval.Context, backendCtx hcl.Body, log *logrus.Entry,
 
 	if err := parseDuration(beConf.Timeout, &tc.Timeout); err != nil {
 		return nil, err
+	}
+
+	if beConf.HealthCheck != nil {
+		tc.HealthCheck = &health_check.ParsedHealthCheck{}
+		if err := tc.HealthCheck.Parse(beConf.HealthCheck); err != nil {
+			return nil, err
+		}
 	}
 
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)

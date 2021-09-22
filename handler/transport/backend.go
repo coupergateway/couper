@@ -74,8 +74,8 @@ func NewBackend(ctx hcl.Body, evalCtx *eval.Context, tc *Config, opts *BackendOp
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 
-	if distinct {
-		NewProbe(time.Second, time.Second, 5, backend)
+	if distinct && backend.transportConf.HealthCheck != nil {
+		NewProbe(backend)
 	}
 
 	return backend.upstreamLog
