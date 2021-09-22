@@ -72,9 +72,9 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	// Read out handler kind from context set by muxer
-	if handlerName, ok := req.Context().Value(request.Handler).(string); ok {
+	if handlerName := req.Context().Value(request.Handler); handlerName != nil {
 		fields["handler"] = handlerName
-	} else if handlerName, ok = req.Context().Value(request.EndpointKind).(string); ok {
+	} else if handlerName = req.Context().Value(request.EndpointKind); handlerName != nil {
 		fields["handler"] = handlerName // fallback, e.g. with ErrorHandler
 	}
 
