@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"github.com/avenga/couper/config/health_check"
 	"math"
 	"net/http"
 
@@ -67,6 +68,13 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
+	}
+
+	if beConf.HealthCheck != nil {
+		tc.HealthCheck = &health_check.ParsedHealthCheck{}
+		if err := tc.HealthCheck.Parse(beConf.HealthCheck); err != nil {
+			return nil, err
+		}
 	}
 
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)

@@ -17,6 +17,8 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
+
+	"github.com/avenga/couper/config/health_check"
 )
 
 // Config represents the transport <Config> object.
@@ -33,6 +35,8 @@ type Config struct {
 	ConnectTimeout time.Duration
 	TTFBTimeout    time.Duration
 	Timeout        time.Duration
+
+	HealthCheck *health_check.ParsedHealthCheck
 
 	// Dynamic values
 	Hostname string

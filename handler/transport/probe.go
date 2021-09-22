@@ -67,12 +67,12 @@ func (p *Probe) getConfig() (*Config, error) {
 	return p.backend.evalTransport(req)
 }
 
-func NewProbe(time, timeOut time.Duration, failureThreshold int, backend *Backend) {
+func NewProbe(backend *Backend) {
 	p := &Probe{
 		backend:          backend,
-		failureThreshold: failureThreshold,
-		time:             time,
-		timeOut:          timeOut,
+		failureThreshold: backend.transportConf.HealthCheck.FailureThreshold,
+		time:             backend.transportConf.HealthCheck.Period,
+		timeOut:          backend.transportConf.HealthCheck.Timeout,
 
 		counter: 0,
 		failure: 0,
