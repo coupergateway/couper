@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/avenga/couper/config/reader"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/avenga/couper/config/reader"
+	"github.com/avenga/couper/config/request"
 )
 
 type JWKS struct {
@@ -15,7 +17,6 @@ type JWKS struct {
 	context   context.Context
 	expiry    int64
 	file      string
-	request   *http.Request
 	uri       string
 	transport http.RoundTripper
 	ttl       time.Duration
@@ -31,23 +32,15 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 		return nil, err
 	}
 	var file string
-	var request *http.Request
 	if uri[0:5] == "file:" {
 		file = uri[5:]
-	} else if uri[0:5] == "http:" || uri[0:6] == "https:" {
-		r, err := http.NewRequest("GET", uri, nil)
-		if err != nil {
-			return nil, err
-		}
-		request = r
-	} else {
+	} else if uri[0:5] != "http:" && uri[0:6] != "https:" {
 		return nil, fmt.Errorf("Unsupported JWKS URI scheme: %q", uri)
 	}
 
 	return &JWKS{
 		context:   confContext,
 		file:      file,
-		request:   request,
 		uri:       uri,
 		transport: transport,
 		ttl:       timetolive,
@@ -91,9 +84,16 @@ func (self *JWKS) Load() error {
 			return err
 		}
 		rawJSON = j
-	} else if self.request != nil && self.transport != nil {
-		request := self.request.WithContext(self.context)
-		response, err := self.transport.RoundTrip(request)
+	} else if self.transport != nil {
+		req, err := http.NewRequest("GET", "", nil)
+		if err != nil {
+			return err
+		}
+		ctx := context.WithValue(self.context, request.URLAttribute, self.uri)
+		// TODO which roundtrip name?
+		ctx = context.WithValue(ctx, request.RoundTripName, "jwks")
+		req = req.WithContext(ctx)
+		response, err := self.transport.RoundTrip(req)
 		if err != nil {
 			return err
 		}

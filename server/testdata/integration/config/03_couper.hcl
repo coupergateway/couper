@@ -178,14 +178,14 @@ definitions {
   }
   jwt "JWKSBackend" {
     header = "Authorization"
-    jwks_url = "http://dummy/jwks.json"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend {
       origin = env.COUPER_TEST_BACKEND_ADDR
     }
   }
   jwt "JWKSBackendRef" {
     header = "Authorization"
-    jwks_url = "http://dummy/jwks.json"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend = "jwks"
   }
   backend "jwks" {
