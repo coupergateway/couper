@@ -64,7 +64,7 @@ func (j *JWT) Check() error {
 		}
 	} else {
 		if j.JWKSBackendRef != "" || j.JWKSBackendBody != nil {
-			return errors.New("backend requires jwks_url")
+			return errors.New("backend not needed without jwks_url")
 		}
 
 		if j.SignatureAlgorithm == "" {

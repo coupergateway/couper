@@ -519,7 +519,7 @@ func TestJwtConfig(t *testing.T) {
 			  backend "foo" {}
 			}
 			`,
-			"backend requires jwks_url",
+			"backend not needed without jwks_url",
 		},
 		{
 			"ok: jwks_url + backend reference",
@@ -549,7 +549,7 @@ func TestJwtConfig(t *testing.T) {
 				  }
 				}
 				`,
-				"backend requires jwks_url",
+				"backend not needed without jwks_url",
 			},
 		*/
 	}
