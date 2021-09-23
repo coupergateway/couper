@@ -2,10 +2,9 @@ package config
 
 import (
 	"errors"
-	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 // Internally used for 'error_handler'.
@@ -34,50 +33,16 @@ type JWT struct {
 	SigningKey         string   `hcl:"signing_key,optional"`
 	SigningKeyFile     string   `hcl:"signing_key_file,optional"`
 	SigningTTL         string   `hcl:"signing_ttl,optional"`
-	JWKSBackendBody    hcl.Body
 
-	// Internally used for 'error_handler'.
+	// Internally used
+	BodyContent     *hcl.BodyContent
+	JWKSBackendBody hcl.Body
 	Remain          hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
 func (j *JWT) HCLBody() hcl.Body {
 	return j.Remain
-}
-
-func (j *JWT) ParseInlineBackend() error {
-	type inlineBackend struct {
-		Backend *Backend `hcl:"backend,block"`
-	}
-
-	body := j.HCLBody()
-	schema, _ := gohcl.ImpliedBodySchema(&inlineBackend{})
-	backendSchema := newBackendSchema(schema, body)
-	content, _, diags := body.PartialContent(backendSchema)
-	if diags.HasErrors() {
-		return diags
-	}
-
-	inlineBackends := content.Blocks.OfType("backend")
-	if len(inlineBackends) > 0 {
-		j.JWKSBackendBody = inlineBackends[0].Body
-		return nil
-	}
-
-	if j.JWKSBackendRef == "" && j.JWKsURL != "" {
-		j.JWKSBackendBody = *createBackendBodyFromURI(j.JWKsURL)
-	}
-
-	return nil
-}
-
-func createBackendBodyFromURI(uri string) *hcl.Body {
-	backendConf := fmt.Sprintf("origin = %q", uri)
-	hclFile, diags := hclparse.NewParser().ParseHCL([]byte(backendConf), "")
-	if diags.HasErrors() {
-		return nil
-	}
-	return &hclFile.Body
 }
 
 func (j *JWT) Check() error {
@@ -116,6 +81,21 @@ func (j *JWT) Reference() string {
 }
 
 func (j *JWT) Schema(inline bool) *hcl.BodySchema {
-	schema, _ := gohcl.ImpliedBodySchema(j)
-	return schema
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(j)
+		return schema
+	}
+
+	type Inline struct {
+		Backend *Backend `hcl:"backend,block"`
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+
+	// A backend reference is defined, backend block is not allowed.
+	if j.JWKSBackendRef != "" {
+		schema.Blocks = nil
+	}
+
+	return newBackendSchema(schema, j.HCLBody())
 }

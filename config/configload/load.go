@@ -182,6 +182,31 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 			}
 
+			for _, jwtConfig := range couperConfig.Definitions.JWT {
+				err := uniqueAttributeKey(jwtConfig.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				if jwtConfig.JWKsURL != "" {
+					bodyContent, _, diags := jwtConfig.HCLBody().PartialContent(jwtConfig.Schema(true))
+					if diags.HasErrors() {
+						return nil, diags
+					}
+					jwtConfig.BodyContent = bodyContent
+
+					jwtConfig.JWKSBackendBody, err = newBackend(definedBackends, jwtConfig)
+					if err != nil {
+						return nil, err
+					}
+
+					jwtConfig.JWKSBackendRef = ""
+				}
+				if err := jwtConfig.Check(); err != nil {
+					return nil, errors.Configuration.Label(jwtConfig.Name).With(err)
+				}
+			}
+
 			// access control - error_handler
 			var acErrorHandler []AccessControlSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
@@ -304,32 +329,15 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 	for _, jwt := range couperConfig.Definitions.JWT {
 		config, err := lib.NewJWTSigningConfigFromJWT(jwt)
-		confErr := errors.Configuration.Label(jwt.Name)
 
 		if err != nil {
-			return nil, confErr.With(err)
+			return nil, errors.Configuration.Label(jwt.Name).With(err)
 		}
 		if config != nil {
 			if _, exists := jwtSigningConfigs[jwt.Name]; exists {
 				return nil, errors.Configuration.Messagef("jwt_signing_profile or jwt with label %s already defined", jwt.Name)
 			}
 			jwtSigningConfigs[jwt.Name] = config
-		}
-
-		if err := jwt.ParseInlineBackend(); err != nil {
-			return nil, confErr.With(err)
-		}
-
-		if jwt.JWKSBackendRef != "" {
-			jwt.JWKSBackendBody, err = newBackend(definedBackends, jwt)
-			if err != nil {
-				return nil, err
-			}
-			jwt.JWKSBackendRef = ""
-		}
-
-		if err := jwt.Check(); err != nil {
-			return nil, confErr.With(err)
 		}
 	}
 

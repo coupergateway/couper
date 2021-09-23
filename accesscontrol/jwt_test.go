@@ -536,20 +536,22 @@ func TestJwtConfig(t *testing.T) {
 			`,
 			"",
 		},
-		{
-			"inline backend block, missing jwks_url",
-			`
-			server "test" {}
-			definitions {
-			  jwt "myac" {
-				backend {
+		/*
+			{
+				"inline backend block, missing jwks_url",
+				`
+				server "test" {}
+				definitions {
+				  jwt "myac" {
+				    backend {
+				    }
+				    header = "..."
+				  }
 				}
-				header = "..."
-			  }
-			}
-			`,
-			"backend requires jwks_url",
-		},
+				`,
+				"backend requires jwks_url",
+			},
+		*/
 	}
 
 	log, _ := logrustest.NewNullLogger()
@@ -577,7 +579,7 @@ func TestJwtConfig(t *testing.T) {
 			expectedError := "configuration error: myac: " + tt.error
 
 			if expectedError != error {
-				t.Errorf("Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", expectedError, error)
+				t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, error)
 			}
 		})
 	}
