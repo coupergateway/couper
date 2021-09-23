@@ -352,7 +352,7 @@ required _label_.
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
-| `jwks_uri` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_uri = "http://identityprovider:8080/jwks.json"` |
+| `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
 

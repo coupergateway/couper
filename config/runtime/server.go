@@ -469,7 +469,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			confErr := errors.Configuration.Label(jwtConf.Name)
 
 			var jwt *ac.JWT
-			if jwtConf.JWKsURI != "" {
+			if jwtConf.JWKsURL != "" {
 				noProxy := conf.Settings.NoProxyFromEnv
 				jwks, err := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
 				if err != nil {
@@ -593,7 +593,7 @@ func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.Ev
 	}
 
 	evalContext := conf.Context.Value(request.ContextType).(context.Context)
-	jwks, err := ac.NewJWKS(jwtConf.JWKsURI, jwtConf.JWKsTTL, backend, evalContext)
+	jwks, err := ac.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend, evalContext)
 	if err != nil {
 		return nil, err
 	}

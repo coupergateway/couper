@@ -21,7 +21,7 @@ type JWT struct {
 	ClaimsRequired     []string `hcl:"required_claims,optional"`
 	Cookie             string   `hcl:"cookie,optional"`
 	Header             string   `hcl:"header,optional"`
-	JWKsURI            string   `hcl:"jwks_uri,optional"`
+	JWKsURL            string   `hcl:"jwks_url,optional"`
 	JWKsTTL            string   `hcl:"jwks_ttl,optional"`
 	JWKSBackendRef     string   `hcl:"backend,optional"`
 	Key                string   `hcl:"key,optional"`
@@ -64,8 +64,8 @@ func (j *JWT) ParseInlineBackend() error {
 		return nil
 	}
 
-	if j.JWKSBackendRef == "" && j.JWKsURI != "" {
-		j.JWKSBackendBody = *createBackendBodyFromURI(j.JWKsURI)
+	if j.JWKSBackendRef == "" && j.JWKsURL != "" {
+		j.JWKSBackendBody = *createBackendBodyFromURI(j.JWKsURL)
 	}
 
 	return nil
@@ -85,7 +85,7 @@ func (j *JWT) Check() error {
 		return errors.New("backend must be either block or attribute")
 	}
 
-	if j.JWKsURI != "" {
+	if j.JWKsURL != "" {
 		attributes := map[string]string{
 			"signature_algorithm": j.SignatureAlgorithm,
 			"key_file":            j.KeyFile,
@@ -94,16 +94,16 @@ func (j *JWT) Check() error {
 
 		for name, value := range attributes {
 			if value != "" {
-				return errors.New(name + " cannot be used together with jwks_uri")
+				return errors.New(name + " cannot be used together with jwks_url")
 			}
 		}
 	} else {
 		if j.JWKSBackendRef != "" || j.JWKSBackendBody != nil {
-			return errors.New("backend requires jwks_uri")
+			return errors.New("backend requires jwks_url")
 		}
 
 		if j.SignatureAlgorithm == "" {
-			return errors.New("signature_algorithm or jwks_uri required")
+			return errors.New("signature_algorithm or jwks_url required")
 		}
 	}
 

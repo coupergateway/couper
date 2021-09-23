@@ -401,7 +401,7 @@ func TestJwtConfig(t *testing.T) {
 			"", // FIXME Missing myac
 		},
 		{
-			"missing both signature_algorithm/jwks_uri",
+			"missing both signature_algorithm/jwks_url",
 			`
 			server "test" {}
 			definitions {
@@ -409,7 +409,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm or jwks_uri required",
+			"signature_algorithm or jwks_url required",
 		},
 		{
 			"signature_algorithm, missing key/key_file",
@@ -453,12 +453,12 @@ func TestJwtConfig(t *testing.T) {
 			"",
 		},
 		{
-			"ok: jwks_uri",
+			"ok: jwks_url",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-			    jwks_uri = "http://..."
+			    jwks_url = "http://..."
 			    header = "..."
 			  }
 			}
@@ -466,49 +466,49 @@ func TestJwtConfig(t *testing.T) {
 			"",
 		},
 		{
-			"signature_algorithm + jwks_uri",
+			"signature_algorithm + jwks_url",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-			    jwks_uri = "http://..."
+			    jwks_url = "http://..."
 			    header = "..."
 			  }
 			}
 			`,
-			"signature_algorithm cannot be used together with jwks_uri",
+			"signature_algorithm cannot be used together with jwks_url",
 		},
 		{
-			"key + jwks_uri",
+			"key + jwks_url",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    key = "..."
-			    jwks_uri = "http://..."
+			    jwks_url = "http://..."
 			    header = "..."
 			  }
 			}
 			`,
-			"key cannot be used together with jwks_uri",
+			"key cannot be used together with jwks_url",
 		},
 		{
-			"key_file + jwks_uri",
+			"key_file + jwks_url",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    key_file = "..."
-			    jwks_uri = "http://..."
+			    jwks_url = "http://..."
 			    header = "..."
 			  }
 			}
 			`,
-			"key_file cannot be used together with jwks_uri",
+			"key_file cannot be used together with jwks_url",
 		},
 		{
-			"backend reference, missing jwks_uri",
+			"backend reference, missing jwks_url",
 			`
 			server "test" {}
 			definitions {
@@ -519,17 +519,17 @@ func TestJwtConfig(t *testing.T) {
 			  backend "foo" {}
 			}
 			`,
-			"backend requires jwks_uri",
+			"backend requires jwks_url",
 		},
 		{
-			"ok: jwks_uri + backend reference",
+			"ok: jwks_url + backend reference",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    backend = "foo"
 			    header = "..."
-			    jwks_uri = "http://..."
+			    jwks_url = "http://..."
 			  }
 			  backend "foo" {}
 			}
@@ -537,7 +537,7 @@ func TestJwtConfig(t *testing.T) {
 			"",
 		},
 		{
-			"inline backend block, missing jwks_uri",
+			"inline backend block, missing jwks_url",
 			`
 			server "test" {}
 			definitions {
@@ -548,7 +548,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"backend requires jwks_uri",
+			"backend requires jwks_url",
 		},
 	}
 

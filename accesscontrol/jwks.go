@@ -86,7 +86,7 @@ func (self *JWKS) Load() error {
 	var rawJSON []byte
 
 	if self.file != "" {
-		j, err := reader.ReadFromFile("jwks_uri", self.file)
+		j, err := reader.ReadFromFile("jwks_url", self.file)
 		if err != nil {
 			return err
 		}

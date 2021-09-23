@@ -170,22 +170,22 @@ definitions {
   }
   jwt "JWKS" {
     header = "Authorization"
-    jwks_uri = "file:../files/jwks.json"
+    jwks_url = "file:../files/jwks.json"
   }
   jwt "JWKSRemote" {
     header = "Authorization"
-    jwks_uri = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
   }
   jwt "JWKSBackend" {
     header = "Authorization"
-    jwks_uri = "http://dummy/jwks.json"
+    jwks_url = "http://dummy/jwks.json"
     backend {
       origin = env.COUPER_TEST_BACKEND_ADDR
     }
   }
   jwt "JWKSBackendRef" {
     header = "Authorization"
-    jwks_uri = "http://dummy/jwks.json"
+    jwks_url = "http://dummy/jwks.json"
     backend = "jwks"
   }
   backend "jwks" {
