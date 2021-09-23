@@ -295,7 +295,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			corsHandler := NewCORSHandler(tt.corsOptions, nil)
+			corsHandler := NewCORSHandler(tt.corsOptions, upstreamHandler)
 
 			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
@@ -303,7 +303,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			corsHandler.(NextHandler).ServeNextHTTP(rec, upstreamHandler, req)
+			corsHandler.ServeHTTP(rec, req)
 
 			if !rec.Flushed {
 				rec.Flush()
@@ -491,7 +491,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			corsHandler := NewCORSHandler(tt.corsOptions, nil)
+			corsHandler := NewCORSHandler(tt.corsOptions, upstreamHandler)
 
 			req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
@@ -500,7 +500,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			corsHandler.(NextHandler).ServeNextHTTP(rec, upstreamHandler, req)
+			corsHandler.ServeHTTP(rec, req)
 
 			if !rec.Flushed {
 				rec.Flush()

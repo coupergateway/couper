@@ -13,6 +13,11 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/unit"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
@@ -22,6 +27,9 @@ import (
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
+	"github.com/avenga/couper/telemetry"
+	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 	"github.com/avenga/couper/utils"
 )
 
@@ -30,6 +38,7 @@ var _ http.RoundTripper = &Backend{}
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
+	logEntry         *logrus.Entry
 	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
@@ -55,6 +64,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend := &Backend{
 		context:          ctx,
+		logEntry:         logEntry,
 		openAPIValidator: openAPI,
 		options:          opts,
 		transportConf:    tc,
@@ -101,7 +111,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	b.withBasicAuth(req)
-	if err := b.withPathPrefix(req); err != nil {
+	if err = b.withPathPrefix(req); err != nil {
 		return nil, err
 	}
 
@@ -131,7 +141,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !isProxyReq {
-		removeConnectionHeaders(req.Header)
+		removeConnectionHeaders(beresp.Header)
+		removeHopHeaders(beresp.Header)
 	}
 
 	// Backend response context creates the beresp variables in first place and applies this context
@@ -164,10 +175,39 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 }
 
 func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
-	t := Get(tc)
-	beresp, err := t.RoundTrip(req)
+	span := trace.SpanFromContext(req.Context())
+	span.SetAttributes(telemetry.KeyOrigin.String(tc.Origin))
+	span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(req)...)
 
+	spanMsg := "backend"
+	if b.name != "" {
+		spanMsg += "." + b.name
+	}
+
+	meter := provider.Meter("couper/backend")
+	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
+	duration := metric.Must(meter).
+		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+	attrs := []attribute.KeyValue{
+		attribute.String("backend_name", tc.BackendName),
+		attribute.String("hostname", tc.Hostname),
+		attribute.String("method", req.Method),
+		attribute.String("origin", tc.Origin),
+	}
+
+	t := Get(tc, b.logEntry)
+	start := time.Now()
+	span.AddEvent(spanMsg + ".request")
+	beresp, err := t.RoundTrip(req)
+	span.AddEvent(spanMsg + ".response")
+	endSeconds := time.Since(start).Seconds()
+
+	statusKey := attribute.Key("code")
 	if err != nil {
+		defer meter.RecordBatch(req.Context(),
+			append(attrs, statusKey.Int(0)),
+			counter.Measurement(1),
+			duration.Measurement(endSeconds))
 		select {
 		case derr := <-deadlineErr:
 			if derr != nil {
@@ -177,6 +217,11 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
+
+	meter.RecordBatch(req.Context(),
+		append(attrs, statusKey.Int(beresp.StatusCode)),
+		counter.Measurement(1),
+		duration.Measurement(endSeconds))
 
 	return beresp, nil
 }

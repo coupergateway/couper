@@ -147,12 +147,13 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, request.UID, "veryRandom123")
+			ctx = context.WithValue(ctx, request.StartTime, time.Now())
 			//ctx = context.WithValue(ctx, request.ServerName, "myTestServer")
 			req = req.WithContext(ctx)
 
 			rec := httptest.NewRecorder()
 			rw := writer.NewResponseWriter(rec, "")
-			accessLog.ServeHTTP(rw, req, handler, time.Now())
+			accessLog.ServeHTTP(rw, req, handler)
 
 			entry := hook.LastEntry()
 			for key, expFields := range tc.expFields {
