@@ -21,8 +21,8 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/logging/hooks"
 	"github.com/avenga/couper/utils"
 )
 
@@ -211,8 +211,8 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	}
 	logger.Level = parsedLevel
 
-	logger.AddHook(&errors.LogHook{})
-	logger.AddHook(&logging.ContextHook{})
+	logger.AddHook(&hooks.Error{})
+	logger.AddHook(&hooks.Context{})
 
 	if testHook != nil {
 		logger.AddHook(testHook)
@@ -231,7 +231,7 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	env.Decode(logConf)
 
 	if settings.LogFormat == "json" {
-		logger.SetFormatter(logging.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
+		logger.SetFormatter(hooks.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
 	}
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }

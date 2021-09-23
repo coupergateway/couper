@@ -197,7 +197,7 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		return nil
 	}
 
-	log := req.Context().Value(request.LogEntry).(*logrus.Entry)
+	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
 
 	if req.Method != http.MethodPost {
 		log.WithError(errors.Evaluation.Label("form_params").
@@ -329,8 +329,8 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 		return nil
 	}
 
-	content, _, _ := body.PartialContent(config.BackendInlineSchema)
-	if attr, ok := content.Attributes["set_response_status"]; ok {
+	bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
+	if attr, ok := bodyContent.Attributes["set_response_status"]; ok {
 		_, err := ApplyResponseStatus(ctx, attr, beresp)
 		return err
 	}
@@ -358,7 +358,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 	if beresp != nil {
 		if status == 204 {
 			beresp.Request.Context().
-				Value(request.LogEntry).(*logrus.Entry).
+				Value(request.LogEntry).(*logrus.Entry).WithContext(ctx).
 				Warn("set_response_status: removing body, if any due to status-code 204")
 
 			beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))

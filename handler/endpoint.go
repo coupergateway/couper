@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
@@ -18,16 +19,16 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/server/writer"
+	"github.com/avenga/couper/telemetry"
 )
 
 var _ http.Handler = &Endpoint{}
 var _ EndpointLimit = &Endpoint{}
 
 type Endpoint struct {
-	log            *logrus.Entry
-	logHandlerKind string
-	modifier       []hcl.Body
-	opts           *EndpointOptions
+	log      *logrus.Entry
+	modifier []hcl.Body
+	opts     *EndpointOptions
 }
 
 type EndpointOptions struct {
@@ -70,6 +71,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
 	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
 	*req = *req.WithContext(reqCtx)
+	if e.opts.LogPattern != "" {
+		span := trace.SpanFromContext(reqCtx)
+		span.SetAttributes(telemetry.KeyEndpoint.String(e.opts.LogPattern))
+	}
 
 	defer func() {
 		rc := recover()
@@ -135,6 +140,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		if err == nil {
+			_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
+			defer span.End()
 			clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
 		}
 	} else {
@@ -265,5 +272,5 @@ func (e *Endpoint) RequestLimit() int64 {
 
 // String interface maps to the access log handler field.
 func (e *Endpoint) String() string {
-	return e.logHandlerKind
+	return e.opts.LogHandlerKind
 }

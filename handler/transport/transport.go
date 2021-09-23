@@ -11,6 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
 
@@ -37,7 +42,7 @@ type Config struct {
 }
 
 // Get creates a new <*http.Transport> object by the given <*Config>.
-func Get(conf *Config) *http.Transport {
+func Get(conf *Config, log *logrus.Entry) *http.Transport {
 	key := conf.hash()
 
 	transport, ok := transports.Load(key)
@@ -68,7 +73,7 @@ func Get(conf *Config) *http.Transport {
 			proxyFunc = http.ProxyFromEnvironment
 		}
 
-		// This is the documented way to disable http2. However if a custom tls.Config or
+		// This is the documented way to disable http2. However, if a custom tls.Config or
 		// DialContext is used h2 will also be disabled. To enable h2 the transport must be
 		// explicitly configured, this can be done with the 'ForceAttemptHTTP2' below.
 		var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
@@ -76,17 +81,23 @@ func Get(conf *Config) *http.Transport {
 			nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
 		}
 
+		logEntry := log.WithField("type", "couper_connection")
+
 		transport = &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				address := addr
 				if proxyFunc == nil {
 					address = conf.Origin
-				} // Otherwise proxy connect will use this dial method and addr could be a proxy one.
-				conn, err := d.DialContext(ctx, network, address)
+				} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
+
+				stx, span := telemetry.NewSpanFromContext(ctx, "connect", trace.WithAttributes(attribute.String("couper.address", addr)))
+				defer span.End()
+
+				conn, err := d.DialContext(stx, network, address)
 				if err != nil {
 					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
 				}
-				return conn, nil
+				return NewOriginConn(stx, conn, conf, logEntry), nil
 			},
 			DisableCompression:    true,
 			DisableKeepAlives:     conf.DisableConnectionReuse,

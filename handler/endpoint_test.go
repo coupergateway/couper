@@ -462,6 +462,7 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	}))
 
 	ctx, cancelFn := context.WithCancel(context.WithValue(context.Background(), request.UID, "test123"))
+	ctx = context.WithValue(ctx, request.StartTime, time.Now())
 
 	rt := transport.NewBackend(
 		test.NewRemainContext("origin", slowOrigin.URL), &transport.Config{},
@@ -487,7 +488,7 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	access := logging.NewAccessLog(&logging.Config{}, log)
-	access.ServeHTTP(rec, req.WithContext(ctx), ep, time.Now())
+	access.ServeHTTP(rec, req.WithContext(ctx), ep)
 	rec.Flush()
 
 	elapsed := time.Now().Sub(start)
