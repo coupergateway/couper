@@ -1,7 +1,6 @@
 package accesscontrol_test
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -298,7 +297,7 @@ func setCookieAndHeader(req *http.Request, key, value string) *http.Request {
 }
 
 func setContext(req *http.Request) *http.Request {
-	ctx := context.WithValue(req.Context(), request.ContextType, eval.NewContext(nil, nil))
-	*req = *req.WithContext(ctx)
+	evalCtx := eval.ContextFromRequest(req)
+	*req = *req.WithContext(evalCtx.WithClientRequest(req))
 	return req
 }
