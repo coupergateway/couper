@@ -73,7 +73,7 @@ func TestACDefinitions_errors(t *testing.T) {
 			"configuration error: accessControl requires a label",
 		},
 		{
-			"jwt with empty label",
+			"basic_auth with empty label",
 			`
 			server "test" {
 			}
