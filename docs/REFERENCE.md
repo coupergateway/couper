@@ -347,8 +347,8 @@ required _label_.
 | `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
-| `claims`               |string|-|Equals/in comparison with JWT payload.|-|-|
-| `required_claims`      | string|-|list of claims that must be given for a valid token |-|-|
+| `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
+| `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
@@ -379,7 +379,7 @@ An example can be found
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 |`ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
-| `claims` |string|-|Default claims for the JWT payload.|-|-|
+| `claims` |object|-|Default claims for the JWT payload.| The claim values are evaluated per request. |`claims = { iss = "https://the-issuer.com" }`|
 
 ### OAuth2 AC Block (Beta)
 
