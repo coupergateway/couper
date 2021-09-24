@@ -454,9 +454,9 @@ func TestOAuth2_Locking(t *testing.T) {
 	addLock := &sync.Mutex{}
 	// Fire 5 requests in parallel...
 	waitCh := make(chan struct{})
+	wg.Add(5)
 	for i := 0; i < 5; i++ {
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			<-waitCh
 			res, e := client.Do(req)
