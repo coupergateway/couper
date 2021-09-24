@@ -391,14 +391,14 @@ func TestOAuth2_Locking(t *testing.T) {
 	client := newClient()
 
 	token := "token-"
-	var oauthRequestCount int32
+	var oauthRequestCount uint32
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		atomic.AddInt32(&oauthRequestCount, 1)
+		atomic.AddUint32(&oauthRequestCount, 1)
 		if req.URL.Path == "/oauth2" {
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
 
-			n := fmt.Sprintf("%d", atomic.LoadInt32(&oauthRequestCount))
+			n := fmt.Sprintf("%d", atomic.LoadUint32(&oauthRequestCount))
 			body := []byte(`{
 				"access_token": "` + token + n + `",
 				"token_type": "bearer",
@@ -439,7 +439,6 @@ func TestOAuth2_Locking(t *testing.T) {
 			"rsOrigin": ResourceOrigin.URL,
 		},
 	)
-
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
@@ -482,8 +481,8 @@ func TestOAuth2_Locking(t *testing.T) {
 		}
 	}
 
-	if oauthRequestCount != 1 {
-		t.Errorf("Too many OAuth2 requests: want 1, got: %d", oauthRequestCount)
+	if count := atomic.LoadUint32(&oauthRequestCount); count != 1 {
+		t.Errorf("OAuth2 requests: want 1, got: %d", count)
 	}
 
 	t.Run("Lock is effective", func(st *testing.T) {
@@ -533,8 +532,8 @@ func TestOAuth2_Locking(t *testing.T) {
 			st.Errorf("Received wrong token: want %s3, got: %s", token, res.Header.Get("Token"))
 		}
 
-		if oauthRequestCount != 3 {
-			st.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", oauthRequestCount)
+		if count := atomic.LoadUint32(&oauthRequestCount); count != 3 {
+			st.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", count)
 		}
 
 		// Disconnect OAuth server
