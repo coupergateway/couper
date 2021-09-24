@@ -33,9 +33,11 @@ definitions {
   backend "valid" {
     name = "valid"
     origin = env.COUPER_TEST_BACKEND_ADDR
+    health_check {}
   }
   backend "invalid" {
     name = "invalid"
     origin = "http://1.2.3.4"
+    health_check {}
   }
 }

@@ -2663,7 +2663,7 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			name: "invalid url",
 			path: "/invalid",
 			expectation: expectation{
-				State: transport.StateDegraded.String(),
+				State: transport.StateDown.String(),
 			},
 		},
 		{
