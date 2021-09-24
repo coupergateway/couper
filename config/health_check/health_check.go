@@ -1,9 +1,12 @@
 package health_check
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 var defaultHealthCheck = &ParsedHealthCheck{
-	FailureThreshold: 5,
+	FailureThreshold: 0,
 	Period:           time.Second,
 	Timeout:          time.Second,
 }
@@ -21,6 +24,9 @@ type HealthCheck struct {
 }
 
 func (target *ParsedHealthCheck) Parse(health *HealthCheck) (err error) {
+	if health == nil {
+		return errors.New("nil pointer dereference")
+	}
 	if health.Period == "" {
 		target.Period = defaultHealthCheck.Period
 	} else {
@@ -38,8 +44,5 @@ func (target *ParsedHealthCheck) Parse(health *HealthCheck) (err error) {
 		}
 	}
 	target.FailureThreshold = health.FailureThreshold
-	if target.FailureThreshold == 0 {
-		target.FailureThreshold = defaultHealthCheck.FailureThreshold
-	}
 	return nil
 }

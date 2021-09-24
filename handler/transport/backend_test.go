@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	err "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/health_check"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
@@ -342,6 +344,82 @@ func TestBackend_director(t *testing.T) {
 
 			if req.URL.Path != tt.expReq.URL.Path {
 				t.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
+			}
+		})
+	}
+}
+
+func TestBackend_health_check(t *testing.T) {
+
+	type expectation struct {
+		FailureThreshold int
+		Period           time.Duration
+		Timeout          time.Duration
+		err              error
+	}
+
+	type testCase struct {
+		name        string
+		health      *health_check.HealthCheck
+		expectation expectation
+	}
+
+	for _, tc := range []testCase{
+		{
+			name: "health check with default values",
+			health: &health_check.HealthCheck{
+				FailureThreshold: 0,
+				Period:           "1s",
+				Timeout:          "1s",
+			},
+			expectation: expectation{
+				FailureThreshold: 0,
+				Period:           time.Second,
+				Timeout:          time.Second,
+			},
+		},
+		{
+			name: "health check with configured values",
+			health: &health_check.HealthCheck{
+				FailureThreshold: 42,
+				Period:           "1h",
+				Timeout:          "9m",
+			},
+			expectation: expectation{
+				FailureThreshold: 42,
+				Period:           time.Hour,
+				Timeout:          9 * time.Minute,
+			},
+		},
+		{
+			name: "uninitialised health check",
+			expectation: expectation{
+				err: err.New("nil pointer dereference"),
+			},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			health := &health_check.ParsedHealthCheck{}
+			err := health.Parse(tc.health)
+
+			if tc.expectation.err == nil {
+				h.Must(err)
+			} else if err == nil {
+				t.Errorf("expected error:%s got nil", tc.expectation.err.Error())
+			} else if err.Error() != tc.expectation.err.Error() {
+				t.Errorf("expected error:%s got:%s", tc.expectation.err.Error(), err.Error())
+			}
+
+			if tc.expectation.FailureThreshold != health.FailureThreshold {
+				t.Errorf("expected failure threshold:%d got:%d", tc.expectation.FailureThreshold, health.FailureThreshold)
+			}
+			if tc.expectation.Period != health.Period {
+				t.Errorf("expected period:%s got:%s", tc.expectation.Period.String(), health.Period.String())
+			}
+			if tc.expectation.Timeout != health.Timeout {
+				t.Errorf("expected timeout:%s got:%s", tc.expectation.Timeout.String(), health.Timeout.String())
 			}
 		})
 	}
