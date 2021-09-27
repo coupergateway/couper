@@ -388,33 +388,36 @@ func TestOAuth2_AccessControl(t *testing.T) {
 
 func TestOAuth2_Locking(t *testing.T) {
 	helper := test.New(t)
-	client := newClient()
+	client := test.NewHTTPClient()
 
 	token := "token-"
 	var oauthRequestCount uint32
-	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		atomic.AddUint32(&oauthRequestCount, 1)
-		if req.URL.Path == "/oauth2" {
-			rw.Header().Set("Content-Type", "application/json")
-			rw.WriteHeader(http.StatusOK)
 
-			n := fmt.Sprintf("%d", atomic.LoadUint32(&oauthRequestCount))
-			body := []byte(`{
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/oauth2" {
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		atomic.AddUint32(&oauthRequestCount, 1)
+
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusOK)
+
+		n := fmt.Sprintf("%d", atomic.LoadUint32(&oauthRequestCount))
+		body := []byte(`{
 				"access_token": "` + token + n + `",
 				"token_type": "bearer",
 				"expires_in": 1.5
 			}`)
 
-			// Slow down token request to test locking.
-			time.Sleep(1 * time.Second)
+		// Slow down token request
+		time.Sleep(time.Second)
 
-			_, werr := rw.Write(body)
-			helper.Must(werr)
-
-			return
+		_, werr := rw.Write(body)
+		if werr != nil {
+			t.Error(werr)
 		}
-
-		rw.WriteHeader(http.StatusBadRequest)
 	}))
 	defer oauthOrigin.Close()
 
