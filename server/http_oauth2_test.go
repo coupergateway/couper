@@ -516,20 +516,22 @@ func TestOAuth2_Locking(t *testing.T) {
 		}()
 
 		// Slow response due to lock
-		go func() {
-			start := time.Now()
-			res, err := client.Do(req)
-			h.Must(err)
-			timeElapsed := time.Since(start).Seconds()
+		start := time.Now()
+		res, err := client.Do(req)
+		if err != nil {
+			st.Error(err)
+			return
+		}
 
-			if token+"2" != res.Header.Get("Token") {
-				st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
-			}
+		timeElapsed := time.Since(start)
 
-			if timeElapsed < 1 {
-				st.Errorf("Response came too fast: dysfunctional lock?! (%v s)", timeElapsed)
-			}
-		}()
+		if token+"2" != res.Header.Get("Token") {
+			st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
+		}
+
+		if timeElapsed < time.Second {
+			st.Errorf("Response came too fast: dysfunctional lock?! (%s)", timeElapsed.String())
+		}
 	})
 
 	t.Run("Mem store expiry", func(st *testing.T) {
@@ -539,6 +541,7 @@ func TestOAuth2_Locking(t *testing.T) {
 		// Request fresh token and store in memstore
 		res, err := client.Do(req)
 		h.Must(err)
+
 		if res.StatusCode != http.StatusNoContent {
 			st.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
 		}
