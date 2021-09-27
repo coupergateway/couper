@@ -441,8 +441,8 @@ func TestOAuth2_Locking(t *testing.T) {
 	)
 	defer shutdown()
 
-	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-	helper.Must(err)
+	req, rerr := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(rerr)
 
 	hook.Reset()
 
@@ -454,6 +454,7 @@ func TestOAuth2_Locking(t *testing.T) {
 	addLock := &sync.Mutex{}
 	// Fire 5 requests in parallel...
 	waitCh := make(chan struct{})
+	errors := make(chan error, 5)
 	wg.Add(5)
 	for i := 0; i < 5; i++ {
 		go func() {
@@ -461,7 +462,7 @@ func TestOAuth2_Locking(t *testing.T) {
 			<-waitCh
 			res, e := client.Do(req)
 			if e != nil {
-				t.Error(e)
+				errors <- e
 				return
 			}
 
@@ -473,6 +474,12 @@ func TestOAuth2_Locking(t *testing.T) {
 	}
 	close(waitCh)
 	wg.Wait()
+	close(errors)
+	for err := range errors {
+		if err != nil {
+			t.Error(err)
+		}
+	}
 
 	for _, res := range responses {
 		if res.StatusCode != http.StatusNoContent {
@@ -491,12 +498,14 @@ func TestOAuth2_Locking(t *testing.T) {
 	t.Run("Lock is effective", func(st *testing.T) {
 		// Wait until token has expired.
 		time.Sleep(2 * time.Second)
-		h := test.New(st)
 
 		// Fetch new token.
 		go func() {
 			res, err := client.Do(req)
-			h.Must(err)
+			if err != nil {
+				st.Error(err)
+				return
+			}
 
 			if token+"2" != res.Header.Get("Token") {
 				st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
