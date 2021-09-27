@@ -54,15 +54,15 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	value, _ := oa.locks.LoadOrStore(storageKey, &sync.Mutex{})
 	mutex := value.(*sync.Mutex)
-	mutex.Lock()
 
-	if token, terr := oa.readAccessToken(storageKey); terr != nil {
+	mutex.Lock()
+	token, terr := oa.readAccessToken(storageKey)
+	if terr != nil {
 		mutex.Unlock()
 		return nil, errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
 	} else if token != "" {
 		mutex.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
-
 		return oa.next.RoundTrip(req)
 	}
 
@@ -74,7 +74,6 @@ func (oa *OAuth2ReqAuth) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	oa.updateAccessToken(tokenResponse, tokenResponseData, storageKey)
-
 	mutex.Unlock()
 
 	req.Header.Set("Authorization", "Bearer "+token)
