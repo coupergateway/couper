@@ -79,8 +79,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.Host != "" {
 		requestFields["origin"] = req.Host
 		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
-		if fields["port"] == "" {
-			delete(fields, "port")
+		if requestFields["port"] == "" {
+			delete(requestFields, "port")
 		}
 	}
 

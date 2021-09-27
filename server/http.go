@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/unit"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
@@ -17,8 +20,10 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
+	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 )
 
 type muxers map[string]*Mux
@@ -36,7 +41,6 @@ type HTTPServer struct {
 	shutdownCh chan struct{}
 	srv        *http.Server
 	timings    *runtime.HTTPTimings
-	uidFn      uidFunc
 }
 
 // NewServerList creates a list of all configured HTTP server.
@@ -60,8 +64,6 @@ func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, sett
 // New creates a configured HTTP server.
 func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
 	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
-
-	uidFn := newUIDFunc(settings)
 
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_access"
@@ -87,12 +89,26 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		settings:   settings,
 		shutdownCh: shutdownCh,
 		timings:    timings,
-		uidFn:      uidFn,
 	}
+
+	accessLog := logging.NewAccessLog(&logConf, log)
+
+	// order matters
+	traceHandler := middleware.NewTraceHandler()(httpSrv)
+	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
+	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		accessLog.ServeHTTP(rw, req, uidHandler)
+	})
+	recordHandler := middleware.NewRecordHandler(settings.SecureCookies)(logHandler)
+	startTimeHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		recordHandler.ServeHTTP(rw, r.WithContext(
+			context.WithValue(r.Context(), request.StartTime, time.Now())))
+	})
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
-		Handler:           httpSrv,
+		ConnState:         httpSrv.onConnState,
+		Handler:           startTimeHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
 	}
@@ -167,34 +183,9 @@ func (s *HTTPServer) listenForCtx() {
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	startTime := time.Now()
-
-	if err := s.setUID(rw, req); err != nil {
-		s.accessLog.ServeHTTP(rw, req, errors.DefaultHTML.ServeError(err), startTime)
-		return
-	}
-
-	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
-	*req = *req.WithContext(ctx)
-
-	req.Host = s.getHost(req)
-
-	gw := writer.NewGzipWriter(rw, req.Header)
-	w := writer.NewResponseWriter(gw, s.settings.SecureCookies)
-
-	// This defer closes the GZ writer but more important is triggering our own buffer logic in all cases
-	// for this writer to prevent the 200 OK status fallback (http.ResponseWriter) and an empty response body.
-	defer func() {
-		select { // do not close on cancel since we may have nothing to write and the client may be gone anyways.
-		case <-req.Context().Done():
-			return
-		default:
-			gw.Close()
-		}
-	}()
-
 	var h http.Handler
 
+	req.Host = s.getHost(req)
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
 		h = errors.DefaultHTML.ServeError(errors.ClientRequest)
@@ -212,39 +203,42 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		h = mux.FindHandler(req)
 	}
 
-	clientReq := req.Clone(req.Context())
-
-	if err = s.setGetBody(h, clientReq); err != nil {
+	if err = s.setGetBody(h, req); err != nil {
 		h = mux.opts.ServerOptions.ServerErrTpl.ServeError(err)
 	}
 
-	clientReq.URL.Host = req.Host
-	clientReq.URL.Scheme = "http"
+	req.URL.Host = req.Host
+	req.URL.Scheme = "http"
 	if s.settings.AcceptsForwardedProtocol() {
 		if xfpr := req.Header.Get("X-Forwarded-Proto"); xfpr != "" {
-			clientReq.URL.Scheme = xfpr
-			clientReq.URL.Host = clientReq.URL.Hostname()
+			req.URL.Scheme = xfpr
+			req.URL.Host = req.URL.Hostname()
 		}
 	}
 	if s.settings.AcceptsForwardedHost() {
 		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
-			clientReq.URL.Host = xfh
-			if clientReq.URL.Port() != "" {
-				clientReq.URL.Host += ":" + clientReq.URL.Port()
+			req.URL.Host = xfh
+			if req.URL.Port() != "" {
+				req.URL.Host += ":" + req.URL.Port()
 			}
 		}
 	}
 	if s.settings.AcceptsForwardedPort() {
 		if xfpo := req.Header.Get("X-Forwarded-Port"); xfpo != "" {
-			clientReq.URL.Host = clientReq.URL.Hostname() + ":" + xfpo
+			req.URL.Host = req.URL.Hostname() + ":" + xfpo
 		}
 	}
 
-	ctx = s.evalCtx.WithClientRequest(clientReq)
-	ctx = context.WithValue(ctx, request.ResponseWriter, w)
-	*clientReq = *clientReq.WithContext(ctx)
+	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
+	ctx = context.WithValue(ctx, request.LogEntry, s.log)
+	if hs, stringer := h.(fmt.Stringer); stringer {
+		ctx = context.WithValue(ctx, request.Handler, hs.String())
+	}
 
-	s.accessLog.ServeHTTP(w, clientReq, h, startTime)
+	// due to the middleware callee stack we have to update the 'req' value.
+	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
+
+	h.ServeHTTP(rw, req)
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
@@ -287,4 +281,23 @@ func (s *HTTPServer) getHost(req *http.Request) string {
 
 func (s *HTTPServer) cleanHostAppendPort(host string) string {
 	return strings.TrimSuffix(host, ".") + ":" + s.port
+}
+
+func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
+	meter := provider.Meter("couper/server")
+	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
+	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.ClientConnections, metric.WithDescription(string(unit.Dimensionless)))
+
+	if state == http.StateNew {
+		meter.RecordBatch(context.Background(), nil,
+			counter.Measurement(1),
+			gauge.Measurement(1),
+		)
+		// we have no callback for closing a hijacked one, so count them down too.
+		// TODO: if required we COULD override given conn ptr value with own obj.
+	} else if state == http.StateClosed || state == http.StateHijacked {
+		meter.RecordBatch(context.Background(), nil,
+			gauge.Measurement(-1),
+		)
+	}
 }

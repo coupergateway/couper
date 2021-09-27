@@ -15,6 +15,7 @@ import (
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
@@ -328,6 +329,106 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			`{"sub":"12345"}`,
 			"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.flU1adXUEaZuqkFwhcgJ8U3OXYOTC6RQCWw9rb7nkTNzt7XrU13EPtlxH5_7lpAvyBn4iyOCiJd19y1paupyeYbHEgUGsVXa4Iu1jQ8I7C41ejLNybdg7XpRzf3zt6tMC3W9Bp0TYRqrykTiQ0W4pg0sGJCV-e30dSDgkfuS_TM",
 		},
+		{
+			"jwt / HS256 / key",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					signing_ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.Hf-ZtIlsxR2bDOdAEMaDHaOBmfVWTQi9U68yV4YHW9w",
+		},
+		{
+			"jwt / HS256 / key_file",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					key_file = "testdata/secret.txt"
+					signing_ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.Hf-ZtIlsxR2bDOdAEMaDHaOBmfVWTQi9U68yV4YHW9w",
+		},
+		{
+			"jwt / RS256 / key",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "RS256"
+					signing_key = <<EOF
+-----BEGIN RSA PRIVATE KEY-----
+MIICWwIBAAKBgQDGSd+sSTss2uOuVJKpumpFAamlt1CWLMTAZNAabF71Ur0P6u83
+3RhAIjXDSA/QeVitzvqvCZpNtbOJVegaREqLMJqvFOUkFdLNRP3f9XjYFFvubo09
+tcjX6oGEREKDqLG2MfZ2Z8LVzuJc6SwZMgVFk/63rdAOci3W9u3zOSGj4QIDAQAB
+AoGAMzI1rw0FW1J0wLkTWQFJmOGSBLhs9Sk/75DX7kqWxe6D5A07kIfkUALFMNN1
+SdVa4R10uibXkULdxRLKJ6YEPLGAN3UmdbnBGxZ+fHAKY3PxM5lL9d7ET08A0u/8
+6vB+GZ8w0eqsp4EFzmXI5LS63cRo9GA5iliGpKWtd2IUA2UCQQDnZHJTHW21vrXv
+GqXoPxOoQAflxvnHYDgNQcRJxlEokFmSK405n7G2//NrsSnXYmUsA/wdh9YsAYZ3
+4xy6hKE3AkEA22Aw58FnypcRAKBTqEWHv957szAmz9R6mLJqG7283YWXL0VGDOuR
+qdC4QjMrix3O8WbJxGNaVCrvYKVtKEfPpwJAGGWw4C6UKLuI90L6BzjPW8gUjRej
+sm/kuREcHyM3320I5K6O32qFFGR8R/iQDtOjEzcAWCTAYjdu9CkQGGJvlQJAHpCR
+X8jfmCdiFA9CeKBvYHk0DOw5jB1Tk3DQPds6tDaHsOta7jPoEJvnADo25+QYUCP9
+GqKpFC8DORjzU3hl4wJACEzmqzAco2M4mVc+PxPX0b3LHaREyXURd+faFXUecxSF
+BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
+-----END RSA PRIVATE KEY-----
+					EOF
+					signing_ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.oSS8rC1KonyZ-JZTZhkqZb5bN0_2Lrbl4J33nLgWroc5vDvmLW0KnX0RQfXy0OjX4uBBYTThActqqqM6vidaXmBfsQ77uB9narWeAptRnKqEPlY-onTHDmTMCz7vQ9wbLT7Aa6MYlhRqKX5adpPPbwBUuhm2I-yMF80nSmFpSk0",
+		},
+		{
+			"jwt / RS256 / key_file",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "RS256"
+					signing_key_file = "testdata/rsa_priv.pem"
+					signing_ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.oSS8rC1KonyZ-JZTZhkqZb5bN0_2Lrbl4J33nLgWroc5vDvmLW0KnX0RQfXy0OjX4uBBYTThActqqqM6vidaXmBfsQ77uB9narWeAptRnKqEPlY-onTHDmTMCz7vQ9wbLT7Aa6MYlhRqKX5adpPPbwBUuhm2I-yMF80nSmFpSk0",
+		},
 	}
 
 	for _, tt := range tests {
@@ -472,6 +573,211 @@ func TestJwtSignDynamic(t *testing.T) {
 	}
 }
 
+func TestJwtSignConfigError(t *testing.T) {
+	tests := []struct {
+		name     string
+		hcl      string
+		jspLabel string
+		claims   string
+		wantErr  string
+	}{
+		{
+			"multiple jwt_signing_profile blocks with same label",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"configuration error: jwt_signing_profile block with label MyToken already defined",
+		},
+		{
+			"unsupported signature algorithm",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "invalid"
+					key = "$3cRe4"
+					ttl = "0"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: algorithm is not supported",
+		},
+		{
+			"missing signing key or key_file",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "RS256"
+					ttl = "0"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: jwt_signing_profile key: read error: required: configured attribute or file",
+		},
+		{
+			"Invalid ttl value",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "invalid"
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: time: invalid duration \"invalid\"",
+		},
+		{
+			"invalid PEM key format",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "RS256"
+					key = "invalid"
+					ttl = 0
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			"configuration error: MyToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+		},
+		{
+			"jwt / missing signing key or key_file",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "RS256"
+					key_file = "testdata/rsa_priv.pem"
+					signing_ttl = "0"
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub": "12345"}`,
+			"configuration error: MySelfSignedToken: jwt signing key: read error: required: configured attribute or file",
+		},
+		{
+			"jwt / Invalid signing_ttl value",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					signing_key = "$3cRe4"
+					signing_ttl = "invalid"
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub": "12345"}`,
+			"configuration error: MySelfSignedToken: time: invalid duration \"invalid\"",
+		},
+		{
+			"jwt / invalid PEM key format",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "RS256"
+					signing_key = "invalid"
+					signing_ttl = "0"
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub": "12345"}`,
+			"configuration error: MySelfSignedToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+		},
+		{
+			"jwt_signing_profile and jwt with same label",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					signing_ttl = "1h"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+				jwt_signing_profile "MySelfSignedToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"configuration error: jwt_signing_profile or jwt with label MySelfSignedToken already defined",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(st *testing.T) {
+			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if err == nil {
+				t.Error("expected an error, got nothing")
+				return
+			}
+			logErr, _ := err.(errors.GoError)
+			if logErr == nil {
+				t.Error("logErr should not be nil")
+			} else if logErr.LogError() != tt.wantErr {
+				t.Errorf("\nwant:\t%s\ngot:\t%v", tt.wantErr, logErr.LogError())
+			}
+		})
+	}
+}
+
 func TestJwtSignError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -490,27 +796,20 @@ func TestJwtSignError(t *testing.T) {
 					}
 				}
 			}
-			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			"missing jwt_signing_profile definitions",
-		},
-		{
-			"invalid PEM key format",
-			`
-			server "test" {
-			}
 			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "RS256"
-					key = "invalid"
-					ttl = 0
+				jwt "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
 				}
 			}
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
-			"could not parse rsa private key from pem: MyToken",
+			"missing jwt_signing_profile or jwt definitions",
 		},
 		{
 			"No profile for label",
@@ -531,24 +830,7 @@ func TestJwtSignError(t *testing.T) {
 			`,
 			"NoProfileForThisLabel",
 			`{"sub":"12345"}`,
-			"missing jwt_signing_profile for given label: NoProfileForThisLabel",
-		},
-		{
-			"Invalid ttl value",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "HS256"
-					key = "$3cRe4"
-					ttl = "invalid"
-				}
-			}
-			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			"time: invalid duration ",
+			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
 		},
 		{
 			"argument claims no object",
@@ -568,21 +850,25 @@ func TestJwtSignError(t *testing.T) {
 			"json: cannot unmarshal string into Go value of type map[string]interface {}",
 		},
 		{
-			"unsupported signature algorithm",
+			"jwt / No profile for label",
 			`
 			server "test" {
 			}
 			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "invalid"
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "HS256"
 					key = "$3cRe4"
-					ttl = "0"
+					signing_ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
 				}
 			}
 			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			"no signing method for given algorithm: invalid",
+			"NoProfileForThisLabel",
+			`{"sub":"12345"}`,
+			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
 		},
 	}
 

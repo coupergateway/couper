@@ -186,7 +186,8 @@ func (o *Config) fetchConfiguration(uid string) (*OpenidConfiguration, error) {
 		return nil, err
 	}
 
-	o.memStore.Set(o.ConfigurationURL, openidConfiguration, o.ttl)
+	key := o.Name + o.ConfigurationURL
+	o.memStore.Set(key, openidConfiguration, o.ttl)
 	return openidConfiguration, nil
 }
 

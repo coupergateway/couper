@@ -30,7 +30,6 @@ import (
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -458,17 +457,9 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			var claims map[string]interface{}
-			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
-				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
-				if diags.HasErrors() {
-					return nil, confErr.With(diags)
-				}
-				claims = c
-			}
 			jwt, err := ac.NewJWT(&ac.JWTOptions{
 				Algorithm:      jwtConf.SignatureAlgorithm,
-				Claims:         claims,
+				Claims:         jwtConf.Claims,
 				ClaimsRequired: jwtConf.ClaimsRequired,
 				Key:            key,
 				Name:           jwtConf.Name,
@@ -567,9 +558,13 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
+		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		if err != nil {
+			return nil, err
+		}
 		list = append(
 			list,
-			ac.NewItem(acName, m[acName].Control, newErrorHandler(ctx, opts, log, m, acName)),
+			ac.NewItem(acName, m[acName].Control, eh),
 		)
 	}
 
@@ -580,7 +575,7 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 }
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, references ...string) http.Handler {
+	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
 		for _, h := range defs[ref].ErrorHandler {
@@ -604,7 +599,10 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 					epConf.Response = &config.Response{Remain: emptyBody}
 				}
 
-				epOpts, _ := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
+				epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
+				if err != nil {
+					return nil, err
+				}
 				if epOpts.Error == nil || h.ErrorFile == "" {
 					epOpts.Error = opts.epOpts.Error
 				}
@@ -623,7 +621,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 	}
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error)
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
 }
 
 func setRoutesFromHosts(

@@ -21,8 +21,8 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/logging"
+	"github.com/avenga/couper/logging/hooks"
 	"github.com/avenga/couper/utils"
 )
 
@@ -221,8 +221,8 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	}
 	logger.Level = parsedLevel
 
-	logger.AddHook(&errors.LogHook{})
-	logger.AddHook(&logging.ContextHook{})
+	logger.AddHook(&hooks.Error{})
+	logger.AddHook(&hooks.Context{})
 
 	if testHook != nil {
 		logger.AddHook(testHook)
@@ -241,7 +241,7 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	env.Decode(logConf)
 
 	if settings.LogFormat == "json" {
-		logger.SetFormatter(logging.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
+		logger.SetFormatter(hooks.NewJSONColorFormatter(logConf.ParentFieldKey, settings.LogPretty))
 	}
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
@@ -252,14 +252,14 @@ func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, ret
 		ticker := time.NewTicker(time.Second / 4)
 		defer ticker.Stop()
 		var lastChange time.Time
-		var errors int
+		var errorsSeen int
 		for {
 			<-ticker.C
 			fileInfo, fileErr := os.Stat(name)
 			if fileErr != nil {
-				errors++
-				if errors >= maxRetries {
-					logger.Errorf("giving up after %d retries: %v", errors, fileErr)
+				errorsSeen++
+				if errorsSeen >= maxRetries {
+					logger.Errorf("giving up after %d retries: %v", errorsSeen, fileErr)
 					close(reloadCh)
 					return
 				}
@@ -279,7 +279,7 @@ func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, ret
 				reloadCh <- struct{}{}
 			}
 			lastChange = fileInfo.ModTime()
-			errors = 0
+			errorsSeen = 0
 		}
 	}()
 	return reloadCh

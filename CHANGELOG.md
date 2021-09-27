@@ -7,9 +7,15 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * `Accept: application/json` request header to the OAuth2 token request, in order to make the Github token endpoint respond with a JSON token response ([#307](https://github.com/avenga/couper/pull/307))
   * [`verify`](docs/CLI.md) command to be able to check the syntax of a configuration file w/o starting the server ([#296](https://github.com/avenga/couper/pull/296)), ([#168](https://github.com/avenga/couper/issues/168)), ([#188](https://github.com/avenga/couper/issues/188))
+  * Documentation of [logs](docs/LOGS.md) ([#310](https://github.com/avenga/couper/pull/310))
+  * `signing_ttl` and `signing_key`/`signing_key_file` to [`jwt` block](./docs/REFERENCE.md#jwt-block) for use with [`jwt_sign()` function](#functions) ([#309](https://github.com/avenga/couper/pull/309))
 
 * **Changed**
   * Organized log format fields for uniform access and upstream log ([#300](https://github.com/avenga/couper/pull/300))
+  * `claims` in a [`jwt` block](./docs/REFERENCE.md#jwt-block) are now evaluated per request, so that [`request` properties](./docs/REFERENCE.md#request) can be used as required claim values ([#314](https://github.com/avenga/couper/pull/314))
+
+* **Fixed**
+  * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block-beta) ([#319](https://github.com/avenga/couper/pull/319))
 
 ---
 

@@ -11,9 +11,13 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/hashicorp/hcl/v2"
 
+	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -25,7 +29,6 @@ const (
 var _ AccessControl = &JWT{}
 
 type (
-	Algorithm     int
 	JWTSourceType uint8
 	JWTSource     struct {
 		Name string
@@ -34,19 +37,18 @@ type (
 )
 
 type JWT struct {
-	algorithm      Algorithm
-	claims         map[string]interface{}
+	algorithm      acjwt.Algorithm
+	claims         hcl.Expression
 	claimsRequired []string
 	source         JWTSource
 	hmacSecret     []byte
 	name           string
-	parser         *jwt.Parser
 	pubKey         *rsa.PublicKey
 }
 
 type JWTOptions struct {
 	Algorithm      string
-	Claims         map[string]interface{}
+	Claims         hcl.Expression
 	ClaimsRequired []string
 	Name           string // TODO: more generic (validate)
 	Source         JWTSource
@@ -76,7 +78,7 @@ func NewJWTSource(cookie, header string) JWTSource {
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
 	jwtAC := &JWT{
-		algorithm:      NewAlgorithm(options.Algorithm),
+		algorithm:      acjwt.NewAlgorithm(options.Algorithm),
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
@@ -87,15 +89,9 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("token source is invalid")
 	}
 
-	if jwtAC.algorithm == AlgorithmUnknown {
+	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm is not supported")
 	}
-
-	parser, err := newParser(jwtAC.algorithm, jwtAC.claims)
-	if err != nil {
-		return nil, err
-	}
-	jwtAC.parser = parser
 
 	if jwtAC.algorithm.IsHMAC() {
 		jwtAC.hmacSecret = options.Key
@@ -113,6 +109,14 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
+	ctx := req.Context()
+	cctx := ctx.Value(request.ContextType).(content.Context)
+	evalCtx := cctx.HCLContext()
+	claims, diags := seetie.ExpToMap(evalCtx, j.claims)
+	if diags != nil {
+		return diags
+	}
+
 	var tokenValue string
 	var err error
 
@@ -139,7 +143,12 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
-	token, err := j.parser.ParseWithClaims(tokenValue, jwt.MapClaims{}, j.getValidationKey)
+	parser, err := newParser(j.algorithm, claims)
+	if err != nil {
+		return err
+	}
+
+	token, err := parser.Parse(tokenValue, j.getValidationKey)
 	if err != nil {
 		switch err.(type) {
 		case *jwt.TokenExpiredError:
@@ -149,12 +158,11 @@ func (j *JWT) Validate(req *http.Request) error {
 		}
 	}
 
-	tokenClaims, err := j.validateClaims(token)
+	tokenClaims, err := j.validateClaims(token, claims)
 	if err != nil {
 		return err
 	}
 
-	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
@@ -169,16 +177,16 @@ func (j *JWT) Validate(req *http.Request) error {
 
 func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
 	switch j.algorithm {
-	case AlgorithmRSA256, AlgorithmRSA384, AlgorithmRSA512:
+	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
 		return j.pubKey, nil
-	case AlgorithmHMAC256, AlgorithmHMAC384, AlgorithmHMAC512:
+	case acjwt.AlgorithmHMAC256, acjwt.AlgorithmHMAC384, acjwt.AlgorithmHMAC512:
 		return j.hmacSecret, nil
 	default: // this error case gets normally caught on configuration level
 		return nil, errors.Configuration.Message("algorithm is not supported")
 	}
 }
 
-func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
+func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (map[string]interface{}, error) {
 	var tokenClaims jwt.MapClaims
 	if tc, ok := token.Claims.(jwt.MapClaims); ok {
 		tokenClaims = tc
@@ -194,7 +202,7 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 		}
 	}
 
-	for k, v := range j.claims {
+	for k, v := range claims {
 
 		if k == "iss" || k == "aud" { // gets validated during parsing
 			continue
@@ -206,7 +214,7 @@ func (j *JWT) validateClaims(token *jwt.Token) (map[string]interface{}, error) {
 		}
 
 		if val != v {
-			return nil, errors.JwtTokenInvalid.Messagef("unexpected value for claim %s: %s", k, val)
+			return nil, errors.JwtTokenInvalid.Messagef("unexpected value for claim %s: %q, expected %q", k, val, v)
 		}
 	}
 	return tokenClaims, nil
@@ -220,7 +228,7 @@ func getBearer(val string) (string, error) {
 	return "", errors.JwtTokenExpired.Message("bearer required with authorization header")
 }
 
-func newParser(algo Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
+func newParser(algo acjwt.Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{algo.String()}),
 		jwt.WithLeeway(time.Second),

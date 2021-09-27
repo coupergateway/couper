@@ -23,6 +23,9 @@ type JWT struct {
 	PostParam          string   `hcl:"post_param,optional"`
 	QueryParam         string   `hcl:"query_param,optional"`
 	SignatureAlgorithm string   `hcl:"signature_algorithm"`
+	SigningKey         string   `hcl:"signing_key,optional"`
+	SigningKeyFile     string   `hcl:"signing_key_file,optional"`
+	SigningTTL         string   `hcl:"signing_ttl,optional"`
 
 	// Internally used for 'error_handler'.
 	Remain hcl.Body `hcl:",remain"`

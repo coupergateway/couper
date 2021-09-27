@@ -9,6 +9,8 @@ const (
 	Endpoint
 	EndpointKind
 	Error
+	Handler
+	LogDebugLevel
 	LogEntry
 	OpenAPI
 	PathParams
@@ -16,6 +18,7 @@ const (
 	RoundTripName
 	RoundTripProxy
 	ServerName
+	StartTime
 	TokenRequest
 	TokenRequestRetries
 	UID
