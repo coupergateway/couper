@@ -105,6 +105,7 @@ as json error with an error body payload. This can be customized via `error_file
 |`base_path`|string|-|Configures the path prefix for all requests.|&#9888; Must be unique if multiple `api` blocks are defined.| `base_path = "/v1"`|
 | `error_file` |string|-|Location of the error file template.|-|`error_file = "./my_error_body.json"`|
 | `access_control` |list|-|Sets predefined [Access Control](#access-control) for `api` block context.|&#9888; Inherited by nested blocks.| `access_control = ["foo"]`|
+| `beta_scope` |string or object|-|Scope value required to use this API (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
 
 ### Endpoint Block
 
@@ -125,6 +126,7 @@ produce an explicit or implicit client response.
 |`request_body_limit`  |string|`64MiB`|Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.|&#9888; Valid units are: `KiB, MiB, GiB`|`request_body_limit = "200KiB"`|
 | `path`|string|-|Changeable part of the upstream URL. Changes the path suffix of the outgoing request.|-|-|
 |`access_control`   |list|-|Sets predefined [Access Control](#access-control) for `endpoint` block context.|-| `access_control = ["foo"]`|
+| `beta_scope` |string or object|-|Scope value required to use this endpoint (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
 |[Modifiers](#modifiers) |-|-|-|-|-|
 
 ### Proxy Block
@@ -349,6 +351,7 @@ required _label_.
 | `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
+| `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
@@ -507,7 +510,7 @@ Examples:
 ## Access Control
 
 The configuration of access control is twofold in Couper: You define the particular
-type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label.
+type (such as `jwt` or `basic_auth`) in `definitions`, each with a distinct label (must not be one of the reserved names: `scopes`).
 Anywhere in the `server` block those labels can be used in the `access_control`
 list to protect that block. &#9888; access rights are inherited by nested blocks.
 You can also disable `access_control` for blocks. By typing `disable_access_control = ["bar"]`,

@@ -90,6 +90,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWTToken.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -112,6 +113,7 @@ definitions {
     header = "Authorization"
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+    beta_scope_claim = "scope"
   }
 
   backend "test" {

@@ -16,7 +16,7 @@ import (
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -44,6 +44,7 @@ type JWT struct {
 	hmacSecret     []byte
 	name           string
 	pubKey         *rsa.PublicKey
+	scopeClaim     string
 }
 
 type JWTOptions struct {
@@ -51,6 +52,7 @@ type JWTOptions struct {
 	Claims         hcl.Expression
 	ClaimsRequired []string
 	Name           string // TODO: more generic (validate)
+	ScopeClaim     string
 	Source         JWTSource
 	Key            []byte
 }
@@ -82,6 +84,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
+		scopeClaim:     options.ScopeClaim,
 		source:         options.Source,
 	}
 
@@ -109,14 +112,6 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
-	ctx := req.Context()
-	cctx := ctx.Value(request.ContextType).(content.Context)
-	evalCtx := cctx.HCLContext()
-	claims, diags := seetie.ExpToMap(evalCtx, j.claims)
-	if diags != nil {
-		return diags
-	}
-
 	var tokenValue string
 	var err error
 
@@ -143,6 +138,15 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
+	claims := make(map[string]interface{})
+	var diags hcl.Diagnostics
+	if j.claims != nil {
+		claims, diags = seetie.ExpToMap(eval.ContextFromRequest(req).HCLContext(), j.claims)
+		if diags != nil {
+			return diags
+		}
+	}
+
 	parser, err := newParser(j.algorithm, claims)
 	if err != nil {
 		return err
@@ -163,13 +167,30 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
+	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
 	}
 	acMap[j.name] = tokenClaims
-
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
+
+	scopesValues, err := j.getScopeValues(tokenClaims)
+	if err != nil {
+		return err
+	}
+
+	if len(scopesValues) > 0 {
+		scopes, ok := ctx.Value(request.Scopes).([]string)
+		if !ok {
+			scopes = []string{}
+		}
+		for _, sc := range scopesValues {
+			scopes = append(scopes, sc)
+		}
+		ctx = context.WithValue(ctx, request.Scopes, scopes)
+	}
+
 	*req = *req.WithContext(ctx)
 
 	return nil
@@ -218,6 +239,36 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 		}
 	}
 	return tokenClaims, nil
+}
+
+func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
+	if j.scopeClaim == "" {
+		return []string{}, nil
+	}
+	scopesFromClaim, exists := tokenClaims[j.scopeClaim]
+	if !exists {
+		return nil, fmt.Errorf("Missing expected scope claim %q", j.scopeClaim)
+	}
+
+	scopeValues := []string{}
+	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+	scopesArray, ok := scopesFromClaim.([]interface{})
+	if ok {
+		for _, v := range scopesArray {
+			s, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+			}
+			scopeValues = append(scopeValues, s)
+		}
+	} else {
+		scopesString, ok := scopesFromClaim.(string)
+		if !ok {
+			return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+		}
+		scopeValues = strings.Split(scopesString, " ")
+	}
+	return scopeValues, nil
 }
 
 func getBearer(val string) (string, error) {
