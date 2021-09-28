@@ -182,27 +182,27 @@ func Test_JWT_Validate(t *testing.T) {
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
-			}, setContext(httptest.NewRequest(http.MethodGet, "/", nil)), true},
+			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), false},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w no cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setContext(httptest.NewRequest(http.MethodGet, "/", nil)), true},
+			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", "")), true},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), true},
 			{"src: header /w valid cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token)), false},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
 			{"src: header /w valid bearer & claims", fields{
 				algorithm: algo,
 				claims: map[string]string{
@@ -358,7 +358,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				return
 			}
 
-			req := setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token))
+			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
 
 			if err = j.Validate(req); (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
