@@ -388,33 +388,36 @@ func TestOAuth2_AccessControl(t *testing.T) {
 
 func TestOAuth2_Locking(t *testing.T) {
 	helper := test.New(t)
-	client := newClient()
+	client := test.NewHTTPClient()
 
 	token := "token-"
-	var oauthRequestCount int32
-	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		atomic.AddInt32(&oauthRequestCount, 1)
-		if req.URL.Path == "/oauth2" {
-			rw.Header().Set("Content-Type", "application/json")
-			rw.WriteHeader(http.StatusOK)
+	var oauthRequestCount uint32
 
-			n := fmt.Sprintf("%d", atomic.LoadInt32(&oauthRequestCount))
-			body := []byte(`{
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/oauth2" {
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		atomic.AddUint32(&oauthRequestCount, 1)
+
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusOK)
+
+		n := fmt.Sprintf("%d", atomic.LoadUint32(&oauthRequestCount))
+		body := []byte(`{
 				"access_token": "` + token + n + `",
 				"token_type": "bearer",
 				"expires_in": 1.5
 			}`)
 
-			// Slow down token request to test locking.
-			time.Sleep(1 * time.Second)
+		// Slow down token request
+		time.Sleep(time.Second)
 
-			_, werr := rw.Write(body)
-			helper.Must(werr)
-
-			return
+		_, werr := rw.Write(body)
+		if werr != nil {
+			t.Error(werr)
 		}
-
-		rw.WriteHeader(http.StatusBadRequest)
 	}))
 	defer oauthOrigin.Close()
 
@@ -439,11 +442,10 @@ func TestOAuth2_Locking(t *testing.T) {
 			"rsOrigin": ResourceOrigin.URL,
 		},
 	)
-
 	defer shutdown()
 
-	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-	helper.Must(err)
+	req, rerr := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(rerr)
 
 	hook.Reset()
 
@@ -455,13 +457,17 @@ func TestOAuth2_Locking(t *testing.T) {
 	addLock := &sync.Mutex{}
 	// Fire 5 requests in parallel...
 	waitCh := make(chan struct{})
+	errors := make(chan error, 5)
+	wg.Add(5)
 	for i := 0; i < 5; i++ {
-		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-waitCh
-			res, err := client.Do(req)
-			helper.Must(err)
+			res, e := client.Do(req)
+			if e != nil {
+				errors <- e
+				return
+			}
 
 			addLock.Lock()
 			responses = append(responses, res)
@@ -471,6 +477,12 @@ func TestOAuth2_Locking(t *testing.T) {
 	}
 	close(waitCh)
 	wg.Wait()
+	close(errors)
+	for err := range errors {
+		if err != nil {
+			t.Error(err)
+		}
+	}
 
 	for _, res := range responses {
 		if res.StatusCode != http.StatusNoContent {
@@ -482,19 +494,21 @@ func TestOAuth2_Locking(t *testing.T) {
 		}
 	}
 
-	if oauthRequestCount != 1 {
-		t.Errorf("Too many OAuth2 requests: want 1, got: %d", oauthRequestCount)
+	if count := atomic.LoadUint32(&oauthRequestCount); count != 1 {
+		t.Errorf("OAuth2 requests: want 1, got: %d", count)
 	}
 
 	t.Run("Lock is effective", func(st *testing.T) {
 		// Wait until token has expired.
 		time.Sleep(2 * time.Second)
-		h := test.New(st)
 
 		// Fetch new token.
 		go func() {
 			res, err := client.Do(req)
-			h.Must(err)
+			if err != nil {
+				st.Error(err)
+				return
+			}
 
 			if token+"2" != res.Header.Get("Token") {
 				st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
@@ -502,20 +516,22 @@ func TestOAuth2_Locking(t *testing.T) {
 		}()
 
 		// Slow response due to lock
-		go func() {
-			start := time.Now()
-			res, err := client.Do(req)
-			h.Must(err)
-			timeElapsed := time.Since(start).Seconds()
+		start := time.Now()
+		res, err := client.Do(req)
+		if err != nil {
+			st.Error(err)
+			return
+		}
 
-			if token+"2" != res.Header.Get("Token") {
-				st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
-			}
+		timeElapsed := time.Since(start)
 
-			if timeElapsed < 1 {
-				st.Errorf("Response came too fast: dysfunctional lock?! (%v s)", timeElapsed)
-			}
-		}()
+		if token+"2" != res.Header.Get("Token") {
+			st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
+		}
+
+		if timeElapsed < time.Second {
+			st.Errorf("Response came too fast: dysfunctional lock?! (%s)", timeElapsed.String())
+		}
 	})
 
 	t.Run("Mem store expiry", func(st *testing.T) {
@@ -525,6 +541,7 @@ func TestOAuth2_Locking(t *testing.T) {
 		// Request fresh token and store in memstore
 		res, err := client.Do(req)
 		h.Must(err)
+
 		if res.StatusCode != http.StatusNoContent {
 			st.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
 		}
@@ -533,8 +550,8 @@ func TestOAuth2_Locking(t *testing.T) {
 			st.Errorf("Received wrong token: want %s3, got: %s", token, res.Header.Get("Token"))
 		}
 
-		if oauthRequestCount != 3 {
-			st.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", oauthRequestCount)
+		if count := atomic.LoadUint32(&oauthRequestCount); count != 3 {
+			st.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", count)
 		}
 
 		// Disconnect OAuth server
