@@ -763,7 +763,7 @@ func TestJwtSignConfigError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
-			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err == nil {
 				t.Error("expected an error, got nothing")
 				return
