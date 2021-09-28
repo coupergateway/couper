@@ -176,7 +176,7 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Respons
 		return err
 	}
 
-	evalCtx := req.Context().Value(request.ContextType).(*eval.Context)
+	evalCtx := eval.ContextFromRequest(req)
 	if rw != nil {
 		rw.AddModifier(evalCtx, []hcl.Body{wsBody, p.context})
 	}

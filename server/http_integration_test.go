@@ -41,6 +41,7 @@ var (
 	testBackend    *test.Backend
 	testWorkingDir string
 	testProxyAddr  = "http://127.0.0.1:9999"
+	testServerMu   = sync.Mutex{}
 )
 
 func TestMain(m *testing.M) {
@@ -115,13 +116,12 @@ func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.H
 }
 
 func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
+	testServerMu.Lock()
+	defer testServerMu.Unlock()
+
 	log, hook := test.NewLogger()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancelFn := func() {
-		cancel()
-		time.Sleep(time.Second / 2)
-	}
+	ctx, cancelFn := context.WithCancel(context.Background())
 	shutdownFn := func() {
 		if helper.TestFailed() { // log on error
 			for _, entry := range hook.AllEntries() {
@@ -184,6 +184,9 @@ func newClient() *http.Client {
 }
 
 func cleanup(shutdown func(), helper *test.Helper) {
+	testServerMu.Lock()
+	defer testServerMu.Unlock()
+
 	shutdown()
 
 	err := os.Chdir(testWorkingDir)
@@ -2848,6 +2851,82 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 		t.Error("logErr should not be nil")
 	} else if logErr.LogError() != expectedMsg {
 		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, logErr.LogError())
+	}
+}
+
+func TestJWTAccessControl_round(t *testing.T) {
+	pid := "asdf"
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/08_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name string
+		path string
+	}
+
+	for _, tc := range []testCase{
+		{"separate jwt_signing_profile/jwt", "/separate"},
+		{"self-signed jwt", "/self-signed"},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://back.end:8080%s/%s/create-jwt", tc.path, pid), nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				t.Errorf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
+				return
+			}
+
+			token := res.Header.Get("X-Jwt")
+
+			req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("http://back.end:8080%s/%s/jwt", tc.path, pid), nil)
+			helper.Must(err)
+			req.Header.Set("Authorization", "Bearer "+token)
+
+			res, err = client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				t.Errorf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
+				return
+			}
+
+			decoder := json.NewDecoder(res.Body)
+			var claims map[string]interface{}
+			err = decoder.Decode(&claims)
+			helper.Must(err)
+
+			if _, ok := claims["exp"]; !ok {
+				t.Errorf("%q: missing exp claim: %#v", tc.name, claims)
+				return
+			}
+			issclaim, ok := claims["iss"]
+			if !ok {
+				t.Errorf("%q: missing iss claim: %#v", tc.name, claims)
+				return
+			}
+			if issclaim != "the_issuer" {
+				t.Errorf("%q: unexpected iss claim: %q", tc.name, issclaim)
+				return
+			}
+			pidclaim, ok := claims["pid"]
+			if !ok {
+				t.Errorf("%q: missing pid claim: %#v", tc.name, claims)
+				return
+			}
+			if pidclaim != pid {
+				t.Errorf("%q: unexpected pid claim: %q", tc.name, pidclaim)
+				return
+			}
+		})
 	}
 }
 

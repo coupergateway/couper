@@ -48,20 +48,24 @@ func (a AcceptForwarded) String() string {
 	return strings.Join(parts, ",")
 }
 
+const otelCollectorEndpoint = "localhost:4317"
+
 // DefaultSettings defines the <DefaultSettings> object.
 var DefaultSettings = Settings{
-	DefaultPort:               8080,
-	HealthPath:                "/healthz",
-	LogFormat:                 "common",
-	LogLevel:                  "info",
-	LogPretty:                 false,
-	NoProxyFromEnv:            false,
-	RequestIDFormat:           "common",
-	RequestIDAcceptFromHeader: "",
-	RequestIDBackendHeader:    "Couper-Request-ID",
-	RequestIDClientHeader:     "Couper-Request-ID",
-	SecureCookies:             "",
-	XForwardedHost:            false,
+	DefaultPort:              8080,
+	HealthPath:               "/healthz",
+	LogFormat:                "common",
+	LogLevel:                 "info",
+	LogPretty:                false,
+	NoProxyFromEnv:           false,
+	RequestIDBackendHeader:   "Couper-Request-ID",
+	RequestIDClientHeader:    "Couper-Request-ID",
+	RequestIDFormat:          "common",
+	TelemetryMetricsEndpoint: otelCollectorEndpoint,
+	TelemetryMetricsExporter: "prometheus",
+	TelemetryMetricsPort:     9090, // default prometheus port
+	TelemetryTracesEndpoint:  otelCollectorEndpoint,
+	XForwardedHost:           false,
 
 	// TODO: refactor
 	AcceptForwardedURL: []string{},
@@ -70,21 +74,28 @@ var DefaultSettings = Settings{
 
 // Settings represents the <Settings> object.
 type Settings struct {
+	AcceptForwarded *AcceptForwarded
+
+	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
 	DefaultPort               int      `hcl:"default_port,optional"`
 	HealthPath                string   `hcl:"health_path,optional"`
 	LogFormat                 string   `hcl:"log_format,optional"`
 	LogLevel                  string   `hcl:"log_level,optional"`
 	LogPretty                 bool     `hcl:"log_pretty,optional"`
 	NoProxyFromEnv            bool     `hcl:"no_proxy_from_env,optional"`
-	RequestIDFormat           string   `hcl:"request_id_format,optional"`
 	RequestIDAcceptFromHeader string   `hcl:"request_id_accept_from_header,optional"`
 	RequestIDBackendHeader    string   `hcl:"request_id_backend_header,optional"`
 	RequestIDClientHeader     string   `hcl:"request_id_client_header,optional"`
+	RequestIDFormat           string   `hcl:"request_id_format,optional"`
 	SecureCookies             string   `hcl:"secure_cookies,optional"`
 	TLSDevProxy               List     `hcl:"https_dev_proxy,optional"`
+	TelemetryMetrics          bool     `hcl:"beta_metrics,optional"`
+	TelemetryMetricsPort      int      `hcl:"beta_metrics_port,optional"`
+	TelemetryMetricsEndpoint  string   `hcl:"beta_metrics_endpoint,optional"`
+	TelemetryMetricsExporter  string   `hcl:"beta_metrics_exporter,optional"`
+	TelemetryTraces           bool     `hcl:"beta_traces,optional"`
+	TelemetryTracesEndpoint   string   `hcl:"beta_traces_endpoint,optional"`
 	XForwardedHost            bool     `hcl:"xfh,optional"`
-	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
-	AcceptForwarded           *AcceptForwarded
 }
 
 var _ flag.Value = &List{}

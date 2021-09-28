@@ -6,6 +6,8 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
@@ -44,6 +46,7 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 	defer wg.Done()
 
 	rtn := req.Context().Value(request.RoundTripName).(string)
+	span := trace.SpanFromContext(req.Context())
 
 	defer func() {
 		if rp := recover(); rp != nil {
@@ -56,6 +59,7 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 					stack: debug.Stack(),
 				})
 			}
+			span.End()
 			sendResult(req.Context(), results, &Result{
 				Err:           err,
 				RoundTripName: rtn,
@@ -64,6 +68,7 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 	}()
 
 	beresp, err := rt.RoundTrip(req)
+	span.End()
 	sendResult(req.Context(), results, &Result{
 		Beresp:        beresp,
 		Err:           err,

@@ -30,7 +30,6 @@ import (
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -471,17 +470,9 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			var claims map[string]interface{}
-			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
-				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
-				if diags.HasErrors() {
-					return nil, confErr.With(diags)
-				}
-				claims = c
-			}
 			jwt, err := ac.NewJWT(&ac.JWTOptions{
 				Algorithm:      jwtConf.SignatureAlgorithm,
-				Claims:         claims,
+				Claims:         jwtConf.Claims,
 				ClaimsRequired: jwtConf.ClaimsRequired,
 				Key:            key,
 				Name:           jwtConf.Name,

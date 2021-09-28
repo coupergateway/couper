@@ -12,6 +12,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
   * Organized log format fields for uniform access and upstream log ([#300](https://github.com/avenga/couper/pull/300))
+  * `claims` in a [`jwt` block](./docs/REFERENCE.md#jwt-block) are now evaluated per request, so that [`request` properties](./docs/REFERENCE.md#request) can be used as required claim values ([#314](https://github.com/avenga/couper/pull/314))
+
+* **Fixed**
+  * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block-beta) ([#319](https://github.com/avenga/couper/pull/319))
 
 ---
 

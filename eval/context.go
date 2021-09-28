@@ -73,6 +73,15 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 	}
 }
 
+// ContextFromRequest extracts the eval.Context implementation value from given request and
+// returns a noop one as fallback.
+func ContextFromRequest(req *http.Request) *Context {
+	if evalCtx, ok := req.Context().Value(request.ContextType).(*Context); ok {
+		return evalCtx
+	}
+	return NewContext(nil, nil)
+}
+
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
 	return c.inner.Deadline()
 }
