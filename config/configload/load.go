@@ -209,44 +209,8 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 			}
 
 			acErrorHandler := collectErrorHandlerSetter(couperConfig.Definitions)
-
-			for _, ac := range acErrorHandler {
-				acBody, ok := ac.(config.Body)
-				if !ok {
-					continue
-				}
-				acContent := bodyToContent(acBody.HCLBody())
-
-				ehc, err := newErrorHandlerContent(acContent)
-				if err != nil {
-					return nil, err
-				}
-
-				for _, hc := range ehc {
-					errHandlerConf, err := newErrorHandlerConfig(hc, definedBackends)
-					if err != nil {
-						return nil, err
-					}
-
-					ac.Set(errHandlerConf)
-				}
-
-				if acDefault, has := ac.(config.ErrorHandlerGetter); has {
-					defaultHandler := acDefault.DefaultErrorHandler()
-					_, exist := ehc[errors.Wildcard]
-					if !exist {
-						for _, kind := range defaultHandler.Kinds {
-							_, exist = ehc[kind]
-							if exist {
-								break
-							}
-						}
-					}
-
-					if !exist {
-						ac.Set(acDefault.DefaultErrorHandler())
-					}
-				}
+			if err := configureErrorHandler(acErrorHandler, definedBackends); err != nil {
+				return nil, err
 			}
 
 		case settings:

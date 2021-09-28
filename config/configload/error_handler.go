@@ -62,6 +62,48 @@ func collectErrorHandlerSetter(block interface{}) []ErrorHandlerSetter {
 	return errorSetter
 }
 
+func configureErrorHandler(setter []ErrorHandlerSetter, definedBackends Backends) error {
+	for _, ac := range setter {
+		acBody, ok := ac.(config.Body)
+		if !ok {
+			continue
+		}
+		acContent := bodyToContent(acBody.HCLBody())
+
+		ehc, err := newErrorHandlerContent(acContent)
+		if err != nil {
+			return err
+		}
+
+		for _, hc := range ehc {
+			errHandlerConf, confErr := newErrorHandlerConfig(hc, definedBackends)
+			if confErr != nil {
+				return confErr
+			}
+
+			ac.Set(errHandlerConf)
+		}
+
+		if acDefault, has := ac.(config.ErrorHandlerGetter); has {
+			defaultHandler := acDefault.DefaultErrorHandler()
+			_, exist := ehc[errors.Wildcard]
+			if !exist {
+				for _, kind := range defaultHandler.Kinds {
+					_, exist = ehc[kind]
+					if exist {
+						break
+					}
+				}
+			}
+
+			if !exist {
+				ac.Set(acDefault.DefaultErrorHandler())
+			}
+		}
+	}
+	return nil
+}
+
 // newErrorHandlerContent reads given error_handler block contents and maps them by unique
 // error kind declaration.
 func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, error) {
