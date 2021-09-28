@@ -30,6 +30,7 @@ import (
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
