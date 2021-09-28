@@ -36,13 +36,8 @@ func (p Proxy) HCLBody() hcl.Body {
 	return p.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (p Proxy) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(p)
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (p Proxy) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
 		Backend    *Backend    `hcl:"backend,block"`
@@ -50,7 +45,17 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 		Websockets *Websockets `hcl:"websockets,block"`
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (p Proxy) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(p)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(p.Inline())
 	backup := schema.Blocks[:]
 	schema.Blocks = nil
 

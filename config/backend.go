@@ -41,13 +41,8 @@ func (b Backend) HCLBody() hcl.Body {
 	return b.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (b Backend) Schema(inline bool) *hcl.BodySchema {
-	schema, _ := gohcl.ImpliedBodySchema(b)
-	if !inline {
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (b Backend) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
 		BasicAuth      string `hcl:"basic_auth,optional"`
@@ -58,7 +53,17 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 		ResponseStatus *uint8 `hcl:"set_response_status,optional"`
 	}
 
-	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (b Backend) Schema(inline bool) *hcl.BodySchema {
+	schema, _ := gohcl.ImpliedBodySchema(b)
+	if !inline {
+		return schema
+	}
+
+	schema, _ = gohcl.ImpliedBodySchema(b.Inline())
 
 	return meta.SchemaWithAttributes(schema)
 }

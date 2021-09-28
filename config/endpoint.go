@@ -32,13 +32,8 @@ func (e Endpoint) HCLBody() hcl.Body {
 	return e.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(e)
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (e Endpoint) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
 		Proxies        Proxies  `hcl:"proxy,block"`
@@ -46,7 +41,17 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 		ResponseStatus *uint8   `hcl:"set_response_status,optional"`
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(e)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(e.Inline())
 
 	return meta.SchemaWithAttributes(schema)
 }

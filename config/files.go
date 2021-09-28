@@ -23,6 +23,17 @@ func (f Files) HCLBody() hcl.Body {
 	return f.Remain
 }
 
+// Inline implements the <Inline> interface.
+func (f Files) Inline() interface{} {
+	type Inline struct {
+		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
+		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
+		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
+	}
+
+	return &Inline{}
+}
+
 // Schema implements the <Inline> interface.
 func (f Files) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
@@ -30,13 +41,7 @@ func (f Files) Schema(inline bool) *hcl.BodySchema {
 		return schema
 	}
 
-	type Inline struct {
-		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
-		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
-		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	schema, _ := gohcl.ImpliedBodySchema(f.Inline())
 
 	return schema
 }

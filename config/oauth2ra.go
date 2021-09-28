@@ -43,6 +43,15 @@ func (oa OAuth2ReqAuth) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
+// Inline implements the <Inline> interface.
+func (oa OAuth2ReqAuth) Inline() interface{} {
+	type Inline struct {
+		Backend *Backend `hcl:"backend,block"`
+	}
+
+	return &Inline{}
+}
+
 // Schema implements the <Inline> interface.
 func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
@@ -50,11 +59,7 @@ func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 		return schema
 	}
 
-	type Inline struct {
-		Backend *Backend `hcl:"backend,block"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	schema, _ := gohcl.ImpliedBodySchema(oa.Inline())
 
 	// A backend reference is defined, backend block is not allowed.
 	if oa.BackendName != "" {
