@@ -17,6 +17,7 @@ const (
 	ResponseWriter
 	RoundTripName
 	RoundTripProxy
+	Scopes
 	ServerName
 	StartTime
 	TokenRequest

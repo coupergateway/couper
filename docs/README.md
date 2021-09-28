@@ -275,7 +275,6 @@ api "my_api" {
   base_path = "/api/v1"
 
   endpoint "/login/**" {
-
     proxy {
       backend {
         origin = "http://identityprovider:8080"
@@ -284,18 +283,18 @@ api "my_api" {
   }
 
   endpoint "/cart/**" {
-
-      path = "/api/v1/**"
-      proxy {
-        url = "http://cartservice:8080"
-      }
+    path = "/api/v1/**"
+    proxy {
+      url = "http://cartservice:8080"
+    }
+  }
 
   endpoint "/account/{id}" {
     proxy {
       backend {
         path = "/user/${request.param.id}/info"
         origin = "http://accountservice:8080"
-        }
+      }
     }
   }
 }

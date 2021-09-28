@@ -23,6 +23,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -2859,7 +2860,7 @@ func TestJWTAccessControl(t *testing.T) {
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "access control error: JWTToken: token required"},
 		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "access control error: JWTToken: token is expired by "},
-		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"}}, http.StatusOK, ""},
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -2896,6 +2897,10 @@ func TestJWTAccessControl(t *testing.T) {
 			}
 			if sub := res.Header.Get("X-Jwt-Sub"); sub != "1234567890" {
 				t.Errorf("%q: unexpected sub: %q", tc.name, sub)
+				return
+			}
+			if scopes := res.Header.Get("X-Scopes"); scopes != `["foo","bar"]` {
+				t.Errorf("%q: unexpected scope: %q", tc.name, scopes)
 				return
 			}
 		})
@@ -3007,11 +3012,90 @@ func getAccessControlMessages(hook *logrustest.Hook) string {
 	return ""
 }
 
+func Test_Scope(t *testing.T) {
+	h := test.New(t)
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/09_couper.hcl", test.New(t))
+	defer shutdown()
+
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"scp": "a",
+	})
+	token, tokenErr := tok.SignedString([]byte("asdf"))
+	h.Must(tokenErr)
+
+	type testCase struct {
+		name        string
+		operation   string
+		path        string
+		authorize   bool
+		status      int
+		wantErrLog  string
+		wantErrType string
+	}
+
+	for _, tc := range []testCase{
+		{"unauthorized", http.MethodGet, "/foo", false, http.StatusUnauthorized, "access control error: myjwt: token required", "jwt_token_missing"},
+		{"sufficient scope", http.MethodGet, "/foo", true, http.StatusNoContent, "", ""},
+		{"additional scope required: insufficient scope", http.MethodPost, "/foo", true, http.StatusForbidden, `access control error: scope: required scope "foo" not granted`, "beta_insufficient_scope"},
+		{"operation not permitted", http.MethodDelete, "/foo", true, http.StatusForbidden, "access control error: scope: operation DELETE not permitted", "beta_operation_denied"},
+		{"additional scope required by *: insufficient scope", http.MethodGet, "/bar", true, http.StatusForbidden, `access control error: scope: required scope "more" not granted`, "beta_insufficient_scope"},
+		{"no additional scope required: sufficient scope", http.MethodDelete, "/bar", true, http.StatusNoContent, "", ""},
+	} {
+		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(tc.operation, "http://back.end:8080"+tc.path, nil)
+			if tc.authorize {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.status {
+				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
+				return
+			}
+
+			message := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if message != "" {
+					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			} else {
+				if !strings.HasPrefix(message, tc.wantErrLog) {
+					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+				}
+				errorType := getAccessLogErrorType(hook)
+				if errorType != tc.wantErrType {
+					t.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
+				}
+			}
+		})
+	}
+}
+
 func getAccessLogUrl(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
 		if entry.Data["type"] == "couper_access" && entry.Data["url"] != "" {
 			if url, ok := entry.Data["url"].(string); ok {
 				return url
+			}
+		}
+	}
+
+	return ""
+}
+
+func getAccessLogErrorType(hook *logrustest.Hook) string {
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] == "couper_access" && entry.Data["error_type"] != "" {
+			if errorType, ok := entry.Data["error_type"].(string); ok {
+				return errorType
 			}
 		}
 	}

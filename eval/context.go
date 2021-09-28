@@ -439,6 +439,7 @@ func NewRawOrigin(u *url.URL) *url.URL {
 
 func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) ContextMap {
 	acData, _ := ctx.Value(request.AccessControls).(map[string]interface{})
+	scopeData, _ := ctx.Value(request.Scopes).([]string)
 	ctxAcMap := make(map[string]cty.Value)
 	for name, data := range acData {
 		dataMap, ok := data.(map[string]interface{})
@@ -447,9 +448,12 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 		}
 		ctxAcMap[name] = seetie.MapToValue(dataMap)
 	}
+	if len(scopeData) > 0 {
+		ctxAcMap["scopes"] = seetie.GoToValue(scopeData)
+	}
 	var ctxAcMapValue cty.Value
 	if len(ctxAcMap) > 0 {
-		ctxAcMapValue = cty.MapVal(ctxAcMap)
+		ctxAcMapValue = cty.ObjectVal(ctxAcMap)
 	} else {
 		ctxAcMapValue = cty.MapValEmpty(cty.String)
 	}

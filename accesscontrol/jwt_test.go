@@ -182,27 +182,27 @@ func Test_JWT_Validate(t *testing.T) {
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
-			}, setContext(httptest.NewRequest(http.MethodGet, "/", nil)), true},
+			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization"),
 				pubKey:    pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), false},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w no cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setContext(httptest.NewRequest(http.MethodGet, "/", nil)), true},
+			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", "")), true},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), true},
 			{"src: header /w valid cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", ""),
 				pubKey:    pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token)), false},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
 			{"src: header /w valid bearer & claims", fields{
 				algorithm: algo,
 				claims: map[string]string{
@@ -271,6 +271,113 @@ func Test_JWT_Validate(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func Test_JWT_yields_scopes(t *testing.T) {
+	signingMethod := jwt.SigningMethodHS256
+	algo := acjwt.NewAlgorithm(signingMethod.Alg())
+	expScopes := []string{"foo", "bar"}
+
+	tests := []struct {
+		name       string
+		scopeClaim string
+		scope      interface{}
+		wantErr    bool
+	}{
+		{
+			"space-separated list",
+			"scp",
+			"foo bar",
+			false,
+		},
+		{
+			"list of string",
+			"scoop",
+			[]string{"foo", "bar"},
+			false,
+		},
+		{
+			"error: boolean",
+			"scope",
+			true,
+			true,
+		},
+		{
+			"error: number",
+			"scope",
+			1.23,
+			true,
+		},
+		{
+			"error: list of bool",
+			"scope",
+			[]bool{true, false},
+			true,
+		},
+		{
+			"error: list of number",
+			"scope",
+			[]int{1, 2},
+			true,
+		},
+		{
+			"error: mixed list",
+			"scope",
+			[]interface{}{"eins", 2},
+			true,
+		},
+		{
+			"error: object",
+			"scope",
+			map[string]interface{}{"foo": 1, "bar": 1},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims := jwt.MapClaims{}
+			claims[tt.scopeClaim] = tt.scope
+			tok := jwt.NewWithClaims(signingMethod, claims)
+			pubKeyBytes := []byte("mySecretK3y")
+			token, tokenErr := tok.SignedString(pubKeyBytes)
+			if tokenErr != nil {
+				t.Error(tokenErr)
+			}
+
+			source := ac.NewJWTSource("", "Authorization")
+			j, err := ac.NewJWT(&ac.JWTOptions{
+				Algorithm:  algo.String(),
+				Name:       "test_ac",
+				ScopeClaim: tt.scopeClaim,
+				Source:     source,
+				Key:        pubKeyBytes,
+			})
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
+
+			if err = j.Validate(req); (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !tt.wantErr {
+				scopesList, ok := req.Context().Value(request.Scopes).([]string)
+				if !ok {
+					t.Errorf("Expected scopes within request context")
+				} else {
+					for i, v := range expScopes {
+						if scopesList[i] != v {
+							t.Errorf("Scopes do not match, want: %v, got: %v", v, scopesList[i])
+						}
+					}
+				}
+
+			}
+		})
 	}
 }
 

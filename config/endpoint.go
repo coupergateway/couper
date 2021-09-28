@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -18,6 +19,7 @@ type Endpoint struct {
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
 	Response             *Response `hcl:"response,block"`
+	Scope                cty.Value `hcl:"beta_scope,optional"`
 
 	// internally configured due to multi-label options
 	Proxies  Proxies

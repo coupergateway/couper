@@ -11,6 +11,8 @@ var (
 	JwtTokenMissing             = Definitions[5]
 	Oauth2                      = Definitions[6]
 	Saml2                       = Definitions[7]
+	BetaOperationDenied         = Definitions[8]
+	BetaInsufficientScope       = Definitions[9]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -28,6 +30,8 @@ var types = typeDefinitions{
 	"jwt_token_missing":              JwtTokenMissing,
 	"oauth2":                         Oauth2,
 	"saml2":                          Saml2,
+	"beta_operation_denied":          BetaOperationDenied,
+	"beta_insufficient_scope":        BetaInsufficientScope,
 }
 
 // IsKnown tells the configuration callee if Couper
