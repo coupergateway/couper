@@ -94,6 +94,26 @@ server "acs" {
       }
     }
   }
+
+  endpoint "/jwt/rsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["RSAToken"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.RSAToken.sub
+      }
+    }
+  }
+
+  endpoint "/jwks/rsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS.sub
+      }
+    }
+  }
 }
 
 definitions {
@@ -115,7 +135,15 @@ definitions {
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     beta_scope_claim = "scope"
   }
-
+  jwt "RSAToken" {
+    header = "Authorization"
+    signature_algorithm = "RS256"
+    key_file = "../files/certificate.pem"
+  }
+  jwt "JWKS" {
+    header = "Authorization"
+    jwks_uri = "file:../files/jwks.json"
+  }
   backend "test" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     path = "/anything"

@@ -15,6 +15,7 @@ import (
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
@@ -608,7 +609,7 @@ func TestJwtSignConfigError(t *testing.T) {
 			}
 			`,
 			"MyToken",
-			`{"sub":"12345"}`,
+			`{"sub": "12345"}`,
 			"configuration error: jwt_signing_profile block with label MyToken already defined",
 		},
 		{
@@ -867,7 +868,7 @@ func TestJwtSignError(t *testing.T) {
 			}
 			`,
 			"NoProfileForThisLabel",
-			`{"sub":"12345"}`,
+			`{"sub": "12345"}`,
 			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
 		},
 	}
@@ -889,6 +890,149 @@ func TestJwtSignError(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("Want:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+			}
+		})
+	}
+}
+
+func TestJwtConfig(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing definition for access_control",
+			`
+			server "test" {
+			  access_control = ["myac"]
+			}
+			`,
+			"", // FIXME Missing myac
+		},
+		{
+			"missing both signature_algorithm/jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			  }
+			}
+			`,
+			"configuration error", // signature_algorithm or jwks_url required
+		},
+		{
+			"signature_algorithm, missing key/key_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // required: configured attribute or file
+		},
+		{
+			"signature_algorithm + key",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+				header = "..."
+				key = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"signature_algorithm + key_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+				header = "..."
+				key_file = "testdata/secret.txt"
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				jwks_uri = "http://..."
+				header = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"signature_algorithm + jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				signature_algorithm = "HS256"
+				jwks_uri = "http://..."
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // signature_algorithm cannot be used together with jwks_url
+		},
+		{
+			"key + jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				key = "..."
+				jwks_uri = "http://..."
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // key cannot be used together with jwks_url
+		},
+		{
+			"key_file + jwks_uri",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+				key_file = "..."
+				jwks_uri = "http://..."
+				header = "..."
+			  }
+			}
+			`,
+			"configuration error", // key_file cannot be used together with jwks_url
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(st *testing.T) {
+			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if conf != nil {
+				_, err = runtime.NewServerConfiguration(conf, nil, nil)
+			}
+
+			var error = ""
+			if err != nil {
+				error = err.Error()
+			}
+
+			if (tt.error == "" && error != "") || !strings.Contains(error, tt.error) {
+				t.Errorf("Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.error, error)
 			}
 		})
 	}

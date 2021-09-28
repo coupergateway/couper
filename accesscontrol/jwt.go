@@ -37,7 +37,7 @@ type (
 )
 
 type JWT struct {
-	algorithm      acjwt.Algorithm
+	algorithms     []acjwt.Algorithm
 	claims         hcl.Expression
 	claimsRequired []string
 	source         JWTSource
@@ -45,6 +45,7 @@ type JWT struct {
 	name           string
 	pubKey         *rsa.PublicKey
 	scopeClaim     string
+	jwks           *JWKS
 }
 
 type JWTOptions struct {
@@ -55,6 +56,7 @@ type JWTOptions struct {
 	ScopeClaim     string
 	Source         JWTSource
 	Key            []byte
+	JWKS           *JWKS
 }
 
 func NewJWTSource(cookie, header string) JWTSource {
@@ -79,8 +81,9 @@ func NewJWTSource(cookie, header string) JWTSource {
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
+	algorithm := acjwt.NewAlgorithm(options.Algorithm)
 	jwtAC := &JWT{
-		algorithm:      acjwt.NewAlgorithm(options.Algorithm),
+		algorithms:     []acjwt.Algorithm{algorithm},
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
@@ -88,15 +91,15 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		source:         options.Source,
 	}
 
-	if jwtAC.source.Type == Invalid {
+	if options.Source.Type == Invalid {
 		return nil, fmt.Errorf("token source is invalid")
 	}
 
-	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
-		return nil, fmt.Errorf("algorithm is not supported")
+	if algorithm == acjwt.AlgorithmUnknown {
+		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
 	}
 
-	if jwtAC.algorithm.IsHMAC() {
+	if algorithm.IsHMAC() {
 		jwtAC.hmacSecret = options.Key
 		return jwtAC, nil
 	}
@@ -107,6 +110,27 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 	}
 
 	jwtAC.pubKey = pubKey
+	return jwtAC, nil
+}
+
+func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
+	jwtAC := &JWT{
+		algorithms:     acjwt.RSAAlgorithms,
+		claims:         options.Claims,
+		claimsRequired: options.ClaimsRequired,
+		name:           options.Name,
+		source:         options.Source,
+		jwks:           options.JWKS,
+	}
+
+	if jwtAC.jwks == nil {
+		return nil, fmt.Errorf("invalid JWKS")
+	}
+
+	if jwtAC.source.Type == Invalid {
+		return nil, fmt.Errorf("token source is invalid")
+	}
+
 	return jwtAC, nil
 }
 
@@ -147,7 +171,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		}
 	}
 
-	parser, err := newParser(j.algorithm, claims)
+	parser, err := newParser(j.algorithms, claims)
 	if err != nil {
 		return err
 	}
@@ -196,8 +220,25 @@ func (j *JWT) Validate(req *http.Request) error {
 	return nil
 }
 
-func (j *JWT) getValidationKey(_ *jwt.Token) (interface{}, error) {
-	switch j.algorithm {
+func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
+	if j.jwks != nil {
+		id := token.Header["kid"]
+		algorithm := token.Header["alg"]
+		if id == nil || algorithm == nil {
+			fmt.Printf("Missing \"kid\" or \"alg\" in JOSE header\n")
+			return nil, nil
+		}
+		jwk := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
+
+		if jwk == nil {
+			fmt.Printf("No matching %s JWK for kid %q\n", algorithm, id)
+			return nil, nil
+		}
+
+		return jwk.Key, nil
+	}
+
+	switch j.algorithms[0] {
 	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
 		return j.pubKey, nil
 	case acjwt.AlgorithmHMAC256, acjwt.AlgorithmHMAC384, acjwt.AlgorithmHMAC512:
@@ -279,9 +320,13 @@ func getBearer(val string) (string, error) {
 	return "", errors.JwtTokenExpired.Message("bearer required with authorization header")
 }
 
-func newParser(algo acjwt.Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
+func newParser(algos []acjwt.Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
+	var algorithms []string
+	for _, a := range algos {
+		algorithms = append(algorithms, a.String())
+	}
 	options := []jwt.ParserOption{
-		jwt.WithValidMethods([]string{algo.String()}),
+		jwt.WithValidMethods(algorithms),
 		jwt.WithLeeway(time.Second),
 	}
 

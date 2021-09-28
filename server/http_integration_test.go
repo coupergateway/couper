@@ -2785,10 +2785,16 @@ func TestJWTAccessControl(t *testing.T) {
 		wantErrLog string
 	}
 
+	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "access control error: JWTToken: token required"},
 		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OX0.wLWj9XgBZAPoDYPXsmDrEBzR6BUWfwPqQNlR_F0naZA"}}, http.StatusForbidden, "access control error: JWTToken: token is expired by "},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"}}, http.StatusOK, ""},
+		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, http.StatusForbidden, "access control error: JWKS: token signature is invalid"},
+
+		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

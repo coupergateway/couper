@@ -466,12 +466,35 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, jwtConf := range conf.Definitions.JWT {
 			confErr := errors.Configuration.Label(jwtConf.Name)
+
+			if err := jwtConf.Check(); err != nil {
+				return nil, confErr.With(err)
+			}
+
+			var jwt *ac.JWT
+			if jwtConf.JWKsURI != "" {
+				jwks, err := ac.NewJWKS(jwtConf.JWKsURI, jwtConf.JWKsTTL)
+				if err != nil {
+					return nil, confErr.With(err)
+				}
+
+				jwt, err = ac.NewJWTFromJWKS(&ac.JWTOptions{
+					Claims:         jwtConf.Claims,
+					ClaimsRequired: jwtConf.ClaimsRequired,
+					Name:           jwtConf.Name,
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+					JWKS:           jwks,
+				})
+				if err != nil {
+					return nil, confErr.With(err)
+				}
+			} else {
 			key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
-			jwt, err := ac.NewJWT(&ac.JWTOptions{
+			jwt, err = ac.NewJWT(&ac.JWTOptions{
 				Algorithm:      jwtConf.SignatureAlgorithm,
 				Claims:         jwtConf.Claims,
 				ClaimsRequired: jwtConf.ClaimsRequired,
@@ -480,11 +503,13 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				ScopeClaim:     jwtConf.ScopeClaim,
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
+
 			if err != nil {
 				return nil, confErr.With(err)
 			}
+			}
 
-			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+			if err := accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
 			}
 		}

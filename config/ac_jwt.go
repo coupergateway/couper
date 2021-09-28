@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"github.com/hashicorp/hcl/v2"
 )
 
@@ -17,13 +18,15 @@ type JWT struct {
 	ClaimsRequired     []string `hcl:"required_claims,optional"`
 	Cookie             string   `hcl:"cookie,optional"`
 	Header             string   `hcl:"header,optional"`
+	JWKsURI            string   `hcl:"jwks_uri,optional"`
+	JWKsTTL            string   `hcl:"jwks_ttl,optional"`
 	Key                string   `hcl:"key,optional"`
 	KeyFile            string   `hcl:"key_file,optional"`
 	Name               string   `hcl:"name,label"`
 	PostParam          string   `hcl:"post_param,optional"`
 	QueryParam         string   `hcl:"query_param,optional"`
 	ScopeClaim         string   `hcl:"beta_scope_claim,optional"`
-	SignatureAlgorithm string   `hcl:"signature_algorithm"`
+	SignatureAlgorithm string   `hcl:"signature_algorithm,optional"`
 	SigningKey         string   `hcl:"signing_key,optional"`
 	SigningKeyFile     string   `hcl:"signing_key_file,optional"`
 	SigningTTL         string   `hcl:"signing_ttl,optional"`
@@ -35,4 +38,24 @@ type JWT struct {
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
 func (j *JWT) HCLBody() hcl.Body {
 	return j.Remain
+}
+
+func (j *JWT) Check() error {
+	if j.JWKsURI != "" {
+		attributes := map[string]string{
+			"signature_algorithm": j.SignatureAlgorithm,
+			"key_file":            j.KeyFile,
+			"key":                 j.Key,
+		}
+
+		for name, value := range attributes {
+			if value != "" {
+				return errors.New(name + " cannot be used together with jwks_uri")
+			}
+		}
+	} else if j.SignatureAlgorithm == "" {
+		return errors.New("signature_algorithm or jwks_uri required")
+	}
+
+	return nil
 }
