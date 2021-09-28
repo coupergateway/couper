@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/avenga/couper/eval/content"
-
 	"github.com/avenga/couper/config/request"
 
 	"github.com/avenga/couper/eval"
@@ -27,7 +25,7 @@ type state int
 
 type Probe struct {
 	//configurable settings
-	backend          *Backend
+	name             string
 	config           *Config
 	failureThreshold int
 	time             time.Duration
@@ -60,27 +58,27 @@ func (state state) Print(f int, ft int) string {
 	return state.String()
 }
 
-func (p *Probe) getConfig() (*Config, error) {
+func (b *Backend) getConfig() (*Config, error) {
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	origin, _ := content.GetContextAttribute(p.backend.confContext, p.backend.context, "origin")
-	req = req.WithContext(context.WithValue(p.backend.confContext, request.URLAttribute, origin))
-	return p.backend.evalTransport(req)
+	origin := b.transportConf.Scheme + "://" + b.transportConf.Origin
+	req = req.WithContext(context.WithValue(context.Background(), request.URLAttribute, origin))
+	return b.evalTransport(req)
 }
 
-func NewProbe(backend *Backend) {
+func (b *Backend) NewProbe() {
 	p := &Probe{
-		backend:          backend,
-		failureThreshold: backend.transportConf.HealthCheck.FailureThreshold,
-		time:             backend.transportConf.HealthCheck.Period,
-		timeOut:          backend.transportConf.HealthCheck.Timeout,
+		name:             b.name,
+		failureThreshold: b.transportConf.HealthCheck.FailureThreshold,
+		time:             b.transportConf.HealthCheck.Period,
+		timeOut:          b.transportConf.HealthCheck.Timeout,
 
 		counter: 0,
 		failure: 0,
 	}
-	probe.SetBackendProbe(p.backend.name, StateInvalid.String())
-	c, err := p.getConfig()
+	probe.SetBackendProbe(p.name, StateInvalid.String())
+	c, err := b.getConfig()
 	if err != nil {
-		p.backend.upstreamLog.LogEntry().WithError(err).Error()
+		b.upstreamLog.LogEntry().WithError(err).Error()
 		return
 	}
 	p.config = c
@@ -110,7 +108,7 @@ func (p *Probe) probe() {
 		}
 
 		//print("backend: ", p.backend.name, ",  state: ", p.state.Print(p.failure, p.failureThreshold), ",  status: ", p.status, ",  cycle: ", p.counter, "\n")
-		probe.SetBackendProbe(p.backend.name, p.state.String())
+		probe.SetBackendProbe(p.name, p.state.String())
 		cancel()
 		time.Sleep(p.time)
 	}

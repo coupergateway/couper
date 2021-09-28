@@ -31,7 +31,6 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
@@ -41,8 +40,8 @@ import (
 var (
 	testBackend    *test.Backend
 	testWorkingDir string
-	testProxyAddr                  = "http://127.0.0.1:9999"
-	_              context.Context = &eval.Context{}
+	testProxyAddr  = "http://127.0.0.1:9999"
+	testServerMu   = sync.Mutex{}
 )
 
 func TestMain(m *testing.M) {
@@ -157,6 +156,12 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	}()
 
 	time.Sleep(time.Second / 2)
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Level < logrus.InfoLevel {
+			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
+		}
+	}
 
 	hook.Reset() // no startup logs
 	return shutdownFn, hook
@@ -2262,6 +2267,7 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
+			time.Sleep(time.Second)
 			h := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)

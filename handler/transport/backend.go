@@ -38,7 +38,7 @@ var _ http.RoundTripper = &Backend{}
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
-	confContext      *eval.Context
+	logEntry         *logrus.Entry
 	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
@@ -48,8 +48,18 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(ctx hcl.Body, evalCtx *eval.Context, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
+func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var logEntry *logrus.Entry
+	var name string
+
+	distinct := false
+	if tc.BackendName != "" {
+		logEntry = log.WithField("backend", tc.BackendName)
+		name = tc.BackendName
+		distinct = true
+	} else {
+		logEntry = log.WithField("backend", "default")
+	}
 
 	var openAPI *validation.OpenAPI
 	if opts != nil {
@@ -58,24 +68,16 @@ func NewBackend(ctx hcl.Body, evalCtx *eval.Context, tc *Config, opts *BackendOp
 
 	backend := &Backend{
 		context:          ctx,
-		confContext:      evalCtx,
+		logEntry:         logEntry,
+		name:             name,
 		openAPIValidator: openAPI,
 		options:          opts,
 		transportConf:    tc,
 	}
-
-	distinct := false
-	if tc.BackendName != "" {
-		logEntry = log.WithField("backend", tc.BackendName)
-		backend.name = tc.BackendName
-		distinct = true
-	} else {
-		logEntry = log.WithField("backend", "default")
-	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 
 	if distinct && backend.transportConf.HealthCheck != nil {
-		NewProbe(backend)
+		backend.NewProbe()
 	}
 
 	return backend.upstreamLog
