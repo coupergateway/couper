@@ -16,7 +16,7 @@ import (
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -138,13 +138,10 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
-	ctx := req.Context()
-	cctx := ctx.Value(request.ContextType).(content.Context)
-	evalCtx := cctx.HCLContext()
 	claims := make(map[string]interface{})
 	var diags hcl.Diagnostics
 	if j.claims != nil {
-		claims, diags = seetie.ExpToMap(evalCtx, j.claims)
+		claims, diags = seetie.ExpToMap(eval.ContextFromRequest(req).HCLContext(), j.claims)
 		if diags != nil {
 			return diags
 		}
@@ -170,6 +167,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
+	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
