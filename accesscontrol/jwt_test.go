@@ -358,7 +358,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				return
 			}
 
-			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
+			req := setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token))
 
 			if err = j.Validate(req); (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)

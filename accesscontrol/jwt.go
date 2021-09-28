@@ -115,9 +115,13 @@ func (j *JWT) Validate(req *http.Request) error {
 	ctx := req.Context()
 	cctx := ctx.Value(request.ContextType).(content.Context)
 	evalCtx := cctx.HCLContext()
-	claims, diags := seetie.ExpToMap(evalCtx, j.claims)
-	if diags != nil {
-		return diags
+	claims := make(map[string]interface{})
+	var diags hcl.Diagnostics
+	if j.claims != nil {
+		claims, diags = seetie.ExpToMap(evalCtx, j.claims)
+		if diags != nil {
+			return diags
+		}
 	}
 
 	var tokenValue string
