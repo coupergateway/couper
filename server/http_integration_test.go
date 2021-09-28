@@ -174,6 +174,12 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 		}
 	}
 
+	for _, entry := range hook.AllEntries() {
+		if entry.Level < logrus.InfoLevel {
+			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
+		}
+	}
+
 	hook.Reset() // no startup logs
 	return shutdownFn, hook
 }
@@ -2673,6 +2679,7 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
+			time.Sleep(time.Second)
 			h := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)

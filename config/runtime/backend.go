@@ -4,6 +4,7 @@ import (
 	"github.com/avenga/couper/config/health_check"
 	"math"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -60,6 +61,8 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		beConf.Name = name
 	}
 
+	scheme, hostname, origin := splitBackendOrigin(evalCtx, backendCtx)
+
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
 		Certificate:            settings.Certificate,
@@ -68,6 +71,10 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
+
+		Hostname: hostname,
+		Origin:   origin,
+		Scheme:   scheme,
 	}
 
 	if beConf.HealthCheck != nil {
@@ -152,4 +159,22 @@ func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, erro
 	}
 
 	return "", nil
+}
+
+func splitBackendOrigin(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, string, string) {
+	content, _, _ := backendCtx.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+		{Name: "origin"}},
+	})
+	if content != nil && len(content.Attributes) > 0 {
+
+		if n, exist := content.Attributes["origin"]; exist {
+			v, d := n.Expr.Value(evalCtx)
+			if d.HasErrors() {
+				return "", "", ""
+			}
+			split := strings.Split(v.AsString(), "://")
+			return split[0], strings.Split(split[1], ":")[0], split[1]
+		}
+	}
+	return "", "", ""
 }

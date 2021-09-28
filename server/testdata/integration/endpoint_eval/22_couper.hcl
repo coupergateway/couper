@@ -32,7 +32,7 @@ server "backend_probes" {
 definitions {
   backend "valid" {
     name = "valid"
-    origin = env.COUPER_TEST_BACKEND_ADDR
+    origin = "https://example.com"
     health_check {}
   }
   backend "invalid" {
