@@ -112,18 +112,6 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
-	ctx := req.Context()
-	cctx := ctx.Value(request.ContextType).(content.Context)
-	evalCtx := cctx.HCLContext()
-	claims := make(map[string]interface{})
-	var diags hcl.Diagnostics
-	if j.claims != nil {
-		claims, diags = seetie.ExpToMap(evalCtx, j.claims)
-		if diags != nil {
-			return diags
-		}
-	}
-
 	var tokenValue string
 	var err error
 
@@ -148,6 +136,18 @@ func (j *JWT) Validate(req *http.Request) error {
 	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
 		return errors.JwtTokenMissing.Message("token required")
+	}
+
+	ctx := req.Context()
+	cctx := ctx.Value(request.ContextType).(content.Context)
+	evalCtx := cctx.HCLContext()
+	claims := make(map[string]interface{})
+	var diags hcl.Diagnostics
+	if j.claims != nil {
+		claims, diags = seetie.ExpToMap(evalCtx, j.claims)
+		if diags != nil {
+			return diags
+		}
 	}
 
 	parser, err := newParser(j.algorithm, claims)
