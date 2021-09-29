@@ -181,6 +181,8 @@ func (j *JWT) Validate(req *http.Request) error {
 		switch err.(type) {
 		case *jwt.TokenExpiredError:
 			return errors.JwtTokenExpired.With(err)
+		case *jwt.UnverfiableTokenError:
+			return err.(*jwt.UnverfiableTokenError).ErrorWrapper.Unwrap()
 		default:
 			return err
 		}
@@ -225,7 +227,7 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		id := token.Header["kid"]
 		algorithm := token.Header["alg"]
 		if id == nil || algorithm == nil {
-			return nil, fmt.Errorf("Missing \"kid\" or \"alg\" in JOSE header\n")
+			return nil, fmt.Errorf("Missing \"kid\" or \"alg\" in JOSE header")
 		}
 		jwk, err := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
 		if err != nil {
@@ -233,7 +235,7 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		}
 
 		if jwk == nil {
-			return nil, fmt.Errorf("No matching %s JWK for kid %q\n", algorithm, id)
+			return nil, fmt.Errorf("No matching %s JWK for kid %q", algorithm, id)
 		}
 
 		return jwk.Key, nil
