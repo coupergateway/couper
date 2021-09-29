@@ -107,11 +107,14 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 			continue
 		}
 
-		if _, ok := field.Tag.Lookup("hcl"); !ok {
-			continue
-		}
-		if field.Tag.Get("hcl") != block.Type+",block" {
-			continue
+		// TODO: How to implement this automatically?
+		if field.Type.String() != "*config.OAuth2ReqAuth" || block.Type != "oauth2" || typ.String() == "config.Backend" {
+			if _, ok := field.Tag.Lookup("hcl"); !ok {
+				continue
+			}
+			if field.Tag.Get("hcl") != block.Type+",block" {
+				continue
+			}
 		}
 
 		checked = true
@@ -184,6 +187,11 @@ func getSchemaComponents(
 	typ := reflect.TypeOf(obj)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
+	}
+
+	// TODO: How to implement this automatically?
+	if typ.String() == "config.Backend" {
+		schema = config.SchemaWithOAuth2RA(schema)
 	}
 
 	for i := 0; i < typ.NumField(); i++ {
