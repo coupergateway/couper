@@ -51,7 +51,9 @@ func (self *JWK) UnmarshalJSON(data []byte) error {
 	var raw rawJWK
 	err := json.Unmarshal(data, &raw)
 	if err != nil {
-		return err
+		// TODO log warning properly
+		fmt.Printf("Invalid JWK: %v\n", err)
+		return nil
 	}
 
 	var key interface{}
@@ -61,7 +63,9 @@ func (self *JWK) UnmarshalJSON(data []byte) error {
 		if len(raw.X5c) > 0 {
 			certificate, err := x509.ParseCertificate(raw.X5c[0].data)
 			if err != nil {
-				return fmt.Errorf("Invalid x5c: %v", err)
+				// TODO log warning properly
+				fmt.Printf("Invalid x5c: %v\n", err)
+				return nil
 			}
 
 			key = certificate.PublicKey.(*rsa.PublicKey)
@@ -71,12 +75,15 @@ func (self *JWK) UnmarshalJSON(data []byte) error {
 				E: raw.E.toInt(),
 			}
 		} else {
-			fmt.Printf("Ignoring invalid %s key: %q", raw.Kty, raw.Kid)
+			// TODO log warning properly
+			fmt.Printf("Ignoring invalid %s key: %q\n", raw.Kty, raw.Kid)
 			return nil
 		}
 
 	default:
+		// TODO log warning properly
 		fmt.Printf("Found unsupported %s key: %q\n", raw.Kty, raw.Kid)
+		return nil
 	}
 
 	*self = JWK{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
