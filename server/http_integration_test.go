@@ -2837,7 +2837,9 @@ func TestJWTAccessControl(t *testing.T) {
 				t.Errorf("%q: unexpected sub: %q", tc.name, sub)
 				return
 			}
-			if scopes := res.Header.Get("X-Scopes"); scopes != `["foo","bar"]` {
+
+			scopes, exists := res.Header["X-Scopes"]
+			if exists && scopes[0] != `["foo","bar"]` {
 				t.Errorf("%q: unexpected scope: %q", tc.name, scopes)
 				return
 			}
