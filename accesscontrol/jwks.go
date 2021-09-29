@@ -100,6 +100,9 @@ func (self *JWKS) Load() error {
 		if err != nil {
 			return err
 		}
+		if response.StatusCode != 200 {
+			return fmt.Errorf("Status code %d", response.StatusCode)
+		}
 
 		defer response.Body.Close()
 
