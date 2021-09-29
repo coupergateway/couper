@@ -24,194 +24,13 @@ var (
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	attrs, blocks, diags := getSchemaComponents(body, obj)
-	errors := filterValidErrors(attrs, blocks, diags)
-
-	typ := reflect.TypeOf(obj)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
-	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
+	diags = filterValidErrors(attrs, blocks, diags)
 
 	for _, block := range blocks {
-		errors = errors.Extend(checkFields(block, typ, val))
+		diags = diags.Extend(checkObjectFields(block, obj))
 	}
 
-	return uniqueErrors(errors)
-}
-
-func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
-	var unique hcl.Diagnostics
-
-	for _, diag := range errors {
-		var contains bool
-
-		for _, is := range unique {
-			if reflect.DeepEqual(diag, is) {
-				contains = true
-				break
-			}
-		}
-
-		if !contains {
-			unique = unique.Append(diag)
-		}
-	}
-
-	return unique
-}
-
-func checkFields(block *hcl.Block, typ reflect.Type, val reflect.Value) hcl.Diagnostics {
-	var errors hcl.Diagnostics
-
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-
-		if field.Anonymous {
-			o := reflect.New(field.Type).Interface()
-
-			tp := reflect.TypeOf(o)
-			if tp.Kind() == reflect.Ptr {
-				tp = tp.Elem()
-			}
-
-			vl := reflect.ValueOf(o)
-			if vl.Kind() == reflect.Ptr {
-				vl = vl.Elem()
-			}
-
-			errors = errors.Extend(checkFields(block, tp, vl))
-
-			continue
-		}
-
-		if _, ok := field.Tag.Lookup("hcl"); !ok {
-			continue
-		}
-		if field.Tag.Get("hcl") != block.Type+",block" {
-			continue
-		}
-
-		if field.Type.Kind() == reflect.Ptr {
-			o := reflect.New(field.Type.Elem()).Interface()
-			errors = errors.Extend(ValidateConfigSchema(block.Body, o))
-
-			continue
-		} else if field.Type.Kind() == reflect.Slice {
-			v := reflect.TypeOf(val.Field(i).Interface())
-			if v.Kind() == reflect.Slice {
-				v = v.Elem()
-			}
-
-			field := reflect.ValueOf(v)
-			if field.Kind() == reflect.Ptr {
-				field = field.Elem()
-			}
-
-			if field.Kind() == reflect.Struct {
-				o := reflect.New(v.Elem()).Interface()
-				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
-
-				continue
-			}
-		}
-	}
-
-	return errors
-}
-
-func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
-	var (
-		attrs  hcl.Attributes = make(hcl.Attributes)
-		blocks hcl.Blocks
-		diags  hcl.Diagnostics
-	)
-
-	schema, _ := gohcl.ImpliedBodySchema(obj)
-	ty := reflect.TypeOf(obj)
-	if ty.Kind() == reflect.Ptr {
-		ty = ty.Elem()
-	}
-
-	ct := ty.NumField()
-	for i := 0; i < ct; i++ {
-		field := ty.Field(i)
-
-		if field.Type.String() == "config.AccessControlSetter" {
-			schema = config.SchemaWithACSetter(schema)
-			break
-		}
-	}
-
-	content, errors := body.Content(schema)
-
-	for _, diag := range errors {
-		if match := reFetchUnlabeledName.MatchString(diag.Detail); match {
-			bodyContent := bodyToContent(body)
-
-			added := false
-			for _, block := range bodyContent.Blocks {
-				if block.Type == "error_handler" {
-					blocks = append(blocks, block)
-
-					added = true
-				}
-			}
-
-			if !added {
-				diags = diags.Append(diag)
-			}
-		} else {
-			diags = diags.Append(diag)
-		}
-	}
-
-	if content != nil {
-		for name, attr := range content.Attributes {
-			attrs[name] = attr
-		}
-
-		blocks = append(blocks, content.Blocks...)
-	}
-
-	if i, ok := obj.(config.Inline); ok {
-		schema := i.Schema(true)
-		content, errors := body.Content(schema)
-
-		for _, diag := range errors {
-			if match := reFetchLabeledName.MatchString(diag.Detail); match {
-				bodyContent := bodyToContent(body)
-
-				added := false
-				for _, block := range bodyContent.Blocks {
-					if block.Type == "proxy" || block.Type == "request" || block.Type == "backend" {
-						blocks = append(blocks, block)
-
-						added = true
-					}
-				}
-
-				if !added {
-					diags = diags.Append(diag)
-				}
-			} else {
-				diags = diags.Append(diag)
-			}
-		}
-
-		if content != nil {
-			for name, attr := range content.Attributes {
-				attrs[name] = attr
-			}
-
-			blocks = append(blocks, content.Blocks...)
-		}
-	}
-
-	return attrs, blocks, diags
+	return uniqueErrors(diags)
 }
 
 func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagnostics) hcl.Diagnostics {
@@ -252,16 +71,202 @@ func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagno
 			if _, ok := attrs[name]; ok {
 				continue
 			}
-
-			errors = errors.Append(err)
 		} else if err.Summary == summUnsupportedBlock {
 			if len(blocks.OfType(name)) > 0 {
 				continue
 			}
+		}
 
-			errors = errors.Append(err)
+		errors = errors.Append(err)
+	}
+
+	return errors
+}
+
+func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
+	var errors hcl.Diagnostics
+	var checked bool
+
+	typ := reflect.TypeOf(obj)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	val := reflect.ValueOf(obj)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		if field.Anonymous {
+			o := reflect.New(field.Type).Interface()
+			errors = errors.Extend(checkObjectFields(block, o))
+
+			continue
+		}
+
+		if _, ok := field.Tag.Lookup("hcl"); !ok {
+			continue
+		}
+		if field.Tag.Get("hcl") != block.Type+",block" {
+			continue
+		}
+
+		checked = true
+
+		if field.Type.Kind() == reflect.Ptr {
+			o := reflect.New(field.Type.Elem()).Interface()
+			errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+
+			continue
+		} else if field.Type.Kind() == reflect.Slice {
+			tp := reflect.TypeOf(val.Field(i).Interface())
+			if tp.Kind() == reflect.Slice {
+				tp = tp.Elem()
+			}
+
+			vl := reflect.ValueOf(tp)
+			if vl.Kind() == reflect.Ptr {
+				vl = vl.Elem()
+			}
+
+			if vl.Kind() == reflect.Struct {
+				var elem reflect.Type
+
+				if tp.Kind() == reflect.Struct {
+					elem = tp
+				} else if tp.Kind() == reflect.Ptr {
+					elem = tp.Elem()
+				} else {
+					errors = errors.Append(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "Unsupported type.Kind '" + tp.Kind().String() + "' for: " + field.Name,
+					})
+
+					continue
+				}
+
+				o := reflect.New(elem).Interface()
+				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+
+				continue
+			}
+		}
+
+		errors = errors.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "A block without config test found: " + field.Name,
+		})
+	}
+
+	if !checked {
+		if i, ok := obj.(config.Inline); ok {
+			errors = errors.Extend(checkObjectFields(block, i.Inline()))
 		}
 	}
 
 	return errors
+}
+
+func getSchemaComponents(
+	body hcl.Body, obj interface{},
+) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+	var (
+		attrs  hcl.Attributes = make(hcl.Attributes)
+		blocks hcl.Blocks
+		errors hcl.Diagnostics
+	)
+
+	schema, _ := gohcl.ImpliedBodySchema(obj)
+
+	typ := reflect.TypeOf(obj)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		// TODO: How to implement this automatically?
+		if field.Type.String() == "config.AccessControlSetter" {
+			schema = config.SchemaWithACSetter(schema)
+			break
+		}
+	}
+
+	attrs, blocks, errors = completeSchemaComponents(
+		typ.String(), body, schema, attrs, blocks, errors,
+	)
+
+	if i, ok := obj.(config.Inline); ok {
+		attrs, blocks, errors = completeSchemaComponents(
+			typ.String(), body, i.Schema(true), attrs, blocks, errors,
+		)
+	}
+
+	return attrs, blocks, errors
+}
+
+func completeSchemaComponents(
+	name string,
+	body hcl.Body, schema *hcl.BodySchema,
+	attrs hcl.Attributes, blocks hcl.Blocks, errors hcl.Diagnostics,
+) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+	content, diags := body.Content(schema)
+
+	for _, diag := range diags {
+		// TODO: How to implement this block automatically?
+		if match := reFetchLabeledName.MatchString(diag.Detail); match {
+			bodyContent := bodyToContent(body)
+
+			added := false
+			for _, block := range bodyContent.Blocks {
+				switch block.Type {
+				case "proxy", "request", "backend":
+					blocks = append(blocks, block)
+
+					added = true
+				}
+			}
+
+			if !added {
+				errors = errors.Append(diag)
+			}
+		} else {
+			errors = errors.Append(diag)
+		}
+	}
+
+	if content != nil {
+		for name, attr := range content.Attributes {
+			attrs[name] = attr
+		}
+
+		blocks = append(blocks, content.Blocks...)
+	}
+
+	return attrs, blocks, errors
+}
+
+func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
+	var unique hcl.Diagnostics
+
+	for _, diag := range errors {
+		var contains bool
+
+		for _, is := range unique {
+			if reflect.DeepEqual(diag, is) {
+				contains = true
+				break
+			}
+		}
+
+		if !contains {
+			unique = unique.Append(diag)
+		}
+	}
+
+	return unique
 }
