@@ -21,8 +21,11 @@ func (m ACDefinitions) Add(name string, ac accesscontrol.AccessControl, eh []*co
 	if n == "" {
 		return errors.Configuration.Message("accessControl requires a label")
 	}
+	if n == "scopes" {
+		return errors.Configuration.Message("accessControl uses reserved name as label")
+	}
 	if _, ok := m[n]; ok {
-		return errors.Configuration.Message("accessControl already defined: " + n)
+		return errors.Configuration.Message("accessControl already defined")
 	}
 
 	m[n] = &AccessControl{

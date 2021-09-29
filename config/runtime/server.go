@@ -30,6 +30,7 @@ import (
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -165,8 +166,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				},
-				log)
+				}, nil, log)
 
 			if err != nil {
 				return nil, err
@@ -202,7 +202,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, nil, log)
 
 			if err != nil {
 				return nil, err
@@ -266,6 +266,20 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
 			}
+			scopeMaps := []map[string]string{}
+			if parentAPI != nil {
+				apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
+				if err != nil {
+					return nil, err
+				}
+				scopeMaps = append(scopeMaps, apiScopeMap)
+			}
+			endpointScopeMap, err := seetie.ValueToScopeMap(endpointConf.Scope)
+			if err != nil {
+				return nil, err
+			}
+			scopeMaps = append(scopeMaps, endpointScopeMap)
+			scopeControl := ac.NewScopeControl(scopeMaps)
 			endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
@@ -274,7 +288,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, scopeControl, log)
 			if err != nil {
 				return nil, err
 			}
@@ -463,6 +477,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				ClaimsRequired: jwtConf.ClaimsRequired,
 				Key:            key,
 				Name:           jwtConf.Name,
+				ScopeClaim:     jwtConf.ScopeClaim,
 				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 			})
 			if err != nil {
@@ -552,7 +567,7 @@ type protectedOptions struct {
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, scopeControl *ac.ScopeControl, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
@@ -566,6 +581,10 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 			list,
 			ac.NewItem(acName, m[acName].Control, eh),
 		)
+	}
+	if scopeControl != nil {
+		// TODO properly create error handler
+		list = append(list, ac.NewItem("scope", scopeControl, handler.NewErrorHandler(nil, opts.epOpts.Error)))
 	}
 
 	if len(list) > 0 {

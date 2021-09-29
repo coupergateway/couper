@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/zclconf/go-cty/cty"
 )
 
 var _ Inline = &API{}
@@ -16,6 +17,8 @@ type API struct {
 	Endpoints            Endpoints `hcl:"endpoint,block"`
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Remain               hcl.Body  `hcl:",remain"`
+	Scope                cty.Value `hcl:"beta_scope,optional"`
+
 	// internally used
 	CatchAllEndpoint *Endpoint
 }
