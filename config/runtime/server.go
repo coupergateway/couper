@@ -487,24 +487,24 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					return nil, confErr.With(err)
 				}
 			} else {
-			key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
+				key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
+				if err != nil {
+					return nil, confErr.With(err)
+				}
 
-			jwt, err = ac.NewJWT(&ac.JWTOptions{
-				Algorithm:      jwtConf.SignatureAlgorithm,
-				Claims:         jwtConf.Claims,
-				ClaimsRequired: jwtConf.ClaimsRequired,
-				Key:            key,
-				Name:           jwtConf.Name,
-				ScopeClaim:     jwtConf.ScopeClaim,
-				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
-			})
+				jwt, err = ac.NewJWT(&ac.JWTOptions{
+					Algorithm:      jwtConf.SignatureAlgorithm,
+					Claims:         jwtConf.Claims,
+					ClaimsRequired: jwtConf.ClaimsRequired,
+					Key:            key,
+					Name:           jwtConf.Name,
+					ScopeClaim:     jwtConf.ScopeClaim,
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+				})
 
-			if err != nil {
-				return nil, confErr.With(err)
-			}
+				if err != nil {
+					return nil, confErr.With(err)
+				}
 			}
 
 			if err := accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
