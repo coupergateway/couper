@@ -1,0 +1,11 @@
+{
+  "keys": [
+    {
+      "kid": "hs256",
+      "kty": "oct",
+      "alg": "HS256",
+      "use": "sig",
+      "k": "Th3$e(rEt"
+    }
+  ]
+}

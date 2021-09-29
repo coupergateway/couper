@@ -61,7 +61,7 @@ func (self *JWK) UnmarshalJSON(data []byte) error {
 		if len(raw.X5c) > 0 {
 			certificate, err := x509.ParseCertificate(raw.X5c[0].data)
 			if err != nil {
-				return fmt.Errorf("Invalid x5c")
+				return fmt.Errorf("Invalid x5c: %v", err)
 			}
 
 			key = certificate.PublicKey.(*rsa.PublicKey)

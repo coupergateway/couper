@@ -47,32 +47,35 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 	}, nil
 }
 
-func (self *JWKS) GetKeys(kid string) []JWK {
+func (self *JWKS) GetKeys(kid string) ([]JWK, error) {
 	var keys []JWK
 
 	if len(self.Keys) == 0 || self.hasExpired() {
 		if err := self.Load(); err != nil {
-			fmt.Printf("Error loading JWKS: %v\n", err)
-			return keys
+			return keys, fmt.Errorf("Error loading JWKS: %v", err)
 		}
 	}
 
 	for _, key := range self.Keys {
-		if key.KeyID == kid || kid == "" {
+		if key.KeyID == kid {
 			keys = append(keys, key)
 		}
 	}
 
-	return keys
+	return keys, nil
 }
 
-func (self *JWKS) GetKey(kid string, alg string, use string) *JWK {
-	for _, key := range self.GetKeys(kid) {
+func (self *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
+	keys, err := self.GetKeys(kid)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range keys {
 		if key.Algorithm == alg && key.Use == use {
-			return &key
+			return &key, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (self *JWKS) Load() error {

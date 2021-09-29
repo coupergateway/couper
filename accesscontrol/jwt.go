@@ -225,14 +225,15 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		id := token.Header["kid"]
 		algorithm := token.Header["alg"]
 		if id == nil || algorithm == nil {
-			fmt.Printf("Missing \"kid\" or \"alg\" in JOSE header\n")
-			return nil, nil
+			return nil, fmt.Errorf("Missing \"kid\" or \"alg\" in JOSE header\n")
 		}
-		jwk := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
+		jwk, err := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
+		if err != nil {
+			return nil, err
+		}
 
 		if jwk == nil {
-			fmt.Printf("No matching %s JWK for kid %q\n", algorithm, id)
-			return nil, nil
+			return nil, fmt.Errorf("No matching %s JWK for kid %q\n", algorithm, id)
 		}
 
 		return jwk.Key, nil
