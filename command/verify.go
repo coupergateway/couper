@@ -26,8 +26,8 @@ func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error
 
 	_, err := configload.LoadFile(args[0], true)
 	if diags, ok := err.(hcl.Diagnostics); ok {
-		for _, err := range diags {
-			logger.Error(err)
+		for _, diag := range diags {
+			logger.WithError(diag).Error()
 		}
 
 		return fmt.Errorf("")

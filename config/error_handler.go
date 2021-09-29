@@ -11,7 +11,7 @@ var _ Inline = &ErrorHandler{}
 
 // ErrorHandler represents a subset of Endpoint.
 type ErrorHandler struct {
-	Kinds     []string  // FIXME: Why not `hcl:"type,label"`?
+	Kinds     []string
 	ErrorFile string    `hcl:"error_file,optional"`
 	Remain    hcl.Body  `hcl:",remain"`
 	Response  *Response `hcl:"response,block"`
