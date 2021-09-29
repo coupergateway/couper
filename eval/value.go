@@ -23,77 +23,96 @@ var emptyStringVal = cty.StringVal("")
 // A common case would be accessing a deeper nested structure which MAY be incomplete.
 // This context population prevents returning unknown cty.Value's which could not be processed.
 func Value(ctx *hcl.EvalContext, exp hcl.Expression) (cty.Value, error) {
-	vars := exp.Variables()
-	populated := ctx.NewChild()
-	tplVars := templateVariables(exp) // Remember template expression related variables.
-
-	if len(vars) > 0 {
-		populated.Variables = make(map[string]cty.Value)
+	expr := exp
+	if val := newLiteralValueExpr(ctx, exp); val != nil {
+		expr = val
 	}
 
-	for _, traversal := range vars {
-		traverseSplit := traversal.SimpleSplit()
-		rootTraverse := traverseSplit.Abs[0].(hcl.TraverseRoot) // TODO: check for abs ?
-		name := rootTraverse.Name
-
-		if root, exist := ctx.Variables[name]; exist {
-			// prefer already configured populated root variables
-			if _, exist = populated.Variables[name]; !exist {
-				populated.Variables[name] = root
-			}
-		} else {
-			// fallback, provide empty obj to populate with nil attrs if required
-			populated.Variables[name] = cty.EmptyObjectVal
-		}
-
-		// Value which should be set at traversal path end.
-		fallback := cty.NilVal
-		if isTemplateTraversal(traverseSplit, tplVars) {
-			// Additionally, check for template expression usage which would fail
-			// with cty.NilVal while receiving the expression value. Use an empty string instead.
-			fallback = emptyStringVal
-		}
-
-		// Root element should always be an Object defined with related Context methods.
-		// A possible panic if this is not a ValueMap is the correct answer.
-		// Known root variables are verified on load.
-		populated.Variables[name] = walk(populated.Variables[name], ctx.Variables[name], fallback, traverseSplit.Rel)
-	}
-
-	v, diags := exp.Value(populated)
+	v, diags := expr.Value(ctx)
 	if diags.HasErrors() {
 		return v, errors.Evaluation.With(diags)
 	}
-
-	return finalize(v), nil
+	return v, nil
 }
 
-func walk(variables, parentVariables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
+func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Expression {
+	switch expr := exp.(type) {
+	case *hclsyntax.ConditionalExpr:
+		if val := newLiteralValueExpr(ctx, expr.Condition); val != nil {
+			expr.Condition = val
+		}
+		// conditional results must not be cty.NilVal
+		if val := newLiteralValueExpr(ctx, expr.TrueResult); val != nil {
+			expr.TrueResult = &hclsyntax.LiteralValueExpr{Val: cty.DynamicVal}
+		}
+		if val := newLiteralValueExpr(ctx, expr.FalseResult); val != nil {
+			expr.FalseResult = &hclsyntax.LiteralValueExpr{Val: cty.DynamicVal}
+		}
+		return expr
+	case *hclsyntax.BinaryOpExpr:
+		if val := newLiteralValueExpr(ctx, expr.LHS); val != nil {
+			expr.LHS = val
+		}
+		if val := newLiteralValueExpr(ctx, expr.RHS); val != nil {
+			expr.RHS = val
+		}
+		return expr
+	case *hclsyntax.ObjectConsExpr:
+		for i, item := range expr.Items {
+			if val := newLiteralValueExpr(ctx, item.ValueExpr); val != nil {
+				expr.Items[i].ValueExpr = val
+			}
+		}
+		return expr
+	case *hclsyntax.TemplateExpr:
+		for p, part := range expr.Parts {
+			for _, v := range part.Variables() {
+				if traversalValue(ctx.Variables, v) == cty.NilVal {
+					expr.Parts[p] = &hclsyntax.LiteralValueExpr{Val: emptyStringVal}
+					break
+				}
+			}
+		}
+		return expr
+	case *hclsyntax.TemplateWrapExpr:
+		expr.Wrapped = newLiteralValueExpr(ctx, expr.Wrapped)
+		return expr
+	case *hclsyntax.ScopeTraversalExpr:
+		if traversalValue(ctx.Variables, expr.Traversal) == cty.NilVal {
+			return &hclsyntax.LiteralValueExpr{Val: cty.NilVal}
+		}
+		return expr
+	case *hclsyntax.FunctionCallExpr:
+		for a, arg := range expr.Args {
+			for _, v := range arg.Variables() {
+				if val := traversalValue(ctx.Variables, v); val == cty.NilVal {
+					expr.Args[a] = &hclsyntax.LiteralValueExpr{Val: val}
+					break
+				}
+			}
+		}
+		return expr
+	default:
+		for _, v := range exp.Variables() {
+			if val := traversalValue(ctx.Variables, v); val == cty.NilVal {
+				return &hclsyntax.LiteralValueExpr{Val: val}
+			}
+		}
+		return nil
+	}
+}
+
+func walk(variables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
 	if len(traversal) == 0 {
 		return variables
 	}
 
 	hasNext := len(traversal) > 1
 	nextValue := fallback
-	if hasNext {
-		switch traversal[1].(type) {
-		case hcl.TraverseIndex, hcl.TraverseSplat:
-			nextValue = cty.EmptyTupleVal
-		default:
-			nextValue = cty.EmptyObjectVal
-		}
-	}
 
 	currentFn := func(name string) (current cty.Value, exist bool) {
-		if parentVariables.CanIterateElements() {
-			if current, exist = parentVariables.AsValueMap()[name]; exist {
-				// prefer already configured populated root variables
-				if variables.CanIterateElements() {
-					if c, e := variables.AsValueMap()[name]; e {
-						current = c
-					}
-				}
-			}
+		if variables.CanIterateElements() {
+			current, exist = variables.AsValueMap()[name]
 		}
 		return current, exist
 	}
@@ -102,31 +121,16 @@ func walk(variables, parentVariables, fallback cty.Value, traversal hcl.Traversa
 	case hcl.TraverseAttr:
 		current, exist := currentFn(t.Name)
 		if !exist {
-			current = nextValue
-		} else if hasNext && !current.CanIterateElements() {
-			current = cty.EmptyObjectVal
+			return nextValue
 		}
+		return walk(current, fallback, traversal[1:])
 
-		vars := variables.AsValueMap()
-		if vars == nil {
-			vars = make(map[string]cty.Value)
-		}
-		vars[t.Name] = current
-
-		if hasNext {
-			// value map content could differ in nested structures.
-			// At this point prefer our own since we have copied existing values already via currentFn.
-			vars[t.Name] = walk(current, current, fallback, traversal[1:])
-		}
-		return cty.ObjectVal(vars)
 	case hcl.TraverseIndex:
-		current := variables
-
-		if current.HasIndex(t.Key).True() {
+		if variables.HasIndex(t.Key).True() {
 			if hasNext {
-				return walk(current, current, fallback, traversal[1:])
+				return walk(variables, fallback, traversal[1:])
 			}
-			return current
+			return variables
 		}
 
 		switch t.Key.Type() {
@@ -136,14 +140,14 @@ func walk(variables, parentVariables, fallback cty.Value, traversal hcl.Traversa
 			slice := make([]cty.Value, idx+1)
 			slice[idx] = nextValue
 			if hasNext {
-				slice[idx] = walk(nextValue, nextValue, fallback, traversal[1:])
+				slice[idx] = walk(nextValue, fallback, traversal[1:])
 			}
 			return cty.TupleVal(slice)
 		case cty.String:
 			m := map[string]cty.Value{}
 			m[t.Key.AsString()] = nextValue
 			if hasNext {
-				m[t.Key.AsString()] = walk(nextValue, nextValue, fallback, traversal[1:])
+				m[t.Key.AsString()] = walk(nextValue, fallback, traversal[1:])
 			}
 			return cty.ObjectVal(m)
 		default:
@@ -154,87 +158,14 @@ func walk(variables, parentVariables, fallback cty.Value, traversal hcl.Traversa
 	}
 }
 
-func templateVariables(exp hcl.Expression) (vars []hcl.Traversal) {
-	switch impl := exp.(type) {
-	case *hclsyntax.ObjectConsExpr:
-		// ObjValueMap could have expressions within the key and expression. Lookup both.
-		for _, item := range impl.Items {
-			switch keyItem := item.KeyExpr.(type) {
-			case *hclsyntax.ObjectConsKeyExpr:
-				if _, tplOk := keyItem.Wrapped.(*hclsyntax.TemplateWrapExpr); tplOk {
-					vars = append(vars, keyItem.Variables()...)
-				}
-			}
+func traversalValue(vars map[string]cty.Value, traversal hcl.Traversal) cty.Value {
+	traverseSplit := traversal.SimpleSplit()
+	rootTraverse := traverseSplit.Abs[0].(hcl.TraverseRoot) // TODO: check for abs ?
+	name := rootTraverse.Name
 
-			switch item.ValueExpr.(type) {
-			case *hclsyntax.TemplateExpr:
-				vars = append(vars, item.ValueExpr.Variables()...)
-			}
-		}
-	case *hclsyntax.TemplateExpr:
-		vars = append(vars, impl.Variables()...)
+	if _, ok := vars[name]; !ok {
+		return cty.NilVal
 	}
 
-	return vars
-}
-
-func isTemplateTraversal(split hcl.TraversalSplit, tplVars []hcl.Traversal) bool {
-	for _, tplVar := range tplVars {
-		if split.RootName() != tplVar.RootName() {
-			continue
-		}
-
-		tplSplit := tplVar.SimpleSplit()
-		if len(split.Rel) != len(tplSplit.Rel) {
-			continue
-		}
-
-		result := true
-		for i, r := range tplSplit.Rel {
-			rattr, a := r.(hcl.TraverseAttr)
-			iattr, b := split.Rel[i].(hcl.TraverseAttr)
-			if (!a || !b) || iattr.Name != rattr.Name {
-				result = false
-				break
-			}
-		}
-
-		if result {
-			return true
-		}
-
-	}
-
-	return false
-}
-
-// finalize will modify the given cty.Value if the corresponding key value
-// is a cty.Map with cty.NilVal's. This map will be replaced with a cty.NilVal.
-//
-// This is necessary for populated "nil paths" which have shared nested references.
-func finalize(v cty.Value) cty.Value {
-	if !v.CanIterateElements() || !v.Type().IsMapType() {
-		return v
-	}
-
-	vmap := v.AsValueMap()
-	for k, mv := range vmap {
-		if !mv.CanIterateElements() {
-			continue
-		}
-
-		nonNilStop := mv.ForEachElement(isNilElement)
-		if !nonNilStop {
-			vmap[k] = cty.NilVal
-		}
-	}
-	return cty.ObjectVal(vmap)
-}
-
-// isNilElement is used as iterate callback and returns true if a non NilVal gets passed.
-func isNilElement(_ cty.Value, val cty.Value) (stop bool) {
-	if val.Equals(cty.NilVal) == cty.BoolVal(false) {
-		return true
-	}
-	return false
+	return walk(vars[name], cty.NilVal, traverseSplit.Rel)
 }
