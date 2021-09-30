@@ -32,6 +32,7 @@ func NewBackend() *Backend {
 	b.mux.HandleFunc("/ws", echo)
 	b.mux.HandleFunc("/pdf", pdf)
 	b.mux.HandleFunc("/small", small)
+	b.mux.HandleFunc("/jwks.json", jwks)
 	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
@@ -172,4 +173,22 @@ func pdf(rw http.ResponseWriter, req *http.Request) {
 
 func small(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("1234567890"))
+}
+
+func jwks(rw http.ResponseWriter, req *http.Request) {
+	_, currFile, _, _ := runtime.Caller(0)
+	rootDir := http.Dir(path.Join(path.Dir(currFile), "testdata"))
+
+	file, err := rootDir.Open("jwks.json")
+	if err != nil {
+		return
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return
+	}
+
+	http.ServeContent(rw, req, "/jwks.json", info.ModTime(), file)
 }

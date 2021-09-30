@@ -340,7 +340,7 @@ required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`jwt`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
+| `jwt`| [Definitions Block](#definitions-block)| &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -348,10 +348,16 @@ required _label_.
 | `header`          |string|-|-|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.|`header = "Authorization"` |
 | `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
-| `signature_algorithm`           |string|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+| `signature_algorithm`           |string|-|-|Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
+| `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
+| `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
+| `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
+
+If the key to verify the signatures of tokens does not change over time, it should be specified via either `key` or `key_file` (together with `signature_algorithm`).
+Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
