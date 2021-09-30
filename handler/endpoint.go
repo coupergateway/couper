@@ -108,7 +108,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	e.readResults(subCtx, requestResults, beresps)
 
 	select {
-	case <-req.Context().Done():
+	case <-reqCtx.Done():
 		err = req.Context().Err()
 		log.WithError(errors.ClientRequest.With(err)).Error()
 		return

@@ -70,11 +70,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["request"] = requestFields
 
 	oCtx, openAPIContext := validation.NewWithContext(req.Context())
-	*req = *req.WithContext(oCtx)
+	*req = *req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
 
 	rtStart := time.Now()
-	beresp, err := u.next.RoundTrip(
-		req.WithContext(httptrace.WithClientTrace(req.Context(), clientTrace)))
+	beresp, err := u.next.RoundTrip(req)
 	rtDone := time.Now()
 
 	if req.Host != "" {
