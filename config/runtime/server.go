@@ -3,6 +3,7 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -466,25 +467,47 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, jwtConf := range conf.Definitions.JWT {
 			confErr := errors.Configuration.Label(jwtConf.Name)
-			key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
-			if err != nil {
-				return nil, confErr.With(err)
+
+			var jwt *ac.JWT
+			if jwtConf.JWKsURL != "" {
+				noProxy := conf.Settings.NoProxyFromEnv
+				jwks, err := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
+				if err != nil {
+					return nil, confErr.With(err)
+				}
+
+				jwt, err = ac.NewJWTFromJWKS(&ac.JWTOptions{
+					Claims:         jwtConf.Claims,
+					ClaimsRequired: jwtConf.ClaimsRequired,
+					Name:           jwtConf.Name,
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+					JWKS:           jwks,
+				})
+				if err != nil {
+					return nil, confErr.With(err)
+				}
+			} else {
+				key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
+				if err != nil {
+					return nil, confErr.With(err)
+				}
+
+				jwt, err = ac.NewJWT(&ac.JWTOptions{
+					Algorithm:      jwtConf.SignatureAlgorithm,
+					Claims:         jwtConf.Claims,
+					ClaimsRequired: jwtConf.ClaimsRequired,
+					Key:            key,
+					Name:           jwtConf.Name,
+					ScopeClaim:     jwtConf.ScopeClaim,
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+				})
+
+				if err != nil {
+					return nil, confErr.With(err)
+				}
 			}
 
-			jwt, err := ac.NewJWT(&ac.JWTOptions{
-				Algorithm:      jwtConf.SignatureAlgorithm,
-				Claims:         jwtConf.Claims,
-				ClaimsRequired: jwtConf.ClaimsRequired,
-				Key:            key,
-				Name:           jwtConf.Name,
-				ScopeClaim:     jwtConf.ScopeClaim,
-				Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
-			})
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+			if err := accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
 			}
 		}
@@ -556,6 +579,26 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	}
 
 	return accessControls, nil
+}
+
+func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*ac.JWKS, error) {
+	var backend http.RoundTripper
+
+	if jwtConf.JWKSBackendBody != nil {
+		b, err := newBackend(confContext, jwtConf.JWKSBackendBody, log, ignoreProxyEnv, memStore)
+		if err != nil {
+			return nil, err
+		}
+		backend = b
+	}
+
+	evalContext := conf.Context.Value(request.ContextType).(context.Context)
+	jwks, err := ac.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend, evalContext)
+	if err != nil {
+		return nil, err
+	}
+
+	return jwks, nil
 }
 
 type protectedOptions struct {

@@ -1,6 +1,7 @@
 package accesscontrol_test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -17,11 +18,14 @@ import (
 
 	ac "github.com/avenga/couper/accesscontrol"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func Test_JWT_NewJWT_RSA(t *testing.T) {
@@ -376,6 +380,206 @@ func Test_JWT_yields_scopes(t *testing.T) {
 					}
 				}
 
+			}
+		})
+	}
+}
+
+func TestJwtConfig(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing definition for access_control",
+			`
+			server "test" {
+			  access_control = ["myac"]
+			}
+			`,
+			"", // FIXME Missing myac
+		},
+		{
+			"missing both signature_algorithm/jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			  }
+			}
+			`,
+			"signature_algorithm or jwks_url required",
+		},
+		{
+			"signature_algorithm, missing key/key_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			  }
+			}
+			`,
+			"jwt key: read error: required: configured attribute or file",
+		},
+		{
+			"ok: signature_algorithm + key",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"ok: signature_algorithm + key_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key_file = "testdata/secret.txt"
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"ok: jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    jwks_url = "http://..."
+			    header = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"signature_algorithm + jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    jwks_url = "http://..."
+			    header = "..."
+			  }
+			}
+			`,
+			"signature_algorithm cannot be used together with jwks_url",
+		},
+		{
+			"key + jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    key = "..."
+			    jwks_url = "http://..."
+			    header = "..."
+			  }
+			}
+			`,
+			"key cannot be used together with jwks_url",
+		},
+		{
+			"key_file + jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    key_file = "..."
+			    jwks_url = "http://..."
+			    header = "..."
+			  }
+			}
+			`,
+			"key_file cannot be used together with jwks_url",
+		},
+		{
+			"backend reference, missing jwks_url",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    backend = "foo"
+			    header = "..."
+			  }
+			  backend "foo" {}
+			}
+			`,
+			"backend not needed without jwks_url",
+		},
+		{
+			"ok: jwks_url + backend reference",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    backend = "foo"
+			    header = "..."
+			    jwks_url = "http://..."
+			  }
+			  backend "foo" {}
+			}
+			`,
+			"",
+		},
+		/*
+			{
+				"inline backend block, missing jwks_url",
+				`
+				server "test" {}
+				definitions {
+				  jwt "myac" {
+				    backend {
+				    }
+				    header = "..."
+				  }
+				}
+				`,
+				"backend not needed without jwks_url",
+			},
+		*/
+	}
+
+	log, _ := logrustest.NewNullLogger()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(st *testing.T) {
+			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if conf != nil {
+				_, err = runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
+			}
+
+			var error = ""
+			if err != nil {
+				if _, ok := err.(errors.GoError); ok {
+					error = err.(errors.GoError).LogError()
+				} else {
+					error = err.Error()
+				}
+			}
+
+			if tt.error == "" && error == "" {
+				return
+			}
+
+			expectedError := "configuration error: myac: " + tt.error
+
+			if expectedError != error {
+				t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, error)
 			}
 		})
 	}

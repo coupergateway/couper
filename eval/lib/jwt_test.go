@@ -608,7 +608,7 @@ func TestJwtSignConfigError(t *testing.T) {
 			}
 			`,
 			"MyToken",
-			`{"sub":"12345"}`,
+			`{"sub": "12345"}`,
 			"configuration error: jwt_signing_profile block with label MyToken already defined",
 		},
 		{
@@ -867,7 +867,7 @@ func TestJwtSignError(t *testing.T) {
 			}
 			`,
 			"NoProfileForThisLabel",
-			`{"sub":"12345"}`,
+			`{"sub": "12345"}`,
 			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
 		},
 	}

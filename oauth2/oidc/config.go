@@ -155,15 +155,16 @@ func (o *Config) getFreshIfExpired(uid string) error {
 
 func (o *Config) fetchConfiguration(uid string) (*OpenidConfiguration, error) {
 	req, err := http.NewRequest(http.MethodGet, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
 	ctx = context.WithValue(ctx, request.RoundTripName, o.Name)
 	if uid != "" {
 		ctx = context.WithValue(ctx, request.UID, uid)
 	}
 	req = req.WithContext(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	res, err := o.Backend.RoundTrip(req)
 	if err != nil {
