@@ -2782,26 +2782,28 @@ func TestJWTAccessControl(t *testing.T) {
 		path       string
 		header     http.Header
 		status     int
+		expScope   string
 		wantErrLog string
 	}
 
 	// RSA tokens created with server/testdata/integration/files/pkcs8.key
-	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"
+	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "access control error: JWTToken: token required"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, http.StatusForbidden, "access control error: JWTToken: token is expired by "},
-		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"}}, http.StatusOK, ""},
-		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.b0yfg0ERravM0P1oS6uNdsWz_8O3pgsPTuOGyU6LVqxt9Uue3dnwOJUi9SWikZi7zg8YAptuXWLrdVRL5yY4OBqMlu6uMmP_pwv_8XLZktFdwrtnph_ueDU2wcLj1S88_0IBYe1sWeLUkiIpi6o0kh93K8cYBvNcMtxTj3CRxkiW2SmUVgLjzvwcXjjpi468xnCDexvBs0BbYTRv2SbzQcLQy71Kf5xSg9W0iHj6Uz5GFaUuh14HOWRmVtu2jQE5CuA0C_J6Qr66QpgPDBbhq9-R4XGz9Zgv--WFPvDl_9zXpLOz5ihjMZImiwU0sW0_ZlGsswTWpuSLNv_ojzK5ew"}}, http.StatusForbidden, "access control error: JWKS: Missing \"kid\" in JOSE header"},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.JzZwgIQvCx7q80XkmJWmgoxvN-rhoBJyaMNfRc8YhRSqBJypCY8PyWD3iiF2oBIjeVj_SAaFDwm-oGWJ48w4R2Q48zGEuHSnPggWejupr_3xmjhvBTDYcV3z-V1vg5pofK6pEUoOcnP1HeUZFGv-6UomaUez0ODs14FLWrbhp7_kWu72Etgfm7wN-I7g0ELUI6d6dO_kIv_6jsc60y4vyZ75d2zXOgZE4CnFgk-kM4OyIKGtaNW0tt97JwjdqRDkLHwu4zXD9lVOsYZWk9xUlyXrVKhP08JfX0YhHgLrJpDWU9Ukw5ztHrikoACmmRbEZ-dMAiaBQ1ehkjnrWqCnRQ"}}, http.StatusForbidden, "access control error: JWKS: No matching RS256 JWK for kid \"rs256-unsupported\""},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.bSPqNYHztqjtm1bAi0b5hIkXYH0J-btQ82zhPguay-ck4aj8c3hZvHNUcAvi__Z-NmnQOWl_jteT4GHMX1n0Xpzl0C_-MLpRHYML2PY5Vda7C5zwQNR2zn76UuJp8eMZVccI1BWGhEtVCkSaeqoi-rc0f7MIztq22EBNj_cnvcOB51oFzPgAVaWedos0TP4O0r7YY82TYi-JHesRI4_v7XV-A2F84mN_eMZEL3hsWkGfrBUM3lQD2dYu1y6z6-7OR77aYSDxqt7F9vpWCdU4uYF7qn4O_jVX2IdzoL9xjwtLwxAXHLiK1chnfpR5FuiW04P9FNL6bOXsiFBOBA7CQg"}}, http.StatusForbidden, "access control error: JWKS: No matching RS256 JWK for kid \"rs256-wrong-cert\""},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusForbidden, "access control error: JWKS_not_found: Error loading JWKS: Status code 404"},
-		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
-		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
-		{"remote RSA JWKS x5c w/ backend", "/jwks/rsa/backend", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
-		{"remote RSA JWKS x5c w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
-		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.fG2oDj2WDZy9nL_Umh-V54YN2YUCkvmEpK_en8I901ivDQF15pxl4ikmR99hasTZNGIXCLa1Jl10yiBw6bTnohRH4Kj8jj5hnO37MJ98maxk8JTTMa7JTLKJqb1O0dHynbASlcWQQt_cjGcWwt1qCqyVEXH_lJNhritCrAPxyxJt7qGF6_dHCPkDjgBCak_FrBEnGP6LqLhnLuReFgkND3ZQvSlzOBufE6CidmsTscZoBavyeDsugFTYWGnVJPv-ZSsj1258bhc1oRsfmR8MpbUryUU1gzWqNR5o_hwVX17rcgsszIc6ngaMoUnEIpVzHixvDaBR_BjAePgvzPYuTg"}}, http.StatusOK, ""},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "", "access control error: JWTToken: token required"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, http.StatusForbidden, "", "access control error: JWTToken: token is expired by "},
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"}}, http.StatusOK, `["foo","bar"]`, ""},
+		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, http.StatusForbidden, "", "access control error: JWKS: Missing \"kid\" in JOSE header"},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-unsupported\""},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-wrong-cert\""},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusForbidden, "", "access control error: JWKS_not_found: Error loading JWKS: Status code 404"},
+		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
+		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, http.StatusOK, `["foo","bar"]`, ""},
+		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
+		{"remote RSA JWKS x5c w/ backend", "/jwks/rsa/backend", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
+		{"remote RSA JWKS x5c w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
+		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.aGOhlWQIZvnwoEZGDBYhkkEduIVa59G57x88L3fiLc1MuWbYS84nHEZnlPDuVJ3_BxdXr6-nZ8gpk1C9vfamDzkbvzbdcJ2FzmvAONm1II3_u5OTc6ZtpREDx9ohlIvkcOcalOUhQLqU5r2uik2bGSVV3vFDbqxQeuNzh49i3VgdtwoaryNYSzbg_Ki8dHiaFrWH-r2WCU08utqpFmNdr8oNw4Y5AYJdUW2aItxDbwJ6YLBJN0_6EApbXsNqiaNXkLws3cxMvczGKODyGGVCPENa-VmTQ41HxsXB-_rMmcnMw3_MjyIueWcjeP8BNvLYt1bKFWdU0NcYCkXvEqE4-g"}}, http.StatusOK, "", ""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
@@ -2843,9 +2845,8 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 
-			expScope := `["foo","bar"]`
-			if scopes := res.Header.Get("X-Scopes"); scopes != expScope {
-				subT.Errorf("expected scope: %q, actual: %q", expScope, scopes)
+			if scopes := res.Header.Get("X-Scopes"); scopes != tc.expScope {
+				subT.Errorf("expected scope: %q, actual: %q", tc.expScope, scopes)
 				return
 			}
 		})
