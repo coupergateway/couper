@@ -85,7 +85,7 @@ func NewJWTSource(cookie, header string) JWTSource {
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
-	err := checkOptions(options)
+	jwtAC, err := newJWT(options)
 	if err != nil {
 		return nil, err
 	}
@@ -95,16 +95,7 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
 	}
 
-	jwtAC := &JWT{
-		algorithms:     []acjwt.Algorithm{algorithm},
-		claims:         options.Claims,
-		claimsRequired: options.ClaimsRequired,
-		name:           options.Name,
-		roleClaim:      options.RoleClaim,
-		roleMap:        options.RoleMap,
-		scopeClaim:     options.ScopeClaim,
-		source:         options.Source,
-	}
+	jwtAC.algorithms = []acjwt.Algorithm{algorithm}
 
 	if algorithm.IsHMAC() {
 		jwtAC.hmacSecret = options.Key
@@ -121,13 +112,31 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 }
 
 func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
-	err := checkOptions(options)
+	jwtAC, err := newJWT(options)
 	if err != nil {
 		return nil, err
 	}
 
+	if options.JWKS == nil {
+		return nil, fmt.Errorf("invalid JWKS")
+	}
+
+	jwtAC.algorithms = acjwt.RSAAlgorithms
+	jwtAC.jwks = options.JWKS
+
+	return jwtAC, nil
+}
+
+func newJWT(options *JWTOptions) (*JWT, error) {
+	if options.Source.Type == Invalid {
+		return nil, fmt.Errorf("token source is invalid")
+	}
+
+	if options.RoleClaim != "" && options.RoleMap == nil {
+		return nil, fmt.Errorf("missing beta_role_map")
+	}
+
 	jwtAC := &JWT{
-		algorithms:     acjwt.RSAAlgorithms,
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
@@ -135,26 +144,8 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		roleMap:        options.RoleMap,
 		scopeClaim:     options.ScopeClaim,
 		source:         options.Source,
-		jwks:           options.JWKS,
 	}
-
-	if jwtAC.jwks == nil {
-		return nil, fmt.Errorf("invalid JWKS")
-	}
-
 	return jwtAC, nil
-}
-
-func checkOptions(options *JWTOptions) error {
-	if options.Source.Type == Invalid {
-		return fmt.Errorf("token source is invalid")
-	}
-
-	if options.RoleClaim != "" && options.RoleMap == nil {
-		return fmt.Errorf("missing beta_role_map")
-	}
-
-	return nil
 }
 
 // Validate reading the token from configured source and validates against the key.
