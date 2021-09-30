@@ -85,7 +85,16 @@ func NewJWTSource(cookie, header string) JWTSource {
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
+	err := checkOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
 	algorithm := acjwt.NewAlgorithm(options.Algorithm)
+	if algorithm == acjwt.AlgorithmUnknown {
+		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
+	}
+
 	jwtAC := &JWT{
 		algorithms:     []acjwt.Algorithm{algorithm},
 		claims:         options.Claims,
@@ -95,14 +104,6 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		roleMap:        options.RoleMap,
 		scopeClaim:     options.ScopeClaim,
 		source:         options.Source,
-	}
-
-	if options.Source.Type == Invalid {
-		return nil, fmt.Errorf("token source is invalid")
-	}
-
-	if algorithm == acjwt.AlgorithmUnknown {
-		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
 	}
 
 	if algorithm.IsHMAC() {
@@ -120,6 +121,11 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 }
 
 func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
+	err := checkOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
 	jwtAC := &JWT{
 		algorithms:     acjwt.RSAAlgorithms,
 		claims:         options.Claims,
@@ -136,11 +142,19 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	if jwtAC.source.Type == Invalid {
-		return nil, fmt.Errorf("token source is invalid")
+	return jwtAC, nil
+}
+
+func checkOptions(options *JWTOptions) error {
+	if options.Source.Type == Invalid {
+		return fmt.Errorf("token source is invalid")
 	}
 
-	return jwtAC, nil
+	if options.RoleClaim != "" && options.RoleMap == nil {
+		return fmt.Errorf("missing beta_role_map")
+	}
+
+	return nil
 }
 
 // Validate reading the token from configured source and validates against the key.
