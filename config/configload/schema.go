@@ -199,8 +199,19 @@ func getSchemaComponents(
 
 		// TODO: How to implement this automatically?
 		if field.Type.String() == "config.AccessControlSetter" {
-			schema = config.SchemaWithACSetter(schema)
-			break
+			var triggerBreak bool
+
+			switch typ.String() {
+			// TODO: How to implement this automatically?
+			case "config.BasicAuth", "config.JWT", "config.OAuth2AC", "config.SAML", "config.OIDC":
+				schema = config.SchemaWithACSetter(schema)
+
+				triggerBreak = true
+			}
+
+			if triggerBreak {
+				break
+			}
 		}
 	}
 
