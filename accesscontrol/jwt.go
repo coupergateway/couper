@@ -44,6 +44,8 @@ type JWT struct {
 	hmacSecret     []byte
 	name           string
 	pubKey         *rsa.PublicKey
+	roleClaim      string
+	roleMap        map[string][]string
 	scopeClaim     string
 	jwks           *JWKS
 }
@@ -53,6 +55,8 @@ type JWTOptions struct {
 	Claims         hcl.Expression
 	ClaimsRequired []string
 	Name           string // TODO: more generic (validate)
+	RoleClaim      string
+	RoleMap        map[string][]string
 	ScopeClaim     string
 	Source         JWTSource
 	Key            []byte
@@ -87,6 +91,8 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
+		roleClaim:      options.RoleClaim,
+		roleMap:        options.RoleMap,
 		scopeClaim:     options.ScopeClaim,
 		source:         options.Source,
 	}
@@ -119,6 +125,8 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
+		roleClaim:      options.RoleClaim,
+		roleMap:        options.RoleMap,
 		scopeClaim:     options.ScopeClaim,
 		source:         options.Source,
 		jwks:           options.JWKS,
@@ -290,33 +298,82 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 }
 
 func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
-	if j.scopeClaim == "" {
-		return []string{}, nil
-	}
-	scopesFromClaim, exists := tokenClaims[j.scopeClaim]
-	if !exists {
-		return nil, fmt.Errorf("Missing expected scope claim %q", j.scopeClaim)
-	}
-
 	scopeValues := []string{}
-	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-	scopesArray, ok := scopesFromClaim.([]interface{})
-	if ok {
-		for _, v := range scopesArray {
-			s, ok := v.(string)
+
+	if j.scopeClaim != "" {
+		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
+		if !exists {
+			return nil, fmt.Errorf("Missing expected scope claim %q", j.scopeClaim)
+		}
+
+		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+		scopesArray, ok := scopesFromClaim.([]interface{})
+		if ok {
+			for _, v := range scopesArray {
+				s, ok := v.(string)
+				if !ok {
+					return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+				}
+				scopeValues = addScopeValue(scopeValues, s)
+			}
+		} else {
+			scopesString, ok := scopesFromClaim.(string)
 			if !ok {
 				return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
 			}
-			scopeValues = append(scopeValues, s)
+			for _, s := range strings.Split(scopesString, " ") {
+				scopeValues = addScopeValue(scopeValues, s)
+			}
 		}
-	} else {
-		scopesString, ok := scopesFromClaim.(string)
-		if !ok {
-			return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
-		}
-		scopeValues = strings.Split(scopesString, " ")
 	}
+
+	if j.roleClaim != "" {
+		rolesClaimValue, exists := tokenClaims[j.roleClaim]
+		if !exists {
+			return nil, fmt.Errorf("Missing expected role claim %q", j.roleClaim)
+		}
+
+		roleValues := []string{}
+		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+		rolesArray, ok := rolesClaimValue.([]interface{})
+		if ok {
+			for _, v := range rolesArray {
+				r, ok := v.(string)
+				if !ok {
+					return nil, fmt.Errorf("value of role claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+				}
+				roleValues = append(roleValues, r)
+			}
+		} else {
+			rolesString, ok := rolesClaimValue.(string)
+			if !ok {
+				return nil, fmt.Errorf("value of role claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+			}
+			roleValues = strings.Split(rolesString, " ")
+		}
+		for _, r := range roleValues {
+			if scopes, exists := j.roleMap[r]; exists {
+				for _, s := range scopes {
+					scopeValues = addScopeValue(scopeValues, s)
+				}
+			}
+		}
+	}
+
 	return scopeValues, nil
+}
+
+func addScopeValue(scopeValues []string, scope string) []string {
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		return scopeValues
+	}
+	for _, s := range scopeValues {
+		if s == scope {
+			return scopeValues
+		}
+	}
+	return append(scopeValues, scope)
 }
 
 func getBearer(val string) (string, error) {
