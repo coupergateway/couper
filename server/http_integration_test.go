@@ -2839,7 +2839,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 			expSub := "1234567890"
 			if sub := res.Header.Get("X-Jwt-Sub"); sub != expSub {
-				subT.Errorf("expected sub: %q, acrual: %q", expSub, sub)
+				subT.Errorf("expected sub: %q, actual: %q", expSub, sub)
 				return
 			}
 
