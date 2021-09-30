@@ -558,7 +558,7 @@ func TestJwtConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
-			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if conf != nil {
 				_, err = runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
 			}

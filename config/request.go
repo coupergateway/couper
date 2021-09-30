@@ -16,6 +16,7 @@ type Request struct {
 	BackendName string   `hcl:"backend,optional"`
 	Name        string   `hcl:"name,label"`
 	Remain      hcl.Body `hcl:",remain"`
+
 	// Internally used
 	Backend hcl.Body
 }
