@@ -182,6 +182,31 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 			}
 
+			for _, jwtConfig := range couperConfig.Definitions.JWT {
+				err := uniqueAttributeKey(jwtConfig.Remain)
+				if err != nil {
+					return nil, err
+				}
+
+				if jwtConfig.JWKsURL != "" {
+					bodyContent, _, diags := jwtConfig.HCLBody().PartialContent(jwtConfig.Schema(true))
+					if diags.HasErrors() {
+						return nil, diags
+					}
+					jwtConfig.BodyContent = bodyContent
+
+					jwtConfig.JWKSBackendBody, err = newBackend(definedBackends, jwtConfig)
+					if err != nil {
+						return nil, err
+					}
+
+					jwtConfig.JWKSBackendRef = ""
+				}
+				if err := jwtConfig.Check(); err != nil {
+					return nil, errors.Configuration.Label(jwtConfig.Name).With(err)
+				}
+			}
+
 			// access control - error_handler
 			var acErrorHandler []AccessControlSetter
 			for _, acConfig := range couperConfig.Definitions.BasicAuth {
@@ -304,6 +329,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 	for _, jwt := range couperConfig.Definitions.JWT {
 		config, err := lib.NewJWTSigningConfigFromJWT(jwt)
+
 		if err != nil {
 			return nil, errors.Configuration.Label(jwt.Name).With(err)
 		}

@@ -94,6 +94,64 @@ server "acs" {
       }
     }
   }
+
+  endpoint "/jwt/rsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["RSAToken"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.RSAToken.sub
+      }
+    }
+  }
+
+  endpoint "/jwks/rsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS.sub
+      }
+    }
+  }
+
+  endpoint "/jwks/rsa/not_found" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS_not_found"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS.sub
+      }
+    }
+  }
+
+  endpoint "/jwks/rsa/remote" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKSRemote"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKSRemote.sub
+      }
+    }
+  }
+  endpoint "/jwks/rsa/backend" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKSBackend"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKSBackend.sub
+      }
+    }
+  }
+  endpoint "/jwks/rsa/backendref" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKSBackendRef"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKSBackendRef.sub
+      }
+    }
+  }
 }
 
 definitions {
@@ -115,12 +173,43 @@ definitions {
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     beta_scope_claim = "scope"
   }
-
+  jwt "RSAToken" {
+    header = "Authorization"
+    signature_algorithm = "RS256"
+    key_file = "../files/certificate.pem"
+  }
+  jwt "JWKS" {
+    header = "Authorization"
+    jwks_url = "file:../files/jwks.json"
+  }
+  jwt "JWKSRemote" {
+    header = "Authorization"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+  }
+  jwt "JWKS_not_found" {
+    header = "Authorization"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
+  }
+  jwt "JWKSBackend" {
+    header = "Authorization"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+    backend {
+      origin = env.COUPER_TEST_BACKEND_ADDR
+    }
+  }
+  jwt "JWKSBackendRef" {
+    header = "Authorization"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+    backend = "jwks"
+  }
+  backend "jwks" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
+  }
   backend "test" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     path = "/anything"
     set_request_headers = {
-      Authorization: request.headers.authorization
+      Authorization = request.headers.authorization
     }
   }
 }

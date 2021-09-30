@@ -15,6 +15,8 @@ const (
 	AlgorithmHMAC512
 )
 
+var RSAAlgorithms = []Algorithm{AlgorithmRSA256, AlgorithmRSA384, AlgorithmRSA512}
+
 func NewAlgorithm(a string) Algorithm {
 	switch a {
 	case "RS256":
