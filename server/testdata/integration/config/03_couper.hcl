@@ -101,6 +101,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.RSAToken.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -111,6 +112,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWKS.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -121,6 +123,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWKS.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -131,6 +134,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWKSRemote.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -140,6 +144,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWKSBackend.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -149,6 +154,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWKSBackendRef.sub
+        x-scopes = json_encode(request.context.scopes)
       }
     }
   }
@@ -177,18 +183,22 @@ definitions {
     header = "Authorization"
     signature_algorithm = "RS256"
     key_file = "../files/certificate.pem"
+    beta_scope_claim = "scope"
   }
   jwt "JWKS" {
     header = "Authorization"
     jwks_url = "file:../files/jwks.json"
+    beta_scope_claim = "scope"
   }
   jwt "JWKSRemote" {
     header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+    beta_scope_claim = "scope"
   }
   jwt "JWKS_not_found" {
     header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
+    beta_scope_claim = "scope"
   }
   jwt "JWKSBackend" {
     header = "Authorization"
@@ -196,11 +206,13 @@ definitions {
     backend {
       origin = env.COUPER_TEST_BACKEND_ADDR
     }
+    beta_scope_claim = "scope"
   }
   jwt "JWKSBackendRef" {
     header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend = "jwks"
+    beta_scope_claim = "scope"
   }
   backend "jwks" {
     origin = env.COUPER_TEST_BACKEND_ADDR
