@@ -133,26 +133,7 @@ func walk(variables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
 			return variables
 		}
 
-		switch t.Key.Type() {
-		case cty.Number:
-			fidx := t.Key.AsBigFloat()
-			idx, _ := fidx.Int64()
-			slice := make([]cty.Value, idx+1)
-			slice[idx] = nextValue
-			if hasNext {
-				slice[idx] = walk(nextValue, fallback, traversal[1:])
-			}
-			return cty.TupleVal(slice)
-		case cty.String:
-			m := map[string]cty.Value{}
-			m[t.Key.AsString()] = nextValue
-			if hasNext {
-				m[t.Key.AsString()] = walk(nextValue, fallback, traversal[1:])
-			}
-			return cty.ObjectVal(m)
-		default:
-			panic(reflect.TypeOf(t))
-		}
+		return fallback
 	default:
 		panic(reflect.TypeOf(t))
 	}
