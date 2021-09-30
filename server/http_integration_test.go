@@ -2836,14 +2836,16 @@ func TestJWTAccessControl(t *testing.T) {
 			if res.StatusCode != http.StatusOK {
 				return
 			}
-			if sub := res.Header.Get("X-Jwt-Sub"); sub != "1234567890" {
-				t.Errorf("%q: unexpected sub: %q", tc.name, sub)
+
+			expSub := "1234567890"
+			if sub := res.Header.Get("X-Jwt-Sub"); sub != expSub {
+				t.Errorf("%q: expected sub: %q, acrual: %q", tc.name, expSub, sub)
 				return
 			}
 
-			scopes, exists := res.Header["X-Scopes"]
-			if exists && scopes[0] != `["foo","bar"]` {
-				t.Errorf("%q: unexpected scope: %q", tc.name, scopes)
+			expScope := `["foo","bar"]`
+			if scopes := res.Header.Get("X-Scopes"); scopes != expScope {
+				t.Errorf("%q: expected scope: %q, actual: %q", tc.name, expScope, scopes)
 				return
 			}
 		})
