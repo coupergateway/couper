@@ -20,8 +20,11 @@ func NewVerify() *Verify {
 func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error {
 	if len(args) != 1 {
 		v.Usage()
-		logger.Error(fmt.Errorf("invalid number of arguments given"))
-		return fmt.Errorf("")
+
+		err := fmt.Errorf("invalid number of arguments given")
+		logger.WithError(err).Error()
+
+		return err
 	}
 
 	_, err := configload.LoadFile(args[0], true)
@@ -30,7 +33,7 @@ func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error
 			logger.WithError(diag).Error()
 		}
 
-		return fmt.Errorf("")
+		return diags
 	}
 
 	return err
