@@ -115,6 +115,17 @@ server "acs" {
     }
   }
 
+  endpoint "/jwks/rsa/scope" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS_scope"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS_scope.sub
+        x-scopes = json_encode(request.context.scopes)
+      }
+    }
+  }
+
   endpoint "/jwks/rsa/not_found" {
     disable_access_control = ["ba1"]
     access_control = ["JWKS_not_found"]
@@ -181,6 +192,11 @@ definitions {
   jwt "JWKS" {
     header = "Authorization"
     jwks_url = "file:../files/jwks.json"
+  }
+  jwt "JWKS_scope" {
+    header = "Authorization"
+    jwks_url = "file:../files/jwks.json"
+    beta_scope_claim = "scope"
   }
   jwt "JWKSRemote" {
     header = "Authorization"

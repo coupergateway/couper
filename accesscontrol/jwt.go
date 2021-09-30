@@ -119,6 +119,7 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		claims:         options.Claims,
 		claimsRequired: options.ClaimsRequired,
 		name:           options.Name,
+		scopeClaim:     options.ScopeClaim,
 		source:         options.Source,
 		jwks:           options.JWKS,
 	}
