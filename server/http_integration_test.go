@@ -2803,7 +2803,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"remote RSA JWKS x5c w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, ""},
 		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.fG2oDj2WDZy9nL_Umh-V54YN2YUCkvmEpK_en8I901ivDQF15pxl4ikmR99hasTZNGIXCLa1Jl10yiBw6bTnohRH4Kj8jj5hnO37MJ98maxk8JTTMa7JTLKJqb1O0dHynbASlcWQQt_cjGcWwt1qCqyVEXH_lJNhritCrAPxyxJt7qGF6_dHCPkDjgBCak_FrBEnGP6LqLhnLuReFgkND3ZQvSlzOBufE6CidmsTscZoBavyeDsugFTYWGnVJPv-ZSsj1258bhc1oRsfmR8MpbUryUU1gzWqNR5o_hwVX17rcgsszIc6ngaMoUnEIpVzHixvDaBR_BjAePgvzPYuTg"}}, http.StatusOK, ""},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
@@ -2818,18 +2818,18 @@ func TestJWTAccessControl(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
+				subT.Errorf("expected Status %d, got: %d", tc.status, res.StatusCode)
 				return
 			}
 
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					t.Errorf("%q: Expected error log: %q, actual: %#v", tc.name, tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if !strings.HasPrefix(message, tc.wantErrLog) {
-					t.Errorf("%q: Expected error log message: %q, actual: %#v", tc.name, tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			}
 
@@ -2839,13 +2839,13 @@ func TestJWTAccessControl(t *testing.T) {
 
 			expSub := "1234567890"
 			if sub := res.Header.Get("X-Jwt-Sub"); sub != expSub {
-				t.Errorf("%q: expected sub: %q, acrual: %q", tc.name, expSub, sub)
+				subT.Errorf("expected sub: %q, acrual: %q", expSub, sub)
 				return
 			}
 
 			expScope := `["foo","bar"]`
 			if scopes := res.Header.Get("X-Scopes"); scopes != expScope {
-				t.Errorf("%q: expected scope: %q, actual: %q", tc.name, expScope, scopes)
+				subT.Errorf("expected scope: %q, actual: %q", expScope, scopes)
 				return
 			}
 		})
