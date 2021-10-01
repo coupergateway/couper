@@ -200,14 +200,6 @@ func cleanup(shutdown func(), helper *test.Helper) {
 	}
 }
 
-func nilToString(in string) string {
-	if in != "" {
-		return ":" + in
-	} else {
-		return " nil"
-	}
-}
-
 func TestHTTPServer_ServeHTTP(t *testing.T) {
 	type testRequest struct {
 		method, url string
@@ -2688,11 +2680,12 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			res, err := client.Do(req)
 			h.Must(err)
 
-			state := nilToString(res.Header.Get("State"))
+			state := res.Header.Get("State")
+			exp := tc.expectation.State
 			if res.Header.Get("State-2") != "" {
-				state = nilToString(res.Header.Get("State-2"))
+				state = res.Header.Get("State-2")
+				exp = ""
 			}
-			exp := nilToString(tc.expectation.State)
 
 			if state != exp {
 				t.Errorf("%s: expected state%s, got%s", tc.name, exp, state)

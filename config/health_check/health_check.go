@@ -5,25 +5,25 @@ import (
 	"time"
 )
 
-var defaultHealthCheck = &ParsedHealthCheck{
+var defaultHealthCheck = &ParsedOptions{
 	FailureThreshold: 0,
 	Period:           time.Second,
 	Timeout:          time.Second,
 }
 
-type ParsedHealthCheck struct {
+type ParsedOptions struct {
 	FailureThreshold int
 	Period           time.Duration
 	Timeout          time.Duration
 }
 
-type HealthCheck struct {
+type Options struct {
 	FailureThreshold int    `hcl:"failure_threshold,optional"`
 	Period           string `hcl:"period,optional"`
 	Timeout          string `hcl:"timeout,optional"`
 }
 
-func (target *ParsedHealthCheck) Parse(health *HealthCheck) (err error) {
+func (target *ParsedOptions) Parse(health *Options) (err error) {
 	if health == nil {
 		return errors.New("nil pointer dereference")
 	}

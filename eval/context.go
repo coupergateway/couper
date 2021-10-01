@@ -3,6 +3,7 @@ package eval
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -23,7 +24,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
-	probe "github.com/avenga/couper/handler/transport/probe_map"
+	"github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -159,18 +160,18 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
-	beprobes := probe.GetBackendProbes()
 	probes := make(ContextMap)
 
-	for name, beprobe := range beprobes {
-		if beprobe == "" {
-			continue
+	probe_map.BackendProbes.Range(func(name, state interface{}) bool {
+		if state == "" {
+			return true
 		}
 
-		probes[name] = cty.ObjectVal(ContextMap{
-			BackendProbes: cty.StringVal(beprobe),
+		probes[fmt.Sprint(name)] = cty.ObjectVal(ContextMap{
+			State: cty.StringVal(fmt.Sprint(state)),
 		})
-	}
+		return true
+	})
 
 	ctx.eval.Variables[BackendProbes] = cty.ObjectVal(probes)
 
