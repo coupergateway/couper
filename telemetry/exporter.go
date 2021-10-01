@@ -39,10 +39,7 @@ const (
 	ExporterStdout
 )
 
-const (
-	serviceName        = "couper"
-	otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
-)
+const otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
 
 // InitExporter initialises configured metrics and/or trace exporter.
 func InitExporter(ctx context.Context, opts *Options, logEntry *logrus.Entry) {
@@ -94,7 +91,7 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg
 	resources := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.HostNameKey.String(hostname),
-		semconv.ServiceNameKey.String(serviceName),
+		semconv.ServiceNameKey.String(opts.ServiceName),
 		semconv.ServiceVersionKey.String(utils.VersionName),
 	)
 
@@ -126,7 +123,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 	}
 
 	if exporter == ExporterPrometheus {
-		promExporter, err := newPromExporter()
+		promExporter, err := newPromExporter(opts)
 		if err != nil {
 			return err
 		}
@@ -196,14 +193,14 @@ func pushOnShutdown(ctx context.Context, shutdownFdn func(ctx context.Context) e
 	otel.Handle(shutdownFdn(shtctx))
 }
 
-func newPromExporter() (*prometheus.Exporter, error) {
+func newPromExporter(opts *Options) (*prometheus.Exporter, error) {
 	config := prometheus.Config{
 		Registry: prompkg.NewRegistry(),
 	}
 
-	config.Registry.MustRegister(collectors.NewGoCollector())
+	config.Registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewGoCollector()))
 	config.Registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
-		Namespace: serviceName,
+		Namespace: opts.ServiceName,
 	}))
 
 	ctlr := controller.New(
@@ -214,7 +211,7 @@ func newPromExporter() (*prometheus.Exporter, error) {
 		),
 		controller.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceNameKey.String(opts.ServiceName),
 			semconv.ServiceVersionKey.String(utils.VersionName),
 		)),
 	)
