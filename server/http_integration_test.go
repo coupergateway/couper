@@ -2277,7 +2277,7 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			}
 
 			if state != exp {
-				t.Errorf("%s: expected state%s, got%s", tc.name, exp, state)
+				t.Errorf("%s: expected state: %s, got: %s", tc.name, exp, state)
 			}
 		})
 	}

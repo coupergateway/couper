@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/avenga/couper/config/health_check"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
+	"github.com/avenga/couper/logging"
 )
 
 const (
@@ -24,6 +26,7 @@ type state int
 
 type Probe struct {
 	//configurable settings
+	Log  *logging.UpstreamLog
 	Name string
 	Opts *health_check.ParsedOptions
 	Req  *http.Request
@@ -55,8 +58,9 @@ func (state state) Print(f int, ft int) string {
 	return state.String()
 }
 
-func (b *Backend) NewProbe() {
+func NewProbe(b *Backend) {
 	p := &Probe{
+		Log:  b.upstreamLog,
 		Name: b.name,
 		Opts: b.options.ParsedOptions,
 		Req:  b.options.Request,
@@ -81,6 +85,7 @@ func (p *Probe) probe() {
 			} else {
 				p.State = StateDown
 			}
+			p.Log.LogEntry().WithError(errors.Backend.Label(p.State.String()).With(err))
 		} else {
 			p.Failure = 0
 			p.State = StateOk
