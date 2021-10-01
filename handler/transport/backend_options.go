@@ -24,7 +24,7 @@ type TokenRequest interface {
 	RetryWithToken(req *http.Request, res *http.Response) (bool, error)
 }
 
-func (bo *BackendOptions) GetRequest(body hcl.Body, evalCtx *hcl.EvalContext) error {
+func (bo *BackendOptions) SetRequest(body hcl.Body, evalCtx *hcl.EvalContext) error {
 	content, _, _ := body.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
 		{Name: "origin"}},
 	})

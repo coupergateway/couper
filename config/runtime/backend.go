@@ -78,8 +78,11 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	if beConf.HealthCheck != nil {
-		tc.HealthCheck = &health_check.ParsedHealthCheck{}
-		if err := tc.HealthCheck.Parse(beConf.HealthCheck); err != nil {
+		options.ParsedOptions = &health_check.ParsedOptions{}
+		if err := options.ParsedOptions.Parse(beConf.HealthCheck); err != nil {
+			return nil, err
+		}
+		if err := options.SetRequest(backendCtx, evalCtx); err != nil {
 			return nil, err
 		}
 	}
