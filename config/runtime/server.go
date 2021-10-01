@@ -492,6 +492,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					Claims:         jwtConf.Claims,
 					ClaimsRequired: jwtConf.ClaimsRequired,
 					Name:           jwtConf.Name,
+					ScopeClaim:     jwtConf.ScopeClaim,
 					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
 					JWKS:           jwks,
 				})
