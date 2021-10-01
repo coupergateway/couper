@@ -320,8 +320,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		beConf.Name = name
 	}
 
-	scheme, hostname, origin := splitBackendOrigin(evalCtx, backendCtx)
-
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
 		DisableCertValidation:  beConf.DisableCertValidation,
@@ -329,10 +327,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         ignoreProxyEnv,
 		MaxConnections:         beConf.MaxConnections,
-
-		Hostname: hostname,
-		Origin:   origin,
-		Scheme:   scheme,
 	}
 
 	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
@@ -347,13 +341,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		return nil, err
 	}
 
-	if beConf.HealthCheck != nil {
-		tc.HealthCheck = &health_check.ParsedHealthCheck{}
-		if err := tc.HealthCheck.Parse(beConf.HealthCheck); err != nil {
-			return nil, err
-		}
-	}
-
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
 		return nil, err
@@ -362,6 +349,17 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	options := &transport.BackendOptions{
 		OpenAPI: openAPIopts,
 	}
+
+	if beConf.HealthCheck != nil {
+		options.ParsedOptions = &health_check.ParsedOptions{}
+		if err := options.ParsedOptions.Parse(beConf.HealthCheck); err != nil {
+			return nil, err
+		}
+		if err := options.GetRequest(backendCtx, evalCtx); err != nil {
+			return nil, err
+		}
+	}
+
 	backend := transport.NewBackend(backendCtx, tc, options, log)
 
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
@@ -418,24 +416,6 @@ func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, erro
 		}
 	}
 	return "", nil
-}
-
-func splitBackendOrigin(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, string, string) {
-	content, _, _ := backendCtx.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
-		{Name: "origin"}},
-	})
-	if content != nil && len(content.Attributes) > 0 {
-
-		if n, exist := content.Attributes["origin"]; exist {
-			v, d := n.Expr.Value(evalCtx)
-			if d.HasErrors() {
-				return "", "", ""
-			}
-			split := strings.Split(v.AsString(), "://")
-			return split[0], strings.Split(split[1], ":")[0], split[1]
-		}
-	}
-	return "", "", ""
 }
 
 func whichCORS(parent *config.Server, this interface{}) *config.CORS {

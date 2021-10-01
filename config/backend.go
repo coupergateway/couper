@@ -17,17 +17,17 @@ var (
 
 // Backend represents the <Backend> object.
 type Backend struct {
-	ConnectTimeout         string                    `hcl:"connect_timeout,optional"`
-	DisableCertValidation  bool                      `hcl:"disable_certificate_validation,optional"`
-	DisableConnectionReuse bool                      `hcl:"disable_connection_reuse,optional"`
-	HealthCheck            *health_check.HealthCheck `hcl:"health_check,block"`
-	HTTP2                  bool                      `hcl:"http2,optional"`
-	MaxConnections         int                       `hcl:"max_connections,optional"`
-	Name                   string                    `hcl:"name,label"`
-	OpenAPI                *OpenAPI                  `hcl:"openapi,block"`
-	Remain                 hcl.Body                  `hcl:",remain"`
-	TTFBTimeout            string                    `hcl:"ttfb_timeout,optional"`
-	Timeout                string                    `hcl:"timeout,optional"`
+	ConnectTimeout         string                `hcl:"connect_timeout,optional"`
+	DisableCertValidation  bool                  `hcl:"disable_certificate_validation,optional"`
+	DisableConnectionReuse bool                  `hcl:"disable_connection_reuse,optional"`
+	HealthCheck            *health_check.Options `hcl:"health_check,block"`
+	HTTP2                  bool                  `hcl:"http2,optional"`
+	MaxConnections         int                   `hcl:"max_connections,optional"`
+	Name                   string                `hcl:"name,label"`
+	OpenAPI                *OpenAPI              `hcl:"openapi,block"`
+	Remain                 hcl.Body              `hcl:",remain"`
+	TTFBTimeout            string                `hcl:"ttfb_timeout,optional"`
+	Timeout                string                `hcl:"timeout,optional"`
 
 	// explicit configuration on load
 	OAuth2 *OAuth2ReqAuth

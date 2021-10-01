@@ -360,14 +360,14 @@ func TestBackend_health_check(t *testing.T) {
 
 	type testCase struct {
 		name        string
-		health      *health_check.HealthCheck
+		health      *health_check.Options
 		expectation expectation
 	}
 
 	for _, tc := range []testCase{
 		{
 			name: "health check with default values",
-			health: &health_check.HealthCheck{
+			health: &health_check.Options{
 				FailureThreshold: 0,
 				Period:           "1s",
 				Timeout:          "1s",
@@ -380,7 +380,7 @@ func TestBackend_health_check(t *testing.T) {
 		},
 		{
 			name: "health check with configured values",
-			health: &health_check.HealthCheck{
+			health: &health_check.Options{
 				FailureThreshold: 42,
 				Period:           "1h",
 				Timeout:          "9m",
@@ -401,7 +401,7 @@ func TestBackend_health_check(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health := &health_check.ParsedHealthCheck{}
+			health := &health_check.ParsedOptions{}
 			err := health.Parse(tc.health)
 
 			if tc.expectation.err == nil {

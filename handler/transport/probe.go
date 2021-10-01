@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/avenga/couper/config/request"
-
+	"github.com/avenga/couper/config/health_check"
 	"github.com/avenga/couper/eval"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
 )
@@ -25,17 +24,15 @@ type state int
 
 type Probe struct {
 	//configurable settings
-	name             string
-	config           *Config
-	failureThreshold int
-	time             time.Duration
-	timeOut          time.Duration
+	Name string
+	Opts *health_check.ParsedOptions
+	Req  *http.Request
 
 	//variables reflecting status of probe
-	counter int
-	failure int
-	state   state
-	status  int
+	Counter int
+	Failure int
+	State   state
+	Status  int
 }
 
 func (s state) String() string {
@@ -58,58 +55,43 @@ func (state state) Print(f int, ft int) string {
 	return state.String()
 }
 
-func (b *Backend) getConfig() (*Config, error) {
-	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	origin := b.transportConf.Scheme + "://" + b.transportConf.Origin
-	req = req.WithContext(context.WithValue(context.Background(), request.URLAttribute, origin))
-	return b.evalTransport(req)
-}
-
 func (b *Backend) NewProbe() {
 	p := &Probe{
-		name:             b.name,
-		failureThreshold: b.transportConf.HealthCheck.FailureThreshold,
-		time:             b.transportConf.HealthCheck.Period,
-		timeOut:          b.transportConf.HealthCheck.Timeout,
+		Name: b.name,
+		Opts: b.options.ParsedOptions,
+		Req:  b.options.Request,
 
-		counter: 0,
-		failure: 0,
+		State: StateInvalid,
 	}
-	probe.SetBackendProbe(p.name, StateInvalid.String())
-	c, err := b.getConfig()
-	if err != nil {
-		b.upstreamLog.LogEntry().WithError(err).Error()
-		return
-	}
-	p.config = c
 	go p.probe()
 }
 
 func (p *Probe) probe() {
-	req, _ := http.NewRequest(http.MethodGet, p.config.Scheme+"://"+p.config.Origin, nil)
-
 	for {
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.timeOut))
-		res, err := http.DefaultClient.Do(req.WithContext(ctx))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.Opts.Timeout))
+		res, err := http.DefaultClient.Do(p.Req.WithContext(ctx))
 
-		p.counter++
-		p.state = StateInvalid
-		p.status = 0
+		p.Counter++
+		prevState := p.State
+		p.State = StateInvalid
+		p.Status = 0
 		if err != nil {
-			if p.failure++; p.failure <= p.failureThreshold {
-				p.state = StateDegraded
+			if p.Failure++; p.Failure <= p.Opts.FailureThreshold {
+				p.State = StateDegraded
 			} else {
-				p.state = StateDown
+				p.State = StateDown
 			}
 		} else {
-			p.failure = 0
-			p.state = StateOk
-			p.status = res.StatusCode
+			p.Failure = 0
+			p.State = StateOk
+			p.Status = res.StatusCode
 		}
 
-		//print("backend: ", p.backend.name, ",  state: ", p.state.Print(p.failure, p.failureThreshold), ",  status: ", p.status, ",  cycle: ", p.counter, "\n")
-		probe.SetBackendProbe(p.name, p.state.String())
+		//print("backend: ", p.Name, ",  state: ", p.State.Print(p.Failure, p.Opts.FailureThreshold), ",  status: ", p.Status, ",  cycle: ", p.Counter, "\n")
+		if prevState != p.State {
+			probe.BackendProbes.Store(p.Name, p.State.String())
+		}
 		cancel()
-		time.Sleep(p.time)
+		time.Sleep(p.Opts.Period)
 	}
 }
