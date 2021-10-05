@@ -63,14 +63,13 @@ func collectErrorHandlerSetter(block interface{}) []ErrorHandlerSetter {
 }
 
 func configureErrorHandler(setter []ErrorHandlerSetter, definedBackends Backends) error {
-	for _, ac := range setter {
-		acBody, ok := ac.(config.Body)
+	for _, ehs := range setter {
+		body, ok := ehs.(config.Body)
 		if !ok {
 			continue
 		}
-		acContent := bodyToContent(acBody.HCLBody())
 
-		ehc, err := newErrorHandlerContent(acContent)
+		ehc, err := newErrorHandlerContent(bodyToContent(body.HCLBody()))
 		if err != nil {
 			return err
 		}
@@ -81,11 +80,11 @@ func configureErrorHandler(setter []ErrorHandlerSetter, definedBackends Backends
 				return confErr
 			}
 
-			ac.Set(errHandlerConf)
+			ehs.Set(errHandlerConf)
 		}
 
-		if acDefault, has := ac.(config.ErrorHandlerGetter); has {
-			defaultHandler := acDefault.DefaultErrorHandler()
+		if handler, has := ehs.(config.ErrorHandlerGetter); has {
+			defaultHandler := handler.DefaultErrorHandler()
 			_, exist := ehc[errors.Wildcard]
 			if !exist {
 				for _, kind := range defaultHandler.Kinds {
@@ -97,7 +96,7 @@ func configureErrorHandler(setter []ErrorHandlerSetter, definedBackends Backends
 			}
 
 			if !exist {
-				ac.Set(acDefault.DefaultErrorHandler())
+				ehs.Set(handler.DefaultErrorHandler())
 			}
 		}
 	}

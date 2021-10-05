@@ -203,7 +203,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 
 					jwtConfig.BackendName = ""
 				}
-				if err := jwtConfig.Check(); err != nil {
+				if err = jwtConfig.Check(); err != nil {
 					return nil, errors.Configuration.Label(jwtConfig.Name).With(err)
 				}
 			}
