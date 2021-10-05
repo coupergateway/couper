@@ -25,9 +25,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.0.0-RC3
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.0.0-RC3
 	go.opentelemetry.io/otel/exporters/prometheus v0.23.0
-	go.opentelemetry.io/otel/internal/metric v0.23.0 // indirect
 	go.opentelemetry.io/otel/metric v0.23.0
-	go.opentelemetry.io/otel/oteltest v1.0.0-RC3 // indirect
 	go.opentelemetry.io/otel/sdk v1.0.0-RC3
 	go.opentelemetry.io/otel/sdk/export/metric v0.23.0
 	go.opentelemetry.io/otel/sdk/metric v0.23.0
