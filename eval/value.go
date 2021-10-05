@@ -47,14 +47,17 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		if val := newLiteralValueExpr(ctx, expr.Condition); val != nil {
 			expr.Condition = val
 		}
-		// conditional results must not be cty.NilVal
-		if val := newLiteralValueExpr(ctx, expr.TrueResult); val != nil {
-			expr.TrueResult = &hclsyntax.LiteralValueExpr{Val: cty.DynamicVal, SrcRange: expr.SrcRange}
+
+		// Conditional results must not be cty.NilVal and from same type
+		// so evaluate already replaced condition first and return
+		// LiteralValueExpr instead of a ConditionalExpr.
+		c, _ := expr.Condition.Value(ctx)
+		if c.IsNull() {
+			return &hclsyntax.LiteralValueExpr{Val: cty.NilVal, SrcRange: expr.SrcRange}
+		} else if c.False() {
+			return newLiteralValueExpr(ctx, expr.FalseResult)
 		}
-		if val := newLiteralValueExpr(ctx, expr.FalseResult); val != nil {
-			expr.FalseResult = &hclsyntax.LiteralValueExpr{Val: cty.DynamicVal, SrcRange: expr.SrcRange}
-		}
-		return expr
+		return newLiteralValueExpr(ctx, expr.TrueResult)
 	case *hclsyntax.BinaryOpExpr:
 		if val := newLiteralValueExpr(ctx, expr.LHS); val != nil {
 			expr.LHS = val
@@ -73,7 +76,7 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 			// KeyExpr can't be NilVal
 			for _, v := range item.KeyExpr.Variables() {
 				if traversalValue(ctx.Variables, v) == cty.NilVal {
-					expr.Items[i].KeyExpr = &hclsyntax.LiteralValueExpr{Val: emptyStringVal}
+					expr.Items[i].KeyExpr = &hclsyntax.LiteralValueExpr{Val: emptyStringVal, SrcRange: v.SourceRange()}
 					break
 				}
 			}
@@ -87,7 +90,7 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		for p, part := range expr.Parts {
 			for _, v := range part.Variables() {
 				if traversalValue(ctx.Variables, v) == cty.NilVal {
-					expr.Parts[p] = &hclsyntax.LiteralValueExpr{Val: emptyStringVal}
+					expr.Parts[p] = &hclsyntax.LiteralValueExpr{Val: emptyStringVal, SrcRange: v.SourceRange()}
 					break
 				}
 			}

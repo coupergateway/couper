@@ -130,6 +130,60 @@ server "cty.NilVal" {
       }
     }
   }
+
+  endpoint "/conditional/false" {
+    response {
+      headers = {
+        X-Value = request.form_body.state != null ? request.form_body.state : "x"
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/conditional/true" {
+    response {
+      headers = {
+        X-Value = true ? request.form_body.state : "x"
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/conditional/null" {
+    response {
+      headers = {
+        X-Value = null ? request.form_body.state : "x"
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/conditional/nested" {
+    response {
+      headers = {
+        X-Value = request.form_body.state != (2 + 2 == 4 ? "value" : null) ? "x" : request.form_body.state
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/conditional/nested/true" {
+    response {
+      headers = {
+        X-Value = request.form_body.state == null ? 1 + 1 == 2 ? "x" : null : request.form_body.state
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/conditional/nested/false" {
+    response {
+      headers = {
+        X-Value = request.form_body.state != null ? null : 1+1 == 3 ? null : "x"
+        Z-Value = "y"
+      }
+    }
+  }
 }
 
 settings {

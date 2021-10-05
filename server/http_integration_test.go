@@ -3847,6 +3847,12 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/root/no", false},
 		{"/tpl", true},
 		{"/for", true},
+		{"/conditional/false", true},
+		{"/conditional/true", false},
+		{"/conditional/null", false},
+		{"/conditional/nested", true},
+		{"/conditional/nested/true", true},
+		{"/conditional/nested/false", true},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3873,11 +3879,19 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 				return
 			}
 
+			defer func() {
+				if subT.Failed() {
+					for k := range res.Header {
+						subT.Logf("%s: %s", k, res.Header.Get(k))
+					}
+				}
+			}()
+
 			val, ok := res.Header[http.CanonicalHeaderKey("X-Value")]
 			if !tc.expVal && ok {
 				subT.Errorf("%q: expected no value, got: %q", tc.path, val)
 			} else if tc.expVal && !ok {
-				subT.Errorf("%q: expected value, got: nothing", tc.path)
+				subT.Errorf("%q: expected X-Value header, got: nothing", tc.path)
 			}
 
 			if res.Header.Get("Z-Value") != "y" {
