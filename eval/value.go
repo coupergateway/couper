@@ -200,7 +200,6 @@ func clone(exp hcl.Expression) hclsyntax.Expression {
 	default:
 		panic("eval: unsupported expression: " + reflect.TypeOf(exp).String())
 	}
-	return nil
 }
 
 func traversalValue(vars map[string]cty.Value, traversal hcl.Traversal) cty.Value {
