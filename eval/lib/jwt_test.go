@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -460,6 +461,7 @@ func TestJwtSignDynamic(t *testing.T) {
 		name     string
 		hcl      string
 		jspLabel string
+		headers  map[string]interface{}
 		claims   string
 		wantTTL  int64
 		wantMeth string
@@ -483,6 +485,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			`,
 			"MyToken",
+			map[string]interface{}{"alg": "HS256", "typ": "JWT"},
 			`{"sub": "12345"}`,
 			3600,
 			http.MethodPost,
@@ -505,9 +508,39 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			`,
 			"MyToken",
+			map[string]interface{}{"alg": "HS256", "typ": "JWT"},
 			`{"sub": "12345"}`,
 			60,
 			http.MethodPost,
+		},
+		{
+			"user-defined header",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					headers = {
+						kid = "key-id"
+						foo = [request.method, backend_responses.default.status]
+						alg = "none"  // overriden
+						typ = "HWT"   // overriden
+					}
+					claims = {
+						x-method = "GET"
+						x-status = 200
+					}
+				}
+			}
+			`,
+			"MyToken",
+			map[string]interface{}{"alg": "HS256", "typ": "JWT", "kid": "key-id", "foo": []interface{}{"GET", 200}},
+			`{"sub": "12345"}`,
+			3600,
+			http.MethodGet,
 		},
 	}
 
@@ -540,6 +573,18 @@ func TestJwtSignDynamic(t *testing.T) {
 			if len(tokenParts) != 3 {
 				t.Errorf("Needs 3 parts, got: %d", len(tokenParts))
 			}
+
+			joseHeader, err := base64.RawURLEncoding.DecodeString(tokenParts[0])
+			helper.Must(err)
+
+			var resultHeaders map[string]interface{}
+			err = json.Unmarshal(joseHeader, &resultHeaders)
+			helper.Must(err)
+
+			if fmt.Sprint(tt.headers) != fmt.Sprint(resultHeaders) {
+				t.Errorf("Headers:\n\tWant: %#v\n\tGot:  %#v", tt.headers, resultHeaders)
+			}
+
 			body, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
 			helper.Must(err)
 
