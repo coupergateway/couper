@@ -21,6 +21,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `beta_scope_claim` attribute to [`jwt` block](./docs/REFERENCE.md#jwt-block); `beta_scope` attribute to [`api`](./docs/REFERENCE.md#api-block) and [`endpoint` block](./docs/REFERENCE.md#endpoint-block)s; [error types](./docs/ERRORS.md#error-types) `beta_operation_denied` and `beta_insufficient_scope` ([#315](https://github.com/avenga/couper/pull/315))
   * `beta_role_claim` and `beta_role_map` attributes to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#325](https://github.com/avenga/couper/pull/325))
 
+* **Dependencies**
+  * build with go 1.17
+
 ---
 
 ## [1.4](https://github.com/avenga/couper/releases/tag/1.4)
@@ -331,7 +334,7 @@ endpoint "/new" {
   * test cleanups
 
 * **Dependencies**
-  * build with go 1.17
+  * build with go 1.16
   * logrus to v1.8.1
   * hcl to v2.9.1
   * kin-openapi to v.0.49.0
