@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Documentation of [logs](docs/LOGS.md) ([#310](https://github.com/avenga/couper/pull/310))
   * `signing_ttl` and `signing_key`/`signing_key_file` to [`jwt` block](./docs/REFERENCE.md#jwt-block) for use with [`jwt_sign()` function](#functions) ([#309](https://github.com/avenga/couper/pull/309))
   * `jwks_url` and `jwks_ttl` to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#312](https://github.com/avenga/couper/pull/312))
+  * `headers` attribute in [`jwt_signing_profile` block](./docs/REFERENCE.md#jwt-signing-profile-block) ([#329](https://github.com/avenga/couper/issues/329))
 
 * **Changed**
   * Organized log format fields for uniform access and upstream log ([#300](https://github.com/avenga/couper/pull/300))
