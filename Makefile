@@ -1,3 +1,5 @@
+.PHONY: telemetry
+
 build:
 	go build -race -v -o couper main.go
 
