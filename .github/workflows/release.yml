@@ -18,10 +18,10 @@ jobs:
             goos: windows
     steps:
       - uses: actions/checkout@v2
-      - uses: wangyoucao577/go-release-action@v1.16
+      - uses: wangyoucao577/go-release-action@v1.20
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }} # provided by github/actions
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: "1.16"
+          goversion: "1.17"
           binary_name: "couper"

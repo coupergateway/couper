@@ -331,7 +331,7 @@ endpoint "/new" {
   * test cleanups
 
 * **Dependencies**
-  * build with go 1.16
+  * build with go 1.17
   * logrus to v1.8.1
   * hcl to v2.9.1
   * kin-openapi to v.0.49.0
