@@ -314,9 +314,8 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			}
 
 			if errorMessage != "" {
-				label := fmt.Sprintf("jwt_signing_profile %q", profile.Name)
 				err := fmt.Errorf(errorMessage)
-				return nil, errors.Configuration.Label(label).With(err)
+				return nil, errors.Configuration.Label(profile.Name).With(err)
 			}
 		}
 

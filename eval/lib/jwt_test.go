@@ -820,7 +820,7 @@ func TestJwtSignConfigError(t *testing.T) {
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
-			`configuration error: jwt_signing_profile "MyToken": "alg" cannot be set via "headers"`,
+			`configuration error: MyToken: "alg" cannot be set via "headers"`,
 		},
 		{
 			"user-defined typ header",
@@ -840,7 +840,7 @@ func TestJwtSignConfigError(t *testing.T) {
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
-			`configuration error: jwt_signing_profile "MyToken": "typ" cannot be set via "headers"`,
+			`configuration error: MyToken: "typ" cannot be set via "headers"`,
 		},
 	}
 
