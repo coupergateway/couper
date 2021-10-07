@@ -20,6 +20,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -301,6 +302,24 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 	// Prepare dynamic functions
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
+		if profile.Headers != nil {
+			expression, _ := profile.Headers.Value(nil)
+			headers := seetie.ValueToMap(expression)
+
+			var errorMessage string
+			if _, exists := headers["alg"]; exists {
+				errorMessage = `"alg" cannot be set via "headers"`
+			} else if _, exists := headers["typ"]; exists {
+				errorMessage = `"typ" cannot be set via "headers"`
+			}
+
+			if errorMessage != "" {
+				label := fmt.Sprintf("jwt_signing_profile %q", profile.Name)
+				err := fmt.Errorf(errorMessage)
+				return nil, errors.Configuration.Label(label).With(err)
+			}
+		}
+
 		key, err := reader.ReadFromAttrFile("jwt_signing_profile key", profile.Key, profile.KeyFile)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)

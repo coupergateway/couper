@@ -526,8 +526,6 @@ func TestJwtSignDynamic(t *testing.T) {
 					headers = {
 						kid = "key-id"
 						foo = [request.method, backend_responses.default.status]
-						alg = "none"  // overriden
-						typ = "HWT"   // overriden
 					}
 					claims = {
 						x-method = "GET"
@@ -804,13 +802,53 @@ func TestJwtSignConfigError(t *testing.T) {
 			`{"sub":"12345"}`,
 			"configuration error: jwt_signing_profile or jwt with label MySelfSignedToken already defined",
 		},
+		{
+			"user-defined alg header",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					headers = {
+						alg = "none"
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			`configuration error: jwt_signing_profile "MyToken": "alg" cannot be set via "headers"`,
+		},
+		{
+			"user-defined typ header",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					headers = {
+						typ = "JET"
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			`configuration error: jwt_signing_profile "MyToken": "typ" cannot be set via "headers"`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
 			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err == nil {
-				t.Error("expected an error, got nothing")
+				t.Errorf("expected an error '%s', got nothing", tt.wantErr)
 				return
 			}
 			logErr, _ := err.(errors.GoError)
