@@ -22,7 +22,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `beta_role_claim` and `beta_role_map` attributes to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#325](https://github.com/avenga/couper/pull/325))
 
 * **Dependencies**
-  * build with go 1.17
+  * build with go 1.17 ([#331](https://github.com/avenga/couper/pull/331))
 
 ---
 
