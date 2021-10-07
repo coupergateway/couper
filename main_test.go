@@ -43,9 +43,9 @@ func Test_realmain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if len(tt.envs) > 0 {
-				env.OsEnviron = func() []string {
+				env.SetTestOsEnviron(func() []string {
 					return tt.envs
-				}
+				})
 			}
 
 			if got := realmain(tt.args); got != tt.want {

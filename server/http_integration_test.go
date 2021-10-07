@@ -486,10 +486,10 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 
-	env.OsEnviron = func() []string {
+	env.SetTestOsEnviron(func() []string {
 		return []string{"COUPER_XFH=true"}
-	}
-	defer func() { env.OsEnviron = os.Environ }()
+	})
+	defer env.SetTestOsEnviron(os.Environ)
 
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
 	shutdown, logHook := newCouper(confPath, test.New(t))

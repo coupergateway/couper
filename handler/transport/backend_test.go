@@ -323,7 +323,7 @@ func TestBackend_director(t *testing.T) {
 			}, nil, nullLog)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
-			*req = *req.Clone(tt.ctx)
+			*req = *req.WithContext(tt.ctx)
 
 			_, _ = backend.RoundTrip(req) // implicit director()
 
