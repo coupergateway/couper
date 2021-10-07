@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/avenga/couper/config"
@@ -13,7 +14,15 @@ import (
 
 const PREFIX = "COUPER_"
 
+var OsEnvironMu = sync.Mutex{}
 var OsEnviron = os.Environ
+
+func SetTestOsEnviron(f func() []string) {
+	OsEnvironMu.Lock()
+	defer OsEnvironMu.Unlock()
+
+	OsEnviron = f
+}
 
 func Decode(conf interface{}) {
 	DecodeWithPrefix(conf, "")
@@ -22,7 +31,12 @@ func Decode(conf interface{}) {
 func DecodeWithPrefix(conf interface{}, prefix string) {
 	ctxPrefix := PREFIX + prefix
 	envMap := make(map[string]string)
-	for _, v := range OsEnviron() {
+
+	OsEnvironMu.Lock()
+	envVars := OsEnviron()
+	OsEnvironMu.Unlock()
+
+	for _, v := range envVars {
 		key := strings.Split(v, "=")
 		if !strings.HasPrefix(key[0], ctxPrefix) {
 			continue

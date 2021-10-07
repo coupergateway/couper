@@ -101,10 +101,10 @@ func TestNewRun(t *testing.T) {
 			helper.Must(fileErr)
 
 			if len(tt.envs) > 0 {
-				env.OsEnviron = func() []string {
+				env.SetTestOsEnviron(func() []string {
 					return tt.envs
-				}
-				defer func() { env.OsEnviron = os.Environ }()
+				})
+				defer env.SetTestOsEnviron(os.Environ)
 			}
 
 			go func() {
@@ -144,7 +144,7 @@ func TestAcceptForwarded(t *testing.T) {
 	_, currFile, _, _ := runtime.Caller(0)
 	wd := filepath.Dir(currFile)
 
-	log, hook := logrustest.NewNullLogger()
+	log, _ := logrustest.NewNullLogger()
 	//log.Out = os.Stdout
 
 	tests := []struct {
@@ -177,10 +177,10 @@ func TestAcceptForwarded(t *testing.T) {
 			helper.Must(fileErr)
 
 			if len(tt.envs) > 0 {
-				env.OsEnviron = func() []string {
+				env.SetTestOsEnviron(func() []string {
 					return tt.envs
-				}
-				defer func() { env.OsEnviron = os.Environ }()
+				})
+				defer env.SetTestOsEnviron(os.Environ)
 			}
 
 			go func() {
@@ -200,8 +200,7 @@ func TestAcceptForwarded(t *testing.T) {
 			}
 			runCmd.settingsMu.Unlock()
 
-			hook.Reset()
+			shutdown()
 		})
-		time.Sleep(time.Second / 2) // shutdown
 	}
 }
