@@ -87,9 +87,12 @@ func TestNewRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(t)
+			helper := test.New(subT)
 			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
+			defer func() {
+				shutdown()
+				time.Sleep(time.Second / 2) // shutdown
+			}()
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
@@ -106,6 +109,9 @@ func TestNewRun(t *testing.T) {
 				})
 				defer env.SetTestOsEnviron(os.Environ)
 			}
+
+			// ensure the previous test aren't listening
+			test.WaitForPort(couperFile.Settings.DefaultPort)
 
 			go func() {
 				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
@@ -136,7 +142,6 @@ func TestNewRun(t *testing.T) {
 				t.Errorf("expected common id format, got: %s", uid)
 			}
 		})
-		time.Sleep(time.Second / 2) // shutdown
 	}
 }
 
@@ -163,9 +168,12 @@ func TestAcceptForwarded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(t)
+			helper := test.New(subT)
 			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
+			defer func() {
+				shutdown()
+				time.Sleep(time.Second / 2) // shutdown
+			}()
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
@@ -183,6 +191,9 @@ func TestAcceptForwarded(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
+			// ensure the previous test aren't listening
+			test.WaitForPort(couperFile.Settings.DefaultPort)
+
 			go func() {
 				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
 			}()
@@ -199,8 +210,6 @@ func TestAcceptForwarded(t *testing.T) {
 				t.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expPort, couperFile.Settings.AcceptsForwardedPort())
 			}
 			runCmd.settingsMu.Unlock()
-
-			shutdown()
 		})
 	}
 }
