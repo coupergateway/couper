@@ -155,11 +155,11 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			var defaultClaims, argumentClaims, headers map[string]interface{}
 
 			if signingConfig.Headers != nil {
-				h, diags := seetie.ExpToMap(confCtx, signingConfig.Headers)
-				if diags.HasErrors() {
+				h, diags := evalFn(ctx, signingConfig.Headers)
+				if diags != nil {
 					return cty.StringVal(""), diags
 				}
-				headers = h
+				headers = seetie.ValueToMap(h)
 			}
 
 			// get claims from signing profile
