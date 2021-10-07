@@ -282,66 +282,226 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 	expScopes := []string{"foo", "bar"}
+	roleMap := map[string][]string{"admin": []string{"foo", "bar"}, "user1": []string{"foo"}, "user2": []string{"bar"}}
 
 	tests := []struct {
 		name       string
 		scopeClaim string
 		scope      interface{}
+		roleClaim  string
+		role       interface{}
 		wantErr    bool
 	}{
 		{
-			"space-separated list",
+			"scope: space-separated list",
 			"scp",
 			"foo bar",
+			"",
+			nil,
 			false,
 		},
 		{
-			"list of string",
+			"scope: space-separated list, multiple",
+			"scp",
+			"foo bar foo",
+			"",
+			nil,
+			false,
+		},
+		{
+			"scope: list of string",
 			"scoop",
 			[]string{"foo", "bar"},
+			"",
+			nil,
 			false,
 		},
 		{
-			"error: boolean",
+			"scope: list of string, multiple",
+			"scoop",
+			[]string{"foo", "bar", "bar"},
+			"",
+			nil,
+			false,
+		},
+		{
+			"scope: error: boolean",
 			"scope",
+			true,
+			"",
+			nil,
+			true,
+		},
+		{
+			"scope: error: number",
+			"scope",
+			1.23,
+			"",
+			nil,
+			true,
+		},
+		{
+			"scope: error: list of bool",
+			"scope",
+			[]bool{true, false},
+			"",
+			nil,
+			true,
+		},
+		{
+			"scope: error: list of number",
+			"scope",
+			[]int{1, 2},
+			"",
+			nil,
+			true,
+		},
+		{
+			"scope: error: mixed list",
+			"scope",
+			[]interface{}{"eins", 2},
+			"",
+			nil,
+			true,
+		},
+		{
+			"scope: error: object",
+			"scope",
+			map[string]interface{}{"foo": 1, "bar": 1},
+			"",
+			nil,
+			true,
+		},
+		{
+			"role: single string",
+			"",
+			nil,
+			"role",
+			"admin",
+			false,
+		},
+		{
+			"role: space-separated list",
+			"",
+			nil,
+			"role",
+			"user1 user2",
+			false,
+		},
+		{
+			"role: space-separated list, multiple",
+			"",
+			nil,
+			"role",
+			"user1 user2 user1",
+			false,
+		},
+		{
+			"role: list of string",
+			"",
+			nil,
+			"rolle",
+			[]string{"user1", "user2"},
+			false,
+		},
+		{
+			"role: list of string, multiple",
+			"",
+			nil,
+			"rolle",
+			[]string{"user1", "user2", "user2"},
+			false,
+		},
+		{
+			"role: list of string, no additional 1",
+			"",
+			nil,
+			"rolle",
+			[]string{"admin", "user1"},
+			false,
+		},
+		{
+			"role: list of string, no additional 2",
+			"",
+			nil,
+			"rolle",
+			[]string{"admin", "user2"},
+			false,
+		},
+		{
+			"role: error: boolean",
+			"",
+			nil,
+			"role",
 			true,
 			true,
 		},
 		{
-			"error: number",
-			"scope",
+			"role: error: number",
+			"",
+			nil,
+			"role",
 			1.23,
 			true,
 		},
 		{
-			"error: list of bool",
-			"scope",
+			"role: error: list of bool",
+			"",
+			nil,
+			"role",
 			[]bool{true, false},
 			true,
 		},
 		{
-			"error: list of number",
-			"scope",
+			"role: error: list of number",
+			"",
+			nil,
+			"role",
 			[]int{1, 2},
 			true,
 		},
 		{
-			"error: mixed list",
-			"scope",
+			"role: error: mixed list",
+			"",
+			nil,
+			"role",
 			[]interface{}{"eins", 2},
 			true,
 		},
 		{
-			"error: object",
-			"scope",
+			"role: error: object",
+			"",
+			nil,
+			"role",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			true,
+		},
+		{
+			"combi 1",
+			"scope",
+			"foo foo",
+			"role",
+			[]string{"user2"},
+			false,
+		},
+		{
+			"combi 2",
+			"scope",
+			[]string{"foo", "bar"},
+			"role",
+			"admin",
+			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			claims := jwt.MapClaims{}
-			claims[tt.scopeClaim] = tt.scope
+			if tt.scopeClaim != "" && tt.scope != nil {
+				claims[tt.scopeClaim] = tt.scope
+			}
+			if tt.roleClaim != "" && tt.role != nil {
+				claims[tt.roleClaim] = tt.role
+			}
 			tok := jwt.NewWithClaims(signingMethod, claims)
 			pubKeyBytes := []byte("mySecretK3y")
 			token, tokenErr := tok.SignedString(pubKeyBytes)
@@ -354,6 +514,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				Algorithm:  algo.String(),
 				Name:       "test_ac",
 				ScopeClaim: tt.scopeClaim,
+				RoleClaim:  tt.roleClaim,
+				RoleMap:    roleMap,
 				Source:     source,
 				Key:        pubKeyBytes,
 			})
