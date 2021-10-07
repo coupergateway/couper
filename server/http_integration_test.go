@@ -132,7 +132,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	}
 
 	// ensure the previous test aren't listening
-	test.WaitForPort(couperConfig.Settings.DefaultPort)
+	test.WaitForClosedPort(couperConfig.Settings.DefaultPort)
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
