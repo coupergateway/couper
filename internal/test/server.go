@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -18,7 +19,7 @@ func WaitForClosedPort(port int) {
 
 		round++
 		if round == 20 {
-			panic("port is still in use")
+			panic(fmt.Sprintf("port is still in use: %d", port))
 		}
 		time.Sleep(time.Second + (time.Second*round)/2)
 	}
@@ -36,7 +37,7 @@ func WaitForOpenPort(port int) {
 		time.Sleep(time.Second + (time.Second*round)/2)
 		round++
 		if round == 20 {
-			panic("port is still not listening")
+			panic(fmt.Sprintf("port is still not listening: %d", port))
 		}
 	}
 }
