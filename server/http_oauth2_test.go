@@ -247,7 +247,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims)
+				idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
 				idTokenToAdd = `"id_token":"` + idToken + `",
 				`
 			}

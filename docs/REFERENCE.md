@@ -393,8 +393,10 @@ An example can be found
 | `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
-|`ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
+| `ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 | `claims` |object|-|Default claims for the JWT payload.| The claim values are evaluated per request. |`claims = { iss = "https://the-issuer.com" }`|
+| `headers` | object | - | Additional header fields for the JWT. | `alg` and `typ` cannot be set. | `headers = { kid = "my-key-id" }` |
+
 
 ### OAuth2 AC Block (Beta)
 

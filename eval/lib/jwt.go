@@ -25,6 +25,7 @@ var rsaParseError = &rsa.PrivateKey{}
 
 type JWTSigningConfig struct {
 	Claims             config.Claims
+	Headers            hcl.Expression
 	Key                interface{}
 	Name               string
 	SignatureAlgorithm string
@@ -80,6 +81,7 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWT
 
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
+		Headers:            j.Headers,
 		Key:                key,
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
@@ -152,7 +154,15 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 			}
 
 			mapClaims := jwt.MapClaims{}
-			var defaultClaims, argumentClaims map[string]interface{}
+			var defaultClaims, argumentClaims, headers map[string]interface{}
+
+			if signingConfig.Headers != nil {
+				h, diags := seetie.ExpToMap(confCtx, signingConfig.Headers)
+				if diags.HasErrors() {
+					return cty.StringVal(""), diags
+				}
+				headers = h
+			}
 
 			// get claims from signing profile
 			if signingConfig.Claims != nil {
@@ -185,7 +195,7 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 				mapClaims[k] = v
 			}
 
-			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, mapClaims)
+			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, mapClaims, headers)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -195,14 +205,21 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 	})
 }
 
-func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClaims) (string, error) {
+func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClaims, headers map[string]interface{}) (string, error) {
 	signingMethod := jwt.GetSigningMethod(signatureAlgorithm)
 	if signingMethod == nil {
 		return "", fmt.Errorf("no signing method for given algorithm: %s", signatureAlgorithm)
 	}
 
+	if headers == nil {
+		headers = map[string]interface{}{}
+	}
+
+	headers["typ"] = "JWT"
+	headers["alg"] = signingMethod.Alg()
+
 	// create token
-	token := jwt.NewWithClaims(signingMethod, mapClaims)
+	token := &jwt.Token{Header: headers, Claims: mapClaims, Method: signingMethod}
 
 	// sign token
 	return token.SignedString(key)
