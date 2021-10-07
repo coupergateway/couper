@@ -98,7 +98,7 @@ github.com/mattn/go-isatty
 ## explicit
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mitchellh/go-wordwrap v1.0.1
-## explicit
+## explicit; go 1.14
 github.com/mitchellh/go-wordwrap
 # github.com/prometheus/client_golang v1.11.0
 ## explicit; go 1.13
