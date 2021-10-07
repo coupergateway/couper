@@ -101,7 +101,7 @@ func TestNewRun(t *testing.T) {
 			}
 
 			// settings must be locked, so assign port now
-			port := couperFile.Settings.DefaultPort
+			port := tt.settings.DefaultPort
 
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
