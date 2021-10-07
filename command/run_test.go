@@ -86,7 +86,6 @@ func TestNewRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(subT)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
@@ -96,8 +95,10 @@ func TestNewRun(t *testing.T) {
 				return
 			}
 
-			couperFile, fileErr := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
-			helper.Must(fileErr)
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			if err != nil {
+				subT.Error(err)
+			}
 
 			// settings must be locked, so assign port now
 			port := couperFile.Settings.DefaultPort
@@ -112,7 +113,10 @@ func TestNewRun(t *testing.T) {
 			// ensure the previous test aren't listening
 			test.WaitForClosedPort(port)
 			go func() {
-				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
+				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
+				if execErr != nil {
+					subT.Error(execErr)
+				}
 			}()
 			test.WaitForOpenPort(port)
 
@@ -124,8 +128,10 @@ func TestNewRun(t *testing.T) {
 
 			hook.Reset()
 
-			res, resErr := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(couperFile.Settings.DefaultPort) + couperFile.Settings.HealthPath)
-			helper.Must(resErr)
+			res, err := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(couperFile.Settings.DefaultPort) + couperFile.Settings.HealthPath)
+			if err != nil {
+				subT.Error(err)
+			}
 
 			if res.StatusCode != http.StatusOK {
 				subT.Errorf("expected OK, got: %d", res.StatusCode)
@@ -167,7 +173,6 @@ func TestAcceptForwarded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(subT)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
@@ -177,8 +182,10 @@ func TestAcceptForwarded(t *testing.T) {
 				return
 			}
 
-			couperFile, fileErr := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
-			helper.Must(fileErr)
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			if err != nil {
+				subT.Error(err)
+			}
 
 			// settings must be locked, so assign port now
 			port := couperFile.Settings.DefaultPort
@@ -193,7 +200,10 @@ func TestAcceptForwarded(t *testing.T) {
 			// ensure the previous test aren't listening
 			test.WaitForClosedPort(port)
 			go func() {
-				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
+				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
+				if execErr != nil {
+					subT.Error(execErr)
+				}
 			}()
 			test.WaitForOpenPort(port)
 
