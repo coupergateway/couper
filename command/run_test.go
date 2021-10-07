@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/rs/xid"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -87,18 +86,22 @@ func TestNewRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(t)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
-				t.Error("create run cmd failed")
+				subT.Error("create run cmd failed")
 				return
 			}
 
-			couperFile, fileErr := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
-			helper.Must(fileErr)
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			if err != nil {
+				subT.Error(err)
+			}
+
+			// settings must be locked, so assign port now
+			port := tt.settings.DefaultPort
 
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
@@ -107,20 +110,28 @@ func TestNewRun(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
+			// ensure the previous test aren't listening
+			test.WaitForClosedPort(port)
 			go func() {
-				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
+				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
+				if execErr != nil {
+					subT.Error(execErr)
+				}
 			}()
-			time.Sleep(time.Second / 4)
+			test.WaitForOpenPort(port)
+
 			runCmd.settingsMu.Lock()
 			if !reflect.DeepEqual(couperFile.Settings, tt.settings) {
-				t.Errorf("Settings differ: %s:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.settings, couperFile.Settings)
+				subT.Errorf("Settings differ: %s:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.settings, couperFile.Settings)
 			}
 			runCmd.settingsMu.Unlock()
 
 			hook.Reset()
 
-			res, resErr := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(couperFile.Settings.DefaultPort) + couperFile.Settings.HealthPath)
-			helper.Must(resErr)
+			res, err := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(couperFile.Settings.DefaultPort) + couperFile.Settings.HealthPath)
+			if err != nil {
+				subT.Error(err)
+			}
 
 			if res.StatusCode != http.StatusOK {
 				subT.Errorf("expected OK, got: %d", res.StatusCode)
@@ -130,13 +141,12 @@ func TestNewRun(t *testing.T) {
 			xidLen := len(xid.New().String())
 			if couperFile.Settings.RequestIDFormat == "uuid4" {
 				if len(uid) <= xidLen {
-					t.Errorf("expected uuid4 format, got: %s", uid)
+					subT.Errorf("expected uuid4 format, got: %s", uid)
 				}
 			} else if len(uid) > xidLen {
-				t.Errorf("expected common id format, got: %s", uid)
+				subT.Errorf("expected common id format, got: %s", uid)
 			}
 		})
-		time.Sleep(time.Second / 2) // shutdown
 	}
 }
 
@@ -163,7 +173,6 @@ func TestAcceptForwarded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(t)
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
@@ -173,8 +182,13 @@ func TestAcceptForwarded(t *testing.T) {
 				return
 			}
 
-			couperFile, fileErr := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
-			helper.Must(fileErr)
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			if err != nil {
+				subT.Error(err)
+			}
+
+			// settings must be locked, so assign port now
+			port := couperFile.Settings.DefaultPort
 
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
@@ -183,24 +197,28 @@ func TestAcceptForwarded(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
+			// ensure the previous test aren't listening
+			test.WaitForClosedPort(port)
 			go func() {
-				helper.Must(runCmd.Execute(tt.args, couperFile, log.WithContext(ctx)))
+				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
+				if execErr != nil {
+					subT.Error(execErr)
+				}
 			}()
-			time.Sleep(time.Second / 4)
+			test.WaitForOpenPort(port)
+
 			runCmd.settingsMu.Lock()
 
 			if couperFile.Settings.AcceptsForwardedProtocol() != tt.expProto {
-				t.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
+				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
 			}
 			if couperFile.Settings.AcceptsForwardedHost() != tt.expHost {
-				t.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expHost, couperFile.Settings.AcceptsForwardedHost())
+				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expHost, couperFile.Settings.AcceptsForwardedHost())
 			}
 			if couperFile.Settings.AcceptsForwardedPort() != tt.expPort {
-				t.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expPort, couperFile.Settings.AcceptsForwardedPort())
+				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expPort, couperFile.Settings.AcceptsForwardedPort())
 			}
 			runCmd.settingsMu.Unlock()
-
-			shutdown()
 		})
 	}
 }
