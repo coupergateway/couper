@@ -24,7 +24,7 @@ func TestTemplate_ServeError(t1 *testing.T) {
 		{"error type without status code /w fallback", &errors.Error{}, http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
-		t1.Run(tt.name, func(t2 *testing.T) {
+		t1.Run(tt.name, func(subT *testing.T) {
 			rec := writer.NewResponseWriter(httptest.NewRecorder(), "")
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			errors.DefaultJSON.ServeError(tt.err).ServeHTTP(rec, req)
@@ -32,7 +32,7 @@ func TestTemplate_ServeError(t1 *testing.T) {
 			rec.Flush()
 
 			if rec.StatusCode() != tt.expStatus {
-				t2.Errorf("expected status %d, got: %d", tt.expStatus, rec.StatusCode())
+				subT.Errorf("expected status %d, got: %d", tt.expStatus, rec.StatusCode())
 			}
 		})
 	}
