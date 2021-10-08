@@ -98,8 +98,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "https://couper.io/", nil)
 			helper.Must(err)
@@ -134,7 +134,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			helper.Must(err)
 
 			if authUrlObj.Query().Get(lib.RedirectURI) != tt.want {
-				t.Errorf("Want: %v; got: %v", tt.want, val)
+				subT.Errorf("Want: %v; got: %v", tt.want, val)
 			}
 		})
 	}

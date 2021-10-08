@@ -925,8 +925,8 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			},
 		}},
 	} {
-		t.Run("_"+tc.query, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run("_"+tc.query, func(subT *testing.T) {
+			helper := test.New(subT)
 			shutdown, _ := newCouper(path.Join(confPath, tc.file), helper)
 			defer shutdown()
 
@@ -937,18 +937,18 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			helper.Must(err)
 
 			if r1 := res.Header.Get("Remove-Me-1"); r1 != "r1" {
-				st.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
+				subT.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
 			}
 			if r2 := res.Header.Get("Remove-Me-2"); r2 != "" {
-				st.Errorf("Unexpected header %s", r2)
+				subT.Errorf("Unexpected header %s", r2)
 			}
 
 			if s2 := res.Header.Get("Set-Me-2"); s2 != "s2" {
-				st.Errorf("Missing or invalid header Set-Me-2: %s", s2)
+				subT.Errorf("Missing or invalid header Set-Me-2: %s", s2)
 			}
 
 			if a2 := res.Header.Get("Add-Me-2"); a2 != "a2" {
-				st.Errorf("Missing or invalid header Add-Me-2: %s", a2)
+				subT.Errorf("Missing or invalid header Add-Me-2: %s", a2)
 			}
 
 			resBytes, err := io.ReadAll(res.Body)
@@ -959,7 +959,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			jsonResult.Headers.Del("User-Agent")
@@ -967,7 +967,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			jsonResult.Headers.Del("Couper-Request-Id")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -1155,8 +1155,8 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			},
 		}},
 	} {
-		t.Run("File "+tc.file, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run("File "+tc.file, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			shutdown, _ := newCouper(path.Join(configPath, tc.file), helper)
 			defer shutdown()
@@ -1174,11 +1174,11 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1206,8 +1206,8 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			Path: "/path/",
 		}},
 	} {
-		t.Run("TrailingSlash "+tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 			shutdown, _ := newCouper(conf, helper)
 			defer shutdown()
 
@@ -1225,11 +1225,11 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1267,8 +1267,8 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			},
 		}},
 	} {
-		t.Run("Dynamic request", func(st *testing.T) {
-			helper := test.New(st)
+		t.Run("Dynamic request", func(subT *testing.T) {
+			helper := test.New(subT)
 
 			shutdown, _ := newCouper(configFile, helper)
 			defer shutdown()
@@ -1290,11 +1290,11 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1565,8 +1565,8 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			},
 		},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			shutdown, _ := newCouper(configFile, helper)
 			defer shutdown()
@@ -1588,11 +1588,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1678,8 +1678,8 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			},
 		},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			shutdown, _ := newCouper(configFile, helper)
 			defer shutdown()
@@ -1695,11 +1695,11 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			res.Body.Close()
 
 			if string(resBytes) != tc.exp.Body {
-				st.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
+				subT.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
 			}
 
 			if ct := res.Header.Get("Content-Type"); ct != tc.exp.ContentType {
-				st.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
+				subT.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
 			}
 		})
 	}
@@ -1733,8 +1733,8 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			Path:   "/anything",
 		}},
 	} {
-		t.Run("_"+tc.reqPath, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run("_"+tc.reqPath, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
 			helper.Must(err)
@@ -1750,13 +1750,13 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			jsonResult.Origin = res.Header.Get("X-Origin")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2037,8 +2037,8 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			"https://www.example.com:8443/path",
 		},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/path", nil)
@@ -2058,15 +2058,15 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
 			logUrl := getAccessLogUrl(hook)
 			if logUrl != tc.wantAccessLogUrl {
-				st.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
 			}
 		})
 	}
@@ -2169,8 +2169,8 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			"https://www.example.com:8443/path",
 		},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/path", nil)
@@ -2190,15 +2190,15 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
 			logUrl := getAccessLogUrl(hook)
 			if logUrl != tc.wantAccessLogUrl {
-				st.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
 			}
 		})
 	}
@@ -2303,8 +2303,8 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			},
 		},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			h := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
@@ -2325,10 +2325,10 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+				subT.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2422,8 +2422,8 @@ func TestHTTPServer_request_variables(t *testing.T) {
 			},
 		},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
@@ -2444,10 +2444,10 @@ func TestHTTPServer_request_variables(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+				subT.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2487,8 +2487,8 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				ResponseStatus: http.StatusOK,
 			}},
 		} {
-			t.Run(confFile+"_"+tc.reqPath, func(st *testing.T) {
-				helper := test.New(st)
+			t.Run(confFile+"_"+tc.reqPath, func(subT *testing.T) {
+				helper := test.New(subT)
 				shutdown, _ := newCouper(confPath, helper)
 				defer shutdown()
 
@@ -2506,11 +2506,11 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				var jsonResult expectation
 				err = json.Unmarshal(resBytes, &jsonResult)
 				if err != nil {
-					st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+					subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 				}
 
 				if !reflect.DeepEqual(jsonResult, tc.exp) {
-					st.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
+					subT.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
 				}
 			})
 		}
@@ -2629,8 +2629,8 @@ func TestConfigBodyContentBackends(t *testing.T) {
 		{"/anything", http.Header{"Foo": []string{"4"}}, url.Values{"bar": []string{"3", "4"}}},
 		{"/get", http.Header{"Foo": []string{"1", "3"}}, url.Values{"bar": []string{"1", "4"}}},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
@@ -2638,7 +2638,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				st.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
+				subT.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
 			}
 
 			b, err := io.ReadAll(res.Body)
@@ -2652,13 +2652,13 @@ func TestConfigBodyContentBackends(t *testing.T) {
 
 			for k, v := range tc.header {
 				if !reflect.DeepEqual(res.Header[k], v) {
-					st.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
+					subT.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
 				}
 			}
 
 			for k, v := range tc.query {
 				if !reflect.DeepEqual(p.Query[k], v) {
-					st.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
+					subT.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
 				}
 			}
 		})
@@ -2690,8 +2690,8 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control error: ba1: credentials required"},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
@@ -2707,22 +2707,20 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					st.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if message != tc.wantErrLog {
-					st.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			}
 
 			if res.StatusCode != tc.status {
-				st.Errorf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
 			}
 
 			if ct := res.Header.Get("Content-Type"); ct != tc.ct {
-				st.Errorf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
-				return
+				subT.Fatalf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
 			}
 
 			if tc.ct == "text/html" {
@@ -2740,11 +2738,11 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 			for k, v := range tc.header {
 				if _, ok := p.Headers[k]; !ok {
-					st.Errorf("Expected header %q, got nothing", k)
+					subT.Errorf("Expected header %q, got nothing", k)
 					break
 				}
 				if !reflect.DeepEqual(p.Headers[k], v) {
-					st.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
+					subT.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
 				}
 			}
 		})
@@ -2875,8 +2873,8 @@ func TestJWTAccessControl_round(t *testing.T) {
 		{"separate jwt_signing_profile/jwt", "/separate"},
 		{"self-signed jwt", "/self-signed"},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://back.end:8080%s/%s/create-jwt", tc.path, pid), nil)
@@ -2886,8 +2884,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				st.Errorf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
-				return
+				subT.Fatalf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
 			}
 
 			token := res.Header.Get("X-Jwt")
@@ -2900,8 +2897,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				st.Errorf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
-				return
+				subT.Fatalf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
 			}
 
 			decoder := json.NewDecoder(res.Body)
@@ -2910,26 +2906,21 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if _, ok := claims["exp"]; !ok {
-				st.Errorf("%q: missing exp claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing exp claim: %#v", tc.name, claims)
 			}
 			issclaim, ok := claims["iss"]
 			if !ok {
-				st.Errorf("%q: missing iss claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing iss claim: %#v", tc.name, claims)
 			}
 			if issclaim != "the_issuer" {
-				st.Errorf("%q: unexpected iss claim: %q", tc.name, issclaim)
-				return
+				subT.Fatalf("%q: unexpected iss claim: %q", tc.name, issclaim)
 			}
 			pidclaim, ok := claims["pid"]
 			if !ok {
-				st.Errorf("%q: missing pid claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing pid claim: %#v", tc.name, claims)
 			}
 			if pidclaim != pid {
-				st.Errorf("%q: unexpected pid claim: %q", tc.name, pidclaim)
-				return
+				subT.Fatalf("%q: unexpected pid claim: %q", tc.name, pidclaim)
 			}
 		})
 	}
@@ -2983,8 +2974,8 @@ func Test_Scope(t *testing.T) {
 		{"by role: additional scope required by *: insufficient scope", http.MethodGet, "/role/bar", true, http.StatusForbidden, `access control error: scope: required scope "more" not granted`, "beta_insufficient_scope"},
 		{"by role: no additional scope required: sufficient scope", http.MethodDelete, "/role/bar", true, http.StatusNoContent, "", ""},
 	} {
-		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(subT *testing.T) {
+			helper := test.New(subT)
 			hook.Reset()
 
 			req, err := http.NewRequest(tc.operation, "http://back.end:8080"+tc.path, nil)
@@ -2998,22 +2989,21 @@ func Test_Scope(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				st.Errorf("expected Status %d, got: %d", tc.status, res.StatusCode)
-				return
+				subT.Fatalf("expected Status %d, got: %d", tc.status, res.StatusCode)
 			}
 
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					st.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if !strings.HasPrefix(message, tc.wantErrLog) {
-					st.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 				errorType := getAccessLogErrorType(hook)
 				if errorType != tc.wantErrType {
-					st.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
+					subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
 				}
 			}
 		})
@@ -3202,8 +3192,8 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 		{"/app", "hans", http.StatusOK},
 		{"/app/1", "hans", http.StatusOK},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://protect.me:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3216,7 +3206,7 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.expStatus {
-				st.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
+				subT.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
 			}
 		})
 	}
@@ -3248,8 +3238,8 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			Path: "/v3/zzz",
 		}},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3265,11 +3255,11 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -3291,8 +3281,8 @@ func TestFunctions(t *testing.T) {
 	for _, tc := range []testCase{
 		{"merge", "/v1/merge", map[string]string{"X-Merged-1": "{\"foo\":[1,2]}", "X-Merged-2": "{\"bar\":[3,4]}", "X-Merged-3": "[\"a\",\"b\"]"}, http.StatusOK},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3301,14 +3291,12 @@ func TestFunctions(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				st.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
 			for k, v := range tc.header {
 				if v1 := res.Header.Get(k); v1 != v {
-					st.Errorf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
-					return
+					subT.Fatalf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
 				}
 			}
 		})
@@ -3337,8 +3325,8 @@ func TestEndpoint_Response(t *testing.T) {
 		{"/204", http.StatusNoContent},
 		{"/301", http.StatusMovedPermanently},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3346,14 +3334,14 @@ func TestEndpoint_Response(t *testing.T) {
 			res, err := client.Do(req)
 			if tc.expStatusCode == http.StatusMovedPermanently {
 				if !redirSeen {
-					st.Errorf("expected a redirect response")
+					subT.Errorf("expected a redirect response")
 				}
 
 				resp := logHook.LastEntry().Data["response"]
 				fields := resp.(logging.Fields)
 				headers := fields["headers"].(map[string]string)
 				if headers["location"] != "https://couper.io/" {
-					st.Errorf("expected location header log")
+					subT.Errorf("expected location header log")
 				}
 			} else {
 				helper.Must(err)
@@ -3364,19 +3352,18 @@ func TestEndpoint_Response(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != tc.expStatusCode {
-				st.Errorf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
 			}
 
 			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
-				st.Logf("%v", logHook.LastEntry())
-				st.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected statusCode log: %d", tc.expStatusCode)
 			}
 
 			if len(resBytes) > 0 {
 				b, exist := logHook.LastEntry().Data["response"].(logging.Fields)["bytes"]
 				if !exist || b != len(resBytes) {
-					st.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
+					subT.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
 			}
 		})
@@ -3403,8 +3390,8 @@ func TestCORS_Configuration(t *testing.T) {
 		{"/spa/", "", false},
 		{"/api/", "no.com", false},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodOptions, "http://localhost:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3419,12 +3406,11 @@ func TestCORS_Configuration(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != http.StatusNoContent {
-				st.Errorf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
 			}
 
 			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
-				st.Errorf("Expected allowed origin resp, got: %v", val)
+				subT.Errorf("Expected allowed origin resp, got: %v", val)
 			}
 		})
 	}
@@ -3472,8 +3458,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	v1 := res.Header.Get("x-v-1")
@@ -3547,8 +3532,7 @@ func TestOAuthStateFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3612,8 +3596,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3683,8 +3666,7 @@ func TestOIDCNonceFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3749,8 +3731,7 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3814,8 +3795,7 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")

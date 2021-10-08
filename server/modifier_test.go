@@ -49,8 +49,8 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 			expHeaders: http.Header{},
 		},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -60,7 +60,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 
 			for n := range tc.expHeaders {
 				if v := res.Header.Get(n); v != "true" {
-					st.Errorf("Expected header not found: %s", n)
+					subT.Errorf("Expected header not found: %s", n)
 				}
 			}
 		})
@@ -118,8 +118,8 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 			expStatus:  http.StatusBadGateway,
 		},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -129,7 +129,7 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.expStatus {
-				st.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
+				subT.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
 			}
 
 			time.Sleep(time.Second / 2) // MAYbe entries arent written yet
@@ -139,7 +139,7 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 				}
 			}
 
-			st.Errorf("expected log message not seen: %s\ngot: %s", tc.expMessage, hook.LastEntry().Message)
+			subT.Errorf("expected log message not seen: %s\ngot: %s", tc.expMessage, hook.LastEntry().Message)
 		})
 	}
 }

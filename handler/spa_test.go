@@ -30,11 +30,11 @@ func TestSpa_ServeHTTP(t *testing.T) {
 		{"serve bootstrap dir", "testdata/spa", httptest.NewRequest(http.MethodGet, "/", nil), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			opts, _ := server.NewServerOptions(&config.Server{}, nil)
 			s, err := handler.NewSpa(path.Join(wd, tt.filePath), opts, nil)
 			if err != nil {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			res := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestSpa_ServeHTTP(t *testing.T) {
 			}
 
 			if res.Code != tt.expectedCode {
-				st.Errorf("Expected status code %d, got: %d", tt.expectedCode, res.Code)
+				subT.Errorf("Expected status code %d, got: %d", tt.expectedCode, res.Code)
 			}
 		})
 	}

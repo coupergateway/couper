@@ -56,7 +56,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	log := logger.WithContext(context.Background())
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			hook.Reset()
 
 			tt.tconf.NoProxyFromEnv = true // use origin addr from transport.Config
@@ -64,7 +64,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 			_, err := backend.RoundTrip(tt.req)
 			if err != nil && tt.expectedErr == "" {
-				st.Error(err)
+				subT.Error(err)
 				return
 			}
 
@@ -72,7 +72,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 			if tt.expectedErr != "" &&
 				(err == nil || !isErr || !strings.HasSuffix(gerr.LogError(), tt.expectedErr)) {
-				st.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
+				subT.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
 			}
 		})
 	}
@@ -315,7 +315,7 @@ func TestBackend_director(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
 			backend := transport.NewBackend(hclContext, &transport.Config{
@@ -331,17 +331,17 @@ func TestBackend_director(t *testing.T) {
 			hostnameExp, ok := attr["hostname"]
 
 			if !ok && tt.expReq.Host != req.Host {
-				st.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
+				subT.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
 			} else if ok {
 				hostVal, _ := hostnameExp.Expr.Value(eval.NewContext(nil, nil).HCLContext())
 				hostname := seetie.ValueToString(hostVal)
 				if hostname != tt.expReq.Host {
-					st.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)
+					subT.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)
 				}
 			}
 
 			if req.URL.Path != tt.expReq.URL.Path {
-				st.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
+				subT.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
 			}
 		})
 	}
@@ -400,8 +400,8 @@ func TestProxy_BufferingOptions(t *testing.T) {
 		{"req buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${request.json_body.client}" }`, eval.BufferRequest},
 		{"beresp buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferResponse},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			h := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
 
 			backend := transport.NewBackend(configload.MergeBodies([]hcl.Body{
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
@@ -417,10 +417,10 @@ func TestProxy_BufferingOptions(t *testing.T) {
 			if configuredOption.IsValid() {
 				opt = eval.BufferOption(configuredOption.Uint())
 			} else {
-				st.Errorf("Field read out failed: bufferOption")
+				subT.Errorf("Field read out failed: bufferOption")
 			}
 			if (opt & tc.expectedOption) != tc.expectedOption {
-				st.Errorf("Expected option: %#v, got: %#v", tc.expectedOption, opt)
+				subT.Errorf("Expected option: %#v, got: %#v", tc.expectedOption, opt)
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
@@ -431,14 +431,14 @@ func TestProxy_BufferingOptions(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+				subT.Errorf("Expected StatusOK, got: %d", res.StatusCode)
 			}
 
 			originData, err := io.ReadAll(res.Body)
 			h.Must(err)
 
 			if !bytes.Equal(originPayload, originData) {
-				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
+				subT.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
 			}
 		})
 

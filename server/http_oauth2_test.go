@@ -499,7 +499,7 @@ func TestOAuth2_Locking(t *testing.T) {
 		t.Errorf("OAuth2 requests: want 1, got: %d", count)
 	}
 
-	t.Run("Lock is effective", func(st *testing.T) {
+	t.Run("Lock is effective", func(subT *testing.T) {
 		// Wait until token has expired.
 		time.Sleep(2 * time.Second)
 
@@ -507,12 +507,12 @@ func TestOAuth2_Locking(t *testing.T) {
 		go func() {
 			res, err := client.Do(req)
 			if err != nil {
-				st.Error(err)
+				subT.Error(err)
 				return
 			}
 
 			if token+"2" != res.Header.Get("Token") {
-				st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
+				subT.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
 			}
 		}()
 
@@ -520,39 +520,39 @@ func TestOAuth2_Locking(t *testing.T) {
 		start := time.Now()
 		res, err := client.Do(req)
 		if err != nil {
-			st.Error(err)
+			subT.Error(err)
 			return
 		}
 
 		timeElapsed := time.Since(start)
 
 		if token+"2" != res.Header.Get("Token") {
-			st.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
+			subT.Errorf("Received wrong token: want %s2, got: %s", token, res.Header.Get("Token"))
 		}
 
 		if timeElapsed < time.Second {
-			st.Errorf("Response came too fast: dysfunctional lock?! (%s)", timeElapsed.String())
+			subT.Errorf("Response came too fast: dysfunctional lock?! (%s)", timeElapsed.String())
 		}
 	})
 
-	t.Run("Mem store expiry", func(st *testing.T) {
+	t.Run("Mem store expiry", func(subT *testing.T) {
 		// Wait again until token has expired.
 		time.Sleep(2 * time.Second)
-		h := test.New(st)
+		h := test.New(subT)
 		// Request fresh token and store in memstore
 		res, err := client.Do(req)
 		h.Must(err)
 
 		if res.StatusCode != http.StatusNoContent {
-			st.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
+			subT.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
 		}
 
 		if token+"3" != res.Header.Get("Token") {
-			st.Errorf("Received wrong token: want %s3, got: %s", token, res.Header.Get("Token"))
+			subT.Errorf("Received wrong token: want %s3, got: %s", token, res.Header.Get("Token"))
 		}
 
 		if count := atomic.LoadUint32(&oauthRequestCount); count != 3 {
-			st.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", count)
+			subT.Errorf("Unexpected number of OAuth2 requests: want 3, got: %d", count)
 		}
 
 		// Disconnect OAuth server
@@ -562,11 +562,11 @@ func TestOAuth2_Locking(t *testing.T) {
 		res, err = client.Do(req)
 		h.Must(err)
 		if res.StatusCode != http.StatusNoContent {
-			st.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
+			subT.Errorf("Unexpected response status: want %d, got: %d", http.StatusNoContent, res.StatusCode)
 		}
 
 		if token+"3" != res.Header.Get("Token") {
-			st.Errorf("Wrong token from mem store: want %s3, got: %s", token, res.Header.Get("Token"))
+			subT.Errorf("Wrong token from mem store: want %s3, got: %s", token, res.Header.Get("Token"))
 		}
 
 		// Wait until token has expired. Next request accesses the OAuth server again.
@@ -574,7 +574,7 @@ func TestOAuth2_Locking(t *testing.T) {
 		res, err = newClient().Do(req)
 		h.Must(err)
 		if res.StatusCode != http.StatusBadGateway {
-			st.Errorf("Unexpected response status: want %d, got: %d", http.StatusBadGateway, res.StatusCode)
+			subT.Errorf("Unexpected response status: want %d, got: %d", http.StatusBadGateway, res.StatusCode)
 		}
 	})
 }

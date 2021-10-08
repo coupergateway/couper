@@ -29,8 +29,8 @@ func TestAccessControl_ErrorHandler(t *testing.T) {
 		{"catch all", test.Header{"Authorization": "Basic aGFuczpoYW5z"}, "access control error: ba: credential mismatch", http.StatusNotFound},
 		{"catch specific", nil, "access control error: ba: credentials required", http.StatusBadGateway},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
 			helper.Must(err)
@@ -43,18 +43,17 @@ func TestAccessControl_ErrorHandler(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != tc.expStatusCode {
-				st.Errorf("%q: expected Status %d, got: %d", tc.name, tc.expStatusCode, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, tc.expStatusCode, res.StatusCode)
 			}
 
 			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
-				st.Logf("%v", logHook.LastEntry())
-				st.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected statusCode log: %d", tc.expStatusCode)
 			}
 
 			if logHook.LastEntry().Message != tc.expLogMsg {
-				st.Logf("%v", logHook.LastEntry())
-				st.Errorf("Expected message log: %s", tc.expLogMsg)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected message log: %s", tc.expLogMsg)
 			}
 		})
 	}

@@ -433,24 +433,24 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
 			if err != nil {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 			token, err := hclContext.Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err != nil {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 			if token.AsString() != tt.want {
-				st.Errorf("Expected %q, got: %#v", tt.want, token.AsString())
+				subT.Errorf("Expected %q, got: %#v", tt.want, token.AsString())
 			}
 		})
 	}
@@ -543,8 +543,8 @@ func TestJwtSignDynamic(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			helper.Must(err)
@@ -569,7 +569,7 @@ func TestJwtSignDynamic(t *testing.T) {
 
 			tokenParts := strings.Split(token.AsString(), ".")
 			if len(tokenParts) != 3 {
-				st.Errorf("Needs 3 parts, got: %d", len(tokenParts))
+				subT.Errorf("Needs 3 parts, got: %d", len(tokenParts))
 			}
 
 			joseHeader, err := base64.RawURLEncoding.DecodeString(tokenParts[0])
@@ -580,7 +580,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			helper.Must(err)
 
 			if fmt.Sprint(tt.headers) != fmt.Sprint(resultHeaders) {
-				st.Errorf("Headers:\n\tWant: %#v\n\tGot:  %#v", tt.headers, resultHeaders)
+				subT.Errorf("Headers:\n\tWant: %#v\n\tGot:  %#v", tt.headers, resultHeaders)
 			}
 
 			body, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
@@ -591,26 +591,26 @@ func TestJwtSignDynamic(t *testing.T) {
 			helper.Must(err)
 
 			if resultClaims["exp"] == nil {
-				st.Errorf("Expected exp claim, got: %#v", body)
+				subT.Errorf("Expected exp claim, got: %#v", body)
 			}
 			exp := resultClaims["exp"].(float64)
 			if !fuzzyEqual(int64(exp)-now, tt.wantTTL, 1) {
-				st.Errorf(string(body))
-				st.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
+				subT.Errorf(string(body))
+				subT.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
 			}
 			if resultClaims["x-method"] == nil {
-				st.Errorf("Expected x-method claim, got: %#v", body)
+				subT.Errorf("Expected x-method claim, got: %#v", body)
 			}
 			if resultClaims["x-method"] != tt.wantMeth {
-				st.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
+				subT.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
 			}
 
 			if resultClaims["x-status"] == nil {
-				st.Errorf("Expected x-status claim, got: %#v", body)
+				subT.Errorf("Expected x-status claim, got: %#v", body)
 			}
 			status := int64(resultClaims["x-status"].(float64))
 			if status != 200 {
-				st.Errorf("Expected: %d, got: %d", http.StatusOK, status)
+				subT.Errorf("Expected: %d, got: %d", http.StatusOK, status)
 			}
 		})
 	}
@@ -845,17 +845,16 @@ func TestJwtSignConfigError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err == nil {
-				t.Errorf("expected an error '%s', got nothing", tt.wantErr)
-				return
+				subT.Fatalf("expected an error '%s', got nothing", tt.wantErr)
 			}
 			logErr, _ := err.(errors.GoError)
 			if logErr == nil {
-				t.Error("logErr should not be nil")
+				subT.Error("logErr should not be nil")
 			} else if logErr.LogError() != tt.wantErr {
-				t.Errorf("\nwant:\t%s\ngot:\t%v", tt.wantErr, logErr.LogError())
+				subT.Errorf("\nwant:\t%s\ngot:\t%v", tt.wantErr, logErr.LogError())
 			}
 		})
 	}
@@ -956,8 +955,8 @@ func TestJwtSignError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			helper.Must(err)
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
@@ -967,11 +966,11 @@ func TestJwtSignError(t *testing.T) {
 
 			_, err = hclContext.Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err == nil {
-				t.Error("expected an error, got nothing")
+				subT.Error("expected an error, got nothing")
 				return
 			}
 			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("Want:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+				subT.Errorf("Want:\t%q\nGot:\t%q", tt.wantErr, err.Error())
 			}
 		})
 	}

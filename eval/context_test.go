@@ -85,8 +85,8 @@ func TestNewHTTPContext(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
 			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
@@ -107,18 +107,18 @@ func TestNewHTTPContext(t *testing.T) {
 			err := hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
 			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
 			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]
 				if !ok {
-					st.Errorf("Expected value for %q, got nothing", k)
+					subT.Errorf("Expected value for %q, got nothing", k)
 				}
 
 				result := seetie.ValueToStringSlice(cv)
 				if !reflect.DeepEqual(v, result) {
-					st.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
+					subT.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
 				}
 			}
 		})
@@ -181,10 +181,10 @@ func TestDefaultEnvVariables(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
@@ -193,15 +193,15 @@ func TestDefaultEnvVariables(t *testing.T) {
 			for key, expectedValue := range tt.want {
 				value, isset := envVars[key]
 				if !isset {
-					st.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
+					subT.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
 				} else if value != expectedValue {
-					st.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
+					subT.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
 				}
 			}
 
 			for key, value := range envVars {
 				if _, isset := tt.want[key]; !isset {
-					st.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
+					subT.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
 				}
 			}
 		})
@@ -226,10 +226,10 @@ func TestCouperVariables(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				st.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
@@ -237,12 +237,12 @@ func TestCouperVariables(t *testing.T) {
 			couperVars := seetie.ValueToMap(hclContext.Variables["couper"])
 
 			if len(couperVars) != len(tt.want) {
-				st.Errorf("Unexpected 'couper' variables:\nWant:\t%q\nGot:\t%q", tt.want, couperVars)
+				subT.Errorf("Unexpected 'couper' variables:\nWant:\t%q\nGot:\t%q", tt.want, couperVars)
 			}
 			for key, expectedValue := range tt.want {
 				value := couperVars[key]
 				if value != expectedValue {
-					st.Errorf("Unexpected value for variable:\nWant:\tcouper.%s=%q\nGot:\tcouper.%s=%q", key, expectedValue, key, value)
+					subT.Errorf("Unexpected value for variable:\nWant:\tcouper.%s=%q\nGot:\tcouper.%s=%q", key, expectedValue, key, value)
 				}
 			}
 		})

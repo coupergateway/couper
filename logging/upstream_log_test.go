@@ -134,7 +134,7 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		t.Run(tc.description, func(st *testing.T) {
+		t.Run(tc.description, func(subT *testing.T) {
 
 			hook.Reset()
 
@@ -154,7 +154,7 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 			for key, expFields := range tc.expFields {
 				value, exist := entry.Data[key]
 				if !exist {
-					st.Errorf("Expected log field %s, got nothing", key)
+					subT.Errorf("Expected log field %s, got nothing", key)
 				}
 
 				switch ef := expFields.(type) {
@@ -165,18 +165,18 @@ func TestUpstreamLog_RoundTrip(t *testing.T) {
 						case logging.Fields:
 							r, ok := fields[k]
 							if !ok {
-								st.Errorf("Expected log field %s.%s, got nothing", key, k)
+								subT.Errorf("Expected log field %s.%s, got nothing", key, k)
 							}
 							result = r
 						}
 
 						if !reflect.DeepEqual(expected, result) {
-							st.Errorf("Want: %v for key %s, got: %v", expected, k, result)
+							subT.Errorf("Want: %v for key %s, got: %v", expected, k, result)
 						}
 					}
 				default:
 					if !reflect.DeepEqual(expFields, value) {
-						st.Errorf("Want: %v for key %s, got: %v", expFields, key, value)
+						subT.Errorf("Want: %v for key %s, got: %v", expFields, key, value)
 					}
 				}
 			}

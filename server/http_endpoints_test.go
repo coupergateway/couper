@@ -41,8 +41,8 @@ func TestEndpoints_Protected404(t *testing.T) {
 		{"", "/v1/xxx", expectation{}},
 		{"secret", "/v1/xxx", expectation{http.StatusNotFound}},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
@@ -62,11 +62,11 @@ func TestEndpoints_Protected404(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				st.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				st.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -417,8 +417,8 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 		{"/60", "47", "gzip"},
 		{"/x", "1731", "gzip"},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.org:9898"+tc.path, nil)
 			helper.Must(err)
@@ -429,10 +429,10 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 			helper.Must(err)
 
 			if val := res.Header.Get("Content-Encoding"); val != tc.expCE {
-				st.Errorf("%s: Expected Content-Encoding '%s', got: '%s'", tc.path, tc.expCE, val)
+				subT.Errorf("%s: Expected Content-Encoding '%s', got: '%s'", tc.path, tc.expCE, val)
 			}
 			if val := res.Header.Get("Content-Length"); val != tc.expLen {
-				st.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
+				subT.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
 			}
 		})
 	}
