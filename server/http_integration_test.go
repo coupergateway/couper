@@ -132,21 +132,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	}
 
 	// ensure the previous test aren't listening
-	port := couperConfig.Settings.DefaultPort
-	round := time.Duration(0)
-	for {
-		round++
-		conn, dialErr := net.Dial("tcp4", ":"+strconv.Itoa(port))
-		if dialErr != nil {
-			break
-		}
-		_ = conn.Close()
-		time.Sleep(time.Second + (time.Second*round)/2)
-
-		if round == 10 {
-			panic("port is still in use")
-		}
-	}
+	test.WaitForClosedPort(couperConfig.Settings.DefaultPort)
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
@@ -486,10 +472,10 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 
-	env.OsEnviron = func() []string {
+	env.SetTestOsEnviron(func() []string {
 		return []string{"COUPER_XFH=true"}
-	}
-	defer func() { env.OsEnviron = os.Environ }()
+	})
+	defer env.SetTestOsEnviron(os.Environ)
 
 	confPath := path.Join("testdata/integration", "files/02_couper.hcl")
 	shutdown, logHook := newCouper(confPath, test.New(t))

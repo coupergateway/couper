@@ -1,6 +1,6 @@
 module github.com/avenga/couper
 
-go 1.16
+go 1.17
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -37,4 +37,30 @@ require (
 	google.golang.org/genproto v0.0.0-20210916144049-3192f974c780 // indirect
 	google.golang.org/grpc v1.40.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+)
+
+require (
+	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/beevik/etree v1.1.0 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/swag v0.19.5 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	github.com/jonboulle/clockwork v0.2.0 // indirect
+	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect
+	github.com/mattermost/xml-roundtrip-validator v0.0.0-20201208211235-fe770d50d911 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/mattn/go-isatty v0.0.12 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
+	go.opentelemetry.io/otel/internal/metric v0.23.0 // indirect
+	go.opentelemetry.io/proto/otlp v0.9.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
