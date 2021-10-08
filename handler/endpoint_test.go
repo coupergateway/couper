@@ -361,7 +361,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 
 			for k, v := range tc.expHeaders {
 				if res.Header.Get(k) != v {
-					t.Errorf("%q: Expected header %q value: %q, got: %q", tc.name, k, v, res.Header.Get(k))
+					st.Errorf("%q: Expected header %q value: %q, got: %q", tc.name, k, v, res.Header.Get(k))
 				}
 			}
 		})

@@ -87,20 +87,20 @@ func TestACDefinitions_errors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				t.Fatal(err)
+				st.Fatal(err)
 			}
 			_, err = NewServerConfiguration(cf, nil, nil)
 			if err == nil {
-				t.Errorf("Expected error")
+				st.Errorf("Expected error")
 			}
 			logErr, _ := err.(errors.GoError)
 			if logErr == nil {
-				t.Error("logErr should not be nil")
+				st.Error("logErr should not be nil")
 			} else if logErr.LogError() != tt.expectedMsg {
-				t.Errorf("\nwant:\t%s\ngot:\t%v", tt.expectedMsg, logErr.LogError())
+				st.Errorf("\nwant:\t%s\ngot:\t%v", tt.expectedMsg, logErr.LogError())
 			}
 		})
 	}

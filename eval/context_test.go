@@ -85,8 +85,8 @@ func TestNewHTTPContext(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			helper := test.New(t)
+		t.Run(tt.name, func(st *testing.T) {
+			helper := test.New(st)
 
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
 			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
@@ -107,18 +107,18 @@ func TestNewHTTPContext(t *testing.T) {
 			err := hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
 			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
 			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
-				t.Fatal(err)
+				st.Fatal(err)
 			}
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]
 				if !ok {
-					t.Errorf("Expected value for %q, got nothing", k)
+					st.Errorf("Expected value for %q, got nothing", k)
 				}
 
 				result := seetie.ValueToStringSlice(cv)
 				if !reflect.DeepEqual(v, result) {
-					t.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
+					st.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
 				}
 			}
 		})
@@ -181,10 +181,10 @@ func TestDefaultEnvVariables(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				t.Fatal(err)
+				st.Fatal(err)
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
@@ -193,15 +193,15 @@ func TestDefaultEnvVariables(t *testing.T) {
 			for key, expectedValue := range tt.want {
 				value, isset := envVars[key]
 				if !isset {
-					t.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
+					st.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
 				} else if value != expectedValue {
-					t.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
+					st.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
 				}
 			}
 
 			for key, value := range envVars {
 				if _, isset := tt.want[key]; !isset {
-					t.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
+					st.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
 				}
 			}
 		})

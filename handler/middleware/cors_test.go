@@ -490,7 +490,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			corsHandler := NewCORSHandler(tt.corsOptions, upstreamHandler)
 
 			req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
@@ -513,12 +513,12 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 			for name, expValue := range tt.expectedResponseHeaders {
 				value := res.Header.Get(name)
 				if value != expValue {
-					t.Errorf("Expected %s %s, got: %s", name, expValue, value)
+					st.Errorf("Expected %s %s, got: %s", name, expValue, value)
 				}
 			}
 
 			if rec.Code != http.StatusNoContent {
-				t.Errorf("Expected status %d, got: %d", http.StatusNoContent, rec.Code)
+				st.Errorf("Expected status %d, got: %d", http.StatusNoContent, rec.Code)
 			} else {
 				return // no error log for expected codes
 			}

@@ -56,7 +56,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	log := logger.WithContext(context.Background())
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			hook.Reset()
 
 			tt.tconf.NoProxyFromEnv = true // use origin addr from transport.Config
@@ -64,7 +64,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 			_, err := backend.RoundTrip(tt.req)
 			if err != nil && tt.expectedErr == "" {
-				t.Error(err)
+				st.Error(err)
 				return
 			}
 
@@ -72,7 +72,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 			if tt.expectedErr != "" &&
 				(err == nil || !isErr || !strings.HasSuffix(gerr.LogError(), tt.expectedErr)) {
-				t.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
+				st.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
 			}
 		})
 	}
@@ -315,7 +315,7 @@ func TestBackend_director(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
 			backend := transport.NewBackend(hclContext, &transport.Config{
@@ -331,17 +331,17 @@ func TestBackend_director(t *testing.T) {
 			hostnameExp, ok := attr["hostname"]
 
 			if !ok && tt.expReq.Host != req.Host {
-				t.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
+				st.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
 			} else if ok {
 				hostVal, _ := hostnameExp.Expr.Value(eval.NewContext(nil, nil).HCLContext())
 				hostname := seetie.ValueToString(hostVal)
 				if hostname != tt.expReq.Host {
-					t.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)
+					st.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)
 				}
 			}
 
 			if req.URL.Path != tt.expReq.URL.Path {
-				t.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
+				st.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
 			}
 		})
 	}

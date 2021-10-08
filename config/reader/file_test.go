@@ -34,14 +34,14 @@ func TestReadFromAttrFile(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			got, err := reader.ReadFromAttrFile(tt.args.context, tt.args.attribute, tt.args.path)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ReadFromAttrFile() error = %v, wantErr %v", err, tt.wantErr)
+				st.Errorf("ReadFromAttrFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReadFromAttrFile() got = %v, want %v", got, tt.want)
+				st.Errorf("ReadFromAttrFile() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
