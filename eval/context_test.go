@@ -226,10 +226,10 @@ func TestCouperVariables(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				t.Fatal(err)
+				st.Fatal(err)
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
@@ -237,12 +237,12 @@ func TestCouperVariables(t *testing.T) {
 			couperVars := seetie.ValueToMap(hclContext.Variables["couper"])
 
 			if len(couperVars) != len(tt.want) {
-				t.Errorf("Unexpected 'couper' variables:\nWant:\t%q\nGot:\t%q", tt.want, couperVars)
+				st.Errorf("Unexpected 'couper' variables:\nWant:\t%q\nGot:\t%q", tt.want, couperVars)
 			}
 			for key, expectedValue := range tt.want {
 				value := couperVars[key]
 				if value != expectedValue {
-					t.Errorf("Unexpected value for variable:\nWant:\tcouper.%s=%q\nGot:\tcouper.%s=%q", key, expectedValue, key, value)
+					st.Errorf("Unexpected value for variable:\nWant:\tcouper.%s=%q\nGot:\tcouper.%s=%q", key, expectedValue, key, value)
 				}
 			}
 		})

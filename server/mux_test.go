@@ -76,11 +76,11 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 		}, ""},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			mux := server.NewMux(testOptions)
 
 			if got := mux.FindHandler(tt.req); reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindHandler() = %v, want %v", got, tt.want)
+				st.Errorf("FindHandler() = %v, want %v", got, tt.want)
 			}
 
 			paramCtx, ok := tt.req.Context().Value(request.PathParams).(request.PathParameter)
@@ -88,12 +88,12 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 				if tt.expParams == nil {
 					return
 				}
-				t.Errorf("Expected path parameters")
+				st.Errorf("Expected path parameters")
 				return
 			}
 
 			if !reflect.DeepEqual(paramCtx, tt.expParams) {
-				t.Errorf("Path parameter context: %#v, want: %#v", paramCtx, tt.expParams)
+				st.Errorf("Path parameter context: %#v, want: %#v", paramCtx, tt.expParams)
 			}
 
 			wildcardCtx, ok := tt.req.Context().Value(request.Wildcard).(string)
@@ -101,11 +101,11 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 				if tt.expWildcard == "" {
 					return
 				}
-				t.Fatal("Expected expWildcard value")
+				st.Fatal("Expected expWildcard value")
 			}
 
 			if wildcardCtx != tt.expWildcard {
-				t.Errorf("Wildcard context: %q, want: %q", wildcardCtx, tt.expWildcard)
+				st.Errorf("Wildcard context: %q, want: %q", wildcardCtx, tt.expWildcard)
 			}
 		})
 	}

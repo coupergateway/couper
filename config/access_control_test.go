@@ -25,13 +25,13 @@ func TestAccessControl_List(t *testing.T) {
 		{"1st entry disabled", fields{AccessControl: []string{"one", "two"}, DisableAccessControl: []string{"one"}}, []string{"two"}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			ac := config.AccessControl{
 				AccessControl:        tt.fields.AccessControl,
 				DisableAccessControl: tt.fields.DisableAccessControl,
 			}
 			if got := ac.List(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("List() = %v, want %v", got, tt.want)
+				st.Errorf("List() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -74,11 +74,11 @@ func TestAccessControl_Merge(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(st *testing.T) {
 			ac := config.NewAccessControl(tt.fields.AccessControl, tt.fields.DisableAccessControl)
 
 			if got := ac.Merge(tt.args.oac); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Merge() = %v, want %v", got, tt.want)
+				st.Errorf("Merge() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -62,7 +62,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(t)
+			helper := test.New(subT)
 			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
 			err = jwks.Load()

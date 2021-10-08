@@ -79,12 +79,12 @@ func Test_BasicAuth_Validate(t *testing.T) {
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-pass")), nil},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), couperErr.BasicAuth},
 	} {
-		t.Run(testcase.headerValue, func(t *testing.T) {
+		t.Run(testcase.headerValue, func(st *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", testcase.headerValue)
 			err = ba.Validate(req)
 			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
-				t.Errorf("Expected Unauthorized error, got: %v", err)
+				st.Errorf("Expected Unauthorized error, got: %v", err)
 			}
 		})
 	}
@@ -143,11 +143,11 @@ func Test_BasicAuth_ValidateCases(t *testing.T) {
 		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte(":pass")), couperErr.BasicAuth},
 		{ba4, "Basic " + b64.StdEncoding.EncodeToString([]byte(":")), couperErr.BasicAuth},
 	} {
-		t.Run(testcase.headerValue, func(t *testing.T) {
+		t.Run(testcase.headerValue, func(st *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)
-			err := ba.Validate(req)
+			err = ba.Validate(req)
 			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
-				t.Errorf("Expected Unauthorized error, got: %v", err)
+				st.Errorf("Expected Unauthorized error, got: %v", err)
 			}
 		})
 	}

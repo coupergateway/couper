@@ -332,27 +332,28 @@ func TestOAuth2_AccessControl(t *testing.T) {
 			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
 			defer shutdown()
 
-			helper := test.New(subT)
+			h := test.New(subT)
 
 			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
-			helper.Must(err)
+			h.Must(err)
 
 			for k, v := range tc.header {
 				req.Header.Set(k, v[0])
 			}
 
 			res, err := client.Do(req)
-			helper.Must(err)
+			h.Must(err)
 
 			if res.StatusCode != tc.status {
 				subT.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
 			tokenResBytes, err := io.ReadAll(res.Body)
-			helper.Must(err)
+			h.Must(err)
 
 			var jData map[string]interface{}
-			json.Unmarshal(tokenResBytes, &jData)
+			_ = json.Unmarshal(tokenResBytes, &jData)
+
 			if params, ok := jData["form_params"]; ok {
 				if params != tc.params {
 					subT.Errorf("%q: expected params %s, got: %s", tc.name, tc.params, params)
