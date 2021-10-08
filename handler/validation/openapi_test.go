@@ -77,7 +77,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tt.path, tt.body)
 
 			if tt.body != nil {
@@ -88,14 +88,13 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 			var res *http.Response
 			res, err = backend.RoundTrip(req)
 			if err != nil && tt.wantErrLog == "" {
-				t.Error(err)
-				return
+				subT.Fatal(err)
 			}
 
 			if tt.wantErrLog != "" {
 				entry := hook.LastEntry()
 				if entry.Message != tt.wantErrLog {
-					t.Errorf("Expected error log:\nwant:\t%q\ngot:\t%s", tt.wantErrLog, entry.Message)
+					subT.Errorf("Expected error log:\nwant:\t%q\ngot:\t%s", tt.wantErrLog, entry.Message)
 				}
 			}
 
@@ -103,16 +102,16 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 				var n int64
 				n, err = io.Copy(io.Discard, res.Body)
 				if err != nil {
-					t.Error(err)
+					subT.Error(err)
 				}
 				if n == 0 {
-					t.Error("Expected a response body")
+					subT.Error("Expected a response body")
 				}
 			}
 
-			if t.Failed() {
+			if subT.Failed() {
 				for _, entry := range hook.AllEntries() {
-					t.Log(entry.String())
+					subT.Log(entry.String())
 				}
 			}
 		})

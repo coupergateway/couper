@@ -48,10 +48,10 @@ func Test_getNameIDFormat(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			format := getNameIDFormat(tt.supportedFormats)
 			if format != tt.wantFormat {
-				t.Errorf("Expected format %q, got: %#v", tt.wantFormat, format)
+				subT.Errorf("Expected format %q, got: %#v", tt.wantFormat, format)
 			}
 		})
 	}

@@ -41,7 +41,7 @@ func Test_realmain(t *testing.T) {
 		{"undefined AC", []string{"couper", "run", "-f", base + "/04_couper.hcl"}, nil, `level=error msg="accessControl is not defined: undefined" build=dev`, 1},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
 					return tt.envs
@@ -49,19 +49,19 @@ func Test_realmain(t *testing.T) {
 			}
 
 			if got := realmain(tt.args); got != tt.want {
-				t.Errorf("realmain() = %v, want %v", got, tt.want)
+				subT.Errorf("realmain() = %v, want %v", got, tt.want)
 			}
 			env.OsEnviron = os.Environ
 
 			entry, _ := localHook.LastEntry().String()
 			//println(entry)
 			if tt.wantLog != "" && !strings.Contains(entry, tt.wantLog) {
-				t.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
+				subT.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
 			}
 
 			err := os.Chdir(wd)
 			if err != nil {
-				t.Error(err)
+				subT.Error(err)
 			}
 		})
 	}

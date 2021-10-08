@@ -90,10 +90,10 @@ func Test_SAML2ACS_Validate(t *testing.T) {
 		},
 		// TODO how to make test for valid SAMLResponse?
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tc.payload))
 			if err := sa.Validate(req); (err != nil) != tc.wantErr {
-				t.Errorf("%s: Validate() error = %v, wantErr %v", tc.name, err, tc.wantErr)
+				subT.Errorf("%s: Validate() error = %v, wantErr %v", tc.name, err, tc.wantErr)
 			}
 		})
 	}
@@ -129,9 +129,9 @@ func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
 			false,
 		},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			if err = sa.ValidateAssertionInfo(tc.assertionInfo); (err != nil) != tc.wantErr {
-				t.Errorf("%s: ValidateAssertionInfo() error = %v, wantErr %v", tc.name, err, tc.wantErr)
+				subT.Errorf("%s: ValidateAssertionInfo() error = %v, wantErr %v", tc.name, err, tc.wantErr)
 			}
 		})
 	}
@@ -220,10 +220,10 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 			},
 		},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			assertionData := sa.GetAssertionData(tc.assertionInfo)
 			if fmt.Sprint(assertionData) != fmt.Sprint(tc.want) {
-				t.Errorf("%s: GetAssertionData() data = %v, want %v", tc.name, assertionData, tc.want)
+				subT.Errorf("%s: GetAssertionData() data = %v, want %v", tc.name, assertionData, tc.want)
 			}
 		})
 	}

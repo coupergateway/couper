@@ -237,7 +237,7 @@ func Test_JWT_Validate(t *testing.T) {
 			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
 		}
 		for _, tt := range tests {
-			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(subT *testing.T) {
 				claimValMap := make(map[string]cty.Value)
 				for k, v := range tt.fields.claims {
 					claimValMap[k] = cty.StringVal(v)
@@ -251,23 +251,23 @@ func Test_JWT_Validate(t *testing.T) {
 					Key:            tt.fields.pubKey,
 				})
 				if err != nil {
-					t.Error(err)
+					subT.Error(err)
 					return
 				}
 
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
-					t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+					subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
 				if !tt.wantErr && tt.fields.claims != nil {
 					acMap := tt.req.Context().Value(request.AccessControls).(map[string]interface{})
 					if claims, ok := acMap["test_ac"]; !ok {
-						t.Errorf("Expected a configured access control name within request context")
+						subT.Errorf("Expected a configured access control name within request context")
 					} else {
 						claimsMap := claims.(map[string]interface{})
 						for k, v := range tt.fields.claims {
 							if claimsMap[k] != v {
-								t.Errorf("Claim does not match: %q want: %v, got: %v", k, v, claimsMap[k])
+								subT.Errorf("Claim does not match: %q want: %v, got: %v", k, v, claimsMap[k])
 							}
 						}
 					}
@@ -282,7 +282,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 	expScopes := []string{"foo", "bar"}
-	roleMap := map[string][]string{"admin": []string{"foo", "bar"}, "user1": []string{"foo"}, "user2": []string{"bar"}}
+	roleMap := map[string][]string{"admin": {"foo", "bar"}, "user1": {"foo"}, "user2": {"bar"}}
 
 	tests := []struct {
 		name       string
@@ -494,7 +494,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			claims := jwt.MapClaims{}
 			if tt.scopeClaim != "" && tt.scope != nil {
 				claims[tt.scopeClaim] = tt.scope
@@ -506,7 +506,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			pubKeyBytes := []byte("mySecretK3y")
 			token, tokenErr := tok.SignedString(pubKeyBytes)
 			if tokenErr != nil {
-				t.Error(tokenErr)
+				subT.Error(tokenErr)
 			}
 
 			source := ac.NewJWTSource("", "Authorization")
@@ -520,24 +520,23 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				Key:        pubKeyBytes,
 			})
 			if err != nil {
-				t.Error(err)
-				return
+				subT.Fatal(err)
 			}
 
 			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
 
 			if err = j.Validate(req); (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if !tt.wantErr {
 				scopesList, ok := req.Context().Value(request.Scopes).([]string)
 				if !ok {
-					t.Errorf("Expected scopes within request context")
+					subT.Errorf("Expected scopes within request context")
 				} else {
 					for i, v := range expScopes {
 						if scopesList[i] != v {
-							t.Errorf("Scopes do not match, want: %v, got: %v", v, scopesList[i])
+							subT.Errorf("Scopes do not match, want: %v, got: %v", v, scopesList[i])
 						}
 					}
 				}
@@ -719,7 +718,7 @@ func TestJwtConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
 				_, err = runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
@@ -741,7 +740,7 @@ func TestJwtConfig(t *testing.T) {
 			expectedError := "configuration error: myac: " + tt.error
 
 			if expectedError != error {
-				t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, error)
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, error)
 			}
 		})
 	}

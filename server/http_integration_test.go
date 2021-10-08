@@ -382,28 +382,28 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				_ = res.Body.Close()
 
 				if res.StatusCode != rc.exp.status {
-					t.Errorf("Expected statusCode %d, got %d", rc.exp.status, res.StatusCode)
+					subT.Errorf("Expected statusCode %d, got %d", rc.exp.status, res.StatusCode)
 					subT.Logf("Failed: %s|%s", testcase.fileName, rc.req.url)
 				}
 
 				for k, v := range rc.exp.header {
 					if !reflect.DeepEqual(res.Header[k], v) {
-						t.Errorf("Exptected headers:\nWant:\t%#v\nGot:\t%#v\n", v, res.Header[k])
+						subT.Errorf("Exptected headers:\nWant:\t%#v\nGot:\t%#v\n", v, res.Header[k])
 					}
 				}
 
 				if rc.exp.body != nil && !bytes.Equal(resBytes, rc.exp.body) {
-					t.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
+					subT.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
 				}
 
 				entry := logHook.LastEntry()
 
 				if entry == nil || entry.Data["type"] != "couper_access" {
-					t.Error("Expected a log entry, got nothing")
+					subT.Error("Expected a log entry, got nothing")
 					return
 				}
 				if handler, ok := entry.Data["handler"]; rc.exp.handlerName != "" && (!ok || handler != rc.exp.handlerName) {
-					t.Errorf("Expected handler %q within logs, got:\n%#v", rc.exp.handlerName, entry.Data)
+					subT.Errorf("Expected handler %q within logs, got:\n%#v", rc.exp.handlerName, entry.Data)
 				}
 			})
 		}
@@ -587,11 +587,11 @@ func TestHTTPServer_Gzip(t *testing.T) {
 
 			if !tc.expectGzipResponse {
 				if val := res.Header.Get("Content-Encoding"); val != "" {
-					t.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
+					subT.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
 				}
 			} else {
 				if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
-					t.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
+					subT.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
 				}
 
 				body, err = gzip.NewReader(res.Body)
@@ -599,7 +599,7 @@ func TestHTTPServer_Gzip(t *testing.T) {
 			}
 
 			if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
-				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
+				subT.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
 			}
 
 			resBytes, err := io.ReadAll(body)
@@ -609,7 +609,7 @@ func TestHTTPServer_Gzip(t *testing.T) {
 			helper.Must(err)
 
 			if !bytes.Equal(resBytes, srcBytes) {
-				t.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
+				subT.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
 			}
 		})
 	}
@@ -708,11 +708,11 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -772,11 +772,11 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -937,18 +937,18 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			helper.Must(err)
 
 			if r1 := res.Header.Get("Remove-Me-1"); r1 != "r1" {
-				t.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
+				subT.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
 			}
 			if r2 := res.Header.Get("Remove-Me-2"); r2 != "" {
-				t.Errorf("Unexpected header %s", r2)
+				subT.Errorf("Unexpected header %s", r2)
 			}
 
 			if s2 := res.Header.Get("Set-Me-2"); s2 != "s2" {
-				t.Errorf("Missing or invalid header Set-Me-2: %s", s2)
+				subT.Errorf("Missing or invalid header Set-Me-2: %s", s2)
 			}
 
 			if a2 := res.Header.Get("Add-Me-2"); a2 != "a2" {
-				t.Errorf("Missing or invalid header Add-Me-2: %s", a2)
+				subT.Errorf("Missing or invalid header Add-Me-2: %s", a2)
 			}
 
 			resBytes, err := io.ReadAll(res.Body)
@@ -959,7 +959,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			jsonResult.Headers.Del("User-Agent")
@@ -967,7 +967,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			jsonResult.Headers.Del("Couper-Request-Id")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -1174,11 +1174,11 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1225,11 +1225,11 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1290,11 +1290,11 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1588,11 +1588,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1695,11 +1695,11 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			res.Body.Close()
 
 			if string(resBytes) != tc.exp.Body {
-				t.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
+				subT.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
 			}
 
 			if ct := res.Header.Get("Content-Type"); ct != tc.exp.ContentType {
-				t.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
+				subT.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
 			}
 		})
 	}
@@ -1750,13 +1750,13 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			jsonResult.Origin = res.Header.Get("X-Origin")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2058,15 +2058,15 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			url := getAccessLogUrl(hook)
-			if url != tc.wantAccessLogUrl {
-				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
+			logUrl := getAccessLogUrl(hook)
+			if logUrl != tc.wantAccessLogUrl {
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
 			}
 		})
 	}
@@ -2190,15 +2190,15 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			url := getAccessLogUrl(hook)
-			if url != tc.wantAccessLogUrl {
-				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
+			logUrl := getAccessLogUrl(hook)
+			if logUrl != tc.wantAccessLogUrl {
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
 			}
 		})
 	}
@@ -2239,8 +2239,8 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 	}
 
 	helper := test.New(t)
-	resourceOrigin, err := url.Parse(ResourceOrigin.URL)
-	helper.Must(err)
+	resourceOrigin, perr := url.Parse(ResourceOrigin.URL)
+	helper.Must(perr)
 
 	port, _ := strconv.ParseInt(resourceOrigin.Port(), 10, 64)
 
@@ -2325,10 +2325,10 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+				subT.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2444,10 +2444,10 @@ func TestHTTPServer_request_variables(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+				subT.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2506,11 +2506,11 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				var jsonResult expectation
 				err = json.Unmarshal(resBytes, &jsonResult)
 				if err != nil {
-					t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+					subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 				}
 
 				if !reflect.DeepEqual(jsonResult, tc.exp) {
-					t.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
+					subT.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
 				}
 			})
 		}
@@ -2638,7 +2638,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
+				subT.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
 			}
 
 			b, err := io.ReadAll(res.Body)
@@ -2652,13 +2652,13 @@ func TestConfigBodyContentBackends(t *testing.T) {
 
 			for k, v := range tc.header {
 				if !reflect.DeepEqual(res.Header[k], v) {
-					t.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
+					subT.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
 				}
 			}
 
 			for k, v := range tc.query {
 				if !reflect.DeepEqual(p.Query[k], v) {
-					t.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
+					subT.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
 				}
 			}
 		})
@@ -2707,22 +2707,20 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if message != tc.wantErrLog {
-					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			}
 
 			if res.StatusCode != tc.status {
-				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
 			}
 
 			if ct := res.Header.Get("Content-Type"); ct != tc.ct {
-				t.Errorf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
-				return
+				subT.Fatalf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
 			}
 
 			if tc.ct == "text/html" {
@@ -2740,11 +2738,11 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 			for k, v := range tc.header {
 				if _, ok := p.Headers[k]; !ok {
-					t.Errorf("Expected header %q, got nothing", k)
+					subT.Errorf("Expected header %q, got nothing", k)
 					break
 				}
 				if !reflect.DeepEqual(p.Headers[k], v) {
-					t.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
+					subT.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
 				}
 			}
 		})
@@ -2754,7 +2752,8 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 func Test_LoadAccessControl(t *testing.T) {
 	// Tests the config load with ACs and "error_handler" blocks...
 	shutdown, _ := newCouper("testdata/integration/config/07_couper.hcl", test.New(t))
-	defer shutdown()
+	test.WaitForOpenPort(8080)
+	shutdown()
 }
 
 func TestJWTAccessControl(t *testing.T) {
@@ -2885,8 +2884,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Errorf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
-				return
+				subT.Fatalf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
 			}
 
 			token := res.Header.Get("X-Jwt")
@@ -2899,8 +2897,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Errorf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
-				return
+				subT.Fatalf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
 			}
 
 			decoder := json.NewDecoder(res.Body)
@@ -2909,26 +2906,21 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if _, ok := claims["exp"]; !ok {
-				t.Errorf("%q: missing exp claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing exp claim: %#v", tc.name, claims)
 			}
 			issclaim, ok := claims["iss"]
 			if !ok {
-				t.Errorf("%q: missing iss claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing iss claim: %#v", tc.name, claims)
 			}
 			if issclaim != "the_issuer" {
-				t.Errorf("%q: unexpected iss claim: %q", tc.name, issclaim)
-				return
+				subT.Fatalf("%q: unexpected iss claim: %q", tc.name, issclaim)
 			}
 			pidclaim, ok := claims["pid"]
 			if !ok {
-				t.Errorf("%q: missing pid claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing pid claim: %#v", tc.name, claims)
 			}
 			if pidclaim != pid {
-				t.Errorf("%q: unexpected pid claim: %q", tc.name, pidclaim)
-				return
+				subT.Fatalf("%q: unexpected pid claim: %q", tc.name, pidclaim)
 			}
 		})
 	}
@@ -2987,31 +2979,31 @@ func Test_Scope(t *testing.T) {
 			hook.Reset()
 
 			req, err := http.NewRequest(tc.operation, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
 			if tc.authorize {
 				req.Header.Set("Authorization", "Bearer "+token)
 			}
-			helper.Must(err)
 
 			res, err := client.Do(req)
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				t.Errorf("expected Status %d, got: %d", tc.status, res.StatusCode)
-				return
+				subT.Fatalf("expected Status %d, got: %d", tc.status, res.StatusCode)
 			}
 
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if !strings.HasPrefix(message, tc.wantErrLog) {
-					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 				errorType := getAccessLogErrorType(hook)
 				if errorType != tc.wantErrType {
-					t.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
+					subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
 				}
 			}
 		})
@@ -3021,8 +3013,8 @@ func Test_Scope(t *testing.T) {
 func getAccessLogUrl(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
 		if entry.Data["type"] == "couper_access" && entry.Data["url"] != "" {
-			if url, ok := entry.Data["url"].(string); ok {
-				return url
+			if u, ok := entry.Data["url"].(string); ok {
+				return u
 			}
 		}
 	}
@@ -3200,8 +3192,8 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 		{"/app", "hans", http.StatusOK},
 		{"/app/1", "hans", http.StatusOK},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://protect.me:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3214,7 +3206,7 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.expStatus {
-				st.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
+				subT.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
 			}
 		})
 	}
@@ -3263,11 +3255,11 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -3299,14 +3291,12 @@ func TestFunctions(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
 			for k, v := range tc.header {
 				if v1 := res.Header.Get(k); v1 != v {
-					t.Errorf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
-					return
+					subT.Fatalf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
 				}
 			}
 		})
@@ -3344,14 +3334,14 @@ func TestEndpoint_Response(t *testing.T) {
 			res, err := client.Do(req)
 			if tc.expStatusCode == http.StatusMovedPermanently {
 				if !redirSeen {
-					t.Errorf("expected a redirect response")
+					subT.Errorf("expected a redirect response")
 				}
 
 				resp := logHook.LastEntry().Data["response"]
 				fields := resp.(logging.Fields)
 				headers := fields["headers"].(map[string]string)
 				if headers["location"] != "https://couper.io/" {
-					t.Errorf("expected location header log")
+					subT.Errorf("expected location header log")
 				}
 			} else {
 				helper.Must(err)
@@ -3362,19 +3352,18 @@ func TestEndpoint_Response(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != tc.expStatusCode {
-				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
 			}
 
 			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
-				t.Logf("%v", logHook.LastEntry())
-				t.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected statusCode log: %d", tc.expStatusCode)
 			}
 
 			if len(resBytes) > 0 {
 				b, exist := logHook.LastEntry().Data["response"].(logging.Fields)["bytes"]
 				if !exist || b != len(resBytes) {
-					t.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
+					subT.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
 			}
 		})
@@ -3417,12 +3406,11 @@ func TestCORS_Configuration(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != http.StatusNoContent {
-				t.Errorf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
 			}
 
 			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
-				t.Errorf("Expected allowed origin resp, got: %v", val)
+				subT.Errorf("Expected allowed origin resp, got: %v", val)
 			}
 		})
 	}
@@ -3470,8 +3458,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	v1 := res.Header.Get("x-v-1")
@@ -3545,8 +3532,7 @@ func TestOAuthStateFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3610,8 +3596,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3681,8 +3666,7 @@ func TestOIDCNonceFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3747,8 +3731,7 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3812,8 +3795,7 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")

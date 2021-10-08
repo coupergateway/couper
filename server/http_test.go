@@ -541,7 +541,7 @@ func TestHTTPServer_RequestID(t *testing.T) {
 				var jsonResult expectation
 				err = json.Unmarshal(body, &jsonResult)
 				if err != nil {
-					t.Errorf("unmarshal json: %v: got:\n%s", err, string(body))
+					subT.Errorf("unmarshal json: %v: got:\n%s", err, string(body))
 				}
 
 				for k := range tc.expToBackend.Headers {

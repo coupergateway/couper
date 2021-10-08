@@ -42,12 +42,12 @@ func TestFile_ServeHTTP(t *testing.T) {
 	srvOpts, _ := server.NewServerOptions(&config.Server{}, nil)
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			srvOpts.FilesBasePath = tt.fields.basePath
 
 			f, err := NewFile(path.Join(wd, tt.fields.docRootDir), srvOpts, nil)
 			if err != nil {
-				t.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			rec := httptest.NewRecorder()
@@ -58,7 +58,7 @@ func TestFile_ServeHTTP(t *testing.T) {
 			}
 
 			if rec.Code != tt.expectedCode {
-				t.Errorf("Expected status %d, got: %d", tt.expectedCode, rec.Code)
+				subT.Errorf("Expected status %d, got: %d", tt.expectedCode, rec.Code)
 			}
 		})
 	}
