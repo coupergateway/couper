@@ -12,6 +12,7 @@ var _ Inline = &Endpoint{}
 
 // Endpoint represents the <Endpoint> object.
 type Endpoint struct {
+	ErrorHandlerSetter
 	AccessControl        []string  `hcl:"access_control,optional"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	ErrorFile            string    `hcl:"error_file,optional"`

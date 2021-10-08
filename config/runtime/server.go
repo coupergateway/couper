@@ -161,7 +161,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, nil, log)
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -200,7 +200,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, nil, log)
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -266,30 +266,41 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 			}
 
-			scopeMaps := []map[string]string{}
-			if parentAPI != nil {
-				apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
-				if err != nil {
-					return nil, err
-				}
-				scopeMaps = append(scopeMaps, apiScopeMap)
-			}
-			endpointScopeMap, err := seetie.ValueToScopeMap(endpointConf.Scope)
+			scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
 			if err != nil {
 				return nil, err
 			}
-			scopeMaps = append(scopeMaps, endpointScopeMap)
+
 			scopeControl := ac.NewScopeControl(scopeMaps)
+			scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+				epOpts:       epOpts,
+				memStore:     memStore,
+				proxyFromEnv: conf.Settings.NoProxyFromEnv,
+				srvOpts:      serverOptions,
+			}, log, ACDefinitions{ // misuse of definitions obj for now
+				"api":      &AccessControl{ErrorHandler: parentAPI.ErrorHandler},
+				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
+			}, "api", "endpoint")
+			if err != nil {
+				return nil, err
+			}
+
+			protectedHandler := middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+
 			accessControl := newAC(srvConf, parentAPI)
+			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
+				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+			}
+
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:       epOpts,
-					handler:      epHandler,
+					handler:      protectedHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, scopeControl, log)
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -310,6 +321,25 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	}
 
 	return serverConfiguration, nil
+}
+
+func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
+	var scopeMaps []map[string]string
+	if parentAPI != nil {
+		apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
+		if err != nil {
+			return nil, err
+		}
+		scopeMaps = append(scopeMaps, apiScopeMap)
+	}
+	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.Scope)
+	if err != nil {
+		return nil, err
+	}
+
+	scopeMaps = append(scopeMaps, endpointScopeMap)
+
+	return scopeMaps, nil
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
@@ -631,7 +661,7 @@ type protectedOptions struct {
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, scopeControl *ac.ScopeControl, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
@@ -645,10 +675,6 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 			list,
 			ac.NewItem(acName, m[acName].Control, eh),
 		)
-	}
-	if scopeControl != nil {
-		// TODO properly create error handler
-		list = append(list, ac.NewItem("scope", scopeControl, handler.NewErrorHandler(nil, opts.epOpts.Error)))
 	}
 
 	if len(list) > 0 {

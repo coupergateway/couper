@@ -10,6 +10,7 @@ var _ Inline = &API{}
 
 // API represents the <API> object.
 type API struct {
+	ErrorHandlerSetter
 	AccessControl        []string  `hcl:"access_control,optional"`
 	BasePath             string    `hcl:"base_path,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`

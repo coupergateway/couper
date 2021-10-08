@@ -321,6 +321,11 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 
 			apiConfig.CatchAllEndpoint = createCatchAllEndpoint()
 			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
+
+			apiErrorHandler := collectErrorHandlerSetter(apiBlock)
+			if err = configureErrorHandler(apiErrorHandler, definedBackends); err != nil {
+				return nil, err
+			}
 		}
 
 		// standalone endpoints
@@ -600,6 +605,11 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 				Summary:  "Missing a 'default' proxy or request definition, or a response block",
 				Subject:  &itemRange,
 			}}
+		}
+
+		epErrorHandler := collectErrorHandlerSetter(endpoint)
+		if err := configureErrorHandler(epErrorHandler, definedBackends); err != nil {
+			return err
 		}
 	}
 
