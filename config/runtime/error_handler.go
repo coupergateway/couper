@@ -16,7 +16,11 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
-		for _, h := range defs[ref].ErrorHandler {
+		definition, ok := defs[ref]
+		if !ok {
+			continue
+		}
+		for _, h := range definition.ErrorHandler {
 			for _, k := range h.Kinds {
 				if _, exist := kindsHandler[k]; exist {
 					log.Fatal("error type handler exists already: " + k)

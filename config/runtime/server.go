@@ -249,6 +249,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			scopeDefinitions := ACDefinitions{ // misuse of definitions obj for now
+				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
+			}
+
 			modifier := []hcl.Body{srvConf.Remain}
 
 			kind := endpoint
@@ -256,6 +260,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				kind = api
 
 				modifier = []hcl.Body{parentAPI.Remain, srvConf.Remain}
+
+				scopeDefinitions["api"] = &AccessControl{ErrorHandler: parentAPI.ErrorHandler}
 			}
 			epOpts.LogHandlerKind = kind.String()
 
@@ -277,10 +283,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				memStore:     memStore,
 				proxyFromEnv: conf.Settings.NoProxyFromEnv,
 				srvOpts:      serverOptions,
-			}, log, ACDefinitions{ // misuse of definitions obj for now
-				"api":      &AccessControl{ErrorHandler: parentAPI.ErrorHandler},
-				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
-			}, "api", "endpoint")
+			}, log, scopeDefinitions, "api", "endpoint")
 			if err != nil {
 				return nil, err
 			}
@@ -330,14 +333,18 @@ func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[strin
 		if err != nil {
 			return nil, err
 		}
-		scopeMaps = append(scopeMaps, apiScopeMap)
+		if apiScopeMap != nil {
+			scopeMaps = append(scopeMaps, apiScopeMap)
+		}
 	}
 	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.Scope)
 	if err != nil {
 		return nil, err
 	}
 
-	scopeMaps = append(scopeMaps, endpointScopeMap)
+	if endpointScopeMap != nil {
+		scopeMaps = append(scopeMaps, endpointScopeMap)
+	}
 
 	return scopeMaps, nil
 }
