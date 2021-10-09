@@ -240,7 +240,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig) *Context {
 	c.jwtSigningConfigs = configs
 	if c.jwtSigningConfigs == nil {
-		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig, 0)
+		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig)
 	}
 	c.updateFunctions()
 	return c
