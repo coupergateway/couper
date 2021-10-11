@@ -284,9 +284,10 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
 	roleMap := map[string][]string{
-		"admin": {"foo", "bar"},
+		"admin": {"foo", "bar", "baz"},
 		"user1": {"foo"},
 		"user2": {"bar"},
+		"*":     {"default"},
 	}
 
 	tests := []struct {
@@ -395,7 +396,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"admin",
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
 			"role: space-separated list",
@@ -404,7 +405,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"user1 user2",
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "default"},
 		},
 		{
 			"role: space-separated list, multiple",
@@ -413,7 +414,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"user1 user2 user1",
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "default"},
 		},
 		{
 			"role: list of string",
@@ -422,7 +423,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"user1", "user2"},
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "default"},
 		},
 		{
 			"role: list of string, multiple",
@@ -431,7 +432,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"user1", "user2", "user2"},
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "default"},
 		},
 		{
 			"role: list of string, no additional 1",
@@ -440,7 +441,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"admin", "user1"},
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
 			"role: list of string, no additional 2",
@@ -449,7 +450,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"admin", "user2"},
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
 			"role: error: boolean",
@@ -512,7 +513,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			[]string{"user2"},
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "default"},
 		},
 		{
 			"combi 2",
@@ -521,7 +522,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"admin",
 			false,
-			[]string{"foo", "bar"},
+			[]string{"foo", "bar", "baz", "default"},
 		},
 	}
 	for _, tt := range tests {
