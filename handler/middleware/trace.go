@@ -22,10 +22,10 @@ type TraceHandler struct {
 }
 
 func NewTraceHandler() Next {
-	return func(handler http.Handler) http.Handler {
-		return &TraceHandler{
+	return func(handler http.Handler) *NextHandler {
+		return NewHandler(&TraceHandler{
 			handler: handler,
-		}
+		}, handler)
 	}
 }
 

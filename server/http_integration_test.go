@@ -2545,7 +2545,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			http.Header{},
 			strings.NewReader(`abcd1234`),
 			expectation{
-				Method:   "POST",
+				Method:   http.MethodPost,
 				Protocol: resourceOrigin.Scheme,
 				Host:     resourceOrigin.Hostname(),
 				Port:     port,
@@ -2564,7 +2564,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			http.Header{"Content-Type": []string{"application/json"}},
 			strings.NewReader(`{"s":"abcd1234"}`),
 			expectation{
-				Method:   "POST",
+				Method:   http.MethodPost,
 				Protocol: resourceOrigin.Scheme,
 				Host:     resourceOrigin.Hostname(),
 				Port:     port,
@@ -2583,7 +2583,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
 			strings.NewReader(`s=abcd1234`),
 			expectation{
-				Method:   "POST",
+				Method:   http.MethodPost,
 				Protocol: resourceOrigin.Scheme,
 				Host:     resourceOrigin.Hostname(),
 				Port:     port,
