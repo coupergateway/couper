@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -281,8 +282,12 @@ func Test_JWT_Validate(t *testing.T) {
 func Test_JWT_yields_scopes(t *testing.T) {
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
-	expScopes := []string{"foo", "bar"}
-	roleMap := map[string][]string{"admin": {"foo", "bar"}, "user1": {"foo"}, "user2": {"bar"}}
+
+	roleMap := map[string][]string{
+		"admin": {"foo", "bar"},
+		"user1": {"foo"},
+		"user2": {"bar"},
+	}
 
 	tests := []struct {
 		name       string
@@ -291,6 +296,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		roleClaim  string
 		role       interface{}
 		wantErr    bool
+		expScopes  []string
 	}{
 		{
 			"scope: space-separated list",
@@ -299,6 +305,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"scope: space-separated list, multiple",
@@ -307,6 +314,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"scope: list of string",
@@ -315,6 +323,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"scope: list of string, multiple",
@@ -323,6 +332,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"scope: error: boolean",
@@ -331,6 +341,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			true,
+			[]string{},
 		},
 		{
 			"scope: error: number",
@@ -339,6 +350,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			true,
+			[]string{},
 		},
 		{
 			"scope: error: list of bool",
@@ -347,6 +359,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			true,
+			[]string{},
 		},
 		{
 			"scope: error: list of number",
@@ -355,6 +368,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			true,
+			[]string{},
 		},
 		{
 			"scope: error: mixed list",
@@ -363,6 +377,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			true,
+			[]string{},
 		},
 		{
 			"scope: error: object",
@@ -371,6 +386,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			true,
+			[]string{},
 		},
 		{
 			"role: single string",
@@ -379,6 +395,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"admin",
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: space-separated list",
@@ -387,6 +404,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"user1 user2",
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: space-separated list, multiple",
@@ -395,6 +413,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"user1 user2 user1",
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: list of string",
@@ -403,6 +422,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"user1", "user2"},
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: list of string, multiple",
@@ -411,6 +431,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"user1", "user2", "user2"},
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: list of string, no additional 1",
@@ -419,6 +440,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"admin", "user1"},
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: list of string, no additional 2",
@@ -427,6 +449,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rolle",
 			[]string{"admin", "user2"},
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"role: error: boolean",
@@ -435,6 +458,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			true,
 			true,
+			[]string{},
 		},
 		{
 			"role: error: number",
@@ -443,6 +467,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			1.23,
 			true,
+			[]string{},
 		},
 		{
 			"role: error: list of bool",
@@ -451,6 +476,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			[]bool{true, false},
 			true,
+			[]string{},
 		},
 		{
 			"role: error: list of number",
@@ -459,6 +485,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			[]int{1, 2},
 			true,
+			[]string{},
 		},
 		{
 			"role: error: mixed list",
@@ -467,6 +494,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			[]interface{}{"eins", 2},
 			true,
+			[]string{},
 		},
 		{
 			"role: error: object",
@@ -475,6 +503,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			true,
+			[]string{},
 		},
 		{
 			"combi 1",
@@ -483,6 +512,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			[]string{"user2"},
 			false,
+			[]string{"foo", "bar"},
 		},
 		{
 			"combi 2",
@@ -491,6 +521,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"role",
 			"admin",
 			false,
+			[]string{"foo", "bar"},
 		},
 	}
 	for _, tt := range tests {
@@ -534,10 +565,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				if !ok {
 					subT.Errorf("Expected scopes within request context")
 				} else {
-					for i, v := range expScopes {
-						if scopesList[i] != v {
-							subT.Errorf("Scopes do not match, want: %v, got: %v", v, scopesList[i])
-						}
+					if !reflect.DeepEqual(tt.expScopes, scopesList) {
+						subT.Errorf("Scopes do not match, want: %v, got: %v", tt.expScopes, scopesList)
 					}
 				}
 
