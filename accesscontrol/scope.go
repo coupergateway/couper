@@ -1,7 +1,6 @@
 package accesscontrol
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/config/request"
@@ -85,16 +84,16 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	}
 	requiredScopes, exists := s.required.scopes[req.Method]
 	if !exists {
-		return errors.BetaOperationDenied.With(fmt.Errorf("operation %s not permitted", req.Method))
+		return errors.BetaOperationDenied.Messagef("operation %s not permitted", req.Method)
 	}
 	ctx := req.Context()
 	grantedScope, ok := ctx.Value(request.Scopes).([]string)
 	if !ok && len(requiredScopes) > 0 {
-		return errors.BetaInsufficientScope.With(fmt.Errorf("no scope granted"))
+		return errors.BetaInsufficientScope.Messagef("no scope granted")
 	}
 	for _, rs := range requiredScopes {
 		if !hasGrantedScope(grantedScope, rs) {
-			return errors.BetaInsufficientScope.With(fmt.Errorf("required scope %q not granted", rs))
+			return errors.BetaInsufficientScope.Messagef("required scope %q not granted", rs)
 		}
 	}
 	return nil
