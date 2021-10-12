@@ -1,6 +1,7 @@
 package eval
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/hashicorp/hcl/v2"
@@ -116,13 +117,26 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 			expr.Exprs[e] = newLiteralValueExpr(ctx, ex)
 		}
 		return expr
+	case *hclsyntax.ForExpr:
+		// TODO: handle for cases
+		//expr.CollExpr = newLiteralValueExpr(ctx, expr.CollExpr)
+		//expr.CondExpr = newLiteralValueExpr(ctx, expr.CondExpr)
+		//expr.KeyExpr = newLiteralValueExpr(ctx, expr.KeyExpr)
+		//expr.ValExpr = newLiteralValueExpr(ctx, expr.ValExpr)
+		return expr
+	case *hclsyntax.ParenthesesExpr:
+		expr.Expression = newLiteralValueExpr(ctx, expr.Expression)
+		return expr
+	case *hclsyntax.SplatExpr:
+		expr.Each = newLiteralValueExpr(ctx, expr.Each)
+		expr.Source = newLiteralValueExpr(ctx, expr.Source)
+		return expr
+	case *hclsyntax.AnonSymbolExpr:
+		return expr
+	case *hclsyntax.LiteralValueExpr:
+		return expr
 	default:
-		for _, v := range exp.Variables() {
-			if val := traversalValue(ctx.Variables, v); val == cty.NilVal {
-				return &hclsyntax.LiteralValueExpr{Val: val, SrcRange: v.SourceRange()}
-			}
-		}
-		return nil
+		panic("eval.Value: expression type not supported: " + fmt.Sprintf(reflect.TypeOf(expr).String()))
 	}
 }
 
