@@ -303,7 +303,7 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 }
 
 func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
-	scopeValues := []string{}
+	var scopeValues []string
 
 	if j.scopeClaim != "" {
 		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
@@ -338,7 +338,7 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 			return nil, fmt.Errorf("Missing expected role claim %q", j.roleClaim)
 		}
 
-		roleValues := []string{}
+		var roleValues []string
 		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
 		rolesArray, ok := rolesClaimValue.([]interface{})
 		if ok {
@@ -357,10 +357,16 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 			roleValues = strings.Split(rolesString, " ")
 		}
 		for _, r := range roleValues {
-			if scopes, exists := j.roleMap[r]; exists {
+			if scopes, exist := j.roleMap[r]; exist {
 				for _, s := range scopes {
 					scopeValues = addScopeValue(scopeValues, s)
 				}
+			}
+		}
+
+		if scopes, exist := j.roleMap["*"]; exist {
+			for _, s := range scopes {
+				scopeValues = addScopeValue(scopeValues, s)
 			}
 		}
 	}
