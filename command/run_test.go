@@ -50,6 +50,7 @@ func TestNewRun(t *testing.T) {
 			TelemetryMetricsEndpoint: defaultSettings.TelemetryMetricsEndpoint,
 			TelemetryMetricsExporter: defaultSettings.TelemetryMetricsExporter,
 			TelemetryMetricsPort:     defaultSettings.TelemetryMetricsPort,
+			TelemetryServiceName:     "couper",
 			TelemetryTracesEndpoint:  defaultSettings.TelemetryTracesEndpoint,
 			XForwardedHost:           true,
 		}},
@@ -66,6 +67,7 @@ func TestNewRun(t *testing.T) {
 			TelemetryMetricsEndpoint: defaultSettings.TelemetryMetricsEndpoint,
 			TelemetryMetricsExporter: defaultSettings.TelemetryMetricsExporter,
 			TelemetryMetricsPort:     defaultSettings.TelemetryMetricsPort,
+			TelemetryServiceName:     "couper",
 			TelemetryTracesEndpoint:  defaultSettings.TelemetryTracesEndpoint,
 		}},
 		{"defaults with flag and env port", "01_defaults.hcl", Args{"-p", "9876"}, []string{"COUPER_DEFAULT_PORT=4561"}, &config.Settings{
@@ -81,6 +83,7 @@ func TestNewRun(t *testing.T) {
 			TelemetryMetricsEndpoint: defaultSettings.TelemetryMetricsEndpoint,
 			TelemetryMetricsExporter: defaultSettings.TelemetryMetricsExporter,
 			TelemetryMetricsPort:     defaultSettings.TelemetryMetricsPort,
+			TelemetryServiceName:     "couper",
 			TelemetryTracesEndpoint:  defaultSettings.TelemetryTracesEndpoint,
 		}},
 	}

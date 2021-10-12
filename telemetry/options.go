@@ -8,6 +8,7 @@ type Options struct {
 	MetricsEndpoint      string
 	MetricsExporter      string
 	MetricsPort          int
+	ServiceName          string
 	Traces               bool
 	TracesEndpoint       string
 }
