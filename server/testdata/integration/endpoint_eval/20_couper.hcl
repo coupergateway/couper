@@ -196,6 +196,15 @@ server "cty.NilVal" {
       }
     }
   }
+
+  endpoint "/functions/tuple-expr" {
+    response {
+      headers = {
+        X-Value = json_encode({ "array": merge(["a"], ["b"]) })
+        Z-Value = "y"
+      }
+    }
+  }
 }
 
 settings {

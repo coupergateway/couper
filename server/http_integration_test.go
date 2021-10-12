@@ -3855,6 +3855,7 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/conditional/nested/true", true, ""},
 		{"/conditional/nested/false", true, ""},
 		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
+		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3901,7 +3902,7 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 			}
 
 			if tc.expCtyVal != "" && tc.expCtyVal != val[0] {
-				subT.Errorf("Want: %s, got: %v", tc.expCtyVal, val)
+				subT.Errorf("Want: %s, got: %v", tc.expCtyVal, val[0])
 			}
 
 		})
