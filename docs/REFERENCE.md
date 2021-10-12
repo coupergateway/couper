@@ -362,8 +362,9 @@ If the key to verify the signatures of tokens does not change over time, it shou
 Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.
 
 A JWT access control configured by this block can extract scope values from
-* the value of the claim specified by `beta_scope_claim` and
-* the result of mapping the value of the claim specified by `beta_role_claim` using the `beta_role_map`.
+
+- the value of the claim specified by `beta_scope_claim` and
+- the result of mapping the value of the claim specified by `beta_role_claim` using the `beta_role_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
@@ -396,7 +397,6 @@ An example can be found
 | `ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 | `claims` |object|-|Default claims for the JWT payload.| The claim values are evaluated per request. |`claims = { iss = "https://the-issuer.com" }`|
 | `headers` | object | - | Additional header fields for the JWT. | `alg` and `typ` cannot be set. | `headers = { kid = "my-key-id" }` |
-
 
 ### OAuth2 AC Block (Beta)
 
@@ -494,7 +494,7 @@ gateway instance.
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
 | `log_format`                    | string | `common`            | Switch for tab/field based colored view or json log lines. |-|-|
-| `log_level`                     | string | `info`              | Set the log-level to one of: `info`, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`. |-|-| 
+| `log_level`                     | string | `info`              | Set the log-level to one of: `info`, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`. |-|-|
 | `log_pretty`                    | bool   | `false`             | Global option for `json` log format which pretty prints with basic key coloring. |-|-|
 | `no_proxy_from_env`             | bool   | `false`             | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |-|-|
 | `request_id_accept_from_header` | string |  `""`               | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured). |-| `X-UID` |
@@ -503,7 +503,6 @@ gateway instance.
 | `request_id_format`             | string | `common`            | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
 | `secure_cookies`                | string | `""`                | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
 | `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host. |-|-|
-
 
 ### Defaults Block
 

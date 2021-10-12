@@ -43,8 +43,6 @@ Load balancers or ingress services often provide `X-Forwarded-Host` headers. Cou
 
 If your applications are running in multiple setups, like testing and production environments, there will likely be more parameters that you want to have configurable. Backend origins, user names, credentials, timeouts, all that could be nice to be changed without a new deployment. Couper supports using environment variables with `env.VAR`-like expressions. Now, Couper can also provide [default values](./docs/REFERENCE.md#defaults-block) for those variables. This makes it easy to have values configurable without the need to provide values outside of Couper (e.g. in Kubernetes). Our [env vars example](https://github.com/avenga/couper-examples/blob/master/env-var/) shows that in action.
 
-
-
 * **Added**
   * `environment_variables` map in the [`defaults`](./docs/REFERENCE.md#defaults-block) block to define default values for environment variables ([#271](https://github.com/avenga/couper/pull/271))
   * [`https-dev-proxy` option](./docs/REFERENCE.md#settings-block) creates a TLS server listing on the given TLS port. Requests are forwarded to the given `server` port. The certificate is generated on-the-fly. This function is intended for local development setups to support browser features requiring HTTPS connections, such as secure cookies. ([#281](https://github.com/avenga/couper/pull/281))
