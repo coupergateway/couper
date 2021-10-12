@@ -182,21 +182,15 @@ func TestDefaultEnvVariables(t *testing.T) {
 				subT.Fatal(err)
 			}
 
-			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
+			hclContext := cf.Context.(*eval.Context).HCLContext()
 
 			envVars := hclContext.Variables["env"].AsValueMap()
 			for key, expectedValue := range tt.want {
 				value, isset := envVars[key]
-				if !isset {
-					subT.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
+				if !isset && expectedValue != cty.NilVal {
+					subT.Errorf("Missing evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
 				} else if value != expectedValue {
 					subT.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
-				}
-			}
-
-			for key, value := range envVars {
-				if _, isset := tt.want[key]; !isset {
-					subT.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
 				}
 			}
 		})

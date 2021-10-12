@@ -50,7 +50,7 @@ type Context struct {
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
-	defaultEnvVariables := make(config.DefaultEnvVars)
+	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
 	}
@@ -454,8 +454,8 @@ func newCtyEnvMap(defaultValues map[string]string) cty.Value {
 
 	for _, pair := range os.Environ() {
 		key := strings.Split(pair, "=")[0]
-		value := os.Getenv(key)
-		if value != "" { // do not set empty string, fallback to nilVal per default
+		value, exist := os.LookupEnv(key)
+		if exist { // also set empty ones if key is present
 			ctyMap[key] = cty.StringVal(value)
 		}
 	}
