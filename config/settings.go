@@ -64,6 +64,7 @@ var DefaultSettings = Settings{
 	TelemetryMetricsEndpoint: otelCollectorEndpoint,
 	TelemetryMetricsExporter: "prometheus",
 	TelemetryMetricsPort:     9090, // default prometheus port
+	TelemetryServiceName:     "couper",
 	TelemetryTracesEndpoint:  otelCollectorEndpoint,
 	XForwardedHost:           false,
 
@@ -90,9 +91,10 @@ type Settings struct {
 	SecureCookies             string   `hcl:"secure_cookies,optional"`
 	TLSDevProxy               List     `hcl:"https_dev_proxy,optional"`
 	TelemetryMetrics          bool     `hcl:"beta_metrics,optional"`
-	TelemetryMetricsPort      int      `hcl:"beta_metrics_port,optional"`
 	TelemetryMetricsEndpoint  string   `hcl:"beta_metrics_endpoint,optional"`
 	TelemetryMetricsExporter  string   `hcl:"beta_metrics_exporter,optional"`
+	TelemetryMetricsPort      int      `hcl:"beta_metrics_port,optional"`
+	TelemetryServiceName      string   `hcl:"beta_service_name,optional"`
 	TelemetryTraces           bool     `hcl:"beta_traces,optional"`
 	TelemetryTracesEndpoint   string   `hcl:"beta_traces_endpoint,optional"`
 	XForwardedHost            bool     `hcl:"xfh,optional"`

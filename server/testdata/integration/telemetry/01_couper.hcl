@@ -17,4 +17,5 @@ definitions {
 
 settings {
   beta_metrics = true
+  beta_service_name = "my-service"
 }
