@@ -3831,28 +3831,30 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 	defer shutdown()
 
 	type testCase struct {
-		path   string
-		expVal bool
+		path      string
+		expVal    bool
+		expCtyVal string
 	}
 
 	for _, tc := range []testCase{
-		{"/1stchild", true},
-		{"/2ndchild/no", false},
-		{"/child-chain/no", false},
-		{"/list-idx", true},
-		{"/list-idx-splat", true},
-		{"/list-idx/no", false},
-		{"/list-idx-chain/no", false},
-		{"/list-idx-key-chain/no", false},
-		{"/root/no", false},
-		{"/tpl", true},
-		{"/for", true},
-		{"/conditional/false", true},
-		{"/conditional/true", false},
-		{"/conditional/null", false},
-		{"/conditional/nested", true},
-		{"/conditional/nested/true", true},
-		{"/conditional/nested/false", true},
+		{"/1stchild", true, ""},
+		{"/2ndchild/no", false, ""},
+		{"/child-chain/no", false, ""},
+		{"/list-idx", true, ""},
+		{"/list-idx-splat", true, ""},
+		{"/list-idx/no", false, ""},
+		{"/list-idx-chain/no", false, ""},
+		{"/list-idx-key-chain/no", false, ""},
+		{"/root/no", false, ""},
+		{"/tpl", true, ""},
+		{"/for", true, ""},
+		{"/conditional/false", true, ""},
+		{"/conditional/true", false, ""},
+		{"/conditional/null", false, ""},
+		{"/conditional/nested", true, ""},
+		{"/conditional/nested/true", true, ""},
+		{"/conditional/nested/false", true, ""},
+		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3897,6 +3899,11 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 			if res.Header.Get("Z-Value") != "y" {
 				subT.Errorf("additional header Z-Value should always been written")
 			}
+
+			if tc.expCtyVal != "" && tc.expCtyVal != val[0] {
+				subT.Errorf("Want: %s, got: %v", tc.expCtyVal, val)
+			}
+
 		})
 	}
 }

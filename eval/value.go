@@ -108,12 +108,7 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		return expr
 	case *hclsyntax.FunctionCallExpr:
 		for a, arg := range expr.Args {
-			for _, v := range arg.Variables() {
-				if val := traversalValue(ctx.Variables, v); val == cty.NilVal {
-					expr.Args[a] = &hclsyntax.LiteralValueExpr{Val: val, SrcRange: v.SourceRange()}
-					break
-				}
-			}
+			expr.Args[a] = newLiteralValueExpr(ctx, arg)
 		}
 		return expr
 	default:

@@ -184,6 +184,18 @@ server "cty.NilVal" {
       }
     }
   }
+
+  endpoint "/functions/arg-items" {
+    response {
+      headers = {
+        X-Value = json_encode(merge({ "obj": {"key": "val"} }, {
+          foo = "bar"
+          xxxx = request.context.scopes
+        }))
+        Z-Value = "y"
+      }
+    }
+  }
 }
 
 settings {

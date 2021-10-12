@@ -73,6 +73,7 @@ func mergeObjects(args []cty.Value) cty.Value {
 		if arg.IsNull() {
 			continue
 		}
+
 		for it := arg.ElementIterator(); it.Next(); {
 			k, v := it.Element()
 			if v.IsNull() {
