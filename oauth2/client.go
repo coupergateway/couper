@@ -49,11 +49,11 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	if scope := c.clientConfig.GetScope(); scope != "" && grantType != "authorization_code" {
 		post.Set("scope", scope)
 	}
-	if requestParams != nil {
-		for key, value := range requestParams {
-			post.Set(key, value)
-		}
+
+	for key, value := range requestParams {
+		post.Set(key, value)
 	}
+
 	teAuthMethod := c.clientConfig.GetTokenEndpointAuthMethod()
 	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
 		post.Set("client_id", c.clientConfig.GetClientID())

@@ -11,6 +11,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.10.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.2.1
@@ -58,7 +59,6 @@ require (
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
-	github.com/prometheus/client_model v0.2.0 // indirect
 	go.opentelemetry.io/otel/internal/metric v0.23.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.9.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
