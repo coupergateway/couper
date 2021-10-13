@@ -24,6 +24,7 @@ const (
 	Invalid JWTSourceType = iota
 	Cookie
 	Header
+	Value
 )
 
 var _ AccessControl = &JWT{}
@@ -31,6 +32,7 @@ var _ AccessControl = &JWT{}
 type (
 	JWTSourceType uint8
 	JWTSource     struct {
+		Expr hcl.Expression
 		Name string
 		Type JWTSourceType
 	}
@@ -63,18 +65,30 @@ type JWTOptions struct {
 	JWKS           *JWKS
 }
 
-func NewJWTSource(cookie, header string) JWTSource {
+func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
-	if c != "" && h != "" { // both are invalid
-		return JWTSource{}
-	}
 
-	if c != "" {
+	if value != nil {
+		v, _ := value.Value(nil)
+		if !v.IsNull() {
+			if h != "" || c != "" {
+				return JWTSource{}
+			}
+
+			return JWTSource{
+				Name: "",
+				Type: Value,
+				Expr: value,
+			}
+		}
+	}
+	if c != "" && h == "" {
 		return JWTSource{
 			Name: c,
 			Type: Cookie,
 		}
-	} else if h != "" {
+	}
+	if h != "" && c == "" {
 		return JWTSource{
 			Name: h,
 			Type: Header,
@@ -168,6 +182,19 @@ func (j *JWT) Validate(req *http.Request) error {
 			}
 		} else {
 			tokenValue = req.Header.Get(j.source.Name)
+		}
+	case Value:
+		requestContext := eval.ContextFromRequest(req).HCLContext()
+		value, diags := j.source.Expr.Value(requestContext)
+		if diags != nil {
+			return diags
+		}
+
+		typeName := value.Type().FriendlyName()
+		if typeName == "string" {
+			tokenValue = value.AsString()
+		} else {
+			return fmt.Errorf("Token has to be a string, but is a %s", typeName)
 		}
 	}
 
@@ -285,7 +312,6 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	}
 
 	for k, v := range claims {
-
 		if k == "iss" || k == "aud" { // gets validated during parsing
 			continue
 		}

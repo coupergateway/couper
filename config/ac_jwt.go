@@ -36,6 +36,7 @@ type JWT struct {
 	SigningKey         string              `hcl:"signing_key,optional"`
 	SigningKeyFile     string              `hcl:"signing_key_file,optional"`
 	SigningTTL         string              `hcl:"signing_ttl,optional"`
+	TokenValue         hcl.Expression      `hcl:"token_value,optional"`
 
 	// Internally used
 	BodyContent *hcl.BodyContent
