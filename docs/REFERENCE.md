@@ -353,7 +353,7 @@ required _label_.
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
 | `beta_role_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_role_claim = "role"`|
-| `beta_role_map` |string|-|mapping of roles to scope values|-|`beta_role_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"] }`|
+| `beta_role_map` |string|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_role_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
