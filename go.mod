@@ -11,6 +11,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.10.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.2.1
@@ -38,8 +39,6 @@ require (
 	google.golang.org/grpc v1.40.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-require github.com/prometheus/client_model v0.2.0
 
 require (
 	github.com/agext/levenshtein v1.2.1 // indirect
