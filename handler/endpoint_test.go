@@ -307,11 +307,19 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				"x-client": "my-val-x-true",
 				"x-origin": "my-val-y-true",
 			}},
+		{"json_body non existing shared parent", `set_response_headers = {
+				x-client = request.json_body.not-there
+				x-client-nested = request.json_body.not-there.nested
+			}`, "application/foo+json",
+			test.Header{
+				"x-client":        "",
+				"x-client-nested": "",
+			}},
 		{"json_body non existing field", `set_response_headers = {
 "${backend_responses.default.json_body.not-there}" = "my-val-0-${backend_responses.default.json_body.origin}"
 "${request.json_body.client}-my-val-a" = "my-val-b-${backend_responses.default.json_body.client}"
 }`, "",
-			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
+			test.Header{"true-my-val-a": "my-val-b-false"}},
 		{"json_body null value", `set_response_headers = { "x-null" = "${backend_responses.default.json_body.nil}" }`, "", test.Header{"x-null": ""}},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {

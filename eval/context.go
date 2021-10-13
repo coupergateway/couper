@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -47,20 +46,17 @@ type Context struct {
 	oauth2            []config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
+	src               []byte
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
-	envKeys := decodeEnvironmentRefs(src)
-
 	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
-	} else {
-		defaultEnvVariables = make(config.DefaultEnvVars)
 	}
 
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(envKeys, defaultEnvVariables)
+	variables[Environment] = newCtyEnvMap(defaultEnvVariables)
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
@@ -70,6 +66,7 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 			Functions: newFunctionsMap(),
 		},
 		inner: context.TODO(), // usually replaced with request context
+		src:   src,
 	}
 }
 
@@ -243,7 +240,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig) *Context {
 	c.jwtSigningConfigs = configs
 	if c.jwtSigningConfigs == nil {
-		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig, 0)
+		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig)
 	}
 	c.updateFunctions()
 	return c
@@ -303,7 +300,7 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 
 // updateFunctions recreates the listed functions with the current evaluation context.
 func (c *Context) updateFunctions() {
-	jwtfn := lib.NewJwtSignFunction(c.jwtSigningConfigs, c.eval)
+	jwtfn := lib.NewJwtSignFunction(c.eval, c.jwtSigningConfigs, Value)
 	c.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 
@@ -449,20 +446,17 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(envKeys []string, defaultValues map[string]string) cty.Value {
-	if len(envKeys) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
+func newCtyEnvMap(defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
-	for _, key := range envKeys {
-		if _, ok := ctyMap[key]; !ok {
-			if _, ok := os.LookupEnv(key); ok {
-				ctyMap[key] = cty.StringVal(os.Getenv(key))
-			} else if value, isset := defaultValues[key]; isset {
-				ctyMap[key] = cty.StringVal(value)
-			} else {
-				ctyMap[key] = cty.StringVal("")
-			}
+	for k, v := range defaultValues {
+		ctyMap[k] = cty.StringVal(v)
+	}
+
+	for _, pair := range os.Environ() {
+		key := strings.Split(pair, "=")[0]
+		value, exist := os.LookupEnv(key)
+		if exist { // also set empty ones if key is present
+			ctyMap[key] = cty.StringVal(value)
 		}
 	}
 	return cty.MapVal(ctyMap)
@@ -480,7 +474,7 @@ func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"base64_decode": lib.Base64DecodeFunc,
 		"base64_encode": lib.Base64EncodeFunc,
-		"coalesce":      stdlib.CoalesceFunc,
+		"coalesce":      lib.CoalesceFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"merge":         lib.MergeFunc,
@@ -489,33 +483,4 @@ func newFunctionsMap() map[string]function.Function {
 		"unixtime":      lib.UnixtimeFunc,
 		"url_encode":    lib.UrlEncodeFunc,
 	}
-}
-
-func decodeEnvironmentRefs(src []byte) []string {
-	tokens, diags := hclsyntax.LexConfig(src, "tmp.hcl", hcl.InitialPos)
-	if diags.HasErrors() {
-		panic(diags)
-	}
-	needle := []byte("env")
-	var keys []string
-	for i, token := range tokens {
-		if token.Type == hclsyntax.TokenDot && i > 0 &&
-			bytes.Equal(tokens[i-1].Bytes, needle) &&
-			i+1 < len(tokens) {
-			value := string(tokens[i+1].Bytes)
-			if !hasValue(keys, value) {
-				keys = append(keys, value)
-			}
-		}
-	}
-	return keys
-}
-
-func hasValue(list []string, needle string) bool {
-	for _, s := range list {
-		if s == needle {
-			return true
-		}
-	}
-	return false
 }

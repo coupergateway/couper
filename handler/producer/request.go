@@ -32,6 +32,7 @@ type Requests []*Request
 func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
+	roundtripCreated := false
 
 	var rootSpan trace.Span
 	if len(r) > 0 {
@@ -47,6 +48,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 				},
 				RoundTripName: currentName,
 			})
+
+			if !roundtripCreated {
+				close(results)
+			}
 		}
 	}()
 
@@ -116,6 +121,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(outreq)...)
 
+		roundtripCreated = true
 		wg.Add(1)
 		go roundtrip(or.Backend, outreq, results, wg)
 	}

@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/zclconf/go-cty/cty"
 
@@ -104,11 +103,7 @@ func TestNewHTTPContext(t *testing.T) {
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			err := hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
-			// Expect same behaviour as in proxy impl and downgrade missing map elements to warnings.
-			if err != nil && seetie.SetSeverityLevel(err.(hcl.Diagnostics)).HasErrors() {
-				subT.Fatal(err)
-			}
+			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]
@@ -129,7 +124,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 	tests := []struct {
 		name string
 		hcl  string
-		want map[string]string
+		want map[string]cty.Value
 	}{
 		{
 			"test",
@@ -150,7 +145,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 				}
 			}
 			`,
-			map[string]string{"ORIGIN": "FOO", "TIMEOUT": "42"},
+			map[string]cty.Value{"ORIGIN": cty.StringVal("FOO"), "TIMEOUT": cty.StringVal("42")},
 		},
 		{
 			"no-environment_variables-block",
@@ -164,7 +159,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 
 			defaults {}
 			`,
-			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
+			map[string]cty.Value{"ORIGIN": cty.NilVal, "TIMEOUT": cty.NilVal},
 		},
 		{
 			"no-defaults-block",
@@ -176,7 +171,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 				}
 			}
 			`,
-			map[string]string{"ORIGIN": "", "TIMEOUT": ""},
+			map[string]cty.Value{"ORIGIN": cty.NilVal, "TIMEOUT": cty.NilVal},
 		},
 	}
 
@@ -187,21 +182,15 @@ func TestDefaultEnvVariables(t *testing.T) {
 				subT.Fatal(err)
 			}
 
-			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
+			hclContext := cf.Context.(*eval.Context).HCLContext()
 
-			envVars := seetie.ValueToMap(hclContext.Variables["env"])
+			envVars := hclContext.Variables["env"].AsValueMap()
 			for key, expectedValue := range tt.want {
 				value, isset := envVars[key]
-				if !isset {
-					subT.Errorf("Missing or unused evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
+				if !isset && expectedValue != cty.NilVal {
+					subT.Errorf("Missing evironment variable %q:\nWant:\t%s=%q\nGot:", key, key, expectedValue)
 				} else if value != expectedValue {
 					subT.Errorf("Unexpected value for evironment variable %q:\nWant:\t%s=%q\nGot:\t%s=%q", key, key, expectedValue, key, value)
-				}
-			}
-
-			for key, value := range envVars {
-				if _, isset := tt.want[key]; !isset {
-					subT.Errorf("Unexpected variable %q in evironment: \nWant:\nGot:\t%s=%q", key, key, value)
 				}
 			}
 		})

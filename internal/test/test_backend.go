@@ -59,9 +59,10 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 			Body                               string
 			Headers                            http.Header
 			Host                               string
-			RawQuery                           string
-			Path                               string
+			Json                               map[string]interface{}
 			Method, RemoteAddr, Url, UserAgent string
+			Path                               string
+			RawQuery                           string
 			ResponseStatus                     int
 		}
 
@@ -76,12 +77,15 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 			Host:           req.Host,
 			Method:         req.Method,
 			Path:           req.URL.Path,
-			RemoteAddr:     req.RemoteAddr,
 			Query:          req.URL.Query(),
 			RawQuery:       req.URL.RawQuery,
+			RemoteAddr:     req.RemoteAddr,
+			ResponseStatus: status,
 			Url:            req.URL.String(),
 			UserAgent:      req.UserAgent(),
-			ResponseStatus: status,
+			Json: map[string]interface{}{
+				"list": []string{"item1", "item2"},
+			},
 		}
 
 		respContent, _ := json.Marshal(resp)

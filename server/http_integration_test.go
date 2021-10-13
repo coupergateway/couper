@@ -125,7 +125,8 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	shutdownFn := func() {
 		if helper.TestFailed() { // log on error
 			for _, entry := range hook.AllEntries() {
-				helper.Logf(entry.String())
+				s, _ := entry.String()
+				helper.Logf(s)
 			}
 		}
 		cleanup(cancelFn, helper)
@@ -638,15 +639,11 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 				"ae_a_and_b":  []string{"A&B", "A&B"},
 				"ae_empty":    []string{"", ""},
 				"ae_multi":    []string{"str1", "str2", "str3", "str4"},
-				"ae_noop":     []string{"", ""},
-				"ae_null":     []string{"", ""},
 				"ae_string":   []string{"str", "str"},
 				"ae":          []string{"ae", "ae"},
 				"aeb_a_and_b": []string{"A&B", "A&B"},
 				"aeb_empty":   []string{"", ""},
 				"aeb_multi":   []string{"str1", "str2", "str3", "str4"},
-				"aeb_noop":    []string{"", ""},
-				"aeb_null":    []string{"", ""},
 				"aeb_string":  []string{"str", "str"},
 				"aeb":         []string{"aeb", "aeb"},
 				"caseIns":     []string{"1"},
@@ -918,8 +915,6 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				"Aeb_a_and_b": []string{"A&B", "A&B"},
 				"Aeb_empty":   []string{"", ""},
 				"Aeb_multi":   []string{"str1", "str2", "str3", "str4"},
-				"Aeb_noop":    []string{"", ""},
-				"Aeb_null":    []string{"", ""},
 				"Aeb_string":  []string{"str", "str"},
 				"Xxx":         []string{"aaa", "bbb"},
 			},
@@ -3280,6 +3275,7 @@ func TestFunctions(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"merge", "/v1/merge", map[string]string{"X-Merged-1": "{\"foo\":[1,2]}", "X-Merged-2": "{\"bar\":[3,4]}", "X-Merged-3": "[\"a\",\"b\"]"}, http.StatusOK},
+		{"coalesce", "/v1/coalesce?q=a", map[string]string{"X-Coalesce-1": "/v1/coalesce", "X-Coalesce-2": "default", "X-Coalesce-3": "default", "X-Coalesce-4": "default"}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3825,5 +3821,90 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/endpoint_eval/20_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path      string
+		expVal    bool
+		expCtyVal string
+	}
+
+	for _, tc := range []testCase{
+		{"/1stchild", true, ""},
+		{"/2ndchild/no", false, ""},
+		{"/child-chain/no", false, ""},
+		{"/list-idx", true, ""},
+		{"/list-idx-splat", true, ""},
+		{"/list-idx/no", false, ""},
+		{"/list-idx-chain/no", false, ""},
+		{"/list-idx-key-chain/no", false, ""},
+		{"/root/no", false, ""},
+		{"/tpl", true, ""},
+		{"/for", true, ""},
+		{"/conditional/false", true, ""},
+		{"/conditional/true", false, ""},
+		{"/conditional/null", false, ""},
+		{"/conditional/nested", true, ""},
+		{"/conditional/nested/true", true, ""},
+		{"/conditional/nested/false", true, ""},
+		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
+		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			hook.Reset()
+			defer func() {
+				if subT.Failed() {
+					time.Sleep(time.Millisecond * 100)
+					for _, entry := range hook.AllEntries() {
+						s, _ := entry.String()
+						println(s)
+					}
+				}
+			}()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("Expected Status OK, got: %d", res.StatusCode)
+				return
+			}
+
+			defer func() {
+				if subT.Failed() {
+					for k := range res.Header {
+						subT.Logf("%s: %s", k, res.Header.Get(k))
+					}
+				}
+			}()
+
+			val, ok := res.Header[http.CanonicalHeaderKey("X-Value")]
+			if !tc.expVal && ok {
+				subT.Errorf("%q: expected no value, got: %q", tc.path, val)
+			} else if tc.expVal && !ok {
+				subT.Errorf("%q: expected X-Value header, got: nothing", tc.path)
+			}
+
+			if res.Header.Get("Z-Value") != "y" {
+				subT.Errorf("additional header Z-Value should always been written")
+			}
+
+			if tc.expCtyVal != "" && tc.expCtyVal != val[0] {
+				subT.Errorf("Want: %s, got: %v", tc.expCtyVal, val[0])
+			}
+
+		})
 	}
 }

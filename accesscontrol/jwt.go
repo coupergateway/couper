@@ -177,12 +177,12 @@ func (j *JWT) Validate(req *http.Request) error {
 	}
 
 	claims := make(map[string]interface{})
-	var diags hcl.Diagnostics
 	if j.claims != nil {
-		claims, diags = seetie.ExpToMap(eval.ContextFromRequest(req).HCLContext(), j.claims)
-		if diags != nil {
-			return diags
+		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
+		if verr != nil {
+			return verr
 		}
+		claims = seetie.ValueToMap(val)
 	}
 
 	parser, err := newParser(j.algorithms, claims)
@@ -308,7 +308,7 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 	if j.scopeClaim != "" {
 		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
 		if !exists {
-			return nil, fmt.Errorf("Missing expected scope claim %q", j.scopeClaim)
+			return nil, fmt.Errorf("missing expected scope claim %q", j.scopeClaim)
 		}
 
 		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately

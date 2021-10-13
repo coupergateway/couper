@@ -14,6 +14,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Changed**
   * Organized log format fields for uniform access and upstream log ([#300](https://github.com/avenga/couper/pull/300))
   * `claims` in a [`jwt` block](./docs/REFERENCE.md#jwt-block) are now evaluated per request, so that [`request` properties](./docs/REFERENCE.md#request) can be used as required claim values ([#314](https://github.com/avenga/couper/pull/314))
+  * how Couper handles missing variables during context evaluation ([#255](https://github.com/avenga/couper/pull/225))
+    * Previously missing elements results in evaluation errors and expressions like `set_response_headers` failed completely instead of one key/value pair.
+      The evaluation has two steps now and will look up variables first and prepares the given expression to return `Nil` as fallback.
 
 * **Fixed**
   * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block-beta) ([#319](https://github.com/avenga/couper/pull/319))

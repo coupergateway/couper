@@ -396,9 +396,9 @@ func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, erro
 	if content != nil && len(content.Attributes) > 0 {
 
 		if n, exist := content.Attributes["name"]; exist {
-			v, d := n.Expr.Value(evalCtx)
-			if d.HasErrors() {
-				return "", d
+			v, err := eval.Value(evalCtx, n.Expr)
+			if err != nil {
+				return "", err
 			}
 			return v.AsString(), nil
 		}
