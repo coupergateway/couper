@@ -23,6 +23,7 @@ import (
 )
 
 var _ Cmd = &Run{}
+var RunCmdTestCallback func()
 
 // Run starts the frontend gateway server and listen
 // for requests on the configured hosts and ports.
@@ -170,6 +171,10 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 			tlsServer = append(tlsServer, tlsSrv)
 			logEntry.Infof("couper is serving tls: %s -> %s", tlsPort, port)
 		}
+	}
+
+	if RunCmdTestCallback != nil {
+		RunCmdTestCallback()
 	}
 
 	listenCmdShutdown()
