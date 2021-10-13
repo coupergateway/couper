@@ -12,25 +12,21 @@ import (
 
 func TestCookies_IntegrationStrip(t *testing.T) {
 	helper := test.New(t)
-	seenCh := make(chan struct{})
+	seenCh := make(chan struct{}, 1)
 
 	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Set-Cookie", "n=v; Path=path; Secure")
 		rw.WriteHeader(http.StatusOK)
 
-		go func() {
-			seenCh <- struct{}{}
-		}()
+		seenCh <- struct{}{}
+		close(seenCh)
 	}))
+
 	ln, err := net.Listen("tcp4", testProxyAddr[7:])
 	helper.Must(err)
 	origin.Listener = ln
 	origin.Start()
-	defer func() {
-		origin.Close()
-		ln.Close()
-		time.Sleep(time.Second)
-	}()
+	defer origin.Close()
 
 	confPath := "testdata/settings/01_couper.hcl"
 	shutdown, _ := newCouper(confPath, test.New(t))
@@ -47,6 +43,8 @@ func TestCookies_IntegrationStrip(t *testing.T) {
 	}
 
 	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
+
 	select {
 	case <-timer.C:
 		t.Error("Origin request failed")
