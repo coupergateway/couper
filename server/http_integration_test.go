@@ -133,7 +133,13 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	}
 
 	// ensure the previous test aren't listening
-	test.WaitForClosedPort(couperConfig.Settings.DefaultPort)
+	port := couperConfig.Settings.DefaultPort
+	test.WaitForClosedPort(port)
+	waitForCh := make(chan struct{}, 1)
+	command.RunCmdTestCallback = func() {
+		close(waitForCh)
+	}
+	defer func() { command.RunCmdTestCallback = nil }()
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
@@ -141,11 +147,11 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			panic(err)
 		}
 	}()
-
-	time.Sleep(time.Second / 2)
+	<-waitForCh
 
 	for _, entry := range hook.AllEntries() {
-		if entry.Level < logrus.InfoLevel {
+		if entry.Level < logrus.WarnLevel {
+			defer cleanup(cancelFn, helper) // ok in loop, next line is the end
 			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
 		}
 	}
