@@ -7,7 +7,6 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +19,7 @@ import (
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
@@ -452,12 +452,21 @@ func newCtyEnvMap(defaultValues map[string]string) cty.Value {
 		ctyMap[k] = cty.StringVal(v)
 	}
 
-	for _, pair := range os.Environ() {
-		key := strings.Split(pair, "=")[0]
-		value, exist := os.LookupEnv(key)
-		if exist { // also set empty ones if key is present
-			ctyMap[key] = cty.StringVal(value)
+	env.OsEnvironMu.Lock()
+	envs := env.OsEnviron()
+	env.OsEnvironMu.Unlock()
+
+	for _, pair := range envs {
+		var val string
+
+		parts := strings.SplitN(pair, "=", 2)
+		key := parts[0]
+
+		if len(parts) > 1 {
+			val = parts[1]
 		}
+
+		ctyMap[key] = cty.StringVal(val)
 	}
 	return cty.MapVal(ctyMap)
 }

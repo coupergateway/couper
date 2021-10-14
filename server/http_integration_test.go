@@ -470,6 +470,32 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_EnvVars(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	env.SetTestOsEnviron(func() []string {
+		return []string{"BAP1=pass1"}
+	})
+	defer env.SetTestOsEnviron(os.Environ)
+
+	shutdown, hook := newCouper("testdata/integration/env/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", res.StatusCode)
+	}
+
+}
+
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 
