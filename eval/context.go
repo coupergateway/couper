@@ -7,12 +7,12 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -20,6 +20,7 @@ import (
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
@@ -56,7 +57,7 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 	}
 
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(defaultEnvVariables)
+	variables[Environment] = newCtyEnvMap(src, defaultEnvVariables)
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
@@ -446,19 +447,37 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(defaultValues map[string]string) cty.Value {
+func newCtyEnvMap(src []byte, defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range defaultValues {
 		ctyMap[k] = cty.StringVal(v)
 	}
 
-	for _, pair := range os.Environ() {
-		key := strings.Split(pair, "=")[0]
-		value, exist := os.LookupEnv(key)
-		if exist { // also set empty ones if key is present
-			ctyMap[key] = cty.StringVal(value)
+	env.OsEnvironMu.Lock()
+	envs := env.OsEnviron()
+	env.OsEnvironMu.Unlock()
+
+	for _, pair := range envs {
+		var val string
+
+		parts := strings.SplitN(pair, "=", 2)
+		key := parts[0]
+
+		if len(parts) > 1 {
+			val = parts[1]
+		}
+
+		ctyMap[key] = cty.StringVal(val)
+	}
+
+	emptyString := cty.StringVal("")
+	referenced := decodeEnvironmentRefs(src)
+	for _, key := range referenced {
+		if _, exist := ctyMap[key]; !exist {
+			ctyMap[key] = emptyString
 		}
 	}
+
 	return cty.MapVal(ctyMap)
 }
 
@@ -483,4 +502,33 @@ func newFunctionsMap() map[string]function.Function {
 		"unixtime":      lib.UnixtimeFunc,
 		"url_encode":    lib.UrlEncodeFunc,
 	}
+}
+
+func decodeEnvironmentRefs(src []byte) []string {
+	tokens, diags := hclsyntax.LexConfig(src, "tmp.hcl", hcl.InitialPos)
+	if diags.HasErrors() {
+		panic(diags)
+	}
+	needle := []byte("env")
+	var keys []string
+	for i, token := range tokens {
+		if token.Type == hclsyntax.TokenDot && i > 0 &&
+			bytes.Equal(tokens[i-1].Bytes, needle) &&
+			i+1 < len(tokens) {
+			value := string(tokens[i+1].Bytes)
+			if !hasValue(keys, value) {
+				keys = append(keys, value)
+			}
+		}
+	}
+	return keys
+}
+
+func hasValue(list []string, needle string) bool {
+	for _, s := range list {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }
