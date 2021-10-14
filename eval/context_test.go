@@ -159,7 +159,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 
 			defaults {}
 			`,
-			map[string]cty.Value{"ORIGIN": cty.NilVal, "TIMEOUT": cty.NilVal},
+			map[string]cty.Value{"ORIGIN": cty.StringVal(""), "TIMEOUT": cty.StringVal("")},
 		},
 		{
 			"no-defaults-block",
@@ -171,7 +171,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 				}
 			}
 			`,
-			map[string]cty.Value{"ORIGIN": cty.NilVal, "TIMEOUT": cty.NilVal},
+			map[string]cty.Value{"ORIGIN": cty.StringVal(""), "TIMEOUT": cty.StringVal("")},
 		},
 	}
 
