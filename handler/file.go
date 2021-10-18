@@ -31,12 +31,13 @@ type HasResponse interface {
 
 type File struct {
 	basePath   string
+	bodies     []hcl.Body
 	modifier   []hcl.Body
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
+func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body, body hcl.Body) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -60,6 +61,7 @@ func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body) (*Fil
 
 	f := &File{
 		basePath:   srvOpts.FilesBasePath,
+		bodies:     append(srvOpts.Bodies, body),
 		modifier:   modifier,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),

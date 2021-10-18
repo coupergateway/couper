@@ -32,6 +32,7 @@ type Endpoint struct {
 }
 
 type EndpointOptions struct {
+	Bodies         []hcl.Body
 	Context        hcl.Body
 	Error          *errors.Template
 	LogHandlerKind string

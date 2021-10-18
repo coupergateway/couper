@@ -147,7 +147,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
-			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions, []hcl.Body{srvConf.Spa.Remain, srvConf.Remain})
+			spaHandler, err = handler.NewSpa(
+				srvConf.Spa.BootstrapFile,
+				serverOptions,
+				[]hcl.Body{srvConf.Spa.Remain, srvConf.Remain},
+				srvConf.Spa.Remain,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -182,7 +187,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, ferr := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
+			fileHandler, ferr := handler.NewFile(
+				srvConf.Files.DocumentRoot,
+				serverOptions,
+				[]hcl.Body{srvConf.Files.Remain, srvConf.Remain},
+				srvConf.Files.Remain,
+			)
 			if ferr != nil {
 				return nil, ferr
 			}

@@ -76,6 +76,12 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		errTpl = serverOptions.ServerErrTpl
 	}
 
+	bodies := serverOptions.Bodies
+	if apiConf != nil {
+		bodies = append(bodies, apiConf.Remain)
+	}
+	bodies = append(bodies, endpointConf.Remain)
+
 	var response *producer.Response
 	// var redirect producer.Redirect // TODO: configure redirect block
 	proxies := make(producer.Proxies, 0)
@@ -145,6 +151,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	return &handler.EndpointOptions{
+		Bodies:        bodies,
 		Context:       endpointConf.Remain,
 		Error:         errTpl,
 		LogPattern:    endpointConf.Pattern,

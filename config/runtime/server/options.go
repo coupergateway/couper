@@ -3,6 +3,7 @@ package server
 import (
 	"path"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
@@ -16,6 +17,7 @@ type Context interface {
 
 type Options struct {
 	APIErrTpls    map[*config.API]*errors.Template
+	Bodies        []hcl.Body
 	FilesErrTpl   *errors.Template
 	ServerErrTpl  *errors.Template
 	APIBasePaths  map[*config.API]string
@@ -80,6 +82,8 @@ func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, erro
 	if conf.Spa != nil {
 		options.SPABasePath = utils.JoinPath(options.SrvBasePath, conf.Spa.BasePath)
 	}
+
+	options.Bodies = append(options.Bodies, conf.Remain)
 
 	return options, nil
 }

@@ -19,17 +19,20 @@ var (
 )
 
 type Spa struct {
+	bodies     []hcl.Body
 	file       string
 	modifier   []hcl.Body
 	srvOptions *server.Options
 }
 
-func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body) (*Spa, error) {
+func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body, body hcl.Body) (*Spa, error) {
 	absPath, err := filepath.Abs(bootstrapFile)
 	if err != nil {
 		return nil, err
 	}
+
 	return &Spa{
+		bodies:     append(srvOpts.Bodies, body),
 		file:       absPath,
 		modifier:   modifier,
 		srvOptions: srvOpts,
