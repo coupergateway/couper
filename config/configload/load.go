@@ -196,12 +196,12 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					}
 					jwtConfig.BodyContent = bodyContent
 
-					jwtConfig.JWKSBackendBody, err = newBackend(definedBackends, jwtConfig)
+					jwtConfig.Backend, err = newBackend(definedBackends, jwtConfig)
 					if err != nil {
 						return nil, err
 					}
 
-					jwtConfig.JWKSBackendRef = ""
+					jwtConfig.BackendName = ""
 				}
 				if err := jwtConfig.Check(); err != nil {
 					return nil, errors.Configuration.Label(jwtConfig.Name).With(err)
