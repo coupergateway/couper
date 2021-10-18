@@ -185,17 +185,12 @@ func (j *JWT) Validate(req *http.Request) error {
 		}
 	case Value:
 		requestContext := eval.ContextFromRequest(req).HCLContext()
-		value, diags := j.source.Expr.Value(requestContext)
+		value, diags := eval.Value(requestContext, j.source.Expr)
 		if diags != nil {
 			return diags
 		}
 
-		typeName := value.Type().FriendlyName()
-		if typeName == "string" {
-			tokenValue = value.AsString()
-		} else {
-			return fmt.Errorf("Token has to be a string, but is a %s", typeName)
-		}
+		tokenValue = seetie.ValueToString(value)
 	}
 
 	// TODO j.PostParam, j.QueryParam
