@@ -589,8 +589,8 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*ac.JWKS, error) {
 	var backend http.RoundTripper
 
-	if jwtConf.JWKSBackendBody != nil {
-		b, err := newBackend(confContext, jwtConf.JWKSBackendBody, log, ignoreProxyEnv, memStore)
+	if jwtConf.Backend != nil {
+		b, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, memStore)
 		if err != nil {
 			return nil, err
 		}
