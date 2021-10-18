@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -432,24 +433,24 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
-				t.Fatal(err)
+				subT.Fatal(err)
 			}
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
 			if err != nil {
-				t.Fatal(err)
+				subT.Fatal(err)
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 			token, err := hclContext.Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err != nil {
-				t.Fatal(err)
+				subT.Fatal(err)
 			}
 			if token.AsString() != tt.want {
-				t.Errorf("Expected %q, got: %#v", tt.want, token.AsString())
+				subT.Errorf("Expected %q, got: %#v", tt.want, token.AsString())
 			}
 		})
 	}
@@ -460,6 +461,7 @@ func TestJwtSignDynamic(t *testing.T) {
 		name     string
 		hcl      string
 		jspLabel string
+		headers  map[string]interface{}
 		claims   string
 		wantTTL  int64
 		wantMeth string
@@ -483,6 +485,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			`,
 			"MyToken",
+			map[string]interface{}{"alg": "HS256", "typ": "JWT"},
 			`{"sub": "12345"}`,
 			3600,
 			http.MethodPost,
@@ -505,15 +508,43 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			`,
 			"MyToken",
+			map[string]interface{}{"alg": "HS256", "typ": "JWT"},
 			`{"sub": "12345"}`,
 			60,
 			http.MethodPost,
 		},
+		{
+			"user-defined header",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					headers = {
+						kid = "key-id"
+						foo = [request.method, backend_responses.default.status]
+					}
+					claims = {
+						x-method = "GET"
+						x-status = 200
+					}
+				}
+			}
+			`,
+			"MyToken",
+			map[string]interface{}{"alg": "HS256", "typ": "JWT", "kid": "key-id", "foo": []interface{}{"GET", 200}},
+			`{"sub": "12345"}`,
+			3600,
+			http.MethodGet,
+		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			helper := test.New(t)
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			helper.Must(err)
@@ -538,8 +569,20 @@ func TestJwtSignDynamic(t *testing.T) {
 
 			tokenParts := strings.Split(token.AsString(), ".")
 			if len(tokenParts) != 3 {
-				t.Errorf("Needs 3 parts, got: %d", len(tokenParts))
+				subT.Errorf("Needs 3 parts, got: %d", len(tokenParts))
 			}
+
+			joseHeader, err := base64.RawURLEncoding.DecodeString(tokenParts[0])
+			helper.Must(err)
+
+			var resultHeaders map[string]interface{}
+			err = json.Unmarshal(joseHeader, &resultHeaders)
+			helper.Must(err)
+
+			if fmt.Sprint(tt.headers) != fmt.Sprint(resultHeaders) {
+				subT.Errorf("Headers:\n\tWant: %#v\n\tGot:  %#v", tt.headers, resultHeaders)
+			}
+
 			body, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
 			helper.Must(err)
 
@@ -548,26 +591,26 @@ func TestJwtSignDynamic(t *testing.T) {
 			helper.Must(err)
 
 			if resultClaims["exp"] == nil {
-				t.Errorf("Expected exp claim, got: %#v", body)
+				subT.Errorf("Expected exp claim, got: %#v", body)
 			}
 			exp := resultClaims["exp"].(float64)
 			if !fuzzyEqual(int64(exp)-now, tt.wantTTL, 1) {
-				t.Errorf(string(body))
-				t.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
+				subT.Errorf(string(body))
+				subT.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
 			}
 			if resultClaims["x-method"] == nil {
-				t.Errorf("Expected x-method claim, got: %#v", body)
+				subT.Errorf("Expected x-method claim, got: %#v", body)
 			}
 			if resultClaims["x-method"] != tt.wantMeth {
-				t.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
+				subT.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
 			}
 
 			if resultClaims["x-status"] == nil {
-				t.Errorf("Expected x-status claim, got: %#v", body)
+				subT.Errorf("Expected x-status claim, got: %#v", body)
 			}
 			status := int64(resultClaims["x-status"].(float64))
 			if status != 200 {
-				t.Errorf("Expected: %d, got: %d", http.StatusOK, status)
+				subT.Errorf("Expected: %d, got: %d", http.StatusOK, status)
 			}
 		})
 	}
@@ -759,20 +802,59 @@ func TestJwtSignConfigError(t *testing.T) {
 			`{"sub":"12345"}`,
 			"configuration error: jwt_signing_profile or jwt with label MySelfSignedToken already defined",
 		},
+		{
+			"user-defined alg header",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					headers = {
+						alg = "none"
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			`configuration error: MyToken: "alg" cannot be set via "headers"`,
+		},
+		{
+			"user-defined typ header",
+			`
+			server "test" {
+			}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "HS256"
+					key = "$3cRe4"
+					ttl = "1h"
+					headers = {
+						typ = "JET"
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub": "12345"}`,
+			`configuration error: MyToken: "typ" cannot be set via "headers"`,
+		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err == nil {
-				t.Error("expected an error, got nothing")
-				return
+				subT.Fatalf("expected an error '%s', got nothing", tt.wantErr)
 			}
 			logErr, _ := err.(errors.GoError)
 			if logErr == nil {
-				t.Error("logErr should not be nil")
+				subT.Error("logErr should not be nil")
 			} else if logErr.LogError() != tt.wantErr {
-				t.Errorf("\nwant:\t%s\ngot:\t%v", tt.wantErr, logErr.LogError())
+				subT.Errorf("\nwant:\t%s\ngot:\t%v", tt.wantErr, logErr.LogError())
 			}
 		})
 	}
@@ -873,8 +955,8 @@ func TestJwtSignError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			helper.Must(err)
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
@@ -884,11 +966,11 @@ func TestJwtSignError(t *testing.T) {
 
 			_, err = hclContext.Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})
 			if err == nil {
-				t.Error("expected an error, got nothing")
+				subT.Error("expected an error, got nothing")
 				return
 			}
 			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("Want:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+				subT.Errorf("Want:\t%q\nGot:\t%q", tt.wantErr, err.Error())
 			}
 		})
 	}

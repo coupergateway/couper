@@ -20,6 +20,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -199,12 +200,12 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 					}
 					jwtConfig.BodyContent = bodyContent
 
-					jwtConfig.JWKSBackendBody, err = newBackend(definedBackends, jwtConfig)
+					jwtConfig.Backend, err = newBackend(definedBackends, jwtConfig)
 					if err != nil {
 						return nil, err
 					}
 
-					jwtConfig.JWKSBackendRef = ""
+					jwtConfig.BackendName = ""
 				}
 				if err := jwtConfig.Check(); err != nil {
 					return nil, errors.Configuration.Label(jwtConfig.Name).With(err)
@@ -305,6 +306,23 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 
 	// Prepare dynamic functions
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
+		if profile.Headers != nil {
+			expression, _ := profile.Headers.Value(nil)
+			headers := seetie.ValueToMap(expression)
+
+			var errorMessage string
+			if _, exists := headers["alg"]; exists {
+				errorMessage = `"alg" cannot be set via "headers"`
+			} else if _, exists := headers["typ"]; exists {
+				errorMessage = `"typ" cannot be set via "headers"`
+			}
+
+			if errorMessage != "" {
+				err := fmt.Errorf(errorMessage)
+				return nil, errors.Configuration.Label(profile.Name).With(err)
+			}
+		}
+
 		key, err := reader.ReadFromAttrFile("jwt_signing_profile key", profile.Key, profile.KeyFile)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
@@ -325,23 +343,22 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 		if _, exists := jwtSigningConfigs[profile.Name]; exists {
 			return nil, errors.Configuration.Messagef("jwt_signing_profile block with label %s already defined", profile.Name)
 		}
-		config, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile)
+		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
 		}
-		jwtSigningConfigs[profile.Name] = config
+		jwtSigningConfigs[profile.Name] = signConf
 	}
 	for _, jwt := range couperConfig.Definitions.JWT {
-		config, err := lib.NewJWTSigningConfigFromJWT(jwt)
-
+		signConf, err := lib.NewJWTSigningConfigFromJWT(jwt)
 		if err != nil {
 			return nil, errors.Configuration.Label(jwt.Name).With(err)
 		}
-		if config != nil {
+		if signConf != nil {
 			if _, exists := jwtSigningConfigs[jwt.Name]; exists {
 				return nil, errors.Configuration.Messagef("jwt_signing_profile or jwt with label %s already defined", jwt.Name)
 			}
-			jwtSigningConfigs[jwt.Name] = config
+			jwtSigningConfigs[jwt.Name] = signConf
 		}
 	}
 

@@ -60,7 +60,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 
 			for n := range tc.expHeaders {
 				if v := res.Header.Get(n); v != "true" {
-					t.Errorf("Expected header not found: %s", n)
+					subT.Errorf("Expected header not found: %s", n)
 				}
 			}
 		})
@@ -129,7 +129,7 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.expStatus {
-				t.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
+				subT.Errorf("Expected status code %d, given: %d", tc.expStatus, res.StatusCode)
 			}
 
 			time.Sleep(time.Second / 2) // MAYbe entries arent written yet
@@ -138,7 +138,8 @@ func TestIntegration_SetResponseStatus(t *testing.T) {
 					return
 				}
 			}
-			t.Errorf("expected log message not seen: %s\ngot: %s", tc.expMessage, hook.LastEntry().Message)
+
+			subT.Errorf("expected log message not seen: %s\ngot: %s", tc.expMessage, hook.LastEntry().Message)
 		})
 	}
 }

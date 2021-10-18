@@ -7,7 +7,6 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
@@ -47,20 +47,17 @@ type Context struct {
 	oauth2            []config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
+	src               []byte
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
-	envKeys := decodeEnvironmentRefs(src)
-
 	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
-	} else {
-		defaultEnvVariables = make(config.DefaultEnvVars)
 	}
 
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(envKeys, defaultEnvVariables)
+	variables[Environment] = newCtyEnvMap(src, defaultEnvVariables)
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
@@ -70,6 +67,7 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 			Functions: newFunctionsMap(),
 		},
 		inner: context.TODO(), // usually replaced with request context
+		src:   src,
 	}
 }
 
@@ -243,7 +241,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig) *Context {
 	c.jwtSigningConfigs = configs
 	if c.jwtSigningConfigs == nil {
-		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig, 0)
+		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig)
 	}
 	c.updateFunctions()
 	return c
@@ -303,7 +301,7 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 
 // updateFunctions recreates the listed functions with the current evaluation context.
 func (c *Context) updateFunctions() {
-	jwtfn := lib.NewJwtSignFunction(c.jwtSigningConfigs, c.eval)
+	jwtfn := lib.NewJwtSignFunction(c.eval, c.jwtSigningConfigs, Value)
 	c.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 
@@ -449,22 +447,37 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(envKeys []string, defaultValues map[string]string) cty.Value {
-	if len(envKeys) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
+func newCtyEnvMap(src []byte, defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
-	for _, key := range envKeys {
-		if _, ok := ctyMap[key]; !ok {
-			if _, ok := os.LookupEnv(key); ok {
-				ctyMap[key] = cty.StringVal(os.Getenv(key))
-			} else if value, isset := defaultValues[key]; isset {
-				ctyMap[key] = cty.StringVal(value)
-			} else {
-				ctyMap[key] = cty.StringVal("")
-			}
+	for k, v := range defaultValues {
+		ctyMap[k] = cty.StringVal(v)
+	}
+
+	env.OsEnvironMu.Lock()
+	envs := env.OsEnviron()
+	env.OsEnvironMu.Unlock()
+
+	for _, pair := range envs {
+		var val string
+
+		parts := strings.SplitN(pair, "=", 2)
+		key := parts[0]
+
+		if len(parts) > 1 {
+			val = parts[1]
+		}
+
+		ctyMap[key] = cty.StringVal(val)
+	}
+
+	emptyString := cty.StringVal("")
+	referenced := decodeEnvironmentRefs(src)
+	for _, key := range referenced {
+		if _, exist := ctyMap[key]; !exist {
+			ctyMap[key] = emptyString
 		}
 	}
+
 	return cty.MapVal(ctyMap)
 }
 
@@ -480,7 +493,7 @@ func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"base64_decode": lib.Base64DecodeFunc,
 		"base64_encode": lib.Base64EncodeFunc,
-		"coalesce":      stdlib.CoalesceFunc,
+		"coalesce":      lib.CoalesceFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"merge":         lib.MergeFunc,

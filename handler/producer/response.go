@@ -35,9 +35,9 @@ func NewResponse(req *http.Request, resp hcl.Body, evalCtx *eval.Context, status
 	}
 
 	if attr, ok := content.Attributes["status"]; ok {
-		val, err := attr.Expr.Value(hclCtx)
+		val, err := eval.Value(hclCtx, attr.Expr)
 		if err != nil {
-			return nil, errors.Evaluation.With(err)
+			return nil, err
 		} else if statusValue := int(seetie.ValueToInt(val)); statusValue > 0 {
 			statusCode = statusValue
 		}
@@ -55,9 +55,9 @@ func NewResponse(req *http.Request, resp hcl.Body, evalCtx *eval.Context, status
 	}
 
 	if attr, ok := content.Attributes["headers"]; ok {
-		val, err := attr.Expr.Value(hclCtx)
+		val, err := eval.Value(hclCtx, attr.Expr)
 		if err != nil {
-			return nil, errors.Evaluation.With(err)
+			return nil, err
 		}
 
 		eval.SetHeader(val, clientres.Header)

@@ -84,8 +84,8 @@ func Test_SamlSsoUrl(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(st *testing.T) {
-			h := test.New(st)
+		t.Run(tt.name, func(subT *testing.T) {
+			h := test.New(subT)
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				if tt.wantErr {
@@ -101,7 +101,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 
 			ssoUrl, err := evalContext.HCLContext().Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
 			if err == nil && tt.wantErr {
-				st.Fatal("Error expected")
+				subT.Fatal("Error expected")
 			}
 			if err != nil {
 				if !tt.wantErr {
@@ -112,7 +112,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 			}
 
 			if !strings.HasPrefix(ssoUrl.AsString(), tt.wantPfx) {
-				st.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoUrl.AsString())
+				subT.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoUrl.AsString())
 			}
 
 			u, err := url.Parse(ssoUrl.AsString())
@@ -121,7 +121,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 			q := u.Query()
 			samlRequest := q.Get("SAMLRequest")
 			if samlRequest == "" {
-				st.Fatal("Expected SAMLRequest query param")
+				subT.Fatal("Expected SAMLRequest query param")
 			}
 
 			b64Decoded, err := base64.StdEncoding.DecodeString(samlRequest)

@@ -9,19 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
-
-func ExpToMap(ctx *hcl.EvalContext, exp hcl.Expression) (map[string]interface{}, hcl.Diagnostics) {
-	val, diags := exp.Value(ctx)
-	if SetSeverityLevel(diags).HasErrors() {
-		return nil, filterErrors(diags)
-	}
-	return ValueToMap(val), nil
-}
 
 func ValueToMap(val cty.Value) map[string]interface{} {
 	result := make(map[string]interface{})
@@ -37,7 +28,7 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 
 	for k, v := range valMap {
 		if v.IsNull() || !v.IsWhollyKnown() {
-			result[k] = ""
+			result[k] = nil
 			continue
 		}
 		switch v.Type() {
@@ -51,14 +42,13 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 			f, _ := v.AsBigFloat().Float64()
 			result[k] = f
 		case cty.Map(cty.NilType):
-			result[k] = ""
+			result[k] = nil
 		default:
 			if isTuple(v) {
 				result[k] = ValueToStringSlice(v)
 				continue
 			}
-			// unknown types results in empty string which gets removed later on
-			result[k] = ""
+			result[k] = nil
 		}
 	}
 	return result
@@ -299,22 +289,4 @@ func isTuple(v cty.Value) bool {
 		return false
 	}
 	return v.Type().FriendlyNameForConstraint() == "tuple"
-}
-
-func SetSeverityLevel(diags hcl.Diagnostics) hcl.Diagnostics {
-	for _, d := range diags {
-		switch d.Summary {
-		case "Missing map element", "Unsupported attribute":
-			d.Severity = hcl.DiagWarning
-		}
-	}
-	return diags
-}
-
-func filterErrors(diags hcl.Diagnostics) hcl.Diagnostics {
-	var errs hcl.Diagnostics
-	for _, err := range diags.Errs() {
-		errs = append(errs, err.(*hcl.Diagnostic))
-	}
-	return errs
 }

@@ -267,12 +267,14 @@ func TestMerge(t *testing.T) {
 	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
+
 			mergedV, err := hclContext.Functions["merge"].Call(tt.args)
 			helper.Must(err)
 
 			if !mergedV.RawEquals(tt.want) {
-				t.Errorf("Wrong return value; expected %#v, got: %#v", tt.want, mergedV)
+				subT.Errorf("Wrong return value; expected %#v, got: %#v", tt.want, mergedV)
 			}
 		})
 	}
@@ -458,13 +460,13 @@ func TestMergeErrors(t *testing.T) {
 	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			_, err := hclContext.Functions["merge"].Call(tt.args)
 			if err == nil {
-				t.Error("Error expected")
+				subT.Error("Error expected")
 			}
 			if err != nil && err.Error() != tt.wantErr {
-				t.Errorf("Wrong error message; expected %#v, got: %#v", tt.wantErr, err.Error())
+				subT.Errorf("Wrong error message; expected %#v, got: %#v", tt.wantErr, err.Error())
 			}
 		})
 	}

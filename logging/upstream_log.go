@@ -39,7 +39,7 @@ func NewUpstreamLog(log *logrus.Entry, next http.RoundTripper, ignoreProxyEnv bo
 func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	startTime := time.Now()
 
-	timings, timingsMu := u.withTraceContext(req)
+	timings, timingsMu, clientTrace := u.newTraceContext()
 
 	fields := Fields{
 		"uid":    req.Context().Value(request.UID),
@@ -70,7 +70,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["request"] = requestFields
 
 	oCtx, openAPIContext := validation.NewWithContext(req.Context())
-	*req = *req.WithContext(oCtx)
+	*req = *req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
 
 	rtStart := time.Now()
 	beresp, err := u.next.RoundTrip(req)
@@ -156,7 +156,7 @@ func (u *UpstreamLog) LogEntry() *logrus.Entry {
 	return u.log
 }
 
-func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex) {
+func (u *UpstreamLog) newTraceContext() (Fields, *sync.RWMutex, *httptrace.ClientTrace) {
 	timings := Fields{}
 	mapMu := &sync.RWMutex{}
 	var timeTTFB, timeGotConn, timeConnect, timeDNS, timeTLS time.Time
@@ -211,7 +211,6 @@ func (u *UpstreamLog) withTraceContext(req *http.Request) (Fields, *sync.RWMutex
 			}
 		},
 	}
-	ctx := httptrace.WithClientTrace(req.Context(), trace)
-	*req = *req.WithContext(ctx)
-	return timings, mapMu
+
+	return timings, mapMu, trace
 }

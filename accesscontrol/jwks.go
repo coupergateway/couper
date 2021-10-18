@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/avenga/couper/config/reader"
@@ -32,9 +33,9 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 		return nil, err
 	}
 	var file string
-	if uri[0:5] == "file:" {
+	if strings.HasPrefix(uri, "file:") {
 		file = uri[5:]
-	} else if uri[0:5] != "http:" && uri[0:6] != "https:" {
+	} else if !strings.HasPrefix(uri, "http:") && !strings.HasPrefix(uri, "https:") {
 		return nil, fmt.Errorf("Unsupported JWKS URI scheme: %q", uri)
 	}
 

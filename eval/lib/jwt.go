@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -21,10 +20,9 @@ import (
 
 const FnJWTSign = "jwt_sign"
 
-var rsaParseError = &rsa.PrivateKey{}
-
 type JWTSigningConfig struct {
 	Claims             config.Claims
+	Headers            hcl.Expression
 	Key                interface{}
 	Name               string
 	SignatureAlgorithm string
@@ -80,6 +78,7 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWT
 
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
+		Headers:            j.Headers,
 		Key:                key,
 		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
@@ -127,7 +126,8 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 	return c, nil
 }
 
-func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx *hcl.EvalContext) function.Function {
+func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTSigningConfig,
+	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -152,20 +152,29 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 			}
 
 			mapClaims := jwt.MapClaims{}
-			var defaultClaims, argumentClaims map[string]interface{}
+			var defaultClaims, argumentClaims, headers map[string]interface{}
+
+			if signingConfig.Headers != nil {
+				h, diags := evalFn(ctx, signingConfig.Headers)
+				if diags != nil {
+					return cty.StringVal(""), diags
+				}
+				headers = seetie.ValueToMap(h)
+			}
 
 			// get claims from signing profile
 			if signingConfig.Claims != nil {
-				c, diags := seetie.ExpToMap(confCtx, signingConfig.Claims)
-				if diags.HasErrors() {
-					return cty.StringVal(""), diags
+				v, diags := evalFn(ctx, signingConfig.Claims)
+				if diags != nil {
+					return cty.StringVal(""), err
 				}
-				defaultClaims = c
+				defaultClaims = seetie.ValueToMap(v)
 			}
 
 			for k, v := range defaultClaims {
 				mapClaims[k] = v
 			}
+
 			if signingConfig.TTL != 0 {
 				mapClaims["exp"] = time.Now().Unix() + int64(signingConfig.TTL.Seconds())
 			}
@@ -185,7 +194,7 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 				mapClaims[k] = v
 			}
 
-			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, mapClaims)
+			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, mapClaims, headers)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -195,14 +204,21 @@ func NewJwtSignFunction(jwtSigningConfigs map[string]*JWTSigningConfig, confCtx 
 	})
 }
 
-func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClaims) (string, error) {
+func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClaims, headers map[string]interface{}) (string, error) {
 	signingMethod := jwt.GetSigningMethod(signatureAlgorithm)
 	if signingMethod == nil {
 		return "", fmt.Errorf("no signing method for given algorithm: %s", signatureAlgorithm)
 	}
 
+	if headers == nil {
+		headers = map[string]interface{}{}
+	}
+
+	headers["typ"] = "JWT"
+	headers["alg"] = signingMethod.Alg()
+
 	// create token
-	token := jwt.NewWithClaims(signingMethod, mapClaims)
+	token := &jwt.Token{Header: headers, Claims: mapClaims, Method: signingMethod}
 
 	// sign token
 	return token.SignedString(key)

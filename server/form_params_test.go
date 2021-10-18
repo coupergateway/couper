@@ -145,12 +145,12 @@ func TestIntegration_FormParams(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
+				subT.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
 			}
 
 			if hook.Entries[0].Message != tc.expErr {
-				t.Logf("%v", hook)
-				t.Errorf("%d: Expected message log: %s", i, tc.expErr)
+				subT.Logf("%v", hook)
+				subT.Errorf("%d: Expected message log: %s", i, tc.expErr)
 			}
 
 			resBytes, err := io.ReadAll(res.Body)
@@ -159,11 +159,11 @@ func TestIntegration_FormParams(t *testing.T) {
 			_ = res.Body.Close()
 
 			if !bytes.Contains(resBytes, []byte(tc.expArgs)) {
-				t.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expArgs, resBytes)
+				subT.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expArgs, resBytes)
 			}
 
 			if !bytes.Contains(resBytes, []byte(tc.expCT)) {
-				t.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expCT, resBytes)
+				subT.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expCT, resBytes)
 			}
 		})
 	}

@@ -44,6 +44,8 @@ type JWT struct {
 	hmacSecret     []byte
 	name           string
 	pubKey         *rsa.PublicKey
+	roleClaim      string
+	roleMap        map[string][]string
 	scopeClaim     string
 	jwks           *JWKS
 }
@@ -53,6 +55,8 @@ type JWTOptions struct {
 	Claims         hcl.Expression
 	ClaimsRequired []string
 	Name           string // TODO: more generic (validate)
+	RoleClaim      string
+	RoleMap        map[string][]string
 	ScopeClaim     string
 	Source         JWTSource
 	Key            []byte
@@ -81,23 +85,17 @@ func NewJWTSource(cookie, header string) JWTSource {
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
+	jwtAC, err := newJWT(options)
+	if err != nil {
+		return nil, err
+	}
+
 	algorithm := acjwt.NewAlgorithm(options.Algorithm)
-	jwtAC := &JWT{
-		algorithms:     []acjwt.Algorithm{algorithm},
-		claims:         options.Claims,
-		claimsRequired: options.ClaimsRequired,
-		name:           options.Name,
-		scopeClaim:     options.ScopeClaim,
-		source:         options.Source,
-	}
-
-	if options.Source.Type == Invalid {
-		return nil, fmt.Errorf("token source is invalid")
-	}
-
 	if algorithm == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
 	}
+
+	jwtAC.algorithms = []acjwt.Algorithm{algorithm}
 
 	if algorithm.IsHMAC() {
 		jwtAC.hmacSecret = options.Key
@@ -114,24 +112,39 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 }
 
 func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
-	jwtAC := &JWT{
-		algorithms:     acjwt.RSAAlgorithms,
-		claims:         options.Claims,
-		claimsRequired: options.ClaimsRequired,
-		name:           options.Name,
-		scopeClaim:     options.ScopeClaim,
-		source:         options.Source,
-		jwks:           options.JWKS,
+	jwtAC, err := newJWT(options)
+	if err != nil {
+		return nil, err
 	}
 
-	if jwtAC.jwks == nil {
+	if options.JWKS == nil {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	if jwtAC.source.Type == Invalid {
+	jwtAC.algorithms = acjwt.RSAAlgorithms
+	jwtAC.jwks = options.JWKS
+
+	return jwtAC, nil
+}
+
+func newJWT(options *JWTOptions) (*JWT, error) {
+	if options.Source.Type == Invalid {
 		return nil, fmt.Errorf("token source is invalid")
 	}
 
+	if options.RoleClaim != "" && options.RoleMap == nil {
+		return nil, fmt.Errorf("missing beta_role_map")
+	}
+
+	jwtAC := &JWT{
+		claims:         options.Claims,
+		claimsRequired: options.ClaimsRequired,
+		name:           options.Name,
+		roleClaim:      options.RoleClaim,
+		roleMap:        options.RoleMap,
+		scopeClaim:     options.ScopeClaim,
+		source:         options.Source,
+	}
 	return jwtAC, nil
 }
 
@@ -164,12 +177,12 @@ func (j *JWT) Validate(req *http.Request) error {
 	}
 
 	claims := make(map[string]interface{})
-	var diags hcl.Diagnostics
 	if j.claims != nil {
-		claims, diags = seetie.ExpToMap(eval.ContextFromRequest(req).HCLContext(), j.claims)
-		if diags != nil {
-			return diags
+		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
+		if verr != nil {
+			return verr
 		}
+		claims = seetie.ValueToMap(val)
 	}
 
 	parser, err := newParser(j.algorithms, claims)
@@ -290,33 +303,88 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 }
 
 func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
-	if j.scopeClaim == "" {
-		return []string{}, nil
-	}
-	scopesFromClaim, exists := tokenClaims[j.scopeClaim]
-	if !exists {
-		return nil, fmt.Errorf("Missing expected scope claim %q", j.scopeClaim)
-	}
+	var scopeValues []string
 
-	scopeValues := []string{}
-	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-	scopesArray, ok := scopesFromClaim.([]interface{})
-	if ok {
-		for _, v := range scopesArray {
-			s, ok := v.(string)
+	if j.scopeClaim != "" {
+		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
+		if !exists {
+			return nil, fmt.Errorf("missing expected scope claim %q", j.scopeClaim)
+		}
+
+		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+		scopesArray, ok := scopesFromClaim.([]interface{})
+		if ok {
+			for _, v := range scopesArray {
+				s, ok := v.(string)
+				if !ok {
+					return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+				}
+				scopeValues = addScopeValue(scopeValues, s)
+			}
+		} else {
+			scopesString, ok := scopesFromClaim.(string)
 			if !ok {
 				return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
 			}
-			scopeValues = append(scopeValues, s)
+			for _, s := range strings.Split(scopesString, " ") {
+				scopeValues = addScopeValue(scopeValues, s)
+			}
 		}
-	} else {
-		scopesString, ok := scopesFromClaim.(string)
-		if !ok {
-			return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
-		}
-		scopeValues = strings.Split(scopesString, " ")
 	}
+
+	if j.roleClaim != "" {
+		rolesClaimValue, exists := tokenClaims[j.roleClaim]
+		if !exists {
+			return nil, fmt.Errorf("Missing expected role claim %q", j.roleClaim)
+		}
+
+		var roleValues []string
+		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+		rolesArray, ok := rolesClaimValue.([]interface{})
+		if ok {
+			for _, v := range rolesArray {
+				r, ok := v.(string)
+				if !ok {
+					return nil, fmt.Errorf("value of role claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+				}
+				roleValues = append(roleValues, r)
+			}
+		} else {
+			rolesString, ok := rolesClaimValue.(string)
+			if !ok {
+				return nil, fmt.Errorf("value of role claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+			}
+			roleValues = strings.Split(rolesString, " ")
+		}
+		for _, r := range roleValues {
+			if scopes, exist := j.roleMap[r]; exist {
+				for _, s := range scopes {
+					scopeValues = addScopeValue(scopeValues, s)
+				}
+			}
+		}
+
+		if scopes, exist := j.roleMap["*"]; exist {
+			for _, s := range scopes {
+				scopeValues = addScopeValue(scopeValues, s)
+			}
+		}
+	}
+
 	return scopeValues, nil
+}
+
+func addScopeValue(scopeValues []string, scope string) []string {
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		return scopeValues
+	}
+	for _, s := range scopeValues {
+		if s == scope {
+			return scopeValues
+		}
+	}
+	return append(scopeValues, scope)
 }
 
 func getBearer(val string) (string, error) {

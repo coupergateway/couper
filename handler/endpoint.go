@@ -90,7 +90,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
-	if ee := eval.ApplyRequestContext(req.Context(), e.opts.Context, req); ee != nil {
+	if ee := eval.ApplyRequestContext(reqCtx, e.opts.Context, req); ee != nil {
 		e.opts.Error.ServeError(ee).ServeHTTP(rw, req)
 		return
 	}
@@ -108,8 +108,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	e.readResults(subCtx, requestResults, beresps)
 
 	select {
-	case <-req.Context().Done():
-		err = req.Context().Err()
+	case <-reqCtx.Done():
+		err = reqCtx.Err()
 		log.WithError(errors.ClientRequest.With(err)).Error()
 		return
 	default:

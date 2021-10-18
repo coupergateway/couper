@@ -15,33 +15,35 @@ type Claims hcl.Expression
 // JWT represents the <JWT> object.
 type JWT struct {
 	AccessControlSetter
-	Claims             Claims   `hcl:"claims,optional"`
-	ClaimsRequired     []string `hcl:"required_claims,optional"`
-	Cookie             string   `hcl:"cookie,optional"`
-	Header             string   `hcl:"header,optional"`
-	JWKsURL            string   `hcl:"jwks_url,optional"`
-	JWKsTTL            string   `hcl:"jwks_ttl,optional"`
-	JWKSBackendRef     string   `hcl:"backend,optional"`
-	Key                string   `hcl:"key,optional"`
-	KeyFile            string   `hcl:"key_file,optional"`
-	Name               string   `hcl:"name,label"`
-	PostParam          string   `hcl:"post_param,optional"`
-	QueryParam         string   `hcl:"query_param,optional"`
-	Remain             hcl.Body `hcl:",remain"`
-	ScopeClaim         string   `hcl:"beta_scope_claim,optional"`
-	SignatureAlgorithm string   `hcl:"signature_algorithm,optional"`
-	SigningKey         string   `hcl:"signing_key,optional"`
-	SigningKeyFile     string   `hcl:"signing_key_file,optional"`
-	SigningTTL         string   `hcl:"signing_ttl,optional"`
+	BackendName        string              `hcl:"backend,optional"`
+	Claims             Claims              `hcl:"claims,optional"`
+	ClaimsRequired     []string            `hcl:"required_claims,optional"`
+	Cookie             string              `hcl:"cookie,optional"`
+	Header             string              `hcl:"header,optional"`
+	JWKsURL            string              `hcl:"jwks_url,optional"`
+	JWKsTTL            string              `hcl:"jwks_ttl,optional"`
+	Key                string              `hcl:"key,optional"`
+	KeyFile            string              `hcl:"key_file,optional"`
+	Name               string              `hcl:"name,label"`
+	PostParam          string              `hcl:"post_param,optional"`
+	QueryParam         string              `hcl:"query_param,optional"`
+	Remain             hcl.Body            `hcl:",remain"`
+	RoleClaim          string              `hcl:"beta_role_claim,optional"`
+	RoleMap            map[string][]string `hcl:"beta_role_map,optional"`
+	ScopeClaim         string              `hcl:"beta_scope_claim,optional"`
+	SignatureAlgorithm string              `hcl:"signature_algorithm,optional"`
+	SigningKey         string              `hcl:"signing_key,optional"`
+	SigningKeyFile     string              `hcl:"signing_key_file,optional"`
+	SigningTTL         string              `hcl:"signing_ttl,optional"`
 
 	// Internally used
-	BodyContent     *hcl.BodyContent
-	JWKSBackendBody hcl.Body
+	BodyContent *hcl.BodyContent
+	Backend     hcl.Body
 }
 
 // Reference implements the <BackendReference> interface.
 func (j *JWT) Reference() string {
-	return j.JWKSBackendRef
+	return j.BackendName
 }
 
 // HCLBody implements the <Body> interface.
@@ -68,7 +70,7 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 	schema, _ := gohcl.ImpliedBodySchema(j.Inline())
 
 	// A backend reference is defined, backend block is not allowed.
-	if j.JWKSBackendRef != "" {
+	if j.BackendName != "" {
 		schema.Blocks = nil
 	}
 
@@ -76,7 +78,7 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 }
 
 func (j *JWT) Check() error {
-	if j.JWKSBackendRef != "" && j.JWKSBackendBody != nil {
+	if j.BackendName != "" && j.Backend != nil {
 		return errors.New("backend must be either block or attribute")
 	}
 
@@ -93,7 +95,7 @@ func (j *JWT) Check() error {
 			}
 		}
 	} else {
-		if j.JWKSBackendRef != "" || j.JWKSBackendBody != nil {
+		if j.BackendName != "" || j.Backend != nil {
 			return errors.New("backend not needed without jwks_url")
 		}
 
