@@ -37,9 +37,9 @@ type JWT struct {
 	SigningTTL         string              `hcl:"signing_ttl,optional"`
 
 	// Internally used
-	BodyContent     *hcl.BodyContent
-	Backend         hcl.Body
-	Remain          hcl.Body `hcl:",remain"`
+	BodyContent *hcl.BodyContent
+	Backend     hcl.Body
+	Remain      hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
