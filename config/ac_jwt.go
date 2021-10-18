@@ -28,6 +28,7 @@ type JWT struct {
 	Name               string              `hcl:"name,label"`
 	PostParam          string              `hcl:"post_param,optional"`
 	QueryParam         string              `hcl:"query_param,optional"`
+	Remain             hcl.Body            `hcl:",remain"`
 	RoleClaim          string              `hcl:"beta_role_claim,optional"`
 	RoleMap            map[string][]string `hcl:"beta_role_map,optional"`
 	ScopeClaim         string              `hcl:"beta_scope_claim,optional"`
@@ -39,7 +40,6 @@ type JWT struct {
 	// Internally used
 	BodyContent *hcl.BodyContent
 	Backend     hcl.Body
-	Remain      hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
