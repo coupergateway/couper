@@ -238,7 +238,7 @@ func Test_JWT_Validate(t *testing.T) {
 				pubKey:         pubKeyBytes,
 			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
 			{
-				"token_value",
+				"token_value number",
 				fields{
 					algorithm: algo,
 					source:    ac.NewJWTSource("", "", hcltest.MockExprLiteral(cty.NumberIntVal(42))),
@@ -248,7 +248,7 @@ func Test_JWT_Validate(t *testing.T) {
 				true,
 			},
 			{
-				"token_value",
+				"token_value string",
 				fields{
 					algorithm:      algo,
 					claims:         map[string]string{"aud": "peter", "test123": "value123"},
@@ -680,7 +680,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    token_value = env.TOKEN
 			    header = "..."
-				key = "..."
+			    key = "..."
 			  }
 			}
 			`,
@@ -695,7 +695,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    token_value = env.TOKEN
 			    cookie = "..."
-				key = "..."
+			    key = "..."
 			  }
 			}
 			`,
@@ -710,7 +710,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    cookie = "..."
 			    header = "..."
-				key = "..."
+			    key = "..."
 			  }
 			}
 			`,

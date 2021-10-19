@@ -193,7 +193,6 @@ func (j *JWT) Validate(req *http.Request) error {
 		tokenValue = seetie.ValueToString(value)
 	}
 
-	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
 		return errors.JwtTokenMissing.Message("token required")
 	}

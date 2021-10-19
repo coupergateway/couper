@@ -26,8 +26,6 @@ type JWT struct {
 	Key                string              `hcl:"key,optional"`
 	KeyFile            string              `hcl:"key_file,optional"`
 	Name               string              `hcl:"name,label"`
-	PostParam          string              `hcl:"post_param,optional"`
-	QueryParam         string              `hcl:"query_param,optional"`
 	Remain             hcl.Body            `hcl:",remain"`
 	RoleClaim          string              `hcl:"beta_role_claim,optional"`
 	RoleMap            map[string][]string `hcl:"beta_role_map,optional"`
