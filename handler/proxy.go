@@ -142,9 +142,9 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 		return nil
 	}
 
-	val, diags := attr.Expr.Value(nil)
-	if diags.HasErrors() {
-		return diags
+	val, err := eval.Value(eval.ContextFromRequest(req).HCLContext(), attr.Expr)
+	if err != nil {
+		return err
 	}
 
 	str := seetie.ValueToString(val)
