@@ -415,7 +415,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 | `authorization_endpoint` | string |-| The authorization server endpoint URL used for authorization. |&#9888; required|-|
 | `token_endpoint` | string |-| The authorization server endpoint URL used for requesting the token. |&#9888; required|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. |-|
 | `grant_type` |string|-| The grant type. |&#9888; required, to be set to: `authorization_code`|`grant_type = "authorization_code"`|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
@@ -443,7 +443,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
 | `configuration_ttl` | [duration](#duration) | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. |-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
 | `scope` |string|-| A space separated list of requested scopes for the access token.|`openid` is automatically added.| `scope = "profile read"` |
@@ -466,12 +466,12 @@ required _label_.
 | :--------| :-----------| :-----------| :-----------|
 |`saml`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| Attribute(s)        | Type | Default | Description | Characteristic(s) | Example |
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-|`idp_metadata_file`|string|-|File reference to the Identity Provider metadata XML file.|&#9888; required|-|
-|`sp_acs_url`  |string|-|The URL of the Service Provider's ACS endpoint.|&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
-| `sp_entity_id`   |string|-|The Service Provider's entity ID.|&#9888; required|-|
-| `array_attributes`|string|-|A list of assertion attributes that may have several values.|-|-|
+| `idp_metadata_file` | string | - | File reference to the Identity Provider metadata XML file. | &#9888; required | - |
+| `sp_acs_url`        | string | - | The URL of the Service Provider's ACS endpoint. | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. | - |
+| `sp_entity_id`      | string | - | The Service Provider's entity ID. |&#9888; required | - |
+| `array_attributes`  | string | - | A list of assertion attributes that may have several values. | - | - |
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 
@@ -490,7 +490,7 @@ gateway instance.
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
 | :------------------------------ | :----- | :------------------ | :---------- | :---------------- | :------ |
-| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-| `["proto","host","port"]` |
+| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port` | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [beta_oidc](#oidc-block-beta). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
