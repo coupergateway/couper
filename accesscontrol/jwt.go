@@ -24,6 +24,7 @@ const (
 	Invalid JWTSourceType = iota
 	Cookie
 	Header
+	Value
 )
 
 var _ AccessControl = &JWT{}
@@ -31,6 +32,7 @@ var _ AccessControl = &JWT{}
 type (
 	JWTSourceType uint8
 	JWTSource     struct {
+		Expr hcl.Expression
 		Name string
 		Type JWTSourceType
 	}
@@ -63,18 +65,30 @@ type JWTOptions struct {
 	JWKS           *JWKS
 }
 
-func NewJWTSource(cookie, header string) JWTSource {
+func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
-	if c != "" && h != "" { // both are invalid
-		return JWTSource{}
-	}
 
-	if c != "" {
+	if value != nil {
+		v, _ := value.Value(nil)
+		if !v.IsNull() {
+			if h != "" || c != "" {
+				return JWTSource{}
+			}
+
+			return JWTSource{
+				Name: "",
+				Type: Value,
+				Expr: value,
+			}
+		}
+	}
+	if c != "" && h == "" {
 		return JWTSource{
 			Name: c,
 			Type: Cookie,
 		}
-	} else if h != "" {
+	}
+	if h != "" && c == "" {
 		return JWTSource{
 			Name: h,
 			Type: Header,
@@ -169,20 +183,27 @@ func (j *JWT) Validate(req *http.Request) error {
 		} else {
 			tokenValue = req.Header.Get(j.source.Name)
 		}
+	case Value:
+		requestContext := eval.ContextFromRequest(req).HCLContext()
+		value, diags := eval.Value(requestContext, j.source.Expr)
+		if diags != nil {
+			return diags
+		}
+
+		tokenValue = seetie.ValueToString(value)
 	}
 
-	// TODO j.PostParam, j.QueryParam
 	if tokenValue == "" {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
 	claims := make(map[string]interface{})
-	var diags hcl.Diagnostics
 	if j.claims != nil {
-		claims, diags = seetie.ExpToMap(eval.ContextFromRequest(req).HCLContext(), j.claims)
-		if diags != nil {
-			return diags
+		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
+		if verr != nil {
+			return verr
 		}
+		claims = seetie.ValueToMap(val)
 	}
 
 	parser, err := newParser(j.algorithms, claims)
@@ -285,7 +306,6 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	}
 
 	for k, v := range claims {
-
 		if k == "iss" || k == "aud" { // gets validated during parsing
 			continue
 		}
@@ -303,12 +323,12 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 }
 
 func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
-	scopeValues := []string{}
+	var scopeValues []string
 
 	if j.scopeClaim != "" {
 		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
 		if !exists {
-			return nil, fmt.Errorf("Missing expected scope claim %q", j.scopeClaim)
+			return nil, fmt.Errorf("missing expected scope claim %q", j.scopeClaim)
 		}
 
 		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
@@ -338,7 +358,7 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 			return nil, fmt.Errorf("Missing expected role claim %q", j.roleClaim)
 		}
 
-		roleValues := []string{}
+		var roleValues []string
 		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
 		rolesArray, ok := rolesClaimValue.([]interface{})
 		if ok {
@@ -357,10 +377,16 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 			roleValues = strings.Split(rolesString, " ")
 		}
 		for _, r := range roleValues {
-			if scopes, exists := j.roleMap[r]; exists {
+			if scopes, exist := j.roleMap[r]; exist {
 				for _, s := range scopes {
 					scopeValues = addScopeValue(scopeValues, s)
 				}
+			}
+		}
+
+		if scopes, exist := j.roleMap["*"]; exist {
+			for _, s := range scopes {
+				scopeValues = addScopeValue(scopeValues, s)
 			}
 		}
 	}

@@ -396,9 +396,9 @@ func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, erro
 	if content != nil && len(content.Attributes) > 0 {
 
 		if n, exist := content.Attributes["name"]; exist {
-			v, d := n.Expr.Value(evalCtx)
-			if d.HasErrors() {
-				return "", d
+			v, err := eval.Value(evalCtx, n.Expr)
+			if err != nil {
+				return "", err
 			}
 			return v.AsString(), nil
 		}
@@ -483,7 +483,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					RoleClaim:      jwtConf.RoleClaim,
 					RoleMap:        jwtConf.RoleMap,
 					ScopeClaim:     jwtConf.ScopeClaim,
-					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 					JWKS:           jwks,
 				})
 				if err != nil {
@@ -504,7 +504,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					RoleClaim:      jwtConf.RoleClaim,
 					RoleMap:        jwtConf.RoleMap,
 					ScopeClaim:     jwtConf.ScopeClaim,
-					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 				})
 
 				if err != nil {
@@ -589,8 +589,8 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*ac.JWKS, error) {
 	var backend http.RoundTripper
 
-	if jwtConf.JWKSBackendBody != nil {
-		b, err := newBackend(confContext, jwtConf.JWKSBackendBody, log, ignoreProxyEnv, memStore)
+	if jwtConf.Backend != nil {
+		b, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, memStore)
 		if err != nil {
 			return nil, err
 		}

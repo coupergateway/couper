@@ -62,11 +62,11 @@ func TestEndpoints_Protected404(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -429,10 +429,10 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 			helper.Must(err)
 
 			if val := res.Header.Get("Content-Encoding"); val != tc.expCE {
-				t.Errorf("%s: Expected Content-Encoding '%s', got: '%s'", tc.path, tc.expCE, val)
+				subT.Errorf("%s: Expected Content-Encoding '%s', got: '%s'", tc.path, tc.expCE, val)
 			}
 			if val := res.Header.Get("Content-Length"); val != tc.expLen {
-				t.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
+				subT.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
 			}
 		})
 	}

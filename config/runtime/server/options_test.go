@@ -105,40 +105,23 @@ func TestServer_NewServerOptions_ConfigWithPaths(t *testing.T) {
 	}
 }
 
-func TestServer_NewServerOptions_ConfigWithErrTpl_Server_Fail(t *testing.T) {
-	conf := &config.Server{
-		ErrorFile: "fail",
-	}
-
-	_, err := server.NewServerOptions(conf, nil)
-	if !strings.Contains(err.Error(), "no such file or directory") {
-		t.Errorf("Unexpected error given: %#v", err)
-	}
-}
-
-func TestServer_NewServerOptions_ConfigWithErrTpl_Files_Fail(t *testing.T) {
-	conf := &config.Server{
+func TestServer_NewServerOptions_MissingErrTplFile(t *testing.T) {
+	for _, testcase := range []*config.Server{{
+		ErrorFile: "not-there",
+	}, {
 		Files: &config.Files{
-			ErrorFile: "fail",
+			ErrorFile: "not-there",
 		},
-	}
-
-	_, err := server.NewServerOptions(conf, nil)
-	if !strings.Contains(err.Error(), "no such file or directory") {
-		t.Errorf("Unexpected error given: %#v", err)
-	}
-}
-
-func TestServer_NewServerOptions_ConfigWithErrTpl_API_Fail(t *testing.T) {
-	conf := &config.Server{
+	}, {
 		APIs: config.APIs{
-			{ErrorFile: "fail"},
+			{ErrorFile: "not-there"},
 		},
-	}
-
-	_, err := server.NewServerOptions(conf, nil)
-	if !strings.Contains(err.Error(), "no such file or directory") {
-		t.Errorf("Unexpected error given: %#v", err)
+	},
+	} {
+		_, err := server.NewServerOptions(testcase, nil)
+		if err == nil || !strings.Contains(err.Error(), "no such file or directory") {
+			t.Errorf("Unexpected error given: %#v", err)
+		}
 	}
 }
 

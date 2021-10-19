@@ -75,7 +75,7 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		})}, newReq("GET", "http://ac.test/")("Authorization", "Basic aGFuczovVnFoV3FsS1VrSVNzUC8K"), http.StatusUnauthorized},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			a := NewAccessControl(tt.fields.protected, tt.fields.ac)
 
 			res := httptest.NewRecorder()
@@ -86,7 +86,7 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 			}
 
 			if res.Code != tt.expectedStatus {
-				t.Errorf("Expected status code %d, got: %d", tt.expectedStatus, res.Code)
+				subT.Errorf("Expected status code %d, got: %d", tt.expectedStatus, res.Code)
 			}
 		})
 	}

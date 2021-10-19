@@ -44,8 +44,9 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 
 	redirectURIVal, err := content.GetContextAttribute(ctx, a.clientConfig.HCLBody(), lib.RedirectURI)
 	if redirectURIVal == "" {
-		return nil, errors.Oauth2.Messagef("%s is required", lib.RedirectURI)
+		return nil, errors.Oauth2.With(err).Messagef("%s is required", lib.RedirectURI)
 	}
+
 	absoluteURL, err := lib.AbsoluteURL(redirectURIVal, eval.NewRawOrigin(callbackURL))
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
@@ -59,7 +60,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	verifierVal, err := content.GetContextAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
 	verifierValue := strings.TrimSpace(verifierVal)
 	if verifierValue == "" {
-		return nil, errors.Oauth2.Messagef("Empty verifier_value")
+		return nil, errors.Oauth2.With(err).Messagef("Empty verifier_value")
 	}
 
 	verifierMethod, err := getVerifierMethod(ctx, a.asConfig)

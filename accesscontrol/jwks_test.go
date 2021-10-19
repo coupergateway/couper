@@ -8,6 +8,32 @@ import (
 )
 
 func Test_JWKS(t *testing.T) {
+	tests := []struct {
+		name  string
+		url   string
+		error string
+	}{
+		{"missing_scheme", "no-scheme", `Unsupported JWKS URI scheme: "no-scheme"`},
+		{"short url", "file", `Unsupported JWKS URI scheme: "file"`},
+		{"short url", "https", `Unsupported JWKS URI scheme: "https"`},
+		{"ok file", "file:jwks.json", ""},
+		{"ok http", "http://jwks.json", ""},
+		{"ok https", "https://jwks.json", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := ac.NewJWKS(tt.url, "", nil, nil)
+			if err == nil && tt.error != "" {
+				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
+			}
+			if err != nil && err.Error() != tt.error {
+				subT.Errorf("Unexpected error:\n\tWant: %v\n\tGot:  %v", tt.error, err)
+			}
+		})
+	}
+}
+
+func Test_JWKS_Load(t *testing.T) {
 	helper := test.New(t)
 	tests := []struct {
 		name      string
@@ -62,7 +88,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(t)
+			helper := test.New(subT)
 			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
 			err = jwks.Load()

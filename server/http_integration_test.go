@@ -125,14 +125,21 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	shutdownFn := func() {
 		if helper.TestFailed() { // log on error
 			for _, entry := range hook.AllEntries() {
-				helper.Logf(entry.String())
+				s, _ := entry.String()
+				helper.Logf(s)
 			}
 		}
 		cleanup(cancelFn, helper)
 	}
 
 	// ensure the previous test aren't listening
-	test.WaitForClosedPort(couperConfig.Settings.DefaultPort)
+	port := couperConfig.Settings.DefaultPort
+	test.WaitForClosedPort(port)
+	waitForCh := make(chan struct{}, 1)
+	command.RunCmdTestCallback = func() {
+		close(waitForCh)
+	}
+	defer func() { command.RunCmdTestCallback = nil }()
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
@@ -140,11 +147,11 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			panic(err)
 		}
 	}()
-
-	time.Sleep(time.Second / 2)
+	<-waitForCh
 
 	for _, entry := range hook.AllEntries() {
-		if entry.Level < logrus.InfoLevel {
+		if entry.Level < logrus.WarnLevel {
+			defer cleanup(cancelFn, helper) // ok in loop, next line is the end
 			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
 		}
 	}
@@ -382,28 +389,28 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				_ = res.Body.Close()
 
 				if res.StatusCode != rc.exp.status {
-					t.Errorf("Expected statusCode %d, got %d", rc.exp.status, res.StatusCode)
+					subT.Errorf("Expected statusCode %d, got %d", rc.exp.status, res.StatusCode)
 					subT.Logf("Failed: %s|%s", testcase.fileName, rc.req.url)
 				}
 
 				for k, v := range rc.exp.header {
 					if !reflect.DeepEqual(res.Header[k], v) {
-						t.Errorf("Exptected headers:\nWant:\t%#v\nGot:\t%#v\n", v, res.Header[k])
+						subT.Errorf("Exptected headers:\nWant:\t%#v\nGot:\t%#v\n", v, res.Header[k])
 					}
 				}
 
 				if rc.exp.body != nil && !bytes.Equal(resBytes, rc.exp.body) {
-					t.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
+					subT.Errorf("Expected same body content:\nWant:\t%q\nGot:\t%q\n", string(rc.exp.body), string(resBytes))
 				}
 
 				entry := logHook.LastEntry()
 
 				if entry == nil || entry.Data["type"] != "couper_access" {
-					t.Error("Expected a log entry, got nothing")
+					subT.Error("Expected a log entry, got nothing")
 					return
 				}
 				if handler, ok := entry.Data["handler"]; rc.exp.handlerName != "" && (!ok || handler != rc.exp.handlerName) {
-					t.Errorf("Expected handler %q within logs, got:\n%#v", rc.exp.handlerName, entry.Data)
+					subT.Errorf("Expected handler %q within logs, got:\n%#v", rc.exp.handlerName, entry.Data)
 				}
 			})
 		}
@@ -467,6 +474,32 @@ func TestHTTPServer_HostHeader2(t *testing.T) {
 	} else if entry.Data["server"] != "multi-api-host1" {
 		t.Errorf("Expected 'multi-api-host1', got: %s", entry.Data["server"])
 	}
+}
+
+func TestHTTPServer_EnvVars(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	env.SetTestOsEnviron(func() []string {
+		return []string{"BAP1=pass1"}
+	})
+	defer env.SetTestOsEnviron(os.Environ)
+
+	shutdown, hook := newCouper("testdata/integration/env/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", res.StatusCode)
+	}
+
 }
 
 func TestHTTPServer_XFHHeader(t *testing.T) {
@@ -587,11 +620,11 @@ func TestHTTPServer_Gzip(t *testing.T) {
 
 			if !tc.expectGzipResponse {
 				if val := res.Header.Get("Content-Encoding"); val != "" {
-					t.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
+					subT.Errorf("Expected no header with key Content-Encoding, got value: %s", val)
 				}
 			} else {
 				if ce := res.Header.Get("Content-Encoding"); ce != "gzip" {
-					t.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
+					subT.Errorf("Expected Content-Encoding header value: %q, got: %q", "gzip", ce)
 				}
 
 				body, err = gzip.NewReader(res.Body)
@@ -599,7 +632,7 @@ func TestHTTPServer_Gzip(t *testing.T) {
 			}
 
 			if vr := res.Header.Get("Vary"); vr != "Accept-Encoding" {
-				t.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
+				subT.Errorf("Expected Accept-Encoding header value %q, got: %q", "Vary", vr)
 			}
 
 			resBytes, err := io.ReadAll(body)
@@ -609,7 +642,7 @@ func TestHTTPServer_Gzip(t *testing.T) {
 			helper.Must(err)
 
 			if !bytes.Equal(resBytes, srcBytes) {
-				t.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
+				subT.Errorf("Want:\n%s\nGot:\n%s", string(srcBytes), string(resBytes))
 			}
 		})
 	}
@@ -638,15 +671,11 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 				"ae_a_and_b":  []string{"A&B", "A&B"},
 				"ae_empty":    []string{"", ""},
 				"ae_multi":    []string{"str1", "str2", "str3", "str4"},
-				"ae_noop":     []string{"", ""},
-				"ae_null":     []string{"", ""},
 				"ae_string":   []string{"str", "str"},
 				"ae":          []string{"ae", "ae"},
 				"aeb_a_and_b": []string{"A&B", "A&B"},
 				"aeb_empty":   []string{"", ""},
 				"aeb_multi":   []string{"str1", "str2", "str3", "str4"},
-				"aeb_noop":    []string{"", ""},
-				"aeb_null":    []string{"", ""},
 				"aeb_string":  []string{"str", "str"},
 				"aeb":         []string{"aeb", "aeb"},
 				"caseIns":     []string{"1"},
@@ -708,11 +737,11 @@ func TestHTTPServer_QueryParams(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -772,11 +801,11 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -918,8 +947,6 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 				"Aeb_a_and_b": []string{"A&B", "A&B"},
 				"Aeb_empty":   []string{"", ""},
 				"Aeb_multi":   []string{"str1", "str2", "str3", "str4"},
-				"Aeb_noop":    []string{"", ""},
-				"Aeb_null":    []string{"", ""},
 				"Aeb_string":  []string{"str", "str"},
 				"Xxx":         []string{"aaa", "bbb"},
 			},
@@ -937,18 +964,18 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			helper.Must(err)
 
 			if r1 := res.Header.Get("Remove-Me-1"); r1 != "r1" {
-				t.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
+				subT.Errorf("Missing or invalid header Remove-Me-1: %s", r1)
 			}
 			if r2 := res.Header.Get("Remove-Me-2"); r2 != "" {
-				t.Errorf("Unexpected header %s", r2)
+				subT.Errorf("Unexpected header %s", r2)
 			}
 
 			if s2 := res.Header.Get("Set-Me-2"); s2 != "s2" {
-				t.Errorf("Missing or invalid header Set-Me-2: %s", s2)
+				subT.Errorf("Missing or invalid header Set-Me-2: %s", s2)
 			}
 
 			if a2 := res.Header.Get("Add-Me-2"); a2 != "a2" {
-				t.Errorf("Missing or invalid header Add-Me-2: %s", a2)
+				subT.Errorf("Missing or invalid header Add-Me-2: %s", a2)
 			}
 
 			resBytes, err := io.ReadAll(res.Body)
@@ -959,7 +986,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			jsonResult.Headers.Del("User-Agent")
@@ -967,7 +994,7 @@ func TestHTTPServer_RequestHeaders(t *testing.T) {
 			jsonResult.Headers.Del("Couper-Request-Id")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -1174,11 +1201,11 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1225,11 +1252,11 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1290,11 +1317,11 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1588,11 +1615,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v", tc.exp, jsonResult)
 			}
 		})
 	}
@@ -1695,11 +1722,11 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 			res.Body.Close()
 
 			if string(resBytes) != tc.exp.Body {
-				t.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
+				subT.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.Body, string(resBytes))
 			}
 
 			if ct := res.Header.Get("Content-Type"); ct != tc.exp.ContentType {
-				t.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
+				subT.Errorf("%s: want: %s, got:%s", tc.path, tc.exp.ContentType, ct)
 			}
 		})
 	}
@@ -1750,13 +1777,13 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			jsonResult.Origin = res.Header.Get("X-Origin")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2058,15 +2085,15 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			url := getAccessLogUrl(hook)
-			if url != tc.wantAccessLogUrl {
-				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
+			logUrl := getAccessLogUrl(hook)
+			if logUrl != tc.wantAccessLogUrl {
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
 			}
 		})
 	}
@@ -2190,15 +2217,15 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			url := getAccessLogUrl(hook)
-			if url != tc.wantAccessLogUrl {
-				t.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, url)
+			logUrl := getAccessLogUrl(hook)
+			if logUrl != tc.wantAccessLogUrl {
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
 			}
 		})
 	}
@@ -2239,8 +2266,8 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 	}
 
 	helper := test.New(t)
-	resourceOrigin, err := url.Parse(ResourceOrigin.URL)
-	helper.Must(err)
+	resourceOrigin, perr := url.Parse(ResourceOrigin.URL)
+	helper.Must(perr)
 
 	port, _ := strconv.ParseInt(resourceOrigin.Port(), 10, 64)
 
@@ -2325,10 +2352,10 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+				subT.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2444,10 +2471,10 @@ func TestHTTPServer_request_variables(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
+				subT.Errorf("%s: unmarshal json: %v: got:\n%s", tc.name, err, string(resBytes))
 			}
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2506,11 +2533,11 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 				var jsonResult expectation
 				err = json.Unmarshal(resBytes, &jsonResult)
 				if err != nil {
-					t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+					subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 				}
 
 				if !reflect.DeepEqual(jsonResult, tc.exp) {
-					t.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
+					subT.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
 				}
 			})
 		}
@@ -2638,7 +2665,7 @@ func TestConfigBodyContentBackends(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
+				subT.Errorf("%q: expected Status OK, got: %d", tc.path, res.StatusCode)
 			}
 
 			b, err := io.ReadAll(res.Body)
@@ -2652,13 +2679,13 @@ func TestConfigBodyContentBackends(t *testing.T) {
 
 			for k, v := range tc.header {
 				if !reflect.DeepEqual(res.Header[k], v) {
-					t.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
+					subT.Errorf("Expected Header %q value: %v, got: %v", k, v, res.Header[k])
 				}
 			}
 
 			for k, v := range tc.query {
 				if !reflect.DeepEqual(p.Query[k], v) {
-					t.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
+					subT.Errorf("Expected Query %q value: %v, got: %v", k, v, p.Query[k])
 				}
 			}
 		})
@@ -2707,22 +2734,20 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if message != tc.wantErrLog {
-					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			}
 
 			if res.StatusCode != tc.status {
-				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
 			}
 
 			if ct := res.Header.Get("Content-Type"); ct != tc.ct {
-				t.Errorf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
-				return
+				subT.Fatalf("%q: expected content-type: %q, got: %q", tc.path, tc.ct, ct)
 			}
 
 			if tc.ct == "text/html" {
@@ -2740,11 +2765,11 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 			for k, v := range tc.header {
 				if _, ok := p.Headers[k]; !ok {
-					t.Errorf("Expected header %q, got nothing", k)
+					subT.Errorf("Expected header %q, got nothing", k)
 					break
 				}
 				if !reflect.DeepEqual(p.Headers[k], v) {
-					t.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
+					subT.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
 				}
 			}
 		})
@@ -2754,7 +2779,8 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 func Test_LoadAccessControl(t *testing.T) {
 	// Tests the config load with ACs and "error_handler" blocks...
 	shutdown, _ := newCouper("testdata/integration/config/07_couper.hcl", test.New(t))
-	defer shutdown()
+	test.WaitForOpenPort(8080)
+	shutdown()
 }
 
 func TestJWTAccessControl(t *testing.T) {
@@ -2767,6 +2793,7 @@ func TestJWTAccessControl(t *testing.T) {
 		name       string
 		path       string
 		header     http.Header
+		body       string
 		status     int
 		expScope   string
 		wantErrLog string
@@ -2774,33 +2801,34 @@ func TestJWTAccessControl(t *testing.T) {
 
 	// RSA tokens created with server/testdata/integration/files/pkcs8.key
 	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+	hmacToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "", "access control error: JWTToken: token required"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, http.StatusForbidden, "", "access control error: JWTToken: token is expired by "},
-		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"}}, http.StatusOK, `["foo","bar"]`, ""},
-		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, http.StatusForbidden, "", "access control error: JWKS: Missing \"kid\" in JOSE header"},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-unsupported\""},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-wrong-cert\""},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusForbidden, "", "access control error: JWKS_not_found: Error loading JWKS: Status code 404"},
-		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
-		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, http.StatusOK, `["foo","bar"]`, ""},
-		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
-		{"remote RSA JWKS x5c w/ backend", "/jwks/rsa/backend", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
-		{"remote RSA JWKS x5c w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, http.StatusOK, "", ""},
-		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.aGOhlWQIZvnwoEZGDBYhkkEduIVa59G57x88L3fiLc1MuWbYS84nHEZnlPDuVJ3_BxdXr6-nZ8gpk1C9vfamDzkbvzbdcJ2FzmvAONm1II3_u5OTc6ZtpREDx9ohlIvkcOcalOUhQLqU5r2uik2bGSVV3vFDbqxQeuNzh49i3VgdtwoaryNYSzbg_Ki8dHiaFrWH-r2WCU08utqpFmNdr8oNw4Y5AYJdUW2aItxDbwJ6YLBJN0_6EApbXsNqiaNXkLws3cxMvczGKODyGGVCPENa-VmTQ41HxsXB-_rMmcnMw3_MjyIueWcjeP8BNvLYt1bKFWdU0NcYCkXvEqE4-g"}}, http.StatusOK, "", ""},
+		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: token required"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusForbidden, "", "access control error: JWTToken: token is expired by "},
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
+		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", "access control error: JWKS: Missing \"kid\" in JOSE header"},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-unsupported\""},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-wrong-cert\""},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: JWKS_not_found: Error loading JWKS: Status code 404"},
+		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
+		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
+		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
+		{"remote RSA JWKS x5c w/ backend", "/jwks/rsa/backend", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
+		{"remote RSA JWKS x5c w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
+		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.aGOhlWQIZvnwoEZGDBYhkkEduIVa59G57x88L3fiLc1MuWbYS84nHEZnlPDuVJ3_BxdXr6-nZ8gpk1C9vfamDzkbvzbdcJ2FzmvAONm1II3_u5OTc6ZtpREDx9ohlIvkcOcalOUhQLqU5r2uik2bGSVV3vFDbqxQeuNzh49i3VgdtwoaryNYSzbg_Ki8dHiaFrWH-r2WCU08utqpFmNdr8oNw4Y5AYJdUW2aItxDbwJ6YLBJN0_6EApbXsNqiaNXkLws3cxMvczGKODyGGVCPENa-VmTQ41HxsXB-_rMmcnMw3_MjyIueWcjeP8BNvLYt1bKFWdU0NcYCkXvEqE4-g"}}, "", http.StatusOK, "", ""},
+		{"token_value query", "/jwt/token_value_query?token=" + hmacToken, http.Header{}, "", http.StatusOK, `["foo","bar"]`, ""},
+		{"token_value body", "/jwt/token_value_body", http.Header{"Content-Type": {"application/json"}}, `{"token":"` + hmacToken + `"}`, http.StatusOK, `["foo","bar"]`, ""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
-			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, strings.NewReader(tc.body))
 			helper.Must(err)
 
-			if val := tc.header.Get("Authorization"); val != "" {
-				req.Header.Set("Authorization", val)
-			}
+			req.Header = tc.header
 
 			res, err := client.Do(req)
 			helper.Must(err)
@@ -2885,8 +2913,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Errorf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
-				return
+				subT.Fatalf("%q: token request: unexpected status: %d", tc.name, res.StatusCode)
 			}
 
 			token := res.Header.Get("X-Jwt")
@@ -2899,8 +2926,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				t.Errorf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
-				return
+				subT.Fatalf("%q: resource request: unexpected status: %d", tc.name, res.StatusCode)
 			}
 
 			decoder := json.NewDecoder(res.Body)
@@ -2909,26 +2935,21 @@ func TestJWTAccessControl_round(t *testing.T) {
 			helper.Must(err)
 
 			if _, ok := claims["exp"]; !ok {
-				t.Errorf("%q: missing exp claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing exp claim: %#v", tc.name, claims)
 			}
 			issclaim, ok := claims["iss"]
 			if !ok {
-				t.Errorf("%q: missing iss claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing iss claim: %#v", tc.name, claims)
 			}
 			if issclaim != "the_issuer" {
-				t.Errorf("%q: unexpected iss claim: %q", tc.name, issclaim)
-				return
+				subT.Fatalf("%q: unexpected iss claim: %q", tc.name, issclaim)
 			}
 			pidclaim, ok := claims["pid"]
 			if !ok {
-				t.Errorf("%q: missing pid claim: %#v", tc.name, claims)
-				return
+				subT.Fatalf("%q: missing pid claim: %#v", tc.name, claims)
 			}
 			if pidclaim != pid {
-				t.Errorf("%q: unexpected pid claim: %q", tc.name, pidclaim)
-				return
+				subT.Fatalf("%q: unexpected pid claim: %q", tc.name, pidclaim)
 			}
 		})
 	}
@@ -2987,31 +3008,31 @@ func Test_Scope(t *testing.T) {
 			hook.Reset()
 
 			req, err := http.NewRequest(tc.operation, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
 			if tc.authorize {
 				req.Header.Set("Authorization", "Bearer "+token)
 			}
-			helper.Must(err)
 
 			res, err := client.Do(req)
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				t.Errorf("expected Status %d, got: %d", tc.status, res.StatusCode)
-				return
+				subT.Fatalf("expected Status %d, got: %d", tc.status, res.StatusCode)
 			}
 
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
-					t.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
 				}
 			} else {
 				if !strings.HasPrefix(message, tc.wantErrLog) {
-					t.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
 				}
 				errorType := getAccessLogErrorType(hook)
 				if errorType != tc.wantErrType {
-					t.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
+					subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
 				}
 			}
 		})
@@ -3021,8 +3042,8 @@ func Test_Scope(t *testing.T) {
 func getAccessLogUrl(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
 		if entry.Data["type"] == "couper_access" && entry.Data["url"] != "" {
-			if url, ok := entry.Data["url"].(string); ok {
-				return url
+			if u, ok := entry.Data["url"].(string); ok {
+				return u
 			}
 		}
 	}
@@ -3200,8 +3221,8 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 		{"/app", "hans", http.StatusOK},
 		{"/app/1", "hans", http.StatusOK},
 	} {
-		t.Run(tc.path[1:], func(st *testing.T) {
-			helper := test.New(st)
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://protect.me:8080"+tc.path, nil)
 			helper.Must(err)
@@ -3214,7 +3235,7 @@ func TestAccessControl_Files_SPA(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.expStatus {
-				st.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
+				subT.Errorf("Expected status: %d, got: %d", tc.expStatus, res.StatusCode)
 			}
 		})
 	}
@@ -3263,11 +3284,11 @@ func TestHTTPServer_MultiAPI(t *testing.T) {
 			var jsonResult expectation
 			err = json.Unmarshal(resBytes, &jsonResult)
 			if err != nil {
-				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+				subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
 			}
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				t.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant: \n%#v\ngot: \n%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -3288,6 +3309,7 @@ func TestFunctions(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"merge", "/v1/merge", map[string]string{"X-Merged-1": "{\"foo\":[1,2]}", "X-Merged-2": "{\"bar\":[3,4]}", "X-Merged-3": "[\"a\",\"b\"]"}, http.StatusOK},
+		{"coalesce", "/v1/coalesce?q=a", map[string]string{"X-Coalesce-1": "/v1/coalesce", "X-Coalesce-2": "default", "X-Coalesce-3": "default", "X-Coalesce-4": "default"}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3299,14 +3321,12 @@ func TestFunctions(t *testing.T) {
 			helper.Must(err)
 
 			if res.StatusCode != tc.status {
-				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, tc.status, res.StatusCode)
 			}
 
 			for k, v := range tc.header {
 				if v1 := res.Header.Get(k); v1 != v {
-					t.Errorf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
-					return
+					subT.Fatalf("%q: unexpected %s response header %#v, got: %#v", tc.name, k, v, v1)
 				}
 			}
 		})
@@ -3344,14 +3364,14 @@ func TestEndpoint_Response(t *testing.T) {
 			res, err := client.Do(req)
 			if tc.expStatusCode == http.StatusMovedPermanently {
 				if !redirSeen {
-					t.Errorf("expected a redirect response")
+					subT.Errorf("expected a redirect response")
 				}
 
 				resp := logHook.LastEntry().Data["response"]
 				fields := resp.(logging.Fields)
 				headers := fields["headers"].(map[string]string)
 				if headers["location"] != "https://couper.io/" {
-					t.Errorf("expected location header log")
+					subT.Errorf("expected location header log")
 				}
 			} else {
 				helper.Must(err)
@@ -3362,19 +3382,18 @@ func TestEndpoint_Response(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != tc.expStatusCode {
-				t.Errorf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.expStatusCode, res.StatusCode)
 			}
 
 			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
-				t.Logf("%v", logHook.LastEntry())
-				t.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected statusCode log: %d", tc.expStatusCode)
 			}
 
 			if len(resBytes) > 0 {
 				b, exist := logHook.LastEntry().Data["response"].(logging.Fields)["bytes"]
 				if !exist || b != len(resBytes) {
-					t.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
+					subT.Errorf("Want bytes log: %d\ngot:\t%v", len(resBytes), logHook.LastEntry())
 				}
 			}
 		})
@@ -3417,12 +3436,11 @@ func TestCORS_Configuration(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != http.StatusNoContent {
-				t.Errorf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
 			}
 
 			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
-				t.Errorf("Expected allowed origin resp, got: %v", val)
+				subT.Errorf("Expected allowed origin resp, got: %v", val)
 			}
 		})
 	}
@@ -3470,8 +3488,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	v1 := res.Header.Get("x-v-1")
@@ -3545,8 +3562,7 @@ func TestOAuthStateFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3610,8 +3626,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3681,8 +3696,7 @@ func TestOIDCNonceFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3747,8 +3761,7 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3812,8 +3825,7 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	helper.Must(err)
 
 	if res.StatusCode != 200 {
-		t.Errorf("expected Status %d, got: %d", 200, res.StatusCode)
-		return
+		t.Fatalf("expected Status %d, got: %d", 200, res.StatusCode)
 	}
 
 	hv := res.Header.Get("x-hv")
@@ -3843,5 +3855,90 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("beta_oauth_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/endpoint_eval/20_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path      string
+		expVal    bool
+		expCtyVal string
+	}
+
+	for _, tc := range []testCase{
+		{"/1stchild", true, ""},
+		{"/2ndchild/no", false, ""},
+		{"/child-chain/no", false, ""},
+		{"/list-idx", true, ""},
+		{"/list-idx-splat", true, ""},
+		{"/list-idx/no", false, ""},
+		{"/list-idx-chain/no", false, ""},
+		{"/list-idx-key-chain/no", false, ""},
+		{"/root/no", false, ""},
+		{"/tpl", true, ""},
+		{"/for", true, ""},
+		{"/conditional/false", true, ""},
+		{"/conditional/true", false, ""},
+		{"/conditional/null", false, ""},
+		{"/conditional/nested", true, ""},
+		{"/conditional/nested/true", true, ""},
+		{"/conditional/nested/false", true, ""},
+		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
+		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			hook.Reset()
+			defer func() {
+				if subT.Failed() {
+					time.Sleep(time.Millisecond * 100)
+					for _, entry := range hook.AllEntries() {
+						s, _ := entry.String()
+						println(s)
+					}
+				}
+			}()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("Expected Status OK, got: %d", res.StatusCode)
+				return
+			}
+
+			defer func() {
+				if subT.Failed() {
+					for k := range res.Header {
+						subT.Logf("%s: %s", k, res.Header.Get(k))
+					}
+				}
+			}()
+
+			val, ok := res.Header[http.CanonicalHeaderKey("X-Value")]
+			if !tc.expVal && ok {
+				subT.Errorf("%q: expected no value, got: %q", tc.path, val)
+			} else if tc.expVal && !ok {
+				subT.Errorf("%q: expected X-Value header, got: nothing", tc.path)
+			}
+
+			if res.Header.Get("Z-Value") != "y" {
+				subT.Errorf("additional header Z-Value should always been written")
+			}
+
+			if tc.expCtyVal != "" && tc.expCtyVal != val[0] {
+				subT.Errorf("Want: %s, got: %v", tc.expCtyVal, val[0])
+			}
+
+		})
 	}
 }

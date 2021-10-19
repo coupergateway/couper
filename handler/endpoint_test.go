@@ -307,15 +307,23 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				"x-client": "my-val-x-true",
 				"x-origin": "my-val-y-true",
 			}},
+		{"json_body non existing shared parent", `set_response_headers = {
+				x-client = request.json_body.not-there
+				x-client-nested = request.json_body.not-there.nested
+			}`, "application/foo+json",
+			test.Header{
+				"x-client":        "",
+				"x-client-nested": "",
+			}},
 		{"json_body non existing field", `set_response_headers = {
 "${backend_responses.default.json_body.not-there}" = "my-val-0-${backend_responses.default.json_body.origin}"
 "${request.json_body.client}-my-val-a" = "my-val-b-${backend_responses.default.json_body.client}"
 }`, "",
-			test.Header{"true-my-val-a": ""}}, // since one reference is failing ('not-there') the whole block does
+			test.Header{"true-my-val-a": "my-val-b-false"}},
 		{"json_body null value", `set_response_headers = { "x-null" = "${backend_responses.default.json_body.nil}" }`, "", test.Header{"x-null": ""}},
 	} {
-		t.Run(tc.name, func(st *testing.T) {
-			h := test.New(st)
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
 
 			backend := transport.NewBackend(
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
@@ -349,19 +357,19 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			res := rec.Result()
 
 			if res.StatusCode != http.StatusOK {
-				st.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+				subT.Errorf("Expected StatusOK, got: %d", res.StatusCode)
 			}
 
 			originData, err := io.ReadAll(res.Body)
 			h.Must(err)
 
 			if !bytes.Equal(originPayload, originData) {
-				st.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
+				subT.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
 			}
 
 			for k, v := range tc.expHeaders {
 				if res.Header.Get(k) != v {
-					t.Errorf("%q: Expected header %q value: %q, got: %q", tc.name, k, v, res.Header.Get(k))
+					subT.Errorf("%q: Expected header %q value: %q, got: %q", tc.name, k, v, res.Header.Get(k))
 				}
 			}
 		})

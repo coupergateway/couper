@@ -9,6 +9,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/body/ct" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -22,6 +23,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/null" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -32,6 +34,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/boolean" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -42,6 +45,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/boolean/ct" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -55,6 +59,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/number" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -65,6 +70,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/string" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -86,6 +92,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/array" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -96,6 +103,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/json_body/dyn" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -106,6 +114,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/form_body" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -119,6 +128,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/form_body/ct" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -135,6 +145,7 @@ server "bodies" {
       }
     }
   }
+
   endpoint "/request/form_body/dyn" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -151,6 +162,7 @@ server "bodies" {
       body = "foo"
     }
   }
+
   endpoint "/response/body/ct" {
     response {
       headers = {
@@ -159,16 +171,19 @@ server "bodies" {
       body = "foo"
     }
   }
+
   endpoint "/response/json_body/null" {
     response {
       json_body = null
     }
   }
+
   endpoint "/response/json_body/boolean" {
     response {
       json_body = true
     }
   }
+
   endpoint "/response/json_body/boolean/ct" {
     response {
       headers = {
@@ -177,21 +192,25 @@ server "bodies" {
       json_body = true
     }
   }
+
   endpoint "/response/json_body/number" {
     response {
       json_body = 1.2
     }
   }
+
   endpoint "/response/json_body/string" {
     response {
       json_body = "foo"
     }
   }
+
   endpoint "/response/json_body/object" {
     response {
       json_body = {"foo": "bar"}
     }
   }
+
   endpoint "/response/json_body/array" {
     response {
       json_body = [0,1,2]

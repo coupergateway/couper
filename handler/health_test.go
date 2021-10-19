@@ -27,10 +27,10 @@ func TestHealth_Match(t *testing.T) {
 		{"request w reconfigured health url", handler.DefaultHealthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthzzz", nil), true},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			h := handler.NewHealthCheck(tt.path, nil)
 			if got := h.Match(tt.req); got != tt.want {
-				t.Errorf("Match() = %v, want %v", got, tt.want)
+				subT.Errorf("Match() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -135,9 +135,9 @@ func TestNewHealthCheck(t *testing.T) {
 		{"w/o given path & chan", args{"", nil}, handler.NewHealthCheck(handler.DefaultHealthPath, nil)},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(subT *testing.T) {
 			if got := handler.NewHealthCheck(tt.args.path, tt.args.shutdownCh); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewHealthCheck() = %v, want %v", got, tt.want)
+				subT.Errorf("NewHealthCheck() = %v, want %v", got, tt.want)
 			}
 		})
 	}

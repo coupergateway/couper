@@ -43,18 +43,17 @@ func TestAccessControl_ErrorHandler(t *testing.T) {
 			helper.Must(res.Body.Close())
 
 			if res.StatusCode != tc.expStatusCode {
-				t.Errorf("%q: expected Status %d, got: %d", tc.name, tc.expStatusCode, res.StatusCode)
-				return
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, tc.expStatusCode, res.StatusCode)
 			}
 
 			if logHook.LastEntry().Data["status"] != tc.expStatusCode {
-				t.Logf("%v", logHook.LastEntry())
-				t.Errorf("Expected statusCode log: %d", tc.expStatusCode)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected statusCode log: %d", tc.expStatusCode)
 			}
 
 			if logHook.LastEntry().Message != tc.expLogMsg {
-				t.Logf("%v", logHook.LastEntry())
-				t.Errorf("Expected message log: %s", tc.expLogMsg)
+				subT.Logf("%v", logHook.LastEntry())
+				subT.Errorf("Expected message log: %s", tc.expLogMsg)
 			}
 		})
 	}
