@@ -14,7 +14,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/server/writer"
@@ -70,11 +69,12 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	url, err := content.GetContextAttribute(req.Context(), p.context, "url")
+	urlVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), p.context, "url")
 	if err != nil {
 		return nil, err
 	}
-	if url != "" {
+
+	if url := seetie.ValueToString(urlVal); url != "" {
 		ctx := context.WithValue(req.Context(), request.URLAttribute, url)
 		*req = *req.WithContext(ctx)
 	}

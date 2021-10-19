@@ -13,14 +13,14 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 // AcClient represents an OAuth2 client using the authorization code flow.
 type AcClient interface {
 	GetName() string
-	GetTokenResponse(ctx context.Context, callbackURL *url.URL) (map[string]interface{}, error)
+	GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
 	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
 
@@ -35,19 +35,26 @@ func (a AbstractAcClient) GetName() string {
 }
 
 // GetTokenResponse retrieves the response from the token endpoint
-func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url.URL) (map[string]interface{}, error) {
+func (a AbstractAcClient) GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
 		return nil, errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
-	redirectURIVal, err := content.GetContextAttribute(ctx, a.clientConfig.HCLBody(), lib.RedirectURI)
-	if redirectURIVal == "" {
+	ctx := eval.ContextFromRequest(req).HCLContext()
+
+	var redirectURI string
+	redirectURIVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), lib.RedirectURI)
+	if err != nil {
+		return nil, errors.Oauth2.With(err)
+	}
+	redirectURI = seetie.ValueToString(redirectURIVal)
+	if redirectURI == "" {
 		return nil, errors.Oauth2.With(err).Messagef("%s is required", lib.RedirectURI)
 	}
 
-	absoluteURL, err := lib.AbsoluteURL(redirectURIVal, eval.NewRawOrigin(callbackURL))
+	absoluteURL, err := lib.AbsoluteURL(redirectURI, eval.NewRawOrigin(callbackURL))
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}
@@ -57,13 +64,16 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		"redirect_uri": absoluteURL,
 	}
 
-	verifierVal, err := content.GetContextAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
-	verifierValue := strings.TrimSpace(verifierVal)
+	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
+	if err != nil {
+		return nil, errors.Oauth2.With(err)
+	}
+	verifierValue := strings.TrimSpace(seetie.ValueToString(verifierVal))
 	if verifierValue == "" {
 		return nil, errors.Oauth2.With(err).Messagef("Empty verifier_value")
 	}
 
-	verifierMethod, err := getVerifierMethod(ctx, a.asConfig)
+	verifierMethod, err := getVerifierMethod(req.Context(), a.asConfig)
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}
@@ -86,12 +96,12 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 		}
 	}
 
-	_, tokenResponseData, accessToken, err := a.getTokenResponse(ctx, requestParams)
+	_, tokenResponseData, accessToken, err := a.getTokenResponse(req.Context(), requestParams)
 	if err != nil {
 		return nil, errors.Oauth2.Message("token request error").With(err)
 	}
 
-	if err = a.validateTokenResponseData(ctx, tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
+	if err = a.validateTokenResponseData(req.Context(), tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
 		return nil, errors.Oauth2.Message("token response validation error").With(err)
 	}
 

@@ -10,7 +10,6 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -23,11 +22,14 @@ const (
 )
 
 func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []config.OAuth2Authorization,
-	verifier func() (*pkce.CodeVerifier, error), origin *url.URL) function.Function {
+	verifier func() (*pkce.CodeVerifier, error), origin *url.URL,
+	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
 	oauth2s := make(map[string]config.OAuth2Authorization)
 	for _, o := range oauth2Configs {
 		oauth2s[o.GetName()] = o
 	}
+
+	emptyStringVal := cty.StringVal("")
 
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
@@ -41,35 +43,42 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []conf
 			label := args[0].AsString()
 			oauth2, exist := oauth2s[label]
 			if !exist {
-				return cty.StringVal(""), fmt.Errorf("undefined reference: %s", label)
+				return emptyStringVal, fmt.Errorf("undefined reference: %s", label)
 			}
 
 			uid := seetie.ToString(seetie.ValueToMap(ctx.Variables["request"])["id"])
 			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint(uid)
 			if err != nil {
-				return cty.StringVal(""), err
+				return emptyStringVal, err
 			}
 
 			oauthAuthorizationUrl, err := url.Parse(authorizationEndpoint)
 			if err != nil {
-				return cty.StringVal(""), err
+				return emptyStringVal, err
 			}
 
 			body := oauth2.HCLBody()
 			bodyContent, _, diags := body.PartialContent(oauth2.Schema(true))
 			if diags.HasErrors() {
-				return cty.StringVal(""), diags
+				return emptyStringVal, diags
 			}
-			redirectURI, err := content.GetAttribute(ctx, bodyContent, RedirectURI)
-			if err != nil {
-				return cty.StringVal(""), err
-			} else if redirectURI == "" {
-				return cty.StringVal(""), fmt.Errorf("%s is required", RedirectURI)
+
+			var redirectURI string
+			if attr, ok := bodyContent.Attributes[RedirectURI]; ok {
+				val, verr := evalFn(ctx, attr.Expr)
+				if verr != nil {
+					return emptyStringVal, verr
+				}
+				redirectURI = seetie.ValueToString(val)
+			}
+
+			if redirectURI == "" {
+				return emptyStringVal, fmt.Errorf("%s is required", RedirectURI)
 			}
 
 			absRedirectUri, err := AbsoluteURL(redirectURI, origin)
 			if err != nil {
-				return cty.StringVal(""), err
+				return emptyStringVal, err
 			}
 
 			query := oauthAuthorizationUrl.Query()

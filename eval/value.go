@@ -17,6 +17,27 @@ type ValueFunc interface {
 
 var emptyStringVal = cty.StringVal("")
 
+// ValueFromBodyAttribute lookups the given attribute from given hcl.Body and
+// returns cty.NilVal if the attribute is not present.
+func ValueFromBodyAttribute(ctx *hcl.EvalContext, body hcl.Body, name string) (cty.Value, error) {
+	schema := &hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: name}}}
+	content, _, _ := body.PartialContent(schema)
+	if content == nil || len(content.Attributes) == 0 {
+		return cty.NilVal, nil
+	}
+
+	return ValueFromAttribute(ctx, content, name)
+}
+
+// ValueFromAttribute lookups the given attribute name and returns cty.NilVal if the attribute is not present.
+func ValueFromAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (cty.Value, error) {
+	attr, ok := content.Attributes[name]
+	if !ok {
+		return cty.NilVal, nil
+	}
+	return Value(ctx, attr.Expr)
+}
+
 // Value is used to clone and modify the given expression if an expression would make use of
 // undefined context variables.
 // Effectively results in cty.NilVal or empty string value for template expression.
