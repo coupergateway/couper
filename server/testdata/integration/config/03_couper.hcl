@@ -95,6 +95,28 @@ server "acs" {
     }
   }
 
+  endpoint "/jwt/token_value_query" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWT_token_value_query"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWT_token_value_query.sub
+        x-scopes = json_encode(request.context.scopes)
+      }
+    }
+  }
+
+  endpoint "/jwt/token_value_body" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWT_token_value_body"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWT_token_value_body.sub
+        x-scopes = json_encode(request.context.scopes)
+      }
+    }
+  }
+
   endpoint "/jwt/rsa" {
     disable_access_control = ["ba1"]
     access_control = ["RSAToken"]
@@ -217,6 +239,18 @@ definitions {
     header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend = "jwks"
+  }
+  jwt "JWT_token_value_query" {
+    token_value = request.query.token[0]
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+    beta_scope_claim = "scope"
+  }
+  jwt "JWT_token_value_body" {
+    token_value = request.json_body.token
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+    beta_scope_claim = "scope"
   }
   backend "jwks" {
     origin = env.COUPER_TEST_BACKEND_ADDR
