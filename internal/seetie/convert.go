@@ -96,27 +96,28 @@ func ListToValue(l []interface{}) cty.Value {
 }
 
 func GoToValue(v interface{}) cty.Value {
-	switch v.(type) {
+	switch v := v.(type) {
 	case string:
 		return cty.StringVal(ToString(v))
 	case bool:
-		return cty.BoolVal(v.(bool))
+		return cty.BoolVal(v)
 	case int64:
-		return cty.NumberIntVal(v.(int64))
+		return cty.NumberIntVal(v)
 	case float64:
-		return cty.NumberFloatVal(v.(float64))
+		return cty.NumberFloatVal(v)
 	case []string:
 		var list []interface{}
-		for _, s := range v.([]string) {
+		for _, s := range v {
 			list = append(list, s)
 		}
 		return ListToValue(list)
 	case []interface{}:
-		return ListToValue(v.([]interface{}))
+		return ListToValue(v)
 	case map[string]interface{}:
-		return MapToValue(v.(map[string]interface{}))
+		return MapToValue(v)
+	default:
+		return cty.NullVal(cty.String)
 	}
-	return cty.NullVal(cty.String)
 }
 
 func MapToValue(m map[string]interface{}) cty.Value {
@@ -130,17 +131,17 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		if !validKey.MatchString(k) {
 			continue
 		}
-		switch v.(type) {
+		switch v := v.(type) {
 		case []string:
 			var list []interface{}
-			for _, s := range v.([]string) {
+			for _, s := range v {
 				list = append(list, s)
 			}
 			ctyMap[k] = ListToValue(list)
 		case []interface{}:
-			ctyMap[k] = ListToValue(v.([]interface{}))
+			ctyMap[k] = ListToValue(v)
 		case map[string]interface{}:
-			ctyMap[k] = MapToValue(v.(map[string]interface{}))
+			ctyMap[k] = MapToValue(v)
 		default:
 			ctyMap[k] = GoToValue(v)
 		}
@@ -262,25 +263,25 @@ func SliceToString(sl []interface{}) string {
 }
 
 func ToString(s interface{}) string {
-	switch s.(type) {
+	switch s := s.(type) {
 	case []string:
-		return strings.Join(s.([]string), ",")
+		return strings.Join(s, ",")
 	case []interface{}:
-		return SliceToString(s.([]interface{}))
+		return SliceToString(s)
 	case string:
-		return s.(string)
+		return s
 	case int:
-		return strconv.Itoa(s.(int))
+		return strconv.Itoa(s)
 	case float64:
 		return fmt.Sprintf("%0.f", s)
 	case bool:
-		if !s.(bool) {
+		if !s {
 			return "false"
 		}
 		return "true"
 	default:
+		return ""
 	}
-	return ""
 }
 
 // isTuple checks by type name since tuple is not comparable by type.
