@@ -306,7 +306,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
-	roleMap := map[string][]string{
+	rolesMap := map[string][]string{
 		"admin": {"foo", "bar", "baz"},
 		"user1": {"foo"},
 		"user2": {"bar"},
@@ -317,8 +317,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		name       string
 		scopeClaim string
 		scope      interface{}
-		roleClaim  string
-		role       interface{}
+		rolesClaim string
+		roles      interface{}
 		wantErr    bool
 		expScopes  []string
 	}{
@@ -413,118 +413,118 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{},
 		},
 		{
-			"role: single string",
+			"roles: single string",
 			"",
 			nil,
-			"role",
+			"roles",
 			"admin",
 			false,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"role: space-separated list",
+			"roles: space-separated list",
 			"",
 			nil,
-			"role",
+			"roles",
 			"user1 user2",
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: space-separated list, multiple",
+			"roles: space-separated list, multiple",
 			"",
 			nil,
-			"role",
+			"roles",
 			"user1 user2 user1",
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: list of string",
+			"roles: list of string",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"user1", "user2"},
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: list of string, multiple",
+			"roles: list of string, multiple",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"user1", "user2", "user2"},
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: list of string, no additional 1",
+			"roles: list of string, no additional 1",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"admin", "user1"},
 			false,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"role: list of string, no additional 2",
+			"roles: list of string, no additional 2",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"admin", "user2"},
 			false,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"role: error: boolean",
+			"roles: error: boolean",
 			"",
 			nil,
-			"role",
+			"roles",
 			true,
 			true,
 			[]string{},
 		},
 		{
-			"role: error: number",
+			"roles: error: number",
 			"",
 			nil,
-			"role",
+			"roles",
 			1.23,
 			true,
 			[]string{},
 		},
 		{
-			"role: error: list of bool",
+			"roles: error: list of bool",
 			"",
 			nil,
-			"role",
+			"roles",
 			[]bool{true, false},
 			true,
 			[]string{},
 		},
 		{
-			"role: error: list of number",
+			"roles: error: list of number",
 			"",
 			nil,
-			"role",
+			"roles",
 			[]int{1, 2},
 			true,
 			[]string{},
 		},
 		{
-			"role: error: mixed list",
+			"roles: error: mixed list",
 			"",
 			nil,
-			"role",
+			"roles",
 			[]interface{}{"eins", 2},
 			true,
 			[]string{},
 		},
 		{
-			"role: error: object",
+			"roles: error: object",
 			"",
 			nil,
-			"role",
+			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			true,
 			[]string{},
@@ -533,7 +533,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"combi 1",
 			"scope",
 			"foo foo",
-			"role",
+			"roles",
 			[]string{"user2"},
 			false,
 			[]string{"foo", "bar", "default"},
@@ -542,7 +542,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"combi 2",
 			"scope",
 			[]string{"foo", "bar"},
-			"role",
+			"roles",
 			"admin",
 			false,
 			[]string{"foo", "bar", "baz", "default"},
@@ -554,8 +554,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			if tt.scopeClaim != "" && tt.scope != nil {
 				claims[tt.scopeClaim] = tt.scope
 			}
-			if tt.roleClaim != "" && tt.role != nil {
-				claims[tt.roleClaim] = tt.role
+			if tt.rolesClaim != "" && tt.roles != nil {
+				claims[tt.rolesClaim] = tt.roles
 			}
 			tok := jwt.NewWithClaims(signingMethod, claims)
 			pubKeyBytes := []byte("mySecretK3y")
@@ -569,8 +569,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				Algorithm:  algo.String(),
 				Name:       "test_ac",
 				ScopeClaim: tt.scopeClaim,
-				RoleClaim:  tt.roleClaim,
-				RoleMap:    roleMap,
+				RolesClaim: tt.rolesClaim,
+				RolesMap:   rolesMap,
 				Source:     source,
 				Key:        pubKeyBytes,
 			})

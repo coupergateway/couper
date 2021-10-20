@@ -57,8 +57,8 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_role_claim = "rl"
-    beta_role_map = {
+    beta_roles_claim = "rl"
+    beta_roles_map = {
       "r1" = ["a", "b"]
     }
   }
