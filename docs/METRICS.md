@@ -1,6 +1,7 @@
--[Metrics](#metrics)
+- [Metrics](#metrics)
     - [Prometheus](#prometheus)
     - [Grafana Dashboard](#grafana-dashboard)
+      - [Preview](#preview)
     - [Developers](#developers)
 
 # Metrics
@@ -20,9 +21,9 @@ You may have to set your Datasource to your Prometheus one.
 If you're missing some configuration options or have feedback: Feel free to open a [discussion](https://github.com/avenga/couper/discussions) or
 an [issue](https://github.com/avenga/couper/issues) if something does not work as expected or shown values does not make any sense.
 
-Preview:
+### Preview
 
-tba
+![dashboard](./img/grafana.png)
 
 ## Developers
 
