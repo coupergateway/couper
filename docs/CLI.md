@@ -33,3 +33,6 @@ _Note_: `log-format`, `log-level` and `log-pretty` also map to [settings](REFERE
 | :---------------------- | :----------- | :---------------------------- | :----------- |
 | `-accept-forwarded-url` | empty string | `COUPER_ACCEPT_FORWARDED_URL` | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](./REFERENCE.md#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port` |
 | `-https-dev-proxy`      | empty string | `COUPER_HTTPS_DEV_PROXY`      | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. |
+| `-beta-metrics`         | -            | `COUPER_BETA_METRICS`         | Option to enable the prometheus [metrics](./METRICS.md) exporter. |
+| `-beta-metrics-port`    | `9090`       | `COUPER_BETA_METRICS_PORT`    | Prometheus exporter listen port. |
+| `-beta-service-name`    | `couper`     | `COUPER_BETA_SERVICE_NAME`    | The service name which applies to the `service_name` metric labels. |

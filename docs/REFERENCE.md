@@ -503,7 +503,10 @@ gateway instance.
 | `request_id_client_header`      | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |-|-|
 | `request_id_format`             | string | `common`            | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
 | `secure_cookies`                | string | `""`                | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
-| `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host. |-|-|
+| `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host.  | - | - |
+| `beta_metrics`                  | bool   | `false`             | Option to enable the prometheus [metrics](./METRICS.md) exporter. | - | - |
+| `beta_metrics_port`             | number | `9090`              | Prometheus exporter listen port. | - | - |
+| `beta_service_name`             | string | `couper`            | The service name which applies to the `service_name` metric labels. | - | - |
 
 ### Defaults Block
 
