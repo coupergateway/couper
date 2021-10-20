@@ -3022,16 +3022,13 @@ func Test_Scope(t *testing.T) {
 			}
 
 			message := getAccessControlMessages(hook)
-			if tc.wantErrLog == "" && message != "" {
+			if !strings.HasPrefix(message, tc.wantErrLog) {
 				subT.Errorf("Expected error log:\nWant:\t%q\nGot:\t%q", tc.wantErrLog, message)
-			} else {
-				if !strings.HasPrefix(message, tc.wantErrLog) {
-					subT.Errorf("Expected error log:\nWant:\t%q\nGot:\t%q", tc.wantErrLog, message)
-				}
-				errorType := getAccessLogErrorType(hook)
-				if errorType != tc.wantErrType {
-					subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
-				}
+			}
+
+			errorType := getAccessLogErrorType(hook)
+			if errorType != tc.wantErrType {
+				subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
 			}
 		})
 	}
