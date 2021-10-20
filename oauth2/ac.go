@@ -44,12 +44,12 @@ func (a AbstractAcClient) GetTokenResponse(req *http.Request, callbackURL *url.U
 
 	ctx := eval.ContextFromRequest(req).HCLContext()
 
-	var redirectURI string
 	redirectURIVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), lib.RedirectURI)
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}
-	redirectURI = seetie.ValueToString(redirectURIVal)
+
+	redirectURI := seetie.ValueToString(redirectURIVal)
 	if redirectURI == "" {
 		return nil, errors.Oauth2.With(err).Messagef("%s is required", lib.RedirectURI)
 	}
@@ -68,6 +68,7 @@ func (a AbstractAcClient) GetTokenResponse(req *http.Request, callbackURL *url.U
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}
+
 	verifierValue := strings.TrimSpace(seetie.ValueToString(verifierVal))
 	if verifierValue == "" {
 		return nil, errors.Oauth2.With(err).Messagef("Empty verifier_value")
