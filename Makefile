@@ -3,15 +3,15 @@
 build:
 	go build -race -v -o couper main.go
 
+docker-telemetry:
+	docker-compose pull -f telemetry/docker-compose.yaml
+	docker-compose -f telemetry/docker-compose.yaml up --build
+
 generate:
 	go generate main.go
 
 image:
 	docker build -t avenga/couper:latest .
-
-telemetry:
-	docker-compose pull -f telemetry/docker-compose.yaml
-	docker-compose -f telemetry/docker-compose.yaml up --build
 
 test:
 	go test -v -short -race -count 1 -timeout 300s ./...

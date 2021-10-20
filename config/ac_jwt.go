@@ -25,16 +25,15 @@ type JWT struct {
 	Key                string              `hcl:"key,optional"`
 	KeyFile            string              `hcl:"key_file,optional"`
 	Name               string              `hcl:"name,label"`
-	PostParam          string              `hcl:"post_param,optional"`
-	QueryParam         string              `hcl:"query_param,optional"`
 	Remain             hcl.Body            `hcl:",remain"`
-	RoleClaim          string              `hcl:"beta_role_claim,optional"`
-	RoleMap            map[string][]string `hcl:"beta_role_map,optional"`
+	RolesClaim         string              `hcl:"beta_roles_claim,optional"`
+	RolesMap           map[string][]string `hcl:"beta_roles_map,optional"`
 	ScopeClaim         string              `hcl:"beta_scope_claim,optional"`
 	SignatureAlgorithm string              `hcl:"signature_algorithm,optional"`
 	SigningKey         string              `hcl:"signing_key,optional"`
 	SigningKeyFile     string              `hcl:"signing_key_file,optional"`
 	SigningTTL         string              `hcl:"signing_ttl,optional"`
+	TokenValue         hcl.Expression      `hcl:"token_value,optional"`
 
 	// Internally used
 	BodyContent *hcl.BodyContent

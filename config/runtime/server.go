@@ -480,10 +480,10 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					Claims:         jwtConf.Claims,
 					ClaimsRequired: jwtConf.ClaimsRequired,
 					Name:           jwtConf.Name,
-					RoleClaim:      jwtConf.RoleClaim,
-					RoleMap:        jwtConf.RoleMap,
+					RolesClaim:     jwtConf.RolesClaim,
+					RolesMap:       jwtConf.RolesMap,
 					ScopeClaim:     jwtConf.ScopeClaim,
-					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 					JWKS:           jwks,
 				})
 				if err != nil {
@@ -501,10 +501,10 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 					ClaimsRequired: jwtConf.ClaimsRequired,
 					Key:            key,
 					Name:           jwtConf.Name,
-					RoleClaim:      jwtConf.RoleClaim,
-					RoleMap:        jwtConf.RoleMap,
+					RolesClaim:     jwtConf.RolesClaim,
+					RolesMap:       jwtConf.RolesMap,
 					ScopeClaim:     jwtConf.ScopeClaim,
-					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header),
+					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 				})
 
 				if err != nil {

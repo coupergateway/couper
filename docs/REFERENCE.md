@@ -344,16 +344,17 @@ required _label_.
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `cookie`  |string|-|Read `AccessToken` key to gain the token value from a cookie.|&#9888; available value: `AccessToken`|`cookie = "AccessToken"`|
-| `header`          |string|-|-|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used.|`header = "Authorization"` |
+| `cookie`  |string|-|Read token value from a cookie.|cannot be used together with `header` or `token_value` |`cookie = "AccessToken"`|
+| `header`          |string|-|Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
+| `token_value` | string | - | expression to obtain the token | cannot be used together with `cookie` or `header` | `token_value = request.form_body.token[0]`|
 | `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`           |string|-|-|Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
-| `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
+| `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["roles"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
-| `beta_role_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_role_claim = "role"`|
-| `beta_role_map` |string|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_role_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
+| `beta_roles_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_roles_claim = "roles"`|
+| `beta_roles_map` |string|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_roles_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
@@ -364,7 +365,7 @@ Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case,
 A JWT access control configured by this block can extract scope values from
 
 - the value of the claim specified by `beta_scope_claim` and
-- the result of mapping the value of the claim specified by `beta_role_claim` using the `beta_role_map`.
+- the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
@@ -414,7 +415,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 | `authorization_endpoint` | string |-| The authorization server endpoint URL used for authorization. |&#9888; required|-|
 | `token_endpoint` | string |-| The authorization server endpoint URL used for requesting the token. |&#9888; required|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. |-|
 | `grant_type` |string|-| The grant type. |&#9888; required, to be set to: `authorization_code`|`grant_type = "authorization_code"`|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
@@ -442,7 +443,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | `configuration_url` | string |-| The OpenID configuration URL. |&#9888; required|-|
 | `configuration_ttl` | [duration](#duration) | `1h` | The duration to cache the OpenID configuration located at `configuration_url`. | - | `configuration_ttl = "1d"` |
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
+| `redirect_uri` | string |-| The Couper endpoint for receiving the authorization code. |&#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. |-|
 | `client_id`|  string|-|The client identifier.|&#9888; required|-|
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
 | `scope` |string|-| A space separated list of requested scopes for the access token.|`openid` is automatically added.| `scope = "profile read"` |
@@ -465,12 +466,12 @@ required _label_.
 | :--------| :-----------| :-----------| :-----------|
 |`saml`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
 
-| Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
+| Attribute(s)        | Type | Default | Description | Characteristic(s) | Example |
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-|`idp_metadata_file`|string|-|File reference to the Identity Provider metadata XML file.|&#9888; required|-|
-|`sp_acs_url`  |string|-|The URL of the Service Provider's ACS endpoint.|&#9888; required. Relative URL references are resolved against the origin of the current request URL.|-|
-| `sp_entity_id`   |string|-|The Service Provider's entity ID.|&#9888; required|-|
-| `array_attributes`|string|-|A list of assertion attributes that may have several values.|-|-|
+| `idp_metadata_file` | string | - | File reference to the Identity Provider metadata XML file. | &#9888; required | - |
+| `sp_acs_url`        | string | - | The URL of the Service Provider's ACS endpoint. | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. | - |
+| `sp_entity_id`      | string | - | The Service Provider's entity ID. |&#9888; required | - |
+| `array_attributes`  | string | - | A list of assertion attributes that may have several values. | - | - |
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 
@@ -489,7 +490,7 @@ gateway instance.
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
 | :------------------------------ | :----- | :------------------ | :---------- | :---------------- | :------ |
-| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [variables](#variables) `request.url`, `request.origin`, `request.protocol`, `request.host`, `request.port`. Valid values: `proto`, `host`, `port` |-| `["proto","host","port"]` |
+| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port` | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [beta_oidc](#oidc-block-beta). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
@@ -502,7 +503,10 @@ gateway instance.
 | `request_id_client_header`      | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |-|-|
 | `request_id_format`             | string | `common`            | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
 | `secure_cookies`                | string | `""`                | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
-| `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host. |-|-|
+| `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host.  | - | - |
+| `beta_metrics`                  | bool   | `false`             | Option to enable the prometheus [metrics](./METRICS.md) exporter. | - | - |
+| `beta_metrics_port`             | number | `9090`              | Prometheus exporter listen port. | - | - |
+| `beta_service_name`             | string | `couper`            | The service name which applies to the `service_name` metric labels. | - | - |
 
 ### Defaults Block
 

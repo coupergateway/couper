@@ -15,6 +15,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -124,7 +125,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 					ClaimsRequired: tt.fields.claimsRequired,
 					Name:           "test_ac",
 					Key:            key,
-					Source:         ac.NewJWTSource("", "Authorization"),
+					Source:         ac.NewJWTSource("", "Authorization", nil),
 				})
 				if jerr != nil {
 					if tt.wantErr != jerr.Error() {
@@ -185,27 +186,27 @@ func Test_JWT_Validate(t *testing.T) {
 		}{
 			{"src: header /w empty bearer", fields{
 				algorithm: algo,
-				source:    ac.NewJWTSource("", "Authorization"),
+				source:    ac.NewJWTSource("", "Authorization", nil),
 				pubKey:    pubKeyBytes,
 			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
-				source:    ac.NewJWTSource("", "Authorization"),
+				source:    ac.NewJWTSource("", "Authorization", nil),
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
 			{"src: header /w no cookie", fields{
 				algorithm: algo,
-				source:    ac.NewJWTSource("token", ""),
+				source:    ac.NewJWTSource("token", "", nil),
 				pubKey:    pubKeyBytes,
 			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
-				source:    ac.NewJWTSource("token", ""),
+				source:    ac.NewJWTSource("token", "", nil),
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), true},
 			{"src: header /w valid cookie", fields{
 				algorithm: algo,
-				source:    ac.NewJWTSource("token", ""),
+				source:    ac.NewJWTSource("token", "", nil),
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
 			{"src: header /w valid bearer & claims", fields{
@@ -215,7 +216,7 @@ func Test_JWT_Validate(t *testing.T) {
 					"test123": "value123",
 				},
 				claimsRequired: []string{"aud"},
-				source:         ac.NewJWTSource("", "Authorization"),
+				source:         ac.NewJWTSource("", "Authorization", nil),
 				pubKey:         pubKeyBytes,
 			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), false},
 			{"src: header /w valid bearer & w/o claims", fields{
@@ -224,7 +225,7 @@ func Test_JWT_Validate(t *testing.T) {
 					"aud":  "peter",
 					"cptn": "hook",
 				},
-				source: ac.NewJWTSource("", "Authorization"),
+				source: ac.NewJWTSource("", "Authorization", nil),
 				pubKey: pubKeyBytes,
 			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
 			{"src: header /w valid bearer & w/o required claims", fields{
@@ -233,9 +234,31 @@ func Test_JWT_Validate(t *testing.T) {
 					"aud": "peter",
 				},
 				claimsRequired: []string{"exp"},
-				source:         ac.NewJWTSource("", "Authorization"),
+				source:         ac.NewJWTSource("", "Authorization", nil),
 				pubKey:         pubKeyBytes,
 			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
+			{
+				"token_value number",
+				fields{
+					algorithm: algo,
+					source:    ac.NewJWTSource("", "", hcltest.MockExprLiteral(cty.NumberIntVal(42))),
+					pubKey:    pubKeyBytes,
+				},
+				setContext(httptest.NewRequest(http.MethodGet, "/", nil)),
+				true,
+			},
+			{
+				"token_value string",
+				fields{
+					algorithm:      algo,
+					claims:         map[string]string{"aud": "peter", "test123": "value123"},
+					claimsRequired: []string{"aud", "test123"},
+					source:         ac.NewJWTSource("", "", hcltest.MockExprLiteral(cty.StringVal(token))),
+					pubKey:         pubKeyBytes,
+				},
+				setContext(httptest.NewRequest(http.MethodGet, "/", nil)),
+				false,
+			},
 		}
 		for _, tt := range tests {
 			t.Run(fmt.Sprintf("%v_%s", signingMethod, tt.name), func(subT *testing.T) {
@@ -283,7 +306,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
-	roleMap := map[string][]string{
+	rolesMap := map[string][]string{
 		"admin": {"foo", "bar", "baz"},
 		"user1": {"foo"},
 		"user2": {"bar"},
@@ -294,8 +317,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		name       string
 		scopeClaim string
 		scope      interface{}
-		roleClaim  string
-		role       interface{}
+		rolesClaim string
+		roles      interface{}
 		wantErr    bool
 		expScopes  []string
 	}{
@@ -390,118 +413,118 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{},
 		},
 		{
-			"role: single string",
+			"roles: single string",
 			"",
 			nil,
-			"role",
+			"roles",
 			"admin",
 			false,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"role: space-separated list",
+			"roles: space-separated list",
 			"",
 			nil,
-			"role",
+			"roles",
 			"user1 user2",
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: space-separated list, multiple",
+			"roles: space-separated list, multiple",
 			"",
 			nil,
-			"role",
+			"roles",
 			"user1 user2 user1",
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: list of string",
+			"roles: list of string",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"user1", "user2"},
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: list of string, multiple",
+			"roles: list of string, multiple",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"user1", "user2", "user2"},
 			false,
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"role: list of string, no additional 1",
+			"roles: list of string, no additional 1",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"admin", "user1"},
 			false,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"role: list of string, no additional 2",
+			"roles: list of string, no additional 2",
 			"",
 			nil,
-			"rolle",
+			"rollen",
 			[]string{"admin", "user2"},
 			false,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"role: error: boolean",
+			"roles: error: boolean",
 			"",
 			nil,
-			"role",
+			"roles",
 			true,
 			true,
 			[]string{},
 		},
 		{
-			"role: error: number",
+			"roles: error: number",
 			"",
 			nil,
-			"role",
+			"roles",
 			1.23,
 			true,
 			[]string{},
 		},
 		{
-			"role: error: list of bool",
+			"roles: error: list of bool",
 			"",
 			nil,
-			"role",
+			"roles",
 			[]bool{true, false},
 			true,
 			[]string{},
 		},
 		{
-			"role: error: list of number",
+			"roles: error: list of number",
 			"",
 			nil,
-			"role",
+			"roles",
 			[]int{1, 2},
 			true,
 			[]string{},
 		},
 		{
-			"role: error: mixed list",
+			"roles: error: mixed list",
 			"",
 			nil,
-			"role",
+			"roles",
 			[]interface{}{"eins", 2},
 			true,
 			[]string{},
 		},
 		{
-			"role: error: object",
+			"roles: error: object",
 			"",
 			nil,
-			"role",
+			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			true,
 			[]string{},
@@ -510,7 +533,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"combi 1",
 			"scope",
 			"foo foo",
-			"role",
+			"roles",
 			[]string{"user2"},
 			false,
 			[]string{"foo", "bar", "default"},
@@ -519,7 +542,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"combi 2",
 			"scope",
 			[]string{"foo", "bar"},
-			"role",
+			"roles",
 			"admin",
 			false,
 			[]string{"foo", "bar", "baz", "default"},
@@ -531,8 +554,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			if tt.scopeClaim != "" && tt.scope != nil {
 				claims[tt.scopeClaim] = tt.scope
 			}
-			if tt.roleClaim != "" && tt.role != nil {
-				claims[tt.roleClaim] = tt.role
+			if tt.rolesClaim != "" && tt.roles != nil {
+				claims[tt.rolesClaim] = tt.roles
 			}
 			tok := jwt.NewWithClaims(signingMethod, claims)
 			pubKeyBytes := []byte("mySecretK3y")
@@ -541,13 +564,13 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				subT.Error(tokenErr)
 			}
 
-			source := ac.NewJWTSource("", "Authorization")
+			source := ac.NewJWTSource("", "Authorization", nil)
 			j, err := ac.NewJWT(&ac.JWTOptions{
 				Algorithm:  algo.String(),
 				Name:       "test_ac",
 				ScopeClaim: tt.scopeClaim,
-				RoleClaim:  tt.roleClaim,
-				RoleMap:    roleMap,
+				RolesClaim: tt.rolesClaim,
+				RolesMap:   rolesMap,
 				Source:     source,
 				Key:        pubKeyBytes,
 			})
@@ -583,15 +606,6 @@ func TestJwtConfig(t *testing.T) {
 		error string
 	}{
 		{
-			"missing definition for access_control",
-			`
-			server "test" {
-			  access_control = ["myac"]
-			}
-			`,
-			"", // FIXME Missing myac
-		},
-		{
 			"missing both signature_algorithm/jwks_url",
 			`
 			server "test" {}
@@ -616,7 +630,7 @@ func TestJwtConfig(t *testing.T) {
 			"jwt key: read error: required: configured attribute or file",
 		},
 		{
-			"ok: signature_algorithm + key",
+			"ok: signature_algorithm + key + header",
 			`
 			server "test" {}
 			definitions {
@@ -628,6 +642,79 @@ func TestJwtConfig(t *testing.T) {
 			}
 			`,
 			"",
+		},
+		{
+			"ok: signature_algorithm + key + cookie",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    cookie = "..."
+			    key = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"ok: signature_algorithm + key + token_value",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    token_value = env.TOKEN
+			    key = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"token_value + header",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    token_value = env.TOKEN
+			    header = "..."
+			    key = "..."
+			  }
+			}
+			`,
+			"token source is invalid",
+		},
+		{
+			"token_value + cookie",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    token_value = env.TOKEN
+			    cookie = "..."
+			    key = "..."
+			  }
+			}
+			`,
+			"token source is invalid",
+		},
+		{
+			"cookie + header",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    cookie = "..."
+			    header = "..."
+			    key = "..."
+			  }
+			}
+			`,
+			"token source is invalid",
 		},
 		{
 			"ok: signature_algorithm + key_file",
@@ -727,22 +814,6 @@ func TestJwtConfig(t *testing.T) {
 			`,
 			"",
 		},
-		/*
-			{
-				"inline backend block, missing jwks_url",
-				`
-				server "test" {}
-				definitions {
-				  jwt "myac" {
-				    backend {
-				    }
-				    header = "..."
-				  }
-				}
-				`,
-				"backend not needed without jwks_url",
-			},
-		*/
 	}
 
 	log, _ := logrustest.NewNullLogger()
