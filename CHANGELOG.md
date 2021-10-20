@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.4...master)
+## [Unreleased](https://github.com/avenga/couper/compare/1.5...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.5](https://github.com/avenga/couper/releases/tag/1.5)
 
 * **Added**
   * `Accept: application/json` request header to the OAuth2 token request, in order to make the Github token endpoint respond with a JSON token response ([#307](https://github.com/avenga/couper/pull/307))
@@ -29,8 +33,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Dependencies**
   * build with go 1.17 ([#331](https://github.com/avenga/couper/pull/331))
-
----
 
 ## [1.4](https://github.com/avenga/couper/releases/tag/1.4)
 
