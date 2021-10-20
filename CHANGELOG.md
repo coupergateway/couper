@@ -25,6 +25,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * [**Beta**](./docs/BETA.md)
   * `beta_scope_claim` attribute to [`jwt` block](./docs/REFERENCE.md#jwt-block); `beta_scope` attribute to [`api`](./docs/REFERENCE.md#api-block) and [`endpoint` block](./docs/REFERENCE.md#endpoint-block)s; [error types](./docs/ERRORS.md#error-types) `beta_operation_denied` and `beta_insufficient_scope` ([#315](https://github.com/avenga/couper/pull/315))
   * `beta_roles_claim` and `beta_roles_map` attributes to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#325](https://github.com/avenga/couper/pull/325)) ([#338](https://github.com/avenga/couper/pull/338)) ([#352](https://github.com/avenga/couper/pull/352))
+  * Metrics: Prometheus exporter ([#295](https://github.com/avenga/couper/pull/295))
+    * [Documentation](./docs/METRICS.md) ([#351](https://github.com/avenga/couper/pull/351))
 
 * **Dependencies**
   * build with go 1.17 ([#331](https://github.com/avenga/couper/pull/331))
