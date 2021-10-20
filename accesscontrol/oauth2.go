@@ -29,7 +29,7 @@ func (oa *OAuth2Callback) Validate(req *http.Request) error {
 		return errors.Oauth2.Messagef("wrong method (%s)", req.Method)
 	}
 
-	tokenResponseData, err := oa.oauth2Client.GetTokenResponse(req.Context(), req.URL)
+	tokenResponseData, err := oa.oauth2Client.GetTokenResponse(req, req.URL)
 	if err != nil {
 		return err
 	}
