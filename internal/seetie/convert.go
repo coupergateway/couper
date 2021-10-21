@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -252,6 +253,61 @@ func ValueToInt(v cty.Value) (n int64) {
 	return n
 }
 
+func ValueToLogFields(val cty.Value) logrus.Fields {
+	fields := logrus.Fields{}
+
+	for k, v := range val.AsValueMap() {
+		if isTuple(v) {
+			fields[k] = ValueToLogFieldsFromTuple(v)
+		} else {
+			switch v.Type() {
+			case cty.Bool:
+				fields[k] = v.True()
+			case cty.String:
+				fields[k] = v.AsString()
+			case cty.Number:
+				f, _ := v.AsBigFloat().Float64()
+				fields[k] = f
+			default:
+				if isObject(v) {
+					fields[k] = ValueToLogFields(v)
+				}
+			}
+		}
+	}
+
+	return fields
+}
+
+func ValueToLogFieldsFromTuple(val cty.Value) []interface{} {
+	if !isTuple(val) {
+		return nil
+	}
+
+	var values []interface{}
+	for _, v := range val.AsValueSlice() {
+		if isTuple(v) {
+			values = append(values, ValueToLogFieldsFromTuple(v))
+		} else {
+			switch v.Type() {
+			case cty.Bool:
+				values = append(values, v.True())
+			case cty.String:
+				values = append(values, v.AsString())
+			case cty.Number:
+				f, _ := v.AsBigFloat().Float64()
+				values = append(values, f)
+			default:
+				if isObject(v) {
+					values = append(values, ValueToLogFields(v))
+				}
+			}
+		}
+	}
+
+	return values
+}
+
 func SliceToString(sl []interface{}) string {
 	var str []string
 	for _, s := range sl {
@@ -282,6 +338,14 @@ func ToString(s interface{}) string {
 	default:
 		return ""
 	}
+}
+
+// isObject checks by type name since object is not comparable by type.
+func isObject(v cty.Value) bool {
+	if v.IsNull() {
+		return false
+	}
+	return v.Type().FriendlyNameForConstraint() == "object"
 }
 
 // isTuple checks by type name since tuple is not comparable by type.

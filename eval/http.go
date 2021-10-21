@@ -19,6 +19,7 @@ import (
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -328,6 +329,38 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 	}
 
 	return upgradeType(req.Header) == upgradeType(res.Header)
+}
+
+func ApplyCustomLogs(
+	ctx context.Context, bodies []hcl.Body,
+	req *http.Request, logger *logrus.Entry,
+) logrus.Fields {
+	var values []cty.Value
+
+	for _, body := range bodies {
+		bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
+
+		if logs, ok := bodyContent.Attributes["log_fields"]; ok {
+			var httpCtx *hcl.EvalContext
+			if c, ok := ctx.Value(request.ContextType).(*Context); ok {
+				httpCtx = c.HCLContext()
+			}
+
+			val, err := Value(httpCtx, logs.Expr)
+			if err != nil {
+				logger.Debug(err)
+			} else {
+				values = append(values, val)
+			}
+		}
+	}
+
+	val, err := lib.Merge(values)
+	if err != nil {
+		logger.Debug(err)
+	}
+
+	return seetie.ValueToLogFields(val)
 }
 
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
