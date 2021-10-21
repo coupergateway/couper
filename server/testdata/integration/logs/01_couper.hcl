@@ -65,6 +65,12 @@ server "logs" {
         }
       }
     }
+
+    endpoint "/backend" {
+      proxy {
+        backend = "BE"
+      }
+    }
   }
 }
 
@@ -72,6 +78,10 @@ definitions {
   backend "BE" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     path   = "/anything"
+
+    log_fields = {
+      backend = backend_responses.default.json_body.Method
+    }
   }
 
   basic_auth "BA" {
