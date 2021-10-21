@@ -1,12 +1,14 @@
 package server_test
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/avenga/couper/internal/test"
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,19 +41,21 @@ func TestCustomLogs_Upstream(t *testing.T) {
 
 	// Upstream log
 	exp = logrus.Fields{
-		"array":  []interface{}{1, "GET", []interface{}{2, "GET"}, logrus.Fields{"x": "X"}},
+		"array":  []interface{}{float64(1), "GET", []interface{}{float64(2), "GET"}, logrus.Fields{"x": "X"}},
 		"bool":   true,
 		"float":  1.23,
-		"int":    123,
-		"object": logrus.Fields{"a": "A", "b": "B", "c": 123},
+		"int":    float64(123),
+		"object": logrus.Fields{"a": "A", "b": "B", "c": float64(123)},
 		"string": "GET",
 	}
 	got, ok = hook.AllEntries()[0].Data["custom"].(logrus.Fields)
 	if !ok {
 		t.Fatalf("expected\n%#v\ngot\n%#v", exp, got)
 	}
-	if !reflect.DeepEqual(exp, got) {
-		t.Errorf("expected\n%#v\ngot\n%#v", exp, got)
+	if !cmp.Equal(exp, got) {
+		t.Fail()
+
+		fmt.Println(cmp.Diff(exp, got))
 	}
 }
 
