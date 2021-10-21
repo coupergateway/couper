@@ -159,7 +159,7 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 	case *hclsyntax.LiteralValueExpr:
 		return expr
 	default:
-		panic("eval.Value: expression type not supported: " + fmt.Sprintf(reflect.TypeOf(expr).String()))
+		panic("eval.Value: expression type not supported: " + fmt.Sprint(reflect.TypeOf(expr).String()))
 	}
 }
 

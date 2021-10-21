@@ -1,6 +1,6 @@
 # Logging 
 
-- [Logging](#logging) 
+- [Logging](#logging)
   - [Introduction](#introduction)
   - [Log Types](#log-types)
   - [Fields](#fields)
