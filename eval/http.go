@@ -338,6 +338,10 @@ func ApplyCustomLogs(
 	var values []cty.Value
 
 	for _, body := range bodies {
+		if body == nil {
+			continue // Test cases
+		}
+
 		bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
 
 		if logs, ok := bodyContent.Attributes["log_fields"]; ok {

@@ -44,6 +44,10 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	startTime := req.Context().Value(request.StartTime).(time.Time)
 	fields := Fields{}
 
+	if customLogs, ok := req.Context().Value(request.AccessLogFields).(logrus.Fields); ok && len(customLogs) > 0 {
+		fields["custom"] = customLogs
+	}
+
 	backendName, _ := req.Context().Value(request.BackendName).(string)
 	if backendName == "" {
 		endpointName, _ := req.Context().Value(request.Endpoint).(string)

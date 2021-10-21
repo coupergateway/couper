@@ -153,6 +153,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	evalCtx = evalCtx.WithBeresps(beresp)
 	err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
 
+	logs := eval.ApplyCustomLogs(evalCtx, []hcl.Body{b.context}, req, b.logEntry)
+	ctx := context.WithValue(req.Context(), request.BackendLogFields, logs)
+	*req = *req.WithContext(ctx)
+
 	return beresp, err
 }
 

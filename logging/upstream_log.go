@@ -76,6 +76,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	beresp, err := u.next.RoundTrip(req)
 	rtDone := time.Now()
 
+	if customLogs, ok := req.Context().Value(request.BackendLogFields).(logrus.Fields); ok && len(customLogs) > 0 {
+		fields["custom"] = customLogs
+	}
+
 	if req.Host != "" {
 		requestFields["origin"] = req.Host
 		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)

@@ -1,22 +1,29 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
+	"github.com/sirupsen/logrus"
 )
 
 var _ http.Handler = &Error{}
 
 type Error struct {
 	kindsHandler map[string]http.Handler
+	logger       *logrus.Entry
 	template     *errors.Template
 }
 
-func NewErrorHandler(kindsHandler map[string]http.Handler, errTpl *errors.Template) *Error {
+func NewErrorHandler(
+	kindsHandler map[string]http.Handler, errTpl *errors.Template, logger *logrus.Entry,
+) *Error {
 	return &Error{
 		kindsHandler: kindsHandler,
+		logger:       logger,
 		template:     errTpl,
 	}
 }
@@ -38,6 +45,14 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if !defined {
 			continue
 		}
+
+		if h, ok := ep.(*Endpoint); ok {
+			evalContext := eval.ContextFromRequest(req)
+			logs := eval.ApplyCustomLogs(evalContext, h.opts.Bodies, req, e.logger)
+			ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
+			*req = *req.WithContext(ctx)
+		}
+
 		ep.ServeHTTP(rw, req)
 		return
 	}

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,7 +10,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -32,12 +35,13 @@ type HasResponse interface {
 type File struct {
 	basePath   string
 	bodies     []hcl.Body
+	logger     *logrus.Entry
 	modifier   []hcl.Body
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body, body hcl.Body) (*File, error) {
+func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body, body hcl.Body, logger *logrus.Entry) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -62,6 +66,7 @@ func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body, body 
 	f := &File{
 		basePath:   srvOpts.FilesBasePath,
 		bodies:     append(srvOpts.Bodies, body),
+		logger:     logger,
 		modifier:   modifier,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
@@ -71,6 +76,11 @@ func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body, body 
 }
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	evalContext := eval.ContextFromRequest(req)
+	logs := eval.ApplyCustomLogs(evalContext, f.bodies, req, f.logger)
+	ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
+	*req = *req.WithContext(ctx)
+
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		return

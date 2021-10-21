@@ -32,7 +32,7 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 		return ba
 	}
 
-	defaultErrHandler := NewErrorHandler(nil, errors.DefaultJSON)
+	defaultErrHandler := NewErrorHandler(nil, errors.DefaultJSON, nil)
 
 	tests := []struct {
 		name           string

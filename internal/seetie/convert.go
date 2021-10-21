@@ -254,6 +254,10 @@ func ValueToInt(v cty.Value) (n int64) {
 }
 
 func ValueToLogFields(val cty.Value) logrus.Fields {
+	if val.IsNull() || !val.IsKnown() {
+		return nil
+	}
+
 	fields := logrus.Fields{}
 
 	for k, v := range val.AsValueMap() {

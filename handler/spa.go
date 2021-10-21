@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -21,11 +24,12 @@ var (
 type Spa struct {
 	bodies     []hcl.Body
 	file       string
+	logger     *logrus.Entry
 	modifier   []hcl.Body
 	srvOptions *server.Options
 }
 
-func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body, body hcl.Body) (*Spa, error) {
+func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body, body hcl.Body, logger *logrus.Entry) (*Spa, error) {
 	absPath, err := filepath.Abs(bootstrapFile)
 	if err != nil {
 		return nil, err
@@ -34,12 +38,18 @@ func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body, 
 	return &Spa{
 		bodies:     append(srvOpts.Bodies, body),
 		file:       absPath,
+		logger:     logger,
 		modifier:   modifier,
 		srvOptions: srvOpts,
 	}, nil
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	evalContext := eval.ContextFromRequest(req)
+	logs := eval.ApplyCustomLogs(evalContext, s.bodies, req, s.logger)
+	ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
+	*req = *req.WithContext(ctx)
+
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		return

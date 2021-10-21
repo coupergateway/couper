@@ -152,6 +152,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				serverOptions,
 				[]hcl.Body{srvConf.Spa.Remain, srvConf.Remain},
 				srvConf.Spa.Remain,
+				log,
 			)
 			if err != nil {
 				return nil, err
@@ -192,6 +193,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				serverOptions,
 				[]hcl.Body{srvConf.Files.Remain, srvConf.Remain},
 				srvConf.Files.Remain,
+				log,
 			)
 			if ferr != nil {
 				return nil, ferr
@@ -642,7 +644,12 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 	}
 	if scopeControl != nil {
 		// TODO properly create error handler
-		list = append(list, ac.NewItem("scope", scopeControl, handler.NewErrorHandler(nil, opts.epOpts.Error)))
+		list = append(
+			list,
+			ac.NewItem(
+				"scope", scopeControl, handler.NewErrorHandler(nil, opts.epOpts.Error, log),
+			),
+		)
 	}
 
 	if len(list) > 0 {
@@ -698,7 +705,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 	}
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error, log), nil
 }
 
 func setRoutesFromHosts(

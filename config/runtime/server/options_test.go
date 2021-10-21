@@ -8,6 +8,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
+	"github.com/hashicorp/hcl/v2"
 )
 
 func TestServer_NewServerOptions_NoConfig(t *testing.T) {
@@ -41,6 +42,7 @@ func TestServer_NewServerOptions_EmptyConfig(t *testing.T) {
 
 	exp := &server.Options{
 		APIErrTpls:    map[*config.API]*errors.Template(nil),
+		Bodies:        []hcl.Body{hcl.Body(nil)},
 		FilesErrTpl:   errors.DefaultHTML,
 		ServerErrTpl:  errors.DefaultHTML,
 		APIBasePaths:  map[*config.API]string(nil),
@@ -92,6 +94,7 @@ func TestServer_NewServerOptions_ConfigWithPaths(t *testing.T) {
 
 	exp := &server.Options{
 		APIErrTpls:    aets,
+		Bodies:        []hcl.Body{hcl.Body(nil)},
 		FilesErrTpl:   errors.DefaultHTML,
 		ServerErrTpl:  errors.DefaultHTML,
 		APIBasePaths:  abps,
