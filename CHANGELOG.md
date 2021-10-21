@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * [Custom Logging](docs/LOGS.md#custom-logging) to be able to log user defined fields ([#355](https://github.com/avenga/couper/pull/355))
+
 ---
 
 ## [1.5](https://github.com/avenga/couper/releases/tag/1.5)
