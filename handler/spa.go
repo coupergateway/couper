@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -46,9 +45,7 @@ func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body, 
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext := eval.ContextFromRequest(req)
-	logs := eval.ApplyCustomLogs(evalContext, s.bodies, req, s.logger)
-	ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
-	*req = *req.WithContext(ctx)
+	eval.ApplyCustomLogs(evalContext, s.bodies, req, s.logger, request.AccessLogFields)
 
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.WriteHeader(http.StatusMethodNotAllowed)

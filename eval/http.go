@@ -334,7 +334,8 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 func ApplyCustomLogs(
 	ctx context.Context, bodies []hcl.Body,
 	req *http.Request, logger *logrus.Entry,
-) logrus.Fields {
+	ctxDestination request.ContextKey,
+) {
 	var values []cty.Value
 
 	for _, body := range bodies {
@@ -364,7 +365,8 @@ func ApplyCustomLogs(
 		logger.Debug(err)
 	}
 
-	return seetie.ValueToLogFields(val)
+	reqCtx := context.WithValue(req.Context(), ctxDestination, seetie.ValueToLogFields(val))
+	*req = *req.WithContext(reqCtx)
 }
 
 func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {

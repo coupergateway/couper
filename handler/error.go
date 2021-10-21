@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/avenga/couper/config/request"
@@ -48,9 +47,7 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		if h, ok := ep.(*Endpoint); ok {
 			evalContext := eval.ContextFromRequest(req)
-			logs := eval.ApplyCustomLogs(evalContext, h.opts.Bodies, req, e.logger)
-			ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
-			*req = *req.WithContext(ctx)
+			eval.ApplyCustomLogs(evalContext, h.opts.Bodies, req, e.logger, request.AccessLogFields)
 		}
 
 		ep.ServeHTTP(rw, req)

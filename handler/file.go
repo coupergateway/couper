@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -77,9 +76,7 @@ func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body, body 
 
 func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext := eval.ContextFromRequest(req)
-	logs := eval.ApplyCustomLogs(evalContext, f.bodies, req, f.logger)
-	ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
-	*req = *req.WithContext(ctx)
+	eval.ApplyCustomLogs(evalContext, f.bodies, req, f.logger, request.AccessLogFields)
 
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.WriteHeader(http.StatusMethodNotAllowed)

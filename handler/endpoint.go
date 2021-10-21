@@ -206,9 +206,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logs := eval.ApplyCustomLogs(evalContext, e.opts.Bodies, req, e.log)
-	ctx := context.WithValue(req.Context(), request.AccessLogFields, logs)
-	*req = *req.WithContext(ctx)
+	eval.ApplyCustomLogs(evalContext, e.opts.Bodies, req, e.log, request.AccessLogFields)
 
 	select {
 	case ctxErr := <-req.Context().Done():
