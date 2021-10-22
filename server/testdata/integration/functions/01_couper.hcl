@@ -22,5 +22,16 @@ server "api" {
         }
       }
     }
+
+    endpoint "/default" {
+      response {
+        headers = {
+          x-coalesce-1 = coalesce(request.path, "default")
+          x-coalesce-2 = coalesce(request.cookies.undef, "default")
+          x-coalesce-3 = coalesce(request.query.q[1], "default")
+          x-coalesce-4 = coalesce(request.cookies.undef, request.query.q[1], "default", request.path)
+        }
+      }
+    }
   }
 }
