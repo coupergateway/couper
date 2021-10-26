@@ -12,7 +12,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
@@ -244,8 +243,12 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
 	outer := h
-	if inner, protected := outer.(ac.ProtectedHandler); protected {
-		outer = inner.Child()
+	for {
+		if inner, ok := outer.(interface{ Child() http.Handler }); ok {
+			outer = inner.Child()
+			continue
+		}
+		break
 	}
 
 	if limitHandler, ok := outer.(handler.EndpointLimit); ok {
