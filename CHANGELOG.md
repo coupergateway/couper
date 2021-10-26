@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
+  
 ---
 
 ## [1.5](https://github.com/avenga/couper/releases/tag/1.5)

@@ -494,6 +494,7 @@ func newFunctionsMap() map[string]function.Function {
 		"base64_decode": lib.Base64DecodeFunc,
 		"base64_encode": lib.Base64EncodeFunc,
 		"coalesce":      lib.CoalesceFunc,
+		"default":       lib.CoalesceFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"merge":         lib.MergeFunc,
