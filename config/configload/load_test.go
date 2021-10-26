@@ -1,12 +1,15 @@
 package configload
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/runtime"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func Test_refineEndpoints_noPattern(t *testing.T) {
@@ -49,5 +52,77 @@ func Test_VerifyBodyAttributes(t *testing.T) {
 		if err := verifyBodyAttributes(tc.content); !tc.expErr && err != nil {
 			t.Errorf("Want no error, got: %v", err)
 		}
+	}
+}
+
+func TestLabels(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing server",
+			`definitions {}`,
+			"configuration error: missing 'server' block",
+		},
+		{
+			"server w/o label",
+			`server {}`,
+			"",
+		},
+		{
+			"multiple servers w/o label",
+			`server {}
+			 server {}`,
+			"configuration error: only one anonymous server allowed",
+		},
+		{
+			"labelled and unlabelled servers",
+			`server {}
+			 server "test" {}
+			 `,
+			"couper.hcl:1,8-9: Missing name for server; All server blocks must have 1 labels (name).",
+		},
+		{
+			"duplicate server labels",
+			`server "test" {}
+			 server "test" {}`,
+			`configuration error: duplicate server name "test"`,
+		},
+		{
+			"unique server label",
+			`server "test" {
+			   hosts = ["*:8888"]
+			 }
+			 server "foo" {
+				hosts = ["*:9999"]
+			 }
+			 definitions {
+			   basic_auth "test" {}
+			 }`,
+			"",
+		},
+	}
+
+	logger, _ := logrustest.NewNullLogger()
+	log := logger.WithContext(context.TODO())
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if conf != nil {
+				_, err = runtime.NewServerConfiguration(conf, log, nil)
+			}
+
+			var error = ""
+			if err != nil {
+				error = err.Error()
+			}
+
+			if tt.error != error {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, error)
+			}
+		})
 	}
 }

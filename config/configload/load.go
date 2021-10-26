@@ -364,7 +364,13 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
-	for _, serverBlock := range content.Blocks.OfType(server) {
+	serverBlocks, err := contentByType(server, body)
+	if err != nil {
+		return nil, err
+	}
+
+	serverMap := make(map[string]bool)
+	for _, serverBlock := range serverBlocks.Blocks {
 		serverConfig := &config.Server{}
 		if diags = gohcl.DecodeBody(serverBlock.Body, envContext, serverConfig); diags.HasErrors() {
 			return nil, diags
@@ -391,11 +397,18 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			return nil, err
 		}
 
+		if _, isset := serverMap[serverConfig.Name]; isset {
+			if serverConfig.Name == "" {
+				return nil, fmt.Errorf("configuration error: only one anonymous server allowed")
+			}
+			return nil, fmt.Errorf("configuration error: duplicate server name %q", serverConfig.Name)
+		}
+		serverMap[serverConfig.Name] = true
 		couperConfig.Servers = append(couperConfig.Servers, serverConfig)
 	}
 
 	if len(couperConfig.Servers) == 0 {
-		return nil, fmt.Errorf("configuration error: missing server definition")
+		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
 	return couperConfig, nil
