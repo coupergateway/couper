@@ -2094,6 +2094,22 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			},
 			"https://www.example.com:8443/path",
 		},
+		{
+			"proto, host with port, different port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
+				"X-Forwarded-Port":  []string{"9443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     9443,
+				Origin:   "https://www.example.com:9443",
+				Url:      "https://www.example.com:9443/path",
+			},
+			"https://www.example.com:9443/path",
+		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
