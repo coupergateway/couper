@@ -45,8 +45,9 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 				rec.SetError(err)
 			}
 		},
-		ErrorLog:  newErrorLogWrapper(logger),
-		Transport: backend,
+		ErrorLog:      newErrorLogWrapper(logger),
+		FlushInterval: time.Millisecond * 100,
+		Transport:     backend,
 	}
 
 	proxy.reverseProxy = rp
