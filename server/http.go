@@ -251,12 +251,11 @@ func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
 		break
 	}
 
-	if limitHandler, ok := outer.(handler.EndpointLimit); ok {
-		if err := eval.SetGetBody(req, limitHandler.RequestLimit()); err != nil {
-			return err
-		}
+	var err error
+	if limitHandler, ok := outer.(handler.BodyLimit); ok {
+		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
 	}
-	return nil
+	return err
 }
 
 // getHost configures the host from the incoming request host based on

@@ -13,6 +13,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
@@ -43,7 +44,15 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 		ErrorHandler: func(rw http.ResponseWriter, _ *http.Request, err error) {
 			if rec, ok := rw.(*transport.Recorder); ok {
 				rec.SetError(err)
+				return
 			}
+			// TODO: error http handler
+			status := http.StatusBadGateway
+			if e, ok := err.(errors.GoError); ok {
+				status = e.HTTPStatus()
+			}
+			rw.WriteHeader(status)
+			_, _ = rw.Write([]byte(err.Error()))
 		},
 		ErrorLog:      newErrorLogWrapper(logger),
 		FlushInterval: time.Millisecond * 100,
@@ -84,19 +93,27 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	if hj, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
 		rw = hj
 	}
-	rec := transport.NewRecorder(rw)
 
 	if err = p.registerWebsocketsResponse(req, rw); err != nil {
 		return nil, err
 	}
 
-	p.reverseProxy.ServeHTTP(rec, req)
-	beresp, err := rec.Response(req)
-	if err != nil {
+	var beresp *http.Response
+	buffOpts, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption)
+	if ok && buffOpts.Response() {
+		rec := transport.NewRecorder(rw)
+		p.reverseProxy.ServeHTTP(rec, req)
+		beresp, err = rec.Response(req)
+		if err != nil {
+			return nil, err
+		}
+		err = eval.ApplyResponseContext(req.Context(), p.context, beresp)
 		return beresp, err
+	} else {
+		rw.SetUnbuffered()
+		p.reverseProxy.ServeHTTP(rw, req)
+		return nil, nil
 	}
-	err = eval.ApplyResponseContext(req.Context(), p.context, beresp) // TODO: log only
-	return beresp, err
 }
 
 // director no-op method is still required by httputil.ReverseProxy.

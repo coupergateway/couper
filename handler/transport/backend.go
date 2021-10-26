@@ -135,7 +135,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if !eval.IsUpgradeResponse(req, beresp) {
+	bufferOpts, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption)
+	if !ok {
+		bufferOpts = eval.BufferNone
+	}
+
+	if !eval.IsUpgradeResponse(req, beresp) && bufferOpts.Response() {
 		if err = setGzipReader(beresp); err != nil {
 			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
 		}
