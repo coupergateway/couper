@@ -103,6 +103,63 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"",
 		},
+		{
+			"anonymous api block",
+			`server "test" {
+			   api {}
+			 }`,
+			"",
+		},
+		{
+			"multiple anonymous api blocks",
+			`server "test" {
+			   api {
+			     base_path = "/foo"
+			   }
+			   api {
+			     base_path = "/bar"
+			   }
+			 }`,
+			"",
+		},
+		{
+			"mixed labelled api blocks",
+			`server "test" {
+			   api {}
+			   api "foo" {}
+			 }`,
+			"couper.hcl:2,11-12: Missing name for api; All api blocks must have 1 labels (name).",
+		},
+		{
+			"duplicate api labels",
+			`server "test" {
+			   api "foo" {}
+			   api "foo" {}
+			 }`,
+			`configuration error: duplicate api name "test"`,
+		},
+		{
+			"uniquely labelled api blocks per server",
+			`server "foo" {
+			   hosts = ["*:8888"]
+			   api "foo" {
+			     base_path = "/foo"
+		       }
+			   api "bar" {
+			     base_path = "/bar"
+			   }
+			 }
+			 server "bar" {
+			   hosts = ["*:9999"]
+			   api "foo" {
+			     base_path = "/foo"
+		       }
+			   api "bar" {
+			     base_path = "/bar"
+			   }
+			 }`,
+			"",
+		},
 	}
 
 	logger, _ := logrustest.NewNullLogger()

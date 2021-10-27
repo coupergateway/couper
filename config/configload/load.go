@@ -24,6 +24,7 @@ import (
 )
 
 const (
+	api          = "api"
 	backend      = "backend"
 	definitions  = "definitions"
 	errorHandler = "error_handler"
@@ -382,17 +383,37 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// Read api blocks and merge backends with server and definitions backends.
-		for _, apiBlock := range serverConfig.APIs {
-			err := refineEndpoints(definedBackends, apiBlock.Endpoints, true)
+		apiBlocks, err := contentByType(api, serverConfig.Remain)
+		if err != nil {
+			return nil, err
+		}
+
+		apiMap := make(map[string]bool)
+		for _, apiBlock := range apiBlocks.Blocks {
+			apiConfig := &config.API{}
+			if diags = gohcl.DecodeBody(apiBlock.Body, envContext, apiConfig); diags.HasErrors() {
+				return nil, diags
+			}
+
+			if len(apiBlock.Labels) > 0 {
+				apiConfig.Name = apiBlock.Labels[0]
+				if _, isset := apiMap[apiConfig.Name]; isset {
+					return nil, fmt.Errorf("configuration error: duplicate api name %q", serverConfig.Name)
+				}
+				apiMap[apiConfig.Name] = true
+			}
+
+			err := refineEndpoints(definedBackends, apiConfig.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
 
-			apiBlock.CatchAllEndpoint = createCatchAllEndpoint()
+			apiConfig.CatchAllEndpoint = createCatchAllEndpoint()
+			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 		}
 
 		// standalone endpoints
-		err := refineEndpoints(definedBackends, serverConfig.Endpoints, true)
+		err = refineEndpoints(definedBackends, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
