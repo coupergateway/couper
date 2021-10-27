@@ -116,6 +116,9 @@ func (r *Response) IsUnbuffered() bool {
 
 func (r *Response) SetUnbuffered() {
 	r.unbuffered = true
+	if zw, ok := r.rw.(*Gzip); ok {
+		zw.enabled = false
+	}
 }
 
 // Flush implements the <http.Flusher> interface.
