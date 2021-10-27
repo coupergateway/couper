@@ -369,6 +369,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		corsOptions             *CORSOptions
 		requestHeaders          map[string]string
 		expectedResponseHeaders map[string]string
+		expectedVary            []string
 	}{
 		{
 			"specific origin, with ACRM",
@@ -383,8 +384,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin", "Access-Control-Request-Method"},
 		},
 		{
 			"specific origin, with ACRH",
@@ -399,8 +400,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "X-Foo, X-Bar",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin", "Access-Control-Request-Headers"},
 		},
 		{
 			"specific origin, with ACRM, ACRH",
@@ -416,8 +417,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "X-Foo, X-Bar",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"},
 		},
 		{
 			"specific origin, with ACRM, credentials",
@@ -432,8 +433,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "true",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin", "Access-Control-Request-Method"},
 		},
 		{
 			"specific origin, with ACRM, max-age",
@@ -448,8 +449,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "3600",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin", "Access-Control-Request-Method"},
 		},
 		{
 			"any origin, with ACRM",
@@ -464,8 +465,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "",
 			},
+			[]string{"Access-Control-Request-Method"},
 		},
 		{
 			"any origin, with ACRM, credentials",
@@ -480,8 +481,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "true",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin", "Access-Control-Request-Method"},
 		},
 		{
 			"origin mismatch",
@@ -496,8 +497,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin"},
 		},
 		{
 			"origin mismatch, credentials",
@@ -512,8 +513,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
-				"Vary":                             "Origin",
 			},
+			[]string{"Origin"},
 		},
 	}
 	for _, tt := range tests {
@@ -542,6 +543,21 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 				if value != expValue {
 					subT.Errorf("Expected %s %s, got: %s", name, expValue, value)
 				}
+			}
+			varyVals := res.Header.Values("Vary")
+			ve := false
+			if len(varyVals) != len(tt.expectedVary) {
+				ve = true
+			} else {
+				for i, ev := range tt.expectedVary {
+					if ev != varyVals[i] {
+						ve = true
+						break
+					}
+				}
+			}
+			if ve {
+				subT.Errorf("Vary mismatch, expected %s, got: %s", tt.expectedVary, varyVals)
 			}
 
 			if rec.Code != http.StatusNoContent {

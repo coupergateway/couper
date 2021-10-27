@@ -131,11 +131,13 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		acrm := req.Header.Get("Access-Control-Request-Method")
 		if acrm != "" {
 			headers.Set("Access-Control-Allow-Methods", acrm)
+			headers.Add("Vary", "Access-Control-Request-Method")
 		}
 		// Reflect request header value
 		acrh := req.Header.Get("Access-Control-Request-Headers")
 		if acrh != "" {
 			headers.Set("Access-Control-Allow-Headers", acrh)
+			headers.Add("Vary", "Access-Control-Request-Headers")
 		}
 		if c.options.MaxAge != "" {
 			headers.Set("Access-Control-Max-Age", c.options.MaxAge)
