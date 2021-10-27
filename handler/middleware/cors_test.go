@@ -276,7 +276,6 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
-				"Cookie": "a=b",
 			},
 			map[string]string{
 				"Access-Control-Allow-Origin":      "https://www.example.com",
@@ -289,7 +288,6 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
-				"Cookie": "a=b",
 			},
 			map[string]string{
 				"Access-Control-Allow-Origin":      "https://www.example.com",
@@ -314,7 +312,6 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.org",
-				"Cookie": "a=b",
 			},
 			map[string]string{
 				"Access-Control-Allow-Origin":      "",
