@@ -2137,7 +2137,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 		{
 			"host with port, no proto, no port",
 			http.Header{
-				"X-Forwarded-Host":  []string{"www.example.com:8081"},
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
 			},
 			expectation{
 				Protocol: "http",
@@ -2322,12 +2322,8 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Port:     443,
 				Origin:   "https://www.example.com",
 				Url:      "https://www.example.com/path",
-				// Port:     8443,
-				// Origin:   "https://www.example.com:8443",
-				// Url:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com/path",
-			// "https://www.example.com:8443/path",
 		},
 		{
 			"proto, port, no host",
@@ -2406,7 +2402,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 		{
 			"host with port, no proto, no port",
 			http.Header{
-				"X-Forwarded-Host":  []string{"www.example.com:8081"},
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
 			},
 			expectation{
 				Protocol: "http",
@@ -2414,12 +2410,8 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Port:     8080,
 				Origin:   "http://www.example.com:8080",
 				Url:      "http://www.example.com:8080/path",
-				// Port:     8081,
-				// Origin:   "http://www.example.com:8081",
-				// Url:      "http://www.example.com:8081/path",
 			},
 			"http://www.example.com:8080/path",
-			// "http://www.example.com:8081/path",
 		},
 		{
 			"proto, host, port",
