@@ -217,9 +217,10 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	if s.settings.AcceptsForwardedHost() {
 		if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
+			portToAppend := req.URL.Port()
 			req.URL.Host = xfh
-			if req.URL.Port() != "" {
-				req.URL.Host += ":" + req.URL.Port()
+			if portToAppend != "" && req.URL.Port() == "" {
+				req.URL.Host += ":" + portToAppend
 			}
 		}
 	}
