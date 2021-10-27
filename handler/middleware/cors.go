@@ -114,11 +114,9 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 	}
 
 	// see https://fetch.spec.whatwg.org/#http-responses
-	if !c.options.AllowsOrigin("*") {
-		headers.Set("Access-Control-Allow-Origin", requestOrigin)
-	} else if !c.options.AllowCredentials {
+	if c.options.AllowsOrigin("*") && !c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Origin", "*")
-	} else if requestOrigin != "" {
+	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
 
