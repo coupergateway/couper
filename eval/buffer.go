@@ -95,6 +95,13 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 				nameField := reflect.ValueOf(t).FieldByName("Name")
 				name := nameField.String()
 				switch name {
+				case Body:
+					switch rootName {
+					case ClientRequest:
+						result |= BufferRequest
+					case BackendResponses:
+						result |= BufferResponse
+					}
 				case FormBody:
 					if rootName == ClientRequest {
 						result |= BufferRequest
