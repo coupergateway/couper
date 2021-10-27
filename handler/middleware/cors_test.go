@@ -184,7 +184,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 		expectedResponseHeaders map[string]string
 	}{
 		{
-			"non-CORS",
+			"non-CORS, specific origin",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{},
 			map[string]string{
@@ -194,7 +194,37 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"specific origin",
+			"non-CORS, specific origin, allow credentials",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			map[string]string{},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"non-CORS, any origin",
+			&CORSOptions{AllowedOrigins: []string{"*"}},
+			map[string]string{},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "*",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "",
+			},
+		},
+		{
+			"non-CORS, any origin, allow credentials",
+			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			map[string]string{},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "",
+				"Access-Control-Allow-Credentials": "",
+				"Vary":                             "Origin",
+			},
+		},
+		{
+			"CORS, specific origin",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
@@ -206,7 +236,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"specific origins",
+			"CORS, specific origins",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com", "https://example.com"}},
 			map[string]string{
 				"Origin": "https://example.com",
@@ -218,7 +248,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"any origin",
+			"CORS, any origin",
 			&CORSOptions{AllowedOrigins: []string{"*"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
@@ -230,7 +260,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"any and specific origin",
+			"CORS, any and specific origin",
 			&CORSOptions{AllowedOrigins: []string{"https://example.com", "https://www.example.com", "*"}},
 			map[string]string{
 				"Origin": "https://www.example.com",
@@ -242,7 +272,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"specific origin, credentials",
+			"CORS, specific origin, allow credentials",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
@@ -255,7 +285,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"any origin, credentials",
+			"CORS, any origin, allow credentials",
 			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.com",
@@ -268,7 +298,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"origin mismatch",
+			"CORS, origin mismatch",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
 			map[string]string{
 				"Origin": "https://www.example.org",
@@ -280,7 +310,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			"origin mismatch, credentials",
+			"CORS, origin mismatch, allow credentials",
 			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
 			map[string]string{
 				"Origin": "https://www.example.org",

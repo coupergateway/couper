@@ -98,21 +98,24 @@ func (c *CORS) isCorsPreflightRequest(req *http.Request) bool {
 }
 
 func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
-	if !c.isCorsRequest(req) {
+	if c.options.AllowsOrigin("*") && !c.options.AllowCredentials {
+		headers.Set("Access-Control-Allow-Origin", "*")
+	} else {
 		headers.Add("Vary", "Origin")
+	}
+
+	if !c.isCorsRequest(req) {
 		return
 	}
 
 	requestOrigin := req.Header.Get("Origin")
 	if !c.options.AllowsOrigin(requestOrigin) {
-		headers.Add("Vary", "Origin")
 		return
 	}
 
 	// see https://fetch.spec.whatwg.org/#http-responses
 	if !c.options.AllowsOrigin("*") {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
-		headers.Add("Vary", "Origin")
 	} else if !c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Origin", "*")
 	} else if requestOrigin != "" {
@@ -121,7 +124,6 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 
 	if c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Credentials", "true")
-		headers.Add("Vary", "Origin")
 	}
 
 	if c.isCorsPreflightRequest(req) {
