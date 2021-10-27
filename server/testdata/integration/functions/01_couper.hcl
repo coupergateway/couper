@@ -22,5 +22,16 @@ server "api" {
         }
       }
     }
+
+    endpoint "/default" {
+      response {
+        headers = {
+          x-default-1 = default(request.path, "default")
+          x-default-2 = default(request.cookies.undef, "default")
+          x-default-3 = default(request.query.q[1], "default")
+          x-default-4 = default(request.cookies.undef, request.query.q[1], "default", request.path)
+        }
+      }
+    }
   }
 }
