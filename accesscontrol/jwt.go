@@ -213,11 +213,11 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	token, err := parser.Parse(tokenValue, j.getValidationKey)
 	if err != nil {
-		switch err.(type) {
+		switch err := err.(type) {
 		case *jwt.TokenExpiredError:
 			return errors.JwtTokenExpired.With(err)
 		case *jwt.UnverfiableTokenError:
-			return err.(*jwt.UnverfiableTokenError).ErrorWrapper.Unwrap()
+			return err.ErrorWrapper.Unwrap()
 		default:
 			return err
 		}
@@ -246,9 +246,9 @@ func (j *JWT) Validate(req *http.Request) error {
 		if !ok {
 			scopes = []string{}
 		}
-		for _, sc := range scopesValues {
-			scopes = append(scopes, sc)
-		}
+
+		scopes = append(scopes, scopesValues...)
+
 		ctx = context.WithValue(ctx, request.Scopes, scopes)
 	}
 
@@ -262,10 +262,10 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		id := token.Header["kid"]
 		algorithm := token.Header["alg"]
 		if id == nil {
-			return nil, fmt.Errorf("Missing \"kid\" in JOSE header")
+			return nil, fmt.Errorf("missing \"kid\" in JOSE header")
 		}
 		if algorithm == nil {
-			return nil, fmt.Errorf("Missing \"alg\" in JOSE header")
+			return nil, fmt.Errorf("missing \"alg\" in JOSE header")
 		}
 		jwk, err := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
 		if err != nil {
@@ -273,7 +273,7 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		}
 
 		if jwk == nil {
-			return nil, fmt.Errorf("No matching %s JWK for kid %q", algorithm, id)
+			return nil, fmt.Errorf("no matching %s JWK for kid %q", algorithm, id)
 		}
 
 		return jwk.Key, nil
@@ -355,7 +355,7 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 	if j.rolesClaim != "" {
 		rolesClaimValue, exists := tokenClaims[j.rolesClaim]
 		if !exists {
-			return nil, fmt.Errorf("Missing expected roles claim %q", j.rolesClaim)
+			return nil, fmt.Errorf("missing expected roles claim %q", j.rolesClaim)
 		}
 
 		var roleValues []string
