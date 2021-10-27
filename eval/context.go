@@ -308,7 +308,7 @@ func (c *Context) updateFunctions() {
 // updateRequestRelatedFunctions re-creates the listed functions for the client request context.
 func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	if c.oauth2 != nil {
-		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.eval, c.oauth2, c.getCodeVerifier, origin)
+		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.eval, c.oauth2, c.getCodeVerifier, origin, Value)
 		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
@@ -494,6 +494,7 @@ func newFunctionsMap() map[string]function.Function {
 		"base64_decode": lib.Base64DecodeFunc,
 		"base64_encode": lib.Base64EncodeFunc,
 		"coalesce":      lib.CoalesceFunc,
+		"default":       lib.CoalesceFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"merge":         lib.MergeFunc,

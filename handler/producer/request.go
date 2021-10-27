@@ -15,7 +15,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/content"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/telemetry"
 )
 
@@ -68,19 +68,23 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 			continue
 		}
 
-		method, err := content.GetAttribute(updated.HCLContext(), bodyContent, "method")
+		var method, url string
+
+		methodVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "method")
 		if err != nil {
 			sendResult(outCtx, results, &Result{Err: err})
 			continue
 		}
+		method = seetie.ValueToString(methodVal)
+
+		urlVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "url")
+		if err != nil {
+			sendResult(outCtx, results, &Result{Err: err})
+			continue
+		}
+		url = seetie.ValueToString(urlVal)
 
 		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), bodyContent)
-		if err != nil {
-			sendResult(outCtx, results, &Result{Err: err})
-			continue
-		}
-
-		url, err := content.GetAttribute(updated.HCLContext(), bodyContent, "url")
 		if err != nil {
 			sendResult(outCtx, results, &Result{Err: err})
 			continue
