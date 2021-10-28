@@ -56,6 +56,11 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	if server := req.Context().Value(request.ServerName); server != nil {
 		fields["server"] = server
 	}
+
+	if api := req.Context().Value(request.APIName); api != nil {
+		fields["api"] = api
+	}
+
 	if uid := req.Context().Value(request.UID); uid != nil {
 		fields["uid"] = uid
 	}

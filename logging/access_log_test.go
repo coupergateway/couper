@@ -133,6 +133,7 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 				"method": http.MethodGet,
 				"port":   "8080",
 				"uid":    "veryRandom123",
+				"api":    "myapi",
 				"status": 204,
 			},
 		},
@@ -148,6 +149,7 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, request.UID, "veryRandom123")
 			ctx = context.WithValue(ctx, request.StartTime, time.Now())
+			ctx = context.WithValue(ctx, request.APIName, "myapi")
 			//ctx = context.WithValue(ctx, request.ServerName, "myTestServer")
 			req = req.WithContext(ctx)
 
