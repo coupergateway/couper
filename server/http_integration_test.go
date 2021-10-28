@@ -2003,6 +2003,34 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			"http://localhost:8080/path",
 		},
 		{
+			"port, no proto, no host",
+			http.Header{
+				"X-Forwarded-Port": []string{"8081"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8081,
+				Origin:   "http://localhost:8081",
+				Url:      "http://localhost:8081/path",
+			},
+			"http://localhost:8081/path",
+		},
+		{
+			"proto, no host, no port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "localhost",
+				Port:     443,
+				Origin:   "https://localhost",
+				Url:      "https://localhost/path",
+			},
+			"https://localhost/path",
+		},
+		{
 			"proto, host, no port",
 			http.Header{
 				"X-Forwarded-Proto": []string{"https"},
@@ -2016,6 +2044,21 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "https://www.example.com/path",
 			},
 			"https://www.example.com/path",
+		},
+		{
+			"proto, host with port, no port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "https://www.example.com:8443",
+				Url:      "https://www.example.com:8443/path",
+			},
+			"https://www.example.com:8443/path",
 		},
 		{
 			"proto, port, no host",
@@ -2036,16 +2079,74 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 			"host, port, no proto",
 			http.Header{
 				"X-Forwarded-Host": []string{"www.example.com"},
-				"X-Forwarded-Port": []string{"8443"},
+				"X-Forwarded-Port": []string{"8081"},
 			},
 			expectation{
 				Protocol: "http",
 				Host:     "www.example.com",
-				Port:     8443,
-				Origin:   "http://www.example.com:8443",
-				Url:      "http://www.example.com:8443/path",
+				Port:     8081,
+				Origin:   "http://www.example.com:8081",
+				Url:      "http://www.example.com:8081/path",
 			},
-			"http://www.example.com:8443/path",
+			"http://www.example.com:8081/path",
+		},
+		{
+			"host with port, port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
+				"X-Forwarded-Port": []string{"8081"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8081,
+				Origin:   "http://www.example.com:8081",
+				Url:      "http://www.example.com:8081/path",
+			},
+			"http://www.example.com:8081/path",
+		},
+		{
+			"host with port, different port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
+				"X-Forwarded-Port": []string{"8082"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8082,
+				Origin:   "http://www.example.com:8082",
+				Url:      "http://www.example.com:8082/path",
+			},
+			"http://www.example.com:8082/path",
+		},
+		{
+			"host, no port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8080,
+				Origin:   "http://www.example.com:8080",
+				Url:      "http://www.example.com:8080/path",
+			},
+			"http://www.example.com:8080/path",
+		},
+		{
+			"host with port, no proto, no port",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8081,
+				Origin:   "http://www.example.com:8081",
+				Url:      "http://www.example.com:8081/path",
+			},
+			"http://www.example.com:8081/path",
 		},
 		{
 			"proto, host, port",
@@ -2062,6 +2163,38 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
+		},
+		{
+			"proto, host with port, port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
+				"X-Forwarded-Port":  []string{"8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "https://www.example.com:8443",
+				Url:      "https://www.example.com:8443/path",
+			},
+			"https://www.example.com:8443/path",
+		},
+		{
+			"proto, host with port, different port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
+				"X-Forwarded-Port":  []string{"9443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     9443,
+				Origin:   "https://www.example.com:9443",
+				Url:      "https://www.example.com:9443/path",
+			},
+			"https://www.example.com:9443/path",
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2135,10 +2268,53 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			"http://localhost:8080/path",
 		},
 		{
+			"port, no proto, no host",
+			http.Header{
+				"X-Forwarded-Port": []string{"8081"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "localhost",
+				Port:     8081,
+				Origin:   "http://localhost:8081",
+				Url:      "http://localhost:8081/path",
+			},
+			"http://localhost:8081/path",
+		},
+		{
+			"proto, no host, no port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "localhost",
+				Port:     443,
+				Origin:   "https://localhost",
+				Url:      "https://localhost/path",
+			},
+			"https://localhost/path",
+		},
+		{
 			"proto, host, no port",
 			http.Header{
 				"X-Forwarded-Proto": []string{"https"},
 				"X-Forwarded-Host":  []string{"www.example.com"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     443,
+				Origin:   "https://www.example.com",
+				Url:      "https://www.example.com/path",
+			},
+			"https://www.example.com/path",
+		},
+		{
+			"proto, host with port, no port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
 			},
 			expectation{
 				Protocol: "https",
@@ -2168,16 +2344,74 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			"host, port, no proto",
 			http.Header{
 				"X-Forwarded-Host": []string{"www.example.com"},
-				"X-Forwarded-Port": []string{"8443"},
+				"X-Forwarded-Port": []string{"8081"},
 			},
 			expectation{
 				Protocol: "http",
 				Host:     "www.example.com",
-				Port:     8443,
-				Origin:   "http://www.example.com:8443",
-				Url:      "http://www.example.com:8443/path",
+				Port:     8081,
+				Origin:   "http://www.example.com:8081",
+				Url:      "http://www.example.com:8081/path",
 			},
-			"http://www.example.com:8443/path",
+			"http://www.example.com:8081/path",
+		},
+		{
+			"host with port, port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
+				"X-Forwarded-Port": []string{"8081"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8081,
+				Origin:   "http://www.example.com:8081",
+				Url:      "http://www.example.com:8081/path",
+			},
+			"http://www.example.com:8081/path",
+		},
+		{
+			"host with port, different port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
+				"X-Forwarded-Port": []string{"8082"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8082,
+				Origin:   "http://www.example.com:8082",
+				Url:      "http://www.example.com:8082/path",
+			},
+			"http://www.example.com:8082/path",
+		},
+		{
+			"host, no port, no proto",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8080,
+				Origin:   "http://www.example.com:8080",
+				Url:      "http://www.example.com:8080/path",
+			},
+			"http://www.example.com:8080/path",
+		},
+		{
+			"host with port, no proto, no port",
+			http.Header{
+				"X-Forwarded-Host": []string{"www.example.com:8081"},
+			},
+			expectation{
+				Protocol: "http",
+				Host:     "www.example.com",
+				Port:     8080,
+				Origin:   "http://www.example.com:8080",
+				Url:      "http://www.example.com:8080/path",
+			},
+			"http://www.example.com:8080/path",
 		},
 		{
 			"proto, host, port",
@@ -2194,6 +2428,38 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Url:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
+		},
+		{
+			"proto, host with port, port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
+				"X-Forwarded-Port":  []string{"8443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     8443,
+				Origin:   "https://www.example.com:8443",
+				Url:      "https://www.example.com:8443/path",
+			},
+			"https://www.example.com:8443/path",
+		},
+		{
+			"proto, host with port, different port",
+			http.Header{
+				"X-Forwarded-Proto": []string{"https"},
+				"X-Forwarded-Host":  []string{"www.example.com:8443"},
+				"X-Forwarded-Port":  []string{"9443"},
+			},
+			expectation{
+				Protocol: "https",
+				Host:     "www.example.com",
+				Port:     9443,
+				Origin:   "https://www.example.com:9443",
+				Url:      "https://www.example.com:9443/path",
+			},
+			"https://www.example.com:9443/path",
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2808,10 +3074,10 @@ func TestJWTAccessControl(t *testing.T) {
 		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusForbidden, "", "access control error: JWTToken: token is expired by "},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", "access control error: JWKS: Missing \"kid\" in JOSE header"},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-unsupported\""},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", "access control error: JWKS: No matching RS256 JWK for kid \"rs256-wrong-cert\""},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: JWKS_not_found: Error loading JWKS: Status code 404"},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", "access control error: JWKS: missing \"kid\" in JOSE header"},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", "access control error: JWKS: no matching RS256 JWK for kid \"rs256-unsupported\""},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", "access control error: JWKS: no matching RS256 JWK for kid \"rs256-wrong-cert\""},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: JWKS_not_found: error loading JWKS: status code 404"},
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -2845,7 +3111,7 @@ func TestJWTAccessControl(t *testing.T) {
 				}
 			} else {
 				if !strings.HasPrefix(message, tc.wantErrLog) {
-					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+					subT.Errorf("Expected error log message: '%s', actual: '%s'", tc.wantErrLog, message)
 				}
 			}
 

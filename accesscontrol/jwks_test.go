@@ -13,9 +13,9 @@ func Test_JWKS(t *testing.T) {
 		url   string
 		error string
 	}{
-		{"missing_scheme", "no-scheme", `Unsupported JWKS URI scheme: "no-scheme"`},
-		{"short url", "file", `Unsupported JWKS URI scheme: "file"`},
-		{"short url", "https", `Unsupported JWKS URI scheme: "https"`},
+		{"missing_scheme", "no-scheme", `unsupported JWKS URI scheme: "no-scheme"`},
+		{"short url", "file", `unsupported JWKS URI scheme: "file"`},
+		{"short url", "https", `unsupported JWKS URI scheme: "https"`},
 		{"ok file", "file:jwks.json", ""},
 		{"ok http", "http://jwks.json", ""},
 		{"ok https", "https://jwks.json", ""},
