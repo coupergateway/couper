@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
+  * New HCL function [`relative_url()`](./docs/REFERENCE.md#functions) ([#361](https://github.com/avenga/couper/pull/361))
 
 * **Changed**
   * `server` block label is now optinal, `api` block may be labelled ([#358](https://github.com/avenga/couper/pull/358))
