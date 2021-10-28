@@ -98,30 +98,30 @@ func (c *CORS) isCorsPreflightRequest(req *http.Request) bool {
 }
 
 func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
-	if !c.isCorsRequest(req) {
+	if c.options.AllowsOrigin("*") && !c.options.AllowCredentials {
+		headers.Set("Access-Control-Allow-Origin", "*")
+	} else {
 		headers.Add("Vary", "Origin")
+	}
+
+	if !c.isCorsRequest(req) {
 		return
 	}
 
 	requestOrigin := req.Header.Get("Origin")
 	if !c.options.AllowsOrigin(requestOrigin) {
-		headers.Add("Vary", "Origin")
 		return
 	}
 
 	// see https://fetch.spec.whatwg.org/#http-responses
-	if !c.options.AllowsOrigin("*") {
-		headers.Set("Access-Control-Allow-Origin", requestOrigin)
-		headers.Add("Vary", "Origin")
-	} else if !c.options.AllowCredentials {
+	if c.options.AllowsOrigin("*") && !c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Origin", "*")
-	} else if requestOrigin != "" {
+	} else {
 		headers.Set("Access-Control-Allow-Origin", requestOrigin)
 	}
 
 	if c.options.AllowCredentials {
 		headers.Set("Access-Control-Allow-Credentials", "true")
-		headers.Add("Vary", "Origin")
 	}
 
 	if c.isCorsPreflightRequest(req) {
@@ -129,11 +129,13 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		acrm := req.Header.Get("Access-Control-Request-Method")
 		if acrm != "" {
 			headers.Set("Access-Control-Allow-Methods", acrm)
+			headers.Add("Vary", "Access-Control-Request-Method")
 		}
 		// Reflect request header value
 		acrh := req.Header.Get("Access-Control-Request-Headers")
 		if acrh != "" {
 			headers.Set("Access-Control-Allow-Headers", acrh)
+			headers.Add("Vary", "Access-Control-Request-Headers")
 		}
 		if c.options.MaxAge != "" {
 			headers.Set("Access-Control-Max-Age", c.options.MaxAge)
