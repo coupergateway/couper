@@ -36,7 +36,7 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 	if strings.HasPrefix(uri, "file:") {
 		file = uri[5:]
 	} else if !strings.HasPrefix(uri, "http:") && !strings.HasPrefix(uri, "https:") {
-		return nil, fmt.Errorf("Unsupported JWKS URI scheme: %q", uri)
+		return nil, fmt.Errorf("unsupported JWKS URI scheme: %q", uri)
 	}
 
 	return &JWKS{
@@ -48,16 +48,16 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 	}, nil
 }
 
-func (self *JWKS) GetKeys(kid string) ([]JWK, error) {
+func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
 	var keys []JWK
 
-	if len(self.Keys) == 0 || self.hasExpired() {
-		if err := self.Load(); err != nil {
-			return keys, fmt.Errorf("Error loading JWKS: %v", err)
+	if len(j.Keys) == 0 || j.hasExpired() {
+		if err := j.Load(); err != nil {
+			return keys, fmt.Errorf("error loading JWKS: %v", err)
 		}
 	}
 
-	for _, key := range self.Keys {
+	for _, key := range j.Keys {
 		if key.KeyID == kid {
 			keys = append(keys, key)
 		}
@@ -66,8 +66,8 @@ func (self *JWKS) GetKeys(kid string) ([]JWK, error) {
 	return keys, nil
 }
 
-func (self *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
-	keys, err := self.GetKeys(kid)
+func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
+	keys, err := j.GetKeys(kid)
 	if err != nil {
 		return nil, err
 	}
@@ -79,41 +79,41 @@ func (self *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 	return nil, nil
 }
 
-func (self *JWKS) Load() error {
+func (j *JWKS) Load() error {
 	var rawJSON []byte
 
-	if self.file != "" {
-		j, err := reader.ReadFromFile("jwks_url", self.file)
+	if j.file != "" {
+		j, err := reader.ReadFromFile("jwks_url", j.file)
 		if err != nil {
 			return err
 		}
 		rawJSON = j
-	} else if self.transport != nil {
+	} else if j.transport != nil {
 		req, err := http.NewRequest("GET", "", nil)
 		if err != nil {
 			return err
 		}
-		ctx := context.WithValue(self.context, request.URLAttribute, self.uri)
+		ctx := context.WithValue(j.context, request.URLAttribute, j.uri)
 		// TODO which roundtrip name?
 		ctx = context.WithValue(ctx, request.RoundTripName, "jwks")
 		req = req.WithContext(ctx)
-		response, err := self.transport.RoundTrip(req)
+		response, err := j.transport.RoundTrip(req)
 		if err != nil {
 			return err
 		}
 		if response.StatusCode != 200 {
-			return fmt.Errorf("Status code %d", response.StatusCode)
+			return fmt.Errorf("status code %d", response.StatusCode)
 		}
 
 		defer response.Body.Close()
 
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return fmt.Errorf("Error reading JWKS response for %q: %v", self.uri, err)
+			return fmt.Errorf("error reading JWKS response for %q: %v", j.uri, err)
 		}
 		rawJSON = body
 	} else {
-		return fmt.Errorf("JWKS: missing both file and request!")
+		return fmt.Errorf("jwks: missing both file and request")
 	}
 
 	var jwks JWKS
@@ -122,8 +122,8 @@ func (self *JWKS) Load() error {
 		return err
 	}
 
-	self.Keys = jwks.Keys
-	self.expiry = time.Now().Unix() + int64(self.ttl.Seconds())
+	j.Keys = jwks.Keys
+	j.expiry = time.Now().Unix() + int64(j.ttl.Seconds())
 
 	return nil
 }
