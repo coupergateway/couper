@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
+  * New HCL function [`relative_url()`](./docs/REFERENCE.md#functions) ([#361](https://github.com/avenga/couper/pull/361))
   * [Custom Logging](docs/LOGS.md#custom-logging) to be able to log user defined fields ([#355](https://github.com/avenga/couper/pull/355))
   
 * **Fixed**
