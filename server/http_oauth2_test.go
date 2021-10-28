@@ -405,7 +405,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 				"exp": 4000000000,
 				"iat": 1000,
 			}
-			idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims)
+			idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
 			idTokenToAdd := `"id_token":"` + idToken + `",
 			`
 
@@ -510,7 +510,7 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
 			mapClaims := jwt.MapClaims{"sub": sub}
-			accessToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims)
+			accessToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
 			body := []byte(`{"access_token": "` + accessToken + `"}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
