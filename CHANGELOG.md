@@ -7,6 +7,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
 
+* **Changed**
+  * `server` block label is now optinal, `api` block may be labelled ([#358](https://github.com/avenga/couper/pull/358))
+
 * **Fixed**
   * Handling of [`accept_forwarded_url`](./docs/REFERENCE.md#settings-block) "host" if `H-Forwarded-Host` request header field contains a port ([#360](https://github.com/avenga/couper/pull/360))
 
