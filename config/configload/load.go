@@ -335,7 +335,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		saml.MetadataBytes = metadata
 	}
 
-	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig, 0)
+	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
 		if _, exists := jwtSigningConfigs[profile.Name]; exists {
 			return nil, errors.Configuration.Messagef("jwt_signing_profile block with label %s already defined", profile.Name)
