@@ -64,6 +64,8 @@ func TestRelativeUrl(t *testing.T) {
 
 		// Valid
 		{"/abs", "/abs", ``},
+		{"//path", "/", ``},
+		{"///path", "/path", ``},
 		{"/abs:8080", "/abs:8080", ``},
 		{"https://abc.def:8443:9443", "/", ``},
 		{"http://", "/", ``},
@@ -80,6 +82,8 @@ func TestRelativeUrl(t *testing.T) {
 		{"https://abc.def:8443/path?q", "/path?q", ``},
 		{"https://abc.def:8443/path?q#f", "/path?q#f", ``},
 		{"https://user:pass@abc.def:8443/path?q#f", "/path?q#f", ``},
+		{"//user:pass@abc.def:8443/path?q#f", "/path?q#f", ``},
+		{"//abc.def:8443/path?q#f", "/path?q#f", ``},
 	} {
 		t.Run(tc.url, func(subT *testing.T) {
 			got, err := relativeUrlFunc.Call([]cty.Value{cty.StringVal(tc.url)})
