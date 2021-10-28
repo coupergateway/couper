@@ -52,15 +52,15 @@ func TestRelativeUrl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		// Invalid
-		{"", "", `invalid url given: ''`},
-		{"rel", "", `invalid url given: 'rel'`},
-		{"?q", "", `invalid url given: '?q'`},
-		{"?", "", `invalid url given: '?'`},
-		{"#f", "", `invalid url given: '#f'`},
-		{"#", "", `invalid url given: '#'`},
-		{"~", "", `invalid url given: '~'`},
-		{"abc@def.org", "", `invalid url given: 'abc@def.org'`},
-		{"ftp://127.0.0.1", "", `invalid url given: 'ftp://127.0.0.1'`},
+		{"", "", `invalid url given: ""`},
+		{"rel", "", `invalid url given: "rel"`},
+		{"?q", "", `invalid url given: "?q"`},
+		{"?", "", `invalid url given: "?"`},
+		{"#f", "", `invalid url given: "#f"`},
+		{"#", "", `invalid url given: "#"`},
+		{"~", "", `invalid url given: "~"`},
+		{"abc@def.org", "", `invalid url given: "abc@def.org"`},
+		{"ftp://127.0.0.1", "", `invalid url given: "ftp://127.0.0.1"`},
 
 		// Valid
 		{"/abs", "/abs", ``},
@@ -89,14 +89,14 @@ func TestRelativeUrl(t *testing.T) {
 			got, err := relativeUrlFunc.Call([]cty.Value{cty.StringVal(tc.url)})
 
 			if tc.expURL != "" && got.AsString() != tc.expURL {
-				t.Errorf("'%#v': expected '%s', got '%s'", tc.url, tc.expURL, got.AsString())
+				t.Errorf("'%#v': expected %q, got %q", tc.url, tc.expURL, got.AsString())
 			}
 			if got != cty.NilVal && tc.expURL == "" {
-				t.Errorf("'%#v': expected 'cty.NilVal', got '%s'", tc.url, got.AsString())
+				t.Errorf("'%#v': expected 'cty.NilVal', got %q", tc.url, got.AsString())
 			}
 			if tc.expErr != "" || err != nil {
 				if eerr := fmt.Sprintf("%s", err); tc.expErr != eerr {
-					t.Errorf("'%#v': expected '%s', got '%s'", tc.url, tc.expErr, eerr)
+					t.Errorf("'%#v': expected %q, got %q", tc.url, tc.expErr, eerr)
 				}
 			}
 		})
