@@ -53,11 +53,11 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	}
 
 	fields["method"] = req.Method
-	if server := req.Context().Value(request.ServerName); server != nil {
+	if server, ok := req.Context().Value(request.ServerName).(string); ok && server != "" {
 		fields["server"] = server
 	}
 
-	if api := req.Context().Value(request.APIName); api != nil {
+	if api, ok := req.Context().Value(request.APIName).(string); ok && api != "" {
 		fields["api"] = api
 	}
 
