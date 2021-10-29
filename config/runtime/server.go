@@ -152,13 +152,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
-			if cerr != nil {
-				return nil, cerr
-			}
-
-			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
-
 			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
@@ -172,6 +165,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if err != nil {
 				return nil, err
 			}
+
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
+			if cerr != nil {
+				return nil, cerr
+			}
+
+			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
 
 			for _, spaPath := range srvConf.Spa.Paths {
 				err = setRoutesFromHosts(serverConfiguration, portsHosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
@@ -191,13 +191,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
-			if cerr != nil {
-				return nil, cerr
-			}
-
-			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
-
 			fileHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
@@ -211,6 +204,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if err != nil {
 				return nil, err
 			}
+
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
+			if cerr != nil {
+				return nil, cerr
+			}
+
+			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
 			if err != nil {
@@ -266,13 +266,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 			}
 
-			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
-			if err != nil {
-				return nil, err
-			}
-
-			epHandler = middleware.NewCORSHandler(corsOptions, epHandler)
-
 			scopeMaps := []map[string]string{}
 			if parentAPI != nil {
 				apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
@@ -300,6 +293,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if err != nil {
 				return nil, err
 			}
+
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			if err != nil {
+				return nil, err
+			}
+
+			epHandler = middleware.NewCORSHandler(corsOptions, epHandler)
 
 			endpointHandlers[endpointConf] = epHandler
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
