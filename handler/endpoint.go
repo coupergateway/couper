@@ -32,6 +32,7 @@ type Endpoint struct {
 }
 
 type EndpointOptions struct {
+	APIName        string
 	Context        hcl.Body
 	Error          *errors.Template
 	LogHandlerKind string
@@ -70,6 +71,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Bind some values for logging purposes
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
 	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
+	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
+
 	*req = *req.WithContext(reqCtx)
 	if e.opts.LogPattern != "" {
 		span := trace.SpanFromContext(reqCtx)
