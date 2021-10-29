@@ -3710,6 +3710,7 @@ func TestCORS_Configuration(t *testing.T) {
 			acao, acaoExists := res.Header["Access-Control-Allow-Origin"]
 			acam, acamExists := res.Header["Access-Control-Allow-Methods"]
 			acah, acahExists := res.Header["Access-Control-Allow-Headers"]
+			acac, acacExists := res.Header["Access-Control-Allow-Credentials"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -3720,6 +3721,9 @@ func TestCORS_Configuration(t *testing.T) {
 				if !acahExists || acah[0] != tc.expAllowedHeaders {
 					subT.Errorf("Expected allowed headers, got: %v", acah)
 				}
+				if !acacExists || acac[0] != "true" {
+					subT.Errorf("Expected allowed credentials, got: %v", acac)
+				}
 			} else {
 				if acaoExists {
 					subT.Errorf("Expected not allowed origin, got: %v", acao)
@@ -3729,6 +3733,9 @@ func TestCORS_Configuration(t *testing.T) {
 				}
 				if acahExists {
 					subT.Errorf("Expected not allowed headers, got: %v", acah)
+				}
+				if acacExists {
+					subT.Errorf("Expected not allowed credentials, got: %v", acac)
 				}
 			}
 			vary, varyExists := res.Header["Vary"]

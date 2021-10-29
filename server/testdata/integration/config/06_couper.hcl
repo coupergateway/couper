@@ -5,6 +5,7 @@ server "cors" {
     document_root = "./"
     cors {
       allowed_origins = "a.com"
+      allow_credentials = true
     }
   }
 
@@ -13,6 +14,7 @@ server "cors" {
     bootstrap_file = "06_couper.hcl"
     cors {
       allowed_origins = "b.com"
+      allow_credentials = true
     }
   }
 
@@ -20,6 +22,7 @@ server "cors" {
     base_path = "/api"
     cors {
       allowed_origins = "c.com"
+      allow_credentials = true
     }
     endpoint "/" {
       response {}
