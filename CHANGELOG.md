@@ -9,7 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * New HCL function [`relative_url()`](./docs/REFERENCE.md#functions) ([#361](https://github.com/avenga/couper/pull/361))
 
 * **Changed**
-  * `server` block label is now optinal, `api` block may be labelled ([#358](https://github.com/avenga/couper/pull/358))
+  * [`server` block](./docs/REFERENCE.md#server-block) label is now optional, [`api` block](./docs/REFERENCE.md#api-block) may be labelled ([#358](https://github.com/avenga/couper/pull/358))
 
 * **Fixed**
   * Handling of [`accept_forwarded_url`](./docs/REFERENCE.md#settings-block) "host" if `H-Forwarded-Host` request header field contains a port ([#360](https://github.com/avenga/couper/pull/360))
