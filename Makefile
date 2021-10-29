@@ -1,4 +1,5 @@
-.PHONY: docker-telemetry
+.PHONY: docker-telemetry build generate image
+.PHONY: test test-docker test-coverage test-coverage-show
 
 build:
 	go build -race -v -o couper main.go
