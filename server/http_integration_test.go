@@ -3671,7 +3671,7 @@ func TestCORS_Configuration(t *testing.T) {
 	type testCase struct {
 		path             string
 		origin           string
-		expAllowedOrigin bool
+		expAllowed       bool
 	}
 
 	for _, tc := range []testCase{
@@ -3701,12 +3701,15 @@ func TestCORS_Configuration(t *testing.T) {
 				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
 			}
 
-			val, exist := res.Header["Access-Control-Allow-Origin"]
-			if tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
-				subT.Errorf("Expected allowed origin, got: %v", val)
-			}
-			if !tc.expAllowedOrigin && exist {
-				subT.Errorf("Expected not allowed origin, got: %v", val)
+			acao, acaoExists := res.Header["Access-Control-Allow-Origin"]
+			if tc.expAllowed {
+				if !acaoExists || acao[0] != tc.origin {
+					subT.Errorf("Expected allowed origin, got: %v", acao)
+				}
+			} else {
+				if acaoExists {
+					subT.Errorf("Expected not allowed origin, got: %v", acao)
+				}
 			}
 		})
 	}
