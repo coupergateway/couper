@@ -1,4 +1,6 @@
 server "cors" {
+  access_control = ["ba"]
+
   files {
     document_root = "./"
     cors {
@@ -22,5 +24,11 @@ server "cors" {
     endpoint "/" {
       response {}
     }
+  }
+}
+definitions {
+  basic_auth "ba" {
+    user = "foo"
+    password = "asdf"
   }
 }
