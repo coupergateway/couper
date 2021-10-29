@@ -3677,15 +3677,16 @@ func TestCORS_Configuration(t *testing.T) {
 		expAllowed        bool
 		expAllowedMethods string
 		expAllowedHeaders string
+		expVary           string
 	}
 
 	for _, tc := range []testCase{
-		{"/06_couper.hcl", "a.com", true, requestMethod, requestHeaders},
-		{"/spa/", "b.com", true, requestMethod, requestHeaders},
-		{"/api/", "c.com", true, requestMethod, requestHeaders},
-		{"/06_couper.hcl", "no.com", false, "", ""},
-		{"/spa/", "", false, "", ""},
-		{"/api/", "no.com", false, "", ""},
+		{"/06_couper.hcl", "a.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers"},
+		{"/spa/", "b.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers"},
+		{"/api/", "c.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers"},
+		{"/06_couper.hcl", "no.com", false, "", "", "Origin"},
+		{"/spa/", "", false, "", "", "Origin"},
+		{"/api/", "no.com", false, "", "", "Origin"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3729,6 +3730,10 @@ func TestCORS_Configuration(t *testing.T) {
 				if acahExists {
 					subT.Errorf("Expected not allowed headers, got: %v", acah)
 				}
+			}
+			vary, varyExists := res.Header["Vary"]
+			if !varyExists || strings.Join(vary, ",") != tc.expVary {
+				subT.Errorf("Expected vary %q, got: %q", tc.expVary, strings.Join(vary, ","))
 			}
 		})
 	}
