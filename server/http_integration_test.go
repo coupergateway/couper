@@ -3701,8 +3701,12 @@ func TestCORS_Configuration(t *testing.T) {
 				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
 			}
 
-			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
-				subT.Errorf("Expected allowed origin resp, got: %v", val)
+			val, exist := res.Header["Access-Control-Allow-Origin"]
+			if tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
+				subT.Errorf("Expected allowed origin, got: %v", val)
+			}
+			if !tc.expAllowedOrigin && exist {
+				subT.Errorf("Expected not allowed origin, got: %v", val)
 			}
 		})
 	}
