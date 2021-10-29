@@ -365,13 +365,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
-	serverBlocks, err := contentByType(server, body)
-	if err != nil {
-		return nil, err
-	}
-
-	serverMap := make(map[string]bool)
-	for _, serverBlock := range serverBlocks.Blocks {
+	for _, serverBlock := range bodyToContent(body).Blocks.OfType(server) {
 		serverConfig := &config.Server{}
 		if diags = gohcl.DecodeBody(serverBlock.Body, envContext, serverConfig); diags.HasErrors() {
 			return nil, diags
@@ -383,13 +377,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// Read api blocks and merge backends with server and definitions backends.
-		apiBlocks, err := contentByType(api, serverConfig.Remain)
-		if err != nil {
-			return nil, err
-		}
-
-		apiMap := make(map[string]bool)
-		for _, apiBlock := range apiBlocks.Blocks {
+		for _, apiBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(api) {
 			apiConfig := &config.API{}
 			if diags = gohcl.DecodeBody(apiBlock.Body, envContext, apiConfig); diags.HasErrors() {
 				return nil, diags
@@ -397,10 +385,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 
 			if len(apiBlock.Labels) > 0 {
 				apiConfig.Name = apiBlock.Labels[0]
-				if _, isset := apiMap[apiConfig.Name]; isset {
-					return nil, fmt.Errorf("configuration error: duplicate api name %q", serverConfig.Name)
-				}
-				apiMap[apiConfig.Name] = true
 			}
 
 			err := refineEndpoints(definedBackends, apiConfig.Endpoints, true)
@@ -413,18 +397,11 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// standalone endpoints
-		err = refineEndpoints(definedBackends, serverConfig.Endpoints, true)
+		err := refineEndpoints(definedBackends, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
 
-		if _, isset := serverMap[serverConfig.Name]; isset {
-			if serverConfig.Name == "" {
-				return nil, fmt.Errorf("configuration error: only one anonymous server allowed")
-			}
-			return nil, fmt.Errorf("configuration error: duplicate server name %q", serverConfig.Name)
-		}
-		serverMap[serverConfig.Name] = true
 		couperConfig.Servers = append(couperConfig.Servers, serverConfig)
 	}
 

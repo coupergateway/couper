@@ -73,22 +73,34 @@ func TestLabels(t *testing.T) {
 		},
 		{
 			"multiple servers w/o label",
-			`server {}
-			 server {}`,
-			"configuration error: only one anonymous server allowed",
+			`server {
+			   hosts = ["*:8888"]
+			 }
+			 server {
+			   hosts = ["*:9999"]
+			 }`,
+			"",
 		},
 		{
 			"labelled and unlabelled servers",
-			`server {}
-			 server "test" {}
+			`server {
+			   hosts = ["*:8888"]
+			 }
+			 server "test" {
+			   hosts = ["*:9999"]
+			 }
 			 `,
-			"couper.hcl:1,8-9: Missing name for server; All server blocks must have 1 labels (name).",
+			"",
 		},
 		{
 			"duplicate server labels",
-			`server "test" {}
-			 server "test" {}`,
-			`configuration error: duplicate server name "test"`,
+			`server "test" {
+			   hosts = ["*:8888"]
+			 }
+			 server "test" {
+			   hosts = ["*:9999"]
+			 }`,
+			"",
 		},
 		{
 			"unique server label",
@@ -96,7 +108,7 @@ func TestLabels(t *testing.T) {
 			   hosts = ["*:8888"]
 			 }
 			 server "foo" {
-				hosts = ["*:9999"]
+			   hosts = ["*:9999"]
 			 }
 			 definitions {
 			   basic_auth "test" {}
@@ -125,18 +137,26 @@ func TestLabels(t *testing.T) {
 		{
 			"mixed labelled api blocks",
 			`server "test" {
-			   api {}
-			   api "foo" {}
+			   api {
+			     base_path = "/foo"
+			   }
+			   api "bar" {
+			     base_path = "/bar"
+			   }
 			 }`,
-			"couper.hcl:2,11-12: Missing name for api; All api blocks must have 1 labels (name).",
+			"",
 		},
 		{
 			"duplicate api labels",
 			`server "test" {
-			   api "foo" {}
-			   api "foo" {}
+			   api "foo" {
+			     base_path = "/foo"
+			   }
+			   api "foo" {
+			     base_path = "/bar"
+			   }
 			 }`,
-			`configuration error: duplicate api name "test"`,
+			``,
 		},
 		{
 			"uniquely labelled api blocks per server",
@@ -144,7 +164,7 @@ func TestLabels(t *testing.T) {
 			   hosts = ["*:8888"]
 			   api "foo" {
 			     base_path = "/foo"
-		       }
+			   }
 			   api "bar" {
 			     base_path = "/bar"
 			   }
@@ -153,7 +173,7 @@ func TestLabels(t *testing.T) {
 			   hosts = ["*:9999"]
 			   api "foo" {
 			     base_path = "/foo"
-		       }
+			   }
 			   api "bar" {
 			     base_path = "/bar"
 			   }
