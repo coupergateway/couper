@@ -3672,9 +3672,9 @@ func TestCORS_Configuration(t *testing.T) {
 	requestHeaders := "Authorization"
 
 	type testCase struct {
-		path             string
-		origin           string
-		expAllowed       bool
+		path              string
+		origin            string
+		expAllowed        bool
 		expAllowedMethods string
 		expAllowedHeaders string
 	}
