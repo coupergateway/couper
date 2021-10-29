@@ -156,19 +156,19 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if cerr != nil {
 				return nil, cerr
 			}
-			h := middleware.NewCORSHandler(corsOptions, spaHandler)
+
+			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
 
 			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
 				&protectedOptions{
 					epOpts:       &handler.EndpointOptions{Error: serverOptions.ServerErrTpl},
-					handler:      h,
+					handler:      spaHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
 				}, nil, log)
-
 			if err != nil {
 				return nil, err
 			}
@@ -182,9 +182,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		}
 
 		if srvConf.Files != nil {
-			fileHandler, ferr := handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
-			if ferr != nil {
-				return nil, ferr
+			var (
+				fileHandler http.Handler
+				err         error
+			)
+			fileHandler, err = handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
+			if err != nil {
+				return nil, err
 			}
 
 			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
@@ -192,24 +196,23 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, cerr
 			}
 
-			h := middleware.NewCORSHandler(corsOptions, fileHandler)
+			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
 
-			protectedFileHandler, err := configureProtectedHandler(accessControls, confCtx,
+			fileHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
 				&protectedOptions{
 					epOpts:       &handler.EndpointOptions{Error: serverOptions.FilesErrTpl},
-					handler:      h,
+					handler:      fileHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
 				}, nil, log)
-
 			if err != nil {
 				return nil, err
 			}
 
-			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, protectedFileHandler, files)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
 			if err != nil {
 				return nil, err
 			}
@@ -238,10 +241,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			endpointPatterns[cleanPattern] = true
 
-			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
-			if err != nil {
-				return nil, err
-			}
 			epOpts, err := newEndpointOptions(
 				confCtx, endpointConf, parentAPI, serverOptions,
 				log, conf.Settings.NoProxyFromEnv, memStore,
@@ -260,13 +259,20 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			epOpts.LogHandlerKind = kind.String()
 
-			var protectedHandler http.Handler
+			var epHandler http.Handler
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+				epHandler = epOpts.Error.ServeError(errors.RouteNotFound)
 			} else {
-				epHandler := handler.NewEndpoint(epOpts, log, modifier)
-				protectedHandler = middleware.NewCORSHandler(corsOptions, epHandler)
+				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 			}
+
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			if err != nil {
+				return nil, err
+			}
+
+			epHandler = middleware.NewCORSHandler(corsOptions, epHandler)
+
 			scopeMaps := []map[string]string{}
 			if parentAPI != nil {
 				apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
@@ -282,11 +288,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			scopeMaps = append(scopeMaps, endpointScopeMap)
 			scopeControl := ac.NewScopeControl(scopeMaps)
 			accessControl := newAC(srvConf, parentAPI)
-			endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, confCtx, accessControl,
+			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:       epOpts,
-					handler:      protectedHandler,
+					handler:      epHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
@@ -295,6 +301,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			endpointHandlers[endpointConf] = epHandler
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
 				return nil, err
