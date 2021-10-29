@@ -260,12 +260,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			epOpts.LogHandlerKind = kind.String()
 
-			epHandler := handler.NewEndpoint(epOpts, log, modifier)
-			protectedHandler := middleware.NewCORSHandler(corsOptions, epHandler)
-
-			accessControl := newAC(srvConf, parentAPI)
+			var protectedHandler http.Handler
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+			} else {
+				epHandler := handler.NewEndpoint(epOpts, log, modifier)
+				protectedHandler = middleware.NewCORSHandler(corsOptions, epHandler)
 			}
 			scopeMaps := []map[string]string{}
 			if parentAPI != nil {
@@ -281,6 +281,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			scopeMaps = append(scopeMaps, endpointScopeMap)
 			scopeControl := ac.NewScopeControl(scopeMaps)
+			accessControl := newAC(srvConf, parentAPI)
 			endpointHandlers[endpointConf], err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
