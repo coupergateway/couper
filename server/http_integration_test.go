@@ -3668,19 +3668,24 @@ func TestCORS_Configuration(t *testing.T) {
 	shutdown, _ := newCouper("testdata/integration/config/06_couper.hcl", test.New(t))
 	defer shutdown()
 
+	requestMethod := "GET"
+	requestHeaders := "Authorization"
+
 	type testCase struct {
 		path             string
 		origin           string
 		expAllowed       bool
+		expAllowedMethods string
+		expAllowedHeaders string
 	}
 
 	for _, tc := range []testCase{
-		{"/06_couper.hcl", "a.com", true},
-		{"/spa/", "b.com", true},
-		{"/api/", "c.com", true},
-		{"/06_couper.hcl", "no.com", false},
-		{"/spa/", "", false},
-		{"/api/", "no.com", false},
+		{"/06_couper.hcl", "a.com", true, requestMethod, requestHeaders},
+		{"/spa/", "b.com", true, requestMethod, requestHeaders},
+		{"/api/", "c.com", true, requestMethod, requestHeaders},
+		{"/06_couper.hcl", "no.com", false, "", ""},
+		{"/spa/", "", false, "", ""},
+		{"/api/", "no.com", false, "", ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3688,8 +3693,8 @@ func TestCORS_Configuration(t *testing.T) {
 			req, err := http.NewRequest(http.MethodOptions, "http://localhost:8080"+tc.path, nil)
 			helper.Must(err)
 
-			req.Header.Set("Access-Control-Request-Method", "GET")
-			req.Header.Set("Access-Control-Request-Headers", "origin")
+			req.Header.Set("Access-Control-Request-Method", requestMethod)
+			req.Header.Set("Access-Control-Request-Headers", requestHeaders)
 			req.Header.Set("Origin", tc.origin)
 
 			res, err := client.Do(req)
@@ -3702,13 +3707,27 @@ func TestCORS_Configuration(t *testing.T) {
 			}
 
 			acao, acaoExists := res.Header["Access-Control-Allow-Origin"]
+			acam, acamExists := res.Header["Access-Control-Allow-Methods"]
+			acah, acahExists := res.Header["Access-Control-Allow-Headers"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
 				}
+				if !acamExists || acam[0] != tc.expAllowedMethods {
+					subT.Errorf("Expected allowed methods, got: %v", acam)
+				}
+				if !acahExists || acah[0] != tc.expAllowedHeaders {
+					subT.Errorf("Expected allowed headers, got: %v", acah)
+				}
 			} else {
 				if acaoExists {
 					subT.Errorf("Expected not allowed origin, got: %v", acao)
+				}
+				if acamExists {
+					subT.Errorf("Expected not allowed methods, got: %v", acam)
+				}
+				if acahExists {
+					subT.Errorf("Expected not allowed headers, got: %v", acah)
 				}
 			}
 		})
