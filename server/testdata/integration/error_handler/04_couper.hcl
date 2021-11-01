@@ -1,4 +1,7 @@
 server "scoped" {
+
+  access_control = ["secured"]
+
   api {
     base_path = "/api"
 
@@ -9,13 +12,20 @@ server "scoped" {
       }
     }
 
-    endpoint "/pow" {
+    endpoint "/pow/" {
       beta_scope = {
         post = "power"
       }
 
       response {
         status = 204
+      }
+
+      error_handler "beta_insufficient_scope" {
+        response {
+          status = 400
+          body = "Not enough power"
+        }
       }
 
       error_handler "beta_operation_denied" {
