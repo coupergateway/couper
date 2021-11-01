@@ -322,7 +322,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*c
 			apiConfig.CatchAllEndpoint = createCatchAllEndpoint()
 			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 
-			apiErrorHandler := collectErrorHandlerSetter(apiBlock)
+			apiErrorHandler := collectErrorHandlerSetter(apiConfig)
 			if err = configureErrorHandler(apiErrorHandler, definedBackends); err != nil {
 				return nil, err
 			}
