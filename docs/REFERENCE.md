@@ -98,7 +98,7 @@ as json error with an error body payload. This can be customized via `error_file
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block)|
+|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -117,7 +117,7 @@ produce an explicit or implicit client response.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`endpoint`| [Server Block](#server-block), [API Block](#api-block) |&#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block) |
+|`endpoint`| [Server Block](#server-block), [API Block](#api-block) |&#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 <!-- TODO: decide how to place "modifier" in the reference table - same for other block which allow modifiers -->
 

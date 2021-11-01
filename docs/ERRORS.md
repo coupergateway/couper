@@ -4,6 +4,7 @@
   - [Introduction](#introduction)
   - [Error messages](#error-messages)
   - [Access control error_handler](#access-control-error_handler)
+  - [Scope related error_handler](#scope-related-error_handler)
     - [error_handler specification](#error_handler-specification)
     - [Error types](#error-types)
 
@@ -21,6 +22,12 @@ Detailed information is provided via log message. This way, all information can 
 
 Access control errors in particular require special handling, e.g. sending a specific response for missing login credentials.
 For this purpose every access control definition of `basic_auth`, `jwt` or `saml2` can define one or multiple `error_handler` with one or more defined error type labels listed below.
+
+## Scope related `error_handler`
+
+Since an [AC](#access-control-error_handler) error handler is rather general than scopes handled per endpoint or http-method but are still protected with the
+same access-control. Reacting to those more path specific errors you can define one or more `error_handler` blocks within
+an `api` or `endpoint` block.
 
 ### `error_handler` specification
 
@@ -56,5 +63,6 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | `jwt_token_invalid` (`jwt`)                     | The token is not sufficient, e.g. because required claims are missing or have unexpected values. | Send error template with status `403`.                                      |
 | `saml2`                                         | All `saml2` related errors                                                                       | Send error template with status `403`.                                      |
 | `oauth2`                                        | All `beta_oauth2`/`beta_oidc` related errors                                                     | Send error template with status `403`.                                      |
+| `beta_scope`                                    | All `beta_scope` related errors                                                     | Send error template with status `403`.                                      |
 | `beta_insufficient_scope`                       | The request is not in the scope granted to the requester.                                        | Send error template with status `403`.                                      |
 | `beta_operation_denied`                         | The request method is not permitted.                                                             | Send error template with status `403`.                                      |
