@@ -322,6 +322,11 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	return tokenClaims, nil
 }
 
+const errValueMsg = "value of %s claim must either be a string containing a space-separated list of scope values or a list of string scope values"
+
+var errScopeValue = fmt.Errorf(errValueMsg, "scope")
+var errRolesValue = fmt.Errorf(errValueMsg, "roles")
+
 func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
 	var scopeValues []string
 
@@ -337,14 +342,14 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 			for _, v := range scopesArray {
 				s, ok := v.(string)
 				if !ok {
-					return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+					return nil, errScopeValue
 				}
 				scopeValues = addScopeValue(scopeValues, s)
 			}
 		} else {
 			scopesString, ok := scopesFromClaim.(string)
 			if !ok {
-				return nil, fmt.Errorf("value of scope claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+				return nil, errScopeValue
 			}
 			for _, s := range strings.Split(scopesString, " ") {
 				scopeValues = addScopeValue(scopeValues, s)
@@ -365,14 +370,14 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 			for _, v := range rolesArray {
 				r, ok := v.(string)
 				if !ok {
-					return nil, fmt.Errorf("value of roles claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+					return nil, errRolesValue
 				}
 				roleValues = append(roleValues, r)
 			}
 		} else {
 			rolesString, ok := rolesClaimValue.(string)
 			if !ok {
-				return nil, fmt.Errorf("value of roles claim must either be a string containing a space-separated list of scope values or a list of string scope values")
+				return nil, errRolesValue
 			}
 			roleValues = strings.Split(rolesString, " ")
 		}
