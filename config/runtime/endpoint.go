@@ -154,7 +154,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	return &handler.EndpointOptions{
-		APIName:       apiName,
+		APIName:      apiName,
 		Context:      endpointConf.Remain,
 		Error:        errTpl,
 		LogPattern:   endpointConf.Pattern,
