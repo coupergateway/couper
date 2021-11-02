@@ -2,10 +2,9 @@ package handler
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"io"
 	"net/http"
-	"net/http/httputil"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -13,8 +12,8 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/ascii"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/server/writer"
@@ -27,10 +26,9 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
-	backend      http.RoundTripper
-	context      hcl.Body
-	logger       *logrus.Entry
-	reverseProxy *httputil.ReverseProxy
+	backend http.RoundTripper
+	context hcl.Body
+	logger  *logrus.Entry
 }
 
 func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
@@ -39,27 +37,7 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 		context: ctx,
 		logger:  logger,
 	}
-	rp := &httputil.ReverseProxy{
-		Director: proxy.director,
-		ErrorHandler: func(rw http.ResponseWriter, _ *http.Request, err error) {
-			if rec, ok := rw.(*transport.Recorder); ok {
-				rec.SetError(err)
-				return
-			}
-			// TODO: error http handler
-			status := http.StatusBadGateway
-			if e, ok := err.(errors.GoError); ok {
-				status = e.HTTPStatus()
-			}
-			rw.WriteHeader(status)
-			_, _ = rw.Write([]byte(err.Error()))
-		},
-		ErrorLog:      newErrorLogWrapper(logger),
-		FlushInterval: time.Millisecond * 100,
-		Transport:     backend,
-	}
 
-	proxy.reverseProxy = rp
 	return proxy
 }
 
@@ -89,46 +67,74 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		*req = *req.WithContext(ctx)
 	}
 
-	var rw *writer.Response
-	if hj, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
-		rw = hj
-	}
-
-	if err = p.registerWebsocketsResponse(req, rw); err != nil {
+	if err = p.registerWebsocketsResponse(req); err != nil {
 		return nil, err
 	}
 
-	var beresp *http.Response
-	buffOpts, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption)
-	if ok && buffOpts.Response() {
-		rec := transport.NewRecorder(rw)
-		p.reverseProxy.ServeHTTP(rec, req)
-		beresp, err = rec.Response(req)
-		if err != nil {
-			return nil, err
-		}
-		err = eval.ApplyResponseContext(req.Context(), p.context, beresp)
-		return beresp, err
-	} else {
-		rw.SetUnbuffered()
-		p.reverseProxy.ServeHTTP(rw, req)
-		return nil, nil
+	// the chore reverse-proxy part
+	if req.ContentLength == 0 {
+		req.Body = nil // Issue 16036: nil Body for http.Transport retries
 	}
+	if req.Body != nil {
+		defer req.Body.Close()
+	}
+	req.Close = false
+
+	reqUpType := upgradeType(req.Header)
+	if !ascii.IsPrint(reqUpType) {
+		return nil, fmt.Errorf("client tried to switch to invalid protocol %q", reqUpType)
+	}
+
+	transport.RemoveConnectionHeaders(req.Header)
+
+	// Remove hop-by-hop headers to the backend. Especially
+	// important is "Connection" because we want a persistent
+	// connection, regardless of what the client sent to us.
+	for _, h := range transport.HopHeaders {
+		req.Header.Del(h)
+	}
+
+	// TODO: trailer header here
+
+	// After stripping all the hop-by-hop connection headers above, add back any
+	// necessary for protocol upgrades, such as for websockets.
+	if reqUpType != "" {
+		req.Header.Set("Connection", "Upgrade")
+		req.Header.Set("Upgrade", reqUpType)
+	}
+
+	beresp, err := p.backend.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
+	if beresp.StatusCode == http.StatusSwitchingProtocols {
+		return beresp, p.handleUpgradeResponse(req, beresp)
+	}
+
+	transport.RemoveConnectionHeaders(beresp.Header)
+
+	for _, h := range transport.HopHeaders {
+		beresp.Header.Del(h)
+	}
+
+	err = eval.ApplyResponseContext(req.Context(), p.context, beresp)
+
+	return beresp, err
 }
 
-// director no-op method is still required by httputil.ReverseProxy.
-func (p *Proxy) director(_ *http.Request) {}
-
-// ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.
-type ErrorWrapper struct{ l logrus.FieldLogger }
-
-func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
-	e.l.Error(strings.Replace(string(p), "\n", "", 1))
-	return len(p), nil
-}
-
-func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
-	return log.New(&ErrorWrapper{logger}, "", log.Lshortfile)
+func upgradeType(h http.Header) string {
+	conn, exist := h["Connection"]
+	if !exist {
+		return ""
+	}
+	for _, v := range conn {
+		if v == "Upgrade" {
+			return h.Get("Upgrade")
+		}
+	}
+	return ""
 }
 
 func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
@@ -178,7 +184,7 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 	return nil
 }
 
-func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Response) error {
+func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
 	ctx := req.Context()
 
 	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
@@ -215,4 +221,89 @@ func (p *Proxy) getWebsocketsBody() (hcl.Body, error) {
 	}
 
 	return wss[0].Body, nil
+}
+
+func (p *Proxy) handleUpgradeResponse(req *http.Request, res *http.Response) error {
+	rw, ok := req.Context().Value(request.ResponseWriter).(http.ResponseWriter)
+	if !ok {
+		return fmt.Errorf("can't switch protocols using non-ResponseWriter type %T", rw)
+	}
+
+	reqUpType := upgradeType(req.Header)
+	resUpType := upgradeType(res.Header)
+	if !ascii.IsPrint(resUpType) { // We know reqUpType is ASCII, it's checked by the caller.
+		return fmt.Errorf("backend tried to switch to invalid protocol %q", resUpType)
+	}
+	if !ascii.EqualFold(reqUpType, resUpType) {
+		return fmt.Errorf("backend tried to switch protocol %q when %q was requested", resUpType, reqUpType)
+	}
+
+	hj, ok := rw.(http.Hijacker)
+	if !ok {
+		return fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", rw)
+	}
+	backConn, ok := res.Body.(io.ReadWriteCloser)
+	if !ok {
+		return fmt.Errorf("internal error: 101 switching protocols response with non-writable body")
+	}
+
+	backConnCloseCh := make(chan bool)
+	go func() {
+		// Ensure that the cancellation of a request closes the backend.
+		// See issue https://golang.org/issue/35559.
+		select {
+		case <-req.Context().Done():
+		case <-backConnCloseCh:
+		}
+		backConn.Close()
+	}()
+
+	defer close(backConnCloseCh)
+
+	conn, brw, err := hj.Hijack()
+	if err != nil {
+		return fmt.Errorf("hijack failed on protocol switch: %v", err)
+	}
+	defer conn.Close()
+
+	copyHeader(rw.Header(), res.Header)
+
+	res.Header = rw.Header()
+	res.Body = nil // so res.Write only writes the headers; we have res.Body in backConn above
+	if err := res.Write(brw); err != nil {
+		return fmt.Errorf("response write: %v", err)
+	}
+	if err := brw.Flush(); err != nil {
+		return fmt.Errorf("response flush: %v", err)
+	}
+	errc := make(chan error, 1)
+	spc := switchProtocolCopier{user: conn, backend: backConn}
+	go spc.copyToBackend(errc)
+	go spc.copyFromBackend(errc)
+	<-errc
+	return nil
+}
+
+func copyHeader(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
+}
+
+// switchProtocolCopier exists so goroutines proxying data back and
+// forth have nice names in stacks.
+type switchProtocolCopier struct {
+	user, backend io.ReadWriter
+}
+
+func (c switchProtocolCopier) copyFromBackend(errc chan<- error) {
+	_, err := io.Copy(c.user, c.backend)
+	errc <- err
+}
+
+func (c switchProtocolCopier) copyToBackend(errc chan<- error) {
+	_, err := io.Copy(c.backend, c.user)
+	errc <- err
 }

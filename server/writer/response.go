@@ -41,7 +41,6 @@ type Response struct {
 	rw               http.ResponseWriter
 	secureCookies    string
 	statusWritten    bool
-	unbuffered       bool
 	// logging info
 	statusCode      int
 	rawBytesWritten int
@@ -108,17 +107,6 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (r *Response) IsHijacked() bool {
 	return r.hijackedConn != nil
-}
-
-func (r *Response) IsUnbuffered() bool {
-	return r.unbuffered
-}
-
-func (r *Response) SetUnbuffered() {
-	r.unbuffered = true
-	if zw, ok := r.rw.(*Gzip); ok {
-		zw.enabled = false
-	}
 }
 
 // Flush implements the <http.Flusher> interface.

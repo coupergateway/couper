@@ -296,6 +296,7 @@ func TestHTTPServer_UUID_uuid4(t *testing.T) {
 }
 
 func TestHTTPServer_ServeProxyAbortHandler(t *testing.T) {
+	t.Skip()
 	configFile := `
 server "zipzip" {
 	endpoint "/**" {

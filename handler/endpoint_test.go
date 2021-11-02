@@ -436,7 +436,7 @@ IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NE
 	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
 	ctx = context.WithValue(ctx, request.UID, "test123")
 
-	rec := transport.NewRecorder(nil)
+	rec := transport.NewRecorder(nil, false)
 	rw := writer.NewResponseWriter(rec, "")
 	ep.ServeHTTP(rw, req.Clone(ctx))
 	res, err := rec.Response(req)

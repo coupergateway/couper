@@ -212,8 +212,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if !ok {
 		log.Errorf("response writer: type error")
 	} else {
-		// 'clientres' is a faulty response object due to a websocket hijack or proxy 'pipe'.
-		if w.IsUnbuffered() || w.IsHijacked() {
+		// 'clientres' is a faulty response object due to a websocket hijack.
+		if w.IsHijacked() {
 			return
 		}
 

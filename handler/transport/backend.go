@@ -97,8 +97,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
 
 	if !isProxyReq {
-		removeConnectionHeaders(req.Header)
-		removeHopHeaders(req.Header)
+		RemoveConnectionHeaders(req.Header)
+		RemoveHopHeaders(req.Header)
 	}
 
 	writer.ModifyAcceptEncoding(req.Header)
@@ -147,8 +147,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !isProxyReq {
-		removeConnectionHeaders(beresp.Header)
-		removeHopHeaders(beresp.Header)
+		RemoveConnectionHeaders(beresp.Header)
+		RemoveHopHeaders(beresp.Header)
 	}
 
 	// Backend response context creates the beresp variables in first place and applies this context
@@ -402,9 +402,9 @@ func setGzipReader(beresp *http.Response) error {
 	return err
 }
 
-// removeConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
+// RemoveConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
 // See RFC 7230, section 6.1
-func removeConnectionHeaders(h http.Header) {
+func RemoveConnectionHeaders(h http.Header) {
 	for _, f := range h["Connection"] {
 		for _, sf := range strings.Split(f, ",") {
 			if sf = strings.TrimSpace(sf); sf != "" {
@@ -414,8 +414,8 @@ func removeConnectionHeaders(h http.Header) {
 	}
 }
 
-func removeHopHeaders(header http.Header) {
-	for _, h := range hopHeaders {
+func RemoveHopHeaders(header http.Header) {
+	for _, h := range HopHeaders {
 		hv := header.Get(h)
 		if hv == "" {
 			continue
@@ -438,7 +438,7 @@ func removeHopHeaders(header http.Header) {
 // Connection header field. These are the headers defined by the
 // obsoleted RFC 2616 (section 13.5.1) and are used for backward
 // compatibility.
-var hopHeaders = []string{
+var HopHeaders = []string{
 	"Connection",
 	"Proxy-Connection", // non-standard but still sent by libcurl and rejected by e.g. google
 	"Keep-Alive",
