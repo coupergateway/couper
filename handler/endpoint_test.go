@@ -436,13 +436,11 @@ IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NE
 	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
 	ctx = context.WithValue(ctx, request.UID, "test123")
 
-	rec := transport.NewRecorder(nil, false)
+	rec := httptest.NewRecorder()
 	rw := writer.NewResponseWriter(rec, "")
 	ep.ServeHTTP(rw, req.Clone(ctx))
-	res, err := rec.Response(req)
-	if err != nil {
-		t.Error(err)
-	}
+	res := rec.Result()
+
 	if res.StatusCode == 0 {
 		t.Errorf("Fatal error: response status is zero")
 		if res.Header.Get("Couper-Error") != "internal server error" {

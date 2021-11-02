@@ -2,8 +2,6 @@ package handler
 
 import (
 	"net/http/httptest"
-	"net/http/httputil"
-	"net/url"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -14,8 +12,7 @@ import (
 
 func TestProxy_BlacklistHeaderRemoval(t *testing.T) {
 	p := &Proxy{
-		context:      hcl.EmptyBody(),
-		reverseProxy: httputil.NewSingleHostReverseProxy(&url.URL{Host: "couper.io", Scheme: "https"}),
+		context: hcl.EmptyBody(),
 	}
 
 	outreq := httptest.NewRequest("GET", "https://1.2.3.4/", nil)
