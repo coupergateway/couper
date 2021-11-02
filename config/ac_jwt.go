@@ -27,8 +27,8 @@ type JWT struct {
 	KeyFile            string              `hcl:"key_file,optional"`
 	Name               string              `hcl:"name,label"`
 	Remain             hcl.Body            `hcl:",remain"`
-	RoleClaim          string              `hcl:"beta_role_claim,optional"`
-	RoleMap            map[string][]string `hcl:"beta_role_map,optional"`
+	RolesClaim         string              `hcl:"beta_roles_claim,optional"`
+	RolesMap           map[string][]string `hcl:"beta_roles_map,optional"`
 	ScopeClaim         string              `hcl:"beta_scope_claim,optional"`
 	SignatureAlgorithm string              `hcl:"signature_algorithm,optional"`
 	SigningKey         string              `hcl:"signing_key,optional"`

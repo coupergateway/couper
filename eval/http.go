@@ -19,7 +19,6 @@ import (
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
 )
@@ -106,7 +105,7 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	}
 
 	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(content.Context); ok {
+	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
 		httpCtx = c.HCLContext()
 	}
 
@@ -355,7 +354,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 
 func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.Response) (int, error) {
 	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(content.Context); ok {
+	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
 		httpCtx = c.HCLContext()
 	}
 
@@ -389,7 +388,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 
 func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {
 	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(content.Context); ok {
+	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
 		httpCtx = c.HCLContext()
 	}
 

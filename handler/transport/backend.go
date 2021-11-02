@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/unit"
@@ -23,8 +24,8 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/content"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
@@ -249,11 +250,11 @@ func (b *Backend) withBasicAuth(req *http.Request) {
 }
 
 func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := content.GetContextAttribute(req.Context(), b.context, name)
+	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), b.context, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}
-	return attrVal
+	return seetie.ValueToString(attrVal)
 }
 
 func (b *Backend) withTimeout(req *http.Request) <-chan error {
@@ -306,10 +307,10 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
 	} {
-		if v, err := content.GetAttribute(httpContext, bodyContent, p.attrName); err != nil {
+		if v, err := eval.ValueFromAttribute(httpContext, bodyContent, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
-		} else if v != "" {
-			*p.target = v
+		} else if v != cty.NilVal {
+			*p.target = seetie.ValueToString(v)
 		}
 	}
 

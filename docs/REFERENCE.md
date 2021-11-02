@@ -50,7 +50,7 @@ The `server` block is one of the root configuration blocks of Couper's configura
 
 | Block name | Context | Label            | Nested block(s) |
 | :--------- | :------ | :--------------- | :-------------- |
-| `server`   | -       | &#9888; required | [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
+| `server`   | -       | optional | [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
 
 | Attribute(s)     | Type   | Default      | Description | Characteristic(s) | Example |
 | :--------------- | :----- | :----------- | :---------- | :---------------- | :------ |
@@ -351,10 +351,10 @@ required _label_.
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`           |string|-|-|Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
-| `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["role"]`|
+| `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["roles"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
-| `beta_role_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_role_claim = "role"`|
-| `beta_role_map` |string|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_role_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
+| `beta_roles_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_roles_claim = "roles"`|
+| `beta_roles_map` |string|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_roles_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
@@ -365,7 +365,7 @@ Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case,
 A JWT access control configured by this block can extract scope values from
 
 - the value of the claim specified by `beta_scope_claim` and
-- the result of mapping the value of the claim specified by `beta_role_claim` using the `beta_role_map`.
+- the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
@@ -490,7 +490,7 @@ gateway instance.
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
 | :------------------------------ | :----- | :------------------ | :---------- | :---------------- | :------ |
-| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port` | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [beta_oidc](#oidc-block-beta). | `["proto","host","port"]` |
+| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [beta_oidc](#oidc-block-beta). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
@@ -503,7 +503,10 @@ gateway instance.
 | `request_id_client_header`      | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |-|-|
 | `request_id_format`             | string | `common`            | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
 | `secure_cookies`                | string | `""`                | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
-| `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host. |-|-|
+| `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host.  | - | - |
+| `beta_metrics`                  | bool   | `false`             | Option to enable the prometheus [metrics](./METRICS.md) exporter. | - | - |
+| `beta_metrics_port`             | number | `9090`              | Prometheus exporter listen port. | - | - |
+| `beta_service_name`             | string | `couper`            | The service name which applies to the `service_name` metric labels. | - | - |
 
 ### Defaults Block
 
@@ -660,13 +663,14 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | :----------------------------- | :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------- | :--------------------------------------------------- |
 | `base64_decode`                | string          | Decodes Base64 data, as specified in RFC 4648.                                                                                                                                                                                                                                                       | `encoded` (string)                  | `base64_decode("Zm9v")`                              |
 | `base64_encode`                | string          | Encodes Base64 data, as specified in RFC 4648.                                                                                                                                                                                                                                                       | `decoded` (string)                  | `base64_encode("foo")`                               |
-| `coalesce`                     |                 | Returns the first of the given arguments that is not null.                                                                                                                                                                                                                                           | `arg...` (various)                  | `coalesce(request.cookies.foo, "bar")`               |
+| `default`                      | string          | Returns the first of the given arguments that is not null.                                                                                                                                                                                                                                           | `arg...` (various)                  | `default(request.cookies.foo, "bar")`                |
 | `json_decode`                  | various         | Parses the given JSON string and, if it is valid, returns the value it represents.                                                                                                                                                                                                                   | `encoded` (string)                  | `json_decode("{\"foo\": 1}")`                        |
 | `json_encode`                  | string          | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     | `val` (various)                     | `json_encode(request.context.myJWT)`                 |
 | `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) (or [JWT Block](#jwt-block) with `signing_ttl`) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
 | `merge`                        | object or tuple | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. | `arg...` (object or tuple)          | `merge(request.headers, { x-additional = "myval" })` |
 | `beta_oauth_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block-beta).                                                                                                                                                                                                      | `label` (string)                    | `beta_oauth_authorization_url("myOAuth2")`           |
 | `beta_oauth_verifier`          | string          | Creates a cryptographically random key as specified in RFC 7636, applicable for all verifier methods; e.g. to be set as a cookie and read into `verifier_value`. Multiple calls of this function in the same client request context return the same value.                                           |                                     | `beta_oauth_verifier()`                         |
+| `relative_url`                 | string          | Returns a relative URL by retaining `path`, `query` and `fragment` components.  The input URL `s` must begin with `/<path>`, `//<authority>`, `http://` or `https://`, otherwise an error is thrown. | s (string) | `relative_url("https://httpbin.org/anything?query#fragment") // returns "/anything?query#fragment"` |
 | `saml_sso_url`                 | string          | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 | `label` (string)                    | `saml_sso_url("mySAML")`                             |
 | `to_lower`                     | string          | Converts a given string to lowercase.                                                                                                                                                                                                                                                                | `s` (string)                        | `to_lower(request.cookies.name)`                     |
 | `to_upper`                     | string          | Converts a given string to uppercase.                                                                                                                                                                                                                                                                | `s` (string)                        | `to_upper("CamelCase")`                              |

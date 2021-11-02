@@ -47,7 +47,7 @@ func (j JWK) MarshalJSON() ([]byte, error) {
 	return json.Marshal(raw)
 }
 
-func (self *JWK) UnmarshalJSON(data []byte) error {
+func (j *JWK) UnmarshalJSON(data []byte) error {
 	var raw rawJWK
 	err := json.Unmarshal(data, &raw)
 	if err != nil {
@@ -86,7 +86,7 @@ func (self *JWK) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	*self = JWK{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
+	*j = JWK{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
 
 	return nil
 }
@@ -117,11 +117,11 @@ func newBase64EncodedFieldFromInt(num uint64) *base64URLEncodedField {
 	return newBase64URLEncodedField(bytes.TrimLeft(data, "\x00"))
 }
 
-func (self *base64URLEncodedField) MarshalJSON() ([]byte, error) {
-	return json.Marshal(base64.RawURLEncoding.EncodeToString(self.data))
+func (f *base64URLEncodedField) MarshalJSON() ([]byte, error) {
+	return json.Marshal(base64.RawURLEncoding.EncodeToString(f.data))
 }
 
-func (self *base64URLEncodedField) UnmarshalJSON(data []byte) error {
+func (f *base64URLEncodedField) UnmarshalJSON(data []byte) error {
 	var encoded string
 	err := json.Unmarshal(data, &encoded)
 	if err != nil {
@@ -137,17 +137,17 @@ func (self *base64URLEncodedField) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*self = *newBase64URLEncodedField(decoded)
+	*f = *newBase64URLEncodedField(decoded)
 
 	return nil
 }
 
-func (self base64URLEncodedField) toBigInt() *big.Int {
-	return new(big.Int).SetBytes(self.data)
+func (f base64URLEncodedField) toBigInt() *big.Int {
+	return new(big.Int).SetBytes(f.data)
 }
 
-func (self base64URLEncodedField) toInt() int {
-	return int(self.toBigInt().Int64())
+func (f base64URLEncodedField) toInt() int {
+	return int(f.toBigInt().Int64())
 }
 
 // Base64 encoded
@@ -156,7 +156,7 @@ type base64EncodedField struct {
 	data []byte
 }
 
-func (self *base64EncodedField) UnmarshalJSON(data []byte) error {
+func (f *base64EncodedField) UnmarshalJSON(data []byte) error {
 	var encoded string
 	err := json.Unmarshal(data, &encoded)
 	if err != nil {
@@ -172,7 +172,7 @@ func (self *base64EncodedField) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*self = base64EncodedField{
+	*f = base64EncodedField{
 		data: decoded,
 	}
 

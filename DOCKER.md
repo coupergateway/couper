@@ -44,6 +44,10 @@ docker run avenga/couper run -watch -p 8081
 | COUPER_WATCH_RETRY_DELAY             | `500ms` | Delay duration before next attempt if an error occurs. |
 | COUPER_XFH                           | `false` | Global configurations which uses the `Forwarded-Host` header instead of the request host. |
 |                                      | | |
+| COUPER_BETA_METRICS                  | `false`  | Option to enable the prometheus [metrics](https://github.com/avenga/couper/blob/master/docs/METRICS.md) exporter. |
+| COUPER_BETA_METRICS_PORT             | `9090`   | Prometheus exporter listen port. |
+| COUPER_BETA_SERVICE_NAME             | `couper` | The service name which applies to the `service_name` metric labels. |
+|                                      | | |
 | COUPER_REQUEST_ID_ACCEPT_FROM_HEADER | `""` | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured). |
 | COUPER_REQUEST_ID_BACKEND_HEADER     | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the backend. |
 | COUPER_REQUEST_ID_CLIENT_HEADER      | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |

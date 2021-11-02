@@ -1,8 +1,23 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.4...master)
+## [Unreleased](https://github.com/avenga/couper/compare/1.5...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+* **Added**
+  * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
+  * New HCL function [`relative_url()`](./docs/REFERENCE.md#functions) ([#361](https://github.com/avenga/couper/pull/361))
+
+* **Changed**
+  * [`server` block](./docs/REFERENCE.md#server-block) label is now optional, [`api` block](./docs/REFERENCE.md#api-block) may be labelled ([#358](https://github.com/avenga/couper/pull/358))
+
+* **Fixed**
+  * Handling of [`accept_forwarded_url`](./docs/REFERENCE.md#settings-block) "host" if `H-Forwarded-Host` request header field contains a port ([#360](https://github.com/avenga/couper/pull/360))
+  * Setting `Vary` response header fields for [CORS](./doc/REFERENCE.md#cors-block) ([#362](https://github.com/avenga/couper/pull/362))
+
+---
+
+## [1.5](https://github.com/avenga/couper/releases/tag/1.5)
 
 * **Added**
   * `Accept: application/json` request header to the OAuth2 token request, in order to make the Github token endpoint respond with a JSON token response ([#307](https://github.com/avenga/couper/pull/307))
@@ -24,12 +39,11 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * [**Beta**](./docs/BETA.md)
   * `beta_scope_claim` attribute to [`jwt` block](./docs/REFERENCE.md#jwt-block); `beta_scope` attribute to [`api`](./docs/REFERENCE.md#api-block) and [`endpoint` block](./docs/REFERENCE.md#endpoint-block)s; [error types](./docs/ERRORS.md#error-types) `beta_operation_denied` and `beta_insufficient_scope` ([#315](https://github.com/avenga/couper/pull/315))
-  * `beta_role_claim` and `beta_role_map` attributes to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#325](https://github.com/avenga/couper/pull/325)) ([#338](https://github.com/avenga/couper/pull/338))
+  * `beta_roles_claim` and `beta_roles_map` attributes to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#325](https://github.com/avenga/couper/pull/325)) ([#338](https://github.com/avenga/couper/pull/338)) ([#352](https://github.com/avenga/couper/pull/352))
+  * Metrics: [Prometheus exporter](./docs/METRICS.md) ([#295](https://github.com/avenga/couper/pull/295))
 
 * **Dependencies**
   * build with go 1.17 ([#331](https://github.com/avenga/couper/pull/331))
-
----
 
 ## [1.4](https://github.com/avenga/couper/releases/tag/1.4)
 
