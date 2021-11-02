@@ -217,7 +217,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		w.AddModifier(evalContext, e.modifier)
+		w.AddModifier(evalContext, e.modifier...)
 		rw = w
 	}
 

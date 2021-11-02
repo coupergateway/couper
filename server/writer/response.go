@@ -22,7 +22,7 @@ type writer interface {
 }
 
 type modifier interface {
-	AddModifier(*eval.Context, []hcl.Body)
+	AddModifier(*eval.Context, ...hcl.Body)
 }
 
 var (
@@ -194,7 +194,7 @@ func (r *Response) WrittenBytes() int {
 	return r.bytesWritten
 }
 
-func (r *Response) AddModifier(evalCtx *eval.Context, modifier []hcl.Body) {
+func (r *Response) AddModifier(evalCtx *eval.Context, modifier ...hcl.Body) {
 	r.evalCtx = evalCtx
 	r.modifier = append(r.modifier, modifier...)
 }
