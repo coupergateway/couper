@@ -1,1 +1,3 @@
-server {}
+server {
+  foo {}
+}

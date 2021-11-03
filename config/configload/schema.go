@@ -243,7 +243,7 @@ func completeSchemaComponents(
 			added := false
 			for _, block := range bodyContent.Blocks {
 				switch block.Type {
-				case "proxy", "request", "backend":
+				case "api", "backend", "proxy", "request", "server":
 					blocks = append(blocks, block)
 
 					added = true

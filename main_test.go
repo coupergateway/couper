@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -24,7 +25,7 @@ func Test_realmain(t *testing.T) {
 		wantLog string
 		want    int
 	}{
-		{"verify", []string{"couper", "verify", "-f", base + "/10_couper.hcl"}, nil, `10_couper.hcl:1,8-9: Missing name for server; All server blocks must have 1 labels (name).`, 1},
+		{"verify", []string{"couper", "verify", "-f", base + "/10_couper.hcl"}, nil, `10_couper.hcl:2,3-6: Unsupported block type; Blocks of type \"foo\" are not expected here.`, 1},
 		{"common log format & info log level /wo file", []string{"couper", "run"}, nil, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
 		{"common log format via env /wo file", []string{"couper", "run", "-log-format", "json"}, []string{"COUPER_LOG_FORMAT=common"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
 		{"info log level via env /wo file", []string{"couper", "run", "-log-level", "debug"}, []string{"COUPER_LOG_LEVEL=info"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
@@ -43,6 +44,7 @@ func Test_realmain(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			fmt.Printf("%s\n", tt.name)
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
 					return tt.envs
