@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -87,6 +88,28 @@ func (a AcceptForwardedValue) Set(s string) error {
 }
 
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
+	rlimits := map[string]int{
+		"RLIMIT CPU":    syscall.RLIMIT_CPU,
+		"RLIMIT Data":   syscall.RLIMIT_DATA,
+		"RLIMIT CORE":   syscall.RLIMIT_CORE,
+		"RLIMIT AS":     syscall.RLIMIT_AS,
+		"RLIMIT Stack":  syscall.RLIMIT_STACK,
+		"RLIMIT FSIZE":  syscall.RLIMIT_FSIZE,
+		"RLIMIT Nofile": syscall.RLIMIT_NOFILE,
+	}
+	for key, value := range rlimits {
+		lim := syscall.Rlimit{}
+		err := syscall.Getrlimit(value, &lim)
+		if err != nil {
+			logEntry.Infof("an error occured while retrieving '%s'", key)
+			continue
+		}
+		if lim.Cur < 4096 {
+			logEntry.Warnf("%s Current: %d, %s Max: %d", key, lim.Cur, key, lim.Max)
+			continue
+		}
+		logEntry.Infof("%s Current: %d, %s Max: %d", key, lim.Cur, key, lim.Max)
+	}
 	r.settingsMu.Lock()
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
