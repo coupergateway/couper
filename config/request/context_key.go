@@ -6,6 +6,7 @@ const (
 	ContextType ContextKey = iota
 	AccessControls
 	AccessLogFields
+	APIName
 	BackendLogFields
 	BackendName
 	Endpoint

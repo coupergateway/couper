@@ -10,7 +10,6 @@ var _ Inline = &Server{}
 // Server represents the <Server> object.
 type Server struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
-	APIs                 APIs      `hcl:"api,block"`
 	BasePath             string    `hcl:"base_path,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
@@ -21,6 +20,7 @@ type Server struct {
 	Name                 string    `hcl:"name,label"`
 	Remain               hcl.Body  `hcl:",remain"`
 	Spa                  *Spa      `hcl:"spa,block"`
+	APIs                 APIs
 }
 
 // Servers represents a list of <Server> objects.

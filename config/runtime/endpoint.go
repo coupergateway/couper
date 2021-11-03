@@ -150,7 +150,13 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		bufferOpts |= eval.BufferResponse
 	}
 
+	apiName := ""
+	if apiConf != nil {
+		apiName = apiConf.Name
+	}
+
 	return &handler.EndpointOptions{
+		APIName:       apiName,
 		Bodies:        bodies,
 		Context:       endpointConf.Remain,
 		Error:         errTpl,
