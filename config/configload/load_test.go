@@ -187,7 +187,7 @@ func TestLabels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if conf != nil {
 				_, err = runtime.NewServerConfiguration(conf, log, nil)
 			}
