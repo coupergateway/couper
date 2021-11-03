@@ -160,7 +160,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 				oauth2Config.BodyContent = bodyContent
 
-				oauth2Config.Backend, err = newBackend(envContext, definedBackends, oauth2Config)
+				oauth2Config.Backend, err = newBackend(definedBackends, oauth2Config)
 				if err != nil {
 					return nil, err
 				}
@@ -178,7 +178,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 				oidcConfig.BodyContent = bodyContent
 
-				oidcConfig.Backend, err = newBackend(envContext, definedBackends, oidcConfig)
+				oidcConfig.Backend, err = newBackend(definedBackends, oidcConfig)
 				if err != nil {
 					return nil, err
 				}
@@ -197,7 +197,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					}
 					jwtConfig.BodyContent = bodyContent
 
-					jwtConfig.Backend, err = newBackend(envContext, definedBackends, jwtConfig)
+					jwtConfig.Backend, err = newBackend(definedBackends, jwtConfig)
 					if err != nil {
 						return nil, err
 					}
@@ -235,7 +235,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				acContent := bodyToContent(acBody.HCLBody())
 				configuredLabels := map[string]struct{}{}
 				for _, block := range acContent.Blocks.OfType(errorHandler) {
-					errHandlerConf, err := newErrorHandlerConf(envContext, block.Labels, block.Body, definedBackends)
+					errHandlerConf, err := newErrorHandlerConf(block.Labels, block.Body, definedBackends)
 					if err != nil {
 						return nil, err
 					}
@@ -397,7 +397,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// standalone endpoints
-		err := refineEndpoints(envContext, definedBackends, serverConfig.Endpoints, true)
+		err := refineEndpoints(definedBackends, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
@@ -503,7 +503,7 @@ func getBackendReference(definedBackends Backends, be config.BackendReference) (
 	return reference, nil
 }
 
-func refineEndpoints(ctx *hcl.EvalContext, definedBackends Backends, endpoints config.Endpoints, check bool) error {
+func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check bool) error {
 	for _, endpoint := range endpoints {
 		if err := uniqueAttributeKey(endpoint.Remain); err != nil {
 			return err
@@ -574,7 +574,7 @@ func refineEndpoints(ctx *hcl.EvalContext, definedBackends Backends, endpoints c
 				return err
 			}
 
-			proxyConfig.Backend, err = newBackend(ctx, definedBackends, proxyConfig)
+			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -615,7 +615,7 @@ func refineEndpoints(ctx *hcl.EvalContext, definedBackends Backends, endpoints c
 				return err
 			}
 
-			reqConfig.Backend, err = newBackend(ctx, definedBackends, reqConfig)
+			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 			if err != nil {
 				return err
 			}
@@ -783,7 +783,7 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 	return content, nil
 }
 
-func newBackend(ctx *hcl.EvalContext, definedBackends Backends, inlineConfig config.Inline) (hcl.Body, error) {
+func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body, error) {
 	bend, err := mergeBackendBodies(definedBackends, inlineConfig)
 	if err != nil {
 		return nil, err
@@ -803,7 +803,7 @@ func newBackend(ctx *hcl.EvalContext, definedBackends Backends, inlineConfig con
 		})
 	}
 
-	oauth2Backend, err := newOAuthBackend(ctx, definedBackends, bend)
+	oauth2Backend, err := newOAuthBackend(definedBackends, bend)
 	if err != nil {
 		return nil, err
 	}
@@ -842,7 +842,7 @@ func createCatchAllEndpoint() *config.Endpoint {
 	}
 }
 
-func newOAuthBackend(ctx *hcl.EvalContext, definedBackends Backends, parent hcl.Body) (hcl.Body, error) {
+func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
 		return nil, err
@@ -860,15 +860,12 @@ func newOAuthBackend(ctx *hcl.EvalContext, definedBackends Backends, parent hcl.
 
 	beConfig := &config.Backend{Remain: hclbody.New(backendContent)}
 
-	// The <ctx> can be nil in test cases.
-	if ctx != nil {
-		attrs, _ := oauthBlocks[0].Body.JustAttributes()
-		if attrs != nil && attrs["backend"] != nil {
-			val, _ := attrs["backend"].Expr.Value(ctx)
+	attrs, _ := oauthBlocks[0].Body.JustAttributes()
+	if attrs != nil && attrs["backend"] != nil {
+		val, _ := attrs["backend"].Expr.Value(nil)
 
-			if ref := seetie.ValueToString(val); ref != "" {
-				beConfig.Name = ref
-			}
+		if ref := seetie.ValueToString(val); ref != "" {
+			beConfig.Name = ref
 		}
 	}
 
@@ -877,14 +874,14 @@ func newOAuthBackend(ctx *hcl.EvalContext, definedBackends Backends, parent hcl.
 		return nil, err
 	}
 
-	return newBackend(ctx, definedBackends, &config.OAuth2ReqAuth{Remain: hclbody.New(&hcl.BodyContent{
+	return newBackend(definedBackends, &config.OAuth2ReqAuth{Remain: hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{Type: backend, Body: oauthBackend},
 		},
 	})})
 }
 
-func newErrorHandlerConf(ctx *hcl.EvalContext, kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
+func newErrorHandlerConf(kindLabels []string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
 	var allKinds []string // Support for all events within one label separated by space
 
 	for _, kinds := range kindLabels {
@@ -911,7 +908,7 @@ func newErrorHandlerConf(ctx *hcl.EvalContext, kindLabels []string, body hcl.Bod
 		Remain:    body,
 	}
 
-	if err := refineEndpoints(ctx, definedBackends, config.Endpoints{ep}, false); err != nil {
+	if err := refineEndpoints(definedBackends, config.Endpoints{ep}, false); err != nil {
 		return nil, err
 	}
 
