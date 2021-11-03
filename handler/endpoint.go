@@ -227,9 +227,24 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = clientres.Write(rw); err != nil {
-		log.Errorf("endpoint write: %v", err)
+	// copy/write like a reverseProxy
+	copyHeader(rw.Header(), clientres.Header)
+
+	rw.WriteHeader(clientres.StatusCode)
+
+	if clientres.Body == nil {
+		return
 	}
+
+	err = copyResponse(rw, clientres.Body, flushInterval(clientres))
+	if err != nil {
+		defer clientres.Body.Close()
+		// Since we're streaming the response, if we run into an error all we can do
+		// is abort the request. Issue 23643: ReverseProxy should use ErrAbortHandler
+		// on read error while copying body.
+		panic(http.ErrAbortHandler)
+	}
+	clientres.Body.Close()
 }
 
 func (e *Endpoint) newRedirect() *http.Response {
