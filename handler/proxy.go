@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"sync"
 	"time"
 
@@ -132,7 +133,7 @@ func upgradeType(h http.Header) string {
 		return ""
 	}
 	for _, v := range conn {
-		if v == "Upgrade" {
+		if strings.ToLower(v) == "upgrade" {
 			return h.Get("Upgrade")
 		}
 	}
