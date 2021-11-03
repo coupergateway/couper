@@ -61,6 +61,9 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 			attrs := all.JustAllAttributes()
 			for _, attr := range attrs {
 				for _, v := range attr {
+					if opt := bufferWithAttribute(v.Name); opt != BufferNone {
+						result |= opt
+					}
 					allExprs = append(allExprs, v.Expr)
 				}
 			}
@@ -69,6 +72,9 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 
 	for _, attr := range syntaxAttrs {
 		for _, v := range attr {
+			if opt := bufferWithAttribute(v.Name); opt != BufferNone {
+				result |= opt
+			}
 			allExprs = append(allExprs, v.Expr)
 		}
 	}
@@ -118,4 +124,12 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 		}
 	}
 	return result
+}
+
+func bufferWithAttribute(attrName string) BufferOption {
+	switch attrName {
+	case attrAddFormParams, attrSetFormParams, attrDelFormParams:
+		return BufferRequest
+	}
+	return BufferNone
 }
