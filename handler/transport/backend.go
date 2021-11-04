@@ -258,8 +258,10 @@ func (b *Backend) getAttribute(req *http.Request, name string) string {
 
 func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	timeout := b.transportConf.Timeout
+	ws := false
 	if to, ok := req.Context().Value(request.WebsocketsTimeout).(time.Duration); ok {
 		timeout = to
+		ws = true
 	}
 
 	errCh := make(chan error, 1)
@@ -274,7 +276,11 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 		deadline := time.After(timeout)
 		select {
 		case <-deadline:
-			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
+			if ws {
+				ec <- errors.BackendTimeout.Label(b.name).Message("websockets: deadline exceeded")
+			} else {
+				ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
+			}
 			return
 		case <-c.Done():
 			return
