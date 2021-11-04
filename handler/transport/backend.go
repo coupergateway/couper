@@ -380,7 +380,7 @@ func setGzipReader(beresp *http.Response) error {
 	var src io.Reader
 	src, err := gzip.NewReader(beresp.Body)
 	if err != nil {
-		err = errors.Backend.With(err).Message("body reset")
+		return errors.Backend.With(err).Message("body reset")
 	}
 
 	beresp.Header.Del(writer.ContentEncodingHeader)
