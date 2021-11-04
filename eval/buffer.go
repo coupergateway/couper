@@ -126,6 +126,11 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 					case BackendResponses:
 						result |= BufferResponse
 					}
+				default:
+					// e.g. backend_responses.default
+					if rootName == BackendResponses && len(traversal) == 2 {
+						result |= BufferResponse
+					}
 				}
 			}
 		}
