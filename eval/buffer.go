@@ -39,7 +39,8 @@ func (i BufferOption) Response() bool {
 	return i&BufferResponse == BufferResponse
 }
 
-// MustBuffer determines if any of the hcl.bodies makes use of 'body', 'form_body' or 'json_body'.
+// MustBuffer determines if any of the hcl.bodies makes use of 'body', 'form_body' or 'json_body' or
+// of known attributes and variables which requires a parsed client-request body.
 func MustBuffer(bodies ...hcl.Body) BufferOption {
 	result := BufferNone
 
@@ -109,6 +110,10 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 						result |= BufferRequest
 					case BackendResponses:
 						result |= BufferResponse
+					}
+				case CTX: // e.g. jwt token (value) could be read from any (body) source
+					if rootName == ClientRequest {
+						result |= BufferRequest
 					}
 				case FormBody:
 					if rootName == ClientRequest {
