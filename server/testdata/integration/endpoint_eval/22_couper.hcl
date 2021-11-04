@@ -33,11 +33,11 @@ definitions {
   backend "valid" {
     name = "valid"
     origin = "https://example.com"
-    health_check {}
+    beta_health {}
   }
   backend "invalid" {
     name = "invalid"
     origin = "http://1.2.3.4"
-    health_check {}
+    beta_health {}
   }
 }
