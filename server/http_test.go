@@ -18,6 +18,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config/configload"
@@ -296,13 +297,15 @@ func TestHTTPServer_UUID_uuid4(t *testing.T) {
 }
 
 func TestHTTPServer_ServeProxyAbortHandler(t *testing.T) {
-	t.Skip()
 	configFile := `
 server "zipzip" {
 	endpoint "/**" {
 		proxy {
 			backend {
 				origin = "%s"
+				set_response_headers = {
+   					resp = json_encode(backend_responses.default)
+				}
 			}
 		}
 	}
@@ -360,12 +363,15 @@ server "zipzip" {
 	res, err = newClient().Do(req)
 	helper.Must(err)
 
-	if res.StatusCode != http.StatusBadGateway {
-		t.Errorf("Expected status %d, got: %d", http.StatusBadGateway, res.StatusCode)
-		for _, entry := range loghook.AllEntries() {
-			t.Log(entry.String())
+	for _, entry := range loghook.AllEntries() {
+		if entry.Level != logrus.ErrorLevel {
+			continue
+		}
+		if entry.Message == "proxy error: body copy failed" {
+			return
 		}
 	}
+	t.Errorf("expected 'body copy failed' log error")
 }
 
 func TestHTTPServer_Errors(t *testing.T) {

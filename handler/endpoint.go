@@ -82,6 +82,11 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer func() {
 		rc := recover()
 		if rc != nil {
+			if rc == http.ErrAbortHandler {
+				log.WithError(errors.Proxy.Message("body copy failed")).Error()
+				return
+			}
+
 			log.WithField("panic", string(debug.Stack())).Error(rc)
 			if clientres == nil {
 				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)

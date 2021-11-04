@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
@@ -135,12 +134,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	bufferOpts, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption)
-	if !ok {
-		bufferOpts = eval.BufferNone
-	}
-
-	if !eval.IsUpgradeResponse(req, beresp) && bufferOpts.Response() {
+	if !eval.IsUpgradeResponse(req, beresp) {
 		if err = setGzipReader(beresp); err != nil {
 			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
 		}
@@ -383,23 +377,16 @@ func setGzipReader(beresp *http.Response) error {
 		return nil
 	}
 
-	buf := &bytes.Buffer{}
-	_, err := buf.ReadFrom(beresp.Body) // TODO: may be optimized with limitReader etc.
-	if err != nil {
-		return errors.Backend.With(err)
-	}
-	b := buf.Bytes()
-
 	var src io.Reader
-	src, err = gzip.NewReader(buf)
+	src, err := gzip.NewReader(beresp.Body)
 	if err != nil {
-		src = bytes.NewBuffer(b)
 		err = errors.Backend.With(err).Message("body reset")
 	}
 
 	beresp.Header.Del(writer.ContentEncodingHeader)
+	beresp.Header.Del("Content-Length")
 	beresp.Body = eval.NewReadCloser(src, beresp.Body)
-	return err
+	return nil
 }
 
 // RemoveConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
