@@ -148,8 +148,8 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	res, err := backend.RoundTrip(req)
 	helper.Must(err)
 
-	if l := res.Header.Get("Content-Length"); l != "60" {
-		t.Errorf("Unexpected C/L: %s", l)
+	if res.ContentLength != 60 {
+		t.Errorf("Unexpected C/L: %d", res.ContentLength)
 	}
 
 	n, err := io.Copy(io.Discard, res.Body)
