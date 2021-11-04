@@ -62,7 +62,7 @@ func NewProbe(b *Backend) {
 	p := &Probe{
 		Log:  b.upstreamLog,
 		Name: b.name,
-		Opts: b.options.ParsedOptions,
+		Opts: b.options.HealthCheck,
 		Req:  b.options.Request,
 
 		State: StateInvalid,

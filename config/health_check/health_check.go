@@ -23,6 +23,13 @@ type Options struct {
 	Timeout          string `hcl:"timeout,optional"`
 }
 
+func NewHealthCheck(options *Options) (*ParsedOptions, error) {
+	healthCheck := &ParsedOptions{}
+	err := healthCheck.Parse(options)
+
+	return healthCheck, err
+}
+
 func (target *ParsedOptions) Parse(health *Options) (err error) {
 	if health == nil {
 		return errors.New("nil pointer dereference")

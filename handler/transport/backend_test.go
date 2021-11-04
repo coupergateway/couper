@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	err "errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -363,7 +362,7 @@ func TestBackend_health_check(t *testing.T) {
 		FailureThreshold int
 		Interval         time.Duration
 		Timeout          time.Duration
-		err              error
+		errorMessage     string
 	}
 
 	type testCase struct {
@@ -374,12 +373,8 @@ func TestBackend_health_check(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			name: "health check with default values",
-			health: &health_check.Options{
-				FailureThreshold: 0,
-				Interval:         "1s",
-				Timeout:          "1s",
-			},
+			name:   "health check with default values",
+			health: &health_check.Options{},
 			expectation: expectation{
 				FailureThreshold: 0,
 				Interval:         time.Second,
@@ -402,22 +397,22 @@ func TestBackend_health_check(t *testing.T) {
 		{
 			name: "uninitialised health check",
 			expectation: expectation{
-				err: err.New("nil pointer dereference"),
+				errorMessage: "nil pointer dereference",
 			},
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health := &health_check.ParsedOptions{}
-			err := health.Parse(tc.health)
+			health, err := health_check.NewHealthCheck(tc.health)
 
-			if tc.expectation.err == nil {
+			if tc.expectation.errorMessage == "" {
 				h.Must(err)
 			} else if err == nil {
-				t.Errorf("expected error:%s got nil", tc.expectation.err.Error())
-			} else if err.Error() != tc.expectation.err.Error() {
-				t.Errorf("expected error:%s got:%s", tc.expectation.err.Error(), err.Error())
+				t.Errorf("expected error:%s got nil", tc.expectation.errorMessage)
+				return
+			} else if err.Error() != tc.expectation.errorMessage {
+				t.Errorf("expected error:%s got:%s", tc.expectation.errorMessage, err.Error())
 			}
 
 			if tc.expectation.FailureThreshold != health.FailureThreshold {

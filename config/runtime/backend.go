@@ -77,16 +77,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		Scheme:   scheme,
 	}
 
-	if beConf.HealthCheck != nil {
-		options.ParsedOptions = &health_check.ParsedOptions{}
-		if err := options.ParsedOptions.Parse(beConf.HealthCheck); err != nil {
-			return nil, err
-		}
-		if err := options.SetRequest(backendCtx, evalCtx); err != nil {
-			return nil, err
-		}
-	}
-
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
 		return nil, err
@@ -94,6 +84,16 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	options := &transport.BackendOptions{
 		OpenAPI: openAPIopts,
+	}
+
+	if beConf.HealthCheck != nil {
+		options.HealthCheck, err = health_check.NewHealthCheck(beConf.HealthCheck)
+		if err != nil {
+			return nil, err
+		}
+		if err = options.SetRequest(backendCtx, evalCtx); err != nil {
+			return nil, err
+		}
 	}
 
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)

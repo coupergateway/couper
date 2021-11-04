@@ -14,9 +14,8 @@ import (
 type BackendOptions struct {
 	OpenAPI     *validation.OpenAPIOptions
 	AuthBackend TokenRequest
-
-	ParsedOptions *health_check.ParsedOptions
-	Request       *http.Request
+	HealthCheck *health_check.ParsedOptions
+	Request     *http.Request
 }
 
 type TokenRequest interface {
