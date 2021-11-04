@@ -18,6 +18,8 @@ const (
 	BufferNone BufferOption = iota
 	BufferRequest
 	BufferResponse
+
+	// Attention: If any, the next option would be `4`, not `3`!
 )
 
 func (i BufferOption) GoString() string {
@@ -37,7 +39,7 @@ func (i BufferOption) Response() bool {
 	return i&BufferResponse == BufferResponse
 }
 
-// MustBuffer determines if any of the hcl.bodies makes use of 'form_body' or 'json_body'.
+// MustBuffer determines if any of the hcl.bodies makes use of 'body', 'form_body' or 'json_body'.
 func MustBuffer(bodies ...hcl.Body) BufferOption {
 	result := BufferNone
 
