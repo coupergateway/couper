@@ -20,7 +20,7 @@ server "jwt" {
     endpoint "/{p}/create-jwt" {
       response {
         headers = {
-          x-jwt = jwt_sign("my_jwt", {})
+          x-jwt = jwt_sign("my_jwt", {groups = []})
         }
       }
     }
@@ -40,6 +40,7 @@ definitions {
     claims = {
       iss = "the_issuer"
       pid = request.path_params.p
+      groups = ["g1", "g2"]
     }
   }
   jwt "my_jwt" {
