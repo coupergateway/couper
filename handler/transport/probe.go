@@ -32,8 +32,8 @@ type Probe struct {
 	Req  *http.Request
 
 	//variables reflecting status of probe
-	Counter int
-	Failure int
+	Counter uint
+	Failure uint
 	State   state
 	Status  int
 }

@@ -359,7 +359,7 @@ func TestBackend_director(t *testing.T) {
 func TestBackend_health_check(t *testing.T) {
 
 	type expectation struct {
-		FailureThreshold int
+		FailureThreshold uint
 		Interval         time.Duration
 		Timeout          time.Duration
 		errorMessage     string
@@ -376,7 +376,7 @@ func TestBackend_health_check(t *testing.T) {
 			name:   "health check with default values",
 			health: &health_check.Options{},
 			expectation: expectation{
-				FailureThreshold: 0,
+				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
 			},
@@ -397,7 +397,7 @@ func TestBackend_health_check(t *testing.T) {
 		{
 			name: "uninitialised health check",
 			expectation: expectation{
-				FailureThreshold: 0,
+				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
 			},
@@ -408,7 +408,7 @@ func TestBackend_health_check(t *testing.T) {
 				Interval: "10s",
 			},
 			expectation: expectation{
-				FailureThreshold: 0,
+				FailureThreshold: 2,
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
 			},
@@ -420,9 +420,20 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:  "10s",
 			},
 			expectation: expectation{
-				FailureThreshold: 0,
+				FailureThreshold: 2,
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
+			},
+		},
+		{
+			name: "zero threshold",
+			health: &health_check.Options{
+				FailureThreshold: 0,
+			},
+			expectation: expectation{
+				FailureThreshold: 2,
+				Interval:         time.Second,
+				Timeout:          time.Second,
 			},
 		},
 	} {

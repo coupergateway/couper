@@ -6,19 +6,19 @@ import (
 )
 
 var defaultHealthCheck = &ParsedOptions{
-	FailureThreshold: 0,
+	FailureThreshold: 2,
 	Interval:         time.Second,
 	Timeout:          time.Second,
 }
 
 type ParsedOptions struct {
-	FailureThreshold int
+	FailureThreshold uint
 	Interval         time.Duration
 	Timeout          time.Duration
 }
 
 type Options struct {
-	FailureThreshold int      `hcl:"failure_threshold,optional"`
+	FailureThreshold uint     `hcl:"failure_threshold,optional"`
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
 	Remain           hcl.Body `hcl:",remain"`
@@ -45,8 +45,9 @@ func NewHealthCheck(options *Options) (*ParsedOptions, error) {
 		if healthCheck.Timeout > healthCheck.Interval {
 			healthCheck.Timeout = healthCheck.Interval
 		}
-
-		healthCheck.FailureThreshold = options.FailureThreshold
+		if options.FailureThreshold != 0 {
+			healthCheck.FailureThreshold = options.FailureThreshold
+		}
 	}
 	return &healthCheck, err
 }
