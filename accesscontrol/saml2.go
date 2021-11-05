@@ -126,13 +126,17 @@ func (s *Saml2) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error 
 
 func (s *Saml2) GetAssertionData(assertionInfo *saml2.AssertionInfo) map[string]interface{} {
 	attributes := make(map[string]interface{})
+	// default empty slice for all arrayAttributes
+	for _, arrayAttrName := range s.arrayAttributes {
+		attributes[arrayAttrName] = []string{}
+	}
 	for _, attribute := range assertionInfo.Values {
 		if !contains(s.arrayAttributes, attribute.Name) {
 			for _, attributeValue := range attribute.Values {
 				attributes[attribute.Name] = attributeValue.Value
 			}
 		} else {
-			var attributeValues []string
+			attributeValues := []string{}
 			for _, attributeValue := range attribute.Values {
 				attributeValues = append(attributeValues, attributeValue.Value)
 			}
