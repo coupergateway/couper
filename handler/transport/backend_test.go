@@ -397,7 +397,32 @@ func TestBackend_health_check(t *testing.T) {
 		{
 			name: "uninitialised health check",
 			expectation: expectation{
-				errorMessage: "nil pointer dereference",
+				FailureThreshold: 0,
+				Interval:         time.Second,
+				Timeout:          time.Second,
+			},
+		},
+		{
+			name: "timeout set indirectly by configured interval",
+			health: &health_check.Options{
+				Interval: "10s",
+			},
+			expectation: expectation{
+				FailureThreshold: 0,
+				Interval:         10 * time.Second,
+				Timeout:          10 * time.Second,
+			},
+		},
+		{
+			name: "timeout bounded by configured interval",
+			health: &health_check.Options{
+				Interval: "5s",
+				Timeout:  "10s",
+			},
+			expectation: expectation{
+				FailureThreshold: 0,
+				Interval:         5 * time.Second,
+				Timeout:          5 * time.Second,
 			},
 		},
 	} {

@@ -1,7 +1,7 @@
 package health_check
 
 import (
-	"errors"
+	"github.com/hashicorp/hcl/v2"
 	"time"
 )
 
@@ -18,38 +18,35 @@ type ParsedOptions struct {
 }
 
 type Options struct {
-	FailureThreshold int    `hcl:"failure_threshold,optional"`
-	Interval         string `hcl:"interval,optional"`
-	Timeout          string `hcl:"timeout,optional"`
+	FailureThreshold int      `hcl:"failure_threshold,optional"`
+	Interval         string   `hcl:"interval,optional"`
+	Timeout          string   `hcl:"timeout,optional"`
+	Remain           hcl.Body `hcl:",remain"`
 }
 
 func NewHealthCheck(options *Options) (*ParsedOptions, error) {
-	healthCheck := &ParsedOptions{}
-	err := healthCheck.Parse(options)
+	healthCheck := *defaultHealthCheck
 
-	return healthCheck, err
-}
+	var err error
+	if options != nil {
+		if options.Interval != "" {
+			healthCheck.Interval, err = time.ParseDuration(options.Interval)
+			if err != nil {
+				return nil, err
+			}
+			healthCheck.Timeout = healthCheck.Interval
+		}
+		if options.Timeout != "" {
+			healthCheck.Timeout, err = time.ParseDuration(options.Timeout)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if healthCheck.Timeout > healthCheck.Interval {
+			healthCheck.Timeout = healthCheck.Interval
+		}
 
-func (target *ParsedOptions) Parse(health *Options) (err error) {
-	if health == nil {
-		return errors.New("nil pointer dereference")
+		healthCheck.FailureThreshold = options.FailureThreshold
 	}
-	if health.Interval == "" {
-		target.Interval = defaultHealthCheck.Interval
-	} else {
-		target.Interval, err = time.ParseDuration(health.Interval)
-		if err != nil {
-			return err
-		}
-	}
-	if health.Timeout == "" {
-		target.Timeout = defaultHealthCheck.Timeout
-	} else {
-		target.Timeout, err = time.ParseDuration(health.Timeout)
-		if err != nil {
-			return err
-		}
-	}
-	target.FailureThreshold = health.FailureThreshold
-	return nil
+	return &healthCheck, err
 }

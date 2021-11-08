@@ -70,3 +70,72 @@ definitions {
 		t.Error(err)
 	}
 }
+
+func TestHealthCheck(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"Bad interval",
+			`interval = "10sec"`,
+			`time: unknown unit "sec" in duration "10sec"`,
+		},
+		{
+			"Bad timeout",
+			`timeout = 1`,
+			`time: missing unit in duration "1"`,
+		},
+		{
+			"Bad failure_threshold",
+			`failure_threshold = -1`,
+			"couper.hcl:13,29-30: Unsuitable value type; Unsuitable value: value must be a whole number, between 0 and 18446744073709551615 inclusive",
+		},
+		{
+			"OK",
+			`failure_threshold = 3
+			 timeout = "3s"
+			 interval = "5s"`,
+			"",
+		},
+	}
+
+	logger, _ := logrustest.NewNullLogger()
+	log := logger.WithContext(context.TODO())
+
+	template := `
+		server {
+		  endpoint "/" {
+		    proxy {
+		      backend = "foo"
+		    }
+		  }
+		}
+		definitions {
+		  backend "foo" {
+		    origin = "..."
+		    beta_health {
+		      %%
+		    }
+		  }
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+			if conf != nil {
+				_, err = runtime.NewServerConfiguration(conf, log, nil)
+			}
+
+			var error = ""
+			if err != nil {
+				error = err.Error()
+			}
+
+			if tt.error != error {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, error)
+			}
+		})
+	}
+}
