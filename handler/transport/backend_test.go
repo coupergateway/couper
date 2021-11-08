@@ -361,7 +361,7 @@ func TestBackend_health_check(t *testing.T) {
 
 	type expectation struct {
 		FailureThreshold int
-		Period           time.Duration
+		Interval         time.Duration
 		Timeout          time.Duration
 		err              error
 	}
@@ -377,12 +377,12 @@ func TestBackend_health_check(t *testing.T) {
 			name: "health check with default values",
 			health: &health_check.Options{
 				FailureThreshold: 0,
-				Period:           "1s",
+				Interval:         "1s",
 				Timeout:          "1s",
 			},
 			expectation: expectation{
 				FailureThreshold: 0,
-				Period:           time.Second,
+				Interval:         time.Second,
 				Timeout:          time.Second,
 			},
 		},
@@ -390,12 +390,12 @@ func TestBackend_health_check(t *testing.T) {
 			name: "health check with configured values",
 			health: &health_check.Options{
 				FailureThreshold: 42,
-				Period:           "1h",
+				Interval:         "1h",
 				Timeout:          "9m",
 			},
 			expectation: expectation{
 				FailureThreshold: 42,
-				Period:           time.Hour,
+				Interval:         time.Hour,
 				Timeout:          9 * time.Minute,
 			},
 		},
@@ -423,8 +423,8 @@ func TestBackend_health_check(t *testing.T) {
 			if tc.expectation.FailureThreshold != health.FailureThreshold {
 				t.Errorf("expected failure threshold:%d got:%d", tc.expectation.FailureThreshold, health.FailureThreshold)
 			}
-			if tc.expectation.Period != health.Period {
-				t.Errorf("expected period:%s got:%s", tc.expectation.Period.String(), health.Period.String())
+			if tc.expectation.Interval != health.Interval {
+				t.Errorf("expected interval:%s got:%s", tc.expectation.Interval.String(), health.Interval.String())
 			}
 			if tc.expectation.Timeout != health.Timeout {
 				t.Errorf("expected timeout:%s got:%s", tc.expectation.Timeout.String(), health.Timeout.String())

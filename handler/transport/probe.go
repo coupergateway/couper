@@ -97,6 +97,6 @@ func (p *Probe) probe() {
 			probe.BackendProbes.Store(p.Name, p.State.String())
 		}
 		cancel()
-		time.Sleep(p.Opts.Period)
+		time.Sleep(p.Opts.Interval)
 	}
 }

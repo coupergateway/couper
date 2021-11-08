@@ -7,19 +7,19 @@ import (
 
 var defaultHealthCheck = &ParsedOptions{
 	FailureThreshold: 0,
-	Period:           time.Second,
+	Interval:         time.Second,
 	Timeout:          time.Second,
 }
 
 type ParsedOptions struct {
 	FailureThreshold int
-	Period           time.Duration
+	Interval         time.Duration
 	Timeout          time.Duration
 }
 
 type Options struct {
 	FailureThreshold int    `hcl:"failure_threshold,optional"`
-	Period           string `hcl:"period,optional"`
+	Interval         string `hcl:"interval,optional"`
 	Timeout          string `hcl:"timeout,optional"`
 }
 
@@ -27,10 +27,10 @@ func (target *ParsedOptions) Parse(health *Options) (err error) {
 	if health == nil {
 		return errors.New("nil pointer dereference")
 	}
-	if health.Period == "" {
-		target.Period = defaultHealthCheck.Period
+	if health.Interval == "" {
+		target.Interval = defaultHealthCheck.Interval
 	} else {
-		target.Period, err = time.ParseDuration(health.Period)
+		target.Interval, err = time.ParseDuration(health.Interval)
 		if err != nil {
 			return err
 		}
