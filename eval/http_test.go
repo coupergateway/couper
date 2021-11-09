@@ -26,7 +26,7 @@ func Test_SetGetBody_LimitBody(t *testing.T) {
 		t.Run(testcase.name, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
 
-			err := eval.SetGetBody(req, eval.BufferRequest, testcase.limit)
+			err := eval.SetGetBody(req, testcase.limit)
 			if testcase.wantErrMsg == "" && err == nil {
 				return
 			}
