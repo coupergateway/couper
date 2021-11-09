@@ -13,6 +13,7 @@ import (
 
 	"github.com/avenga/couper/assets"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval/lib/url"
 )
 
 var (
@@ -117,10 +118,12 @@ func (t *Template) ServeError(err error) http.Handler {
 		if r, valOk := req.Context().Value(request.UID).(string); valOk {
 			reqID = r // could be nil within (unit) test cases
 		}
+		relUrl, _ := url.RelativeURL(req.URL.String())
 		data := map[string]interface{}{
 			"http_status": statusCode,
 			"message":     err.Error(),
 			"path":        req.URL.EscapedPath(),
+			"rel_url":     relUrl,
 			"request_id":  escapeValue(t.mime, reqID),
 		}
 		tplErr := t.tpl.Execute(rw, data)
