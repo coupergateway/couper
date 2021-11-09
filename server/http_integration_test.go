@@ -2649,7 +2649,7 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 		{
 			name:        "backend healthy",
 			path:        "/health",
-			expectation: `[null,"OK","DOWN","DEGRADED"]`,
+			expectation: `[null,"OK","OK","DOWN","DOWN","DEGRADED"]`,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {

@@ -76,9 +76,12 @@ func (p *Probe) probe() {
 
 		p.Counter++
 		prevState := p.State
-		p.State = StateInvalid
 		p.Status = 0
-		if err != nil {
+		if res != nil {
+			p.Status = res.StatusCode
+		}
+
+		if err != nil || !p.Opts.ExpectStatus[res.StatusCode] {
 			if p.Failure++; p.Failure < p.Opts.FailureThreshold {
 				p.State = StateDegraded
 			} else {
@@ -88,7 +91,6 @@ func (p *Probe) probe() {
 		} else {
 			p.Failure = 0
 			p.State = StateOk
-			p.Status = res.StatusCode
 		}
 
 		//fmt.Println(p)

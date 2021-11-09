@@ -93,10 +93,17 @@ func TestHealthCheck(t *testing.T) {
 			"couper.hcl:13,29-30: Unsuitable value type; Unsuitable value: value must be a whole number, between 0 and 18446744073709551615 inclusive",
 		},
 		{
+			"Bad expect status",
+			`expect_status = [200, 204]`,
+			"couper.hcl:13,25-26: Unsuitable value type; Unsuitable value: number required",
+		},
+
+		{
 			"OK",
 			`failure_threshold = 3
 			 timeout = "3s"
-			 interval = "5s"`,
+			 interval = "5s"
+			 expect_status = 200`,
 			"",
 		},
 	}

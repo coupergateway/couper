@@ -357,12 +357,11 @@ func TestBackend_director(t *testing.T) {
 }
 
 func TestBackend_health_check(t *testing.T) {
-
 	type expectation struct {
 		FailureThreshold uint
 		Interval         time.Duration
 		Timeout          time.Duration
-		errorMessage     string
+		ExpectStatus     map[int]bool
 	}
 
 	type testCase struct {
@@ -370,6 +369,8 @@ func TestBackend_health_check(t *testing.T) {
 		health      *health_check.Options
 		expectation expectation
 	}
+
+	defaultExpectStatus := map[int]bool{200: true, 204: true, 301: true}
 
 	for _, tc := range []testCase{
 		{
@@ -379,6 +380,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
+				ExpectStatus:     defaultExpectStatus,
 			},
 		},
 		{
@@ -387,19 +389,23 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 42,
 				Interval:         "1h",
 				Timeout:          "9m",
+				ExpectStatus:     418,
 			},
 			expectation: expectation{
 				FailureThreshold: 42,
 				Interval:         time.Hour,
 				Timeout:          9 * time.Minute,
+				ExpectStatus:     map[int]bool{418: true},
 			},
 		},
 		{
-			name: "uninitialised health check",
+			name:   "uninitialised health check",
+			health: nil,
 			expectation: expectation{
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
+				ExpectStatus:     defaultExpectStatus,
 			},
 		},
 		{
@@ -411,6 +417,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
+				ExpectStatus:     defaultExpectStatus,
 			},
 		},
 		{
@@ -423,6 +430,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
+				ExpectStatus:     defaultExpectStatus,
 			},
 		},
 		{
@@ -434,6 +442,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
+				ExpectStatus:     defaultExpectStatus,
 			},
 		},
 	} {
@@ -441,24 +450,10 @@ func TestBackend_health_check(t *testing.T) {
 			h := test.New(subT)
 
 			health, err := health_check.NewHealthCheck(tc.health)
+			h.Must(err)
 
-			if tc.expectation.errorMessage == "" {
-				h.Must(err)
-			} else if err == nil {
-				t.Errorf("expected error:%s got nil", tc.expectation.errorMessage)
-				return
-			} else if err.Error() != tc.expectation.errorMessage {
-				t.Errorf("expected error:%s got:%s", tc.expectation.errorMessage, err.Error())
-			}
-
-			if tc.expectation.FailureThreshold != health.FailureThreshold {
-				t.Errorf("expected failure threshold:%d got:%d", tc.expectation.FailureThreshold, health.FailureThreshold)
-			}
-			if tc.expectation.Interval != health.Interval {
-				t.Errorf("expected interval:%s got:%s", tc.expectation.Interval.String(), health.Interval.String())
-			}
-			if tc.expectation.Timeout != health.Timeout {
-				t.Errorf("expected timeout:%s got:%s", tc.expectation.Timeout.String(), health.Timeout.String())
+			if fmt.Sprint(tc.expectation) != fmt.Sprint(*health) {
+				t.Errorf("Unexpected health options:\n\tWant: %v\n\tGot:  %v", tc.expectation, *health)
 			}
 		})
 	}
