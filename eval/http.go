@@ -337,6 +337,11 @@ func ApplyCustomLogs(
 ) {
 	var values []cty.Value
 
+	var httpCtx *hcl.EvalContext
+	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
+		httpCtx = c.HCLContext()
+	}
+
 	for _, body := range bodies {
 		if body == nil {
 			continue // Test cases
@@ -345,11 +350,6 @@ func ApplyCustomLogs(
 		bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
 
 		if logs, ok := bodyContent.Attributes["log_fields"]; ok {
-			var httpCtx *hcl.EvalContext
-			if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-				httpCtx = c.HCLContext()
-			}
-
 			val, err := Value(httpCtx, logs.Expr)
 			if err != nil {
 				logger.Debug(err)
