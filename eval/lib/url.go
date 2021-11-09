@@ -53,25 +53,33 @@ func newRelativeUrlFunction() function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
 			absURL := strings.TrimSpace(args[0].AsString())
-
-			if !strings.HasPrefix(absURL, "/") && !strings.HasPrefix(absURL, "http://") && !strings.HasPrefix(absURL, "https://") {
-				return cty.StringVal(""), fmt.Errorf("invalid url given: %q", absURL)
-			}
-
-			// Do not use the result of url.Parse() to preserve the # character in an emtpy fragment.
-			if _, err := url.Parse(absURL); err != nil {
+			relURL, err := RelativeURL(absURL)
+			if err != nil {
 				return cty.StringVal(""), err
 			}
 
-			// The regexParseURL garanties the len of 10 in the result.
-			urlParts := regexParseURL.FindStringSubmatch(absURL)
-
-			// The path must begin w/ a slash.
-			if !strings.HasPrefix(urlParts[5], "/") {
-				urlParts[5] = "/" + urlParts[5]
-			}
-
-			return cty.StringVal(urlParts[5] + urlParts[6] + urlParts[8]), nil
+			return cty.StringVal(relURL), nil
 		},
 	})
+}
+
+func RelativeURL(absURL string) (string, error) {
+	if !strings.HasPrefix(absURL, "/") && !strings.HasPrefix(absURL, "http://") && !strings.HasPrefix(absURL, "https://") {
+		return "", fmt.Errorf("invalid url given: %q", absURL)
+	}
+
+	// Do not use the result of url.Parse() to preserve the # character in an emtpy fragment.
+	if _, err := url.Parse(absURL); err != nil {
+		return "", err
+	}
+
+	// The regexParseURL garanties the len of 10 in the result.
+	urlParts := regexParseURL.FindStringSubmatch(absURL)
+
+	// The path must begin w/ a slash.
+	if !strings.HasPrefix(urlParts[5], "/") {
+		urlParts[5] = "/" + urlParts[5]
+	}
+
+	return urlParts[5] + urlParts[6] + urlParts[8], nil
 }
