@@ -24,6 +24,7 @@ import (
 )
 
 const (
+	api          = "api"
 	backend      = "backend"
 	definitions  = "definitions"
 	errorHandler = "error_handler"
@@ -334,7 +335,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		saml.MetadataBytes = metadata
 	}
 
-	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig, 0)
+	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
 		if _, exists := jwtSigningConfigs[profile.Name]; exists {
 			return nil, errors.Configuration.Messagef("jwt_signing_profile block with label %s already defined", profile.Name)
@@ -364,7 +365,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		WithSAML(couperConfig.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
-	for _, serverBlock := range content.Blocks.OfType(server) {
+	for _, serverBlock := range bodyToContent(body).Blocks.OfType(server) {
 		serverConfig := &config.Server{}
 		if diags = gohcl.DecodeBody(serverBlock.Body, envContext, serverConfig); diags.HasErrors() {
 			return nil, diags
@@ -376,13 +377,23 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// Read api blocks and merge backends with server and definitions backends.
-		for _, apiBlock := range serverConfig.APIs {
-			err := refineEndpoints(definedBackends, apiBlock.Endpoints, true)
+		for _, apiBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(api) {
+			apiConfig := &config.API{}
+			if diags = gohcl.DecodeBody(apiBlock.Body, envContext, apiConfig); diags.HasErrors() {
+				return nil, diags
+			}
+
+			if len(apiBlock.Labels) > 0 {
+				apiConfig.Name = apiBlock.Labels[0]
+			}
+
+			err := refineEndpoints(definedBackends, apiConfig.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
 
-			apiBlock.CatchAllEndpoint = createCatchAllEndpoint()
+			apiConfig.CatchAllEndpoint = createCatchAllEndpoint()
+			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 		}
 
 		// standalone endpoints
@@ -395,7 +406,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	}
 
 	if len(couperConfig.Servers) == 0 {
-		return nil, fmt.Errorf("configuration error: missing server definition")
+		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
 	return couperConfig, nil
@@ -847,7 +858,18 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		return nil, err
 	}
 
-	oauthBackend, err := mergeBackendBodies(definedBackends, &config.Backend{Remain: hclbody.New(backendContent)})
+	beConfig := &config.Backend{Remain: hclbody.New(backendContent)}
+
+	attrs, _ := oauthBlocks[0].Body.JustAttributes()
+	if attrs != nil && attrs["backend"] != nil {
+		val, _ := attrs["backend"].Expr.Value(nil)
+
+		if ref := seetie.ValueToString(val); ref != "" {
+			beConfig.Name = ref
+		}
+	}
+
+	oauthBackend, err := mergeBackendBodies(definedBackends, beConfig)
 	if err != nil {
 		return nil, err
 	}

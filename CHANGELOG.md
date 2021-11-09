@@ -7,10 +7,15 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
   * New HCL function [`relative_url()`](./docs/REFERENCE.md#functions) ([#361](https://github.com/avenga/couper/pull/361))
-  
+  * Log system resource limits at startup ([#334](https://github.com/avenga/couper/pull/334))
+
+* **Changed**
+  * [`server` block](./docs/REFERENCE.md#server-block) label is now optional, [`api` block](./docs/REFERENCE.md#api-block) may be labelled ([#358](https://github.com/avenga/couper/pull/358))
+
 * **Fixed**
   * Handling of [`accept_forwarded_url`](./docs/REFERENCE.md#settings-block) "host" if `H-Forwarded-Host` request header field contains a port ([#360](https://github.com/avenga/couper/pull/360))
   * Setting `Vary` response header fields for [CORS](./doc/REFERENCE.md#cors-block) ([#362](https://github.com/avenga/couper/pull/362))
+  * Use of referenced backends in [OAuth2 CC Blocks](./docs/REFERENCE.md#oauth2-cc-block) ([#321](https://github.com/avenga/couper/issues/321))
   * [CORS](./doc/REFERENCE.md#cors-block) preflight requests are not blocked by access controls any more ([#366](https://github.com/avenga/couper/pull/366))
 
 ---
