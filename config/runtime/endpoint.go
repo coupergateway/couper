@@ -76,6 +76,9 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		errTpl = serverOptions.ServerErrTpl
 	}
 
+	// blockBodies contains inner endpoint block remain bodies to determine req/res buffer options.
+	var blockBodies []hcl.Body
+
 	var response *producer.Response
 	// var redirect producer.Redirect // TODO: configure redirect block
 	proxies := make(producer.Proxies, 0)
@@ -85,6 +88,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		response = &producer.Response{
 			Context: endpointConf.Response.Remain,
 		}
+		blockBodies = append(blockBodies, response.Context)
 	}
 
 	for _, proxyConf := range endpointConf.Proxies {
@@ -98,6 +102,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 			RoundTrip: proxyHandler,
 		}
 		proxies = append(proxies, p)
+		blockBodies = append(blockBodies, proxyConf.Backend, proxyConf.HCLBody())
 	}
 
 	for _, requestConf := range endpointConf.Requests {
@@ -138,8 +143,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}}
 	}
 
-	// TODO: determine request/backend_responses.*.body access in this context (all including backend) or for now:
-	bufferOpts := eval.MustBuffer(endpointConf.Remain)
+	bufferOpts := eval.MustBuffer(append(blockBodies, endpointConf.Remain)...)
 	if len(proxies)+len(requests) > 1 { // also buffer with more possible results
 		bufferOpts |= eval.BufferResponse
 	}
@@ -150,15 +154,15 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	return &handler.EndpointOptions{
-		APIName:       apiName,
-		Context:       endpointConf.Remain,
-		Error:         errTpl,
-		LogPattern:    endpointConf.Pattern,
-		Proxies:       proxies,
-		ReqBodyLimit:  bodyLimit,
-		ReqBufferOpts: bufferOpts,
-		Requests:      requests,
-		Response:      response,
-		ServerOpts:    serverOptions,
+		APIName:      apiName,
+		Context:      endpointConf.Remain,
+		Error:        errTpl,
+		LogPattern:   endpointConf.Pattern,
+		Proxies:      proxies,
+		ReqBodyLimit: bodyLimit,
+		BufferOpts:   bufferOpts,
+		Requests:     requests,
+		Response:     response,
+		ServerOpts:   serverOptions,
 	}, nil
 }
