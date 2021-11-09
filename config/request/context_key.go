@@ -7,7 +7,6 @@ const (
 	AccessControls
 	APIName
 	BackendName
-	BufferOptions
 	Endpoint
 	EndpointKind
 	Error

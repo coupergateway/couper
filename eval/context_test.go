@@ -97,7 +97,7 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
+			helper.Must(eval.SetGetBody(req, 512))
 
 			ctx := baseCtx.WithClientRequest(req).WithBeresps(beresp).HCLContext()
 			ctx.Functions = nil // we are not interested in a functions test
