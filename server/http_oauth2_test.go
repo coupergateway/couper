@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
@@ -385,6 +386,206 @@ func TestOAuth2_AccessControl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOAuth2_AC_Backend(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	// authorization server creates token response with sub property, JWT ID token with sub claim and userinfo response with sub property from X-Sub request header
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		sub := req.Header.Get("X-Sub")
+		if req.URL.Path == "/token" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+			mapClaims := jwt.MapClaims{
+				"iss": "https://authorization.server",
+				"aud": "foo",
+				"sub": "myself",
+				"exp": 4000000000,
+				"iat": 1000,
+			}
+			idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
+			idTokenToAdd := `"id_token":"` + idToken + `",
+			`
+
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				` + idTokenToAdd +
+				`"sub": "` + sub + `"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		} else if req.URL.Path == "/userinfo" {
+			body := []byte(`{"sub": "` + sub + `"}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		} else if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	type testCase struct {
+		name        string
+		path        string
+		backendName string
+	}
+
+	for _, tc := range []testCase{
+		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "as"},
+		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "default"},
+		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "as"},
+		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "default"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL})
+			defer shutdown()
+
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header.Set("Cookie", "pkcecv=qerbnr")
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
+			}
+
+			tokenResBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			var jData map[string]interface{}
+			json.Unmarshal(tokenResBytes, &jData)
+			if sub, ok := jData["sub"]; ok {
+				if sub != "myself" {
+					subT.Errorf("expected sub %q, got: %q", "myself", sub)
+				}
+			} else {
+				subT.Errorf("expected sub %q, got no", "myself")
+			}
+
+			backendName := getUpstreamLogBackendName(hook)
+			if backendName != tc.backendName {
+				subT.Errorf("expected backend name %q, got: %q", tc.backendName, backendName)
+			}
+		})
+	}
+}
+
+func getBearer(val string) (string, error) {
+	const bearer = "bearer "
+	if strings.HasPrefix(strings.ToLower(val), bearer) {
+		return strings.Trim(val[len(bearer):], " "), nil
+	}
+	return "", fmt.Errorf("bearer required with authorization header")
+}
+
+func TestOAuth2_CC_Backend(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	// authorization server creates JWT access token with sub claim from X-Sub request header
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		sub := req.Header.Get("X-Sub")
+		if req.URL.Path == "/token" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+			mapClaims := jwt.MapClaims{"sub": sub}
+			accessToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
+			body := []byte(`{"access_token": "` + accessToken + `"}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	// resource server sends value of sub claim of JWT bearer token
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		authorization := req.Header.Get("Authorization")
+		tokenString, err := getBearer(authorization)
+		helper.Must(err)
+		jwtParser := jwt.NewParser()
+		claims := jwt.MapClaims{}
+		_, _, err = jwtParser.ParseUnverified(tokenString, claims)
+		helper.Must(err)
+		sub := claims["sub"].(string)
+
+		rw.Header().Set("X-Sub2", sub)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer rsOrigin.Close()
+
+	type testCase struct {
+		name        string
+		path        string
+		backendName string
+	}
+
+	for _, tc := range []testCase{
+		{"referenced backend", "/rs1", "as"},
+		{"inline backend", "/rs2", "default"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+			defer shutdown()
+
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusNoContent {
+				subT.Errorf("expected Status %d, got: %d", http.StatusNoContent, res.StatusCode)
+			}
+
+			sub := res.Header.Get("X-Sub2")
+			if sub != "myself" {
+				subT.Errorf("expected sub %q, got: %q", "myself", sub)
+			}
+
+			backendName := getUpstreamLogBackendName(hook)
+			if backendName != tc.backendName {
+				subT.Errorf("expected backend name %q, got: %q", tc.backendName, backendName)
+			}
+		})
+	}
+}
+
+func getUpstreamLogBackendName(hook *logrustest.Hook) string {
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] == "couper_backend" && entry.Data["backend"] != "" {
+			if backend, ok := entry.Data["backend"].(string); ok {
+				return backend
+			}
+		}
+	}
+
+	return ""
 }
 
 func TestOAuth2_Locking(t *testing.T) {

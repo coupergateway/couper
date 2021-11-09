@@ -335,7 +335,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		saml.MetadataBytes = metadata
 	}
 
-	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig, 0)
+	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
 	for _, profile := range couperConfig.Definitions.JWTSigningProfile {
 		if _, exists := jwtSigningConfigs[profile.Name]; exists {
 			return nil, errors.Configuration.Messagef("jwt_signing_profile block with label %s already defined", profile.Name)
@@ -858,7 +858,18 @@ func newOAuthBackend(definedBackends Backends, parent hcl.Body) (hcl.Body, error
 		return nil, err
 	}
 
-	oauthBackend, err := mergeBackendBodies(definedBackends, &config.Backend{Remain: hclbody.New(backendContent)})
+	beConfig := &config.Backend{Remain: hclbody.New(backendContent)}
+
+	attrs, _ := oauthBlocks[0].Body.JustAttributes()
+	if attrs != nil && attrs["backend"] != nil {
+		val, _ := attrs["backend"].Expr.Value(nil)
+
+		if ref := seetie.ValueToString(val); ref != "" {
+			beConfig.Name = ref
+		}
+	}
+
+	oauthBackend, err := mergeBackendBodies(definedBackends, beConfig)
 	if err != nil {
 		return nil, err
 	}
