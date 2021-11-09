@@ -35,7 +35,6 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/oauth2"
@@ -2634,44 +2633,26 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	confPath := path.Join("testdata/integration/endpoint_eval/22_couper.hcl")
+	confPath := path.Join("testdata/integration/config/14_couper.hcl")
 	shutdown, _ := newCouper(confPath, helper)
 	defer shutdown()
-
-	type expectation struct {
-		State  string
-		State2 string
-	}
 
 	type testCase struct {
 		name        string
 		path        string
-		expectation expectation
+		expectation string
 	}
+
+	time.Sleep(2 * time.Second)
 
 	for _, tc := range []testCase{
 		{
-			name: "valid probe and url",
-			path: "/valid",
-			expectation: expectation{
-				State: transport.StateOk.String(),
-			},
-		},
-		{
-			name: "invalid url",
-			path: "/invalid",
-			expectation: expectation{
-				State: transport.StateDown.String(),
-			},
-		},
-		{
-			name:        "invalid probe",
-			path:        "/vali",
-			expectation: expectation{},
+			name:        "backend healthy",
+			path:        "/health",
+			expectation: `[null,"OK","DOWN","DEGRADED"]`,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
-			time.Sleep(time.Second)
 			h := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
@@ -2680,15 +2661,9 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			res, err := client.Do(req)
 			h.Must(err)
 
-			state := res.Header.Get("State")
-			exp := tc.expectation.State
-			if res.Header.Get("State-2") != "" {
-				state = res.Header.Get("State-2")
-				exp = ""
-			}
-
-			if state != exp {
-				t.Errorf("%s: expected state: %s, got: %s", tc.name, exp, state)
+			states := res.Header.Get("States")
+			if states != tc.expectation {
+				t.Errorf("%s: expected states: %s, got: %s", tc.name, tc.expectation, states)
 			}
 		})
 	}

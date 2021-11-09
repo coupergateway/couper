@@ -2,8 +2,8 @@ package transport
 
 import (
 	"context"
+	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/avenga/couper/config/health_check"
@@ -51,11 +51,8 @@ func (s state) String() string {
 	}
 }
 
-func (state state) Print(f int, ft int) string {
-	if f != 0 {
-		return state.String() + " " + strconv.Itoa(f) + "/" + strconv.Itoa(ft)
-	}
-	return state.String()
+func (p Probe) String() string {
+	return fmt.Sprintf("check #%d for backend %q: state: %s (%d/%d), HTTP status: %d", p.Counter, p.Name, p.State, p.Failure, p.Opts.FailureThreshold, p.Status)
 }
 
 func NewProbe(b *Backend) {
@@ -72,7 +69,9 @@ func NewProbe(b *Backend) {
 
 func (p *Probe) probe() {
 	for {
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(p.Opts.Timeout))
+		ctx, cancel := context.WithTimeout(context.Background(), p.Opts.Timeout)
+		defer cancel()
+
 		res, err := http.DefaultClient.Do(p.Req.WithContext(ctx))
 
 		p.Counter++
@@ -80,7 +79,7 @@ func (p *Probe) probe() {
 		p.State = StateInvalid
 		p.Status = 0
 		if err != nil {
-			if p.Failure++; p.Failure <= p.Opts.FailureThreshold {
+			if p.Failure++; p.Failure < p.Opts.FailureThreshold {
 				p.State = StateDegraded
 			} else {
 				p.State = StateDown
@@ -92,11 +91,11 @@ func (p *Probe) probe() {
 			p.Status = res.StatusCode
 		}
 
-		//print("backend: ", p.Name, ",  state: ", p.State.Print(p.Failure, p.Opts.FailureThreshold), ",  status: ", p.Status, ",  cycle: ", p.Counter, "\n")
+		//fmt.Println(p)
 		if prevState != p.State {
 			probe.BackendProbes.Store(p.Name, p.State.String())
 		}
-		cancel()
+
 		time.Sleep(p.Opts.Interval)
 	}
 }

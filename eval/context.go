@@ -163,10 +163,6 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	probes := make(ContextMap)
 
 	probe_map.BackendProbes.Range(func(name, state interface{}) bool {
-		if state == "" {
-			return true
-		}
-
 		probes[fmt.Sprint(name)] = cty.ObjectVal(ContextMap{
 			State: cty.StringVal(fmt.Sprint(state)),
 		})
