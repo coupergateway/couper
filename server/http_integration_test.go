@@ -3668,28 +3668,37 @@ func TestCORS_Configuration(t *testing.T) {
 	shutdown, _ := newCouper("testdata/integration/config/06_couper.hcl", test.New(t))
 	defer shutdown()
 
+	requestMethod := "GET"
+	requestHeaders := "Authorization"
+
 	type testCase struct {
-		path             string
-		origin           string
-		expAllowedOrigin bool
+		path              string
+		origin            string
+		expAllowed        bool
+		expAllowedMethods string
+		expAllowedHeaders string
+		expVaryPF         string
+		expVary           string
+		expVaryCred       string
 	}
 
 	for _, tc := range []testCase{
-		{"/06_couper.hcl", "a.com", true},
-		{"/spa/", "b.com", true},
-		{"/api/", "c.com", true},
-		{"/06_couper.hcl", "no.com", false},
-		{"/spa/", "", false},
-		{"/api/", "no.com", false},
+		{"/06_couper.hcl", "a.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
+		{"/spa/", "b.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
+		{"/api/", "c.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin,Accept-Encoding", "Origin"},
+		{"/06_couper.hcl", "no.com", false, "", "", "Origin", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
+		{"/spa/", "", false, "", "", "Origin", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
+		{"/api/", "no.com", false, "", "", "Origin", "Origin,Accept-Encoding", "Origin"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
 
+			// preflight request
 			req, err := http.NewRequest(http.MethodOptions, "http://localhost:8080"+tc.path, nil)
 			helper.Must(err)
 
-			req.Header.Set("Access-Control-Request-Method", "GET")
-			req.Header.Set("Access-Control-Request-Headers", "origin")
+			req.Header.Set("Access-Control-Request-Method", requestMethod)
+			req.Header.Set("Access-Control-Request-Headers", requestHeaders)
 			req.Header.Set("Origin", tc.origin)
 
 			res, err := client.Do(req)
@@ -3701,8 +3710,115 @@ func TestCORS_Configuration(t *testing.T) {
 				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusNoContent, res.StatusCode)
 			}
 
-			if val, exist := res.Header["Access-Control-Allow-Origin"]; tc.expAllowedOrigin && (!exist || val[0] != tc.origin) {
-				subT.Errorf("Expected allowed origin resp, got: %v", val)
+			acao, acaoExists := res.Header["Access-Control-Allow-Origin"]
+			acam, acamExists := res.Header["Access-Control-Allow-Methods"]
+			acah, acahExists := res.Header["Access-Control-Allow-Headers"]
+			acac, acacExists := res.Header["Access-Control-Allow-Credentials"]
+			if tc.expAllowed {
+				if !acaoExists || acao[0] != tc.origin {
+					subT.Errorf("Expected allowed origin, got: %v", acao)
+				}
+				if !acamExists || acam[0] != tc.expAllowedMethods {
+					subT.Errorf("Expected allowed methods, got: %v", acam)
+				}
+				if !acahExists || acah[0] != tc.expAllowedHeaders {
+					subT.Errorf("Expected allowed headers, got: %v", acah)
+				}
+				if !acacExists || acac[0] != "true" {
+					subT.Errorf("Expected allowed credentials, got: %v", acac)
+				}
+			} else {
+				if acaoExists {
+					subT.Errorf("Expected not allowed origin, got: %v", acao)
+				}
+				if acamExists {
+					subT.Errorf("Expected not allowed methods, got: %v", acam)
+				}
+				if acahExists {
+					subT.Errorf("Expected not allowed headers, got: %v", acah)
+				}
+				if acacExists {
+					subT.Errorf("Expected not allowed credentials, got: %v", acac)
+				}
+			}
+			vary, varyExists := res.Header["Vary"]
+			if !varyExists || strings.Join(vary, ",") != tc.expVaryPF {
+				subT.Errorf("Expected vary %q, got: %q", tc.expVaryPF, strings.Join(vary, ","))
+			}
+
+			// actual request lacking credentials -> rejected by basic_auth AC
+			req, err = http.NewRequest(requestMethod, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header.Set("Origin", tc.origin)
+
+			res, err = client.Do(req)
+			helper.Must(err)
+
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != http.StatusUnauthorized {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusUnauthorized, res.StatusCode)
+			}
+
+			acao, acaoExists = res.Header["Access-Control-Allow-Origin"]
+			acac, acacExists = res.Header["Access-Control-Allow-Credentials"]
+			if tc.expAllowed {
+				if !acaoExists || acao[0] != tc.origin {
+					subT.Errorf("Expected allowed origin, got: %v", acao)
+				}
+				if !acacExists || acac[0] != "true" {
+					subT.Errorf("Expected allowed credentials, got: %v", acac)
+				}
+			} else {
+				if acaoExists {
+					subT.Errorf("Expected not allowed origin, got: %v", acao)
+				}
+				if acacExists {
+					subT.Errorf("Expected not allowed credentials, got: %v", acac)
+				}
+			}
+			vary, varyExists = res.Header["Vary"]
+			if !varyExists || strings.Join(vary, ",") != tc.expVary {
+				subT.Errorf("Expected vary %q, got: %q", tc.expVary, strings.Join(vary, ","))
+			}
+
+			// actual request with credentials
+			req, err = http.NewRequest(requestMethod, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header.Set("Origin", tc.origin)
+			req.Header.Set("Authorization", "Basic Zm9vOmFzZGY=")
+
+			res, err = client.Do(req)
+			helper.Must(err)
+
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != http.StatusOK {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, http.StatusOK, res.StatusCode)
+			}
+
+			acao, acaoExists = res.Header["Access-Control-Allow-Origin"]
+			acac, acacExists = res.Header["Access-Control-Allow-Credentials"]
+			if tc.expAllowed {
+				if !acaoExists || acao[0] != tc.origin {
+					subT.Errorf("Expected allowed origin, got: %v", acao)
+				}
+				if !acacExists || acac[0] != "true" {
+					subT.Errorf("Expected allowed credentials, got: %v", acac)
+				}
+			} else {
+				if acaoExists {
+					subT.Errorf("Expected not allowed origin, got: %v", acao)
+				}
+				if acacExists {
+					subT.Errorf("Expected not allowed credentials, got: %v", acac)
+				}
+			}
+			vary, varyExists = res.Header["Vary"]
+			if !varyExists || strings.Join(vary, ",") != tc.expVaryCred {
+				subT.Errorf("Expected vary %q, got: %q", tc.expVaryCred, strings.Join(vary, ","))
 			}
 		})
 	}
