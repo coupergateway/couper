@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/avenga/couper/config/body"
 )
 
 type BufferOption uint8
@@ -15,6 +18,8 @@ const (
 	BufferNone BufferOption = iota
 	BufferRequest
 	BufferResponse
+
+	// Attention: If any, the next option would be `4`, not `3`!
 )
 
 func (i BufferOption) GoString() string {
@@ -30,45 +35,113 @@ func (i BufferOption) GoString() string {
 	return strings.Join(result, "|")
 }
 
-// MustBuffer determines if any of the hcl.bodies makes use of 'form_body' or 'json_body'.
-func MustBuffer(body hcl.Body) BufferOption {
+func (i BufferOption) Response() bool {
+	return i&BufferResponse == BufferResponse
+}
+
+// MustBuffer determines if any of the hcl.bodies makes use of 'body', 'form_body' or 'json_body' or
+// of known attributes and variables which requires a parsed client-request body.
+func MustBuffer(bodies ...hcl.Body) BufferOption {
 	result := BufferNone
 
-	if body == nil {
+	if len(bodies) == 0 {
 		return result
 	}
 
-	attrs, err := body.JustAttributes()
-	if err != nil {
-		return result
+	var allExprs []hcl.Expression
+	var syntaxAttrs []hclsyntax.Attributes
+	// TODO: follow func call and their referenced remains
+	for _, b := range bodies {
+		if sb, ok := b.(*hclsyntax.Body); ok {
+			syntaxAttrs = append(syntaxAttrs, sb.Attributes)
+			for _, block := range sb.Blocks {
+				syntaxAttrs = append(syntaxAttrs, block.Body.Attributes)
+			}
+			continue
+		}
+
+		if all, ok := b.(body.Attributes); ok {
+			attrs := all.JustAllAttributes()
+			for _, attr := range attrs {
+				for _, v := range attr {
+					if opt := bufferWithAttribute(v.Name); opt != BufferNone {
+						result |= opt
+					}
+					allExprs = append(allExprs, v.Expr)
+				}
+			}
+		}
 	}
-	for _, attr := range attrs {
-		for _, traversal := range attr.Expr.Variables() {
-			if len(traversal) < 2 {
+
+	for _, attr := range syntaxAttrs {
+		for _, v := range attr {
+			if opt := bufferWithAttribute(v.Name); opt != BufferNone {
+				result |= opt
+			}
+			allExprs = append(allExprs, v.Expr)
+		}
+	}
+
+	for _, expr := range allExprs {
+		for _, traversal := range expr.Variables() {
+			rootName := traversal.RootName()
+
+			if len(traversal) == 1 {
+				if rootName == ClientRequest {
+					result |= BufferRequest
+				}
+				if rootName == BackendResponses {
+					result |= BufferResponse
+				}
 				continue
 			}
 
-			rootName := traversal.RootName()
 			if rootName != ClientRequest && rootName != BackendResponses {
 				continue
 			}
 
-			nameField := reflect.ValueOf(traversal[1]).FieldByName("Name")
-			name := nameField.String()
-			switch name {
-			case FormBody:
-				if rootName == ClientRequest {
-					result |= BufferRequest
-				}
-			case JsonBody:
-				switch rootName {
-				case ClientRequest:
-					result |= BufferRequest
-				case BackendResponses:
-					result |= BufferResponse
+			for _, t := range traversal[1:] {
+				nameField := reflect.ValueOf(t).FieldByName("Name")
+				name := nameField.String()
+				switch name {
+				case Body:
+					switch rootName {
+					case ClientRequest:
+						result |= BufferRequest
+					case BackendResponses:
+						result |= BufferResponse
+					}
+				case CTX: // e.g. jwt token (value) could be read from any (body) source
+					if rootName == ClientRequest {
+						result |= BufferRequest
+					}
+				case FormBody:
+					if rootName == ClientRequest {
+						result |= BufferRequest
+					}
+				case JsonBody:
+					switch rootName {
+					case ClientRequest:
+						result |= BufferRequest
+					case BackendResponses:
+						result |= BufferResponse
+					}
+				default:
+					// e.g. backend_responses.default
+					if rootName == BackendResponses && len(traversal) == 2 {
+						result |= BufferResponse
+					}
 				}
 			}
 		}
 	}
 	return result
+}
+
+func bufferWithAttribute(attrName string) BufferOption {
+	switch attrName {
+	case attrAddFormParams, attrSetFormParams, attrDelFormParams:
+		return BufferRequest
+	}
+	return BufferNone
 }

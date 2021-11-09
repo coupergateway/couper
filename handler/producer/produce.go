@@ -16,8 +16,8 @@ type Roundtrips interface {
 
 func sendResult(ctx context.Context, results chan<- *Result, result *Result) {
 	select {
-	case <-ctx.Done():
-		return
+	//case <-ctx.Done():
+	//	return
 	case results <- result:
 	}
 }

@@ -100,7 +100,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			}
 
-			helper.Must(eval.SetGetBody(req, 1024))
+			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
 			*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
@@ -227,7 +227,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				tt.header.Set(req)
 
 				// normally injected by server/http
-				helper.Must(eval.SetGetBody(req, 1024))
+				helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
 				*req = *req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
 
 				rec := httptest.NewRecorder()
@@ -346,7 +346,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				req.Header.Set("Content-Type", "application/json")
 			}
 
-			helper.Must(eval.SetGetBody(req, 1024))
+			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
 			ctx := eval.NewContext(nil, nil).WithClientRequest(req)
 			*req = *req.WithContext(ctx)
 
@@ -436,13 +436,11 @@ IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NE
 	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
 	ctx = context.WithValue(ctx, request.UID, "test123")
 
-	rec := transport.NewRecorder(nil)
+	rec := httptest.NewRecorder()
 	rw := writer.NewResponseWriter(rec, "")
 	ep.ServeHTTP(rw, req.Clone(ctx))
-	res, err := rec.Response(req)
-	if err != nil {
-		t.Error(err)
-	}
+	res := rec.Result()
+
 	if res.StatusCode == 0 {
 		t.Errorf("Fatal error: response status is zero")
 		if res.Header.Get("Couper-Error") != "internal server error" {
