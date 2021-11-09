@@ -150,10 +150,10 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 
 	for _, tc := range []testcase{
 		{"api: w/ scope", http.MethodGet, "/api/", []string{"read"}, http.StatusNoContent, ""},
-		{"api: wo/ scope; handle scope", http.MethodGet, "/api/", []string{"another"}, http.StatusTeapot, ""},
-		{"api: w/ scope; op granted", http.MethodPost, "/api/pow/", []string{"read", "power"}, http.StatusNoContent, ""},
-		{"api: wo/ scope; handle insufficient_scope", http.MethodPost, "/api/pow/", []string{"read", "another"}, http.StatusBadRequest, ""},
-		{"api: w/ scope method; handle operation_denied", http.MethodGet, "/api/pow/", []string{"read", "another"}, http.StatusMethodNotAllowed, ""},
+		{"api: w/ wrong scope; handle scope", http.MethodGet, "/api/", []string{"another"}, http.StatusTeapot, ""},
+		{"api pow: w/ scope; op granted", http.MethodPost, "/api/pow/", []string{"read", "power"}, http.StatusNoContent, ""},
+		{"api pow: w/ wrong scope; handle insufficient_scope", http.MethodPost, "/api/pow/", []string{"read", "another"}, http.StatusBadRequest, ""},
+		{"api pow: w/ scope method; handle operation_denied", http.MethodGet, "/api/pow/", []string{"read", "another"}, http.StatusMethodNotAllowed, ""},
 	} {
 		t.Run(tc.Name, func(st *testing.T) {
 			h := test.New(st)
