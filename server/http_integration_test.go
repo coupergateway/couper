@@ -2647,9 +2647,9 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			name:        "backend healthy",
+			name:        "health status",
 			path:        "/health",
-			expectation: `[null,"OK","OK","DOWN","DOWN","DEGRADED"]`,
+			expectation: `[null,"OK","OK","OK","DOWN","DOWN","DOWN","DEGRADED"]`,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2663,7 +2663,7 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 
 			states := res.Header.Get("States")
 			if states != tc.expectation {
-				t.Errorf("%s: expected states: %s, got: %s", tc.name, tc.expectation, states)
+				t.Errorf("%s: Unexpected states:\n\tWant: %s\n\tGot:  %s", tc.name, tc.expectation, states)
 			}
 		})
 	}

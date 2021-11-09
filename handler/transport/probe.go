@@ -3,7 +3,10 @@ package transport
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/avenga/couper/config/health_check"
@@ -81,7 +84,7 @@ func (p *Probe) probe() {
 			p.Status = res.StatusCode
 		}
 
-		if err != nil || !p.Opts.ExpectStatus[res.StatusCode] {
+		if err != nil || !p.Opts.ExpectStatus[res.StatusCode] || !contains(res.Body, p.Opts.ExpectText) {
 			if p.Failure++; p.Failure < p.Opts.FailureThreshold {
 				p.State = StateDegraded
 			} else {
@@ -100,4 +103,13 @@ func (p *Probe) probe() {
 
 		time.Sleep(p.Opts.Interval)
 	}
+}
+
+func contains(reader io.ReadCloser, text string) bool {
+	if text == "" {
+		return true
+	}
+
+	bytes, _ := ioutil.ReadAll(reader)
+	return strings.Contains(string(bytes), text)
 }

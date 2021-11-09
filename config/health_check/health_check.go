@@ -10,6 +10,7 @@ var defaultHealthCheck = &ParsedOptions{
 	Interval:         time.Second,
 	Timeout:          time.Second,
 	ExpectStatus:     map[int]bool{200: true, 204: true, 301: true},
+	ExpectText:       "",
 }
 
 type ParsedOptions struct {
@@ -17,6 +18,7 @@ type ParsedOptions struct {
 	Interval         time.Duration
 	Timeout          time.Duration
 	ExpectStatus     map[int]bool
+	ExpectText       string
 }
 
 type Options struct {
@@ -24,6 +26,7 @@ type Options struct {
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
 	ExpectStatus     int      `hcl:"expect_status,optional"`
+	ExpectText       string   `hcl:"expect_text,optional"`
 	Remain           hcl.Body `hcl:",remain"`
 }
 
@@ -54,6 +57,7 @@ func NewHealthCheck(options *Options) (*ParsedOptions, error) {
 		if options.ExpectStatus != 0 {
 			healthCheck.ExpectStatus = map[int]bool{options.ExpectStatus: true}
 		}
+		healthCheck.ExpectText = options.ExpectText
 	}
 	return &healthCheck, err
 }

@@ -362,6 +362,7 @@ func TestBackend_health_check(t *testing.T) {
 		Interval         time.Duration
 		Timeout          time.Duration
 		ExpectStatus     map[int]bool
+		ExpectText       string
 	}
 
 	type testCase struct {
@@ -381,6 +382,7 @@ func TestBackend_health_check(t *testing.T) {
 				Interval:         time.Second,
 				Timeout:          time.Second,
 				ExpectStatus:     defaultExpectStatus,
+				ExpectText:       "",
 			},
 		},
 		{
@@ -390,12 +392,14 @@ func TestBackend_health_check(t *testing.T) {
 				Interval:         "1h",
 				Timeout:          "9m",
 				ExpectStatus:     418,
+				ExpectText:       "roger roger",
 			},
 			expectation: expectation{
 				FailureThreshold: 42,
 				Interval:         time.Hour,
 				Timeout:          9 * time.Minute,
 				ExpectStatus:     map[int]bool{418: true},
+				ExpectText:       "roger roger",
 			},
 		},
 		{
@@ -406,6 +410,7 @@ func TestBackend_health_check(t *testing.T) {
 				Interval:         time.Second,
 				Timeout:          time.Second,
 				ExpectStatus:     defaultExpectStatus,
+				ExpectText:       "",
 			},
 		},
 		{
@@ -418,6 +423,7 @@ func TestBackend_health_check(t *testing.T) {
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
 				ExpectStatus:     defaultExpectStatus,
+				ExpectText:       "",
 			},
 		},
 		{
@@ -431,6 +437,7 @@ func TestBackend_health_check(t *testing.T) {
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
 				ExpectStatus:     defaultExpectStatus,
+				ExpectText:       "",
 			},
 		},
 		{
@@ -443,6 +450,7 @@ func TestBackend_health_check(t *testing.T) {
 				Interval:         time.Second,
 				Timeout:          time.Second,
 				ExpectStatus:     defaultExpectStatus,
+				ExpectText:       "",
 			},
 		},
 	} {

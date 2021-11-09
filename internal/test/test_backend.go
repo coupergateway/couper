@@ -75,6 +75,7 @@ func registerHTTPHandler(b *Backend) {
 	b.mux.HandleFunc("/ws", echo)
 	b.mux.HandleFunc("/pdf", pdf)
 	b.mux.HandleFunc("/small", small)
+	b.mux.HandleFunc("/health", health)
 	b.mux.HandleFunc("/jwks.json", jwks)
 	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
 	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
@@ -208,6 +209,10 @@ func pdf(rw http.ResponseWriter, req *http.Request) {
 
 func small(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("1234567890"))
+}
+
+func health(rw http.ResponseWriter, req *http.Request) {
+	rw.Write([]byte(" 👍 "))
 }
 
 func jwks(rw http.ResponseWriter, req *http.Request) {
