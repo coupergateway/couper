@@ -1,45 +1,32 @@
-package handler_test
+package handler
 
 import (
-	"context"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"testing"
-	"time"
-
-	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/test"
 )
 
 func TestProxy_BlacklistHeaderRemoval(t *testing.T) {
-	log, _ := test.NewLogger()
-	logEntry := log.WithContext(context.Background())
-	p := handler.NewProxy(
-		transport.NewBackend(body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
-			"origin": {Name: "origin", Expr: hcl.StaticExpr(cty.StringVal("https://1.2.3.4"), hcl.Range{})},
-		}}), &transport.Config{
-			Origin: "https://1.2.3.4/",
-		}, nil, logEntry),
-		hcl.EmptyBody(),
-		logEntry,
-	)
+	p := &Proxy{
+		context:      hcl.EmptyBody(),
+		reverseProxy: httputil.NewSingleHostReverseProxy(&url.URL{Host: "couper.io", Scheme: "https"}),
+	}
 
 	outreq := httptest.NewRequest("GET", "https://1.2.3.4/", nil)
 	outreq.Header.Set("Authorization", "Basic 123")
 	outreq.Header.Set("Cookie", "123")
-	outreq = outreq.WithContext(eval.NewContext(nil, &config.Defaults{}).WithClientRequest(outreq))
-	ctx, cancel := context.WithDeadline(outreq.Context(), time.Now().Add(time.Millisecond*50))
-	outreq = outreq.WithContext(ctx)
-	defer cancel()
+	outreq.WithContext(eval.NewContext(nil, &config.Defaults{}).WithClientRequest(outreq))
 
-	_, _ = p.RoundTrip(outreq)
+	_, err := p.RoundTrip(outreq)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if outreq.Header.Get("Authorization") != "" {
 		t.Error("Expected removed Authorization header")

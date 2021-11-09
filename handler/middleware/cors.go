@@ -146,7 +146,3 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 func (c *CORS) isCorsRequest(req *http.Request) bool {
 	return req.Header.Get("Origin") != ""
 }
-
-func (c *CORS) Child() http.Handler {
-	return c.nextHandler
-}

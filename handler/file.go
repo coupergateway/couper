@@ -90,7 +90,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if r, ok := rw.(*writer.Response); ok {
 		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext, f.modifier...)
+		r.AddModifier(evalContext, f.modifier)
 	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
@@ -105,7 +105,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 	if !strings.HasSuffix(reqPath, "/") {
 		if r, ok := rw.(*writer.Response); ok {
 			evalContext := eval.ContextFromRequest(req)
-			r.AddModifier(evalContext, f.modifier...)
+			r.AddModifier(evalContext, f.modifier)
 		}
 
 		rw.Header().Set("Location", utils.JoinPath(req.URL.Path, "/"))
@@ -124,7 +124,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	if r, ok := rw.(*writer.Response); ok {
 		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext, f.modifier...)
+		r.AddModifier(evalContext, f.modifier)
 	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
