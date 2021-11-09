@@ -47,15 +47,14 @@ const (
 // First the user has a related reference within a related options' context declaration.
 // Additionally, the request body is nil or a NoBody-Type and the http method has no
 // http-body restrictions like 'TRACE'.
-func SetGetBody(req *http.Request, bodyLimit int64) error {
+func SetGetBody(req *http.Request, bufferOpts BufferOption, bodyLimit int64) error {
 	if req.Method == http.MethodTrace {
 		return nil
 	}
 
-	// TODO: handle buffer options based on overall body context and reference
-	//if (e.opts.ReqBufferOpts & eval.BufferRequest) != eval.BufferRequest {
-	//	return nil
-	//}
+	if (bufferOpts & BufferRequest) != BufferRequest {
+		return nil
+	}
 
 	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
 		buf := &bytes.Buffer{}
@@ -71,7 +70,7 @@ func SetGetBody(req *http.Request, bodyLimit int64) error {
 				Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
-		// reset body initially, additional body reads which are not depending on http.Request
+		// reset body initially, additional body reads which are not depend on http.Request
 		// internals like form parsing should just call GetBody() and use the returned reader.
 		SetBody(req, buf.Bytes())
 	}

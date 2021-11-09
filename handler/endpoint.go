@@ -23,7 +23,7 @@ import (
 )
 
 var _ http.Handler = &Endpoint{}
-var _ EndpointLimit = &Endpoint{}
+var _ BodyLimit = &Endpoint{}
 
 type Endpoint struct {
 	log      *logrus.Entry
@@ -39,7 +39,7 @@ type EndpointOptions struct {
 	LogHandlerKind string
 	LogPattern     string
 	ReqBodyLimit   int64
-	ReqBufferOpts  eval.BufferOption
+	BufferOpts     eval.BufferOption
 	ServerOpts     *server.Options
 
 	Proxies  producer.Roundtrips
@@ -48,12 +48,12 @@ type EndpointOptions struct {
 	Response *producer.Response
 }
 
-type EndpointLimit interface {
+type BodyLimit interface {
 	RequestLimit() int64
+	BufferOptions() eval.BufferOption
 }
 
 func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) *Endpoint {
-	opts.ReqBufferOpts |= eval.MustBuffer(opts.Context) // TODO: proper configuration on all hcl levels
 	return &Endpoint{
 		log:      log.WithField("handler", opts.LogHandlerKind),
 		modifier: modifier,
@@ -73,7 +73,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
 	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
 	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
-
+	reqCtx = context.WithValue(reqCtx, request.BufferOptions, e.opts.BufferOpts)
 	*req = *req.WithContext(reqCtx)
 	if e.opts.LogPattern != "" {
 		span := trace.SpanFromContext(reqCtx)
@@ -83,6 +83,11 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer func() {
 		rc := recover()
 		if rc != nil {
+			if rc == http.ErrAbortHandler {
+				log.WithError(errors.Proxy.Message("body copy failed")).Error()
+				return
+			}
+
 			log.WithField("panic", string(debug.Stack())).Error(rc)
 			if clientres == nil {
 				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
@@ -221,18 +226,39 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if !ok {
 		log.Errorf("response writer: type error")
 	} else {
+		// 'clientres' is a faulty response object due to a websocket hijack.
 		if w.IsHijacked() {
-			// clientres is a faulty response object due to a websocket hijack.
 			return
 		}
 
-		w.AddModifier(evalContext, e.modifier)
+		w.AddModifier(evalContext, e.modifier...)
 		rw = w
 	}
 
-	if err = clientres.Write(rw); err != nil {
-		log.Errorf("endpoint write: %v", err)
+	// always apply before write: redirect, response
+	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
+		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
+		return
 	}
+
+	// copy/write like a reverseProxy
+	copyHeader(rw.Header(), clientres.Header)
+
+	rw.WriteHeader(clientres.StatusCode)
+
+	if clientres.Body == nil {
+		return
+	}
+
+	err = copyResponse(rw, clientres.Body, flushInterval(clientres))
+	if err != nil {
+		defer clientres.Body.Close()
+		// Since we're streaming the response, if we run into an error all we can do
+		// is abort the request. Issue 23643: ReverseProxy should use ErrAbortHandler
+		// on read error while copying body.
+		panic(http.ErrAbortHandler)
+	}
+	clientres.Body.Close()
 }
 
 func (e *Endpoint) newRedirect() *http.Response {
@@ -270,6 +296,10 @@ func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Resu
 
 func (e *Endpoint) Options() *server.Options {
 	return e.opts.ServerOpts
+}
+
+func (e *Endpoint) BufferOptions() eval.BufferOption {
+	return e.opts.BufferOpts
 }
 
 func (e *Endpoint) RequestLimit() int64 {
