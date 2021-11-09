@@ -2,6 +2,7 @@ package health_check
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"net/url"
 	"time"
 )
 
@@ -9,6 +10,7 @@ var defaultHealthCheck = &ParsedOptions{
 	FailureThreshold: 2,
 	Interval:         time.Second,
 	Timeout:          time.Second,
+	Path:             nil,
 	ExpectStatus:     map[int]bool{200: true, 204: true, 301: true},
 	ExpectText:       "",
 }
@@ -17,6 +19,7 @@ type ParsedOptions struct {
 	FailureThreshold uint
 	Interval         time.Duration
 	Timeout          time.Duration
+	Path             *url.URL
 	ExpectStatus     map[int]bool
 	ExpectText       string
 }
@@ -25,6 +28,7 @@ type Options struct {
 	FailureThreshold uint     `hcl:"failure_threshold,optional"`
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
+	Path             string   `hcl:"path,optional"`
 	ExpectStatus     int      `hcl:"expect_status,optional"`
 	ExpectText       string   `hcl:"expect_text,optional"`
 	Remain           hcl.Body `hcl:",remain"`
@@ -58,6 +62,17 @@ func NewHealthCheck(options *Options) (*ParsedOptions, error) {
 			healthCheck.ExpectStatus = map[int]bool{options.ExpectStatus: true}
 		}
 		healthCheck.ExpectText = options.ExpectText
+		if options.Path != "" {
+			healthCheck.Path = createURL(options.Path)
+		}
 	}
 	return &healthCheck, err
+}
+
+func createURL(pathQuery string) *url.URL {
+	uri, _ := url.ParseRequestURI("http://HOST/../" + pathQuery)
+	uri.Scheme = ""
+	uri.Host = ""
+	u := url.URL{}
+	return u.ResolveReference(uri)
 }

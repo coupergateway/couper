@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -357,13 +359,7 @@ func TestBackend_director(t *testing.T) {
 }
 
 func TestBackend_health_check(t *testing.T) {
-	type expectation struct {
-		FailureThreshold uint
-		Interval         time.Duration
-		Timeout          time.Duration
-		ExpectStatus     map[int]bool
-		ExpectText       string
-	}
+	type expectation health_check.ParsedOptions
 
 	type testCase struct {
 		name        string
@@ -381,6 +377,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
+				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -391,6 +388,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 42,
 				Interval:         "1h",
 				Timeout:          "9m",
+				Path:             "/gsund??",
 				ExpectStatus:     418,
 				ExpectText:       "roger roger",
 			},
@@ -400,6 +398,12 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          9 * time.Minute,
 				ExpectStatus:     map[int]bool{418: true},
 				ExpectText:       "roger roger",
+				Path: &url.URL{
+					Scheme:   "",
+					Host:     "",
+					Path:     "/gsund",
+					RawQuery: "?",
+				},
 			},
 		},
 		{
@@ -409,6 +413,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
+				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -422,6 +427,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
+				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -436,6 +442,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
+				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -449,6 +456,7 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
+				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},

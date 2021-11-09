@@ -67,6 +67,10 @@ func NewProbe(b *Backend) {
 
 		State: StateInvalid,
 	}
+
+	if p.Opts.Path != nil {
+		p.Req.URL = p.Req.URL.ResolveReference(p.Opts.Path)
+	}
 	go p.probe()
 }
 

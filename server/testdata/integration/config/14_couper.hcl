@@ -7,9 +7,11 @@ server "backend_probes" {
           backend_probes.healthy.state,
           backend_probes.healthy2.state,
           backend_probes.healthy3.state,
+          backend_probes.healthy4.state,
           backend_probes.down.state,
           backend_probes.down2.state,
           backend_probes.down3.state,
+          backend_probes.down4.state,
           backend_probes.degraded.state
         ])
       }
@@ -26,6 +28,9 @@ server "backend_probes" {
     request "healthy3" {
       backend = "healthy3"
     }
+    request "healthy4" {
+      backend = "healthy4"
+    }
     request "down" {
       backend = "down"
     }
@@ -34,6 +39,9 @@ server "backend_probes" {
     }
     request "down3" {
       backend = "down3"
+    }
+    request "down4" {
+      backend = "down4"
     }
     request "degraded" {
       backend = "degraded"
@@ -58,6 +66,13 @@ definitions {
       expect_text = "👍"
     }
   }
+  backend "healthy4" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
+    beta_health {
+      path = "/anything?foo=bar"
+      expect_text = "\"RawQuery\":\"foo=bar\""
+    }
+  }
   backend "down" {
     origin = "http://1.2.3.4"
     beta_health {}
@@ -70,6 +85,12 @@ definitions {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
       expect_text = "down?"
+    }
+  }
+  backend "down4" {
+    origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
+    beta_health {
+      path = "/"
     }
   }
   backend "degraded" {
