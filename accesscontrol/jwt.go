@@ -241,16 +241,14 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	if len(scopesValues) > 0 {
-		scopes, ok := ctx.Value(request.Scopes).([]string)
-		if !ok {
-			scopes = []string{}
-		}
-
-		scopes = append(scopes, scopesValues...)
-
-		ctx = context.WithValue(ctx, request.Scopes, scopes)
+	scopes, ok := ctx.Value(request.Scopes).([]string)
+	if !ok {
+		scopes = []string{}
 	}
+
+	scopes = append(scopes, scopesValues...)
+
+	ctx = context.WithValue(ctx, request.Scopes, scopes)
 
 	*req = *req.WithContext(ctx)
 
@@ -331,67 +329,62 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 	var scopeValues []string
 
 	if j.scopeClaim != "" {
-		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
-		if !exists {
-			return nil, fmt.Errorf("missing expected scope claim %q", j.scopeClaim)
-		}
 
-		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-		scopesArray, ok := scopesFromClaim.([]interface{})
-		if ok {
-			for _, v := range scopesArray {
-				s, ok := v.(string)
+		if scopesFromClaim, exists := tokenClaims[j.scopeClaim]; exists {
+			// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+			scopesArray, ok := scopesFromClaim.([]interface{})
+			if ok {
+				for _, v := range scopesArray {
+					s, ok := v.(string)
+					if !ok {
+						return nil, errScopeValue
+					}
+					scopeValues = addScopeValue(scopeValues, s)
+				}
+			} else {
+				scopesString, ok := scopesFromClaim.(string)
 				if !ok {
 					return nil, errScopeValue
 				}
-				scopeValues = addScopeValue(scopeValues, s)
-			}
-		} else {
-			scopesString, ok := scopesFromClaim.(string)
-			if !ok {
-				return nil, errScopeValue
-			}
-			for _, s := range strings.Split(scopesString, " ") {
-				scopeValues = addScopeValue(scopeValues, s)
+				for _, s := range strings.Split(scopesString, " ") {
+					scopeValues = addScopeValue(scopeValues, s)
+				}
 			}
 		}
 	}
 
 	if j.rolesClaim != "" {
-		rolesClaimValue, exists := tokenClaims[j.rolesClaim]
-		if !exists {
-			return nil, fmt.Errorf("missing expected roles claim %q", j.rolesClaim)
-		}
-
-		var roleValues []string
-		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-		rolesArray, ok := rolesClaimValue.([]interface{})
-		if ok {
-			for _, v := range rolesArray {
-				r, ok := v.(string)
+		if rolesClaimValue, exists := tokenClaims[j.rolesClaim]; exists {
+			var roleValues []string
+			// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+			rolesArray, ok := rolesClaimValue.([]interface{})
+			if ok {
+				for _, v := range rolesArray {
+					r, ok := v.(string)
+					if !ok {
+						return nil, errRolesValue
+					}
+					roleValues = append(roleValues, r)
+				}
+			} else {
+				rolesString, ok := rolesClaimValue.(string)
 				if !ok {
 					return nil, errRolesValue
 				}
-				roleValues = append(roleValues, r)
+				roleValues = strings.Split(rolesString, " ")
 			}
-		} else {
-			rolesString, ok := rolesClaimValue.(string)
-			if !ok {
-				return nil, errRolesValue
+			for _, r := range roleValues {
+				if scopes, exist := j.rolesMap[r]; exist {
+					for _, s := range scopes {
+						scopeValues = addScopeValue(scopeValues, s)
+					}
+				}
 			}
-			roleValues = strings.Split(rolesString, " ")
-		}
-		for _, r := range roleValues {
-			if scopes, exist := j.rolesMap[r]; exist {
+
+			if scopes, exist := j.rolesMap["*"]; exist {
 				for _, s := range scopes {
 					scopeValues = addScopeValue(scopeValues, s)
 				}
-			}
-		}
-
-		if scopes, exist := j.rolesMap["*"]; exist {
-			for _, s := range scopes {
-				scopeValues = addScopeValue(scopeValues, s)
 			}
 		}
 	}

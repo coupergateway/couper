@@ -323,6 +323,15 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		expScopes  []string
 	}{
 		{
+			"no scope, no roles",
+			"scp",
+			nil,
+			"roles",
+			nil,
+			false,
+			[]string{},
+		},
+		{
 			"scope: space-separated list",
 			"scp",
 			"foo bar",
