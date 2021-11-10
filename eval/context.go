@@ -40,7 +40,6 @@ func (m ContextMap) Merge(other ContextMap) ContextMap {
 }
 
 type Context struct {
-	bufferOption      BufferOption
 	eval              *hcl.EvalContext
 	inner             context.Context
 	memorize          map[string]interface{}
@@ -61,7 +60,6 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
-		bufferOption: BufferRequest | BufferResponse, // TODO: eval per endpoint body route
 		eval: &hcl.EvalContext{
 			Variables: variables,
 			Functions: newFunctionsMap(),
@@ -101,7 +99,6 @@ func (c *Context) Value(key interface{}) interface{} {
 
 func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx := &Context{
-		bufferOption:      c.bufferOption,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
 		memorize:          make(map[string]interface{}),
@@ -165,7 +162,6 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 
 func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx := &Context{
-		bufferOption:      c.bufferOption,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
 		memorize:          c.memorize,
@@ -215,7 +211,8 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 
 		var respBody, respJsonBody cty.Value
 		if !IsUpgradeResponse(bereq, beresp) {
-			if (ctx.bufferOption & BufferResponse) == BufferResponse {
+			bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
+			if ok && (bufferOption&BufferResponse) == BufferResponse {
 				respBody, respJsonBody = parseRespBody(beresp)
 			}
 		}
