@@ -9,7 +9,11 @@ import (
 	"flag"
 	"io"
 	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -43,6 +47,7 @@ func realmain(arguments []string) int {
 	ctx := context.Background()
 
 	type globalFlags struct {
+		DebugEndpoint       bool          `env:"debug"`
 		FilePath            string        `env:"file"`
 		FileWatch           bool          `env:"watch"`
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
@@ -54,6 +59,7 @@ func realmain(arguments []string) int {
 	var flags globalFlags
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
+	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
 	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./my-path/couper.hcl")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
@@ -133,6 +139,10 @@ func realmain(arguments []string) int {
 	go func() {
 		errCh <- execCmd.Execute(args, confFile, logger)
 	}()
+
+	if flags.DebugEndpoint {
+		debugListenAndServe(logger)
+	}
 
 	reloadCh := watchConfigFile(confFile.Filename, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
 	for {
@@ -283,4 +293,30 @@ func newRestartableCommand(ctx context.Context, cmd string) (command.Cmd, chan<-
 		cancelFn()
 	}()
 	return command.NewCommand(watchContext, cmd), signal
+}
+
+func debugListenAndServe(logEntry *logrus.Entry) {
+	const tracePort = "6060"
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	traceSrv := http.Server{Addr: ":" + tracePort}
+	traceSrv.Handler = mux
+	go func() {
+		logEntry.WithField("debug", "pprof").WithField("port", tracePort).Info("listening")
+		if e := traceSrv.ListenAndServe(); e != nil {
+			logEntry.WithField("debug", "pprof").Error(e)
+		}
+	}()
+	go func() {
+		sigCh := make(chan os.Signal)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+		defer cancel()
+		traceSrv.Shutdown(ctx)
+	}()
 }
