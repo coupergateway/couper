@@ -387,6 +387,9 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
+	// prevent resource leak
+	_ = beresp.Body.Close()
+
 	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
 
 	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
