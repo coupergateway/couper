@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
@@ -236,7 +237,8 @@ func (j *JWT) Validate(req *http.Request) error {
 	acMap[j.name] = tokenClaims
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
-	scopesValues, err := j.getScopeValues(tokenClaims)
+	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
+	scopesValues, err := j.getScopeValues(tokenClaims, log)
 	if err != nil {
 		return err
 	}
@@ -325,16 +327,16 @@ const errValueMsg = "value of %s claim must either be a string containing a spac
 var errScopeValue = fmt.Errorf(errValueMsg, "scope", "scope values", "scope values")
 var errRolesValue = fmt.Errorf(errValueMsg, "roles", "roles", "roles")
 
-func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
+func (j *JWT) getScopeValues(tokenClaims map[string]interface{}, log *logrus.Entry) ([]string, error) {
 	var scopeValues []string
 	var err error
 
-	scopeValues, err = j.addScopeValueFromScope(tokenClaims, scopeValues)
+	scopeValues, err = j.addScopeValueFromScope(tokenClaims, scopeValues, log)
 	if err != nil {
 		return nil, err
 	}
 
-	scopeValues, err = j.addScopeValueFromRoles(tokenClaims, scopeValues)
+	scopeValues, err = j.addScopeValueFromRoles(tokenClaims, scopeValues, log)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +344,7 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, erro
 	return scopeValues, nil
 }
 
-func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeValues []string) ([]string, error) {
+func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) ([]string, error) {
 	if j.scopeClaim == "" {
 		return scopeValues, nil
 	}
@@ -374,7 +376,7 @@ func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeVa
 	return scopeValues, nil
 }
 
-func (j *JWT) addScopeValueFromRoles(tokenClaims map[string]interface{}, scopeValues []string) ([]string, error) {
+func (j *JWT) addScopeValueFromRoles(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) ([]string, error) {
 	if j.rolesClaim == "" || j.rolesMap == nil {
 		return scopeValues, nil
 	}

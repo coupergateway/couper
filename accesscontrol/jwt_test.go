@@ -16,6 +16,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -27,7 +28,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func Test_JWT_NewJWT_RSA(t *testing.T) {
@@ -143,6 +143,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 }
 
 func Test_JWT_Validate(t *testing.T) {
+	log, _ := test.NewLogger()
 	type fields struct {
 		algorithm      acjwt.Algorithm
 		claims         map[string]string
@@ -279,6 +280,8 @@ func Test_JWT_Validate(t *testing.T) {
 					return
 				}
 
+				tt.req = tt.req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
+
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 				}
@@ -303,6 +306,7 @@ func Test_JWT_Validate(t *testing.T) {
 }
 
 func Test_JWT_yields_scopes(t *testing.T) {
+	log, hook := test.NewLogger()
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
@@ -559,6 +563,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			hook.Reset()
 			claims := jwt.MapClaims{}
 			if tt.scopeClaim != "" && tt.scope != nil {
 				claims[tt.scopeClaim] = tt.scope
@@ -588,6 +593,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			}
 
 			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
+			req = req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
 
 			if err = j.Validate(req); (err != nil) != tt.wantErr {
 				subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
