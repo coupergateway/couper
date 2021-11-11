@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/health_check"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/handler/validation"
 )
 
@@ -14,7 +14,7 @@ import (
 type BackendOptions struct {
 	OpenAPI     *validation.OpenAPIOptions
 	AuthBackend TokenRequest
-	HealthCheck *health_check.ParsedOptions
+	HealthCheck *config.HealthCheck
 	Request     *http.Request
 }
 

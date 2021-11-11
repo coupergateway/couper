@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"github.com/avenga/couper/config/health_check"
 	"math"
 	"net/http"
 	"strings"
@@ -86,8 +85,8 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		OpenAPI: openAPIopts,
 	}
 
-	if beConf.HealthCheck != nil {
-		options.HealthCheck, err = health_check.NewHealthCheck(beConf.HealthCheck)
+	if beConf.Health != nil {
+		options.HealthCheck, err = config.NewHealthCheck(beConf.Health)
 		if err != nil {
 			return nil, err
 		}

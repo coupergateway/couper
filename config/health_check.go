@@ -1,4 +1,4 @@
-package health_check
+package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var defaultHealthCheck = &ParsedOptions{
+var defaultHealthCheck = &HealthCheck{
 	FailureThreshold: 2,
 	Interval:         time.Second,
 	Timeout:          time.Second,
@@ -15,7 +15,7 @@ var defaultHealthCheck = &ParsedOptions{
 	ExpectText:       "",
 }
 
-type ParsedOptions struct {
+type HealthCheck struct {
 	FailureThreshold uint
 	Interval         time.Duration
 	Timeout          time.Duration
@@ -24,7 +24,7 @@ type ParsedOptions struct {
 	ExpectText       string
 }
 
-type Options struct {
+type Health struct {
 	FailureThreshold uint     `hcl:"failure_threshold,optional"`
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
@@ -34,7 +34,7 @@ type Options struct {
 	Remain           hcl.Body `hcl:",remain"`
 }
 
-func NewHealthCheck(options *Options) (*ParsedOptions, error) {
+func NewHealthCheck(options *Health) (*HealthCheck, error) {
 	healthCheck := *defaultHealthCheck
 
 	var err error

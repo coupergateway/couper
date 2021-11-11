@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
-	"github.com/avenga/couper/config/health_check"
 	"github.com/avenga/couper/config/meta"
 )
 
@@ -17,14 +16,15 @@ var (
 
 // Backend represents the <Backend> object.
 type Backend struct {
-	DisableCertValidation  bool                  `hcl:"disable_certificate_validation,optional"`
-	DisableConnectionReuse bool                  `hcl:"disable_connection_reuse,optional"`
-	HealthCheck            *health_check.Options `hcl:"beta_health,block"`
-	HTTP2                  bool                  `hcl:"http2,optional"`
-	MaxConnections         int                   `hcl:"max_connections,optional"`
-	Name                   string                `hcl:"name,label"`
-	OpenAPI                *OpenAPI              `hcl:"openapi,block"`
-	Remain                 hcl.Body              `hcl:",remain"`
+	DisableCertValidation  bool     `hcl:"disable_certificate_validation,optional"`
+	DisableConnectionReuse bool     `hcl:"disable_connection_reuse,optional"`
+	Health                 *Health  `hcl:"beta_health,block"`
+	HTTP2                  bool     `hcl:"http2,optional"`
+	MaxConnections         int      `hcl:"max_connections,optional"`
+	Name                   string   `hcl:"name,label"`
+	OpenAPI                *OpenAPI `hcl:"openapi,block"`
+	Remain                 hcl.Body `hcl:",remain"`
+
 
 	// explicit configuration on load
 	OAuth2 *OAuth2ReqAuth

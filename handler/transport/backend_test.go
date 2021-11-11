@@ -21,7 +21,6 @@ import (
 
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/health_check"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -359,11 +358,11 @@ func TestBackend_director(t *testing.T) {
 }
 
 func TestBackend_health_check(t *testing.T) {
-	type expectation health_check.ParsedOptions
+	type expectation config.HealthCheck
 
 	type testCase struct {
 		name        string
-		health      *health_check.Options
+		health      *config.Health
 		expectation expectation
 	}
 
@@ -372,7 +371,7 @@ func TestBackend_health_check(t *testing.T) {
 	for _, tc := range []testCase{
 		{
 			name:   "health check with default values",
-			health: &health_check.Options{},
+			health: &config.Health{},
 			expectation: expectation{
 				FailureThreshold: 2,
 				Interval:         time.Second,
@@ -384,7 +383,7 @@ func TestBackend_health_check(t *testing.T) {
 		},
 		{
 			name: "health check with configured values",
-			health: &health_check.Options{
+			health: &config.Health{
 				FailureThreshold: 42,
 				Interval:         "1h",
 				Timeout:          "9m",
@@ -420,7 +419,7 @@ func TestBackend_health_check(t *testing.T) {
 		},
 		{
 			name: "timeout set indirectly by configured interval",
-			health: &health_check.Options{
+			health: &config.Health{
 				Interval: "10s",
 			},
 			expectation: expectation{
@@ -434,7 +433,7 @@ func TestBackend_health_check(t *testing.T) {
 		},
 		{
 			name: "timeout bounded by configured interval",
-			health: &health_check.Options{
+			health: &config.Health{
 				Interval: "5s",
 				Timeout:  "10s",
 			},
@@ -449,7 +448,7 @@ func TestBackend_health_check(t *testing.T) {
 		},
 		{
 			name: "zero threshold",
-			health: &health_check.Options{
+			health: &config.Health{
 				FailureThreshold: 0,
 			},
 			expectation: expectation{
@@ -465,7 +464,7 @@ func TestBackend_health_check(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health, err := health_check.NewHealthCheck(tc.health)
+			health, err := config.NewHealthCheck(tc.health)
 			h.Must(err)
 
 			if fmt.Sprint(tc.expectation) != fmt.Sprint(*health) {

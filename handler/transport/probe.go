@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/avenga/couper/config/health_check"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
@@ -31,7 +31,7 @@ type Probe struct {
 	//configurable settings
 	Log  *logging.UpstreamLog
 	Name string
-	Opts *health_check.ParsedOptions
+	Opts *config.HealthCheck
 	Req  *http.Request
 
 	//variables reflecting status of probe
