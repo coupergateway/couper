@@ -98,8 +98,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	proxyResults := make(producer.Results, len(e.opts.Proxies.(producer.Proxies)))
-	requestResults := make(producer.Results, len(e.opts.Requests.(producer.Requests)))
+	proxyResults := make(producer.Results, e.opts.Proxies.Len())
+	requestResults := make(producer.Results, e.opts.Requests.Len())
 
 	// go for it due to chan write on error
 	go e.opts.Proxies.Produce(subCtx, req, proxyResults)

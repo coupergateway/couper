@@ -55,18 +55,20 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 				stack: debug.Stack(),
 			})
 			span.End()
-			sendResult(req.Context(), results, &Result{
+
+			results <- &Result{
 				Err:           err,
 				RoundTripName: rtn,
-			})
+			}
 		}
 	}()
 
 	beresp, err := rt.RoundTrip(req)
 	span.End()
-	sendResult(req.Context(), results, &Result{
+
+	results <- &Result{
 		Beresp:        beresp,
 		Err:           err,
 		RoundTripName: rtn,
-	})
+	}
 }
