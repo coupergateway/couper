@@ -16,6 +16,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
@@ -324,6 +325,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		rolesClaim string
 		roles      interface{}
 		wantErr    bool
+		expWarn    int
 		expScopes  []string
 	}{
 		{
@@ -333,6 +335,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			nil,
 			false,
+			0,
 			[]string{},
 		},
 		{
@@ -342,6 +345,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			0,
 			[]string{"foo", "bar"},
 		},
 		{
@@ -351,6 +355,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			0,
 			[]string{"foo", "bar"},
 		},
 		{
@@ -360,6 +365,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			0,
 			[]string{"foo", "bar"},
 		},
 		{
@@ -369,60 +375,67 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
+			0,
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: error: boolean",
+			"scope: warn: boolean",
 			"scope",
 			true,
 			"",
 			nil,
-			true,
+			false,
+			1,
 			[]string{},
 		},
 		{
-			"scope: error: number",
+			"scope: warn: number",
 			"scope",
 			1.23,
 			"",
 			nil,
-			true,
+			false,
+			1,
 			[]string{},
 		},
 		{
-			"scope: error: list of bool",
+			"scope: warn: list of bool",
 			"scope",
 			[]bool{true, false},
 			"",
 			nil,
-			true,
+			false,
+			2,
 			[]string{},
 		},
 		{
-			"scope: error: list of number",
+			"scope: warn: list of number",
 			"scope",
 			[]int{1, 2},
 			"",
 			nil,
-			true,
+			false,
+			2,
 			[]string{},
 		},
 		{
-			"scope: error: mixed list",
+			"scope: warn: mixed list",
 			"scope",
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			true,
-			[]string{},
+			false,
+			1,
+			[]string{"eins"},
 		},
 		{
-			"scope: error: object",
+			"scope: warn: object",
 			"scope",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			true,
+			false,
+			1,
 			[]string{},
 		},
 		{
@@ -432,6 +445,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			"admin",
 			false,
+			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -441,6 +455,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			"user1 user2",
 			false,
+			0,
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -450,6 +465,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			"user1 user2 user1",
 			false,
+			0,
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -459,6 +475,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rollen",
 			[]string{"user1", "user2"},
 			false,
+			0,
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -468,6 +485,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rollen",
 			[]string{"user1", "user2", "user2"},
 			false,
+			0,
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -477,6 +495,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rollen",
 			[]string{"admin", "user1"},
 			false,
+			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -486,61 +505,68 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"rollen",
 			[]string{"admin", "user2"},
 			false,
+			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"roles: error: boolean",
+			"roles: warn: boolean",
 			"",
 			nil,
 			"roles",
 			true,
-			true,
-			[]string{},
+			false,
+			1,
+			[]string{"default"},
 		},
 		{
-			"roles: error: number",
+			"roles: warn: number",
 			"",
 			nil,
 			"roles",
 			1.23,
-			true,
-			[]string{},
+			false,
+			1,
+			[]string{"default"},
 		},
 		{
-			"roles: error: list of bool",
+			"roles: warn: list of bool",
 			"",
 			nil,
 			"roles",
 			[]bool{true, false},
-			true,
-			[]string{},
+			false,
+			2,
+			[]string{"default"},
 		},
 		{
-			"roles: error: list of number",
+			"roles: warn: list of number",
 			"",
 			nil,
 			"roles",
 			[]int{1, 2},
-			true,
-			[]string{},
+			false,
+			2,
+			[]string{"default"},
 		},
 		{
-			"roles: error: mixed list",
+			"roles: warn: mixed list",
 			"",
 			nil,
 			"roles",
 			[]interface{}{"eins", 2},
-			true,
-			[]string{},
+			false,
+			1,
+			[]string{"default"},
 		},
 		{
-			"roles: error: object",
+			"roles: warn: object",
 			"",
 			nil,
 			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
-			true,
-			[]string{},
+			false,
+			1,
+			[]string{"default"},
 		},
 		{
 			"combi 1",
@@ -549,6 +575,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			[]string{"user2"},
 			false,
+			0,
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -558,6 +585,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			"admin",
 			false,
+			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
 	}
@@ -609,6 +637,17 @@ func Test_JWT_yields_scopes(t *testing.T) {
 					}
 				}
 
+			}
+
+			entries := hook.AllEntries()
+			if tt.expWarn != len(entries) {
+				subT.Errorf("Number of warnings does not match, want: %d, got %d", tt.expWarn, len(entries))
+			} else {
+				for _, entry := range entries {
+					if entry.Level != logrus.WarnLevel {
+						subT.Errorf("Expected warnings")
+					}
+				}
 			}
 		})
 	}
