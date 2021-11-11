@@ -286,13 +286,13 @@ func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, ret
 }
 
 func newRestartableCommand(ctx context.Context, cmd string) (command.Cmd, chan<- struct{}) {
-	signal := make(chan struct{})
+	sig := make(chan struct{}, 1)
 	watchContext, cancelFn := context.WithCancel(ctx)
 	go func() {
-		<-signal
+		<-sig
 		cancelFn()
 	}()
-	return command.NewCommand(watchContext, cmd), signal
+	return command.NewCommand(watchContext, cmd), sig
 }
 
 func debugListenAndServe(logEntry *logrus.Entry) {
@@ -312,11 +312,11 @@ func debugListenAndServe(logEntry *logrus.Entry) {
 		}
 	}()
 	go func() {
-		sigCh := make(chan os.Signal)
+		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
 		defer cancel()
-		traceSrv.Shutdown(ctx)
+		_ = traceSrv.Shutdown(ctx)
 	}()
 }
