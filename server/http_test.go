@@ -390,13 +390,8 @@ server "zipzip" {
 `
 	helper := test.New(t)
 
-	rawPayload := []byte(`{
-  "prop1": [
-    "item1",
-    "item2",
-  ],
-  "prop2": true
-}`)
+	rawPayload, err := os.ReadFile("http.go")
+	helper.Must(err)
 
 	w := &bytes.Buffer{}
 	zw, err := gzip.NewWriterLevel(w, gzip.BestCompression)
@@ -430,6 +425,9 @@ server "zipzip" {
 		{"read gzip bytes", "", `set_response_headers = {
    					resp = json_encode(backend_responses.default.json_body)
 				}`},
+		{"read and write gzip bytes", "gzip", `set_response_headers = {
+   					resp = json_encode(backend_responses.default.json_body)
+				}`},
 	} {
 		t.Run(testcase.name, func(st *testing.T) {
 			h := test.New(st)
@@ -452,8 +450,24 @@ server "zipzip" {
 			h.Must(err)
 			h.Must(res.Body.Close())
 
-			if testcase.acceptEncoding == "gzip" && !bytes.Equal(b, compressedPayload) {
-				st.Errorf("Expected same content with best compression level, want %d bytes, got %d bytes", len(b), len(compressedPayload))
+			if testcase.acceptEncoding == "gzip" {
+				if testcase.attributes == "" && !bytes.Equal(b, compressedPayload) {
+					st.Errorf("Expected same content with best compression level, want %d bytes, got %d bytes", len(b), len(compressedPayload))
+				}
+				if testcase.attributes != "" {
+					if bytes.Equal(b, compressedPayload) {
+						st.Errorf("Expected different bytes due to compression level")
+					}
+
+					gr, err := gzip.NewReader(bytes.NewReader(b))
+					h.Must(err)
+					result, err := io.ReadAll(gr)
+					h.Must(err)
+					if !bytes.Equal(result, rawPayload) {
+						st.Error("Expected same (raw) content")
+					}
+				}
+
 			} else if testcase.acceptEncoding == "" && !bytes.Equal(b, rawPayload) {
 				st.Error("Expected same (raw) content")
 			}
