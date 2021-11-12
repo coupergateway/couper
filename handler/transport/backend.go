@@ -383,6 +383,11 @@ func setGzipReader(beresp *http.Response) error {
 		return nil
 	}
 
+	bufOpt := beresp.Request.Context().Value(request.BufferOptions).(eval.BufferOption)
+	if !bufOpt.Response() {
+		return nil
+	}
+
 	var src io.Reader
 	src, err := gzip.NewReader(beresp.Body)
 	if err != nil {
