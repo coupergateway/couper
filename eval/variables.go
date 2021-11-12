@@ -1,12 +1,12 @@
 package eval
 
 const (
+	Backends         = "backends"
 	BackendRequest   = "backend_request"
 	BackendRequests  = "backend_requests"
 	BackendResponse  = "backend_response"
 	BackendResponses = "backend_responses"
 	BackendDefault   = "default"
-	BackendProbes    = "backend_probes"
 	State            = "state"
 	Body             = "body"
 	ClientRequest    = "request"
@@ -16,6 +16,7 @@ const (
 	Environment      = "env"
 	FormBody         = "form_body"
 	Headers          = "headers"
+	Health           = "health"
 	HttpStatus       = "status"
 	ID               = "id"
 	JsonBody         = "json_body"

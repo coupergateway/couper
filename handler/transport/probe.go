@@ -23,6 +23,13 @@ const (
 	StateDown
 )
 
+var healthStateLabels = []string{
+	"invalid",
+	"healthy",
+	"failing",
+	"unhealthy",
+}
+
 var _ context.Context = &eval.Context{}
 
 type state int
@@ -42,16 +49,7 @@ type Probe struct {
 }
 
 func (s state) String() string {
-	switch s {
-	case StateOk:
-		return "OK"
-	case StateDegraded:
-		return "DEGRADED"
-	case StateDown:
-		return "DOWN"
-	default:
-		return "INVALID"
-	}
+	return healthStateLabels[s]
 }
 
 func (p Probe) String() string {
@@ -83,21 +81,32 @@ func (p *Probe) probe() {
 			p.Status = res.StatusCode
 		}
 
+		var errorMessage string
 		if err != nil || !p.Opts.ExpectStatus[res.StatusCode] || !contains(res.Body, p.Opts.ExpectText) {
 			if p.Failure++; p.Failure < p.Opts.FailureThreshold {
 				p.State = StateDegraded
 			} else {
 				p.State = StateDown
 			}
+			if err == nil {
+				errorMessage = "Unexpected status or text"
+			} else {
+				errorMessage = err.Error()
+			}
 			p.Log.LogEntry().WithError(errors.Backend.Label(p.State.String()).With(err))
 		} else {
 			p.Failure = 0
 			p.State = StateOk
+			errorMessage = ""
 		}
 
 		//fmt.Println(p)
 		if prevState != p.State {
-			probe.BackendProbes.Store(p.Name, p.State.String())
+			probe.BackendProbes.Store(p.Name, probe.HealthInfo{
+				State:   p.State.String(),
+				Error:   errorMessage,
+				Healthy: p.State != StateDown,
+			})
 		}
 
 		time.Sleep(p.Opts.Interval)

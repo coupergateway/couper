@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -2638,18 +2639,74 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 	defer shutdown()
 
 	type testCase struct {
-		name        string
-		path        string
-		expectation string
+		name   string
+		path   string
+		expect string
 	}
 
 	time.Sleep(2 * time.Second)
+	healthyJSON := `{"error":"","healthy":true,"state":"healthy"}`
 
 	for _, tc := range []testCase{
 		{
-			name:        "health status",
-			path:        "/health",
-			expectation: `[null,"OK","OK","OK","OK","DOWN","DOWN","DOWN","DOWN","DEGRADED"]`,
+			"unknown backend",
+			"/unknown",
+			`null`,
+		},
+		{
+			"healthy backend",
+			"/healthy/default",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ expect_status",
+			"/healthy/expect_status",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ expect_text",
+			"/healthy/expect_text",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ path",
+			"/healthy/path",
+			healthyJSON,
+		},
+		{
+			"unhealthy backend: timeout",
+			"/unhealthy/timeout",
+			`{"error":"Get \"http://1.2.3.4\": proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend: unexpected status code",
+			"/unhealthy/bad_status",
+			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ expect_status: unexpected status code",
+			"/unhealthy/bad_expect_status",
+			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ expect_text: unexpected text",
+			"/unhealthy/bad_expect_text",
+			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend: unexpected status code",
+			"/unhealthy/bad_status",
+			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ path: unexpected status code",
+			"/unhealthy/bad_path",
+			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"failing backend: timeout but threshold not reached",
+			"/failing",
+			`{"error":"Get \"http://1.2.3.4\": proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":true,"state":"failing"}`,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
@@ -2661,9 +2718,11 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			res, err := client.Do(req)
 			h.Must(err)
 
-			states := res.Header.Get("States")
-			if states != tc.expectation {
-				t.Errorf("%s: Unexpected states:\n\tWant: %s\n\tGot:  %s", tc.name, tc.expectation, states)
+			bytes, _ := ioutil.ReadAll(res.Body)
+			body := string(bytes)
+
+			if body != tc.expect {
+				t.Errorf("%s: Unexpected states:\n\tWant: %s\n\tGot:  %s", tc.name, tc.expect, body)
 			}
 		})
 	}

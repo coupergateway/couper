@@ -1,20 +1,57 @@
-server "backend_probes" {
-  endpoint "/health" {
+server {
+  endpoint "/unknown" {
     response {
-      headers = {
-        states = json_encode([
-          backend_probes.UNKNOWN.state,
-          backend_probes.healthy.state,
-          backend_probes.healthy2.state,
-          backend_probes.healthy3.state,
-          backend_probes.healthy4.state,
-          backend_probes.down.state,
-          backend_probes.down2.state,
-          backend_probes.down3.state,
-          backend_probes.down4.state,
-          backend_probes.degraded.state
-        ])
-      }
+      json_body = backends.UNKNOWN.health
+    }
+  }
+  endpoint "/healthy/default" {
+    response {
+      json_body = backends.healthy.health
+    }
+  }
+  endpoint "/healthy/expect_status" {
+    response {
+      json_body = backends.healthy_expect_status.health
+    }
+  }
+  endpoint "/healthy/expect_text" {
+    response {
+      json_body = backends.healthy_expect_text.health
+    }
+  }
+  endpoint "/healthy/path" {
+    response {
+      json_body = backends.healthy_path.health
+    }
+  }
+  endpoint "/unhealthy/timeout" {
+    response {
+      json_body = backends.unhealthy_timeout.health
+    }
+  }
+  endpoint "/unhealthy/bad_status" {
+    response {
+      json_body = backends.unhealthy_bad_status.health
+    }
+  }
+  endpoint "/unhealthy/bad_expect_status" {
+    response {
+      json_body = backends.unhealthy_bad_expect_status.health
+    }
+  }
+  endpoint "/unhealthy/bad_expect_text" {
+    response {
+      json_body = backends.unhealthy_bad_expect_text.health
+    }
+  }
+  endpoint "/unhealthy/bad_path" {
+    response {
+      json_body = backends.unhealthy_bad_path.health
+    }
+  }
+  endpoint "/failing" {
+    response {
+      json_body = backends.failing.health
     }
   }
 
@@ -22,29 +59,32 @@ server "backend_probes" {
     request "default" {
       backend = "healthy"
     }
-    request "healthy2" {
-      backend = "healthy2"
+    request "healthy_expect_status" {
+      backend = "healthy_expect_status"
     }
-    request "healthy3" {
-      backend = "healthy3"
+    request "healthy_expect_text" {
+      backend = "healthy_expect_text"
     }
-    request "healthy4" {
-      backend = "healthy4"
+    request "healthy_path" {
+      backend = "healthy_path"
     }
-    request "down" {
-      backend = "down"
+    request "unhealthy_timeout" {
+      backend = "unhealthy_timeout"
     }
-    request "down2" {
-      backend = "down2"
+    request "unhealthy_bad_status" {
+      backend = "unhealthy_bad_status"
     }
-    request "down3" {
-      backend = "down3"
+    request "unhealthy_bad_expect_status" {
+      backend = "unhealthy_bad_expect_status"
     }
-    request "down4" {
-      backend = "down4"
+    request "unhealthy_bad_expect_text" {
+      backend = "unhealthy_bad_expect_text"
     }
-    request "degraded" {
-      backend = "degraded"
+    request "unhealthy_bad_path" {
+      backend = "unhealthy_bad_path"
+    }
+    request "failing" {
+      backend = "failing"
     }
   }
 }
@@ -54,46 +94,52 @@ definitions {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {}
   }
-  backend "healthy2" {
+  backend "healthy_expect_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/not-there"
     beta_health {
       expect_status = 404
     }
   }
-  backend "healthy3" {
+  backend "healthy_expect_text" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
       expect_text = "👍"
     }
   }
-  backend "healthy4" {
+  backend "healthy_path" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
       path = "/anything?foo=bar"
       expect_text = "\"RawQuery\":\"foo=bar\""
     }
   }
-  backend "down" {
+  backend "unhealthy_timeout" {
     origin = "http://1.2.3.4"
     beta_health {}
   }
-  backend "down2" {
+  backend "unhealthy_bad_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}"
     beta_health {}
   }
-  backend "down3" {
+  backend "unhealthy_bad_expect_status" {
+    origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
+    beta_health {
+      expect_status = 500
+    }
+  }
+  backend "unhealthy_bad_expect_text" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
       expect_text = "down?"
     }
   }
-  backend "down4" {
+  backend "unhealthy_bad_path" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
       path = "/"
     }
   }
-  backend "degraded" {
+  backend "failing" {
     origin = "http://1.2.3.4"
     beta_health {
       failure_threshold = 4
