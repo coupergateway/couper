@@ -25,7 +25,6 @@ type Backend struct {
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
 	Remain                 hcl.Body `hcl:",remain"`
 
-
 	// explicit configuration on load
 	OAuth2 *OAuth2ReqAuth
 }

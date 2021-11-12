@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"net/http"
 	"net/url"
 	"time"
 )
@@ -10,7 +11,6 @@ var defaultHealthCheck = &HealthCheck{
 	FailureThreshold: 2,
 	Interval:         time.Second,
 	Timeout:          time.Second,
-	Path:             nil,
 	ExpectStatus:     map[int]bool{200: true, 204: true, 301: true},
 	ExpectText:       "",
 }
@@ -19,9 +19,9 @@ type HealthCheck struct {
 	FailureThreshold uint
 	Interval         time.Duration
 	Timeout          time.Duration
-	Path             *url.URL
 	ExpectStatus     map[int]bool
 	ExpectText       string
+	Request          *http.Request
 }
 
 type Health struct {
@@ -34,7 +34,7 @@ type Health struct {
 	Remain           hcl.Body `hcl:",remain"`
 }
 
-func NewHealthCheck(options *Health) (*HealthCheck, error) {
+func NewHealthCheck(baseURL string, options *Health) (*HealthCheck, error) {
 	healthCheck := *defaultHealthCheck
 
 	var err error
@@ -62,9 +62,17 @@ func NewHealthCheck(options *Health) (*HealthCheck, error) {
 			healthCheck.ExpectStatus = map[int]bool{options.ExpectStatus: true}
 		}
 		healthCheck.ExpectText = options.ExpectText
-		if options.Path != "" {
-			healthCheck.Path = createURL(options.Path)
+
+		request, err := http.NewRequest(http.MethodGet, baseURL, nil)
+		if err != nil {
+			return nil, err
 		}
+
+		if options.Path != "" {
+			request.URL = request.URL.ResolveReference(createURL(options.Path))
+		}
+
+		healthCheck.Request = request
 	}
 	return &healthCheck, err
 }

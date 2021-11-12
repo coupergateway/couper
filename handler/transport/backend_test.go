@@ -358,7 +358,14 @@ func TestBackend_director(t *testing.T) {
 }
 
 func TestBackend_health_check(t *testing.T) {
-	type expectation config.HealthCheck
+	type expectation struct {
+		FailureThreshold uint
+		Interval         time.Duration
+		Timeout          time.Duration
+		ExpectStatus     map[int]bool
+		ExpectText       string
+		URL              *url.URL
+	}
 
 	type testCase struct {
 		name        string
@@ -376,7 +383,6 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
-				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -397,9 +403,9 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          9 * time.Minute,
 				ExpectStatus:     map[int]bool{418: true},
 				ExpectText:       "roger roger",
-				Path: &url.URL{
-					Scheme:   "",
-					Host:     "",
+				URL: &url.URL{
+					Scheme:   "http",
+					Host:     "origin:8080",
 					Path:     "/gsund",
 					RawQuery: "?",
 				},
@@ -412,7 +418,6 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
-				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -426,7 +431,6 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
-				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -441,7 +445,6 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
-				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -455,7 +458,6 @@ func TestBackend_health_check(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
-				Path:             nil,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
 			},
@@ -464,8 +466,16 @@ func TestBackend_health_check(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health, err := config.NewHealthCheck(tc.health)
+			health, err := config.NewHealthCheck("http://origin:8080/foo", tc.health)
 			h.Must(err)
+
+			if tc.expectation.URL != nil {
+				if *tc.expectation.URL != *health.Request.URL {
+					t.Errorf("Unexpected health check URI:\n\tWant: %#v\n\tGot:  %#v", tc.expectation.URL, health.Request.URL)
+				}
+				tc.expectation.URL = nil
+			}
+			health.Request = nil
 
 			if fmt.Sprint(tc.expectation) != fmt.Sprint(*health) {
 				t.Errorf("Unexpected health options:\n\tWant: %v\n\tGot:  %v", tc.expectation, *health)

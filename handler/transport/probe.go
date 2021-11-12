@@ -60,17 +60,12 @@ func (p Probe) String() string {
 
 func NewProbe(b *Backend) {
 	p := &Probe{
-		Log:  b.upstreamLog,
-		Name: b.name,
-		Opts: b.options.HealthCheck,
-		Req:  b.options.Request,
-
+		Log:   b.upstreamLog,
+		Name:  b.name,
+		Opts:  b.options.HealthCheck,
 		State: StateInvalid,
 	}
 
-	if p.Opts.Path != nil {
-		p.Req.URL = p.Req.URL.ResolveReference(p.Opts.Path)
-	}
 	go p.probe()
 }
 
@@ -79,7 +74,7 @@ func (p *Probe) probe() {
 		ctx, cancel := context.WithTimeout(context.Background(), p.Opts.Timeout)
 		defer cancel()
 
-		res, err := http.DefaultClient.Do(p.Req.WithContext(ctx))
+		res, err := http.DefaultClient.Do(p.Opts.Request.WithContext(ctx))
 
 		p.Counter++
 		prevState := p.State
