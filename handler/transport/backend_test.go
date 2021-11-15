@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avenga/couper/errors"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -20,7 +22,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
@@ -143,13 +144,12 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
-	req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, eval.BufferResponse))
 	req.Header.Set("Accept-Encoding", "br, gzip")
 	res, err := backend.RoundTrip(req)
 	helper.Must(err)
 
-	if res.ContentLength != 60 {
-		t.Errorf("Unexpected C/L: %d", res.ContentLength)
+	if l := res.Header.Get("Content-Length"); l != "60" {
+		t.Errorf("Unexpected C/L: %s", l)
 	}
 
 	n, err := io.Copy(io.Discard, res.Body)
