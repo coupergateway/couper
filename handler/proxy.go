@@ -117,10 +117,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	transport.RemoveConnectionHeaders(beresp.Header)
-
-	for _, h := range transport.HopHeaders {
-		beresp.Header.Del(h)
-	}
+	transport.RemoveHopHeaders(beresp.Header)
 
 	err = eval.ApplyResponseContext(req.Context(), p.context, beresp)
 
