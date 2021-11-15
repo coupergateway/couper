@@ -13,11 +13,13 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"text/template"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config/configload"
@@ -302,6 +304,9 @@ server "zipzip" {
 		proxy {
 			backend {
 				origin = "%s"
+				set_response_headers = {
+   					resp = json_encode(backend_responses.default)
+				}
 			}
 		}
 	}
@@ -359,11 +364,114 @@ server "zipzip" {
 	res, err = newClient().Do(req)
 	helper.Must(err)
 
-	if res.StatusCode != http.StatusBadGateway {
-		t.Errorf("Expected status %d, got: %d", http.StatusBadGateway, res.StatusCode)
-		for _, entry := range loghook.AllEntries() {
-			t.Log(entry.String())
+	for _, entry := range loghook.AllEntries() {
+		if entry.Level != logrus.ErrorLevel {
+			continue
 		}
+		if strings.HasPrefix(entry.Message, "internal server error: body copy failed") {
+			return
+		}
+	}
+	t.Errorf("expected 'body copy failed' log error")
+}
+
+func TestHTTPServer_ServePipedGzip(t *testing.T) {
+	configFile := `
+server "zipzip" {
+	endpoint "/**" {
+		proxy {
+			backend {
+				origin = "%s"
+				%s
+			}
+		}
+	}
+}
+`
+	helper := test.New(t)
+
+	rawPayload, err := os.ReadFile("http.go")
+	helper.Must(err)
+
+	w := &bytes.Buffer{}
+	zw, err := gzip.NewWriterLevel(w, gzip.BestCompression)
+	helper.Must(err)
+
+	_, err = zw.Write(rawPayload)
+	helper.Must(err)
+	helper.Must(zw.Close())
+
+	compressedPayload := w.Bytes()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept-Encoding") == "gzip" {
+			rw.Header().Set("Content-Encoding", "gzip")
+			rw.Header().Set("Content-Length", strconv.Itoa(len(compressedPayload)))
+			_, err = rw.Write(compressedPayload)
+			helper.Must(err)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		_, err = rw.Write(rawPayload)
+		helper.Must(err)
+	}))
+
+	for _, testcase := range []struct {
+		name           string
+		acceptEncoding string
+		attributes     string
+	}{
+		{"piped gzip bytes", "gzip", ""},
+		{"read gzip bytes", "", `set_response_headers = {
+   					resp = json_encode(backend_responses.default.json_body)
+				}`},
+		{"read and write gzip bytes", "gzip", `set_response_headers = {
+   					resp = json_encode(backend_responses.default.json_body)
+				}`},
+	} {
+		t.Run(testcase.name, func(st *testing.T) {
+			h := test.New(st)
+			shutdown, _ := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL, testcase.attributes)), h)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080", nil)
+			h.Must(err)
+			req.Header.Set("Accept-Encoding", testcase.acceptEncoding)
+
+			res, err := test.NewHTTPClient().Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				st.Errorf("Expected OK, got: %s", res.Status)
+				return
+			}
+
+			b, err := io.ReadAll(res.Body)
+			h.Must(err)
+			h.Must(res.Body.Close())
+
+			if testcase.acceptEncoding == "gzip" {
+				if testcase.attributes == "" && !bytes.Equal(b, compressedPayload) {
+					st.Errorf("Expected same content with best compression level, want %d bytes, got %d bytes", len(b), len(compressedPayload))
+				}
+				if testcase.attributes != "" {
+					if bytes.Equal(b, compressedPayload) {
+						st.Errorf("Expected different bytes due to compression level")
+					}
+
+					gr, err := gzip.NewReader(bytes.NewReader(b))
+					h.Must(err)
+					result, err := io.ReadAll(gr)
+					h.Must(err)
+					if !bytes.Equal(result, rawPayload) {
+						st.Error("Expected same (raw) content")
+					}
+				}
+
+			} else if testcase.acceptEncoding == "" && !bytes.Equal(b, rawPayload) {
+				st.Error("Expected same (raw) content")
+			}
+		})
 	}
 }
 

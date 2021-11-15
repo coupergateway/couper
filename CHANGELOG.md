@@ -14,9 +14,11 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * Handling of [`accept_forwarded_url`](./docs/REFERENCE.md#settings-block) "host" if `H-Forwarded-Host` request header field contains a port ([#360](https://github.com/avenga/couper/pull/360))
-  * Setting `Vary` response header fields for [CORS](./doc/REFERENCE.md#cors-block) ([#362](https://github.com/avenga/couper/pull/362))
+  * Setting `Vary` response header fields for [CORS](./docs/REFERENCE.md#cors-block) ([#362](https://github.com/avenga/couper/pull/362))
   * Use of referenced backends in [OAuth2 CC Blocks](./docs/REFERENCE.md#oauth2-cc-block) ([#321](https://github.com/avenga/couper/issues/321))
-  * [CORS](./doc/REFERENCE.md#cors-block) preflight requests are not blocked by access controls any more ([#366](https://github.com/avenga/couper/pull/366))
+  * [CORS](./docs/REFERENCE.md#cors-block) preflight requests are not blocked by access controls anymore ([#366](https://github.com/avenga/couper/pull/366))
+  * Reduced memory usage for backend response bodies which just get piped to the client and are not required to be read by Couper due to a variable references ([#375](https://github.com/avenga/couper/pull/375))
+    * However, if a huge message body is passed and additionally referenced via e.g. `json_body`, Couper may require a lot of memory for storing the data structure.
 
 ---
 

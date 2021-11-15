@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -14,6 +16,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/ascii"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/server/writer"
@@ -26,10 +29,9 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
-	backend      http.RoundTripper
-	context      hcl.Body
-	logger       *logrus.Entry
-	reverseProxy *httputil.ReverseProxy
+	backend http.RoundTripper
+	context hcl.Body
+	logger  *logrus.Entry
 }
 
 func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
@@ -38,18 +40,7 @@ func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Pr
 		context: ctx,
 		logger:  logger,
 	}
-	rp := &httputil.ReverseProxy{
-		Director: proxy.director,
-		ErrorHandler: func(rw http.ResponseWriter, _ *http.Request, err error) {
-			if rec, ok := rw.(*transport.Recorder); ok {
-				rec.SetError(err)
-			}
-		},
-		ErrorLog:  newErrorLogWrapper(logger),
-		Transport: backend,
-	}
 
-	proxy.reverseProxy = rp
 	return proxy
 }
 
@@ -79,38 +70,71 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		*req = *req.WithContext(ctx)
 	}
 
-	var rw *writer.Response
-	if hj, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
-		rw = hj
-	}
-	rec := transport.NewRecorder(rw)
-
-	if err = p.registerWebsocketsResponse(req, rw); err != nil {
+	if err = p.registerWebsocketsResponse(req); err != nil {
 		return nil, err
 	}
 
-	p.reverseProxy.ServeHTTP(rec, req)
-	beresp, err := rec.Response(req)
-	if err != nil {
-		return beresp, err
+	// the chore reverse-proxy part
+	if req.ContentLength == 0 {
+		req.Body = nil // Issue 16036: nil Body for http.Transport retries
 	}
-	err = eval.ApplyResponseContext(req.Context(), p.context, beresp) // TODO: log only
+	if req.Body != nil {
+		defer req.Body.Close()
+	}
+	req.Close = false
+
+	reqUpType := upgradeType(req.Header)
+	if !ascii.IsPrint(reqUpType) {
+		return nil, fmt.Errorf("client tried to switch to invalid protocol %q", reqUpType)
+	}
+
+	transport.RemoveConnectionHeaders(req.Header)
+
+	// Remove hop-by-hop headers to the backend. Especially
+	// important is "Connection" because we want a persistent
+	// connection, regardless of what the client sent to us.
+	for _, h := range transport.HopHeaders {
+		req.Header.Del(h)
+	}
+
+	// TODO: trailer header here
+
+	// After stripping all the hop-by-hop connection headers above, add back any
+	// necessary for protocol upgrades, such as for websockets.
+	if reqUpType != "" {
+		req.Header.Set("Connection", "Upgrade")
+		req.Header.Set("Upgrade", reqUpType)
+	}
+
+	beresp, err := p.backend.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deal with 101 Switching Protocols responses: (WebSocket, h2c, etc)
+	if beresp.StatusCode == http.StatusSwitchingProtocols {
+		return beresp, p.handleUpgradeResponse(req, beresp)
+	}
+
+	transport.RemoveConnectionHeaders(beresp.Header)
+	transport.RemoveHopHeaders(beresp.Header)
+
+	err = eval.ApplyResponseContext(req.Context(), p.context, beresp)
+
 	return beresp, err
 }
 
-// director no-op method is still required by httputil.ReverseProxy.
-func (p *Proxy) director(_ *http.Request) {}
-
-// ErrorWrapper logs httputil.ReverseProxy internals with our own logrus.Entry.
-type ErrorWrapper struct{ l logrus.FieldLogger }
-
-func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
-	e.l.Error(strings.Replace(string(p), "\n", "", 1))
-	return len(p), nil
-}
-
-func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
-	return log.New(&ErrorWrapper{logger}, "", log.Lshortfile)
+func upgradeType(h http.Header) string {
+	conn, exist := h["Connection"]
+	if !exist {
+		return ""
+	}
+	for _, v := range conn {
+		if strings.ToLower(v) == "upgrade" {
+			return h.Get("Upgrade")
+		}
+	}
+	return ""
 }
 
 func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
@@ -160,7 +184,7 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 	return nil
 }
 
-func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Response) error {
+func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
 	ctx := req.Context()
 
 	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
@@ -177,8 +201,9 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request, rw *writer.Respons
 	}
 
 	evalCtx := eval.ContextFromRequest(req)
-	if rw != nil {
-		rw.AddModifier(evalCtx, []hcl.Body{wsBody, p.context})
+
+	if rw, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
+		rw.AddModifier(evalCtx, wsBody, p.context)
 	}
 
 	return nil
@@ -196,4 +221,220 @@ func (p *Proxy) getWebsocketsBody() (hcl.Body, error) {
 	}
 
 	return wss[0].Body, nil
+}
+
+func (p *Proxy) handleUpgradeResponse(req *http.Request, res *http.Response) error {
+	rw, ok := req.Context().Value(request.ResponseWriter).(http.ResponseWriter)
+	if !ok {
+		return fmt.Errorf("can't switch protocols using non-ResponseWriter type %T", rw)
+	}
+
+	reqUpType := upgradeType(req.Header)
+	resUpType := upgradeType(res.Header)
+	if !ascii.IsPrint(resUpType) { // We know reqUpType is ASCII, it's checked by the caller.
+		return fmt.Errorf("backend tried to switch to invalid protocol %q", resUpType)
+	}
+	if !ascii.EqualFold(reqUpType, resUpType) {
+		return fmt.Errorf("backend tried to switch protocol %q when %q was requested", resUpType, reqUpType)
+	}
+
+	hj, ok := rw.(http.Hijacker)
+	if !ok {
+		return fmt.Errorf("can't switch protocols using non-Hijacker ResponseWriter type %T", rw)
+	}
+	backConn, ok := res.Body.(io.ReadWriteCloser)
+	if !ok {
+		return fmt.Errorf("internal error: 101 switching protocols response with non-writable body")
+	}
+
+	backConnCloseCh := make(chan bool)
+	go func() {
+		// Ensure that the cancellation of a request closes the backend.
+		// See issue https://golang.org/issue/35559.
+		select {
+		case <-req.Context().Done():
+		case <-backConnCloseCh:
+		}
+		backConn.Close()
+	}()
+
+	defer close(backConnCloseCh)
+
+	conn, brw, err := hj.Hijack()
+	if err != nil {
+		return fmt.Errorf("hijack failed on protocol switch: %v", err)
+	}
+	defer conn.Close()
+
+	copyHeader(rw.Header(), res.Header)
+
+	res.Header = rw.Header()
+	res.Body = nil // so res.Write only writes the headers; we have res.Body in backConn above
+	if err := res.Write(brw); err != nil {
+		return fmt.Errorf("response write: %v", err)
+	}
+	if err := brw.Flush(); err != nil {
+		return fmt.Errorf("response flush: %v", err)
+	}
+	errc := make(chan error, 1)
+	spc := switchProtocolCopier{user: conn, backend: backConn}
+	go spc.copyToBackend(errc)
+	go spc.copyFromBackend(errc)
+	<-errc
+	return nil
+}
+
+func copyHeader(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
+}
+
+func flushInterval(res *http.Response) time.Duration {
+	resCT := res.Header.Get("Content-Type")
+
+	// For Server-Sent Events responses, flush immediately.
+	// The MIME type is defined in https://www.w3.org/TR/eventsource/#text-event-stream
+	if resCT == "text/event-stream" {
+		return -1 // negative means immediately
+	}
+
+	// We might have the case of streaming for which Content-Length might be unset.
+	if res.ContentLength == -1 {
+		return -1
+	}
+
+	return time.Millisecond * 100
+}
+
+var bufferPool httputil.BufferPool
+
+func copyResponse(dst io.Writer, src io.Reader, flushInterval time.Duration) error {
+	if flushInterval != 0 {
+		if wf, ok := dst.(writeFlusher); ok {
+			mlw := &maxLatencyWriter{
+				dst:     wf,
+				latency: flushInterval,
+			}
+			defer mlw.stop()
+
+			// set up initial timer so headers get flushed even if body writes are delayed
+			mlw.flushPending = true
+			mlw.t = time.AfterFunc(flushInterval, mlw.delayedFlush)
+
+			dst = mlw
+		}
+	}
+
+	var buf []byte
+	if bufferPool != nil {
+		buf = bufferPool.Get()
+		defer bufferPool.Put(buf)
+	}
+	_, err := copyBuffer(dst, src, buf)
+	return err
+}
+
+// copyBuffer returns any write errors or non-EOF read errors, and the amount
+// of bytes written.
+func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error) {
+	if len(buf) == 0 {
+		buf = make([]byte, 32*1024)
+	}
+	var written int64
+	for {
+		nr, rerr := src.Read(buf)
+		if rerr != nil && rerr != io.EOF && rerr != context.Canceled {
+			//p.logf("httputil: ReverseProxy read error during body copy: %v", rerr)
+		}
+		if nr > 0 {
+			nw, werr := dst.Write(buf[:nr])
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if werr != nil {
+				return written, werr
+			}
+			if nr != nw {
+				return written, io.ErrShortWrite
+			}
+		}
+		if rerr != nil {
+			if rerr == io.EOF {
+				rerr = nil
+			}
+			return written, rerr
+		}
+	}
+}
+
+type writeFlusher interface {
+	io.Writer
+	http.Flusher
+}
+
+type maxLatencyWriter struct {
+	dst     writeFlusher
+	latency time.Duration // non-zero; negative means to flush immediately
+
+	mu           sync.Mutex // protects t, flushPending, and dst.Flush
+	t            *time.Timer
+	flushPending bool
+}
+
+func (m *maxLatencyWriter) Write(p []byte) (n int, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n, err = m.dst.Write(p)
+	if m.latency < 0 {
+		m.dst.Flush()
+		return
+	}
+	if m.flushPending {
+		return
+	}
+	if m.t == nil {
+		m.t = time.AfterFunc(m.latency, m.delayedFlush)
+	} else {
+		m.t.Reset(m.latency)
+	}
+	m.flushPending = true
+	return
+}
+
+func (m *maxLatencyWriter) delayedFlush() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.flushPending { // if stop was called but AfterFunc already started this goroutine
+		return
+	}
+	m.dst.Flush()
+	m.flushPending = false
+}
+
+func (m *maxLatencyWriter) stop() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.flushPending = false
+	if m.t != nil {
+		m.t.Stop()
+	}
+}
+
+// switchProtocolCopier exists so goroutines proxying data back and
+// forth have nice names in stacks.
+type switchProtocolCopier struct {
+	user, backend io.ReadWriter
+}
+
+func (c switchProtocolCopier) copyFromBackend(errc chan<- error) {
+	_, err := io.Copy(c.user, c.backend)
+	errc <- err
+}
+
+func (c switchProtocolCopier) copyToBackend(errc chan<- error) {
+	_, err := io.Copy(c.backend, c.user)
+	errc <- err
 }

@@ -313,16 +313,16 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, error) {
+	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, hcl.Body, error) {
 	beConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
-		return nil, diags
+		return nil, nil, diags
 	}
 
 	if beConf.Name == "" {
 		name, err := getBackendName(evalCtx, backendCtx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		beConf.Name = name
 	}
@@ -337,20 +337,20 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := parseDuration(beConf.TTFBTimeout, &tc.TTFBTimeout); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := parseDuration(beConf.Timeout, &tc.Timeout); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	options := &transport.BackendOptions{
@@ -360,41 +360,49 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent == nil {
-		return backend, nil
+		return backend, backendCtx, nil
 	}
 
 	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-		beConf.OAuth2 = &config.OAuth2ReqAuth{}
-
-		if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
-			return nil, diags
-		}
-
-		innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
-		if diags.HasErrors() {
-			return nil, diags
-		}
-		innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-		authBackend, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, memStore)
-		if authErr != nil {
-			return nil, authErr
-		}
-
-		// Set default value
-		if beConf.OAuth2.Retries == nil {
-			var one uint8 = 1
-			beConf.OAuth2.Retries = &one
-		}
-
-		oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, authBackend)
-		if err != nil {
-			return nil, err
-		}
-
-		return transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client, backend)
+		return newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, memStore, backend)
 	}
 
-	return backend, nil
+	return backend, backendCtx, nil
+}
+
+func newAuthBackend(evalCtx *hcl.EvalContext, beConf config.Backend, blocks hcl.Blocks, log *logrus.Entry,
+	ignoreProxyEnv bool, memStore *cache.MemoryStore, backend http.RoundTripper) (http.RoundTripper, hcl.Body, error) {
+
+	beConf.OAuth2 = &config.OAuth2ReqAuth{}
+
+	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
+		return nil, nil, diags
+	}
+
+	innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
+	if diags.HasErrors() {
+		return nil, nil, diags
+	}
+
+	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
+	authBackend, body, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, memStore)
+	if authErr != nil {
+		return nil, nil, authErr
+	}
+
+	// Set default value
+	if beConf.OAuth2.Retries == nil {
+		var one uint8 = 1
+		beConf.OAuth2.Retries = &one
+	}
+
+	oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, authBackend)
+	if err != nil {
+		return nil, body, err
+	}
+
+	rt, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client, backend)
+	return rt, body, err
 }
 
 func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {
@@ -438,7 +446,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -544,7 +552,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, _, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -598,7 +606,7 @@ func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.Ev
 	var backend http.RoundTripper
 
 	if jwtConf.Backend != nil {
-		b, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, memStore)
+		b, _, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, memStore)
 		if err != nil {
 			return nil, err
 		}

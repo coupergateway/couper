@@ -129,6 +129,12 @@ func (g *Gzip) writeHeader() {
 		g.rw.Header().Add(VaryHeader, AcceptEncodingHeader)
 	}
 
+	// With piped upstream bodies there is no gzip reader.
+	// Skip client compression if the response is already encoded.
+	if g.rw.Header().Get(ContentEncodingHeader) == GzipName {
+		g.enabled = false
+	}
+
 	if g.enabled {
 		g.rw.Header().Del(ContentLengthHeader)
 		g.rw.Header().Set(ContentEncodingHeader, GzipName)

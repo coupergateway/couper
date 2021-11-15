@@ -1,5 +1,5 @@
 .PHONY: docker-telemetry build generate image
-.PHONY: test test-docker test-coverage test-coverage-show
+.PHONY: test test-docker coverage test-coverage test-coverage-show
 
 build:
 	go build -race -v -o couper main.go
@@ -20,6 +20,8 @@ test:
 test-docker:
 	docker run --rm -v $(CURDIR):/go/app -w /go/app  golang sh -c "go test -short -count 10 -v -timeout 300s -race ./..."
 
+coverage: test-coverage test-coverage-show
+
 test-coverage:
 	go test -short -timeout 300s -covermode=count -coverprofile=ac.coverage ./accesscontrol
 	go test -short -timeout 300s -covermode=count -coverprofile=cache.coverage ./cache
@@ -32,7 +34,6 @@ test-coverage:
 	# go test -short -timeout 300s -covermode=count -coverprofile=logging.coverage ./logging
 	go test -short -timeout 300s -covermode=count -coverprofile=server.coverage ./server
 	go test -short -timeout 300s -covermode=count -coverprofile=main.coverage ./
-	$(MAKE) test-coverage-show
 
 test-coverage-show:
 	go tool cover -html=ac.coverage
