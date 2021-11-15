@@ -17,7 +17,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Setting `Vary` response header fields for [CORS](./docs/REFERENCE.md#cors-block) ([#362](https://github.com/avenga/couper/pull/362))
   * Use of referenced backends in [OAuth2 CC Blocks](./docs/REFERENCE.md#oauth2-cc-block) ([#321](https://github.com/avenga/couper/issues/321))
   * [CORS](./docs/REFERENCE.md#cors-block) preflight requests are not blocked by access controls anymore ([#366](https://github.com/avenga/couper/pull/366))
-  * Reduced memory usage for backend response bodies which just gets piped to the client and are not required to read from Couper due to a variable reference  ([#375](https://github.com/avenga/couper/pull/375))
+  * Reduced memory usage for backend response bodies which just get piped to the client and are not required to be read by Couper due to a variable references ([#375](https://github.com/avenga/couper/pull/375))
     * However, passing a huge body and a _`json_body.*`_ variable is referencing this one Couper may require some memory.
 
 ---
