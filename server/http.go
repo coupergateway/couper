@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/unit"
 
+	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
@@ -243,19 +244,16 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
 	outer := h
-	for {
-		if inner, ok := outer.(interface{ Child() http.Handler }); ok {
-			outer = inner.Child()
-			continue
-		}
-		break
+	if inner, protected := outer.(ac.ProtectedHandler); protected {
+		outer = inner.Child()
 	}
 
-	var err error
-	if limitHandler, ok := outer.(handler.BodyLimit); ok {
-		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
+	if limitHandler, ok := outer.(handler.EndpointLimit); ok {
+		if err := eval.SetGetBody(req, limitHandler.RequestLimit()); err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
 // getHost configures the host from the incoming request host based on
