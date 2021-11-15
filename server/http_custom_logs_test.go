@@ -113,3 +113,39 @@ func TestCustomLogs_Local(t *testing.T) {
 		}
 	}
 }
+
+func TestCustomLogs_Merge(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/logs/02_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	// Wait for logs
+	time.Sleep(200 * time.Millisecond)
+
+	exp := logrus.Fields{
+		"api":      true,
+		"endpoint": true,
+		"l1":       "endpoint",
+		"l2":       []interface{}{"server", "api", "endpoint"},
+		"l3":       []interface{}{"endpoint"},
+		"server":   true,
+	}
+
+	// Access log
+	got, ok := hook.AllEntries()[0].Data["custom"].(logrus.Fields)
+	if !ok {
+		t.Fatalf("expected\n%#v\ngot\n%#v", exp, got)
+	}
+	if !reflect.DeepEqual(exp, got) {
+		t.Errorf("expected\n%#v\ngot\n%#v", exp, got)
+	}
+}
