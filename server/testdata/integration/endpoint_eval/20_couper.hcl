@@ -265,6 +265,24 @@ server "cty.NilVal" {
       }
     }
   }
+
+  endpoint "/bad/dereference/string" {
+    response {
+      headers = {
+        X-Value = request.query.foo[0].ooops
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/bad/dereference/array" {
+    response {
+      headers = {
+        X-Value = request.query.foo.ooops
+        Z-Value = "y"
+      }
+    }
+  }
 }
 
 settings {

@@ -4374,6 +4374,8 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/ie2", true, "2"},
 		{"/uoe1", true, "-2"},
 		{"/uoe2", true, "true"},
+		{"/bad/dereference/string?foo=bar", false, ""},
+		{"/bad/dereference/array?foo=bar", false, ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
