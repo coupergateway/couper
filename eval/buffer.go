@@ -18,8 +18,6 @@ const (
 	BufferNone BufferOption = iota
 	BufferRequest
 	BufferResponse
-
-	// Attention: If any, the next option would be `4`, not `3`!
 )
 
 func (i BufferOption) GoString() string {
@@ -56,6 +54,9 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 			syntaxAttrs = append(syntaxAttrs, sb.Attributes)
 			for _, block := range sb.Blocks {
 				syntaxAttrs = append(syntaxAttrs, block.Body.Attributes)
+				if opt := bufferWithBlock(block.Type); opt != BufferNone {
+					result |= opt
+				}
 			}
 			continue
 		}
@@ -142,6 +143,14 @@ func bufferWithAttribute(attrName string) BufferOption {
 	switch attrName {
 	case attrAddFormParams, attrSetFormParams, attrDelFormParams:
 		return BufferRequest
+	}
+	return BufferNone
+}
+
+func bufferWithBlock(name string) BufferOption {
+	switch name {
+	case "openapi":
+		return BufferResponse
 	}
 	return BufferNone
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/ascii"
 	"github.com/avenga/couper/handler/transport"
@@ -117,10 +118,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	transport.RemoveConnectionHeaders(beresp.Header)
-
-	for _, h := range transport.HopHeaders {
-		beresp.Header.Del(h)
-	}
+	transport.RemoveHopHeaders(beresp.Header)
 
 	err = eval.ApplyResponseContext(req.Context(), p.context, beresp)
 
@@ -350,7 +348,7 @@ func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error) {
 	for {
 		nr, rerr := src.Read(buf)
 		if rerr != nil && rerr != io.EOF && rerr != context.Canceled {
-			//p.logf("httputil: ReverseProxy read error during body copy: %v", rerr)
+			return 0, errors.Server.With(rerr).Message("read error during body copy")
 		}
 		if nr > 0 {
 			nw, werr := dst.Write(buf[:nr])

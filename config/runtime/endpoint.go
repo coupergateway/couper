@@ -92,7 +92,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, berr := newBackend(confCtx, proxyConf.Backend, log, proxyEnv, memStore)
+		backend, innerBody, berr := newBackend(confCtx, proxyConf.Backend, log, proxyEnv, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -102,11 +102,11 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 			RoundTrip: proxyHandler,
 		}
 		proxies = append(proxies, p)
-		blockBodies = append(blockBodies, proxyConf.Backend, proxyConf.HCLBody())
+		blockBodies = append(blockBodies, proxyConf.Backend, innerBody, proxyConf.HCLBody())
 	}
 
 	for _, requestConf := range endpointConf.Requests {
-		backend, berr := newBackend(confCtx, requestConf.Backend, log, proxyEnv, memStore)
+		backend, innerBody, berr := newBackend(confCtx, requestConf.Backend, log, proxyEnv, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -116,6 +116,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 			Context: requestConf.Remain,
 			Name:    requestConf.Name,
 		})
+		blockBodies = append(blockBodies, requestConf.Backend, innerBody, requestConf.HCLBody())
 	}
 
 	backendConf := *DefaultBackendConf

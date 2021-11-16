@@ -329,9 +329,12 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
+			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
+
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
-				Error:        errors.DefaultJSON,
+				BufferOpts:   bufOpts,
 				Context:      helper.NewInlineContext(tc.remain),
+				Error:        errors.DefaultJSON,
 				ReqBodyLimit: 1024,
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
@@ -339,16 +342,14 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				Requests: make(producer.Requests, 0),
 			}, logger, nil)
 
-			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
+			req := httptest.NewRequest(http.MethodPost, "http://localhost/", bytes.NewReader(clientPayload))
+			helper.Must(eval.SetGetBody(req, bufOpts, 1024))
 			if tc.ct != "" {
 				req.Header.Set("Content-Type", tc.ct)
 			} else {
 				req.Header.Set("Content-Type", "application/json")
 			}
-
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
-			ctx := eval.NewContext(nil, nil).WithClientRequest(req)
-			*req = *req.WithContext(ctx)
+			req = req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
 			rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -394,6 +395,10 @@ func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results
 		Err:           err,
 	}
 	close(results)
+}
+
+func (m *mockProducerResult) Len() int {
+	return 1
 }
 
 func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {

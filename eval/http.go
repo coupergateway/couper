@@ -69,7 +69,7 @@ func SetGetBody(req *http.Request, bufferOpts BufferOption, bodyLimit int64) err
 				Message("body size exceeded: " + units.HumanSize(float64(bodyLimit)))
 		}
 
-		// reset body initially, additional body reads which are not depend on http.Request
+		// reset body initially, additional body reads which do not depend on http.Request
 		// internals like form parsing should just call GetBody() and use the returned reader.
 		SetBody(req, buf.Bytes())
 	}

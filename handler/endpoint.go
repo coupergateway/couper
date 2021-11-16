@@ -82,11 +82,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer func() {
 		rc := recover()
 		if rc != nil {
-			if rc == http.ErrAbortHandler {
-				log.WithError(errors.Proxy.Message("body copy failed")).Error()
-				return
-			}
-
 			log.WithField("panic", string(debug.Stack())).Error(rc)
 			if clientres == nil {
 				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
@@ -103,8 +98,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	proxyResults := make(producer.Results)
-	requestResults := make(producer.Results)
+	proxyResults := make(producer.Results, e.opts.Proxies.Len())
+	requestResults := make(producer.Results, e.opts.Requests.Len())
 
 	// go for it due to chan write on error
 	go e.opts.Proxies.Produce(subCtx, req, proxyResults)
@@ -243,13 +238,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	err = copyResponse(rw, clientres.Body, flushInterval(clientres))
 	if err != nil {
-		defer clientres.Body.Close()
 		// Since we're streaming the response, if we run into an error all we can do
-		// is abort the request. Issue 23643: ReverseProxy should use ErrAbortHandler
-		// on read error while copying body.
-		panic(http.ErrAbortHandler)
+		// is abort the request.
+		log.WithError(errors.Server.With(err).Message("body copy failed")).Error()
 	}
-	clientres.Body.Close()
+
+	_ = clientres.Body.Close()
 }
 
 func (e *Endpoint) newRedirect() *http.Response {
