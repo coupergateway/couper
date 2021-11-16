@@ -288,7 +288,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			protectedHandler := middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+			var protectedHandler http.Handler
+			protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
 
 			accessControl := newAC(srvConf, parentAPI)
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
