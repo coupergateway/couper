@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -19,7 +21,7 @@ import (
 const (
 	StateInvalid state = iota
 	StateOk
-	StateDegraded
+	StateFailing
 	StateDown
 )
 
@@ -39,7 +41,6 @@ type Probe struct {
 	Log  *logging.UpstreamLog
 	Name string
 	Opts *config.HealthCheck
-	Req  *http.Request
 
 	//variables reflecting status of probe
 	Counter uint
@@ -84,16 +85,16 @@ func (p *Probe) probe() {
 		var errorMessage string
 		if err != nil || !p.Opts.ExpectStatus[res.StatusCode] || !contains(res.Body, p.Opts.ExpectText) {
 			if p.Failure++; p.Failure < p.Opts.FailureThreshold {
-				p.State = StateDegraded
+				p.State = StateFailing
 			} else {
 				p.State = StateDown
 			}
 			if err == nil {
 				errorMessage = "Unexpected status or text"
+				err = fmt.Errorf(errorMessage)
 			} else {
 				errorMessage = err.Error()
 			}
-			p.Log.LogEntry().WithError(errors.Backend.Label(p.State.String()).With(err))
 		} else {
 			p.Failure = 0
 			p.State = StateOk
@@ -102,11 +103,26 @@ func (p *Probe) probe() {
 
 		//fmt.Println(p)
 		if prevState != p.State {
+			newState := p.State.String()
 			probe.BackendProbes.Store(p.Name, probe.HealthInfo{
-				State:   p.State.String(),
+				State:   newState,
 				Error:   errorMessage,
 				Healthy: p.State != StateDown,
 			})
+
+			log := p.Log.LogEntry()
+			log = log.WithFields(logrus.Fields{"backend": p.Name})
+			message := fmt.Sprintf("backend %q: new health state: %s", p.Name, newState)
+
+			switch p.State {
+			case StateOk:
+				log.Info(message)
+			case StateFailing:
+				log.Warn(message)
+			case StateDown:
+				log.Error(message)
+				p.Log.LogEntry().WithError(errors.Backend.Label(newState).With(err)).Error()
+			}
 		}
 
 		time.Sleep(p.Opts.Interval)
