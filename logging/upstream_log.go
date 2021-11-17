@@ -111,10 +111,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	if opt, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption); ok {
-		fields["buffered"] = opt.GoString()
-	}
-
 	fields["status"] = 0
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
@@ -139,6 +135,12 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	timingsMu.RUnlock()
 	fields["timings"] = timingResults
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
+
+	if u.log.Logger.Level == logrus.DebugLevel {
+		if opt, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption); ok {
+			fields["buffered"] = opt.GoString()
+		}
+	}
 
 	entry := u.log.WithFields(logrus.Fields(fields))
 	entry.Time = startTime
