@@ -45,5 +45,4 @@ func TestChangelog_Links(t *testing.T) {
 			t.Errorf("line %d: missing issue or pull-request link:\n\t%q", nr, string(line))
 		}
 	}
-
 }
