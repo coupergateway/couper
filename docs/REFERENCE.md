@@ -471,7 +471,7 @@ required _label_.
 | `idp_metadata_file` | string | - | File reference to the Identity Provider metadata XML file. | &#9888; required | - |
 | `sp_acs_url`        | string | - | The URL of the Service Provider's ACS endpoint. | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. | - |
 | `sp_entity_id`      | string | - | The Service Provider's entity ID. |&#9888; required | - |
-| `array_attributes`  | string | - | A list of assertion attributes that may have several values. | - | - |
+| `array_attributes`  | string | `[]` | A list of assertion attributes that may have several values. | Results in at least an empty array in `request.context.<label>.attributes.<name>` | `array_attributes = ["memberOf"]` |
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 

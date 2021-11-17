@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -3160,13 +3161,14 @@ func TestJWTAccessControl_round(t *testing.T) {
 	defer shutdown()
 
 	type testCase struct {
-		name string
-		path string
+		name      string
+		path      string
+		expGroups []interface{}
 	}
 
 	for _, tc := range []testCase{
-		{"separate jwt_signing_profile/jwt", "/separate"},
-		{"self-signed jwt", "/self-signed"},
+		{"separate jwt_signing_profile/jwt", "/separate", []interface{}{"g1", "g2"}},
+		{"self-signed jwt", "/self-signed", []interface{}{}},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3216,6 +3218,17 @@ func TestJWTAccessControl_round(t *testing.T) {
 			}
 			if pidclaim != pid {
 				subT.Fatalf("%q: unexpected pid claim: %q", tc.name, pidclaim)
+			}
+			groupsclaim, ok := claims["groups"]
+			if !ok {
+				subT.Fatalf("%q: missing groups claim: %#v", tc.name, claims)
+			}
+			groupsclaimArray, ok := groupsclaim.([]interface{})
+			if !ok {
+				subT.Fatalf("%q: groups must be array: %#v", tc.name, groupsclaim)
+			}
+			if !cmp.Equal(tc.expGroups, groupsclaimArray) {
+				subT.Errorf(cmp.Diff(tc.expGroups, groupsclaimArray))
 			}
 		})
 	}
