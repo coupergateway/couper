@@ -23,13 +23,8 @@ func (s Spa) HCLBody() hcl.Body {
 	return s.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (s Spa) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(s)
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (s Spa) Inline() interface{} {
 	type Inline struct {
 		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
@@ -37,7 +32,17 @@ func (s Spa) Schema(inline bool) *hcl.BodySchema {
 		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (s Spa) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(s)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(s.Inline())
 
 	return schema
 }

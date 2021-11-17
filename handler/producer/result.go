@@ -50,28 +50,25 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 
 	defer func() {
 		if rp := recover(); rp != nil {
-			var err error
-			if rp == http.ErrAbortHandler {
-				err = errors.Proxy.Message("body copy failed")
-			} else {
-				err = errors.Server.With(&ResultPanic{
-					err:   fmt.Errorf("%v", rp),
-					stack: debug.Stack(),
-				})
-			}
+			err := errors.Server.With(&ResultPanic{
+				err:   fmt.Errorf("%v", rp),
+				stack: debug.Stack(),
+			})
 			span.End()
-			sendResult(req.Context(), results, &Result{
+
+			results <- &Result{
 				Err:           err,
 				RoundTripName: rtn,
-			})
+			}
 		}
 	}()
 
 	beresp, err := rt.RoundTrip(req)
 	span.End()
-	sendResult(req.Context(), results, &Result{
+
+	results <- &Result{
 		Beresp:        beresp,
 		Err:           err,
 		RoundTripName: rtn,
-	})
+	}
 }

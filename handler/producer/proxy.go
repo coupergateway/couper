@@ -31,13 +31,13 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 
 	defer func() {
 		if rp := recover(); rp != nil {
-			sendResult(ctx, results, &Result{
+			results <- &Result{
 				Err: ResultPanic{
 					err:   fmt.Errorf("%v", rp),
 					stack: debug.Stack(),
 				},
 				RoundTripName: currentName,
-			})
+			}
 		}
 	}()
 
@@ -64,4 +64,8 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 		wg.Wait()
 		close(results)
 	}()
+}
+
+func (pr Proxies) Len() int {
+	return len(pr)
 }

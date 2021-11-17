@@ -15,7 +15,7 @@ import (
 func TestUnixtime(t *testing.T) {
 	helper := test.New(t)
 
-	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
+	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl", false)
 	helper.Must(err)
 
 	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()

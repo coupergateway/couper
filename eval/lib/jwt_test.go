@@ -434,7 +434,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -546,7 +546,7 @@ func TestJwtSignDynamic(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			helper.Must(err)
 
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
@@ -846,7 +846,7 @@ func TestJwtSignConfigError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err == nil {
 				subT.Fatalf("expected an error '%s', got nothing", tt.wantErr)
 			}
@@ -957,7 +957,7 @@ func TestJwtSignError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			helper.Must(err)
 			claims, err := stdlib.JSONDecode(cty.StringVal(tt.claims))
 			helper.Must(err)

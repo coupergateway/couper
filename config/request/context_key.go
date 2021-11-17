@@ -9,6 +9,7 @@ const (
 	APIName
 	BackendLogFields
 	BackendName
+	BufferOptions
 	Endpoint
 	EndpointKind
 	Error

@@ -20,13 +20,8 @@ func (w Websockets) HCLBody() hcl.Body {
 	return w.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (w Websockets) Schema(inline bool) *hcl.BodySchema {
-	schema, _ := gohcl.ImpliedBodySchema(w)
-	if !inline {
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (w Websockets) Inline() interface{} {
 	type Inline struct {
 		AddRequestHeaders  map[string]string `hcl:"add_request_headers,optional"`
 		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
@@ -37,7 +32,17 @@ func (w Websockets) Schema(inline bool) *hcl.BodySchema {
 		Timeout            string            `hcl:"timeout,optional"`
 	}
 
-	schema, _ = gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (w Websockets) Schema(inline bool) *hcl.BodySchema {
+	schema, _ := gohcl.ImpliedBodySchema(w)
+	if !inline {
+		return schema
+	}
+
+	schema, _ = gohcl.ImpliedBodySchema(w.Inline())
 
 	return schema
 }

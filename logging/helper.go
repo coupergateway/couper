@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"fmt"
 	"math"
 	"net"
 	"net/http"
@@ -30,10 +29,15 @@ func splitHostPort(hp string) (string, string) {
 	return host, port
 }
 
-func roundMS(d time.Duration) string {
-	const maxDuration time.Duration = 1<<63 - 1
+func roundMS(d time.Duration) float64 {
+	const (
+		maxDuration time.Duration = 1<<63 - 1
+		milliSecond float64       = float64(time.Millisecond)
+	)
+
 	if d == maxDuration {
-		return "0.0"
+		return 0.0
 	}
-	return fmt.Sprintf("%.3f", math.Round(float64(d)*1000)/1000/float64(time.Millisecond))
+
+	return math.Round((float64(d)/milliSecond)*1000) / 1000
 }

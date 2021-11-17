@@ -41,13 +41,13 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 	defer func() {
 		if rp := recover(); rp != nil {
-			sendResult(ctx, results, &Result{
+			results <- &Result{
 				Err: ResultPanic{
 					err:   fmt.Errorf("%v", rp),
 					stack: debug.Stack(),
 				},
 				RoundTripName: currentName,
-			})
+			}
 
 			if !roundtripCreated {
 				close(results)
@@ -64,7 +64,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		bodyContent, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
 		if diags.HasErrors() {
-			sendResult(outCtx, results, &Result{Err: diags})
+			results <- &Result{Err: diags}
 			continue
 		}
 
@@ -72,21 +72,21 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		methodVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "method")
 		if err != nil {
-			sendResult(outCtx, results, &Result{Err: err})
+			results <- &Result{Err: err}
 			continue
 		}
 		method = seetie.ValueToString(methodVal)
 
 		urlVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "url")
 		if err != nil {
-			sendResult(outCtx, results, &Result{Err: err})
+			results <- &Result{Err: err}
 			continue
 		}
 		url = seetie.ValueToString(urlVal)
 
 		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), bodyContent)
 		if err != nil {
-			sendResult(outCtx, results, &Result{Err: err})
+			results <- &Result{Err: err}
 			continue
 		}
 
@@ -106,7 +106,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		// see <go roundtrip()> at the end of current for-loop.
 		outreq, err := http.NewRequest(strings.ToUpper(method), "", nil)
 		if err != nil {
-			sendResult(outCtx, results, &Result{Err: err})
+			results <- &Result{Err: err}
 			continue
 		}
 
@@ -119,7 +119,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		*outreq = *outreq.WithContext(outCtx)
 		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
 		if err != nil {
-			sendResult(outCtx, results, &Result{Err: err})
+			results <- &Result{Err: err}
 			continue
 		}
 
@@ -138,6 +138,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		wg.Wait()
 		close(results)
 	}()
+}
+
+func (r Requests) Len() int {
+	return len(r)
 }
 
 func withRoundTripName(ctx context.Context, name string) context.Context {

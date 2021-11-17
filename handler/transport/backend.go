@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
@@ -97,8 +96,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
 
 	if !isProxyReq {
-		removeConnectionHeaders(req.Header)
-		removeHopHeaders(req.Header)
+		RemoveConnectionHeaders(req.Header)
+		RemoveHopHeaders(req.Header)
 	}
 
 	writer.ModifyAcceptEncoding(req.Header)
@@ -144,8 +143,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !isProxyReq {
-		removeConnectionHeaders(beresp.Header)
-		removeHopHeaders(beresp.Header)
+		RemoveConnectionHeaders(beresp.Header)
+		RemoveHopHeaders(beresp.Header)
 	}
 
 	// Backend response context creates the beresp variables in first place and applies this context
@@ -261,8 +260,10 @@ func (b *Backend) getAttribute(req *http.Request, name string) string {
 
 func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	timeout := b.transportConf.Timeout
+	ws := false
 	if to, ok := req.Context().Value(request.WebsocketsTimeout).(time.Duration); ok {
 		timeout = to
+		ws = true
 	}
 
 	errCh := make(chan error, 1)
@@ -277,7 +278,11 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 		deadline := time.After(timeout)
 		select {
 		case <-deadline:
-			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
+			if ws {
+				ec <- errors.BackendTimeout.Label(b.name).Message("websockets: deadline exceeded")
+			} else {
+				ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
+			}
 			return
 		case <-c.Done():
 			return
@@ -380,28 +385,26 @@ func setGzipReader(beresp *http.Response) error {
 		return nil
 	}
 
-	buf := &bytes.Buffer{}
-	_, err := buf.ReadFrom(beresp.Body) // TODO: may be optimized with limitReader etc.
-	if err != nil {
-		return errors.Backend.With(err)
+	bufOpt := beresp.Request.Context().Value(request.BufferOptions).(eval.BufferOption)
+	if !bufOpt.Response() {
+		return nil
 	}
-	b := buf.Bytes()
 
 	var src io.Reader
-	src, err = gzip.NewReader(buf)
+	src, err := gzip.NewReader(beresp.Body)
 	if err != nil {
-		src = bytes.NewBuffer(b)
-		err = errors.Backend.With(err).Message("body reset")
+		return errors.Backend.With(err).Message("body reset")
 	}
 
 	beresp.Header.Del(writer.ContentEncodingHeader)
+	beresp.Header.Del("Content-Length")
 	beresp.Body = eval.NewReadCloser(src, beresp.Body)
-	return err
+	return nil
 }
 
-// removeConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
+// RemoveConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
 // See RFC 7230, section 6.1
-func removeConnectionHeaders(h http.Header) {
+func RemoveConnectionHeaders(h http.Header) {
 	for _, f := range h["Connection"] {
 		for _, sf := range strings.Split(f, ",") {
 			if sf = strings.TrimSpace(sf); sf != "" {
@@ -411,8 +414,8 @@ func removeConnectionHeaders(h http.Header) {
 	}
 }
 
-func removeHopHeaders(header http.Header) {
-	for _, h := range hopHeaders {
+func RemoveHopHeaders(header http.Header) {
+	for _, h := range HopHeaders {
 		hv := header.Get(h)
 		if hv == "" {
 			continue
@@ -430,12 +433,12 @@ func removeHopHeaders(header http.Header) {
 	}
 }
 
-// Hop-by-hop headers. These are removed when sent to the backend.
+// HopHeaders Hop-by-hop headers. These are removed when sent to the backend.
 // As of RFC 7230, hop-by-hop headers are required to appear in the
 // Connection header field. These are the headers defined by the
 // obsoleted RFC 2616 (section 13.5.1) and are used for backward
 // compatibility.
-var hopHeaders = []string{
+var HopHeaders = []string{
 	"Connection",
 	"Proxy-Connection", // non-standard but still sent by libcurl and rejected by e.g. google
 	"Keep-Alive",

@@ -101,7 +101,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			}
 
-			helper.Must(eval.SetGetBody(req, 1024))
+			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
 			*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
@@ -228,7 +228,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				tt.header.Set(req)
 
 				// normally injected by server/http
-				helper.Must(eval.SetGetBody(req, 1024))
+				helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
 				*req = *req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
 
 				rec := httptest.NewRecorder()
@@ -330,9 +330,12 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
+			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
+
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
-				Error:        errors.DefaultJSON,
+				BufferOpts:   bufOpts,
 				Context:      helper.NewInlineContext(tc.remain),
+				Error:        errors.DefaultJSON,
 				ReqBodyLimit: 1024,
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
@@ -340,16 +343,14 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				Requests: make(producer.Requests, 0),
 			}, logger, nil)
 
-			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
+			req := httptest.NewRequest(http.MethodPost, "http://localhost/", bytes.NewReader(clientPayload))
+			helper.Must(eval.SetGetBody(req, bufOpts, 1024))
 			if tc.ct != "" {
 				req.Header.Set("Content-Type", tc.ct)
 			} else {
 				req.Header.Set("Content-Type", "application/json")
 			}
-
-			helper.Must(eval.SetGetBody(req, 1024))
-			ctx := eval.NewContext(nil, nil).WithClientRequest(req)
-			*req = *req.WithContext(ctx)
+			req = req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
 			rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -397,6 +398,10 @@ func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results
 	close(results)
 }
 
+func (m *mockProducerResult) Len() int {
+	return 1
+}
+
 func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	log, hook := test.NewLogger()
 
@@ -432,13 +437,11 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
 	ctx = context.WithValue(ctx, request.UID, "test123")
 
-	rec := transport.NewRecorder(nil)
+	rec := httptest.NewRecorder()
 	rw := writer.NewResponseWriter(rec, "")
 	ep.ServeHTTP(rw, req.Clone(ctx))
-	res, err := rec.Response(req)
-	if err != nil {
-		t.Error(err)
-	}
+	res := rec.Result()
+
 	if res.StatusCode == 0 {
 		t.Errorf("Fatal error: response status is zero")
 		if res.Header.Get("Couper-Error") != "internal server error" {

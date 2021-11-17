@@ -88,7 +88,7 @@ func TestACDefinitions_errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				subT.Fatal(err)
 			}

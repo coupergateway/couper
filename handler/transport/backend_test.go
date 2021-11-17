@@ -4,30 +4,25 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/avenga/couper/errors"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
 )
 
 func TestBackend_RoundTrip_Timings(t *testing.T) {
@@ -144,12 +139,13 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
+	req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, eval.BufferResponse))
 	req.Header.Set("Accept-Encoding", "br, gzip")
 	res, err := backend.RoundTrip(req)
 	helper.Must(err)
 
-	if l := res.Header.Get("Content-Length"); l != "60" {
-		t.Errorf("Unexpected C/L: %s", l)
+	if res.ContentLength != 60 {
+		t.Errorf("Unexpected C/L: %d", res.ContentLength)
 	}
 
 	n, err := io.Copy(io.Discard, res.Body)
@@ -344,103 +340,5 @@ func TestBackend_director(t *testing.T) {
 				subT.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
 			}
 		})
-	}
-}
-
-// TestProxy_BufferingOptions tests the option interaction with enabled/disabled validation and
-// the requirement for buffering to read the post or json body.
-func TestProxy_BufferingOptions(t *testing.T) {
-	t.Skip("TODO: variable buffering option configurable again")
-	helper := test.New(t)
-
-	type testCase struct {
-		name           string
-		apiOptions     *validation.OpenAPIOptions
-		remain         string
-		expectedOption eval.BufferOption
-	}
-
-	clientPayload := []byte(`{ "client": true, "origin": false }`)
-	originPayload := []byte(`{ "client": false, "origin": true }`)
-
-	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		clientData, err := io.ReadAll(r.Body)
-		helper.Must(err)
-		if !bytes.Equal(clientData, clientPayload) {
-			t.Errorf("Expected a request with client payload, got %q", string(clientData))
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		rw.Header().Set("Content-Type", "application/json")
-		_, err = rw.Write(originPayload)
-		helper.Must(err)
-	}))
-
-	newOptions := func() *validation.OpenAPIOptions {
-		c := config.OpenAPI{}
-		conf, err := validation.NewOpenAPIOptionsFromBytes(&c, helper.NewOpenAPIConf("/"))
-		helper.Must(err)
-		return conf
-	}
-
-	log, _ := logrustest.NewNullLogger()
-	nullLog := log.WithContext(context.TODO())
-
-	for i, tc := range []testCase{
-		{"no buffering", nil, `path = "/"`, eval.BufferNone},
-		{"req buffer json.body", nil, `path = "/${request.json_body.client}"`, eval.BufferRequest},
-		{"beresp buffer json.body", nil, `response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferResponse},
-		{"bereq/beresp validation", newOptions(), `path = "/"`, eval.BufferRequest | eval.BufferResponse},
-		{"beresp validation", newOptions(), `path = "/"`, eval.BufferResponse},
-		{"bereq validation", newOptions(), `path = "/"`, eval.BufferRequest},
-		{"no validation", newOptions(), `path = "/"`, eval.BufferNone},
-		{"req buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${request.json_body.client}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"beresp buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferRequest | eval.BufferResponse},
-		{"req buffer json.body & bereq validation", newOptions(), `set_response_headers = { x-test = "${request.json_body.client}" }`, eval.BufferRequest},
-		{"beresp buffer json.body & beresp validation", newOptions(), `set_response_headers = { x-test = "${backend_responses.default.json_body.origin}" }`, eval.BufferResponse},
-	} {
-		t.Run(tc.name, func(subT *testing.T) {
-			h := test.New(subT)
-
-			backend := transport.NewBackend(configload.MergeBodies([]hcl.Body{
-				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
-				helper.NewInlineContext(tc.remain),
-			}), &transport.Config{}, &transport.BackendOptions{
-				OpenAPI: newOptions(),
-			}, nullLog)
-
-			upstreamLog := backend.(*logging.UpstreamLog)
-			backendHandler := reflect.ValueOf(upstreamLog).Elem().FieldByName("next")              // private field: ro
-			configuredOption := reflect.ValueOf(backendHandler).Elem().FieldByName("bufferOption") // private field: ro
-			var opt eval.BufferOption
-			if configuredOption.IsValid() {
-				opt = eval.BufferOption(configuredOption.Uint())
-			} else {
-				subT.Errorf("Field read out failed: bufferOption")
-			}
-			if (opt & tc.expectedOption) != tc.expectedOption {
-				subT.Errorf("Expected option: %#v, got: %#v", tc.expectedOption, opt)
-			}
-
-			req := httptest.NewRequest(http.MethodGet, "http://localhost/", bytes.NewReader(clientPayload))
-			req.Header.Set("Content-Type", "application/json")
-			*req = *req.WithContext(context.WithValue(req.Context(), request.UID, fmt.Sprintf("#%.2d: %s", i+1, tc.name)))
-
-			res, err := backend.RoundTrip(req)
-			h.Must(err)
-
-			if res.StatusCode != http.StatusOK {
-				subT.Errorf("Expected StatusOK, got: %d", res.StatusCode)
-			}
-
-			originData, err := io.ReadAll(res.Body)
-			h.Must(err)
-
-			if !bytes.Equal(originPayload, originData) {
-				subT.Errorf("Expected same origin payload, got:\n%s\nlog message:\n", string(originData))
-			}
-		})
-
 	}
 }

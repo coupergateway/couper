@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -81,7 +82,7 @@ func teardown() {
 	testBackend.Close()
 }
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file), false)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -109,7 +110,7 @@ func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]int
 }
 
 func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl")
+	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl", false)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3135,7 +3136,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl", false)
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -3160,13 +3161,14 @@ func TestJWTAccessControl_round(t *testing.T) {
 	defer shutdown()
 
 	type testCase struct {
-		name string
-		path string
+		name      string
+		path      string
+		expGroups []interface{}
 	}
 
 	for _, tc := range []testCase{
-		{"separate jwt_signing_profile/jwt", "/separate"},
-		{"self-signed jwt", "/self-signed"},
+		{"separate jwt_signing_profile/jwt", "/separate", []interface{}{"g1", "g2"}},
+		{"self-signed jwt", "/self-signed", []interface{}{}},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3216,6 +3218,17 @@ func TestJWTAccessControl_round(t *testing.T) {
 			}
 			if pidclaim != pid {
 				subT.Fatalf("%q: unexpected pid claim: %q", tc.name, pidclaim)
+			}
+			groupsclaim, ok := claims["groups"]
+			if !ok {
+				subT.Fatalf("%q: missing groups claim: %#v", tc.name, claims)
+			}
+			groupsclaimArray, ok := groupsclaim.([]interface{})
+			if !ok {
+				subT.Fatalf("%q: groups must be array: %#v", tc.name, groupsclaim)
+			}
+			if !cmp.Equal(tc.expGroups, groupsclaimArray) {
+				subT.Errorf(cmp.Diff(tc.expGroups, groupsclaimArray))
 			}
 		})
 	}

@@ -19,12 +19,14 @@ Couper usage:
 Available commands:
   help		Usage for given command.
   run		Start the server with given configuration file.
+  verify	Verify the syntax of the given configuration file.
   version	Print the current version and build information.
 
 Examples:
   couper run
   couper run -f couper.hcl
   couper run -watch -log-format json -log-pretty -p 3000
+  couper verify -f couper.hcl
 `)
 }
 

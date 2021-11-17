@@ -9,7 +9,11 @@ import (
 	"flag"
 	"io"
 	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -43,6 +47,7 @@ func realmain(arguments []string) int {
 	ctx := context.Background()
 
 	type globalFlags struct {
+		DebugEndpoint       bool          `env:"debug"`
 		FilePath            string        `env:"file"`
 		FileWatch           bool          `env:"watch"`
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
@@ -54,6 +59,7 @@ func realmain(arguments []string) int {
 	var flags globalFlags
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
+	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
 	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./my-path/couper.hcl")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
@@ -71,7 +77,7 @@ func realmain(arguments []string) int {
 	cmd := args[0]
 	args = args[1:]
 
-	if cmd != "run" { // global options are not required atm, fast exit.
+	if cmd != "run" && cmd != "verify" { // global options are not required atm, fast exit.
 		err := command.NewCommand(ctx, cmd).Execute(args, nil, nil)
 		if err != nil {
 			set.Usage()
@@ -88,7 +94,17 @@ func realmain(arguments []string) int {
 	}
 	env.Decode(&flags)
 
-	confFile, err := configload.LoadFile(flags.FilePath)
+	if cmd == "verify" {
+		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
+
+		err := command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath}, nil, log)
+		if err != nil {
+			return 1
+		}
+		return 0
+	}
+
+	confFile, err := configload.LoadFile(flags.FilePath, false)
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
@@ -134,6 +150,10 @@ func realmain(arguments []string) int {
 		errCh <- execCmd.Execute(args, confFile, logger)
 	}()
 
+	if flags.DebugEndpoint {
+		debugListenAndServe(logger)
+	}
+
 	reloadCh := watchConfigFile(confFile.Filename, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
 	for {
 		select {
@@ -168,7 +188,7 @@ func realmain(arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
+			cf, reloadErr := configload.LoadFile(confFile.Filename, false) // we are at wd, just filename
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -276,11 +296,37 @@ func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, ret
 }
 
 func newRestartableCommand(ctx context.Context, cmd string) (command.Cmd, chan<- struct{}) {
-	signal := make(chan struct{})
+	sig := make(chan struct{}, 1)
 	watchContext, cancelFn := context.WithCancel(ctx)
 	go func() {
-		<-signal
+		<-sig
 		cancelFn()
 	}()
-	return command.NewCommand(watchContext, cmd), signal
+	return command.NewCommand(watchContext, cmd), sig
+}
+
+func debugListenAndServe(logEntry *logrus.Entry) {
+	const tracePort = "6060"
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	traceSrv := http.Server{Addr: ":" + tracePort}
+	traceSrv.Handler = mux
+	go func() {
+		logEntry.WithField("debug", "pprof").WithField("port", tracePort).Info("listening")
+		if e := traceSrv.ListenAndServe(); e != nil {
+			logEntry.WithField("debug", "pprof").Error(e)
+		}
+	}()
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+		defer cancel()
+		_ = traceSrv.Shutdown(ctx)
+	}()
 }

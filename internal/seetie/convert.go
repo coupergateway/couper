@@ -86,9 +86,6 @@ func ValuesMapToValue(m url.Values) cty.Value {
 }
 
 func ListToValue(l []interface{}) cty.Value {
-	if len(l) == 0 {
-		return cty.NilVal
-	}
 	var list []cty.Value
 	for _, v := range l {
 		list = append(list, GoToValue(v))

@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/xml"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	saml2 "github.com/russellhaering/gosaml2"
 	"github.com/russellhaering/gosaml2/types"
 
@@ -150,7 +150,7 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 		t.Fatal("Expected a saml acs object")
 	}
 
-	values := saml2.Values{
+	valuesWith2MemberOf := saml2.Values{
 		"displayName": types.Attribute{
 			Name: "displayName",
 			Values: []types.AttributeValue{
@@ -174,6 +174,48 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 			},
 		},
 	}
+	valuesWith1MemberOf := saml2.Values{
+		"displayName": types.Attribute{
+			Name: "displayName",
+			Values: []types.AttributeValue{
+				{
+					Value: "Jane Doe",
+				},
+			},
+		},
+		"memberOf": types.Attribute{
+			Name: "memberOf",
+			Values: []types.AttributeValue{
+				{
+					Value: "group1",
+				},
+			},
+		},
+	}
+	valuesEmptyMemberOf := saml2.Values{
+		"displayName": types.Attribute{
+			Name: "displayName",
+			Values: []types.AttributeValue{
+				{
+					Value: "Jane Doe",
+				},
+			},
+		},
+		"memberOf": types.Attribute{
+			Name:   "memberOf",
+			Values: []types.AttributeValue{},
+		},
+	}
+	valuesMissingMemberOf := saml2.Values{
+		"displayName": types.Attribute{
+			Name: "displayName",
+			Values: []types.AttributeValue{
+				{
+					Value: "Jane Doe",
+				},
+			},
+		},
+	}
 	var authnStatement types.AuthnStatement
 	err = xml.Unmarshal([]byte(`<AuthnStatement xmlns="urn:oasis:names:tc:SAML:2.0:assertion" SessionNotOnOrAfter="2020-11-13T17:06:00Z"/>`), &authnStatement)
 	if err != nil {
@@ -187,10 +229,10 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 	}
 	for _, tc := range []testCase{
 		{
-			"without exp",
+			"without exp, with 2 memberOf",
 			&saml2.AssertionInfo{
 				NameID: "abc12345",
-				Values: values,
+				Values: valuesWith2MemberOf,
 			},
 			map[string]interface{}{
 				"sub": "abc12345",
@@ -204,15 +246,31 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 			},
 		},
 		{
-			"with exp",
+			"without exp, with 1 memberOf",
 			&saml2.AssertionInfo{
-				NameID:              "abc12345",
-				SessionNotOnOrAfter: authnStatement.SessionNotOnOrAfter,
-				Values:              values,
+				NameID: "abc12345",
+				Values: valuesWith1MemberOf,
 			},
 			map[string]interface{}{
 				"sub": "abc12345",
-				"exp": 1605287160,
+				"attributes": map[string]interface{}{
+					"displayName": "Jane Doe",
+					"memberOf": []string{
+						"group1",
+					},
+				},
+			},
+		},
+		{
+			"with exp, with memberOf",
+			&saml2.AssertionInfo{
+				NameID:              "abc12345",
+				SessionNotOnOrAfter: authnStatement.SessionNotOnOrAfter,
+				Values:              valuesWith2MemberOf,
+			},
+			map[string]interface{}{
+				"sub": "abc12345",
+				"exp": int64(1605287160),
 				"attributes": map[string]interface{}{
 					"displayName": "Jane Doe",
 					"memberOf": []string{
@@ -222,11 +280,39 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 				},
 			},
 		},
+		{
+			"without exp, empty memberOf",
+			&saml2.AssertionInfo{
+				NameID: "abc12345",
+				Values: valuesEmptyMemberOf,
+			},
+			map[string]interface{}{
+				"sub": "abc12345",
+				"attributes": map[string]interface{}{
+					"displayName": "Jane Doe",
+					"memberOf":    []string{},
+				},
+			},
+		},
+		{
+			"without exp, without memberOf",
+			&saml2.AssertionInfo{
+				NameID: "abc12345",
+				Values: valuesMissingMemberOf,
+			},
+			map[string]interface{}{
+				"sub": "abc12345",
+				"attributes": map[string]interface{}{
+					"displayName": "Jane Doe",
+					"memberOf":    []string{},
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			assertionData := sa.GetAssertionData(tc.assertionInfo)
-			if fmt.Sprint(assertionData) != fmt.Sprint(tc.want) {
-				subT.Errorf("%s: GetAssertionData() data = %v, want %v", tc.name, assertionData, tc.want)
+			if !cmp.Equal(tc.want, assertionData) {
+				subT.Errorf(cmp.Diff(tc.want, assertionData))
 			}
 		})
 	}

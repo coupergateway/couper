@@ -62,7 +62,7 @@ settings {
 }
 `, upstream.Addr(), upstream.Addr())
 
-	configFile, err := configload.LoadBytes([]byte(configFileContent), "fuzz_http.hcl")
+	configFile, err := configload.LoadBytes([]byte(configFileContent), "fuzz_http.hcl", false)
 	if err != nil {
 		panic(err)
 	}
