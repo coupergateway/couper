@@ -52,7 +52,7 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 		meta.Attributes
 		BasicAuth      string                    `hcl:"basic_auth,optional"`
 		Hostname       string                    `hcl:"hostname,optional"`
-		LogFields      map[string]hcl.Expression `hcl:"log_fields,optional"`
+		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 		Origin         string                    `hcl:"origin,optional"`
 		PathPrefix     string                    `hcl:"path_prefix,optional"`
 		ProxyURL       string                    `hcl:"proxy,optional"`

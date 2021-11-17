@@ -350,7 +350,7 @@ func ApplyCustomLogs(
 
 		bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
 
-		if logs, ok := bodyContent.Attributes["log_fields"]; ok {
+		if logs, ok := bodyContent.Attributes["custom_log_fields"]; ok {
 			val, err := Value(httpCtx, logs.Expr)
 			if err != nil {
 				logger.Debug(err)

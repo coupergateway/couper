@@ -58,7 +58,7 @@ The `server` block is one of the root configuration blocks of Couper's configura
 | `hosts`          | list   | port `:8080` | - | &#9888; required, if there is more than one `server` block. &#9888; Only one `hosts` attribute per `server` block is allowed. | `hosts = ["example.com", "localhost:9090"]` |
 | `error_file`     | string | -            | Location of the error file template. | - | `error_file = "./my_error_page.html"` |
 | `access_control` | list   | -            | Sets predefined [Access Control](#access-control) for `server` block context. | &#9888; Inherited by nested blocks. | `access_control = ["foo"]` |
-| `log_fields`     | map    | -            | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
+| `custom_log_fields` | map    | -            | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### Files Block
 
@@ -74,7 +74,7 @@ The `files` block configures the file serving.
 | `document_root`  | string | -       | Location of the document root. | &#9888; required | `document_root = "./htdocs"` |
 | `error_file`     | string | -       | Location of the error file template. | - | - |
 | `access_control` | list   | -       | Sets predefined [Access Control](#access-control) for `files` block context. | - | `access_control = ["foo"]` |
-| `log_fields`     | map    | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
+| `custom_log_fields` | map    | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
 
 ### SPA Block
 
@@ -90,7 +90,7 @@ The `spa` block configures the Web serving for SPA assets.
 | `bootstrap_file` | string | -       | Location of the bootstrap file. | &#9888; required | `bootstrap_file = "./htdocs/index.html"` |
 | `paths`          | list   | -       | List of SPA paths that need the bootstrap file. | &#9888; required | `paths = ["/app/**"]` |
 | `access_control` | list   | -       | Sets predefined [Access Control](#access-control) for `spa` block context. | - | `access_control = ["foo"]` |
-| `log_fields`     | map    | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
+| `custom_log_fields` | map    | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
 
 ### API Block
 
@@ -109,7 +109,7 @@ as json error with an error body payload. This can be customized via `error_file
 | `error_file` |string|-|Location of the error file template.|-|`error_file = "./my_error_body.json"`|
 | `access_control` |list|-|Sets predefined [Access Control](#access-control) for `api` block context.|&#9888; Inherited by nested blocks.| `access_control = ["foo"]`|
 | `beta_scope` |string or object|-|Scope value required to use this API (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
-| `log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### Endpoint Block
 
@@ -131,7 +131,7 @@ produce an explicit or implicit client response.
 | `path`|string|-|Changeable part of the upstream URL. Changes the path suffix of the outgoing request.|-|-|
 |`access_control`   |list|-|Sets predefined [Access Control](#access-control) for `endpoint` block context.|-| `access_control = ["foo"]`|
 | `beta_scope` |string or object|-|Scope value required to use this endpoint (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
-| `log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 |[Modifiers](#modifiers) |-|-|-|-|-|
 
 ### Proxy Block
@@ -209,7 +209,7 @@ The `backend` block defines the connection to a local/remote backend service.
 | `disable_certificate_validation` | bool               | `false`       | Disables the peer certificate validation.                                              |      - |-|
 | `disable_connection_reuse`       | bool               | `false`        | Disables reusage of connections to the origin.                                          |    -  |-|
 | `http2`                          | bool               | `false`         | Enables the HTTP2 support.                                                               | -    |-|
-| `log_fields`                     | map                | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
+| `custom_log_fields`              | map                | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
 | `max_connections`                | integer                | `0` (unlimited) | The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. |-|-|
 | `proxy`                          | string             | -| A proxy URL for the related origin request.      |-   | `http://SERVER-IP_OR_NAME:PORT`|
 | `timeout`                        | [duration](#duration) | `300s`          | The total deadline duration a backend request has for write and read/pipe.               |-     |-|

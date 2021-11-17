@@ -139,7 +139,7 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 ## Custom Logging
 
-These fields are defined in the configuration as `log_fields` attribute in the following blocks:
+These fields are defined in the configuration as `custom_log_fields` attribute in the following blocks:
 
 - [Server Block](./REFERENCE.md#server-block)
 - [Files Block](./REFERENCE.md#files-block)
@@ -149,8 +149,8 @@ These fields are defined in the configuration as `log_fields` attribute in the f
 - [Backend Block](./REFERENCE.md#backend-block)
 - [Error Handler Block](./ERRORS.md#access-control-error_handler)
 
-The `log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) logs
-into the `couper_backend` log. The `log_fields` defined in other blocks log into
+The `custom_log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) logs
+into the `couper_backend` log. The `custom_log_fields` defined in other blocks log into
 the `couper_access` log.
 
 **Example:**
@@ -158,7 +158,7 @@ the `couper_access` log.
 ```hcl
 server "example" {
   endpoint "/anything" {
-    log_fields = {
+    custom_log_fields = {
       origin  = backend_responses.default.json_body.origin
       success = backend_responses.default.status == 200
     }
@@ -174,7 +174,7 @@ definitions {
   backend "httpbin" {
     origin = "https://httpbin.org"
 
-    log_fields = {
+    custom_log_fields = {
       method = request.method
     }
   }

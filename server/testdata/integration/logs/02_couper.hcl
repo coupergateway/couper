@@ -1,5 +1,5 @@
 server "client" {
-  log_fields = {
+  custom_log_fields = {
     server = true
     l1 = "server"
     l2 = ["server"]
@@ -8,7 +8,7 @@ server "client" {
   }
 
   api {
-    log_fields = {
+    custom_log_fields = {
       api = true
       l1 = "api"
       l2 = ["api"]
@@ -17,7 +17,7 @@ server "client" {
     }
 
     endpoint "/" {
-      log_fields = {
+      custom_log_fields = {
         endpoint = true
         l1 = "endpoint"
         l2 = ["endpoint"]

@@ -1,7 +1,7 @@
 server "logs" {
   files {
     document_root = "./"
-    log_fields = {
+    custom_log_fields = {
       files = request.method
     }
   }
@@ -9,12 +9,12 @@ server "logs" {
   spa {
     bootstrap_file = "./file.html"
     paths = ["/spa/**"]
-    log_fields = {
+    custom_log_fields = {
       spa = request.method
     }
   }
 
-  log_fields = {
+  custom_log_fields = {
     server = backend_responses.default.json_body.Method
   }
 
@@ -27,18 +27,18 @@ server "logs" {
   }
 
   api {
-    log_fields = {
+    custom_log_fields = {
       api = backend_responses.default.json_body.Method
     }
 
     endpoint "/" {
-      log_fields = {
+      custom_log_fields = {
         endpoint = backend_responses.default.json_body.Method
       }
 
       proxy {
         backend "BE" {
-          log_fields = {
+          custom_log_fields = {
             bool   = true
             int    = 123
             float  = 1.23
@@ -79,7 +79,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
     path   = "/anything"
 
-    log_fields = {
+    custom_log_fields = {
       backend = backend_responses.default.json_body.Method
     }
   }
@@ -88,7 +88,7 @@ definitions {
     password = "secret"
 
     error_handler "basic_auth" {
-      log_fields = {
+      custom_log_fields = {
         error_handler = request.method
       }
     }
