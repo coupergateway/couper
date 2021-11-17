@@ -163,9 +163,9 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		LogPattern:    endpointConf.Pattern,
 		Proxies:       proxies,
 		ReqBodyLimit:  bodyLimit,
+		ReqBufferOpts: bufferOpts,
 		Requests:      requests,
 		Response:      response,
 		ServerOpts:    serverOptions,
-		ReqBufferOpts: bufferOpts,
 	}, nil
 }
