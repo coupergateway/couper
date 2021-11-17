@@ -85,7 +85,7 @@ func ValuesMapToValue(m url.Values) cty.Value {
 }
 
 func ListToValue(l []interface{}) cty.Value {
-	list := []cty.Value{}
+	var list []cty.Value
 	for _, v := range l {
 		list = append(list, GoToValue(v))
 	}
@@ -185,7 +185,6 @@ func ValueToStringSlice(src cty.Value) []string {
 		return l
 	}
 
-	l = []string{}
 	switch src.Type() {
 	case cty.NilType:
 		return l
