@@ -198,7 +198,7 @@ func getSchemaComponents(
 		field := typ.Field(i)
 
 		// TODO: How to implement this automatically?
-		if field.Type.String() == "config.AccessControlSetter" {
+		if field.Type.String() == "config.ErrorHandlerSetter" {
 			var triggerBreak bool
 
 			switch typ.String() {
