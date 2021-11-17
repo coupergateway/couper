@@ -136,6 +136,7 @@ func (s *Saml2) GetAssertionData(assertionInfo *saml2.AssertionInfo) map[string]
 				attributes[attribute.Name] = attributeValue.Value
 			}
 		} else {
+			// default empty slice for this arrayAttribute (instead of nil slice)
 			attributeValues := []string{}
 			for _, attributeValue := range attribute.Values {
 				attributeValues = append(attributeValues, attributeValue.Value)
