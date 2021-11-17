@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -44,7 +43,6 @@ func Test_realmain(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			fmt.Printf("%s\n", tt.name)
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
 					return tt.envs
@@ -55,9 +53,6 @@ func Test_realmain(t *testing.T) {
 				subT.Errorf("realmain() = %v, want %v", got, tt.want)
 			}
 			env.OsEnviron = os.Environ
-
-			// e := localHook.LastEntry()
-			// t.Errorf("%#v", e.Message)
 
 			entry, _ := localHook.LastEntry().String()
 			//println(entry)
