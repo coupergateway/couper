@@ -109,7 +109,7 @@ func TestAccessControl_ErrorHandler_BasicAuth_Wildcard(t *testing.T) {
 
 func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/error_handler/03_couper.hcl")
+	couperConfig, err := configload.LoadFile("testdata/integration/error_handler/03_couper.hcl", false)
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()

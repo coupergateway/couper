@@ -98,7 +98,7 @@ func TestNewRun(t *testing.T) {
 				return
 			}
 
-			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file), false)
 			if err != nil {
 				subT.Error(err)
 			}
@@ -185,7 +185,7 @@ func TestAcceptForwarded(t *testing.T) {
 				return
 			}
 
-			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file), false)
 			if err != nil {
 				subT.Error(err)
 			}

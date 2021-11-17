@@ -28,6 +28,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * `Accept: application/json` request header to the OAuth2 token request, in order to make the Github token endpoint respond with a JSON token response ([#307](https://github.com/avenga/couper/pull/307))
+  * [`verify`](docs/CLI.md) command to be able to check the syntax of a configuration file w/o starting the server ([#296](https://github.com/avenga/couper/pull/296)), ([#168](https://github.com/avenga/couper/issues/168)), ([#188](https://github.com/avenga/couper/issues/188))
   * Documentation of [logs](docs/LOGS.md) ([#310](https://github.com/avenga/couper/pull/310))
   * `signing_ttl` and `signing_key`/`signing_key_file` to [`jwt` block](./docs/REFERENCE.md#jwt-block) for use with [`jwt_sign()` function](#functions) ([#309](https://github.com/avenga/couper/pull/309))
   * `jwks_url` and `jwks_ttl` to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#312](https://github.com/avenga/couper/pull/312))

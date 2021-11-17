@@ -22,6 +22,8 @@ func NewCommand(ctx context.Context, cmd string) Cmd {
 		return NewHelp(ctx)
 	case "version":
 		return NewVersion()
+	case "verify":
+		return NewVerify()
 	default:
 		return nil
 	}

@@ -7,8 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-// Internally used for 'error_handler'.
-var _ Body = &JWT{}
+var _ Inline = &JWT{}
 
 // Claims represents the <Claims> object.
 type Claims hcl.Expression
@@ -41,9 +40,40 @@ type JWT struct {
 	Backend     hcl.Body
 }
 
-// HCLBody implements the <Body> interface. Internally used for 'error_handler'.
+// Reference implements the <BackendReference> interface.
+func (j *JWT) Reference() string {
+	return j.BackendName
+}
+
+// HCLBody implements the <Body> interface.
 func (j *JWT) HCLBody() hcl.Body {
 	return j.Remain
+}
+
+// Inline implements the <Inline> interface.
+func (j *JWT) Inline() interface{} {
+	type Inline struct {
+		Backend *Backend `hcl:"backend,block"`
+	}
+
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (j *JWT) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(j)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(j.Inline())
+
+	// A backend reference is defined, backend block is not allowed.
+	if j.BackendName != "" {
+		schema.Blocks = nil
+	}
+
+	return newBackendSchema(schema, j.HCLBody())
 }
 
 func (j *JWT) Check() error {
@@ -74,29 +104,4 @@ func (j *JWT) Check() error {
 	}
 
 	return nil
-}
-
-// Reference implements the <BackendReference> interface.
-func (j *JWT) Reference() string {
-	return j.BackendName
-}
-
-func (j *JWT) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(j)
-		return schema
-	}
-
-	type Inline struct {
-		Backend *Backend `hcl:"backend,block"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
-
-	// A backend reference is defined, backend block is not allowed.
-	if j.BackendName != "" {
-		schema.Blocks = nil
-	}
-
-	return newBackendSchema(schema, j.HCLBody())
 }
