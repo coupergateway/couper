@@ -130,7 +130,7 @@ func TestHealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+			conf, err := LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl", false)
 			if conf != nil {
 				_, err = runtime.NewServerConfiguration(conf, log, nil)
 			}
