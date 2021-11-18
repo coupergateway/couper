@@ -173,11 +173,9 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 	return errors
 }
 
-func getSchemaComponents(
-	body hcl.Body, obj interface{},
-) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
 	var (
-		attrs  hcl.Attributes = make(hcl.Attributes)
+		attrs  = make(hcl.Attributes)
 		blocks hcl.Blocks
 		errors hcl.Diagnostics
 	)
@@ -194,56 +192,33 @@ func getSchemaComponents(
 		schema = config.SchemaWithOAuth2RA(schema)
 	}
 
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-
-		// TODO: How to implement this automatically?
-		if field.Type.String() == "config.AccessControlSetter" {
-			var triggerBreak bool
-
-			switch typ.String() {
-			// TODO: How to implement this automatically?
-			case "config.BasicAuth", "config.JWT", "config.OAuth2AC", "config.SAML", "config.OIDC":
-				schema = config.SchemaWithACSetter(schema)
-
-				triggerBreak = true
-			}
-
-			if triggerBreak {
-				break
-			}
-		}
+	if _, ok := obj.(ErrorHandlerSetter); ok {
+		schema = config.WithErrorHandlerSchema(schema)
 	}
 
-	attrs, blocks, errors = completeSchemaComponents(
-		typ.String(), body, schema, attrs, blocks, errors,
-	)
+	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
 
 	if i, ok := obj.(config.Inline); ok {
-		attrs, blocks, errors = completeSchemaComponents(
-			typ.String(), body, i.Schema(true), attrs, blocks, errors,
-		)
+		attrs, blocks, errors = completeSchemaComponents(body, i.Schema(true), attrs, blocks, errors)
 	}
 
 	return attrs, blocks, errors
 }
 
-func completeSchemaComponents(
-	name string,
-	body hcl.Body, schema *hcl.BodySchema,
-	attrs hcl.Attributes, blocks hcl.Blocks, errors hcl.Diagnostics,
-) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.Attributes,
+	blocks hcl.Blocks, errors hcl.Diagnostics) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+
 	content, diags := body.Content(schema)
 
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
-		if match := reFetchLabeledName.MatchString(diag.Detail); match {
+		if match := reFetchLabeledName.MatchString(diag.Detail); match || diag.Detail == noLabelForErrorHandler {
 			bodyContent := bodyToContent(body)
 
 			added := false
 			for _, block := range bodyContent.Blocks {
 				switch block.Type {
-				case "api", "backend", "proxy", "request", "server":
+				case "api", "backend", "error_handler", "proxy", "request", "server":
 					blocks = append(blocks, block)
 
 					added = true

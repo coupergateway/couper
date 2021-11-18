@@ -23,13 +23,13 @@ type UID struct {
 }
 
 func NewUIDHandler(conf *config.Settings, devProxy string) Next {
-	return func(handler http.Handler) http.Handler {
-		return &UID{
+	return func(handler http.Handler) *NextHandler {
+		return NewHandler(&UID{
 			conf:           conf,
 			devProxyHeader: devProxy,
 			generate:       NewUIDFunc(conf.RequestIDFormat),
 			handler:        handler,
-		}
+		}, handler)
 	}
 }
 

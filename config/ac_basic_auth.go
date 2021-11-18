@@ -12,7 +12,7 @@ var _ Body = &BasicAuth{}
 
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
-	AccessControlSetter
+	ErrorHandlerSetter
 	File  string `hcl:"htpasswd_file,optional"`
 	Name  string `hcl:"name,label"`
 	User  string `hcl:"user,optional"`

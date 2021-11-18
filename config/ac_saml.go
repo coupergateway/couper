@@ -7,7 +7,7 @@ var _ Body = &SAML{}
 
 // SAML represents the <SAML> object.
 type SAML struct {
-	AccessControlSetter
+	ErrorHandlerSetter
 	ArrayAttributes []string `hcl:"array_attributes,optional"`
 	IdpMetadataFile string   `hcl:"idp_metadata_file"`
 	Name            string   `hcl:"name,label"`
