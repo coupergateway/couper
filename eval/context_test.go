@@ -130,10 +130,14 @@ func TestDefaultEnvVariables(t *testing.T) {
 			"test",
 			`
 			server "test" {
-				api {
+			  endpoint "/" {
+				proxy {
+				  backend {
 					origin = env.ORIGIN
 					timeout = env.TIMEOUT
+				  }
 				}
+			  }
 			}
 
 			defaults {
@@ -151,10 +155,14 @@ func TestDefaultEnvVariables(t *testing.T) {
 			"no-environment_variables-block",
 			`
 			server "test" {
-				api {
+			  endpoint "/" {
+				proxy {
+				  backend {
 					origin = env.ORIGIN
 					timeout = env.TIMEOUT
+				  }
 				}
+			  }
 			}
 
 			defaults {}
@@ -165,10 +173,14 @@ func TestDefaultEnvVariables(t *testing.T) {
 			"no-defaults-block",
 			`
 			server "test" {
-				api {
+			  endpoint "/" {
+				proxy {
+				  backend {
 					origin = env.ORIGIN
 					timeout = env.TIMEOUT
+				  }
 				}
+			  }
 			}
 			`,
 			map[string]cty.Value{"ORIGIN": cty.StringVal(""), "TIMEOUT": cty.StringVal("")},
@@ -177,7 +189,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -216,7 +228,7 @@ func TestCouperVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
 			if err != nil {
 				subT.Fatal(err)
 			}

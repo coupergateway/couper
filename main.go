@@ -77,7 +77,7 @@ func realmain(arguments []string) int {
 	cmd := args[0]
 	args = args[1:]
 
-	if cmd != "run" { // global options are not required atm, fast exit.
+	if cmd != "run" && cmd != "verify" { // global options are not required atm, fast exit.
 		err := command.NewCommand(ctx, cmd).Execute(args, nil, nil)
 		if err != nil {
 			set.Usage()
@@ -94,7 +94,17 @@ func realmain(arguments []string) int {
 	}
 	env.Decode(&flags)
 
-	confFile, err := configload.LoadFile(flags.FilePath)
+	if cmd == "verify" {
+		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
+
+		err := command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath}, nil, log)
+		if err != nil {
+			return 1
+		}
+		return 0
+	}
+
+	confFile, err := configload.LoadFile(flags.FilePath, false)
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
@@ -178,7 +188,7 @@ func realmain(arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
+			cf, reloadErr := configload.LoadFile(confFile.Filename, false) // we are at wd, just filename
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)

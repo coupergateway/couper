@@ -99,7 +99,7 @@ as json error with an error body payload. This can be customized via `error_file
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block)|
+|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -118,7 +118,7 @@ produce an explicit or implicit client response.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`endpoint`| [Server Block](#server-block), [API Block](#api-block) |&#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block) |
+|`endpoint`| [Server Block](#server-block), [API Block](#api-block) |&#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
 
 <!-- TODO: decide how to place "modifier" in the reference table - same for other block which allow modifiers -->
 
@@ -472,7 +472,7 @@ required _label_.
 | `idp_metadata_file` | string | - | File reference to the Identity Provider metadata XML file. | &#9888; required | - |
 | `sp_acs_url`        | string | - | The URL of the Service Provider's ACS endpoint. | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. | - |
 | `sp_entity_id`      | string | - | The Service Provider's entity ID. |&#9888; required | - |
-| `array_attributes`  | string | - | A list of assertion attributes that may have several values. | - | - |
+| `array_attributes`  | string | `[]` | A list of assertion attributes that may have several values. | Results in at least an empty array in `request.context.<label>.attributes.<name>` | `array_attributes = ["memberOf"]` |
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 

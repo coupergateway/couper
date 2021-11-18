@@ -15,7 +15,7 @@ var (
 
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
-	AccessControlSetter
+	ErrorHandlerSetter
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
@@ -43,6 +43,17 @@ func (oa OAuth2AC) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
+// Inline implements the <Inline> interface.
+func (oa OAuth2AC) Inline() interface{} {
+	type Inline struct {
+		Backend       *Backend `hcl:"backend,block"`
+		RedirectURI   string   `hcl:"redirect_uri"`
+		VerifierValue string   `hcl:"verifier_value"`
+	}
+
+	return &Inline{}
+}
+
 // Schema implements the <Inline> interface.
 func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
@@ -50,13 +61,7 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 		return schema
 	}
 
-	type Inline struct {
-		Backend       *Backend `hcl:"backend,block"`
-		RedirectURI   string   `hcl:"redirect_uri"`
-		VerifierValue string   `hcl:"verifier_value"`
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	schema, _ := gohcl.ImpliedBodySchema(oa.Inline())
 
 	// A backend reference is defined, backend block is not allowed.
 	if oa.BackendName != "" {

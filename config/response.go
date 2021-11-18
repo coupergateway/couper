@@ -21,13 +21,8 @@ func (r Response) HCLBody() hcl.Body {
 	return r.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (r Response) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(r)
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (r Response) Inline() interface{} {
 	type Inline struct {
 		Body     string            `hcl:"body,optional"`
 		JsonBody string            `hcl:"json_body,optional"`
@@ -35,7 +30,17 @@ func (r Response) Schema(inline bool) *hcl.BodySchema {
 		Status   int               `hcl:"status,optional"`
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (r Response) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(r)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(r.Inline())
 
 	return schema
 }

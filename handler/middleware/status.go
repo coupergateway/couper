@@ -9,8 +9,8 @@ import (
 )
 
 func NewRecordHandler(secureCookies string) Next {
-	return func(handler http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	return func(handler http.Handler) *NextHandler {
+		return NewHandler(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			gw := writer.NewGzipWriter(rw, req.Header)
 			w := writer.NewResponseWriter(gw, secureCookies)
 
@@ -28,6 +28,6 @@ func NewRecordHandler(secureCookies string) Next {
 			ctx := context.WithValue(req.Context(), request.ResponseWriter, w)
 			*req = *req.WithContext(ctx)
 			handler.ServeHTTP(w, req)
-		})
+		}), handler)
 	}
 }

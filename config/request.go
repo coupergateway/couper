@@ -16,6 +16,7 @@ type Request struct {
 	BackendName string   `hcl:"backend,optional"`
 	Name        string   `hcl:"name,label"`
 	Remain      hcl.Body `hcl:",remain"`
+
 	// Internally used
 	Backend hcl.Body
 }
@@ -33,13 +34,8 @@ func (r Request) HCLBody() hcl.Body {
 	return r.Remain
 }
 
-// Schema implements the <Inline> interface.
-func (r Request) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(r)
-		return schema
-	}
-
+// Inline implements the <Inline> interface.
+func (r Request) Inline() interface{} {
 	type Inline struct {
 		Backend     *Backend             `hcl:"backend,block"`
 		Body        string               `hcl:"body,optional"`
@@ -51,7 +47,17 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 		URL         string               `hcl:"url,optional"`
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(&Inline{})
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (r Request) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(r)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(r.Inline())
 
 	// A backend reference is defined, backend block is not allowed.
 	if r.BackendName != "" {

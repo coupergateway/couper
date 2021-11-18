@@ -161,7 +161,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, nil, log)
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -200,7 +200,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, nil, log)
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -249,6 +249,10 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			scopeDefinitions := ACDefinitions{ // misuse of definitions obj for now
+				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
+			}
+
 			modifier := []hcl.Body{srvConf.Remain}
 
 			kind := endpoint
@@ -256,6 +260,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				kind = api
 
 				modifier = []hcl.Body{parentAPI.Remain, srvConf.Remain}
+
+				scopeDefinitions["api"] = &AccessControl{ErrorHandler: parentAPI.ErrorHandler}
 			}
 			epOpts.LogHandlerKind = kind.String()
 
@@ -266,30 +272,39 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 			}
 
-			scopeMaps := []map[string]string{}
-			if parentAPI != nil {
-				apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
-				if err != nil {
-					return nil, err
-				}
-				scopeMaps = append(scopeMaps, apiScopeMap)
-			}
-			endpointScopeMap, err := seetie.ValueToScopeMap(endpointConf.Scope)
+			scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
 			if err != nil {
 				return nil, err
 			}
-			scopeMaps = append(scopeMaps, endpointScopeMap)
+
 			scopeControl := ac.NewScopeControl(scopeMaps)
+			scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+				epOpts:       epOpts,
+				memStore:     memStore,
+				proxyFromEnv: conf.Settings.NoProxyFromEnv,
+				srvOpts:      serverOptions,
+			}, log, scopeDefinitions, "api", "endpoint")
+			if err != nil {
+				return nil, err
+			}
+
+			var protectedHandler http.Handler
+			protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+
 			accessControl := newAC(srvConf, parentAPI)
+			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
+				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+			}
+
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:       epOpts,
-					handler:      epHandler,
+					handler:      protectedHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, scopeControl, log)
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -310,6 +325,29 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	}
 
 	return serverConfiguration, nil
+}
+
+func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
+	var scopeMaps []map[string]string
+	if parentAPI != nil {
+		apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
+		if err != nil {
+			return nil, err
+		}
+		if apiScopeMap != nil {
+			scopeMaps = append(scopeMaps, apiScopeMap)
+		}
+	}
+	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.Scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if endpointScopeMap != nil {
+		scopeMaps = append(scopeMaps, endpointScopeMap)
+	}
+
+	return scopeMaps, nil
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
@@ -631,7 +669,7 @@ type protectedOptions struct {
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, scopeControl *ac.ScopeControl, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
@@ -646,65 +684,11 @@ func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, 
 			ac.NewItem(acName, m[acName].Control, eh),
 		)
 	}
-	if scopeControl != nil {
-		// TODO properly create error handler
-		list = append(list, ac.NewItem("scope", scopeControl, handler.NewErrorHandler(nil, opts.epOpts.Error)))
-	}
 
 	if len(list) > 0 {
 		return handler.NewAccessControl(opts.handler, list), nil
 	}
 	return opts.handler, nil
-}
-
-func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, references ...string) (http.Handler, error) {
-	kindsHandler := map[string]http.Handler{}
-	for _, ref := range references {
-		for _, h := range defs[ref].ErrorHandler {
-			for _, k := range h.Kinds {
-				if _, exist := kindsHandler[k]; exist {
-					log.Fatal("error type handler exists already: " + k)
-				}
-
-				contextBody := h.HCLBody()
-
-				epConf := &config.Endpoint{
-					Remain:    contextBody,
-					Proxies:   h.Proxies,
-					ErrorFile: h.ErrorFile,
-					Requests:  h.Requests,
-					Response:  h.Response,
-				}
-
-				emptyBody := hcl.EmptyBody()
-				if epConf.Response == nil { // Set dummy resp to skip related requirement checks, allowed for error_handler.
-					epConf.Response = &config.Response{Remain: emptyBody}
-				}
-
-				epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, opts.memStore)
-				if err != nil {
-					return nil, err
-				}
-				if epOpts.Error == nil || h.ErrorFile == "" {
-					epOpts.Error = opts.epOpts.Error
-				}
-
-				epOpts.Error = epOpts.Error.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
-					beresp := &http.Response{Header: rw.Header()}
-					_ = eval.ApplyResponseContext(r.Context(), contextBody, beresp)
-				})
-
-				if epOpts.Response != nil && reflect.DeepEqual(epOpts.Response.Context, emptyBody) {
-					epOpts.Response = nil
-				}
-
-				epOpts.LogHandlerKind = "error_" + k
-				kindsHandler[k] = handler.NewEndpoint(epOpts, log, nil)
-			}
-		}
-	}
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
 }
 
 func setRoutesFromHosts(

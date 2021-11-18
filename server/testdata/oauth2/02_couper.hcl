@@ -6,9 +6,9 @@ server "oauth2-options" {
 
     endpoint "/" {
       proxy {
+        url = "https://example.com/"
+        
         backend {
-          url = "https://example.com/"
-
           oauth2 {
             token_endpoint = "{{.asOrigin}}/options"
             retries        = 0

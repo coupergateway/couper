@@ -24,6 +24,7 @@ func Test_realmain(t *testing.T) {
 		wantLog string
 		want    int
 	}{
+		{"verify", []string{"couper", "verify", "-f", base + "/10_couper.hcl"}, nil, `10_couper.hcl:2,3-6: Unsupported block type; Blocks of type \"foo\" are not expected here.`, 1},
 		{"common log format & info log level /wo file", []string{"couper", "run"}, nil, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
 		{"common log format via env /wo file", []string{"couper", "run", "-log-format", "json"}, []string{"COUPER_LOG_FORMAT=common"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
 		{"info log level via env /wo file", []string{"couper", "run", "-log-level", "debug"}, []string{"COUPER_LOG_LEVEL=info"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
