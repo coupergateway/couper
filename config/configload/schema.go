@@ -173,9 +173,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 	return errors
 }
 
-func getSchemaComponents(
-	body hcl.Body, obj interface{},
-) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
 	var (
 		attrs  hcl.Attributes = make(hcl.Attributes)
 		blocks hcl.Blocks
@@ -228,11 +226,9 @@ func getSchemaComponents(
 	return attrs, blocks, errors
 }
 
-func completeSchemaComponents(
-	name string,
-	body hcl.Body, schema *hcl.BodySchema,
-	attrs hcl.Attributes, blocks hcl.Blocks, errors hcl.Diagnostics,
-) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.Attributes,
+	blocks hcl.Blocks, errors hcl.Diagnostics) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+
 	content, diags := body.Content(schema)
 
 	for _, diag := range diags {
