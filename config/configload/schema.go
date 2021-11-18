@@ -212,13 +212,13 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
-		if match := reFetchLabeledName.MatchString(diag.Detail); match {
+		if match := reFetchLabeledName.MatchString(diag.Detail); match || diag.Detail == noLabelForErrorHandler {
 			bodyContent := bodyToContent(body)
 
 			added := false
 			for _, block := range bodyContent.Blocks {
 				switch block.Type {
-				case "api", "backend", "proxy", "request", "server":
+				case "api", "backend", "error_handler", "proxy", "request", "server":
 					blocks = append(blocks, block)
 
 					added = true
