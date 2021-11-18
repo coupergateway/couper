@@ -322,10 +322,10 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	return tokenClaims, nil
 }
 
-const errValueMsg = "value of %s claim must either be a string containing a space-separated list of scope values or a list of string scope values"
+const errValueMsg = "value of %s claim must either be a string containing a space-separated list of %s or a list of string %s"
 
-var errScopeValue = fmt.Errorf(errValueMsg, "scope")
-var errRolesValue = fmt.Errorf(errValueMsg, "roles")
+var errScopeValue = fmt.Errorf(errValueMsg, "scope", "scope values", "scope values")
+var errRolesValue = fmt.Errorf(errValueMsg, "roles", "roles", "roles")
 
 func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
 	var scopeValues []string
