@@ -891,7 +891,7 @@ func TestJwtSignError(t *testing.T) {
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
-			"missing jwt_signing_profile or jwt definitions",
+			"missing jwt_signing_profile or jwt (with signing_ttl) definitions",
 		},
 		{
 			"No profile for label",
@@ -912,7 +912,7 @@ func TestJwtSignError(t *testing.T) {
 			`,
 			"NoProfileForThisLabel",
 			`{"sub":"12345"}`,
-			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
+			"missing jwt_signing_profile or jwt (with signing_ttl) for given label: NoProfileForThisLabel",
 		},
 		{
 			"argument claims no object",
@@ -950,7 +950,7 @@ func TestJwtSignError(t *testing.T) {
 			`,
 			"NoProfileForThisLabel",
 			`{"sub": "12345"}`,
-			"missing jwt_signing_profile or jwt for given label: NoProfileForThisLabel",
+			"missing jwt_signing_profile or jwt (with signing_ttl) for given label: NoProfileForThisLabel",
 		},
 	}
 
