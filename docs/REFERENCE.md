@@ -15,6 +15,7 @@
     - [OpenAPI Block](#openapi-block)
     - [CORS Block](#cors-block)
     - [OAuth2 CC Block](#oauth2-cc-block)
+    - [Websockets Block](#websockets-block)
     - [Definitions Block](#definitions-block)
     - [Basic Auth Block](#basic-auth-block)
     - [JWT Block](#jwt-block)
