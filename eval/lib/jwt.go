@@ -148,7 +148,7 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			label := args[0].AsString()
 			signingConfig := jwtSigningConfigs[label]
 			if signingConfig == nil {
-				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt (with signing_ttl) for given label: %s", label)
+				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt (with signing_ttl) for given label %q", label)
 			}
 
 			mapClaims := jwt.MapClaims{}
