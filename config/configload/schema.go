@@ -175,7 +175,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 
 func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
 	var (
-		attrs  hcl.Attributes = make(hcl.Attributes)
+		attrs  = make(hcl.Attributes)
 		blocks hcl.Blocks
 		errors hcl.Diagnostics
 	)
@@ -192,35 +192,14 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 		schema = config.SchemaWithOAuth2RA(schema)
 	}
 
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-
-		// TODO: How to implement this automatically?
-		if field.Type.String() == "config.ErrorHandlerSetter" {
-			var triggerBreak bool
-
-			switch typ.String() {
-			// TODO: How to implement this automatically?
-			case "config.BasicAuth", "config.JWT", "config.OAuth2AC", "config.SAML", "config.OIDC":
-				schema = config.NewErrorSetterSchema(schema)
-
-				triggerBreak = true
-			}
-
-			if triggerBreak {
-				break
-			}
-		}
+	if _, ok := obj.(ErrorHandlerSetter); ok {
+		schema = config.WithErrorHandlerSchema(schema)
 	}
 
-	attrs, blocks, errors = completeSchemaComponents(
-		typ.String(), body, schema, attrs, blocks, errors,
-	)
+	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
 
 	if i, ok := obj.(config.Inline); ok {
-		attrs, blocks, errors = completeSchemaComponents(
-			typ.String(), body, i.Schema(true), attrs, blocks, errors,
-		)
+		attrs, blocks, errors = completeSchemaComponents(body, i.Schema(true), attrs, blocks, errors)
 	}
 
 	return attrs, blocks, errors

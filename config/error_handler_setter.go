@@ -13,7 +13,7 @@ func (ehs *ErrorHandlerSetter) Set(ehConf *ErrorHandler) {
 	ehs.ErrorHandler = append(ehs.ErrorHandler, ehConf)
 }
 
-func NewErrorSetterSchema(schema *hcl.BodySchema) *hcl.BodySchema {
+func WithErrorHandlerSchema(schema *hcl.BodySchema) *hcl.BodySchema {
 	errorSetterSchema, _ := gohcl.ImpliedBodySchema(&ErrorHandlerSetter{})
 	schema.Attributes = append(schema.Attributes, errorSetterSchema.Attributes...)
 	schema.Blocks = append(schema.Blocks, errorSetterSchema.Blocks...)
