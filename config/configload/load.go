@@ -80,7 +80,7 @@ func LoadBytes(src []byte, filename string, verifyOnly bool) (*config.Couper, er
 }
 
 func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*config.Couper, error) {
-	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() || verifyOnly {
+	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
