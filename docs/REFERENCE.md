@@ -59,6 +59,7 @@ The `server` block is one of the root configuration blocks of Couper's configura
 | `hosts`          | list   | port `:8080` | - | &#9888; required, if there is more than one `server` block. &#9888; Only one `hosts` attribute per `server` block is allowed. | `hosts = ["example.com", "localhost:9090"]` |
 | `error_file`     | string | -            | Location of the error file template. | - | `error_file = "./my_error_page.html"` |
 | `access_control` | list   | -            | Sets predefined [Access Control](#access-control) for `server` block context. | &#9888; Inherited by nested blocks. | `access_control = ["foo"]` |
+| `custom_log_fields` | map | -            | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### Files Block
 
@@ -74,6 +75,7 @@ The `files` block configures the file serving.
 | `document_root`  | string | -       | Location of the document root. | &#9888; required | `document_root = "./htdocs"` |
 | `error_file`     | string | -       | Location of the error file template. | - | - |
 | `access_control` | list   | -       | Sets predefined [Access Control](#access-control) for `files` block context. | - | `access_control = ["foo"]` |
+| `custom_log_fields` | map | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### SPA Block
 
@@ -89,6 +91,7 @@ The `spa` block configures the Web serving for SPA assets.
 | `bootstrap_file` | string | -       | Location of the bootstrap file. | &#9888; required | `bootstrap_file = "./htdocs/index.html"` |
 | `paths`          | list   | -       | List of SPA paths that need the bootstrap file. | &#9888; required | `paths = ["/app/**"]` |
 | `access_control` | list   | -       | Sets predefined [Access Control](#access-control) for `spa` block context. | - | `access_control = ["foo"]` |
+| `custom_log_fields` | map | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### API Block
 
@@ -107,6 +110,7 @@ as json error with an error body payload. This can be customized via `error_file
 | `error_file` |string|-|Location of the error file template.|-|`error_file = "./my_error_body.json"`|
 | `access_control` |list|-|Sets predefined [Access Control](#access-control) for `api` block context.|&#9888; Inherited by nested blocks.| `access_control = ["foo"]`|
 | `beta_scope` |string or object|-|Scope value required to use this API (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### Endpoint Block
 
@@ -128,6 +132,7 @@ produce an explicit or implicit client response.
 | `path`|string|-|Changeable part of the upstream URL. Changes the path suffix of the outgoing request.|-|-|
 |`access_control`   |list|-|Sets predefined [Access Control](#access-control) for `endpoint` block context.|-| `access_control = ["foo"]`|
 | `beta_scope` |string or object|-|Scope value required to use this endpoint (see [error type](../ERRORS.md#error-types) `beta_insufficient_scope`).|If the value is a string, the same scope value applies to all request methods. If there are different scope values for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted (see [error type](../ERRORS.md#error-types) `beta_operation_denied`). `"*"` is the key for "all other methods". A value `""` means "no (additional) scope required".| `beta_scope = "read"` or `beta_scope = { post = "write", "*" = "" }`|
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 |[Modifiers](#modifiers) |-|-|-|-|-|
 
 ### Proxy Block
@@ -197,6 +202,7 @@ The `backend` block defines the connection to a local/remote backend service.
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `basic_auth`                    | string|-|Basic auth for the upstream request. | format is `username:password`|-|
+| `custom_log_fields`             | map                 | -             | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
 | `hostname`                      | string |-|Value of the HTTP host header field for the origin request. |Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.|-|
 | `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with the scheme `http://...`.|-|
 | `path`                          | string|-|Changeable part of upstream URL.|-|-|
@@ -346,6 +352,7 @@ required _label_.
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `cookie`  |string|-|Read token value from a cookie.|cannot be used together with `header` or `token_value` |`cookie = "AccessToken"`|
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 | `header`          |string|-|Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
 | `token_value` | string | - | expression to obtain the token | cannot be used together with `cookie` or `header` | `token_value = request.form_body.token[0]`|
 | `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
