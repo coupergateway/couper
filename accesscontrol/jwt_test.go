@@ -324,7 +324,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		scope      interface{}
 		rolesClaim string
 		roles      interface{}
-		wantErr    bool
 		expWarn    int
 		expScopes  []string
 	}{
@@ -334,7 +333,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			nil,
-			false,
 			0,
 			[]string{},
 		},
@@ -344,7 +342,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo bar",
 			"",
 			nil,
-			false,
 			0,
 			[]string{"foo", "bar"},
 		},
@@ -354,7 +351,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo bar foo",
 			"",
 			nil,
-			false,
 			0,
 			[]string{"foo", "bar"},
 		},
@@ -364,7 +360,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 			"",
 			nil,
-			false,
 			0,
 			[]string{"foo", "bar"},
 		},
@@ -374,7 +369,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar", "bar"},
 			"",
 			nil,
-			false,
 			0,
 			[]string{"foo", "bar"},
 		},
@@ -384,7 +378,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			true,
 			"",
 			nil,
-			false,
 			1,
 			[]string{},
 		},
@@ -394,7 +387,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			1.23,
 			"",
 			nil,
-			false,
 			1,
 			[]string{},
 		},
@@ -404,7 +396,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]bool{true, false},
 			"",
 			nil,
-			false,
 			1,
 			[]string{},
 		},
@@ -414,7 +405,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]int{1, 2},
 			"",
 			nil,
-			false,
 			1,
 			[]string{},
 		},
@@ -424,7 +414,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			false,
 			1,
 			[]string{},
 		},
@@ -434,7 +423,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			false,
 			1,
 			[]string{},
 		},
@@ -444,7 +432,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"admin",
-			false,
 			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
@@ -454,7 +441,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"user1 user2",
-			false,
 			0,
 			[]string{"foo", "bar", "default"},
 		},
@@ -464,7 +450,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"user1 user2 user1",
-			false,
 			0,
 			[]string{"foo", "bar", "default"},
 		},
@@ -474,7 +459,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"user1", "user2"},
-			false,
 			0,
 			[]string{"foo", "bar", "default"},
 		},
@@ -484,7 +468,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"user1", "user2", "user2"},
-			false,
 			0,
 			[]string{"foo", "bar", "default"},
 		},
@@ -494,7 +477,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"admin", "user1"},
-			false,
 			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
@@ -504,7 +486,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"admin", "user2"},
-			false,
 			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
@@ -514,7 +495,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			true,
-			false,
 			1,
 			[]string{"default"},
 		},
@@ -524,7 +504,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			1.23,
-			false,
 			1,
 			[]string{"default"},
 		},
@@ -534,7 +513,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]bool{true, false},
-			false,
 			1,
 			[]string{"default"},
 		},
@@ -544,7 +522,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]int{1, 2},
-			false,
 			1,
 			[]string{"default"},
 		},
@@ -554,7 +531,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]interface{}{"user1", 2},
-			false,
 			1,
 			[]string{"default"},
 		},
@@ -564,7 +540,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
-			false,
 			1,
 			[]string{"default"},
 		},
@@ -574,7 +549,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo foo",
 			"roles",
 			[]string{"user2"},
-			false,
 			0,
 			[]string{"foo", "bar", "default"},
 		},
@@ -584,7 +558,6 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 			"roles",
 			"admin",
-			false,
 			0,
 			[]string{"foo", "bar", "baz", "default"},
 		},
@@ -623,20 +596,18 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
 			req = req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
 
-			if err = j.Validate(req); (err != nil) != tt.wantErr {
-				subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			if err = j.Validate(req); err != nil {
+				subT.Errorf("Unexpected error = %v", err)
+				return
 			}
 
-			if !tt.wantErr {
-				scopesList, ok := req.Context().Value(request.Scopes).([]string)
-				if !ok {
-					subT.Errorf("Expected scopes within request context")
-				} else {
-					if !reflect.DeepEqual(tt.expScopes, scopesList) {
-						subT.Errorf("Scopes do not match, want: %v, got: %v", tt.expScopes, scopesList)
-					}
+			scopesList, ok := req.Context().Value(request.Scopes).([]string)
+			if !ok {
+				subT.Errorf("Expected scopes within request context")
+			} else {
+				if !reflect.DeepEqual(tt.expScopes, scopesList) {
+					subT.Errorf("Scopes do not match, want: %v, got: %v", tt.expScopes, scopesList)
 				}
-
 			}
 
 			entries := hook.AllEntries()
