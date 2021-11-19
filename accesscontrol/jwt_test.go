@@ -324,7 +324,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		scope      interface{}
 		rolesClaim string
 		roles      interface{}
-		expWarn    int
+		expWarning string
 		expScopes  []string
 	}{
 		{
@@ -333,7 +333,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			nil,
-			0,
+			"",
 			[]string{},
 		},
 		{
@@ -342,7 +342,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo bar",
 			"",
 			nil,
-			0,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -351,7 +351,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo bar foo",
 			"",
 			nil,
-			0,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -360,7 +360,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 			"",
 			nil,
-			0,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -369,7 +369,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar", "bar"},
 			"",
 			nil,
-			0,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -378,7 +378,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			true,
 			"",
 			nil,
-			1,
+			"invalid scope claim value type, ignoring claim, value: true",
 			[]string{},
 		},
 		{
@@ -387,7 +387,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			1.23,
 			"",
 			nil,
-			1,
+			"invalid scope claim value type, ignoring claim, value: 1.23",
 			[]string{},
 		},
 		{
@@ -396,7 +396,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]bool{true, false},
 			"",
 			nil,
-			1,
+			"invalid scope claim value type, ignoring claim, value: []interface {}{true, false}",
 			[]string{},
 		},
 		{
@@ -405,7 +405,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]int{1, 2},
 			"",
 			nil,
-			1,
+			"invalid scope claim value type, ignoring claim, value: []interface {}{1, 2}",
 			[]string{},
 		},
 		{
@@ -414,7 +414,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			1,
+			`invalid scope claim value type, ignoring claim, value: []interface {}{"eins", 2}`,
 			[]string{},
 		},
 		{
@@ -423,7 +423,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			1,
+			`invalid scope claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
 			[]string{},
 		},
 		{
@@ -432,7 +432,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"admin",
-			0,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -441,7 +441,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"user1 user2",
-			0,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -450,7 +450,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"user1 user2 user1",
-			0,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -459,7 +459,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"user1", "user2"},
-			0,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -468,7 +468,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"user1", "user2", "user2"},
-			0,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -477,7 +477,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"admin", "user1"},
-			0,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -486,7 +486,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"admin", "user2"},
-			0,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -495,7 +495,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			true,
-			1,
+			"invalid roles claim value type, ignoring claim, value: true",
 			[]string{"default"},
 		},
 		{
@@ -504,7 +504,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			1.23,
-			1,
+			"invalid roles claim value type, ignoring claim, value: 1.23",
 			[]string{"default"},
 		},
 		{
@@ -513,7 +513,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]bool{true, false},
-			1,
+			"invalid roles claim value type, ignoring claim, value: []interface {}{true, false}",
 			[]string{"default"},
 		},
 		{
@@ -522,7 +522,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]int{1, 2},
-			1,
+			"invalid roles claim value type, ignoring claim, value: []interface {}{1, 2}",
 			[]string{"default"},
 		},
 		{
@@ -531,7 +531,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]interface{}{"user1", 2},
-			1,
+			`invalid roles claim value type, ignoring claim, value: []interface {}{"user1", 2}`,
 			[]string{"default"},
 		},
 		{
@@ -540,7 +540,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
-			1,
+			`invalid roles claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
 			[]string{"default"},
 		},
 		{
@@ -549,7 +549,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo foo",
 			"roles",
 			[]string{"user2"},
-			0,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -558,7 +558,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 			"roles",
 			"admin",
-			0,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 	}
@@ -611,14 +611,23 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			}
 
 			entries := hook.AllEntries()
-			if tt.expWarn != len(entries) {
-				subT.Errorf("Number of warnings does not match, want: %d, got %d", tt.expWarn, len(entries))
-			} else {
-				for _, entry := range entries {
-					if entry.Level != logrus.WarnLevel {
-						subT.Errorf("Expected warnings")
-					}
+			if tt.expWarning == "" {
+				if len(entries) > 0 {
+					subT.Errorf("Expected no log messages, got: %d", len(entries))
 				}
+				return
+			}
+			if len(entries) != 1 {
+				subT.Errorf("Expected one log message: got: %d", len(entries))
+				return
+			}
+			entry := entries[0]
+			if entry.Level != logrus.WarnLevel {
+				subT.Errorf("Expected warning, got: %v", entry.Level)
+				return
+			}
+			if entry.Message != tt.expWarning {
+				subT.Errorf("Warning mismatch,\n\twant: %s,\n\tgot: %s", tt.expWarning, entry.Message)
 			}
 		})
 	}
