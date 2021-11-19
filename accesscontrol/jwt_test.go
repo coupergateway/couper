@@ -405,7 +405,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
-			2,
+			1,
 			[]string{},
 		},
 		{
@@ -415,7 +415,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			false,
-			2,
+			1,
 			[]string{},
 		},
 		{
@@ -426,7 +426,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			false,
 			1,
-			[]string{"eins"},
+			[]string{},
 		},
 		{
 			"scope: warn: object",
@@ -535,7 +535,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			[]bool{true, false},
 			false,
-			2,
+			1,
 			[]string{"default"},
 		},
 		{
@@ -545,7 +545,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			[]int{1, 2},
 			false,
-			2,
+			1,
 			[]string{"default"},
 		},
 		{
@@ -553,7 +553,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"roles",
-			[]interface{}{"eins", 2},
+			[]interface{}{"user1", 2},
 			false,
 			1,
 			[]string{"default"},
