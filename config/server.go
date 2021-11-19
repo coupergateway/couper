@@ -34,10 +34,11 @@ func (s Server) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (s Server) Inline() interface{} {
 	type Inline struct {
-		APIs               APIs              `hcl:"api,block"`
-		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
-		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
-		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
+		APIs               APIs                      `hcl:"api,block"`
+		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
+		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
+		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`
+		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 	}
 
 	return &Inline{}

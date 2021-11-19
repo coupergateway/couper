@@ -39,9 +39,10 @@ func (e Endpoint) HCLBody() hcl.Body {
 func (e Endpoint) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		Proxies        Proxies  `hcl:"proxy,block"`
-		Requests       Requests `hcl:"request,block"`
-		ResponseStatus *uint8   `hcl:"set_response_status,optional"`
+		Proxies        Proxies                   `hcl:"proxy,block"`
+		Requests       Requests                  `hcl:"request,block"`
+		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
+		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 	}
 
 	return &Inline{}
