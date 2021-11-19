@@ -55,22 +55,22 @@ func Test_requiredScope(t *testing.T) {
 			rs.addScopeMap(tt.base)
 			rs.addScopeMap(tt.sm)
 			if len(rs.scopes) != len(tt.want) {
-				t.Errorf("unexpected scopes: %#v, want: %#v", rs.scopes, tt.want)
+				subT.Errorf("unexpected scopes: %#v, want: %#v", rs.scopes, tt.want)
 				return
 			}
 			for op, wantScopes := range tt.want {
 				scopes, exists := rs.scopes[op]
 				if !exists {
-					t.Errorf("no scopes for operation %q", op)
+					subT.Errorf("no scopes for operation %q", op)
 					return
 				}
 				if len(scopes) != len(wantScopes) {
-					t.Errorf("unexpected scopes for %q: %#v, want: %#v", op, scopes, wantScopes)
+					subT.Errorf("unexpected scopes for %q: %#v, want: %#v", op, scopes, wantScopes)
 					return
 				}
 				for i, s := range wantScopes {
 					if scopes[i] != s {
-						t.Errorf("unexpected scopes for %q: %#v, want: %#v", op, scopes, wantScopes)
+						subT.Errorf("unexpected scopes for %q: %#v, want: %#v", op, scopes, wantScopes)
 						return
 					}
 				}
@@ -181,16 +181,16 @@ func Test_ScopeControl(t *testing.T) {
 			}
 			if tt.wantErrorString == "" && err != nil {
 				logErr := err.(errors.GoError)
-				t.Errorf("no error expected, was: %#q", logErr.LogError())
+				subT.Errorf("no error expected, was: %#q", logErr.LogError())
 				return
 			}
 			if tt.wantErrorString != "" && err == nil {
-				t.Errorf("no error thrown, expected: %q", tt.wantErrorString)
+				subT.Errorf("no error thrown, expected: %q", tt.wantErrorString)
 				return
 			}
 			logErr := err.(errors.GoError)
 			if tt.wantErrorString != logErr.LogError() {
-				t.Errorf("unexpected error thrown, expected: %q, was: %q", tt.wantErrorString, logErr.LogError())
+				subT.Errorf("unexpected error thrown, expected: %q, was: %q", tt.wantErrorString, logErr.LogError())
 				return
 			}
 		})
