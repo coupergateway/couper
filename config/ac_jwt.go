@@ -53,7 +53,8 @@ func (j *JWT) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (j *JWT) Inline() interface{} {
 	type Inline struct {
-		Backend *Backend `hcl:"backend,block"`
+		Backend   *Backend                  `hcl:"backend,block"`
+		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 	}
 
 	return &Inline{}

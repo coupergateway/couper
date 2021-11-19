@@ -45,12 +45,13 @@ func (b Backend) HCLBody() hcl.Body {
 func (b Backend) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		BasicAuth      string `hcl:"basic_auth,optional"`
-		Hostname       string `hcl:"hostname,optional"`
-		Origin         string `hcl:"origin,optional"`
-		PathPrefix     string `hcl:"path_prefix,optional"`
-		ProxyURL       string `hcl:"proxy,optional"`
-		ResponseStatus *uint8 `hcl:"set_response_status,optional"`
+		BasicAuth      string                    `hcl:"basic_auth,optional"`
+		Hostname       string                    `hcl:"hostname,optional"`
+		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		Origin         string                    `hcl:"origin,optional"`
+		PathPrefix     string                    `hcl:"path_prefix,optional"`
+		ProxyURL       string                    `hcl:"proxy,optional"`
+		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
 	}
 
 	return &Inline{}
