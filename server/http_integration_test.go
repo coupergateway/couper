@@ -2679,6 +2679,11 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			healthyJSON,
 		},
 		{
+			"healthy backend: check does not follow Location",
+			"/healthy/no_follow_redirect",
+			healthyJSON,
+		},
+		{
 			"unhealthy backend: timeout",
 			"/unhealthy/timeout",
 			`{"error":"Get \"http://1.2.3.4\": proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":false,"state":"unhealthy"}`,
@@ -2713,7 +2718,11 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			"/unhealthy/headers",
 			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
 		},
-
+		{
+			"unhealthy backend: does not follow location",
+			"/unhealthy/no_follow_redirect",
+			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+		},
 		{
 			"failing backend: timeout but threshold not reached",
 			"/failing",

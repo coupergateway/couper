@@ -29,6 +29,11 @@ server {
       json_body = backends.healthy_headers.health
     }
   }
+  endpoint "/healthy/no_follow_redirect" {
+    response {
+      json_body = backends.healthy_no_follow_redirect.health
+    }
+  }
   endpoint "/unhealthy/timeout" {
     response {
       json_body = backends.unhealthy_timeout.health
@@ -59,6 +64,11 @@ server {
       json_body = backends.unhealthy_headers.health
     }
   }
+  endpoint "/unhealthy/no_follow_redirect" {
+    response {
+      json_body = backends.unhealthy_no_follow_redirect.health
+    }
+  }
   endpoint "/failing" {
     response {
       json_body = backends.failing.health
@@ -81,6 +91,9 @@ server {
     request "healthy_headers" {
       backend = "healthy_headers"
     }
+    request "healthy_no_follow_redirect" {
+      backend = "healthy_no_follow_redirect"
+    }
     request "unhealthy_timeout" {
       backend = "unhealthy_timeout"
     }
@@ -98,6 +111,9 @@ server {
     }
     request "unhealthy_headers" {
       backend = "unhealthy_headers"
+    }
+    request "unhealthy_no_follow_redirect" {
+      backend = "unhealthy_no_follow_redirect"
     }
     request "failing" {
       backend = "failing"
@@ -137,6 +153,13 @@ definitions {
       expect_text = "\"UserAgent\":\"Couper-Health-Check\""
     }
   }
+  backend "healthy_no_follow_redirect" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
+    beta_health {
+      path = "/redirect?url=/health?redirected"
+      expect_status = 302
+    }
+  }
   backend "unhealthy_timeout" {
     origin = "http://1.2.3.4"
     beta_health {}
@@ -168,6 +191,13 @@ definitions {
     beta_health {
       headers = {User-Agent = "FAIL"}
       expect_text = "Go-http-client"
+    }
+  }
+  backend "unhealthy_no_follow_redirect" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
+    beta_health {
+      path = "/redirect?url=/health?redirected"
+      expect_text = "👍"
     }
   }
   backend "failing" {

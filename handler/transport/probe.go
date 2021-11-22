@@ -47,6 +47,7 @@ type Probe struct {
 	Failure uint
 	State   state
 	Status  int
+	client  *http.Client
 }
 
 func (s state) String() string {
@@ -58,11 +59,18 @@ func (p Probe) String() string {
 }
 
 func NewProbe(b *Backend) {
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
 	p := &Probe{
-		Log:   b.upstreamLog,
-		Name:  b.name,
-		Opts:  b.options.HealthCheck,
-		State: StateInvalid,
+		Log:    b.upstreamLog,
+		Name:   b.name,
+		Opts:   b.options.HealthCheck,
+		State:  StateInvalid,
+		client: client,
 	}
 
 	go p.probe()
@@ -73,7 +81,7 @@ func (p *Probe) probe() {
 		ctx, cancel := context.WithTimeout(context.Background(), p.Opts.Timeout)
 		defer cancel()
 
-		res, err := http.DefaultClient.Do(p.Opts.Request.WithContext(ctx))
+		res, err := p.client.Do(p.Opts.Request.WithContext(ctx))
 
 		p.Counter++
 		prevState := p.State
