@@ -7,31 +7,33 @@ on:
 #    types: [released]
 
 jobs:
-  releases-matrix:
-    name: Release Go Binary
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # build and publish in parallel: */amd64, */arm64
-        goos: [linux, windows]
-        goarch: [amd64, arm64]
-        exclude:
-          - goarch: arm64
-            goos: windows
-    steps:
-      - uses: actions/checkout@v2
-      - uses: wangyoucao577/go-release-action@v1.20
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} # provided by github/actions
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          goversion: "1.17"
-          binary_name: "couper"
+#  releases-matrix:
+#    name: Release Go Binary
+#    runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        # build and publish in parallel: */amd64, */arm64
+#        goos: [linux, windows]
+#        goarch: [amd64, arm64]
+#        exclude:
+#          - goarch: arm64
+#            goos: windows
+#    steps:
+#      - uses: actions/checkout@v2
+#      - uses: wangyoucao577/go-release-action@v1.20
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }} # provided by github/actions
+#          goos: ${{ matrix.goos }}
+#          goarch: ${{ matrix.goarch }}
+#          goversion: "1.17"
+#          binary_name: "couper"
   macos:
     runs-on: macos-11
     strategy:
       matrix:
         goarch: [amd64, arm64]
+    env:
+      AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
     steps:
       - uses: actions/checkout@v2
       - name: 'setup go'
@@ -48,8 +50,6 @@ jobs:
         run: go build -race -o ./.macos/Couper.app/Contents/MacOS/couper main.go
       - name: 'sign couper binary'
         run: gon -log-level=info -log-json ./.gon_sign.hcl
-        with:
-          ac_password: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       - name: 'verify signed binary'
         run: codesign -dvvv --deep --strict ./.macos/Couper.app/Contents/MacOS/couper
       - name: 'create macOS dmg with signed binary'
@@ -58,8 +58,6 @@ jobs:
         run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/MacOS/couper ./.macos/couper.zip
       - name: 'notarize and stable'
         run: gon -log-level=info -log-json ./.gon.hcl
-        with:
-          ac_password: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       - name: 'verify notarization'
         run: spctl -vvv --assess --type exec ./.macos/Couper.app/Contents/MacOS/couper
 #      - name: 'entitlement format'
