@@ -1,8 +1,10 @@
 name: Release
 
 on:
-  release:
-    types: [released]
+  push:
+    branches: [ signed-macos-binary ]
+#  release:
+#    types: [released]
 
 jobs:
   releases-matrix:
@@ -11,7 +13,7 @@ jobs:
     strategy:
       matrix:
         # build and publish in parallel: */amd64, */arm64
-        goos: [linux, darwin, windows]
+        goos: [linux, windows]
         goarch: [amd64, arm64]
         exclude:
           - goarch: arm64
@@ -25,3 +27,40 @@ jobs:
           goarch: ${{ matrix.goarch }}
           goversion: "1.17"
           binary_name: "couper"
+  macos:
+    runs-on: macos-11
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v2
+      - name: 'setup go'
+        uses: actions/setup-go@v2
+      - name: "import certificate"
+        uses: devbotsxyz/import-signing-certificate@v1
+        with:
+          certificate-data: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          certificate-passphrase: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          keychain-password: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+      - name: 'install gon'
+        run: go install github.com/mitchellh/gon
+      - name: 'build couper'
+        run: go build -race -o ./.macos/Couper.app/Contents/MacOS/couper main.go
+      - name: 'sign couper binary'
+        run: gon -log-level=info -log-json ./.gon_sign.hcl
+        with:
+          ac_password: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
+      - name: 'verify signed binary'
+        run: codesign -dvvv --deep --strict ./.macos/Couper.app/Contents/MacOS/couper
+      - name: 'create macOS dmg with signed binary'
+        run: cd .macos && go run make.go && cd ..
+      - name: 'create signed binary zip-file' # keep utf8 things with ditto
+        run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/MacOS/couper ./.macos/couper.zip
+      - name: 'notarize and stable'
+        run: gon -log-level=info -log-json ./.gon.hcl
+        with:
+          ac_password: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
+      - name: 'verify notarization'
+        run: spctl -vvv --assess --type exec ./.macos/Couper.app/Contents/MacOS/couper
+#      - name: 'entitlement format'
+#        run: plutil -convert xml1 .macos/entitlements.plist && plutil -lint .macos/entitlements.plist
