@@ -47,7 +47,7 @@ jobs:
           certificate-passphrase: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           keychain-password: ${{ secrets.MACOS_KEYCHAIN_PWD }}
       - name: 'install gon'
-        run: go get github.com/mitchellh/gon
+        run: go get github.com/mitchellh/gon && go mod vendor
       - name: 'build couper'
         run: go build -race -o ./.macos/Couper.app/Contents/MacOS/couper main.go
       - name: 'sign couper binary'
