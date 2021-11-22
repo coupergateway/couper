@@ -24,6 +24,11 @@ server {
       json_body = backends.healthy_path.health
     }
   }
+  endpoint "/healthy/headers" {
+    response {
+      json_body = backends.healthy_headers.health
+    }
+  }
   endpoint "/unhealthy/timeout" {
     response {
       json_body = backends.unhealthy_timeout.health
@@ -49,6 +54,11 @@ server {
       json_body = backends.unhealthy_bad_path.health
     }
   }
+  endpoint "/unhealthy/headers" {
+    response {
+      json_body = backends.unhealthy_headers.health
+    }
+  }
   endpoint "/failing" {
     response {
       json_body = backends.failing.health
@@ -68,6 +78,9 @@ server {
     request "healthy_path" {
       backend = "healthy_path"
     }
+    request "healthy_headers" {
+      backend = "healthy_headers"
+    }
     request "unhealthy_timeout" {
       backend = "unhealthy_timeout"
     }
@@ -82,6 +95,9 @@ server {
     }
     request "unhealthy_bad_path" {
       backend = "unhealthy_bad_path"
+    }
+    request "unhealthy_headers" {
+      backend = "unhealthy_headers"
     }
     request "failing" {
       backend = "failing"
@@ -113,6 +129,14 @@ definitions {
       expect_text = "\"RawQuery\":\"foo=bar\""
     }
   }
+  backend "healthy_headers" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
+    beta_health {
+      path = "/anything"
+      headers = {User-Agent: "Couper-Health-Check"}
+      expect_text = "\"UserAgent\":\"Couper-Health-Check\""
+    }
+  }
   backend "unhealthy_timeout" {
     origin = "http://1.2.3.4"
     beta_health {}
@@ -137,6 +161,13 @@ definitions {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
       path = "/"
+    }
+  }
+  backend "unhealthy_headers" {
+    origin = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+    beta_health {
+      headers = {User-Agent = "FAIL"}
+      expect_text = "Go-http-client"
     }
   }
   backend "failing" {

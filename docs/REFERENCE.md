@@ -174,7 +174,7 @@ The `request` block creates and executes a request to a backend service.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                                                      | Nested block(s)                                                                                                             |
 |:-----------|:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
-| `request`  | [Endpoint Block](#endpoint-block) , [Health Block](#health-block) |&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set.|
+| `request`  | [Endpoint Block](#endpoint-block)  |&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set.|
 <!-- TODO: add available http methods -->
 
 | Attribute(s)      | Type                                  | Default | Description                                                                                                                                                                                                                                                                                      | Characteristic(s)                                                                                                                                                                      | Example           |
@@ -534,14 +534,15 @@ Defines a recurring health check request for its backend. Results can be obtaine
 |:--------------|:----------------------------------|:------|:-------------|
 | `beta_health` | [`backend` block](#backend-block) | –     |              |
 
-| Attributes          | Type                  | Default             | Description                                        | Characteristics       | Example                 |
-|:--------------------|:----------------------|:--------------------|:---------------------------------------------------|:----------------------|:------------------------|
-| `expect_status`     | number                | `200`, `204`, `301` | wanted response status code                        |                       | `expect_status =  418`  |
-| `expect_text`       | string                | –                   | text response body must contain                    |                       | `expect_text = alive`   |
-| `failure_threshold` | number                | `2`                 | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3` |
-| `interval`          | [duration](#duration) | `"2s"`              | time interval for recheck                          |                       | `timeout = "5s"`        |
-| `path`              | string                | –                   | URL path/query on backend host                     |                       | `path = "/health"`      |
-| `timeout`           | [duration](#duration) | `"2s"`              | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`        |
+| Attributes          | Type                  | Default             | Description                                        | Characteristics       | Example                            |
+|:--------------------|:----------------------|:--------------------|:---------------------------------------------------|:----------------------|:-----------------------------------|
+| `expect_status`     | number                | `200`, `204`, `301` | wanted response status code                        |                       | `expect_status =  418`             |
+| `expect_text`       | string                | –                   | text response body must contain                    |                       | `expect_text = alive`              |
+| `failure_threshold` | number                | `2`                 | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`            |
+| `headers`           | map                   | –                   | request headers                                    |                       | `headers = {User-Agent: "health"}` |
+| `interval`          | [duration](#duration) | `"2s"`              | time interval for recheck                          |                       | `timeout = "5s"`                   |
+| `path`              | string                | –                   | URL path/query on backend host                     |                       | `path = "/health"`                 |
+| `timeout`           | [duration](#duration) | `"2s"`              | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`                   |
 
 ### Settings Block
 
@@ -549,7 +550,7 @@ The `settings` block lets you configure the more basic and global behavior of yo
 gateway instance.
 
 | Context | Label    | Nested block(s) |
-| :------ | :------- | :-------------- |
+|:--------|:---------|:----------------|
 | -       | no label | -               |
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |

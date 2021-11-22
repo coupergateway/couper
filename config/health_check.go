@@ -24,6 +24,8 @@ type HealthCheck struct {
 	Request          *http.Request
 }
 
+type Headers map[string]string
+
 type Health struct {
 	FailureThreshold uint     `hcl:"failure_threshold,optional"`
 	Interval         string   `hcl:"interval,optional"`
@@ -31,6 +33,7 @@ type Health struct {
 	Path             string   `hcl:"path,optional"`
 	ExpectStatus     int      `hcl:"expect_status,optional"`
 	ExpectText       string   `hcl:"expect_text,optional"`
+	Headers          Headers  `hcl:"headers,optional"`
 	Remain           hcl.Body `hcl:",remain"`
 }
 
@@ -70,6 +73,12 @@ func NewHealthCheck(baseURL string, options *Health) (*HealthCheck, error) {
 
 		if options.Path != "" {
 			request.URL = request.URL.ResolveReference(createURL(options.Path))
+		}
+
+		if options.Headers != nil {
+			for key, value := range options.Headers {
+				request.Header.Add(key, value)
+			}
 		}
 
 		healthCheck.Request = request
