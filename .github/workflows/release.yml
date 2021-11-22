@@ -50,6 +50,10 @@ jobs:
         run: go install github.com/mitchellh/gon/...@v0.2.3
       - name: 'build couper'
         run: go build -race -o ./.macos/Couper.app/Contents/MacOS/couper main.go
+      - name: 'cleanup finder attributes'
+        run: xattr -c ./.macos/Couper.app/Contents/info.plist
+      - name: 'verify identity'
+        run: security find-identity -v
       - name: 'sign couper binary'
         run: gon -log-level=info -log-json ./.gon_sign.hcl
       - name: 'verify signed binary'
