@@ -54,26 +54,29 @@ jobs:
         run: go install github.com/wangyoucao577/assets-uploader/...@v0.8.0
       - name: 'build couper'
         run: |
-          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -race -v -o ./.macos/Couper.app/Contents/MacOS/couper main.go
+          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -race -v -o ./.macos/Couper.app/Contents/couper main.go
       - name: 'cleanup finder attributes'
-        run: xattr -c ./.macos/Couper.app/Contents/Info.plist
+        run: |
+          xattr -c ./.macos/Couper.app/Contents/Info.plist
+          xattr -c ./.macos/Entitlements.plist
+          plutil -convert xml1 .macos/Entitlements.plist && plutil -lint .macos/Entitlements.plist
       - name: 'verify identity'
         run: security find-identity -v
-      - name: 'sign Couper.app binary'
-        run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
-      - name: 'create macOS dmg with signed binary'
-        run: cd .macos && go run make.go && cd ..
-      - name: 'sign couper image'
-        run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.dmg
+      - name: 'sign couper binary'
+        run: codesign -i "binary.com.avenga.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
       - name: 'create signed binary zip-file' # keep utf8 things with ditto
-        run: ditto -c -k ./.macos/Couper.app/Contents/MacOS/couper ./.macos/couper.zip
-      - name: 'notarize and stable'
+        run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/couper ./.macos/couper.zip
+#      - name: 'create macOS dmg with signed binary'
+#        run: |
+#          mkdir -p ./.macos/Couper.app/Contents/MacOS
+#          mv ./.macos/Couper.app/Contents/couper ./.macos/Couper.app/Contents/MacOS/couper
+#          codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/Entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
+#          cd .macos && go run make.go && cd ..
+      - name: 'notarize' # and stable'
         run: gon -log-level=info -log-json ./.gon.hcl
-      - name: 'verify image notarization'
-        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
+#      - name: 'verify image notarization'
+#        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
       - name: 'upload archive'
         run: mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN
-      - name: 'upload image'
-        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
-#      - name: 'entitlement format'
-#        run: plutil -convert xml1 .macos/entitlements.plist && plutil -lint .macos/entitlements.plist
+#      - name: 'upload image'
+#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN -mediatype 'application/octet-stream'

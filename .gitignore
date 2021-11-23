@@ -7,7 +7,7 @@
 /.macos/couper.dmg
 /.macos/couper.zip
 /.macos/Couper.app/**
-!/.macos/Couper.app/**/info.plist
+!/.macos/Couper.app/**/Info.plist
 !/.macos/Couper.app/**/Resources/icon.icns
 
 #go-fuzz
