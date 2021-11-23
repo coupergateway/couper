@@ -14,6 +14,7 @@ func NewLogger() (*logrus.Logger, *logrustest.Hook) {
 	log.Out = io.Discard
 	log.AddHook(&hooks.Error{})
 	log.AddHook(&hooks.Context{})
+	log.AddHook(&hooks.CustomLogs{})
 	hook := logrustest.NewLocal(log)
 	return log, hook
 }
