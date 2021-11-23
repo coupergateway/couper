@@ -66,6 +66,6 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 	}
 
 	return middleware.NewCustomLogsHandler(
-		[]hcl.Body{opts.epOpts.Context}, handler.NewErrorHandler(kindsHandler, opts.epOpts.Error),
+		[]hcl.Body{opts.epOpts.Context}, handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), "",
 	), nil
 }
