@@ -75,6 +75,9 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx := context.WithValue(req.Context(), request.BackendLogFields, []hcl.Body{b.context})
+	*req = *req.WithContext(ctx)
+
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
 	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {

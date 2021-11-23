@@ -5,7 +5,9 @@ type ContextKey uint8
 const (
 	ContextType ContextKey = iota
 	AccessControls
+	AccessLogFields
 	APIName
+	BackendLogFields
 	BackendName
 	BufferOptions
 	Endpoint
