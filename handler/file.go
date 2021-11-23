@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/utils"
 )
@@ -20,14 +21,10 @@ import (
 const dirIndexFile = "index.html"
 
 var (
-	_ HasResponse    = &File{}
-	_ http.Handler   = &File{}
-	_ server.Context = &File{}
+	_ middleware.HasResponse = &File{}
+	_ http.Handler           = &File{}
+	_ server.Context         = &File{}
 )
-
-type HasResponse interface {
-	HasResponse(req *http.Request) bool
-}
 
 type File struct {
 	basePath   string

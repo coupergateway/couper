@@ -16,7 +16,7 @@ import (
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/utils"
 )
 
@@ -200,12 +200,12 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 	route := node.Value.(*openapi3filter.Route)
 	fileHandler := route.Handler
 	if p, isProtected := fileHandler.(ac.ProtectedHandler); isProtected {
-		if fh, ok := p.Child().(handler.HasResponse); ok {
+		if fh, ok := p.Child().(middleware.HasResponse); ok {
 			return fileHandler, fh.HasResponse(req)
 		}
 	}
 
-	if fh, ok := fileHandler.(handler.HasResponse); ok {
+	if fh, ok := fileHandler.(middleware.HasResponse); ok {
 		return fileHandler, fh.HasResponse(req)
 	}
 
