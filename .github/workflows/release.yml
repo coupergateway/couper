@@ -61,8 +61,8 @@ jobs:
         run: security find-identity -v
       - name: 'sign Couper.app binary'
         run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
-#      - name: 'create macOS dmg with signed binary'
-#        run: cd .macos && go run make.go && cd ..
+      - name: 'create macOS dmg with signed binary'
+        run: cd .macos && go run make.go && cd ..
       - name: 'sign couper image'
         run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.dmg
       - name: 'create signed binary zip-file' # keep utf8 things with ditto
