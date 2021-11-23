@@ -29,12 +29,12 @@ func newMergeFunction() function.Function {
 			return cty.DynamicPseudoType, nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-			return merge(args)
+			return Merge(args)
 		},
 	})
 }
 
-func merge(args []cty.Value) (cty.Value, error) {
+func Merge(args []cty.Value) (cty.Value, error) {
 	var t string
 	for _, arg := range args {
 		if arg.IsNull() {

@@ -154,7 +154,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		err = ctxErr
 	}
 
-	entry := log.logger.WithFields(logrus.Fields(fields))
+	entry := log.logger.WithFields(logrus.Fields(fields)).WithContext(req.Context())
 	entry.Time = startTime
 
 	if err != nil {

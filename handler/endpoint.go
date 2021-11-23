@@ -121,6 +121,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext := eval.ContextFromRequest(req)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
+	// TODO: Fix context
+	// ctx := context.WithValue(req.Context(), request.ContextType, evalContext)
+	// *req = *req.WithContext(ctx)
+
 	// assume prio or err on conf load if set with response
 	if e.opts.Redirect != nil {
 		clientres = e.newRedirect()
@@ -156,7 +160,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			err = errors.Configuration
 
 			if isErrHandler {
-				err = req.Context().Value(request.Error).(*errors.Error)
+				err, _ = req.Context().Value(request.Error).(*errors.Error)
 			} else {
 				// TODO determine error priority, may solved with error_handler
 				// on roundtrip panic the context label is missing atm
