@@ -8,6 +8,8 @@ jobs:
   releases-matrix:
     name: Release Go Binary
     runs-on: ubuntu-latest
+    env:
+      VERSION_PACKAGE: 'github.com/avenga/couper/utils'
     strategy:
       matrix:
         # build and publish in parallel: */amd64, */arm64
@@ -25,6 +27,7 @@ jobs:
           goarch: ${{ matrix.goarch }}
           goversion: "1.17"
           binary_name: "couper"
+          ldflags: "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`"
   macos:
     runs-on: macos-11
     strategy:
