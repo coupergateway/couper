@@ -319,13 +319,26 @@ func walk(variables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
 		}
 		return walk(current, fallback, traversal[1:])
 	case hcl.TraverseIndex:
-		if variables.HasIndex(t.Key).True() {
-			if hasNext {
-				return walk(variables, fallback, traversal[1:])
-			}
-			return variables
+		if !variables.CanIterateElements() {
+			return fallback
 		}
 
+		switch t.Key.Type() {
+		case cty.Number:
+			if variables.HasIndex(t.Key).True() {
+				if hasNext {
+					return walk(variables, fallback, traversal[1:])
+				}
+				return variables
+			}
+		case cty.String:
+			if variables.GetAttr(t.Key.AsString()).IsWhollyKnown() {
+				if hasNext {
+					return walk(variables, fallback, traversal[1:])
+				}
+				return variables
+			}
+		}
 		return fallback
 	default:
 		panic("eval: unsupported traversal: " + reflect.TypeOf(t).String())
