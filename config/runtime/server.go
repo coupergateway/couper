@@ -90,10 +90,12 @@ func GetHostPort(hostPort string) (string, int, error) {
 func bodiesWithACBodies(defs *config.Definitions, body hcl.Body, ac, dac []string) []hcl.Body {
 	bodies := []hcl.Body{body}
 
-	for _, jwt := range defs.JWT {
-		for _, name := range config.NewAccessControl(ac, dac).List() {
-			if jwt.Name == name {
-				bodies = append(bodies, jwt.Remain)
+	if defs != nil {
+		for _, jwt := range defs.JWT {
+			for _, name := range config.NewAccessControl(ac, dac).List() {
+				if jwt.Name == name {
+					bodies = append(bodies, jwt.Remain)
+				}
 			}
 		}
 	}
