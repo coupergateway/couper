@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/avenga/couper/config/request"
@@ -18,14 +19,16 @@ var (
 )
 
 type CustomLogs struct {
-	next   http.Handler
-	bodies []hcl.Body
+	bodies      []hcl.Body
+	handlerName string
+	next        http.Handler
 }
 
-func NewCustomLogsHandler(bodies []hcl.Body, next http.Handler) http.Handler {
+func NewCustomLogsHandler(bodies []hcl.Body, next http.Handler, handlerName string) http.Handler {
 	return &CustomLogs{
-		bodies: bodies,
-		next:   next,
+		bodies:      bodies,
+		handlerName: handlerName,
+		next:        next,
 	}
 }
 
@@ -48,4 +51,12 @@ func (c *CustomLogs) HasResponse(req *http.Request) bool {
 	}
 
 	return false
+}
+
+func (c *CustomLogs) String() string {
+	if hs, stringer := c.next.(fmt.Stringer); stringer {
+		return hs.String()
+	}
+
+	return c.handlerName
 }

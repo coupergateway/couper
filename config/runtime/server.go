@@ -199,7 +199,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl,
 			)
 			spaHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, spaBodies...), spaHandler,
+				append(serverBodies, spaBodies...), spaHandler, "",
 			)
 
 			for _, spaPath := range srvConf.Spa.Paths {
@@ -246,7 +246,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl,
 			)
 			fileHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, fileBodies...), fileHandler,
+				append(serverBodies, fileBodies...), fileHandler, "",
 			)
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
@@ -366,7 +366,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				endpointConf.AccessControl, endpointConf.DisableAccessControl,
 			)
 			epHandler = middleware.NewCustomLogsHandler(
-				append(bodies, epBodies...), epHandler,
+				append(bodies, epBodies...), epHandler, epOpts.LogHandlerKind,
 			)
 
 			endpointHandlers[endpointConf] = epHandler
