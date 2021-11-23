@@ -35,14 +35,14 @@ jobs:
     env:
       AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      VERSION_PACKAGE: "github.com/avenga/couper/utils"
+      VERSION_PACKAGE: 'github.com/avenga/couper/utils'
     steps:
       - uses: actions/checkout@v2
       - name: 'setup go'
         uses: actions/setup-go@v2
         with:
           go-version: 1.17.x
-      - name: "import certificate"
+      - name: 'import certificate'
         uses: devbotsxyz/import-signing-certificate@v1
         with:
           certificate-data: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
@@ -64,7 +64,7 @@ jobs:
 #      - name: 'sign Couper.app binary'
 #        run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
       - name: 'sign couper binary'
-        run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/entitlements.plist ./.macos/couper
+        run: codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/couper
 #      - name: 'create macOS dmg with signed binary'
 #        run: cd .macos && go run make.go && cd ..
 #      - name: 'sign couper image'
@@ -72,12 +72,12 @@ jobs:
       - name: 'create signed binary zip-file' # keep utf8 things with ditto
         run: ditto -c -k --sequesterRsrc ./.macos/couper ./.macos/couper.zip
       - name: 'sign couper archive'
-        run: codesign --deep --force -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.zip
+        run: codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/couper.zip
       - name: 'notarize and stable'
         run: gon -log-level=info -log-json ./.gon.hcl
 #      - name: 'verify image notarization'
 #        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
       - name: 'upload archive'
-        run: mv ./.macos/couper.zip ./couper_macos_${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper_macos_${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN
+        run: mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN
 #      - name: 'entitlement format'
 #        run: plutil -convert xml1 .macos/entitlements.plist && plutil -lint .macos/entitlements.plist
