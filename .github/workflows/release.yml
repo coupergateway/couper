@@ -34,6 +34,7 @@ jobs:
         goarch: [amd64, arm64]
     env:
       AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v2
       - name: 'setup go'
@@ -48,6 +49,8 @@ jobs:
           keychain-password: ${{ secrets.MACOS_KEYCHAIN_PWD }}
       - name: 'install gon'
         run: go install github.com/mitchellh/gon/...@v0.2.3
+      - name: 'install assets-uploader'
+        run: go install github.com/wangyoucao577/assets-uploader/...@v0.8.0
       - name: 'build couper'
         run: go build -race -o ./.macos/Couper.app/Contents/MacOS/couper main.go
       - name: 'cleanup finder attributes'
@@ -70,5 +73,7 @@ jobs:
         run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
       - name: 'verify archive notarization'
         run: spctl -vvv --assess --type open ./.macos/couper.zip
+      - name: 'upload archive'
+        run: mv ./.macos/couper.zip ./couper_macos_$goarch.zip && github-assets-uploader -f ./couper_macos_$goarch.zip -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
 #      - name: 'entitlement format'
 #        run: plutil -convert xml1 .macos/entitlements.plist && plutil -lint .macos/entitlements.plist
