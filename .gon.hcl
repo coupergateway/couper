@@ -1,8 +1,8 @@
-notarize {
-  path = ".macos/couper.dmg"
-  bundle_id = "com.avenga.couper"
-  staple = true
-}
+#notarize {
+#  path = ".macos/couper.dmg"
+#  bundle_id = "com.avenga.couper"
+#  staple = true
+#}
 
 notarize {
   path = ".macos/couper.zip"
