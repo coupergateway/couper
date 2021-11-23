@@ -1,32 +1,30 @@
 name: Release
 
 on:
-  push:
-    branches: [ signed-macos-binary ]
-#  release:
-#    types: [released]
+  release:
+    types: [released]
 
 jobs:
-#  releases-matrix:
-#    name: Release Go Binary
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        # build and publish in parallel: */amd64, */arm64
-#        goos: [linux, windows]
-#        goarch: [amd64, arm64]
-#        exclude:
-#          - goarch: arm64
-#            goos: windows
-#    steps:
-#      - uses: actions/checkout@v2
-#      - uses: wangyoucao577/go-release-action@v1.20
-#        with:
-#          github_token: ${{ secrets.GITHUB_TOKEN }} # provided by github/actions
-#          goos: ${{ matrix.goos }}
-#          goarch: ${{ matrix.goarch }}
-#          goversion: "1.17"
-#          binary_name: "couper"
+  releases-matrix:
+    name: Release Go Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # build and publish in parallel: */amd64, */arm64
+        goos: [linux, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goarch: arm64
+            goos: windows
+    steps:
+      - uses: actions/checkout@v2
+      - uses: wangyoucao577/go-release-action@v1.21
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # provided by github/actions
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: "1.17"
+          binary_name: "couper"
   macos:
     runs-on: macos-11
     strategy:
