@@ -43,6 +43,25 @@ func main() {
 		log.Fatalf("running hdiutil attach: %v", err)
 	}
 
+	version := "dev"
+	if ref, ok := os.LookupEnv("GITHUB_REF_NAME"); ok {
+		version = ref
+	}
+	err = os.WriteFile("Couper.app/Contents/version.plist", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>CFBundleShortVersionString</key>
+        <string>`+version+`</string>
+        <key>ProjectName</key>
+        <string>Couper</string>
+    </dict>
+</plist>
+`), 0755)
+	if err != nil {
+		log.Fatalf("error writing version property file: %v", err)
+	}
+
 	// move bundle file into it
 	err = deepCopy("Couper.app", tmpDir)
 	if err != nil {

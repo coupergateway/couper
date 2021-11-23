@@ -12,7 +12,5 @@
 	<string>APPL</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSHighResolutionCapable</key>
-	<true/>
 </dict>
 </plist>
