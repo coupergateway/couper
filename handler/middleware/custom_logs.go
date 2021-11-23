@@ -8,7 +8,14 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-var _ http.Handler = &CORS{}
+type HasResponse interface {
+	HasResponse(req *http.Request) bool
+}
+
+var (
+	_ http.Handler = &CustomLogs{}
+	_ HasResponse  = &CustomLogs{}
+)
 
 type CustomLogs struct {
 	next   http.Handler
@@ -33,4 +40,12 @@ func (c *CustomLogs) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	*req = *req.WithContext(ctx)
 
 	c.next.ServeHTTP(rw, req)
+}
+
+func (c *CustomLogs) HasResponse(req *http.Request) bool {
+	if fh, ok := c.next.(HasResponse); ok {
+		return fh.HasResponse(req)
+	}
+
+	return false
 }
