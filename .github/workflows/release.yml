@@ -71,8 +71,6 @@ jobs:
 #        run: codesign --force --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.dmg
       - name: 'create signed binary zip-file' # keep utf8 things with ditto
         run: ditto -c -k --sequesterRsrc ./.macos/couper ./.macos/couper.zip
-      - name: 'sign couper archive'
-        run: codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/couper.zip
       - name: 'notarize and stable'
         run: gon -log-level=info -log-json ./.gon.hcl
 #      - name: 'verify image notarization'
