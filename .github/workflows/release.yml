@@ -64,7 +64,7 @@ jobs:
         run: security find-identity -v
       - name: 'sign couper binary'
         run: codesign -i "binary.com.avenga.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
-      - name: 'create signed binary zip-file' # keep utf8 things with ditto
+      - name: 'create signed binary archive' # keep utf8 things with ditto
         run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/couper ./.macos/couper.zip
 #      - name: 'create macOS dmg with signed binary'
 #        run: |
@@ -77,6 +77,6 @@ jobs:
 #      - name: 'verify image notarization'
 #        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
       - name: 'upload archive'
-        run: mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN
+        run: mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
 #      - name: 'upload image'
-#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -tag 1.5 -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
+#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
