@@ -4281,6 +4281,12 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/conditional/nested/false", true, ""},
 		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
 		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
+		{"/rte1", true, "2"},
+		{"/rte2", true, "2"},
+		{"/ie1", true, "2"},
+		{"/ie2", true, "2"},
+		{"/uoe1", true, "-2"},
+		{"/uoe2", true, "true"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

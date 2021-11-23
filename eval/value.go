@@ -154,6 +154,24 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		expr.Each = newLiteralValueExpr(ctx, expr.Each)
 		expr.Source = newLiteralValueExpr(ctx, expr.Source)
 		return expr
+	case *hclsyntax.IndexExpr:
+		if val := newLiteralValueExpr(ctx, expr.Collection); val != nil {
+			expr.Collection = val
+		}
+		if val := newLiteralValueExpr(ctx, expr.Key); val != nil {
+			expr.Key = val
+		}
+		return expr
+	case *hclsyntax.RelativeTraversalExpr:
+		if val := newLiteralValueExpr(ctx, expr.Source); val != nil {
+			expr.Source = val
+		}
+		return expr
+	case *hclsyntax.UnaryOpExpr:
+		if val := newLiteralValueExpr(ctx, expr.Val); val != nil {
+			expr.Val = val
+		}
+		return expr
 	case *hclsyntax.AnonSymbolExpr:
 		return expr
 	case *hclsyntax.LiteralValueExpr:
@@ -235,6 +253,30 @@ func clone(exp hcl.Expression) hclsyntax.Expression {
 		ex := *expr
 		ex.Source = clone(expr.Source)
 		return &ex
+	case *hclsyntax.IndexExpr:
+		ex := &hclsyntax.IndexExpr{
+			Collection:   clone(expr.Collection),
+			Key:          clone(expr.Key),
+			SrcRange:     expr.SrcRange,
+			OpenRange:    expr.OpenRange,
+			BracketRange: expr.BracketRange,
+		}
+		return ex
+	case *hclsyntax.RelativeTraversalExpr:
+		ex := &hclsyntax.RelativeTraversalExpr{
+			Source:    clone(expr.Source),
+			Traversal: expr.Traversal,
+			SrcRange:  expr.SrcRange,
+		}
+		return ex
+	case *hclsyntax.UnaryOpExpr:
+		ex := &hclsyntax.UnaryOpExpr{
+			Op:          expr.Op,
+			Val:         clone(expr.Val),
+			SrcRange:    expr.SrcRange,
+			SymbolRange: expr.SymbolRange,
+		}
+		return ex
 	case *hclsyntax.AnonSymbolExpr:
 		return &hclsyntax.AnonSymbolExpr{SrcRange: expr.SrcRange}
 	default:
