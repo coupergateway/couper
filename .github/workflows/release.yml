@@ -35,6 +35,7 @@ jobs:
     env:
       AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VERSION_PACKAGE: "github.com/avenga/couper/utils"
     steps:
       - uses: actions/checkout@v2
       - name: 'setup go'
@@ -52,21 +53,25 @@ jobs:
       - name: 'install assets-uploader'
         run: go install github.com/wangyoucao577/assets-uploader/...@v0.8.0
       - name: 'build couper'
-        run: go build -race -o ./.macos/Couper.app/Contents/MacOS/couper main.go
+        run: |
+          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -race -v -o ./.macos/couper main.go
+          cp ./.macos/couper ./.macos/Couper.app/Contents/MacOS/couper
       - name: 'cleanup finder attributes'
         run: xattr -c ./.macos/Couper.app/Contents/Info.plist
       - name: 'verify identity'
         run: security find-identity -v
-      - name: 'sign couper binary'
+      - name: 'sign Couper.app binary'
         run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
+      - name: 'sign couper binary'
+        run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/entitlements.plist ./.macos/couper
       - name: 'create macOS dmg with signed binary'
         run: cd .macos && go run make.go && cd ..
       - name: 'sign couper image'
         run: codesign --force --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.dmg
       - name: 'create signed binary zip-file' # keep utf8 things with ditto
-        run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/MacOS/couper ./.macos/couper.zip
+        run: ditto -c -k --sequesterRsrc ./.macos/couper ./.macos/couper.zip
       - name: 'sign couper archive'
-        run: codesign --deep -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.zip
+        run: codesign --deep --force -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --entitlements ./.macos/entitlements.plist ./.macos/couper.zip
       - name: 'notarize and stable'
         run: gon -log-level=info -log-json ./.gon.hcl
       - name: 'verify image notarization'
