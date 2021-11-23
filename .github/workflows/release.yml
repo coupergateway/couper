@@ -78,7 +78,7 @@ jobs:
 #      - name: 'verify image notarization'
 #        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
       - name: 'verify archive notarization'
-        run: spctl -vvv --assess --type open ./.macos/couper.zip
+        run: spctl -vvv --assess --type open --context context:primary-signature ./.macos/couper.zip
       - name: 'upload archive'
         run: mv ./.macos/couper.zip ./couper_macos_$goarch.zip && github-assets-uploader -f ./couper_macos_$goarch.zip -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
 #      - name: 'entitlement format'
