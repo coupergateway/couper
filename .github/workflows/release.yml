@@ -55,6 +55,7 @@ jobs:
       - name: 'build couper'
         run: |
           go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -race -v -o ./.macos/couper main.go
+          mkdir -p ./.macos/Couper.app/Contents/MacOS
           cp ./.macos/couper ./.macos/Couper.app/Contents/MacOS/couper
       - name: 'cleanup finder attributes'
         run: xattr -c ./.macos/Couper.app/Contents/Info.plist
