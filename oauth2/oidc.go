@@ -154,8 +154,12 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 	}
 	// iat
 	// 		REQUIRED.
-	if _, iatExists := idTokenClaims["iat"]; !iatExists {
+	iat, iatExists := idTokenClaims["iat"]
+	if !iatExists {
 		return nil, nil, errors.Oauth2.Messagef("missing iat claim in ID token, claims='%#v'", idTokenClaims)
+	}
+	if _, ok := iat.(float64); !ok {
+		return nil, nil, errors.Oauth2.Messagef("iat claim in ID token must be number, claims='%#v'", idTokenClaims)
 	}
 
 	// 3.1.3.7.  ID Token Validation
