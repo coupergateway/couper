@@ -198,12 +198,13 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
-	ctx = context.WithValue(ctx, request.LogEntry, s.log)
-
 	if h == nil {
+		// mux.FindHandler() exchanges the req: *req = *req.WithContext(ctx)
 		h = mux.FindHandler(req)
 	}
+
+	ctx := context.WithValue(req.Context(), request.LogEntry, s.log)
+	ctx = context.WithValue(ctx, request.XFF, req.Header.Get("X-Forwarded-For"))
 
 	// set innermost handler name for logging purposes
 	if hs, stringer := getChildHandler(h).(fmt.Stringer); stringer {

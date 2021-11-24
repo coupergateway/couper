@@ -361,7 +361,7 @@ server "zipzip" {
 
 	// Trigger panic
 	req.Header.Set("x-close", "dont")
-	res, err = newClient().Do(req)
+	_, err = newClient().Do(req)
 	helper.Must(err)
 
 	for _, entry := range loghook.AllEntries() {
