@@ -198,8 +198,16 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
+	ctx = context.WithValue(ctx, request.LogEntry, s.log)
+
 	if h == nil {
 		h = mux.FindHandler(req)
+	}
+
+	// set innermost handler name for logging purposes
+	if hs, stringer := getChildHandler(h).(fmt.Stringer); stringer {
+		ctx = context.WithValue(ctx, request.Handler, hs.String())
 	}
 
 	if err = s.setGetBody(h, req); err != nil {
@@ -229,12 +237,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
-	ctx = context.WithValue(ctx, request.LogEntry, s.log)
-	if hs, stringer := h.(fmt.Stringer); stringer {
-		ctx = context.WithValue(ctx, request.Handler, hs.String())
-	}
-
 	// due to the middleware callee stack we have to update the 'req' value.
 	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
 
@@ -242,17 +244,10 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
-	outer := h
-	for {
-		if inner, ok := outer.(interface{ Child() http.Handler }); ok {
-			outer = inner.Child()
-			continue
-		}
-		break
-	}
+	inner := getChildHandler(h)
 
 	var err error
-	if limitHandler, ok := outer.(handler.BodyLimit); ok {
+	if limitHandler, ok := inner.(handler.BodyLimit); ok {
 		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
 	}
 	return err
@@ -303,4 +298,17 @@ func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 			gauge.Measurement(-1),
 		)
 	}
+}
+
+// getChildHandler returns the innermost handler which supports the Child interface.
+func getChildHandler(handler http.Handler) http.Handler {
+	outer := handler
+	for {
+		if inner, ok := outer.(interface{ Child() http.Handler }); ok {
+			outer = inner.Child()
+			continue
+		}
+		break
+	}
+	return outer
 }
