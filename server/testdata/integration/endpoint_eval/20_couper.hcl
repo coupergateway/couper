@@ -205,6 +205,66 @@ server "cty.NilVal" {
       }
     }
   }
+
+  endpoint "/rte1" {
+    response {
+      # *hclsyntax.RelativeTraversalExpr
+      headers = {
+        X-Value = [0, 2, 4][1]
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/rte2" {
+    response {
+      # *hclsyntax.RelativeTraversalExpr
+      headers = {
+        X-Value = {a = 2, b = 4}["a"]
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/ie1" {
+    response {
+      # *hclsyntax.IndexExpr
+      headers = {
+        X-Value = [0, 2, 4][2 - 1]
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/ie2" {
+    response {
+      # *hclsyntax.IndexExpr
+      headers = {
+        X-Value = {"/ie1" = 1, "/ie2" = 2}[request.path]
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/uoe1" {
+    response {
+      # *hclsyntax.UnaryOpExpr
+      headers = {
+        X-Value = -2
+        Z-Value = "y"
+      }
+    }
+  }
+
+  endpoint "/uoe2" {
+    response {
+      # *hclsyntax.UnaryOpExpr
+      headers = {
+        X-Value = json_encode(!false)
+        Z-Value = "y"
+      }
+    }
+  }
 }
 
 settings {

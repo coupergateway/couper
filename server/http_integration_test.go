@@ -3584,7 +3584,7 @@ func TestFunctions(t *testing.T) {
 	for _, tc := range []testCase{
 		{"merge", "/v1/merge", map[string]string{"X-Merged-1": "{\"foo\":[1,2]}", "X-Merged-2": "{\"bar\":[3,4]}", "X-Merged-3": "[\"a\",\"b\"]"}, http.StatusOK},
 		{"coalesce", "/v1/coalesce?q=a", map[string]string{"X-Coalesce-1": "/v1/coalesce", "X-Coalesce-2": "default", "X-Coalesce-3": "default", "X-Coalesce-4": "default"}, http.StatusOK},
-		{"default", "/v1/default?q=a", map[string]string{"X-Default-1": "/v1/default", "X-Default-2": "default", "X-Default-3": "default", "X-Default-4": "default"}, http.StatusOK},
+		{"default", "/v1/default?q=a", map[string]string{"X-Default-1": "/v1/default", "X-Default-2": "default", "X-Default-3": "default", "X-Default-4": "default", "X-Default-5": "prefix-default", "X-Default-6": "default"}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4281,6 +4281,12 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/conditional/nested/false", true, ""},
 		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
 		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
+		{"/rte1", true, "2"},
+		{"/rte2", true, "2"},
+		{"/ie1", true, "2"},
+		{"/ie2", true, "2"},
+		{"/uoe1", true, "-2"},
+		{"/uoe2", true, "true"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

@@ -110,14 +110,15 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		return expr
 	case *hclsyntax.TemplateExpr:
 		for p, part := range expr.Parts {
-			for _, v := range part.Variables() {
-				if traversalValue(ctx.Variables, v) == cty.NilVal {
-					expr.Parts[p] = &hclsyntax.LiteralValueExpr{Val: emptyStringVal, SrcRange: v.SourceRange()}
-					break
-				}
-			}
+			expr.Parts[p] = newLiteralValueExpr(ctx, part)
 		}
-		return expr
+
+		// "pre"-evaluate to be able to combine string expressions with empty strings on NilVal result.
+		c, _ := expr.Value(ctx)
+		if c.IsNull() {
+			return &hclsyntax.LiteralValueExpr{Val: emptyStringVal, SrcRange: expr.Range()}
+		}
+		return &hclsyntax.LiteralValueExpr{Val: c, SrcRange: expr.Range()}
 	case *hclsyntax.TemplateWrapExpr:
 		if val := newLiteralValueExpr(ctx, expr.Wrapped); val != nil {
 			expr.Wrapped = val
@@ -153,6 +154,24 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 	case *hclsyntax.SplatExpr:
 		expr.Each = newLiteralValueExpr(ctx, expr.Each)
 		expr.Source = newLiteralValueExpr(ctx, expr.Source)
+		return expr
+	case *hclsyntax.IndexExpr:
+		if val := newLiteralValueExpr(ctx, expr.Collection); val != nil {
+			expr.Collection = val
+		}
+		if val := newLiteralValueExpr(ctx, expr.Key); val != nil {
+			expr.Key = val
+		}
+		return expr
+	case *hclsyntax.RelativeTraversalExpr:
+		if val := newLiteralValueExpr(ctx, expr.Source); val != nil {
+			expr.Source = val
+		}
+		return expr
+	case *hclsyntax.UnaryOpExpr:
+		if val := newLiteralValueExpr(ctx, expr.Val); val != nil {
+			expr.Val = val
+		}
 		return expr
 	case *hclsyntax.AnonSymbolExpr:
 		return expr
@@ -235,6 +254,30 @@ func clone(exp hcl.Expression) hclsyntax.Expression {
 		ex := *expr
 		ex.Source = clone(expr.Source)
 		return &ex
+	case *hclsyntax.IndexExpr:
+		ex := &hclsyntax.IndexExpr{
+			Collection:   clone(expr.Collection),
+			Key:          clone(expr.Key),
+			SrcRange:     expr.SrcRange,
+			OpenRange:    expr.OpenRange,
+			BracketRange: expr.BracketRange,
+		}
+		return ex
+	case *hclsyntax.RelativeTraversalExpr:
+		ex := &hclsyntax.RelativeTraversalExpr{
+			Source:    clone(expr.Source),
+			Traversal: expr.Traversal,
+			SrcRange:  expr.SrcRange,
+		}
+		return ex
+	case *hclsyntax.UnaryOpExpr:
+		ex := &hclsyntax.UnaryOpExpr{
+			Op:          expr.Op,
+			Val:         clone(expr.Val),
+			SrcRange:    expr.SrcRange,
+			SymbolRange: expr.SymbolRange,
+		}
+		return ex
 	case *hclsyntax.AnonSymbolExpr:
 		return &hclsyntax.AnonSymbolExpr{SrcRange: expr.SrcRange}
 	default:
@@ -277,13 +320,30 @@ func walk(variables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
 		}
 		return walk(current, fallback, traversal[1:])
 	case hcl.TraverseIndex:
-		if variables.HasIndex(t.Key).True() {
+		if !variables.CanIterateElements() {
+			return fallback
+		}
+
+		switch t.Key.Type() {
+		case cty.Number:
+			if variables.HasIndex(t.Key).True() {
+				if hasNext {
+					fidx := t.Key.AsBigFloat()
+					idx, _ := fidx.Int64()
+					return walk(variables.AsValueSlice()[idx], fallback, traversal[1:])
+				}
+				return variables
+			}
+		case cty.String:
+			current, exist := currentFn(t.Key.AsString())
+			if !exist {
+				return fallback
+			}
 			if hasNext {
-				return walk(variables, fallback, traversal[1:])
+				return walk(current, fallback, traversal[1:])
 			}
 			return variables
 		}
-
 		return fallback
 	default:
 		panic("eval: unsupported traversal: " + reflect.TypeOf(t).String())
