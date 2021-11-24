@@ -55,12 +55,12 @@ func TestValue(t *testing.T) {
 			for _, attr := range attrs {
 				got, err := Value(evalCtx, attr.Expr)
 				if (err != nil) != tt.wantErr {
-					t.Errorf("Value() error = %v, wantErr %v", err, tt.wantErr)
-					t.Error(err.(errors.GoError).LogError())
+					st.Errorf("Value() error = %v, wantErr %v", err, tt.wantErr)
+					st.Error(err.(errors.GoError).LogError())
 					return
 				}
 				if !reflect.DeepEqual(got, tt.want) {
-					t.Errorf("Value() got = %v, want %v", got.GoString(), tt.want.GoString())
+					st.Errorf("Value() got = %v, want %v", got.GoString(), tt.want.GoString())
 				}
 			}
 		})
