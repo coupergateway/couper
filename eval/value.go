@@ -327,17 +327,21 @@ func walk(variables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
 		case cty.Number:
 			if variables.HasIndex(t.Key).True() {
 				if hasNext {
-					return walk(variables, fallback, traversal[1:])
+					fidx := t.Key.AsBigFloat()
+					idx, _ := fidx.Int64()
+					return walk(variables.AsValueSlice()[idx], fallback, traversal[1:])
 				}
 				return variables
 			}
 		case cty.String:
-			if variables.GetAttr(t.Key.AsString()).IsWhollyKnown() {
-				if hasNext {
-					return walk(variables, fallback, traversal[1:])
-				}
-				return variables
+			current, exist := currentFn(t.Key.AsString())
+			if !exist {
+				return fallback
 			}
+			if hasNext {
+				return walk(current, fallback, traversal[1:])
+			}
+			return variables
 		}
 		return fallback
 	default:

@@ -4,19 +4,20 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/avenga/couper/errors"
-
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/zclconf/go-cty/cty"
+	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 func TestValue(t *testing.T) {
 	evalCtx := NewContext(nil, &config.Defaults{}).HCLContext()
 	rootObj := cty.ObjectVal(map[string]cty.Value{
 		"exist": cty.StringVal("here"),
+		"slice": seetie.GoToValue([]string{"1", "2"}),
 	})
 	evalCtx.Variables["rootvar"] = rootObj
 
@@ -28,6 +29,12 @@ func TestValue(t *testing.T) {
 	}{
 		{"root non nil", "key = rootvar", rootObj, false},
 		{"child non nil", "key = rootvar.exist", cty.StringVal("here"), false},
+		{"child non nil, string key idx expr", `key = rootvar["exist"]`, cty.StringVal("here"), false},
+		{"child nil, string key idx expr", `key = rootvar["not"]`, cty.NilVal, false},
+		{"child non nil, string key idx expr iterate", `key = rootvar["exist"][1]`, cty.NilVal, false},
+		{"child non nil, number key idx expr", `key = rootvar.slice[1]`, cty.StringVal("2"), false},
+		{"child non nil, number key idx expr iterate", `key = rootvar.slice[1]["not"]`, cty.NilVal, false},
+		{"child non nil, idx nil", `key = rootvar.slice[5]`, cty.NilVal, false},
 		{"child nil", "key = rootvar.child", cty.NilVal, false},
 		{"child idx nil", "key = rootvar.child[2].sub", cty.NilVal, false},
 		{"template attr value exp empty string", `key = "prefix${rootvar.child}"`, cty.StringVal("prefix"), false},
