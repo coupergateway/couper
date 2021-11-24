@@ -29,6 +29,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * For each SAML attribute listed in [`array_attributes`](./docs/REFERENCE.md#saml-block) at least an empty array is created in `request.context.<label>.attributes.<name>` ([#369](https://github.com/avenga/couper/pull/369))
   * HCL: Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
   * HCL: Missing support for different variable index key types ([#391](https://github.com/avenga/couper/pull/391))
+  * [OIDC](./docs/REFERENCE.md#oidc-block-beta): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
 
 ---
 
