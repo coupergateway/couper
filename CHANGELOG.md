@@ -10,6 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Log file descriptor limit at startup ([#383](https://github.com/avenga/couper/pull/383))
   * [`error_handler`](/docs/ERRORS.md) block support for `api` and `endpoint` blocks ([#317](https://github.com/avenga/couper/pull/317))
     * Enables reacting to additional [error types](/docs/ERRORS.md#error-types): `beta_scope`, `beta_insufficient_scope` and `beta_operation_denied`
+  * `split()` and `substr()`[./docs/REFERENCE.md#functions] ([#390](https://github.com/avenga/couper/pull/390))
 
 * **Changed**
   * [`server` block](./docs/REFERENCE.md#server-block) label is now optional, [`api` block](./docs/REFERENCE.md#api-block) may be labelled ([#358](https://github.com/avenga/couper/pull/358))

@@ -499,6 +499,8 @@ func newFunctionsMap() map[string]function.Function {
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"merge":         lib.MergeFunc,
 		"relative_url":  lib.RelativeUrlFunc,
+		"split":         stdlib.SplitFunc,
+		"substr":        stdlib.SubstrFunc,
 		"to_lower":      stdlib.LowerFunc,
 		"to_upper":      stdlib.UpperFunc,
 		"unixtime":      lib.UnixtimeFunc,
