@@ -4,6 +4,11 @@
 
 #binary
 /couper
+/.macos/couper.dmg
+/.macos/couper.zip
+/.macos/Couper.app/**
+!/.macos/Couper.app/**/Info.plist
+!/.macos/Couper.app/**/Resources/icon.icns
 
 #go-fuzz
 /fuzz/**/corpus
