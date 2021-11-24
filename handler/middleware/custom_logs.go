@@ -9,14 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-type HasResponse interface {
-	HasResponse(req *http.Request) bool
-}
-
-var (
-	_ http.Handler = &CustomLogs{}
-	_ HasResponse  = &CustomLogs{}
-)
+var _ http.Handler = &CustomLogs{}
 
 type CustomLogs struct {
 	bodies      []hcl.Body
@@ -25,11 +18,11 @@ type CustomLogs struct {
 }
 
 func NewCustomLogsHandler(bodies []hcl.Body, next http.Handler, handlerName string) http.Handler {
-	return &CustomLogs{
+	return NewHandler(&CustomLogs{
 		bodies:      bodies,
 		handlerName: handlerName,
 		next:        next,
-	}
+	}, next)
 }
 
 func (c *CustomLogs) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -43,14 +36,6 @@ func (c *CustomLogs) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	*req = *req.WithContext(ctx)
 
 	c.next.ServeHTTP(rw, req)
-}
-
-func (c *CustomLogs) HasResponse(req *http.Request) bool {
-	if fh, ok := c.next.(HasResponse); ok {
-		return fh.HasResponse(req)
-	}
-
-	return false
 }
 
 func (c *CustomLogs) String() string {
