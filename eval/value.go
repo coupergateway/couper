@@ -112,7 +112,13 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		for p, part := range expr.Parts {
 			expr.Parts[p] = newLiteralValueExpr(ctx, part)
 		}
-		return expr
+
+		// "pre"-evaluate to be able to combine string expressions with empty strings on NilVal result.
+		c, _ := expr.Value(ctx)
+		if c.IsNull() {
+			return &hclsyntax.LiteralValueExpr{Val: emptyStringVal, SrcRange: expr.Range()}
+		}
+		return &hclsyntax.LiteralValueExpr{Val: c, SrcRange: expr.Range()}
 	case *hclsyntax.TemplateWrapExpr:
 		if val := newLiteralValueExpr(ctx, expr.Wrapped); val != nil {
 			expr.Wrapped = val
