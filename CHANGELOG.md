@@ -24,7 +24,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Reduced memory usage for backend response bodies which just get piped to the client and are not required to be read by Couper due to a variable references ([#375](https://github.com/avenga/couper/pull/375))
     * However, if a huge message body is passed and additionally referenced via e.g. `json_body`, Couper may require a lot of memory for storing the data structure.
   * For each SAML attribute listed in [`array_attributes`](./docs/REFERENCE.md#saml-block) at least an empty array is created in `request.context.<label>.attributes.<name>` ([#369](https://github.com/avenga/couper/pull/369))
-  * Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
+  * HCL: Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
+  * HCL: Missing support for different variable index key types ([#391](https://github.com/avenga/couper/pull/391))
 
 ---
 
