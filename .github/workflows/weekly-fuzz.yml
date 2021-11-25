@@ -1,4 +1,4 @@
-name: Daily-Fuzz
+name: Weekly-Fuzz
 
 on:
   schedule:
