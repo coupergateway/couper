@@ -1,0 +1,18 @@
+openapi: '3'
+info:
+  title: 'Couper backend validation test'
+  version: 'v1.2.3'
+paths:
+  /buffer:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        200:
+          description: OK
+          schema:
+            type: object
