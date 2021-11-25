@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -82,7 +83,7 @@ func teardown() {
 	testBackend.Close()
 }
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file), false)
+	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -110,7 +111,7 @@ func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]int
 }
 
 func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl", false)
+	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl")
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -138,12 +139,13 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	test.WaitForClosedPort(port)
 	waitForCh := make(chan struct{}, 1)
 	command.RunCmdTestCallback = func() {
-		close(waitForCh)
+		waitForCh <- struct{}{}
 	}
 	defer func() { command.RunCmdTestCallback = nil }()
 
 	go func() {
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
+			command.RunCmdTestCallback()
 			shutdownFn()
 			panic(err)
 		}
@@ -2834,7 +2836,7 @@ func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/validation/01_couper.hcl", test.New(t))
+	shutdown, _ := newCouper("testdata/integration/validation/01_couper.hcl", helper)
 	defer shutdown()
 
 	req1, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
@@ -2869,6 +2871,48 @@ func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
 	}
 	if res2.StatusCode != 502 {
 		t.Errorf("Expected status %d for response2; got: %d", 502, res2.StatusCode)
+	}
+}
+
+func TestOpenAPIValidateRequestResponseBuffer(t *testing.T) {
+	helper := test.New(t)
+
+	content := `{ "prop": true }`
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		b, err := io.ReadAll(req.Body)
+		helper.Must(err)
+		if string(b) != content {
+			t.Errorf("origin: expected same content")
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		_, err = rw.Write([]byte(content))
+		helper.Must(err)
+	}))
+	defer origin.Close()
+
+	shutdown, _ := newCouper("testdata/integration/validation/02_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/buffer", bytes.NewBufferString(content))
+	helper.Must(err)
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", origin.URL)
+
+	res, err := test.NewHTTPClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %s", res.Status)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
+
+	helper.Must(res.Body.Close())
+
+	if string(b) != content {
+		t.Error("expected same body content")
 	}
 }
 
@@ -3136,7 +3180,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl", false)
+	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -3395,7 +3439,7 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 	shutdown, _ := newCouper("testdata/integration/api/13_couper.hcl", test.New(t))
 	defer shutdown()
 
-	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade/ws", bytes.NewBufferString("ws-client-body"))
 	helper.Must(err)
 	req.Close = false
 
@@ -3416,16 +3460,18 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 	helper.Must(err)
 
 	expectedHeader := textproto.MIMEHeader{
-		"Abc":               []string{"123"},
-		"Echo":              []string{"ECHO"},
-		"Connection":        []string{"Upgrade"},
+		"Abc":               {"123"},
+		"Connection":        {"Upgrade"},
 		"Couper-Request-Id": header.Values("Couper-Request-Id"), // dynamic
-		"Server":            []string{"couper.io"},
-		"Upgrade":           []string{"websocket"},
+		"Echo":              {"ECHO"},
+		"Server":            {"couper.io"},
+		"Upgrade":           {"websocket"},
+		"X-Body":            {"ws-client-body"},
+		"X-Upgrade-Body":    {"ws-client-body"},
 	}
 
 	if !reflect.DeepEqual(expectedHeader, header) {
-		t.Errorf("Want: %v, got: %v", expectedHeader, header)
+		t.Errorf(cmp.Diff(expectedHeader, header))
 	}
 
 	n, err := conn.Write([]byte("ping"))
@@ -3441,6 +3487,45 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 
 	if !bytes.Equal(p, []byte("pong")) {
 		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestWrapperHiJack_WebsocketUpgradeBodyBuffer(t *testing.T) {
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/api/13_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade/small", bytes.NewBufferString("client-body"))
+	helper.Must(err)
+	req.Close = false
+
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	helper.Must(err)
+	defer conn.Close()
+
+	helper.Must(req.Write(conn))
+
+	helper.Must(conn.SetDeadline(time.Time{}))
+
+	res, err := http.ReadResponse(bufio.NewReader(conn), req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %s", res.Status)
+	}
+
+	expectedHeader := http.Header{
+		"Content-Length":    res.Header.Values("Content-Length"), // dynamic, could change for other tests, unrelated here
+		"Content-Type":      {"text/plain; charset=utf-8"},
+		"Couper-Request-Id": res.Header.Values("Couper-Request-Id"), // dynamic
+		"Date":              res.Header.Values("Date"),              // dynamic
+		"Server":            {"couper.io"},
+		"X-Body":            {"client-body"},
+		"X-Resp-Body":       {"1234567890"},
+	}
+
+	if !reflect.DeepEqual(expectedHeader, res.Header) {
+		t.Errorf(cmp.Diff(expectedHeader, res.Header))
 	}
 }
 

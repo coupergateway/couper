@@ -13,7 +13,6 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/validation"
 )
 
@@ -109,10 +108,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		if retries, ok := req.Context().Value(request.TokenRequestRetries).(uint8); ok && retries > 0 {
 			fields["token_request_retry"] = retries
 		}
-	}
-
-	if opt, ok := req.Context().Value(request.BufferOptions).(eval.BufferOption); ok {
-		fields["buffered"] = opt.GoString()
 	}
 
 	fields["status"] = 0

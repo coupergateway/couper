@@ -10,7 +10,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Log file descriptor limit at startup ([#383](https://github.com/avenga/couper/pull/383))
   * [`error_handler`](/docs/ERRORS.md) block support for `api` and `endpoint` blocks ([#317](https://github.com/avenga/couper/pull/317))
     * Enables reacting to additional [error types](/docs/ERRORS.md#error-types): `beta_scope`, `beta_insufficient_scope` and `beta_operation_denied`
-  * `split()` and `substr()`[./docs/REFERENCE.md#functions] ([#390](https://github.com/avenga/couper/pull/390))
+  * `split()` and `substr()` [functions](./docs/REFERENCE.md#functions) ([#390](https://github.com/avenga/couper/pull/390))
+  * hcl syntax verification for our configuration file ([#296](https://github.com/avenga/couper/pull/296)), ([#168](https://github.com/avenga/couper/issues/168)), ([#188](https://github.com/avenga/couper/issues/188))
+    * validate against the schema and additional requirements
+    * available as [`verify`](docs/CLI.md) command too
 
 * **Changed**
   * [`server` block](./docs/REFERENCE.md#server-block) label is now optional, [`api` block](./docs/REFERENCE.md#api-block) may be labelled ([#358](https://github.com/avenga/couper/pull/358))
@@ -27,6 +30,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * For each SAML attribute listed in [`array_attributes`](./docs/REFERENCE.md#saml-block) at least an empty array is created in `request.context.<label>.attributes.<name>` ([#369](https://github.com/avenga/couper/pull/369))
   * HCL: Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
   * HCL: Missing support for different variable index key types ([#391](https://github.com/avenga/couper/pull/391))
+  * [OIDC](./docs/REFERENCE.md#oidc-block-beta): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
 
 ---
 
@@ -34,7 +38,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * `Accept: application/json` request header to the OAuth2 token request, in order to make the Github token endpoint respond with a JSON token response ([#307](https://github.com/avenga/couper/pull/307))
-  * [`verify`](docs/CLI.md) command to be able to check the syntax of a configuration file w/o starting the server ([#296](https://github.com/avenga/couper/pull/296)), ([#168](https://github.com/avenga/couper/issues/168)), ([#188](https://github.com/avenga/couper/issues/188))
   * Documentation of [logs](docs/LOGS.md) ([#310](https://github.com/avenga/couper/pull/310))
   * `signing_ttl` and `signing_key`/`signing_key_file` to [`jwt` block](./docs/REFERENCE.md#jwt-block) for use with [`jwt_sign()` function](#functions) ([#309](https://github.com/avenga/couper/pull/309))
   * `jwks_url` and `jwks_ttl` to [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#312](https://github.com/avenga/couper/pull/312))
