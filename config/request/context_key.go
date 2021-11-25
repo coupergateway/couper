@@ -10,6 +10,7 @@ const (
 	BackendLogFields
 	BackendName
 	BufferOptions
+	CustomLogsCtx
 	Endpoint
 	EndpointKind
 	Error

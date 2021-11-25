@@ -47,6 +47,7 @@ func TestCustomLogs_Upstream(t *testing.T) {
 				"float":  1.23,
 				"int":    float64(123),
 				"object": logrus.Fields{"a": "A", "b": "B", "c": float64(123)},
+				"req":    "GET",
 				"string": "couper test-backend",
 			},
 		},

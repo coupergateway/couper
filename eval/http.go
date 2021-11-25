@@ -331,14 +331,9 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 }
 
 func ApplyCustomLogs(
-	ctx context.Context, bodies []hcl.Body, logger *logrus.Entry,
+	httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry,
 ) logrus.Fields {
 	var values []cty.Value
-
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
-	}
 
 	for _, body := range bodies {
 		if body == nil {

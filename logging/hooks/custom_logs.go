@@ -20,9 +20,9 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 		if t, exists := entry.Data["type"]; exists {
 			switch t {
 			case "couper_access":
-				fire(entry, request.AccessLogFields)
+				fire(entry, request.AccessLogFields, request.CustomLogsCtx)
 			case "couper_backend":
-				fire(entry, request.BackendLogFields)
+				fire(entry, request.BackendLogFields, request.ContextType)
 			}
 		}
 	}
@@ -30,17 +30,17 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
-func fire(entry *logrus.Entry, key request.ContextKey) {
+func fire(entry *logrus.Entry, fieldsKey, ctxKey request.ContextKey) {
 	var evalCtx *eval.Context
 
-	if ctx, ok := entry.Context.Value(request.ContextType).(*eval.Context); ok {
+	if ctx, ok := entry.Context.Value(ctxKey).(*eval.Context); ok {
 		evalCtx = ctx
 	} else {
 		evalCtx = eval.NewContext(nil, nil)
 	}
 
-	if bodies := entry.Context.Value(key); bodies != nil {
-		if fields := eval.ApplyCustomLogs(evalCtx, bodies.([]hcl.Body), entry); len(fields) > 0 {
+	if bodies := entry.Context.Value(fieldsKey); bodies != nil {
+		if fields := eval.ApplyCustomLogs(evalCtx.HCLContext(), bodies.([]hcl.Body), entry); len(fields) > 0 {
 			entry.Data["custom"] = fields
 		}
 	}
