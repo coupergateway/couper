@@ -8,6 +8,12 @@ on:
       - '.github/workflows/weekly-fuzz.yml'
   release:
     types: [ published ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'git tag'
+        required: true
+#        default: ''
 jobs:
   build:
     name: Test and build container image
@@ -24,6 +30,13 @@ jobs:
 
     - name: checkout
       uses: actions/checkout@v2
+      if: github.event_name != 'workflow_dispatch'
+
+    - name: checkout given tag
+      uses: actions/checkout@v2
+      if: github.event_name == 'workflow_dispatch'
+      with:
+        ref: ${{ github.event.inputs.tag }}
 
     - name: Test
       run: go test -v -timeout 300s -race ./...
@@ -55,7 +68,7 @@ jobs:
         push: true
 
     - name: Build and push docker image with specific tag
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
       uses: docker/build-push-action@v2
       with:
         context: .
