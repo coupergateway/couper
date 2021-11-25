@@ -5,7 +5,7 @@ on:
     branches: [ master ]
     paths-ignore:
       - '**/README.md'
-      - '.github/workflows/daily-fuzz.yml'
+      - '.github/workflows/weekly-fuzz.yml'
   release:
     types: [ published ]
 jobs:
