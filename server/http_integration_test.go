@@ -2890,7 +2890,7 @@ func TestOpenAPIValidateRequestResponseBuffer(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	shutdown, hook := newCouper("testdata/integration/validation/02_couper.hcl", helper)
+	shutdown, _ := newCouper("testdata/integration/validation/02_couper.hcl", helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/buffer", bytes.NewBufferString(content))
@@ -2898,10 +2898,6 @@ func TestOpenAPIValidateRequestResponseBuffer(t *testing.T) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", origin.URL)
-
-	for _, e := range hook.AllEntries() {
-		println(e.Message)
-	}
 
 	res, err := test.NewHTTPClient().Do(req)
 	helper.Must(err)
