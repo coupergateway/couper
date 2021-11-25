@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Changed**
+  * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
+
 ---
 
 ## [1.6](https://github.com/avenga/couper/releases/tag/1.6)
@@ -22,7 +25,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Changed**
   * [`server` block](./docs/REFERENCE.md#server-block) label is now optional, [`api` block](./docs/REFERENCE.md#api-block) may be labelled ([#358](https://github.com/avenga/couper/pull/358))
   * Timings in logs are now numeric values ([#367](https://github.com/avenga/couper/issues/367))
-  * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
 
 * **Fixed**
   * Handling of [`accept_forwarded_url`](./docs/REFERENCE.md#settings-block) "host" if `H-Forwarded-Host` request header field contains a port ([#360](https://github.com/avenga/couper/pull/360))
