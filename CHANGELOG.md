@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.5...master)
+## [Unreleased](https://github.com/avenga/couper/compare/1.6...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.6](https://github.com/avenga/couper/releases/tag/1.6)
 
 * **Added**
   * Register `default` function as `coalesce` alias ([#356](https://github.com/avenga/couper/pull/356))
@@ -31,8 +35,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * HCL: Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
   * HCL: Missing support for different variable index key types ([#391](https://github.com/avenga/couper/pull/391))
   * [OIDC](./docs/REFERENCE.md#oidc-block-beta): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
-
----
 
 ## [1.5](https://github.com/avenga/couper/releases/tag/1.5)
 
