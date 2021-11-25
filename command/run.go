@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -87,13 +86,11 @@ func (a AcceptForwardedValue) Set(s string) error {
 	return nil
 }
 
+var checkLimit func(entry *logrus.Entry)
+
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
-	lim := syscall.Rlimit{}
-	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
-	if err != nil {
-		logEntry.Warnf("ulimit: error retrieving file descriptor limit")
-	} else {
-		logEntry.Infof("ulimit: max open files: %d (hard limit: %d)", lim.Cur, lim.Max)
+	if checkLimit != nil {
+		checkLimit(logEntry)
 	}
 
 	r.settingsMu.Lock()
@@ -117,7 +114,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	// Some remapping due to flag set pre-definition
 	env.Decode(r.settings)
-	err = r.settings.SetAcceptForwarded()
+	err := r.settings.SetAcceptForwarded()
 	if err != nil {
 		return err
 	}
