@@ -43,6 +43,7 @@ server "logs" {
             int    = 123
             float  = 1.23
             string = backend_responses.default.headers.server
+            req    = request.method
 
             array = [
               1,
