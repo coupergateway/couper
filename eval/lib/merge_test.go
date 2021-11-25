@@ -14,7 +14,7 @@ import (
 func TestMerge(t *testing.T) {
 	helper := test.New(t)
 
-	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl", false)
+	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
 	tests := []struct {
@@ -283,7 +283,7 @@ func TestMerge(t *testing.T) {
 func TestMergeErrors(t *testing.T) {
 	helper := test.New(t)
 
-	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl", false)
+	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
 	tests := []struct {
