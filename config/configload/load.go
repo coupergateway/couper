@@ -54,7 +54,7 @@ func SetWorkingDirectory(configFile string) (string, error) {
 	return os.Getwd()
 }
 
-func LoadFile(filePath string, verifyOnly bool) (*config.Couper, error) {
+func LoadFile(filePath string) (*config.Couper, error) {
 	_, err := SetWorkingDirectory(filePath)
 	if err != nil {
 		return nil, err
@@ -67,19 +67,19 @@ func LoadFile(filePath string, verifyOnly bool) (*config.Couper, error) {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	return LoadBytes(src, filename, verifyOnly)
+	return LoadBytes(src, filename)
 }
 
-func LoadBytes(src []byte, filename string, verifyOnly bool) (*config.Couper, error) {
+func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	hclBody, diags := parser.Load(src, filename)
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, src, filename, verifyOnly)
+	return LoadConfig(hclBody, src, filename)
 }
 
-func LoadConfig(body hcl.Body, src []byte, filename string, verifyOnly bool) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}

@@ -104,7 +104,7 @@ func realmain(arguments []string) int {
 		return 0
 	}
 
-	confFile, err := configload.LoadFile(flags.FilePath, false)
+	confFile, err := configload.LoadFile(flags.FilePath)
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
@@ -188,7 +188,7 @@ func realmain(arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFile(confFile.Filename, false) // we are at wd, just filename
+			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
