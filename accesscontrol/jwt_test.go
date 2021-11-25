@@ -317,6 +317,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		"user2": {"bar"},
 		"*":     {"default"},
 	}
+	var noScope []string
 
 	tests := []struct {
 		name       string
@@ -334,7 +335,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			nil,
 			"",
-			[]string{},
+			noScope,
 		},
 		{
 			"scope: space-separated list",
@@ -379,7 +380,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid scope claim value type, ignoring claim, value: true",
-			[]string{},
+			noScope,
 		},
 		{
 			"scope: warn: number",
@@ -388,7 +389,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid scope claim value type, ignoring claim, value: 1.23",
-			[]string{},
+			noScope,
 		},
 		{
 			"scope: warn: list of bool",
@@ -397,7 +398,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid scope claim value type, ignoring claim, value: []interface {}{true, false}",
-			[]string{},
+			noScope,
 		},
 		{
 			"scope: warn: list of number",
@@ -406,7 +407,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid scope claim value type, ignoring claim, value: []interface {}{1, 2}",
-			[]string{},
+			noScope,
 		},
 		{
 			"scope: warn: mixed list",
@@ -415,7 +416,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			`invalid scope claim value type, ignoring claim, value: []interface {}{"eins", 2}`,
-			[]string{},
+			noScope,
 		},
 		{
 			"scope: warn: object",
@@ -424,7 +425,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			`invalid scope claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
-			[]string{},
+			noScope,
 		},
 		{
 			"roles: single string",
@@ -606,7 +607,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				subT.Errorf("Expected scopes within request context")
 			} else {
 				if !reflect.DeepEqual(tt.expScopes, scopesList) {
-					subT.Errorf("Scopes do not match, want: %v, got: %v", tt.expScopes, scopesList)
+					subT.Errorf("Scopes do not match, want: %#v, got: %#v", tt.expScopes, scopesList)
 				}
 			}
 
