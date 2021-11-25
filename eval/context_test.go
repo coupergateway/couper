@@ -189,7 +189,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -228,7 +228,7 @@ func TestCouperVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl", false)
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
 				subT.Fatal(err)
 			}
