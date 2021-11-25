@@ -16,6 +16,8 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -27,7 +29,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func Test_JWT_NewJWT_RSA(t *testing.T) {
@@ -143,6 +144,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 }
 
 func Test_JWT_Validate(t *testing.T) {
+	log, _ := test.NewLogger()
 	type fields struct {
 		algorithm      acjwt.Algorithm
 		claims         map[string]string
@@ -279,6 +281,8 @@ func Test_JWT_Validate(t *testing.T) {
 					return
 				}
 
+				tt.req = tt.req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
+
 				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
 					subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 				}
@@ -303,6 +307,7 @@ func Test_JWT_Validate(t *testing.T) {
 }
 
 func Test_JWT_yields_scopes(t *testing.T) {
+	log, hook := test.NewLogger()
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
@@ -312,6 +317,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		"user2": {"bar"},
 		"*":     {"default"},
 	}
+	var noScope []string
 
 	tests := []struct {
 		name       string
@@ -319,16 +325,25 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		scope      interface{}
 		rolesClaim string
 		roles      interface{}
-		wantErr    bool
+		expWarning string
 		expScopes  []string
 	}{
+		{
+			"no scope, no roles",
+			"scp",
+			nil,
+			"roles",
+			nil,
+			"",
+			noScope,
+		},
 		{
 			"scope: space-separated list",
 			"scp",
 			"foo bar",
 			"",
 			nil,
-			false,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -337,7 +352,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo bar foo",
 			"",
 			nil,
-			false,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -346,7 +361,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 			"",
 			nil,
-			false,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
@@ -355,62 +370,62 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar", "bar"},
 			"",
 			nil,
-			false,
+			"",
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: error: boolean",
+			"scope: warn: boolean",
 			"scope",
 			true,
 			"",
 			nil,
-			true,
-			[]string{},
+			"invalid scope claim value type, ignoring claim, value: true",
+			noScope,
 		},
 		{
-			"scope: error: number",
+			"scope: warn: number",
 			"scope",
 			1.23,
 			"",
 			nil,
-			true,
-			[]string{},
+			"invalid scope claim value type, ignoring claim, value: 1.23",
+			noScope,
 		},
 		{
-			"scope: error: list of bool",
+			"scope: warn: list of bool",
 			"scope",
 			[]bool{true, false},
 			"",
 			nil,
-			true,
-			[]string{},
+			"invalid scope claim value type, ignoring claim, value: []interface {}{true, false}",
+			noScope,
 		},
 		{
-			"scope: error: list of number",
+			"scope: warn: list of number",
 			"scope",
 			[]int{1, 2},
 			"",
 			nil,
-			true,
-			[]string{},
+			"invalid scope claim value type, ignoring claim, value: []interface {}{1, 2}",
+			noScope,
 		},
 		{
-			"scope: error: mixed list",
+			"scope: warn: mixed list",
 			"scope",
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			true,
-			[]string{},
+			`invalid scope claim value type, ignoring claim, value: []interface {}{"eins", 2}`,
+			noScope,
 		},
 		{
-			"scope: error: object",
+			"scope: warn: object",
 			"scope",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			true,
-			[]string{},
+			`invalid scope claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
+			noScope,
 		},
 		{
 			"roles: single string",
@@ -418,7 +433,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"admin",
-			false,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -427,7 +442,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"user1 user2",
-			false,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -436,7 +451,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			"user1 user2 user1",
-			false,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -445,7 +460,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"user1", "user2"},
-			false,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -454,7 +469,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"user1", "user2", "user2"},
-			false,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -463,7 +478,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"admin", "user1"},
-			false,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
@@ -472,62 +487,62 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"rollen",
 			[]string{"admin", "user2"},
-			false,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 		{
-			"roles: error: boolean",
+			"roles: warn: boolean",
 			"",
 			nil,
 			"roles",
 			true,
-			true,
-			[]string{},
+			"invalid roles claim value type, ignoring claim, value: true",
+			[]string{"default"},
 		},
 		{
-			"roles: error: number",
+			"roles: warn: number",
 			"",
 			nil,
 			"roles",
 			1.23,
-			true,
-			[]string{},
+			"invalid roles claim value type, ignoring claim, value: 1.23",
+			[]string{"default"},
 		},
 		{
-			"roles: error: list of bool",
+			"roles: warn: list of bool",
 			"",
 			nil,
 			"roles",
 			[]bool{true, false},
-			true,
-			[]string{},
+			"invalid roles claim value type, ignoring claim, value: []interface {}{true, false}",
+			[]string{"default"},
 		},
 		{
-			"roles: error: list of number",
+			"roles: warn: list of number",
 			"",
 			nil,
 			"roles",
 			[]int{1, 2},
-			true,
-			[]string{},
+			"invalid roles claim value type, ignoring claim, value: []interface {}{1, 2}",
+			[]string{"default"},
 		},
 		{
-			"roles: error: mixed list",
+			"roles: warn: mixed list",
 			"",
 			nil,
 			"roles",
-			[]interface{}{"eins", 2},
-			true,
-			[]string{},
+			[]interface{}{"user1", 2},
+			`invalid roles claim value type, ignoring claim, value: []interface {}{"user1", 2}`,
+			[]string{"default"},
 		},
 		{
-			"roles: error: object",
+			"roles: warn: object",
 			"",
 			nil,
 			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
-			true,
-			[]string{},
+			`invalid roles claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
+			[]string{"default"},
 		},
 		{
 			"combi 1",
@@ -535,7 +550,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"foo foo",
 			"roles",
 			[]string{"user2"},
-			false,
+			"",
 			[]string{"foo", "bar", "default"},
 		},
 		{
@@ -544,12 +559,13 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 			"roles",
 			"admin",
-			false,
+			"",
 			[]string{"foo", "bar", "baz", "default"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			hook.Reset()
 			claims := jwt.MapClaims{}
 			if tt.scopeClaim != "" && tt.scope != nil {
 				claims[tt.scopeClaim] = tt.scope
@@ -579,21 +595,40 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			}
 
 			req := setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)
+			req = req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
 
-			if err = j.Validate(req); (err != nil) != tt.wantErr {
-				subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			if err = j.Validate(req); err != nil {
+				subT.Errorf("Unexpected error = %v", err)
+				return
 			}
 
-			if !tt.wantErr {
-				scopesList, ok := req.Context().Value(request.Scopes).([]string)
-				if !ok {
-					subT.Errorf("Expected scopes within request context")
-				} else {
-					if !reflect.DeepEqual(tt.expScopes, scopesList) {
-						subT.Errorf("Scopes do not match, want: %v, got: %v", tt.expScopes, scopesList)
-					}
+			scopesList, ok := req.Context().Value(request.Scopes).([]string)
+			if !ok {
+				subT.Errorf("Expected scopes within request context")
+			} else {
+				if !reflect.DeepEqual(tt.expScopes, scopesList) {
+					subT.Errorf("Scopes do not match, want: %#v, got: %#v", tt.expScopes, scopesList)
 				}
+			}
 
+			entries := hook.AllEntries()
+			if tt.expWarning == "" {
+				if len(entries) > 0 {
+					subT.Errorf("Expected no log messages, got: %d", len(entries))
+				}
+				return
+			}
+			if len(entries) != 1 {
+				subT.Errorf("Expected one log message: got: %d", len(entries))
+				return
+			}
+			entry := entries[0]
+			if entry.Level != logrus.WarnLevel {
+				subT.Errorf("Expected warning, got: %v", entry.Level)
+				return
+			}
+			if entry.Message != tt.expWarning {
+				subT.Errorf("Warning mismatch,\n\twant: %s,\n\tgot: %s", tt.expWarning, entry.Message)
 			}
 		})
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
@@ -236,21 +237,14 @@ func (j *JWT) Validate(req *http.Request) error {
 	acMap[j.name] = tokenClaims
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
-	scopesValues, err := j.getScopeValues(tokenClaims)
-	if err != nil {
-		return err
-	}
+	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
+	scopesValues := j.getScopeValues(tokenClaims, log)
 
-	if len(scopesValues) > 0 {
-		scopes, ok := ctx.Value(request.Scopes).([]string)
-		if !ok {
-			scopes = []string{}
-		}
+	scopes, _ := ctx.Value(request.Scopes).([]string)
 
-		scopes = append(scopes, scopesValues...)
+	scopes = append(scopes, scopesValues...)
 
-		ctx = context.WithValue(ctx, request.Scopes, scopes)
-	}
+	ctx = context.WithValue(ctx, request.Scopes, scopes)
 
 	*req = *req.WithContext(ctx)
 
@@ -322,81 +316,106 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	return tokenClaims, nil
 }
 
-const errValueMsg = "value of %s claim must either be a string containing a space-separated list of %s or a list of string %s"
-
-var errScopeValue = fmt.Errorf(errValueMsg, "scope", "scope values", "scope values")
-var errRolesValue = fmt.Errorf(errValueMsg, "roles", "roles", "roles")
-
-func (j *JWT) getScopeValues(tokenClaims map[string]interface{}) ([]string, error) {
+func (j *JWT) getScopeValues(tokenClaims map[string]interface{}, log *logrus.Entry) []string {
 	var scopeValues []string
 
-	if j.scopeClaim != "" {
-		scopesFromClaim, exists := tokenClaims[j.scopeClaim]
-		if !exists {
-			return nil, fmt.Errorf("missing expected scope claim %q", j.scopeClaim)
-		}
+	scopeValues = j.addScopeValueFromScope(tokenClaims, scopeValues, log)
 
-		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-		scopesArray, ok := scopesFromClaim.([]interface{})
-		if ok {
-			for _, v := range scopesArray {
-				s, ok := v.(string)
-				if !ok {
-					return nil, errScopeValue
-				}
-				scopeValues = addScopeValue(scopeValues, s)
-			}
-		} else {
-			scopesString, ok := scopesFromClaim.(string)
-			if !ok {
-				return nil, errScopeValue
-			}
-			for _, s := range strings.Split(scopesString, " ") {
-				scopeValues = addScopeValue(scopeValues, s)
-			}
-		}
+	scopeValues = j.addScopeValueFromRoles(tokenClaims, scopeValues, log)
+
+	return scopeValues
+}
+
+const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value: %#v"
+
+func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) []string {
+	if j.scopeClaim == "" {
+		return scopeValues
 	}
 
-	if j.rolesClaim != "" {
-		rolesClaimValue, exists := tokenClaims[j.rolesClaim]
-		if !exists {
-			return nil, fmt.Errorf("missing expected roles claim %q", j.rolesClaim)
-		}
+	scopesFromClaim, exists := tokenClaims[j.scopeClaim]
+	if !exists {
+		return scopeValues
+	}
 
-		var roleValues []string
-		// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-		rolesArray, ok := rolesClaimValue.([]interface{})
-		if ok {
-			for _, v := range rolesArray {
-				r, ok := v.(string)
-				if !ok {
-					return nil, errRolesValue
-				}
-				roleValues = append(roleValues, r)
-			}
-		} else {
-			rolesString, ok := rolesClaimValue.(string)
+	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+	scopesArray, ok := scopesFromClaim.([]interface{})
+	if ok {
+		var vals []string
+		for _, v := range scopesArray {
+			s, ok := v.(string)
 			if !ok {
-				return nil, errRolesValue
+				log.Warn(fmt.Sprintf(warnInvalidValueMsg, "scope", scopesFromClaim))
+				return scopeValues
 			}
-			roleValues = strings.Split(rolesString, " ")
+			vals = append(vals, s)
 		}
-		for _, r := range roleValues {
-			if scopes, exist := j.rolesMap[r]; exist {
-				for _, s := range scopes {
-					scopeValues = addScopeValue(scopeValues, s)
-				}
-			}
+		for _, val := range vals {
+			scopeValues = addScopeValue(scopeValues, val)
 		}
+	} else {
+		scopesString, ok := scopesFromClaim.(string)
+		if !ok {
+			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "scope", scopesFromClaim))
+			return scopeValues
+		}
+		for _, s := range strings.Split(scopesString, " ") {
+			scopeValues = addScopeValue(scopeValues, s)
+		}
+	}
+	return scopeValues
+}
 
-		if scopes, exist := j.rolesMap["*"]; exist {
+func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []string {
+	var roleValues []string
+	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
+	rolesArray, ok := rolesClaimValue.([]interface{})
+	if ok {
+		var vals []string
+		for _, v := range rolesArray {
+			r, ok := v.(string)
+			if !ok {
+				log.Warn(fmt.Sprintf(warnInvalidValueMsg, "roles", rolesClaimValue))
+				return roleValues
+			}
+			vals = append(vals, r)
+		}
+		return vals
+	} else {
+		rolesString, ok := rolesClaimValue.(string)
+		if !ok {
+			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "roles", rolesClaimValue))
+			return roleValues
+		}
+		return strings.Split(rolesString, " ")
+	}
+}
+
+func (j *JWT) addScopeValueFromRoles(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) []string {
+	if j.rolesClaim == "" || j.rolesMap == nil {
+		return scopeValues
+	}
+
+	rolesClaimValue, exists := tokenClaims[j.rolesClaim]
+	if !exists {
+		return scopeValues
+	}
+
+	roleValues := j.getRoleValues(rolesClaimValue, log)
+	for _, r := range roleValues {
+		if scopes, exist := j.rolesMap[r]; exist {
 			for _, s := range scopes {
 				scopeValues = addScopeValue(scopeValues, s)
 			}
 		}
 	}
 
-	return scopeValues, nil
+	if scopes, exist := j.rolesMap["*"]; exist {
+		for _, s := range scopes {
+			scopeValues = addScopeValue(scopeValues, s)
+		}
+	}
+	return scopeValues
 }
 
 func addScopeValue(scopeValues []string, scope string) []string {
