@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -3395,7 +3396,7 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 	shutdown, _ := newCouper("testdata/integration/api/13_couper.hcl", test.New(t))
 	defer shutdown()
 
-	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade/ws", bytes.NewBufferString("ws-client-body"))
 	helper.Must(err)
 	req.Close = false
 
@@ -3416,16 +3417,18 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 	helper.Must(err)
 
 	expectedHeader := textproto.MIMEHeader{
-		"Abc":               []string{"123"},
-		"Echo":              []string{"ECHO"},
-		"Connection":        []string{"Upgrade"},
+		"Abc":               {"123"},
+		"Connection":        {"Upgrade"},
 		"Couper-Request-Id": header.Values("Couper-Request-Id"), // dynamic
-		"Server":            []string{"couper.io"},
-		"Upgrade":           []string{"websocket"},
+		"Echo":              {"ECHO"},
+		"Server":            {"couper.io"},
+		"Upgrade":           {"websocket"},
+		"X-Body":            {"ws-client-body"},
+		"X-Upgrade-Body":    {"ws-client-body"},
 	}
 
 	if !reflect.DeepEqual(expectedHeader, header) {
-		t.Errorf("Want: %v, got: %v", expectedHeader, header)
+		t.Errorf(cmp.Diff(expectedHeader, header))
 	}
 
 	n, err := conn.Write([]byte("ping"))
@@ -3441,6 +3444,45 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 
 	if !bytes.Equal(p, []byte("pong")) {
 		t.Errorf("Expected pong answer, got: %q", string(p))
+	}
+}
+
+func TestWrapperHiJack_WebsocketUpgradeBodyBuffer(t *testing.T) {
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/api/13_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://connect.ws:8080/upgrade/small", bytes.NewBufferString("client-body"))
+	helper.Must(err)
+	req.Close = false
+
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	helper.Must(err)
+	defer conn.Close()
+
+	helper.Must(req.Write(conn))
+
+	helper.Must(conn.SetDeadline(time.Time{}))
+
+	res, err := http.ReadResponse(bufio.NewReader(conn), req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %s", res.Status)
+	}
+
+	expectedHeader := http.Header{
+		"Content-Length":    res.Header.Values("Content-Length"), // dynamic, could change for other tests, unrelated here
+		"Content-Type":      {"text/plain; charset=utf-8"},
+		"Couper-Request-Id": res.Header.Values("Couper-Request-Id"), // dynamic
+		"Date":              res.Header.Values("Date"),              // dynamic
+		"Server":            {"couper.io"},
+		"X-Body":            {"client-body"},
+		"X-Resp-Body":       {"1234567890"},
+	}
+
+	if !reflect.DeepEqual(expectedHeader, res.Header) {
+		t.Errorf(cmp.Diff(expectedHeader, res.Header))
 	}
 }
 
