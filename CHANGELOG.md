@@ -10,7 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Log file descriptor limit at startup ([#383](https://github.com/avenga/couper/pull/383))
   * [`error_handler`](/docs/ERRORS.md) block support for `api` and `endpoint` blocks ([#317](https://github.com/avenga/couper/pull/317))
     * Enables reacting to additional [error types](/docs/ERRORS.md#error-types): `beta_scope`, `beta_insufficient_scope` and `beta_operation_denied`
-  * `split()` and `substr()`[./docs/REFERENCE.md#functions]([#390](https://github.com/avenga/couper/pull/390))
+  * `split()` and `substr()` [functions](./docs/REFERENCE.md#functions) ([#390](https://github.com/avenga/couper/pull/390))
   * hcl syntax verification for our configuration file ([#296](https://github.com/avenga/couper/pull/296)), ([#168](https://github.com/avenga/couper/issues/168)), ([#188](https://github.com/avenga/couper/issues/188))
     * validate against the schema and additional requirements
     * available as [`verify`](docs/CLI.md) command too
