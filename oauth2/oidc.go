@@ -138,6 +138,15 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 	}
 
 	// 2.  ID Token
+	// aud
+	// 		REQUIRED.
+	aud, audExists := idTokenClaims["aud"]
+	if !audExists {
+		return nil, nil, errors.Oauth2.Messagef("missing aud claim in ID token, claims='%#v'", idTokenClaims)
+	}
+	if aud == nil {
+		return nil, nil, errors.Oauth2.Message("aud claim in ID token must not be null")
+	}
 	// exp
 	// 		REQUIRED.
 	if _, expExists := idTokenClaims["exp"]; !expExists {
@@ -145,8 +154,12 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 	}
 	// iat
 	// 		REQUIRED.
-	if _, iatExists := idTokenClaims["iat"]; !iatExists {
+	iat, iatExists := idTokenClaims["iat"]
+	if !iatExists {
 		return nil, nil, errors.Oauth2.Messagef("missing iat claim in ID token, claims='%#v'", idTokenClaims)
+	}
+	if _, ok := iat.(float64); !ok {
+		return nil, nil, errors.Oauth2.Messagef("iat claim in ID token must be number, claims='%#v'", idTokenClaims)
 	}
 
 	// 3.1.3.7.  ID Token Validation
