@@ -2836,7 +2836,7 @@ func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/validation/01_couper.hcl", test.New(t))
+	shutdown, _ := newCouper("testdata/integration/validation/01_couper.hcl", helper)
 	defer shutdown()
 
 	req1, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
@@ -2871,6 +2871,52 @@ func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
 	}
 	if res2.StatusCode != 502 {
 		t.Errorf("Expected status %d for response2; got: %d", 502, res2.StatusCode)
+	}
+}
+
+func TestOpenAPIValidateRequestResponseBuffer(t *testing.T) {
+	helper := test.New(t)
+
+	content := `{ "prop": true }`
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		b, err := io.ReadAll(req.Body)
+		helper.Must(err)
+		if string(b) != content {
+			t.Errorf("origin: expected same content")
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		_, err = rw.Write([]byte(content))
+		helper.Must(err)
+	}))
+	defer origin.Close()
+
+	shutdown, hook := newCouper("testdata/integration/validation/02_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/buffer", bytes.NewBufferString(content))
+	helper.Must(err)
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", origin.URL)
+
+	for _, e := range hook.AllEntries() {
+		println(e.Message)
+	}
+
+	res, err := test.NewHTTPClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %s", res.Status)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
+
+	helper.Must(res.Body.Close())
+
+	if string(b) != content {
+		t.Error("expected same body content")
 	}
 }
 
