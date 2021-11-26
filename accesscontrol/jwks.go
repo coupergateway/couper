@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/avenga/couper/config/reader"
@@ -21,6 +22,7 @@ type JWKS struct {
 	uri       string
 	transport http.RoundTripper
 	ttl       time.Duration
+	mtx       sync.RWMutex
 }
 
 func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext context.Context) (*JWKS, error) {
@@ -51,13 +53,19 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
 	var keys []JWK
 
-	if len(j.Keys) == 0 || j.hasExpired() {
+	j.mtx.RLock()
+	lKeys := len(j.Keys)
+	j.mtx.RUnlock()
+	if lKeys == 0 || j.hasExpired() {
 		if err := j.Load(); err != nil {
 			return keys, fmt.Errorf("error loading JWKS: %v", err)
 		}
 	}
 
-	for _, key := range j.Keys {
+	j.mtx.RLock()
+	ks := j.Keys
+	j.mtx.RUnlock()
+	for _, key := range ks {
 		if key.KeyID == kid {
 			keys = append(keys, key)
 		}
@@ -122,12 +130,16 @@ func (j *JWKS) Load() error {
 		return err
 	}
 
+	j.mtx.Lock()
 	j.Keys = jwks.Keys
 	j.expiry = time.Now().Unix() + int64(j.ttl.Seconds())
+	j.mtx.Unlock()
 
 	return nil
 }
 
 func (jwks *JWKS) hasExpired() bool {
+	jwks.mtx.RLock()
+	defer jwks.mtx.RUnlock()
 	return time.Now().Unix() > jwks.expiry
 }
