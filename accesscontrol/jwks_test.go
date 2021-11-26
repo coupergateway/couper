@@ -48,7 +48,7 @@ func Test_JWKS_Load(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
-			err = jwks.Load()
+			_, err = jwks.Load()
 			if err != nil && tt.expParsed {
 				subT.Error("no jwks parsed")
 			}
@@ -92,7 +92,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 			helper := test.New(subT)
 			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
-			err = jwks.Load()
+			_, err = jwks.Load()
 			helper.Must(err)
 			jwk, err := jwks.GetKey(tt.kid, tt.alg, tt.use)
 			if jwk == nil && tt.expFound {
