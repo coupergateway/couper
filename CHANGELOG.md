@@ -7,6 +7,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
 
+* **Fixed**
+  * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
+  * exclude file descriptor limit startup-logs for windows ([#396](https://github.com/avenga/couper/pull/396)) ([#383](https://github.com/avenga/couper/pull/383))
+
 ---
 
 ## [1.6](https://github.com/avenga/couper/releases/tag/1.6)
