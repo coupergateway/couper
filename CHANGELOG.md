@@ -9,7 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
-  * exclude file descriptor limit startup-logs for windows ([#396](https://github.com/avenga/couper/pull/396)) ([#383](https://github.com/avenga/couper/pull/383))
+  * exclude file descriptor limit startup-logs for Windows ([#396](https://github.com/avenga/couper/pull/396), [#383](https://github.com/avenga/couper/pull/383))
 
 ---
 
