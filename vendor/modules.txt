@@ -90,7 +90,7 @@ github.com/josharian/intern
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/mattermost/xml-roundtrip-validator v0.0.0-20201208211235-fe770d50d911
+# github.com/mattermost/xml-roundtrip-validator v0.1.0
 ## explicit; go 1.14
 github.com/mattermost/xml-roundtrip-validator
 # github.com/mattn/go-colorable v0.1.9
