@@ -231,11 +231,11 @@ go.opentelemetry.io/proto/otlp/common/v1
 go.opentelemetry.io/proto/otlp/metrics/v1
 go.opentelemetry.io/proto/otlp/resource/v1
 go.opentelemetry.io/proto/otlp/trace/v1
-# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-## explicit; go 1.11
+# golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
+## explicit; go 1.17
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-# golang.org/x/net v0.0.0-20210916014120-12bc252f5db8
+# golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9
 ## explicit; go 1.17
 golang.org/x/net/http/httpguts
 golang.org/x/net/http/httpproxy
@@ -244,7 +244,7 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/sys v0.0.0-20210915083310-ed5796bab164
+# golang.org/x/sys v0.0.0-20211124211545-fe61309f8881
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
