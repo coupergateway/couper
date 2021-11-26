@@ -7,7 +7,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
-	github.com/fatih/color v1.10.0
+	github.com/fatih/color v1.13.0
 	github.com/getkin/kin-openapi v0.83.0
 	github.com/hashicorp/hcl/v2 v2.10.1
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
