@@ -86,13 +86,10 @@ func (a AcceptForwardedValue) Set(s string) error {
 	return nil
 }
 
-var checkLimit func(entry *logrus.Entry)
+// limitFn depends on current OS, set via build flags
+var limitFn func(entry *logrus.Entry)
 
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
-	if checkLimit != nil {
-		checkLimit(logEntry)
-	}
-
 	r.settingsMu.Lock()
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
@@ -142,6 +139,10 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		return err
 	}
 	errors.SetLogger(logEntry)
+
+	if limitFn != nil {
+		limitFn(logEntry)
+	}
 
 	tlsDevPorts := make(server.TLSDevPorts)
 	for _, ports := range config.Settings.TLSDevProxy {
