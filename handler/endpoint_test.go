@@ -495,7 +495,10 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	access := logging.NewAccessLog(&logging.Config{}, log)
-	access.ServeHTTP(rec, req.WithContext(ctx), ep)
+
+	outreq := req.WithContext(ctx)
+	ep.ServeHTTP(rec, outreq)
+	access.Do(rec, outreq)
 	rec.Flush()
 
 	elapsed := time.Since(start)
