@@ -16,6 +16,15 @@ import (
 	"github.com/go-openapi/jsonpointer"
 )
 
+const (
+	TypeArray   = "array"
+	TypeBoolean = "boolean"
+	TypeInteger = "integer"
+	TypeNumber  = "number"
+	TypeObject  = "object"
+	TypeString  = "string"
+)
+
 var (
 	// SchemaErrorDetailsDisabled disables printing of details about schema errors.
 	SchemaErrorDetailsDisabled = false
@@ -23,15 +32,15 @@ var (
 	//SchemaFormatValidationDisabled disables validation of schema type formats.
 	SchemaFormatValidationDisabled = false
 
-	errSchema = errors.New("Input does not match the schema")
+	errSchema = errors.New("input does not match the schema")
 
 	// ErrOneOfConflict is the SchemaError Origin when data matches more than one oneOf schema
 	ErrOneOfConflict = errors.New("input matches more than one oneOf schemas")
 
 	// ErrSchemaInputNaN may be returned when validating a number
-	ErrSchemaInputNaN = errors.New("NaN is not allowed")
+	ErrSchemaInputNaN = errors.New("floating point NaN is not allowed")
 	// ErrSchemaInputInf may be returned when validating a number
-	ErrSchemaInputInf = errors.New("Inf is not allowed")
+	ErrSchemaInputInf = errors.New("floating point Inf is not allowed")
 )
 
 // Float64Ptr is a helper for defining OpenAPI schemas.
@@ -109,8 +118,6 @@ type Schema struct {
 	Example      interface{}   `json:"example,omitempty" yaml:"example,omitempty"`
 	ExternalDocs *ExternalDocs `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
 
-	// Object-related, here for struct compactness
-	AdditionalPropertiesAllowed *bool `json:"-" multijson:"additionalProperties,omitempty" yaml:"-"`
 	// Array-related, here for struct compactness
 	UniqueItems bool `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
 	// Number-related, here for struct compactness
@@ -141,12 +148,13 @@ type Schema struct {
 	Items    *SchemaRef `json:"items,omitempty" yaml:"items,omitempty"`
 
 	// Object
-	Required             []string       `json:"required,omitempty" yaml:"required,omitempty"`
-	Properties           Schemas        `json:"properties,omitempty" yaml:"properties,omitempty"`
-	MinProps             uint64         `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
-	MaxProps             *uint64        `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
-	AdditionalProperties *SchemaRef     `json:"-" multijson:"additionalProperties,omitempty" yaml:"-"`
-	Discriminator        *Discriminator `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
+	Required                    []string       `json:"required,omitempty" yaml:"required,omitempty"`
+	Properties                  Schemas        `json:"properties,omitempty" yaml:"properties,omitempty"`
+	MinProps                    uint64         `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	MaxProps                    *uint64        `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
+	AdditionalPropertiesAllowed *bool          `multijson:"additionalProperties,omitempty" json:"-" yaml:"-"` // In this order...
+	AdditionalProperties        *SchemaRef     `multijson:"additionalProperties,omitempty" json:"-" yaml:"-"` // ...for multijson
+	Discriminator               *Discriminator `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
 }
 
 var _ jsonpointer.JSONPointable = (*Schema)(nil)
@@ -298,72 +306,72 @@ func NewAllOfSchema(schemas ...*Schema) *Schema {
 
 func NewBoolSchema() *Schema {
 	return &Schema{
-		Type: "boolean",
+		Type: TypeBoolean,
 	}
 }
 
 func NewFloat64Schema() *Schema {
 	return &Schema{
-		Type: "number",
+		Type: TypeNumber,
 	}
 }
 
 func NewIntegerSchema() *Schema {
 	return &Schema{
-		Type: "integer",
+		Type: TypeInteger,
 	}
 }
 
 func NewInt32Schema() *Schema {
 	return &Schema{
-		Type:   "integer",
+		Type:   TypeInteger,
 		Format: "int32",
 	}
 }
 
 func NewInt64Schema() *Schema {
 	return &Schema{
-		Type:   "integer",
+		Type:   TypeInteger,
 		Format: "int64",
 	}
 }
 
 func NewStringSchema() *Schema {
 	return &Schema{
-		Type: "string",
+		Type: TypeString,
 	}
 }
 
 func NewDateTimeSchema() *Schema {
 	return &Schema{
-		Type:   "string",
+		Type:   TypeString,
 		Format: "date-time",
 	}
 }
 
 func NewUUIDSchema() *Schema {
 	return &Schema{
-		Type:   "string",
+		Type:   TypeString,
 		Format: "uuid",
 	}
 }
 
 func NewBytesSchema() *Schema {
 	return &Schema{
-		Type:   "string",
+		Type:   TypeString,
 		Format: "byte",
 	}
 }
 
 func NewArraySchema() *Schema {
 	return &Schema{
-		Type: "array",
+		Type: TypeArray,
 	}
 }
 
 func NewObjectSchema() *Schema {
 	return &Schema{
-		Type:       "object",
+		Type:       TypeObject,
 		Properties: make(map[string]*SchemaRef),
 	}
 }
@@ -448,6 +456,7 @@ func (schema *Schema) WithMaxLengthDecodedBase64(i int64) *Schema {
 
 func (schema *Schema) WithPattern(pattern string) *Schema {
 	schema.Pattern = pattern
+	schema.compiledPattern = nil
 	return schema
 }
 
@@ -578,11 +587,11 @@ func (schema *Schema) IsEmpty() bool {
 	return true
 }
 
-func (schema *Schema) Validate(c context.Context) error {
-	return schema.validate(c, []*Schema{})
+func (value *Schema) Validate(ctx context.Context) error {
+	return value.validate(ctx, []*Schema{})
 }
 
-func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
+func (schema *Schema) validate(ctx context.Context, stack []*Schema) (err error) {
 	for _, existing := range stack {
 		if existing == schema {
 			return
@@ -591,7 +600,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 	stack = append(stack, schema)
 
 	if schema.ReadOnly && schema.WriteOnly {
-		return errors.New("A property MUST NOT be marked as both readOnly and writeOnly being true")
+		return errors.New("a property MUST NOT be marked as both readOnly and writeOnly being true")
 	}
 
 	for _, item := range schema.OneOf {
@@ -599,7 +608,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(item.Ref)
 		}
-		if err = v.validate(c, stack); err == nil {
+		if err = v.validate(ctx, stack); err == nil {
 			return
 		}
 	}
@@ -609,7 +618,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(item.Ref)
 		}
-		if err = v.validate(c, stack); err != nil {
+		if err = v.validate(ctx, stack); err != nil {
 			return
 		}
 	}
@@ -619,7 +628,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(item.Ref)
 		}
-		if err = v.validate(c, stack); err != nil {
+		if err = v.validate(ctx, stack); err != nil {
 			return
 		}
 	}
@@ -629,7 +638,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(ref.Ref)
 		}
-		if err = v.validate(c, stack); err != nil {
+		if err = v.validate(ctx, stack); err != nil {
 			return
 		}
 	}
@@ -637,8 +646,8 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 	schemaType := schema.Type
 	switch schemaType {
 	case "":
-	case "boolean":
-	case "number":
+	case TypeBoolean:
+	case TypeNumber:
 		if format := schema.Format; len(format) > 0 {
 			switch format {
 			case "float", "double":
@@ -648,7 +657,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 				}
 			}
 		}
-	case "integer":
+	case TypeInteger:
 		if format := schema.Format; len(format) > 0 {
 			switch format {
 			case "int32", "int64":
@@ -658,7 +667,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 				}
 			}
 		}
-	case "string":
+	case TypeString:
 		if format := schema.Format; len(format) > 0 {
 			switch format {
 			// Supported by OpenAPIv3.0.1:
@@ -676,13 +685,18 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 				}
 			}
 		}
-	case "array":
-		if schema.Items == nil {
-			return errors.New("When schema type is 'array', schema 'items' must be non-null")
+		if schema.Pattern != "" {
+			if err = schema.compilePattern(); err != nil {
+				return err
+			}
 		}
-	case "object":
+	case TypeArray:
+		if schema.Items == nil {
+			return errors.New("when schema type is 'array', schema 'items' must be non-null")
+		}
+	case TypeObject:
 	default:
-		return fmt.Errorf("Unsupported 'type' value '%s'", schemaType)
+		return fmt.Errorf("unsupported 'type' value %q", schemaType)
 	}
 
 	if ref := schema.Items; ref != nil {
@@ -690,7 +704,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(ref.Ref)
 		}
-		if err = v.validate(c, stack); err != nil {
+		if err = v.validate(ctx, stack); err != nil {
 			return
 		}
 	}
@@ -700,7 +714,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(ref.Ref)
 		}
-		if err = v.validate(c, stack); err != nil {
+		if err = v.validate(ctx, stack); err != nil {
 			return
 		}
 	}
@@ -710,7 +724,7 @@ func (schema *Schema) validate(c context.Context, stack []*Schema) (err error) {
 		if v == nil {
 			return foundUnresolvedRef(ref.Ref)
 		}
-		if err = v.validate(c, stack); err != nil {
+		if err = v.validate(ctx, stack); err != nil {
 			return
 		}
 	}
@@ -786,13 +800,22 @@ func (schema *Schema) visitJSON(settings *schemaValidationSettings, value interf
 		return schema.visitJSONArray(settings, value)
 	case map[string]interface{}:
 		return schema.visitJSONObject(settings, value)
-	default:
-		return &SchemaError{
-			Value:       value,
-			Schema:      schema,
-			SchemaField: "type",
-			Reason:      fmt.Sprintf("Not a JSON value: %T", value),
+	case map[interface{}]interface{}: // for YAML cf. issue #444
+		values := make(map[string]interface{}, len(value))
+		for key, v := range value {
+			if k, ok := key.(string); ok {
+				values[k] = v
+			}
 		}
+		if len(value) == len(values) {
+			return schema.visitJSONObject(settings, values)
+		}
+	}
+	return &SchemaError{
+		Value:       value,
+		Schema:      schema,
+		SchemaField: "type",
+		Reason:      fmt.Sprintf("unhandled value of type %T", value),
 	}
 }
 
@@ -810,7 +833,7 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "enum",
-			Reason:      "JSON value is not one of the allowed values",
+			Reason:      "value is not one of the allowed values",
 		}
 	}
 
@@ -819,11 +842,7 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 		if v == nil {
 			return foundUnresolvedRef(ref.Ref)
 		}
-		var oldfailfast bool
-		oldfailfast, settings.failfast = settings.failfast, true
-		err := v.visitJSON(settings, value)
-		settings.failfast = oldfailfast
-		if err == nil {
+		if err := v.visitJSON(settings, value); err == nil {
 			if settings.failfast {
 				return errSchema
 			}
@@ -836,33 +855,52 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 	}
 
 	if v := schema.OneOf; len(v) > 0 {
+		var discriminatorRef string
+		if schema.Discriminator != nil {
+			pn := schema.Discriminator.PropertyName
+			if valuemap, okcheck := value.(map[string]interface{}); okcheck {
+				discriminatorVal, okcheck := valuemap[pn]
+				if !okcheck {
+					return errors.New("input does not contain the discriminator property")
+				}
+
+				if discriminatorRef, okcheck = schema.Discriminator.Mapping[discriminatorVal.(string)]; len(schema.Discriminator.Mapping) > 0 && !okcheck {
+					return errors.New("input does not contain a valid discriminator value")
+				}
+			}
+		}
+
 		ok := 0
+		validationErrors := []error{}
 		for _, item := range v {
 			v := item.Value
 			if v == nil {
 				return foundUnresolvedRef(item.Ref)
 			}
-			var oldfailfast bool
-			oldfailfast, settings.failfast = settings.failfast, true
-			err := v.visitJSON(settings, value)
-			settings.failfast = oldfailfast
-			if err == nil {
-				if schema.Discriminator != nil {
-					pn := schema.Discriminator.PropertyName
-					if valuemap, okcheck := value.(map[string]interface{}); okcheck {
-						if discriminatorVal, okcheck := valuemap[pn]; okcheck == true {
-							mapref, okcheck := schema.Discriminator.Mapping[discriminatorVal.(string)]
-							if okcheck && mapref == item.Ref {
-								ok++
-							}
-						}
-					}
-				} else {
-					ok++
-				}
+
+			if discriminatorRef != "" && discriminatorRef != item.Ref {
+				continue
 			}
+
+			if err := v.visitJSON(settings, value); err != nil {
+				validationErrors = append(validationErrors, err)
+				continue
+			}
+
+			ok++
 		}
+
 		if ok != 1 {
+			if len(validationErrors) > 1 {
+				errorMessage := ""
+				for _, err := range validationErrors {
+					if errorMessage != "" {
+						errorMessage += " Or "
+					}
+					errorMessage += err.Error()
+				}
+				return errors.New("doesn't match schema due to: " + errorMessage)
+			}
 			if settings.failfast {
 				return errSchema
 			}
@@ -873,7 +911,10 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 			}
 			if ok > 1 {
 				e.Origin = ErrOneOfConflict
+			} else if len(validationErrors) == 1 {
+				e.Origin = validationErrors[0]
 			}
+
 			return e
 		}
 	}
@@ -885,11 +926,7 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 			if v == nil {
 				return foundUnresolvedRef(item.Ref)
 			}
-			var oldfailfast bool
-			oldfailfast, settings.failfast = settings.failfast, true
-			err := v.visitJSON(settings, value)
-			settings.failfast = oldfailfast
-			if err == nil {
+			if err := v.visitJSON(settings, value); err == nil {
 				ok = true
 				break
 			}
@@ -911,11 +948,7 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 		if v == nil {
 			return foundUnresolvedRef(item.Ref)
 		}
-		var oldfailfast bool
-		oldfailfast, settings.failfast = settings.failfast, false
-		err := v.visitJSON(settings, value)
-		settings.failfast = oldfailfast
-		if err != nil {
+		if err := v.visitJSON(settings, value); err != nil {
 			if settings.failfast {
 				return errSchema
 			}
@@ -951,8 +984,8 @@ func (schema *Schema) VisitJSONBoolean(value bool) error {
 }
 
 func (schema *Schema) visitJSONBoolean(settings *schemaValidationSettings, value bool) (err error) {
-	if schemaType := schema.Type; schemaType != "" && schemaType != "boolean" {
-		return schema.expectedType(settings, "boolean")
+	if schemaType := schema.Type; schemaType != "" && schemaType != TypeBoolean {
+		return schema.expectedType(settings, TypeBoolean)
 	}
 	return
 }
@@ -981,7 +1014,7 @@ func (schema *Schema) visitJSONNumber(settings *schemaValidationSettings, value 
 			}
 			me = append(me, err)
 		}
-	} else if schemaType != "" && schemaType != "number" {
+	} else if schemaType != "" && schemaType != TypeNumber {
 		return schema.expectedType(settings, "number, integer")
 	}
 
@@ -994,7 +1027,7 @@ func (schema *Schema) visitJSONNumber(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "exclusiveMinimum",
-			Reason:      fmt.Sprintf("Number must be more than %g", *schema.Min),
+			Reason:      fmt.Sprintf("number must be more than %g", *schema.Min),
 		}
 		if !settings.multiError {
 			return err
@@ -1011,7 +1044,7 @@ func (schema *Schema) visitJSONNumber(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "exclusiveMaximum",
-			Reason:      fmt.Sprintf("Number must be less than %g", *schema.Max),
+			Reason:      fmt.Sprintf("number must be less than %g", *schema.Max),
 		}
 		if !settings.multiError {
 			return err
@@ -1028,7 +1061,7 @@ func (schema *Schema) visitJSONNumber(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "minimum",
-			Reason:      fmt.Sprintf("Number must be at least %g", *v),
+			Reason:      fmt.Sprintf("number must be at least %g", *v),
 		}
 		if !settings.multiError {
 			return err
@@ -1045,7 +1078,7 @@ func (schema *Schema) visitJSONNumber(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "maximum",
-			Reason:      fmt.Sprintf("Number must be most %g", *v),
+			Reason:      fmt.Sprintf("number must be most %g", *v),
 		}
 		if !settings.multiError {
 			return err
@@ -1086,8 +1119,8 @@ func (schema *Schema) VisitJSONString(value string) error {
 }
 
 func (schema *Schema) visitJSONString(settings *schemaValidationSettings, value string) error {
-	if schemaType := schema.Type; schemaType != "" && schemaType != "string" {
-		return schema.expectedType(settings, "string")
+	if schemaType := schema.Type; schemaType != "" && schemaType != TypeString {
+		return schema.expectedType(settings, TypeString)
 	}
 
 	var me MultiError
@@ -1113,7 +1146,7 @@ func (schema *Schema) visitJSONString(settings *schemaValidationSettings, value 
 				Value:       value,
 				Schema:      schema,
 				SchemaField: "minLength",
-				Reason:      fmt.Sprintf("Minimum string length is %d", minLength),
+				Reason:      fmt.Sprintf("minimum string length is %d", minLength),
 			}
 			if !settings.multiError {
 				return err
@@ -1128,7 +1161,7 @@ func (schema *Schema) visitJSONString(settings *schemaValidationSettings, value 
 				Value:       value,
 				Schema:      schema,
 				SchemaField: "maxLength",
-				Reason:      fmt.Sprintf("Maximum string length is %d", *maxLength),
+				Reason:      fmt.Sprintf("maximum string length is %d", *maxLength),
 			}
 			if !settings.multiError {
 				return err
@@ -1138,15 +1171,9 @@ func (schema *Schema) visitJSONString(settings *schemaValidationSettings, value 
 	}
 
 	// "pattern"
-	if pattern := schema.Pattern; pattern != "" && schema.compiledPattern == nil {
+	if schema.Pattern != "" && schema.compiledPattern == nil {
 		var err error
-		if schema.compiledPattern, err = regexp.Compile(pattern); err != nil {
-			err = &SchemaError{
-				Value:       value,
-				Schema:      schema,
-				SchemaField: "pattern",
-				Reason:      fmt.Sprintf("cannot compile pattern %q: %v", pattern, err),
-			}
+		if err = schema.compilePattern(); err != nil {
 			if !settings.multiError {
 				return err
 			}
@@ -1158,7 +1185,7 @@ func (schema *Schema) visitJSONString(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "pattern",
-			Reason:      fmt.Sprintf("JSON string doesn't match the regular expression %q", schema.Pattern),
+			Reason:      fmt.Sprintf(`string doesn't match the regular expression "%s"`, schema.Pattern),
 		}
 		if !settings.multiError {
 			return err
@@ -1173,7 +1200,7 @@ func (schema *Schema) visitJSONString(settings *schemaValidationSettings, value 
 			switch {
 			case f.regexp != nil && f.callback == nil:
 				if cp := f.regexp; !cp.MatchString(value) {
-					formatErr = fmt.Sprintf("JSON string doesn't match the format %q (regular expression %q)", format, cp.String())
+					formatErr = fmt.Sprintf(`string doesn't match the format %q (regular expression "%s")`, format, cp.String())
 				}
 			case f.regexp == nil && f.callback != nil:
 				if err := f.callback(value); err != nil {
@@ -1211,8 +1238,8 @@ func (schema *Schema) VisitJSONArray(value []interface{}) error {
 }
 
 func (schema *Schema) visitJSONArray(settings *schemaValidationSettings, value []interface{}) error {
-	if schemaType := schema.Type; schemaType != "" && schemaType != "array" {
-		return schema.expectedType(settings, "array")
+	if schemaType := schema.Type; schemaType != "" && schemaType != TypeArray {
+		return schema.expectedType(settings, TypeArray)
 	}
 
 	var me MultiError
@@ -1228,7 +1255,7 @@ func (schema *Schema) visitJSONArray(settings *schemaValidationSettings, value [
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "minItems",
-			Reason:      fmt.Sprintf("Minimum number of items is %d", v),
+			Reason:      fmt.Sprintf("minimum number of items is %d", v),
 		}
 		if !settings.multiError {
 			return err
@@ -1245,7 +1272,7 @@ func (schema *Schema) visitJSONArray(settings *schemaValidationSettings, value [
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "maxItems",
-			Reason:      fmt.Sprintf("Maximum number of items is %d", *v),
+			Reason:      fmt.Sprintf("maximum number of items is %d", *v),
 		}
 		if !settings.multiError {
 			return err
@@ -1265,7 +1292,7 @@ func (schema *Schema) visitJSONArray(settings *schemaValidationSettings, value [
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "uniqueItems",
-			Reason:      fmt.Sprintf("Duplicate items found"),
+			Reason:      "duplicate items found",
 		}
 		if !settings.multiError {
 			return err
@@ -1307,8 +1334,8 @@ func (schema *Schema) VisitJSONObject(value map[string]interface{}) error {
 }
 
 func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value map[string]interface{}) error {
-	if schemaType := schema.Type; schemaType != "" && schemaType != "object" {
-		return schema.expectedType(settings, "object")
+	if schemaType := schema.Type; schemaType != "" && schemaType != TypeObject {
+		return schema.expectedType(settings, TypeObject)
 	}
 
 	var me MultiError
@@ -1326,7 +1353,7 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "minProperties",
-			Reason:      fmt.Sprintf("There must be at least %d properties", v),
+			Reason:      fmt.Sprintf("there must be at least %d properties", v),
 		}
 		if !settings.multiError {
 			return err
@@ -1343,7 +1370,7 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "maxProperties",
-			Reason:      fmt.Sprintf("There must be at most %d properties", *v),
+			Reason:      fmt.Sprintf("there must be at most %d properties", *v),
 		}
 		if !settings.multiError {
 			return err
@@ -1408,7 +1435,7 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "properties",
-			Reason:      fmt.Sprintf("Property '%s' is unsupported", k),
+			Reason:      fmt.Sprintf("property %q is unsupported", k),
 		}
 		if !settings.multiError {
 			return err
@@ -1432,7 +1459,7 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 				Value:       value,
 				Schema:      schema,
 				SchemaField: "required",
-				Reason:      fmt.Sprintf("Property '%s' is missing", k),
+				Reason:      fmt.Sprintf("property %q is missing", k),
 			}, k)
 			if !settings.multiError {
 				return err
@@ -1460,6 +1487,17 @@ func (schema *Schema) expectedType(settings *schemaValidationSettings, typ strin
 	}
 }
 
+func (schema *Schema) compilePattern() (err error) {
+	if schema.compiledPattern, err = regexp.Compile(schema.Pattern); err != nil {
+		return &SchemaError{
+			Schema:      schema,
+			SchemaField: "pattern",
+			Reason:      fmt.Sprintf("cannot compile pattern %q: %v", schema.Pattern, err),
+		}
+	}
+	return nil
+}
+
 type SchemaError struct {
 	Value       interface{}
 	reversePath []string
@@ -1468,6 +1506,8 @@ type SchemaError struct {
 	Reason      string
 	Origin      error
 }
+
+var _ interface{ Unwrap() error } = SchemaError{}
 
 func markSchemaErrorKey(err error, key string) error {
 	if v, ok := err.(*SchemaError); ok {
@@ -1544,6 +1584,10 @@ func (err *SchemaError) Error() string {
 	return buf.String()
 }
 
+func (err SchemaError) Unwrap() error {
+	return err.Origin
+}
+
 func isSliceOfUniqueItems(xs []interface{}) bool {
 	s := len(xs)
 	m := make(map[string]struct{}, s)
@@ -1572,5 +1616,5 @@ func RegisterArrayUniqueItemsChecker(fn SliceUniqueItemsChecker) {
 }
 
 func unsupportedFormat(format string) error {
-	return fmt.Errorf("Unsupported 'format' value '%s'", format)
+	return fmt.Errorf("unsupported 'format' value %q", format)
 }

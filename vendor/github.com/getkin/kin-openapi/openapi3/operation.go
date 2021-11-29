@@ -120,23 +120,23 @@ func (operation *Operation) AddResponse(status int, response *Response) {
 	}
 }
 
-func (operation *Operation) Validate(c context.Context) error {
-	if v := operation.Parameters; v != nil {
-		if err := v.Validate(c); err != nil {
+func (value *Operation) Validate(ctx context.Context) error {
+	if v := value.Parameters; v != nil {
+		if err := v.Validate(ctx); err != nil {
 			return err
 		}
 	}
-	if v := operation.RequestBody; v != nil {
-		if err := v.Validate(c); err != nil {
+	if v := value.RequestBody; v != nil {
+		if err := v.Validate(ctx); err != nil {
 			return err
 		}
 	}
-	if v := operation.Responses; v != nil {
-		if err := v.Validate(c); err != nil {
+	if v := value.Responses; v != nil {
+		if err := v.Validate(ctx); err != nil {
 			return err
 		}
 	} else {
-		return errors.New("value of responses must be a JSON object")
+		return errors.New("value of responses must be an object")
 	}
 	return nil
 }
