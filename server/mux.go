@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/getkin/kin-openapi/pathpattern"
+	"github.com/getkin/kin-openapi/routers"
+	"github.com/getkin/kin-openapi/routers/legacy/pathpattern"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
@@ -24,6 +24,7 @@ import (
 type Mux struct {
 	endpointRoot *pathpattern.Node
 	fileRoot     *pathpattern.Node
+	handler      map[*routers.Route]http.Handler
 	opts         *runtime.MuxOptions
 	spaRoot      *pathpattern.Node
 }
@@ -57,6 +58,7 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 		endpointRoot: &pathpattern.Node{},
 		fileRoot:     &pathpattern.Node{},
 		spaRoot:      &pathpattern.Node{},
+		handler:      make(map[*routers.Route]http.Handler),
 	}
 
 	for path, h := range opts.EndpointRoutes {
@@ -118,21 +120,22 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 			serverOpts = optsHandler.Options()
 		}
 
-		node.Value = &openapi3filter.Route{
-			Method:  method,
-			Path:    path,
-			Handler: handler,
+		node.Value = &routers.Route{
+			Method: method,
+			Path:   path,
 			Server: &openapi3.Server{Variables: map[string]*openapi3.ServerVariable{
-				serverOptionsKey: {Default: serverOpts},
+				serverOptionsKey: {Default: fmt.Sprintf("%#v", serverOpts)},
 			}},
 		}
+
+		m.handler[node.Value.(*routers.Route)] = handler
 	}
 
 	return m
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
-	var route *openapi3filter.Route
+	var route *routers.Route
 
 	node, paramValues := m.match(m.endpointRoot, req)
 	if node == nil {
@@ -160,7 +163,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		}
 	}
 
-	route, _ = node.Value.(*openapi3filter.Route)
+	route, _ = node.Value.(*routers.Route)
 
 	pathParams := make(request.PathParameter, len(paramValues))
 	paramKeys := node.VariableNames
@@ -181,7 +184,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	ctx = context.WithValue(ctx, request.PathParams, pathParams)
 	*req = *req.WithContext(ctx)
 
-	return route.Handler
+	return m.handler[route]
 }
 
 func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
@@ -196,8 +199,8 @@ func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 		return nil, false
 	}
 
-	route := node.Value.(*openapi3filter.Route)
-	fileHandler := route.Handler
+	route := node.Value.(*routers.Route)
+	fileHandler := m.handler[route]
 	unprotectedHandler := getChildHandler(fileHandler)
 	if fh, ok := unprotectedHandler.(*handler.File); ok {
 		return fileHandler, fh.HasResponse(req)
