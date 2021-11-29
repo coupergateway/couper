@@ -117,12 +117,19 @@ func TestCustomLogs_Local(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 
 		// Access log
-		got, ok := hook.AllEntries()[0].Data["custom"].(logrus.Fields)
-		if !ok {
-			t.Fatalf("expected\n%#v\ngot\n%#v", tc.exp, got)
+		entries := hook.AllEntries()
+		if len(entries) == 0 {
+			t.Errorf("expected log entries, got none")
+			return
 		}
+
+		got, ok := entries[0].Data["custom"].(logrus.Fields)
+		if !ok {
+			t.Fatal("expected custom log field, got none")
+		}
+
 		if !reflect.DeepEqual(tc.exp, got) {
-			t.Errorf("expected\n%#v\ngot\n%#v", tc.exp, got)
+			t.Error(cmp.Diff(tc.exp, got))
 		}
 	}
 }
