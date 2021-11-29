@@ -1,6 +1,7 @@
 package accesscontrol_test
 
 import (
+	"sync"
 	"testing"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -47,7 +48,7 @@ func Test_JWKS_Load(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
-			err = jwks.Load()
+			_, err = jwks.Load()
 			if err != nil && tt.expParsed {
 				subT.Error("no jwks parsed")
 			}
@@ -91,7 +92,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 			helper := test.New(subT)
 			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
-			err = jwks.Load()
+			_, err = jwks.Load()
 			helper.Must(err)
 			jwk, err := jwks.GetKey(tt.kid, tt.alg, tt.use)
 			if jwk == nil && tt.expFound {
@@ -102,4 +103,26 @@ func Test_JWKS_GetKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_JWKS_LoadSynced(t *testing.T) {
+	helper := test.New(t)
+
+	memQuitCh := make(chan struct{})
+	defer close(memQuitCh)
+
+	jwks, err := ac.NewJWKS("file:testdata/jwks.json", "", nil, nil)
+	helper.Must(err)
+
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func(idx int) {
+			defer wg.Done()
+
+			_, e := jwks.GetKeys("kid1")
+			helper.Must(e)
+		}(i)
+	}
+	wg.Wait()
 }

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/avenga/couper/config/reader"
@@ -21,6 +22,7 @@ type JWKS struct {
 	uri       string
 	transport http.RoundTripper
 	ttl       time.Duration
+	mtx       sync.RWMutex
 }
 
 func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext context.Context) (*JWKS, error) {
@@ -49,15 +51,23 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 }
 
 func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
-	var keys []JWK
+	var (
+		keys []JWK
+		err  error
+	)
 
-	if len(j.Keys) == 0 || j.hasExpired() {
-		if err := j.Load(); err != nil {
+	j.mtx.RLock()
+	allKeys := j.Keys
+	expired := j.hasExpired()
+	j.mtx.RUnlock()
+	if len(allKeys) == 0 || expired {
+		allKeys, err = j.Load()
+		if err != nil {
 			return keys, fmt.Errorf("error loading JWKS: %v", err)
 		}
 	}
 
-	for _, key := range j.Keys {
+	for _, key := range allKeys {
 		if key.KeyID == kid {
 			keys = append(keys, key)
 		}
@@ -79,19 +89,19 @@ func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 	return nil, nil
 }
 
-func (j *JWKS) Load() error {
+func (j *JWKS) Load() ([]JWK, error) {
 	var rawJSON []byte
 
 	if j.file != "" {
 		j, err := reader.ReadFromFile("jwks_url", j.file)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rawJSON = j
 	} else if j.transport != nil {
 		req, err := http.NewRequest("GET", "", nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ctx := context.WithValue(j.context, request.URLAttribute, j.uri)
 		// TODO which roundtrip name?
@@ -99,33 +109,36 @@ func (j *JWKS) Load() error {
 		req = req.WithContext(ctx)
 		response, err := j.transport.RoundTrip(req)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if response.StatusCode != 200 {
-			return fmt.Errorf("status code %d", response.StatusCode)
+			return nil, fmt.Errorf("status code %d", response.StatusCode)
 		}
 
 		defer response.Body.Close()
 
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return fmt.Errorf("error reading JWKS response for %q: %v", j.uri, err)
+			return nil, fmt.Errorf("error reading JWKS response for %q: %v", j.uri, err)
 		}
 		rawJSON = body
 	} else {
-		return fmt.Errorf("jwks: missing both file and request")
+		return nil, fmt.Errorf("jwks: missing both file and request")
 	}
 
 	var jwks JWKS
 	err := json.Unmarshal(rawJSON, &jwks)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	j.mtx.Lock()
+	defer j.mtx.Unlock()
 
 	j.Keys = jwks.Keys
 	j.expiry = time.Now().Unix() + int64(j.ttl.Seconds())
 
-	return nil
+	return j.Keys, nil
 }
 
 func (jwks *JWKS) hasExpired() bool {
