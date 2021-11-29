@@ -26,6 +26,30 @@ server "logs" {
     }
   }
 
+  endpoint "/jwt-valid" {
+    access_control = ["JWT"]
+
+    proxy {
+      backend = "BE"
+    }
+  }
+
+  endpoint "/jwt" {
+    access_control = ["JWT"]
+
+    proxy {
+      backend = "BE"
+    }
+  }
+
+  endpoint "/jwt-wildcard" {
+    access_control = ["JWT-WILDCARD"]
+
+    proxy {
+      backend = "BE"
+    }
+  }
+
   api {
     custom_log_fields = {
       api = backend_responses.default.headers.server
@@ -91,6 +115,38 @@ definitions {
     error_handler "basic_auth" {
       custom_log_fields = {
         error_handler = request.method
+      }
+    }
+  }
+
+  jwt "JWT" {
+    header = "Authorization"
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+
+    custom_log_fields = {
+      jwt_regular = request.method
+    }
+
+    error_handler "jwt" {
+      custom_log_fields = {
+        jwt_error = request.method
+      }
+    }
+  }
+
+  jwt "JWT-WILDCARD" {
+    header = "Authorization"
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+
+    custom_log_fields = {
+      jwt_regular = request.method
+    }
+
+    error_handler {
+      custom_log_fields = {
+        jwt_error_wildcard = request.method
       }
     }
   }
