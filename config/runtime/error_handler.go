@@ -10,7 +10,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
@@ -65,7 +64,5 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 		}
 	}
 
-	return middleware.NewCustomLogsHandler(
-		[]hcl.Body{opts.epOpts.Context}, handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), "",
-	), nil
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
 }

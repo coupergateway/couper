@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+
+	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -38,6 +41,16 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if !defined {
 			continue
 		}
+
+		// TODO: same for wildcard event match
+		if eph, ek := ep.(interface{ BodyContext() hcl.Body }); ek {
+			if b := req.Context().Value(request.LogCustomAccess); b != nil {
+				bodies := b.([]hcl.Body)
+				bodies = append(bodies, eph.BodyContext())
+				*req = *req.WithContext(context.WithValue(req.Context(), request.LogCustomAccess, bodies))
+			}
+		}
+
 		ep.ServeHTTP(rw, req)
 		return
 	}

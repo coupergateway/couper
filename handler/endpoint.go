@@ -298,6 +298,10 @@ func (e *Endpoint) BufferOptions() eval.BufferOption {
 	return e.opts.BufferOpts
 }
 
+func (e *Endpoint) BodyContext() hcl.Body {
+	return e.opts.Context
+}
+
 func (e *Endpoint) RequestLimit() int64 {
 	return e.opts.ReqBodyLimit
 }
