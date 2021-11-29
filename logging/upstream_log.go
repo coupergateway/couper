@@ -135,9 +135,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["timings"] = timingResults
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
-	// TODO: Fix context
-	// evalCtx := eval.ContextFromRequest(req)
-	// evalCtx = evalCtx.WithBeresps(beresp)
 	entry := u.log.WithFields(logrus.Fields(fields)).WithContext(req.Context())
 	entry.Time = startTime
 

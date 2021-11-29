@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	_           logrus.Hook = &CustomLogs{}
+	_ logrus.Hook = &CustomLogs{}
+
 	acTypeField string
 	beTypeField string
 )
