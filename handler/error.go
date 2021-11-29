@@ -37,12 +37,15 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, kind := range err.Kinds() {
+		if kind == "access_control" {
+			kind = "*"
+		}
+
 		ep, defined := e.kindsHandler[kind]
 		if !defined {
 			continue
 		}
 
-		// TODO: same for wildcard event match
 		if eph, ek := ep.(interface{ BodyContext() hcl.Body }); ek {
 			if b := req.Context().Value(request.LogCustomAccess); b != nil {
 				bodies := b.([]hcl.Body)

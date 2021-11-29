@@ -25,6 +25,8 @@ func TestCustomLogs_Upstream(t *testing.T) {
 		expUL logrus.Fields
 	}
 
+	hmacToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
+
 	for _, tc := range []testCase{
 		{
 			"/",
@@ -56,9 +58,16 @@ func TestCustomLogs_Upstream(t *testing.T) {
 			logrus.Fields{"api": "couper test-backend", "server": "couper test-backend"},
 			logrus.Fields{"backend": string("couper test-backend")},
 		},
+		{
+			"/jwt-valid",
+			logrus.Fields{"jwt_regular": "GET", "server": "couper test-backend"},
+			logrus.Fields{"backend": string("couper test-backend")},
+		},
 	} {
 		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
 		helper.Must(err)
+
+		req.Header.Set("Authorization", "Bearer "+hmacToken)
 
 		hook.Reset()
 		_, err = client.Do(req)
@@ -103,6 +112,8 @@ func TestCustomLogs_Local(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/secure", logrus.Fields{"error_handler": "GET"}},
+		{"/jwt", logrus.Fields{"jwt_error": "GET", "jwt_regular": "GET"}},
+		{"/jwt-wildcard", logrus.Fields{"jwt_error_wildcard": "GET", "jwt_regular": "GET"}},
 		{"/file.html", logrus.Fields{"files": "GET"}},
 		{"/spa", logrus.Fields{"spa": "GET"}},
 	} {
