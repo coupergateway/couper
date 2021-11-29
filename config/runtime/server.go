@@ -91,10 +91,19 @@ func bodiesWithACBodies(defs *config.Definitions, body hcl.Body, ac, dac []strin
 	bodies := []hcl.Body{body}
 
 	if defs != nil {
+		// TODO: read all ACs with remain interface
 		for _, jwt := range defs.JWT {
 			for _, name := range config.NewAccessControl(ac, dac).List() {
 				if jwt.Name == name {
 					bodies = append(bodies, jwt.Remain)
+				}
+			}
+		}
+
+		for _, ba := range defs.BasicAuth {
+			for _, name := range config.NewAccessControl(ac, dac).List() {
+				if ba.Name == name {
+					bodies = append(bodies, ba.Remain)
 				}
 			}
 		}
