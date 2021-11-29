@@ -29,7 +29,6 @@ type muxers map[string]*Mux
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	accessLog  *logging.AccessLog
 	commandCtx context.Context
 	evalCtx    *eval.Context
 	listener   net.Listener
@@ -80,7 +79,6 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 
 	httpSrv := &HTTPServer{
 		evalCtx:    evalCtx.Value(request.ContextType).(*eval.Context),
-		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
 		muxers:     muxersList,
@@ -96,7 +94,8 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	traceHandler := middleware.NewTraceHandler()(httpSrv)
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		accessLog.ServeHTTP(rw, req, uidHandler)
+		uidHandler.ServeHTTP(rw, req)
+		accessLog.Do(rw, req)
 	})
 	recordHandler := middleware.NewRecordHandler(settings.SecureCookies)(logHandler)
 	startTimeHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {

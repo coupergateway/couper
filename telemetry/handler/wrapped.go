@@ -21,7 +21,8 @@ func NewWrappedHandler(log *logrus.Entry, handler http.Handler) http.Handler {
 		ctx := context.WithValue(req.Context(), request.LogDebugLevel, true)
 		ctx = context.WithValue(ctx, request.StartTime, time.Now())
 		r := req.WithContext(ctx)
-		accessLog.ServeHTTP(rw, r, uidHandler)
+		uidHandler.ServeHTTP(rw, r)
+		accessLog.Do(rw, r)
 	})
 	return logHandler
 }

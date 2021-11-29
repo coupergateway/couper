@@ -38,8 +38,7 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	}
 }
 
-func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
-	nextHandler.ServeHTTP(rw, req)
+func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 	serveDone := time.Now()
 	startTime := req.Context().Value(request.StartTime).(time.Time)
 	fields := Fields{}
@@ -110,7 +109,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	var statusCode int
 	var writtenBytes int
-	if recorder, ok := rw.(RecorderInfo); ok {
+	if recorder, ok := writer.(RecorderInfo); ok {
 		statusCode = recorder.StatusCode()
 		writtenBytes = recorder.WrittenBytes()
 	}
@@ -122,7 +121,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	requestFields["status"] = statusCode
 
 	responseFields := Fields{
-		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
+		"headers": filterHeader(log.conf.ResponseHeaders, writer.Header()),
 	}
 	fields["response"] = responseFields
 

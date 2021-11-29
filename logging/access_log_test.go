@@ -155,7 +155,9 @@ func TestAccessLog_ServeHTTP(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 			rw := writer.NewResponseWriter(rec, "")
-			accessLog.ServeHTTP(rw, req, handler)
+
+			handler.ServeHTTP(rw, req)
+			accessLog.Do(rw, req)
 
 			entry := hook.LastEntry()
 			for key, expFields := range tc.expFields {
