@@ -17,7 +17,7 @@ type OpenAPIOptions struct {
 	ignoreRequestViolations  bool
 	ignoreResponseViolations bool
 	filterOptions            *openapi3filter.Options
-	swagger                  *openapi3.Swagger
+	doc                      *openapi3.T
 }
 
 // NewOpenAPIOptions takes a list of openAPI configuration due to merging configurations.
@@ -45,7 +45,7 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 		return nil, nil
 	}
 
-	swagger, err := openapi3.NewSwaggerLoader().LoadSwaggerFromData(bytes)
+	doc, err := openapi3.NewLoader().LoadFromData(bytes)
 	if err != nil {
 		return nil, fmt.Errorf("error loading openapi file: %w", err)
 	}
@@ -63,6 +63,6 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 		},
 		ignoreRequestViolations:  openapi.IgnoreRequestViolations,
 		ignoreResponseViolations: openapi.IgnoreResponseViolations,
-		swagger:                  swagger,
+		doc:                      doc,
 	}, nil
 }
