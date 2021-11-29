@@ -330,9 +330,7 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 	return upgradeType(req.Header) == upgradeType(res.Header)
 }
 
-func ApplyCustomLogs(
-	httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry,
-) logrus.Fields {
+func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry) logrus.Fields {
 	var values []cty.Value
 
 	for _, body := range bodies {
