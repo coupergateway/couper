@@ -14,15 +14,12 @@ import (
 	"github.com/avenga/couper/config/request"
 )
 
+type JWKSData struct {
+	Keys []JWK `json:"keys"`
+}
+
 type JWKS struct {
-	Keys      []JWK `json:"keys"`
-	context   context.Context
-	expiry    int64
-	file      string
-	uri       string
-	transport http.RoundTripper
-	ttl       time.Duration
-	mtx       sync.RWMutex
+	syncedJSON *SyncedJSON
 }
 
 func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext context.Context) (*JWKS, error) {
@@ -41,32 +38,21 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 		return nil, fmt.Errorf("unsupported JWKS URI scheme: %q", uri)
 	}
 
-	return &JWKS{
-		context:   confContext,
-		file:      file,
-		uri:       uri,
-		transport: transport,
-		ttl:       timetolive,
-	}, nil
+	jwks := &JWKS{}
+	sj := NewSyncedJSON(confContext, file, "jwks_url", uri, transport, "jwks" /* TODO which roundtrip name? */, timetolive, jwks)
+	jwks.syncedJSON = sj
+	return jwks, nil
 }
 
 func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
-	var (
-		keys []JWK
-		err  error
-	)
+	var keys []JWK
 
-	j.mtx.RLock()
-	allKeys := j.Keys
-	expired := j.hasExpired()
-	j.mtx.RUnlock()
-	if len(allKeys) == 0 || expired {
-		allKeys, err = j.Load()
-		if err != nil {
-			return keys, fmt.Errorf("error loading JWKS: %v", err)
-		}
+	jwksData, err := j.Data()
+	if err != nil {
+		return nil, err
 	}
 
+	allKeys := jwksData.Keys
 	for _, key := range allKeys {
 		if key.KeyID == kid {
 			keys = append(keys, key)
@@ -89,25 +75,97 @@ func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 	return nil, nil
 }
 
-func (j *JWKS) Load() ([]JWK, error) {
+func (j *JWKS) Data() (*JWKSData, error) {
+	data, err := j.syncedJSON.Data()
+	if err != nil {
+		return nil, err
+	}
+
+	jwksData, ok := data.(JWKSData)
+	if !ok {
+		return nil, fmt.Errorf("data not JWKS data: %#v", data)
+	}
+
+	return &jwksData, nil
+}
+
+func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
+	var jsonData JWKSData
+	err := json.Unmarshal(rawJSON, &jsonData)
+	if err != nil {
+		return nil, err
+	}
+	return jsonData, nil
+}
+
+type SyncedJSONUnmarshaller interface {
+	Unmarshal(rawJSON []byte) (interface{}, error)
+}
+
+type SyncedJSON struct {
+	context       context.Context
+	file          string
+	fileContext   string
+	uri           string
+	transport     http.RoundTripper
+	roundTripName string
+	ttl           time.Duration
+	unmarshaller  SyncedJSONUnmarshaller
+	// used internally
+	data   interface{}
+	expiry int64
+	mtx    sync.RWMutex
+}
+
+func NewSyncedJSON(context context.Context, file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) *SyncedJSON {
+	return &SyncedJSON{
+		context:       context,
+		file:          file,
+		fileContext:   fileContext,
+		uri:           uri,
+		transport:     transport,
+		roundTripName: roundTripName,
+		ttl:           ttl,
+		unmarshaller:  unmarshaller,
+	}
+}
+
+func (s *SyncedJSON) Data() (interface{}, error) {
+	var err error
+
+	s.mtx.RLock()
+	data := s.data
+	expired := s.hasExpired()
+	s.mtx.RUnlock()
+
+	if data == nil || expired {
+		data, err = s.Load()
+		if err != nil {
+			return nil, fmt.Errorf("error loading synced JSON: %v", err)
+		}
+	}
+
+	return data, nil
+}
+
+func (s *SyncedJSON) Load() (interface{}, error) {
 	var rawJSON []byte
 
-	if j.file != "" {
-		j, err := reader.ReadFromFile("jwks_url", j.file)
+	if s.file != "" {
+		j, err := reader.ReadFromFile(s.fileContext, s.file)
 		if err != nil {
 			return nil, err
 		}
 		rawJSON = j
-	} else if j.transport != nil {
+	} else if s.transport != nil {
 		req, err := http.NewRequest("GET", "", nil)
 		if err != nil {
 			return nil, err
 		}
-		ctx := context.WithValue(j.context, request.URLAttribute, j.uri)
-		// TODO which roundtrip name?
-		ctx = context.WithValue(ctx, request.RoundTripName, "jwks")
+		ctx := context.WithValue(s.context, request.URLAttribute, s.uri)
+		ctx = context.WithValue(ctx, request.RoundTripName, s.roundTripName)
 		req = req.WithContext(ctx)
-		response, err := j.transport.RoundTrip(req)
+		response, err := s.transport.RoundTrip(req)
 		if err != nil {
 			return nil, err
 		}
@@ -119,28 +177,27 @@ func (j *JWKS) Load() ([]JWK, error) {
 
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, fmt.Errorf("error reading JWKS response for %q: %v", j.uri, err)
+			return nil, fmt.Errorf("error reading response for %q: %v", s.uri, err)
 		}
 		rawJSON = body
 	} else {
-		return nil, fmt.Errorf("jwks: missing both file and request")
+		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}
 
-	var jwks JWKS
-	err := json.Unmarshal(rawJSON, &jwks)
+	jsonData, err := s.unmarshaller.Unmarshal(rawJSON)
 	if err != nil {
 		return nil, err
 	}
 
-	j.mtx.Lock()
-	defer j.mtx.Unlock()
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
 
-	j.Keys = jwks.Keys
-	j.expiry = time.Now().Unix() + int64(j.ttl.Seconds())
+	s.data = jsonData
+	s.expiry = time.Now().Unix() + int64(s.ttl.Seconds())
 
-	return j.Keys, nil
+	return jsonData, nil
 }
 
-func (jwks *JWKS) hasExpired() bool {
-	return time.Now().Unix() > jwks.expiry
+func (s *SyncedJSON) hasExpired() bool {
+	return time.Now().Unix() > s.expiry
 }
