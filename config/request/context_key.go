@@ -4,17 +4,17 @@ type ContextKey uint8
 
 const (
 	ContextType ContextKey = iota
-	AccessControls
-	AccessLogFields
 	APIName
-	BackendLogFields
+	AccessControls
 	BackendName
 	BufferOptions
-	CustomLogsCtx
 	Endpoint
 	EndpointKind
 	Error
 	Handler
+	LogCustomAccess
+	LogCustomEvalResult
+	LogCustomUpstream
 	LogDebugLevel
 	LogEntry
 	OpenAPI

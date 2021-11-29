@@ -1,10 +1,11 @@
 package hooks
 
 import (
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+
+	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
 )
 
 var _ logrus.Hook = &CustomLogs{}
@@ -22,9 +23,9 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 		if t, exists := entry.Data["type"]; exists {
 			switch t {
 			case "couper_access":
-				fire(entry, request.AccessLogFields, request.CustomLogsCtx)
+				fire(entry, request.LogCustomAccess)
 			case "couper_backend":
-				fire(entry, request.BackendLogFields, request.ContextType)
+				fire(entry, request.LogCustomUpstream)
 			}
 		}
 	}
@@ -32,13 +33,22 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
-func fire(entry *logrus.Entry, bodyKey, ctxKey request.ContextKey) {
+func fire(entry *logrus.Entry, bodyKey request.ContextKey) {
 	var evalCtx *eval.Context
 
-	if ctx, ok := entry.Context.Value(ctxKey).(*eval.Context); ok {
-		evalCtx = ctx
-	} else {
-		evalCtx = eval.NewContext(nil, nil)
+	customEvalCtxCh, ok := entry.Context.Value(request.LogCustomEvalResult).(chan *eval.Context)
+	if ok {
+		select {
+		case evalCtx = <-customEvalCtxCh:
+		default: // pass through, e.g. on early errors we will not receive something useful
+		}
+	}
+
+	if evalCtx == nil {
+		evalCtx, ok = entry.Context.Value(request.ContextType).(*eval.Context)
+		if !ok {
+			return
+		}
 	}
 
 	bodies := entry.Context.Value(bodyKey)

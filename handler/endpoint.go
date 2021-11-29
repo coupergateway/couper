@@ -121,8 +121,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext := eval.ContextFromRequest(req)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
-	ctx := context.WithValue(req.Context(), request.CustomLogsCtx, evalContext)
-	*req = *req.WithContext(ctx)
+	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
+	if ok {
+		select {
+		case <-reqCtx.Done():
+			err = reqCtx.Err()
+			log.WithError(errors.ClientRequest.With(err)).Error()
+			return
+		case customLogEvalCtxCh <- evalContext:
+		}
+	}
 
 	// assume prio or err on conf load if set with response
 	if e.opts.Redirect != nil {

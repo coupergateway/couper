@@ -75,7 +75,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctx := context.WithValue(req.Context(), request.BackendLogFields, []hcl.Body{b.context})
+	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{b.context})
 	*req = *req.WithContext(ctx)
 
 	// Execute before <b.evalTransport()> due to right
@@ -154,6 +154,15 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	evalCtx := eval.ContextFromRequest(req)
 	evalCtx = evalCtx.WithBeresps(beresp)
 	err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
+
+	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
+	if ok {
+		select {
+		case <-req.Context().Done():
+			return beresp, err
+		case customLogEvalCtxCh <- evalCtx:
+		}
+	}
 
 	return beresp, err
 }
