@@ -8,10 +8,6 @@ servers:
     variables:
       sub:
         default: 'api'
-  - url: 'http://{broken/v1'
-    variables:
-      broken:
-        default: https://api.example.com
   - url: 'https://{sub}.example.com/anything'
     variables:
       sub:
