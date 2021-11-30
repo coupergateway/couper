@@ -1,19 +1,14 @@
 package oidc
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"sync"
 	"time"
 
-	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
+	jsn "github.com/avenga/couper/json"
 )
 
 // OpenidConfiguration represents an OpenID configuration (.../.well-known/openid-configuration)
@@ -39,14 +34,11 @@ var (
 type Config struct {
 	*config.OIDC
 	Backend    http.RoundTripper
-	memStore   *cache.MemoryStore
-	remoteConf *OpenidConfiguration
-	remoteMu   sync.RWMutex
-	ttl        int64
+	syncedJSON *jsn.SyncedJSON
 }
 
 // NewConfig creates a new configuration for an OIDC client
-func NewConfig(oidc *config.OIDC, backend http.RoundTripper, memStore *cache.MemoryStore) (*Config, error) {
+func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
 	ttl := defaultTTL
 	if oidc.ConfigurationTTL != "" {
 		t, err := time.ParseDuration(oidc.ConfigurationTTL)
@@ -56,13 +48,16 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper, memStore *cache.Mem
 		ttl = t
 	}
 
-	return &Config{OIDC: oidc, Backend: backend, memStore: memStore, ttl: (int64)(ttl)}, nil
+	config := &Config{OIDC: oidc, Backend: backend}
+	sj := jsn.NewSyncedJSON(context.Background(), "", "", oidc.ConfigurationURL, backend, oidc.Name, ttl, config)
+	config.syncedJSON = sj
+	return config, nil
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
 func (o *Config) GetVerifierMethod(uid string) (string, error) {
 	if o.VerifierMethod == "" {
-		err := o.getFreshIfExpired(uid)
+		_, err := o.Data()
 		if err != nil {
 			return "", err
 		}
@@ -72,130 +67,70 @@ func (o *Config) GetVerifierMethod(uid string) (string, error) {
 }
 
 func (o *Config) GetAuthorizationEndpoint(uid string) (string, error) {
-	err := o.getFreshIfExpired(uid)
+	openidConfigurationData, err := o.Data()
 	if err != nil {
 		return "", err
 	}
 
-	o.remoteMu.RLock()
-	defer o.remoteMu.RUnlock()
-	return o.remoteConf.AuthorizationEndpoint, nil
+	return openidConfigurationData.AuthorizationEndpoint, nil
 }
 
 func (o *Config) GetIssuer() (string, error) {
-	err := o.getFreshIfExpired("")
+	openidConfigurationData, err := o.Data()
 	if err != nil {
 		return "", err
 	}
 
-	o.remoteMu.RLock()
-	defer o.remoteMu.RUnlock()
-	return o.remoteConf.Issuer, nil
+	return openidConfigurationData.Issuer, nil
 }
 
 func (o *Config) GetTokenEndpoint() (string, error) {
-	err := o.getFreshIfExpired("")
+	openidConfigurationData, err := o.Data()
 	if err != nil {
 		return "", err
 	}
 
-	o.remoteMu.RLock()
-	defer o.remoteMu.RUnlock()
-	return o.remoteConf.TokenEndpoint, nil
+	return openidConfigurationData.TokenEndpoint, nil
 }
 
 func (o *Config) GetUserinfoEndpoint() (string, error) {
-	err := o.getFreshIfExpired("")
+	openidConfigurationData, err := o.Data()
 	if err != nil {
 		return "", err
 	}
 
-	o.remoteMu.RLock()
-	defer o.remoteMu.RUnlock()
-	return o.remoteConf.UserinfoEndpoint, nil
+	return openidConfigurationData.UserinfoEndpoint, nil
 }
 
-func (o *Config) getFreshIfExpired(uid string) error {
-	key := o.Name + o.ConfigurationURL
-	confVal := o.memStore.Get(key)
-	if oc, ok := confVal.(*OpenidConfiguration); ok {
-
-		o.remoteMu.RLock()
-		if oc.hash() == o.remoteConf.hash() {
-			o.remoteMu.RUnlock()
-			return nil
-		}
-		o.remoteMu.RUnlock()
-
-		o.remoteMu.Lock()
-		o.remoteConf = oc
-		o.remoteMu.Unlock()
-		return nil
-	}
-
-	conf, err := o.fetchConfiguration(uid)
+func (c *Config) Data() (*OpenidConfiguration, error) {
+	data, err := c.syncedJSON.Data()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	o.remoteMu.Lock()
-	defer o.remoteMu.Unlock()
+	openidConfigurationData, ok := data.(OpenidConfiguration)
+	if !ok {
+		return nil, fmt.Errorf("data not OpenID configuration data: %#v", data)
+	}
 
-	o.remoteConf = conf
-	if o.OIDC.VerifierMethod == "" {
-		if supportsS256(o.remoteConf.CodeChallengeMethodsSupported) {
-			o.OIDC.VerifierMethod = config.CcmS256
+	return &openidConfigurationData, nil
+}
+
+func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
+	var jsonData OpenidConfiguration
+	err := json.Unmarshal(rawJSON, &jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.OIDC.VerifierMethod == "" {
+		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
+			c.OIDC.VerifierMethod = config.CcmS256
 		} else {
-			o.OIDC.VerifierMethod = "nonce"
+			c.OIDC.VerifierMethod = "nonce"
 		}
 	}
-
-	return nil
-}
-
-func (o *Config) fetchConfiguration(uid string) (*OpenidConfiguration, error) {
-	req, err := http.NewRequest(http.MethodGet, "", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.WithValue(context.Background(), request.URLAttribute, o.ConfigurationURL)
-	ctx = context.WithValue(ctx, request.RoundTripName, o.Name)
-	if uid != "" {
-		ctx = context.WithValue(ctx, request.UID, uid)
-	}
-	req = req.WithContext(ctx)
-
-	res, err := o.Backend.RoundTrip(req)
-	if err != nil {
-		return nil, err
-	}
-
-	ocBytes, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ocBytes) == 0 {
-		return nil, fmt.Errorf("configuration body is empty: %s", o.ConfigurationURL)
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader(ocBytes))
-	openidConfiguration := &OpenidConfiguration{}
-	err = decoder.Decode(openidConfiguration)
-	if err != nil {
-		return nil, err
-	}
-
-	key := o.Name + o.ConfigurationURL
-	o.memStore.Set(key, openidConfiguration, o.ttl)
-	return openidConfiguration, nil
-}
-
-func (rc *OpenidConfiguration) hash() string {
-	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%v", rc)))
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return jsonData, nil
 }
 
 func supportsS256(codeChallengeMethodsSupported []string) bool {

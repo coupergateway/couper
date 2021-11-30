@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload"
@@ -49,11 +48,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 
 	backend := configload.NewBackend("origin", test.NewRemainContext("origin", origin.URL))
 
-	memQuitCh := make(chan struct{})
-	defer close(memQuitCh)
 	log, _ := test.NewLogger()
 	logger := log.WithContext(context.Background())
-	memStore := cache.New(logger, memQuitCh)
 
 	tests := []struct {
 		name         string
@@ -61,7 +57,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 		want         string
 	}{{name: "redirect_uri with client request",
 		oauth2Config: &config.OIDC{
-			Name: "auth-ref",
+			Name:             "auth-ref",
+			ConfigurationURL: origin.URL,
 			Remain: hclbody.New(&hcl.BodyContent{
 				Attributes: map[string]*hcl.Attribute{
 					lib.RedirectURI: {
@@ -73,7 +70,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 	},
 		{name: "redirect_uri with backend_requests", // works since client and backend request are the same at response obj
 			oauth2Config: &config.OIDC{
-				Name: "auth-ref",
+				Name:             "auth-ref",
+				ConfigurationURL: origin.URL,
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
 						lib.RedirectURI: {
@@ -85,7 +83,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 		},
 		{name: "redirect_uri with backend_responses",
 			oauth2Config: &config.OIDC{
-				Name: "auth-ref",
+				Name:             "auth-ref",
+				ConfigurationURL: origin.URL,
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
 						lib.RedirectURI: {
@@ -116,9 +115,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			tc := &transport.Config{}
 			conf, err := oidc.NewConfig(tt.oauth2Config, transport.NewBackend(backend.Config,
 				tc.With("http", "couper.io", "couper.io", ""),
-				&transport.BackendOptions{}, logger), memStore)
+				&transport.BackendOptions{}, logger))
 			helper.Must(err)
-			conf.ConfigurationURL = origin.URL
 
 			ctx := eval.NewContext(nil, &config.Defaults{}).
 				WithOidcConfig(oidc.Configs{conf.Name: conf}).

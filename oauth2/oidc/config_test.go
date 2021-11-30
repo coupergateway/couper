@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/handler/transport"
@@ -16,7 +15,7 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
-func TestConfig_getFreshIfExpiredSynced(t *testing.T) {
+func TestConfig_Synced(t *testing.T) {
 	helper := test.New(t)
 
 	log, _ := test.NewLogger()
@@ -39,12 +38,8 @@ func TestConfig_getFreshIfExpiredSynced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	memQuitCh := make(chan struct{})
-	defer close(memQuitCh)
-	memStore := cache.New(logger, memQuitCh)
-
 	be := transport.NewBackend(configload.EmptyBody(), &transport.Config{}, nil, logger)
-	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL}, be, memStore)
+	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL}, be)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}
