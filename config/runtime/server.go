@@ -22,6 +22,7 @@ import (
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
@@ -90,21 +91,29 @@ func GetHostPort(hostPort string) (string, int, error) {
 func bodiesWithACBodies(defs *config.Definitions, body hcl.Body, ac, dac []string) []hcl.Body {
 	bodies := []hcl.Body{body}
 
-	if defs != nil {
-		// TODO: read all ACs with remain interface
-		for _, jwt := range defs.JWT {
-			for _, name := range config.NewAccessControl(ac, dac).List() {
-				if jwt.Name == name {
-					bodies = append(bodies, jwt.Remain)
-				}
-			}
+	allAccessControls := collect.ErrorHandlerSetters(defs)
+
+	for _, ehs := range allAccessControls {
+		acConf, ok := ehs.(config.Body)
+		if !ok {
+			continue
 		}
 
-		for _, ba := range defs.BasicAuth {
-			for _, name := range config.NewAccessControl(ac, dac).List() {
-				if ba.Name == name {
-					bodies = append(bodies, ba.Remain)
-				}
+		t := reflect.ValueOf(acConf)
+		elem := t
+
+		if t.Kind() == reflect.Ptr {
+			elem = t.Elem()
+		}
+
+		nameValue := elem.FieldByName("Name")
+		if !nameValue.CanInterface() {
+			continue
+		}
+
+		for _, name := range config.NewAccessControl(ac, dac).List() {
+			if value, vk := nameValue.Interface().(string); vk && value == name {
+				bodies = append(bodies, acConf.HCLBody())
 			}
 		}
 	}

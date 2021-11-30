@@ -42,9 +42,10 @@ func (o OIDC) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (o OIDC) Inline() interface{} {
 	type Inline struct {
-		Backend       *Backend `hcl:"backend,block"`
-		RedirectURI   string   `hcl:"redirect_uri"`
-		VerifierValue string   `hcl:"verifier_value"`
+		Backend       *Backend                  `hcl:"backend,block"`
+		LogFields     map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		RedirectURI   string                    `hcl:"redirect_uri"`
+		VerifierValue string                    `hcl:"verifier_value"`
 	}
 
 	return &Inline{}

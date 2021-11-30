@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload/collect"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
@@ -192,7 +193,7 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 		schema = config.SchemaWithOAuth2RA(schema)
 	}
 
-	if _, ok := obj.(ErrorHandlerSetter); ok {
+	if _, ok := obj.(collect.ErrorHandlerSetter); ok {
 		schema = config.WithErrorHandlerSchema(schema)
 	}
 
