@@ -298,6 +298,7 @@ func (e *Endpoint) BufferOptions() eval.BufferOption {
 	return e.opts.BufferOpts
 }
 
+// BodyContext exposes the current endpoint hcl.Body.
 func (e *Endpoint) BodyContext() hcl.Body {
 	return e.opts.Context
 }
