@@ -86,6 +86,10 @@ func Test_JWKS_GetKey(t *testing.T) {
 		{"no_kid_no_alg: key for kid, alg, sig", "testdata/jwks_no_kid_no_alg.json", "kid", "RS256", "sig", false},
 		{"no_kid_no_alg_no_use: key for empty kid, empty alg, sig", "testdata/jwks_no_kid_no_alg_no_use.json", "", "", "sig", false},
 		{"no_kid_no_alg_no_use: key for kid, alg, sig", "testdata/jwks_no_kid_no_alg_no_use.json", "kid", "RS256", "sig", false},
+		{"missing crv", "testdata/jwks_ecdsa.json", "missing-crv", "ES256", "sig", false},
+		{"invalid crv", "testdata/jwks_ecdsa.json", "invalid-crv", "ES512", "sig", false},
+		{"missing x", "testdata/jwks_ecdsa.json", "missing-x", "ES256", "sig", false},
+		{"missing y", "testdata/jwks_ecdsa.json", "missing-y", "ES256", "sig", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {

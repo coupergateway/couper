@@ -143,7 +143,27 @@ server "acs" {
     }
   }
 
+  endpoint "/jwt/ecdsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["ECDSAToken"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.ECDSAToken.sub
+      }
+    }
+  }
+
   endpoint "/jwks/rsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS.sub
+      }
+    }
+  }
+
+  endpoint "/jwks/ecdsa" {
     disable_access_control = ["ba1"]
     access_control = ["JWKS"]
     response {
@@ -169,7 +189,7 @@ server "acs" {
     access_control = ["JWKS_not_found"]
     response {
       headers = {
-        x-jwt-sub = request.context.JWKS.sub
+        x-jwt-sub = request.context.JWKS_not_found.sub
       }
     }
   }
@@ -230,6 +250,11 @@ definitions {
     header = "Authorization"
     signature_algorithm = "RS256"
     key_file = "../files/certificate.pem"
+  }
+  jwt "ECDSAToken" {
+    header = "Authorization"
+    signature_algorithm = "ES256"
+    key_file = "../files/certificate-ecdsa.pem"
   }
   jwt "JWKS" {
     header = "Authorization"

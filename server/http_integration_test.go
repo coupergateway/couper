@@ -3113,8 +3113,11 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 
 	// RSA tokens created with server/testdata/integration/files/pkcs8.key
+	// ECDSA tokens created with server/testdata/integration/files/ecdsa.key
 	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
 	hmacToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
+	ecdsaToken := "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImVzMjU2In0.eyJzdWIiOjEyMzQ1Njc4OTB9.jXsNtPUXxBi8Bz2i2Maj9lzbB1ebQDmz8TU6GSs6G0yzq9YguXm_HQuwsg4ZTbPER3bpXH_cxz9eEZHUBXfWzw"
+	ecdsaToken2 := "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImVzMjU2LWNydi14LXkifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.4-uNC6KGkSY1YYAmGoR-naUu2-Rxo6HSzEkecb7Ua9FVkif0X2gC55DpPU06_HH-yfK-dFozLwzuV2AT6ouOIg"
 
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: token required"},
@@ -3133,6 +3136,9 @@ func TestJWTAccessControl(t *testing.T) {
 		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.aGOhlWQIZvnwoEZGDBYhkkEduIVa59G57x88L3fiLc1MuWbYS84nHEZnlPDuVJ3_BxdXr6-nZ8gpk1C9vfamDzkbvzbdcJ2FzmvAONm1II3_u5OTc6ZtpREDx9ohlIvkcOcalOUhQLqU5r2uik2bGSVV3vFDbqxQeuNzh49i3VgdtwoaryNYSzbg_Ki8dHiaFrWH-r2WCU08utqpFmNdr8oNw4Y5AYJdUW2aItxDbwJ6YLBJN0_6EApbXsNqiaNXkLws3cxMvczGKODyGGVCPENa-VmTQ41HxsXB-_rMmcnMw3_MjyIueWcjeP8BNvLYt1bKFWdU0NcYCkXvEqE4-g"}}, "", http.StatusOK, "", ""},
 		{"token_value query", "/jwt/token_value_query?token=" + hmacToken, http.Header{}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"token_value body", "/jwt/token_value_body", http.Header{"Content-Type": {"application/json"}}, `{"token":"` + hmacToken + `"}`, http.StatusOK, `["foo","bar"]`, ""},
+		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
+		{"ECDSA JWKS", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
+		{"ECDSA JWKS", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken2}}, "", http.StatusOK, "", ""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
