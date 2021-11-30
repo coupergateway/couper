@@ -148,7 +148,11 @@ These fields are defined in the configuration as `custom_log_fields` attribute i
 - [API Block](./REFERENCE.md#api-block)
 - [Endpoint Block](./REFERENCE.md#endpoint-block)
 - [Backend Block](./REFERENCE.md#backend-block)
+- [Basic Auth Block](./REFERENCE.md#basic-auth-block)
 - [JWT Block](./REFERENCE.md#jwt-block)
+- [OAuth2 AC Block (Beta)](./REFERENCE.md#oauth2-ac-block-beta)
+- [OIDC Block (Beta)](./REFERENCE.md#oidc-block-beta)
+- [SAML Block](./REFERENCE.md#saml-block)
 - [Error Handler Block](./ERRORS.md#access-control-error_handler)
 
 The `custom_log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) logs

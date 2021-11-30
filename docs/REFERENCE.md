@@ -337,6 +337,7 @@ by `htpasswd_file` otherwise.
 | `password`      | string | `""`    | The corresponding password. | - | - |
 | `htpasswd_file` | string | `""`    | The htpasswd file. | Couper uses [Apache's httpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) file format. `apr1`, `md5` and `bcrypt` password encryptions are supported. The file is loaded once at startup. Restart Couper after you have changed it. | - |
 | `realm`         | string | `""`    | The realm to be sent in a `WWW-Authenticate` response HTTP header field. | - | - |
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 ### JWT Block
 
@@ -430,6 +431,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 | `scope` |string|-| A space separated list of requested scopes for the access token.| - | `scope = "read write"` |
 | `verifier_method` | string | - | The method to verify the integrity of the authorization code flow | &#9888; required, available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `state` (`state` parameter) | `verifier_method = "ccm_s256"` |
 | `verifier_value` | string or expression | - | The value of the (unhashed) verifier. | &#9888; required; e.g. using cookie value created with [`beta_oauth_verifier()` function](#functions) | `verifier_value = request.cookies.verifier` |
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
 
@@ -457,6 +459,7 @@ Like all [Access Control](#access-control) types, the `beta_oidc` block is defin
 | `scope` |string|-| A space separated list of requested scopes for the access token.|`openid` is automatically added.| `scope = "profile read"` |
 | `verifier_method` | string | - | The method to verify the integrity of the authorization code flow | available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `nonce` (`nonce` parameter) | `verifier_method = "nonce"` |
 | `verifier_value` | string or expression | - | The value of the (unhashed) verifier. | &#9888; required; e.g. using cookie value created with [`beta_oauth_verifier()` function](#functions) | `verifier_value = request.cookies.verifier` |
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 If the OpenID server supports the `code_challenge_method` `S256` the default value for `verifier_method`is `ccm_s256`, `nonce` otherwise.
 
@@ -480,6 +483,7 @@ required _label_.
 | `sp_acs_url`        | string | - | The URL of the Service Provider's ACS endpoint. | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](#settings-block) attribute if Couper is running behind a proxy. | - |
 | `sp_entity_id`      | string | - | The Service Provider's entity ID. |&#9888; required | - |
 | `array_attributes`  | string | `[]` | A list of assertion attributes that may have several values. | Results in at least an empty array in `request.context.<label>.attributes.<name>` | `array_attributes = ["memberOf"]` |
+| `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 
