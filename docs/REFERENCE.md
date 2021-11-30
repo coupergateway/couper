@@ -339,6 +339,8 @@ by `htpasswd_file` otherwise.
 | `realm`         | string | `""`    | The realm to be sent in a `WWW-Authenticate` response HTTP header field. | - | - |
 | `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 
+The `user` is accessable via `request.context.<label>.user` for successfully authenticated requests.
+
 ### JWT Block
 
 The `jwt` block lets you configure JSON Web Token access control for your gateway.
@@ -608,9 +610,11 @@ defaults {
 
 The value of `context.<name>` depends on the type of block referenced by `<name>`.
 
-For a [JWT Block](#jwt-block), the variable contains claims from the JWT used for [Access Control](#access-control).
+For a [Basic Auth](#basic-auth-block) and successfully authenticated request the variable contains the `user` name.
 
-For a [SAML Block](#saml-block), the variable contains
+For a [JWT Block](#jwt-block) the variable contains claims from the JWT used for [Access Control](#access-control).
+
+For a [SAML Block](#saml-block) the variable contains
 
 - `sub`: the `NameID` of the SAML assertion
 - `exp`: optional expiration date (value of `SessionNotOnOrAfter` of the SAML assertion)
