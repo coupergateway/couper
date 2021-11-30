@@ -8,5 +8,5 @@ type Definitions struct {
 	JWTSigningProfile []*JWTSigningProfile `hcl:"jwt_signing_profile,block"`
 	SAML              []*SAML              `hcl:"saml,block"`
 	OAuth2AC          []*OAuth2AC          `hcl:"beta_oauth2,block"`
-	OIDC              []*OIDC              `hcl:"beta_oidc,block"`
+	OIDC              []*OIDC              `hcl:"oidc,block"`
 }

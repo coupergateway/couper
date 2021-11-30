@@ -29,7 +29,7 @@ server "oidc-functions" {
 }
 
 definitions {
-  beta_oidc "ac-pkce" {
+  oidc "ac-pkce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email"
@@ -40,7 +40,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-pkce-relative" {
+  oidc "ac-pkce-relative" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email"
@@ -51,7 +51,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-nonce" {
+  oidc "ac-nonce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile"
@@ -62,7 +62,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-default" {
+  oidc "ac-default" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email address"

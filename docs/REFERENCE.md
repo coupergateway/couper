@@ -21,7 +21,7 @@
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
     - [OAuth2 AC Block (Beta)](#oauth2-ac-block-beta)
-    - [OIDC Block (Beta)](#oidc-block-beta)
+    - [OIDC Block](#oidc-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
     - [Defaults Block](#defaults-block)
@@ -311,7 +311,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta), [OIDC Block(s)](#oidc-block-beta)|
+|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta), [OIDC Block(s)](#oidc-block)|
 
 <!-- TODO: add link to (still missing) example -->
 
@@ -439,15 +439,15 @@ If the authorization server supports the `code_challenge_method` `S256` (a.k.a. 
 
 The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](#request-header) in a [backend block](#backend-block).
 
-### OIDC Block (Beta)
+### OIDC Block
 
-The `beta_oidc` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
+The `oidc` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
 control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
-Like all [Access Control](#access-control) types, the `beta_oidc` block is defined in the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its required _label_.
+Like all [Access Control](#access-control) types, the `oidc` block is defined in the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
+|`oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -504,7 +504,7 @@ gateway instance.
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
 | :------------------------------ | :----- | :------------------ | :---------- | :---------------- | :------ |
-| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [beta_oidc](#oidc-block-beta). | `["proto","host","port"]` |
+| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [oidc](#oidc-block). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
@@ -684,7 +684,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `json_encode`                  | string          | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     | `val` (various)                     | `json_encode(request.context.myJWT)`                 |
 | `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) (or [JWT Block](#jwt-block) with `signing_ttl`) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
 | `merge`                        | object or tuple | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. | `arg...` (object or tuple)          | `merge(request.headers, { x-additional = "myval" })` |
-| `beta_oauth_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block-beta).                                                                                                                                                                                                      | `label` (string)                    | `beta_oauth_authorization_url("myOAuth2")`           |
+| `beta_oauth_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block).                                                                                                                                                                                                      | `label` (string)                    | `beta_oauth_authorization_url("myOAuth2")`           |
 | `beta_oauth_verifier`          | string          | Creates a cryptographically random key as specified in RFC 7636, applicable for all verifier methods; e.g. to be set as a cookie and read into `verifier_value`. Multiple calls of this function in the same client request context return the same value.                                           |                                     | `beta_oauth_verifier()`                         |
 | `relative_url`                 | string          | Returns a relative URL by retaining `path`, `query` and `fragment` components.  The input URL `s` must begin with `/<path>`, `//<authority>`, `http://` or `https://`, otherwise an error is thrown. | s (string) | `relative_url("https://httpbin.org/anything?query#fragment") // returns "/anything?query#fragment"` |
 | `saml_sso_url`                 | string          | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 | `label` (string)                    | `saml_sso_url("mySAML")`                             |

@@ -68,7 +68,7 @@ definitions {
   }
 
   # with referenced backend
-  beta_oidc "ac-oidc-1" {
+  oidc "ac-oidc-1" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     backend = "as"
@@ -79,7 +79,7 @@ definitions {
     redirect_uri = "http://localhost:8080/oidc/redir"
   }
   # with inline backend
-  beta_oidc "ac-oidc-2" {
+  oidc "ac-oidc-2" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     backend {
