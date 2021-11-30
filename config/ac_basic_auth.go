@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/internal/seetie"
@@ -26,6 +27,25 @@ type BasicAuth struct {
 // HCLBody implements the <Inline> interface. Internally used for 'error_handler'.
 func (b *BasicAuth) HCLBody() hcl.Body {
 	return b.Remain
+}
+
+func (b *BasicAuth) Inline() interface{} {
+	type Inline struct {
+		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+	}
+
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (b *BasicAuth) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(b)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(b.Inline())
+	return schema
 }
 
 func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {

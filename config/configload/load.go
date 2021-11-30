@@ -14,6 +14,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
@@ -208,7 +209,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				}
 			}
 
-			acErrorHandler := collectErrorHandlerSetter(couperConfig.Definitions)
+			acErrorHandler := collect.ErrorHandlerSetters(couperConfig.Definitions)
 			if err := configureErrorHandler(acErrorHandler, definedBackends); err != nil {
 				return nil, err
 			}
@@ -322,7 +323,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			apiConfig.CatchAllEndpoint = createCatchAllEndpoint()
 			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 
-			apiErrorHandler := collectErrorHandlerSetter(apiConfig)
+			apiErrorHandler := collect.ErrorHandlerSetters(apiConfig)
 			if err = configureErrorHandler(apiErrorHandler, definedBackends); err != nil {
 				return nil, err
 			}
@@ -607,7 +608,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}}
 		}
 
-		epErrorHandler := collectErrorHandlerSetter(endpoint)
+		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
 		if err := configureErrorHandler(epErrorHandler, definedBackends); err != nil {
 			return err
 		}
