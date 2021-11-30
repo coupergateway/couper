@@ -7,6 +7,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * [`custom_log_fields`](./docs/LOGS.md#custom-logging) attribute to be able to describe a user defined map for `custom` log field enrichment ([#388](https://github.com/avenga/couper/pull/388))
   * * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessable via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
+  * [`jwt` block](./docs/REFERENCE.md#jwt-block) with ECDSA support ([#401](https://github.com/avenga/couper/issues/401))
 
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
