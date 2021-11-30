@@ -51,7 +51,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * For each SAML attribute listed in [`array_attributes`](./docs/REFERENCE.md#saml-block) at least an empty array is created in `request.context.<label>.attributes.<name>` ([#369](https://github.com/avenga/couper/pull/369))
   * HCL: Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
   * HCL: Missing support for different variable index key types ([#391](https://github.com/avenga/couper/pull/391))
-  * [OIDC](./docs/REFERENCE.md#oidc-block-beta): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
+  * [OIDC](./docs/REFERENCE.md#oidc-block): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
 
 ## [1.5](https://github.com/avenga/couper/releases/tag/1.5)
 
@@ -71,7 +71,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
       The evaluation has two steps now and will look up variables first and prepares the given expression to return `Nil` as fallback.
 
 * **Fixed**
-  * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block-beta) ([#319](https://github.com/avenga/couper/pull/319))
+  * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block) ([#319](https://github.com/avenga/couper/pull/319))
 
 * [**Beta**](./docs/BETA.md)
   * `beta_scope_claim` attribute to [`jwt` block](./docs/REFERENCE.md#jwt-block); `beta_scope` attribute to [`api`](./docs/REFERENCE.md#api-block) and [`endpoint` block](./docs/REFERENCE.md#endpoint-block)s; [error types](./docs/ERRORS.md#error-types) `beta_operation_denied` and `beta_insufficient_scope` ([#315](https://github.com/avenga/couper/pull/315))
@@ -87,7 +87,7 @@ Release date: 2021-08-26
 
 This release introduces [_Beta Features_](./docs/BETA.md). We use beta features to develop and experiment with new, complex features for you while still being able to maintain our compatibility promise. You can see beta features as a feature preview. To make users aware that a beta feature is used their configuration items are prefixed with `beta_`.
 
-The first beta features incorporate the OAuth2 functionality into the Access Control capabilities of Couper. The [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta) implements OAuth2 Authorization Code Grant Flows. The companion block [`beta_oidc {}`](./docs/REFERENCE.md#oidc-block-beta) implements [OIDC](https://openid.net/connect/), which allows simple integration of 3rd-party systems such as Google, Github or Keycloak for SSO (Single-Sign-On).
+The first beta features incorporate the OAuth2 functionality into the Access Control capabilities of Couper. The [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta) implements OAuth2 Authorization Code Grant Flows. The companion block [`beta_oidc {}`](./docs/REFERENCE.md#oidc-block) implements [OIDC](https://openid.net/connect/), which allows simple integration of 3rd-party systems such as Google, Github or Keycloak for SSO (Single-Sign-On).
 
 Together with transparent [Websockets](docs/REFERENCE.md#websockets-block) support that you can enable in your `proxy {}` block, you can guard existing Web applications with Couper via OIDC.
 
@@ -130,7 +130,7 @@ If your applications are running in multiple setups, like testing and production
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
-  * OIDC Authorization Code Grant Flow: [`beta_oidc {}` block](./docs/REFERENCE.md#oidc-block-beta) ([#273](https://github.com/avenga/couper/pull/273))
+  * OIDC Authorization Code Grant Flow: [`beta_oidc {}` block](./docs/REFERENCE.md#oidc-block) ([#273](https://github.com/avenga/couper/pull/273))
 
 ## [1.3.1](https://github.com/avenga/couper/compare/1.3...1.3.1)
 
