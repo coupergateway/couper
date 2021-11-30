@@ -55,20 +55,23 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 		name         string
 		oauth2Config *config.OIDC
 		want         string
-	}{{name: "redirect_uri with client request",
-		oauth2Config: &config.OIDC{
-			Name:             "auth-ref",
-			ConfigurationURL: origin.URL,
-			Remain: hclbody.New(&hcl.BodyContent{
-				Attributes: map[string]*hcl.Attribute{
-					lib.RedirectURI: {
-						Name: lib.RedirectURI,
-						Expr: expFn("request.headers.x-want"),
-					},
-				}})},
-		want: "https://couper.io/cb",
-	},
-		{name: "redirect_uri with backend_requests", // works since client and backend request are the same at response obj
+	}{
+		{
+			name: "redirect_uri with client request",
+			oauth2Config: &config.OIDC{
+				Name:             "auth-ref",
+				ConfigurationURL: origin.URL,
+				Remain: hclbody.New(&hcl.BodyContent{
+					Attributes: map[string]*hcl.Attribute{
+						lib.RedirectURI: {
+							Name: lib.RedirectURI,
+							Expr: expFn("request.headers.x-want"),
+						},
+					}})},
+			want: "https://couper.io/cb",
+		},
+		{
+			name: "redirect_uri with backend_requests", // works since client and backend request are the same at response obj
 			oauth2Config: &config.OIDC{
 				Name:             "auth-ref",
 				ConfigurationURL: origin.URL,
@@ -81,7 +84,8 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 					}})},
 			want: "https://couper.io/cb",
 		},
-		{name: "redirect_uri with backend_responses",
+		{
+			name: "redirect_uri with backend_responses",
 			oauth2Config: &config.OIDC{
 				Name:             "auth-ref",
 				ConfigurationURL: origin.URL,
