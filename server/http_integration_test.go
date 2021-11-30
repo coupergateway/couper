@@ -3026,6 +3026,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
 		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
+		{"/ba5", http.Header{"Authorization": []string{"Basic VVNSOlBXRA=="}, "X-Ba-User": []string{"USR"}}, http.StatusOK, "application/json", ""},
 		{"/v4", http.Header{}, http.StatusUnauthorized, "text/html", "access control error: ba1: credentials required"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
@@ -3041,6 +3042,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 
 			res, err := client.Do(req)
 			helper.Must(err)
+			// t.Errorf(">>> %#v", res.Header)
 
 			message := getAccessControlMessages(hook)
 			if tc.wantErrLog == "" {
