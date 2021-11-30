@@ -14,10 +14,10 @@ import (
 // OpenidConfiguration represents an OpenID configuration (.../.well-known/openid-configuration)
 type OpenidConfiguration struct {
 	AuthorizationEndpoint         string   `json:"authorization_endpoint"`
+	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 	Issuer                        string   `json:"issuer"`
 	TokenEndpoint                 string   `json:"token_endpoint"`
 	UserinfoEndpoint              string   `json:"userinfo_endpoint"`
-	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 }
 
 type Configs map[string]*Config
@@ -55,19 +55,19 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
-func (o *Config) GetVerifierMethod(uid string) (string, error) {
-	if o.VerifierMethod == "" {
-		_, err := o.Data()
+func (c *Config) GetVerifierMethod(uid string) (string, error) {
+	if c.VerifierMethod == "" {
+		_, err := c.Data()
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return o.VerifierMethod, nil
+	return c.VerifierMethod, nil
 }
 
-func (o *Config) GetAuthorizationEndpoint(uid string) (string, error) {
-	openidConfigurationData, err := o.Data()
+func (c *Config) GetAuthorizationEndpoint(uid string) (string, error) {
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -75,8 +75,8 @@ func (o *Config) GetAuthorizationEndpoint(uid string) (string, error) {
 	return openidConfigurationData.AuthorizationEndpoint, nil
 }
 
-func (o *Config) GetIssuer() (string, error) {
-	openidConfigurationData, err := o.Data()
+func (c *Config) GetIssuer() (string, error) {
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -84,8 +84,8 @@ func (o *Config) GetIssuer() (string, error) {
 	return openidConfigurationData.Issuer, nil
 }
 
-func (o *Config) GetTokenEndpoint() (string, error) {
-	openidConfigurationData, err := o.Data()
+func (c *Config) GetTokenEndpoint() (string, error) {
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -93,8 +93,8 @@ func (o *Config) GetTokenEndpoint() (string, error) {
 	return openidConfigurationData.TokenEndpoint, nil
 }
 
-func (o *Config) GetUserinfoEndpoint() (string, error) {
-	openidConfigurationData, err := o.Data()
+func (c *Config) GetUserinfoEndpoint() (string, error) {
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
