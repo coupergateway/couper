@@ -1,13 +1,11 @@
 package handler
 
 import (
-	"context"
 	"net/http"
-
-	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/logging"
 )
 
 var _ http.Handler = &Error{}
@@ -37,21 +35,16 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, kind := range err.Kinds() {
-		if kind == "access_control" {
-			kind = "*"
-		}
-
 		ep, defined := e.kindsHandler[kind]
 		if !defined {
 			continue
 		}
 
-		if eph, ek := ep.(interface{ BodyContext() hcl.Body }); ek {
-			if b := req.Context().Value(request.LogCustomAccess); b != nil {
-				bodies := b.([]hcl.Body)
-				bodies = append(bodies, eph.BodyContext())
-				*req = *req.WithContext(context.WithValue(req.Context(), request.LogCustomAccess, bodies))
-			}
+		if eph, ek := ep.(*Endpoint); ek {
+			// Custom log context is set on configuration load, however which error events got thrown
+			// during runtime is unknown at this point, so we must update the hcl context here and
+			// with the wildcard cases below.
+			logging.UpdateCustomAccessLogContext(req, eph.BodyContext())
 		}
 
 		ep.ServeHTTP(rw, req)
@@ -59,6 +52,9 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if ep, defined := e.kindsHandler[errors.Wildcard]; defined {
+		if eph, ek := ep.(*Endpoint); ek {
+			logging.UpdateCustomAccessLogContext(req, eph.BodyContext())
+		}
 		ep.ServeHTTP(rw, req)
 		return
 	}

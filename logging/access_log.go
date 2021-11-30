@@ -1,10 +1,12 @@
 package logging
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
@@ -164,5 +166,13 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 			return
 		}
 		entry.Info()
+	}
+}
+
+func UpdateCustomAccessLogContext(req *http.Request, body hcl.Body) {
+	if b := req.Context().Value(request.LogCustomAccess); b != nil {
+		bodies, _ := b.([]hcl.Body)
+		bodies = append(bodies, body)
+		*req = *req.WithContext(context.WithValue(req.Context(), request.LogCustomAccess, bodies))
 	}
 }
