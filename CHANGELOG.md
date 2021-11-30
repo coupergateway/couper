@@ -15,6 +15,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * exclude file descriptor limit startup-logs for Windows ([#396](https://github.com/avenga/couper/pull/396), [#383](https://github.com/avenga/couper/pull/383))
   * possible race conditions while updating JWKS for the [JWT access control](./docs/REFERENCE.md#jwt-block) ([#398](https://github.com/avenga/couper/pull/398))
 
+* **Dependencies**
+  * Update modules for [OpenAPI](./docs/REFERENCE.md#openapi-block) validation ([#399](https://github.com/avenga/couper/pull/399))
+    * `github.com/getkin/kin-openapi v0.49.0` => `github.com/getkin/kin-openapi v0.83.0`
+
 ---
 
 ## [1.6](https://github.com/avenga/couper/releases/tag/1.6)
