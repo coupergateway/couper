@@ -5,8 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-// Internally used for 'error_handler'.
-var _ Body = &SAML{}
+var _ Inline = &SAML{}
 
 // SAML represents the <SAML> object.
 type SAML struct {
@@ -14,14 +13,12 @@ type SAML struct {
 	ArrayAttributes []string `hcl:"array_attributes,optional"`
 	IdpMetadataFile string   `hcl:"idp_metadata_file"`
 	Name            string   `hcl:"name,label"`
+	Remain          hcl.Body `hcl:",remain"`
 	SpAcsUrl        string   `hcl:"sp_acs_url"`
 	SpEntityId      string   `hcl:"sp_entity_id"`
 
 	// internally used
 	MetadataBytes []byte
-
-	// Internally used for 'error_handler'.
-	Remain hcl.Body `hcl:",remain"`
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
