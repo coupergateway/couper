@@ -80,7 +80,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 }
 
 func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
-	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
+	if diags := ValidateConfigSchema(body, &config.Couper{}, src); diags.HasErrors() {
 		return nil, diags
 	}
 
