@@ -3,8 +3,8 @@ server "oidc-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-pkce = beta_oauth_authorization_url("ac-pkce")
-        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative")
+        x-au-pkce = oauth2_authorization_url("ac-pkce")
+        x-au-pkce-rel = oauth2_authorization_url("ac-pkce-relative")
       }
     }
   }
@@ -13,7 +13,7 @@ server "oidc-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-nonce = beta_oauth_authorization_url("ac-nonce")
+        x-au-nonce = oauth2_authorization_url("ac-nonce")
       }
     }
   }
@@ -22,7 +22,7 @@ server "oidc-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-default = beta_oauth_authorization_url("ac-default")
+        x-au-default = oauth2_authorization_url("ac-default")
       }
     }
   }

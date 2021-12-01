@@ -412,7 +412,7 @@ An example can be found
 
 ### OAuth2 AC Block (Beta)
 
-The `beta_oauth2` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
+The `beta_oauth2` block lets you configure the `oauth2_authorization_url()` [function](#functions) and an access
 control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint.
 Like all [Access Control](#access-control) types, the `beta_oauth2` block is defined in the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its required _label_.
 
@@ -441,7 +441,7 @@ The HTTP header field `Accept: application/json` is automatically added to the t
 
 ### OIDC Block
 
-The `oidc` block lets you configure the `beta_oauth_authorization_url()` [function](#functions) and an access
+The `oidc` block lets you configure the `oauth2_authorization_url()` [function](#functions) and an access
 control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
 Like all [Access Control](#access-control) types, the `oidc` block is defined in the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its required _label_.
 
@@ -684,7 +684,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `json_encode`                  | string          | Returns a JSON serialization of the given value.                                                                                                                                                                                                                                                     | `val` (various)                     | `json_encode(request.context.myJWT)`                 |
 | `jwt_sign`                     | string          | jwt_sign creates and signs a JSON Web Token (JWT) from information from a referenced [JWT Signing Profile Block](#jwt-signing-profile-block) (or [JWT Block](#jwt-block) with `signing_ttl`) and additional claims provided as a function parameter.                                                                                                 | `label` (string), `claims` (object) | `jwt_sign("myJWT")`                                  |
 | `merge`                        | object or tuple | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. | `arg...` (object or tuple)          | `merge(request.headers, { x-additional = "myval" })` |
-| `beta_oauth_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block).                                                                                                                                                                                                      | `label` (string)                    | `beta_oauth_authorization_url("myOAuth2")`           |
+| `oauth2_authorization_url` | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block).                                                                                                                                                                                                      | `label` (string)                    | `oauth2_authorization_url("myOAuth2")`           |
 | `beta_oauth_verifier`          | string          | Creates a cryptographically random key as specified in RFC 7636, applicable for all verifier methods; e.g. to be set as a cookie and read into `verifier_value`. Multiple calls of this function in the same client request context return the same value.                                           |                                     | `beta_oauth_verifier()`                         |
 | `relative_url`                 | string          | Returns a relative URL by retaining `path`, `query` and `fragment` components.  The input URL `s` must begin with `/<path>`, `//<authority>`, `http://` or `https://`, otherwise an error is thrown. | s (string) | `relative_url("https://httpbin.org/anything?query#fragment") // returns "/anything?query#fragment"` |
 | `saml_sso_url`                 | string          | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 | `label` (string)                    | `saml_sso_url("mySAML")`                             |

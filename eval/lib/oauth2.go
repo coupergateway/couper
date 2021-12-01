@@ -16,7 +16,7 @@ import (
 const (
 	RedirectURI                   = "redirect_uri"
 	CodeVerifier                  = "code_verifier"
-	FnOAuthAuthorizationUrl       = "beta_oauth_authorization_url"
+	FnOAuthAuthorizationUrl       = "oauth2_authorization_url"
 	FnOAuthVerifier               = "beta_oauth_verifier"
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
 )

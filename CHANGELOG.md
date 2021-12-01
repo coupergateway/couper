@@ -12,6 +12,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
   * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
   * Unbeta [OIDC block](./docs/REFERENCE.md#oidc-block) ([#400](https://github.com/avenga/couper/pull/400))
+  * Unbeta [`oauth2_authorization_url()`](./docs/REFERENCE.md#functions) function. The prefix is changed from `beta_oauth_...` to `oauth2_...` ([#400](https://github.com/avenga/couper/pull/400))
 
 * **Fixed**
   * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
