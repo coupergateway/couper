@@ -358,9 +358,9 @@ required _label_.
 | `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
 | `header`          |string|-|Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
 | `token_value` | string | - | expression to obtain the token | cannot be used together with `cookie` or `header` | `token_value = request.form_body.token[0]`|
-| `key`           |string|-|Public key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
+| `key`           |string|-|Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
-| `signature_algorithm`           |string|-|-|Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+| `signature_algorithm`           |string|-|-|Valid values: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` `ES256` `ES384` `ES512`|-|
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["roles"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
@@ -378,7 +378,7 @@ A JWT access control configured by this block can extract scope values from
 - the value of the claim specified by `beta_scope_claim` and
 - the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
-The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` algorithms, `signing_key` or `signing_key_file` have to be specified.
+The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
 *Note:* A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
 
@@ -405,7 +405,7 @@ An example can be found
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
-| `signature_algorithm`|-|-|-|&#9888; required. Valid values are: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512`.|-|
+| `signature_algorithm`|-|-|-|&#9888; required. Valid values: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` `ES256` `ES384` `ES512`|-|
 | `ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 | `claims` |object|-|Default claims for the JWT payload.| The claim values are evaluated per request. |`claims = { iss = "https://the-issuer.com" }`|
 | `headers` | object | - | Additional header fields for the JWT. | `alg` and `typ` cannot be set. | `headers = { kid = "my-key-id" }` |
