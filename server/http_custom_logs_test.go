@@ -1,20 +1,19 @@
 package server_test
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
+
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestCustomLogs_Upstream(t *testing.T) {
-	client := newClient()
-	helper := test.New(t)
+	client := test.NewHTTPClient()
 
 	shutdown, hook := newCouper("testdata/integration/logs/01_couper.hcl", test.New(t))
 	defer shutdown()
@@ -64,37 +63,43 @@ func TestCustomLogs_Upstream(t *testing.T) {
 			logrus.Fields{"backend": string("couper test-backend")},
 		},
 	} {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
-		helper.Must(err)
+		t.Run(tc.path, func(st *testing.T) {
+			helper := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
 
-		req.Header.Set("Authorization", "Bearer "+hmacToken)
+			req.Header.Set("Authorization", "Bearer "+hmacToken)
 
-		hook.Reset()
-		_, err = client.Do(req)
-		helper.Must(err)
+			hook.Reset()
+			_, err = client.Do(req)
+			helper.Must(err)
 
-		// Wait for logs
-		time.Sleep(200 * time.Millisecond)
+			// Wait for logs
+			time.Sleep(200 * time.Millisecond)
 
-		// Access log
-		got, ok := hook.AllEntries()[1].Data["custom"].(logrus.Fields)
-		if !ok {
-			t.Fatalf("expected\n%#v\ngot\n%#v", tc.expAL, got)
-		}
-		if !reflect.DeepEqual(tc.expAL, got) {
-			t.Errorf("expected\n%#v\ngot\n%#v", tc.expAL, got)
-		}
+			// Access log
+			entries := hook.AllEntries()
+			if len(entries) < 2 {
+				st.Fatal("Expected logs, got nothing")
+			}
 
-		// Upstream log
-		got, ok = hook.AllEntries()[0].Data["custom"].(logrus.Fields)
-		if !ok {
-			t.Fatalf("expected\n%#v\ngot\n%#v", tc.expUL, got)
-		}
-		if !cmp.Equal(tc.expUL, got) {
-			t.Fail()
+			got, ok := entries[1].Data["custom"].(logrus.Fields)
+			if !ok {
+				st.Fatalf("expected\n%#v\ngot\n%#v", tc.expAL, got)
+			}
+			if !reflect.DeepEqual(tc.expAL, got) {
+				st.Errorf("expected\n%#v\ngot\n%#v", tc.expAL, got)
+			}
 
-			fmt.Println(cmp.Diff(tc.expUL, got))
-		}
+			// Upstream log
+			got, ok = entries[0].Data["custom"].(logrus.Fields)
+			if !ok {
+				st.Fatalf("expected\n%#v\ngot\n%#v", tc.expUL, got)
+			}
+			if !cmp.Equal(tc.expUL, got) {
+				st.Error(cmp.Diff(tc.expUL, got))
+			}
+		})
 	}
 }
 
