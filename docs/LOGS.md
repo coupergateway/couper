@@ -155,9 +155,9 @@ These fields are defined in the configuration as `custom_log_fields` attribute i
 - [SAML Block](./REFERENCE.md#saml-block)
 - [Error Handler Block](./ERRORS.md#access-control-error_handler)
 
-The `custom_log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) logs
-into the `couper_backend` log. The `custom_log_fields` defined in other blocks log into
-the `couper_access` log.
+All `custom_log_fields` definitions will take place within the `couper_access` log with the `custom` field as parent.
+Except the `custom_log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) which will take place
+in the `couper_backend` log.
 
 **Example:**
 
