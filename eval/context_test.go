@@ -143,7 +143,6 @@ func TestDefaultEnvVariables(t *testing.T) {
 			defaults {
 				environment_variables = {
 					ORIGIN = "FOO"
-					TIMEOUT = "41"
 					TIMEOUT = "42"
 					IGNORED = "bar"
 				}
