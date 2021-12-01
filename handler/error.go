@@ -5,6 +5,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/logging"
 )
 
 var _ http.Handler = &Error{}
@@ -38,11 +39,22 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if !defined {
 			continue
 		}
+
+		if eph, ek := ep.(*Endpoint); ek {
+			// Custom log context is set on configuration load, however which error events got thrown
+			// during runtime is unknown at this point, so we must update the hcl context here and
+			// with the wildcard cases below.
+			logging.UpdateCustomAccessLogContext(req, eph.BodyContext())
+		}
+
 		ep.ServeHTTP(rw, req)
 		return
 	}
 
 	if ep, defined := e.kindsHandler[errors.Wildcard]; defined {
+		if eph, ek := ep.(*Endpoint); ek {
+			logging.UpdateCustomAccessLogContext(req, eph.BodyContext())
+		}
 		ep.ServeHTTP(rw, req)
 		return
 	}

@@ -1,12 +1,13 @@
-# Logging 
+# Logging
 
-- [Logging](#logging) 
+- [Logging](#logging)
   - [Introduction](#introduction)
   - [Log Types](#log-types)
   - [Fields](#fields)
     - [Access Fields](#access-fields)
     - [Backend Fields](#backend-fields)
     - [Daemon Fields](#daemon-fields)
+  - [Custom Logging](#custom-logging)
   - [Settings](#settings)
 
 ## Introduction
@@ -49,8 +50,9 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 | :------------ | :---------- | :-------------------------------------------------------------------------------------------------------------------------------- |
 | `"auth_user"` |             | basic auth username (if provided)                                                                                                 |
 | `"client_ip"` |             | ip of client                                                                                                                      |
+| `"custom"`    |             | see [Custom Logging](#custom-logging)                                                                                             |
 | `"endpoint"`  |             | path pattern of endpoint                                                                                                          |
-| `"handler"`   |             | one of: `endpoint`, `file`, `spa`                                                                                                 |      
+| `"handler"`   |             | one of: `endpoint`, `file`, `spa`                                                                                                 |
 | `"method"`    |             | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
 | `"port"`      |             | current port accepting request                                                                                                    |
 | `"request":`  |             | field regarding request information                                                                                               |
@@ -59,10 +61,10 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 |               | `"headers"` | field regarding keys and values originating from configured keys/header names                                                     |
 |               | `"host"`    | request host                                                                                                                      |
 |               | `"method"`  | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
-|               | `"origin"`  | request origin (`<proto>://<host>:<port>`), for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information                                                                                              | 
+|               | `"origin"`  | request origin (`<proto>://<host>:<port>`), for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information                                                                                              |
 |               | `"path"`    | request path                                                                                                                      |
 |               | `"proto"`   | request protocol                                                                                                                  |
-|               | `"status"`  | request status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information  | 
+|               | `"status"`  | request status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information  |
 |               | `"tls"`     | TLS used `true` or `false`                                                                                                        |
 |               | `}`         |                                                                                                                                   |
 | `"response":` |             | field regarding response information                                                                                              |
@@ -86,7 +88,8 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 | Name                    |             | Description                                                                                                                       |
 | :---------------------- | :---------- | :-------------------------------------------------------------------------------------------------------------------------------- |
 | `"auth_user"`           |             | backend request basic auth username (if provided)                                                                                 |
-| `"backend"`             |             | configured name, `default` if not provided                                                                                        |
+| `"backend"`             |             | configured name, `default` if not provided |
+| `"custom"`              |             | see [Custom Logging](#custom-logging) |
 | `"method"`              |             | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
 | `"proxy"`               |             | used system proxy url (if configured), see [Proxy Block](./REFERENCE.md#proxy-block)                                              |
 | `"request":`            |             | field regarding request information                                                                                               |
@@ -95,8 +98,8 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 |                         | `"headers"` | field regarding keys and values originating from configured keys/header names                                                     |
 |                         | `"host"`    | request host                                                                                                                      |
 |                         | `"method"`  | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information |
-|                         | `"name"`    | configured request name, `default` if not provided                                                                                | 
-|                         | `"origin"`  | request origin, for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information                                                                                                                          | 
+|                         | `"name"`    | configured request name, `default` if not provided                                                                                |
+|                         | `"origin"`  | request origin, for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information                                                                                                                          |
 |                         | `"path"`    | request path                                                                                                                      |
 |                         | `"port"`    | current port accepting request                                                                                                    |
 |                         | `"proto"`   | request protocol                                                                                                                  |
@@ -112,7 +115,7 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 |                         | `"dns"`     | time taken by dns                                                                                                                 |
 |                         | `"tcp"`     | time taken between attempting and establishing tcp connection                                                                     |
 |                         | `"tls"`     | time taken between attempt and success at tls handshake                                                                           |
-|                         | `"total"`   | total time taken                                                                                                                  | 
+|                         | `"total"`   | total time taken                                                                                                                  |
 |                         | `"ttfb"`    | time to first byte/between establishing connection and receiving first byte                                                       |
 |                         | `)`         |                                                                                                                                   |
 | `"token_request"`       |             | entry regarding request for token                                                                                                 |
@@ -134,6 +137,55 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 |              | `"max-retries"` | maximum retry count, see [Global Options](./CLI.md#global-options)                                                         |
 |              | `"retry-delay"` | configured delay of each retry, see [Global Options](./CLI.md#global-options)                                              |
 |              | `)`             |                                                                                                                            |
+
+## Custom Logging
+
+These fields are defined in the configuration as `custom_log_fields` attribute in the following blocks:
+
+- [Server Block](./REFERENCE.md#server-block)
+- [Files Block](./REFERENCE.md#files-block)
+- [SPA Block](./REFERENCE.md#spa-block)
+- [API Block](./REFERENCE.md#api-block)
+- [Endpoint Block](./REFERENCE.md#endpoint-block)
+- [Backend Block](./REFERENCE.md#backend-block)
+- [Basic Auth Block](./REFERENCE.md#basic-auth-block)
+- [JWT Block](./REFERENCE.md#jwt-block)
+- [OAuth2 AC Block (Beta)](./REFERENCE.md#oauth2-ac-block-beta)
+- [OIDC Block (Beta)](./REFERENCE.md#oidc-block-beta)
+- [SAML Block](./REFERENCE.md#saml-block)
+- [Error Handler Block](./ERRORS.md#access-control-error_handler)
+
+All `custom_log_fields` definitions will take place within the `couper_access` log with the `custom` field as parent.
+Except the `custom_log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) which will take place
+in the `couper_backend` log.
+
+**Example:**
+
+```hcl
+server "example" {
+  endpoint "/anything" {
+    custom_log_fields = {
+      origin  = backend_responses.default.json_body.origin
+      success = backend_responses.default.status == 200
+    }
+
+    proxy {
+      backend = "httpbin"
+      path = "/anything"
+    }
+  }
+}
+
+definitions {
+  backend "httpbin" {
+    origin = "https://httpbin.org"
+
+    custom_log_fields = {
+      method = request.method
+    }
+  }
+}
+```
 
 ## Settings
 

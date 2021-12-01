@@ -29,7 +29,6 @@ type muxers map[string]*Mux
 
 // HTTPServer represents a configured HTTP server.
 type HTTPServer struct {
-	accessLog  *logging.AccessLog
 	commandCtx context.Context
 	evalCtx    *eval.Context
 	listener   net.Listener
@@ -80,7 +79,6 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 
 	httpSrv := &HTTPServer{
 		evalCtx:    evalCtx.Value(request.ContextType).(*eval.Context),
-		accessLog:  logging.NewAccessLog(&logConf, log),
 		commandCtx: cmdCtx,
 		log:        log,
 		muxers:     muxersList,
@@ -96,7 +94,8 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	traceHandler := middleware.NewTraceHandler()(httpSrv)
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		accessLog.ServeHTTP(rw, req, uidHandler)
+		uidHandler.ServeHTTP(rw, req)
+		accessLog.Do(rw, req)
 	})
 	recordHandler := middleware.NewRecordHandler(settings.SecureCookies)(logHandler)
 	startTimeHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -199,7 +198,16 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if h == nil {
+		// mux.FindHandler() exchanges the req: *req = *req.WithContext(ctx)
 		h = mux.FindHandler(req)
+	}
+
+	ctx := context.WithValue(req.Context(), request.LogEntry, s.log)
+	ctx = context.WithValue(ctx, request.XFF, req.Header.Get("X-Forwarded-For"))
+
+	// set innermost handler name for logging purposes
+	if hs, stringer := getChildHandler(h).(fmt.Stringer); stringer {
+		ctx = context.WithValue(ctx, request.Handler, hs.String())
 	}
 
 	if err = s.setGetBody(h, req); err != nil {
@@ -229,12 +237,6 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	ctx := context.WithValue(req.Context(), request.XFF, req.Header.Get("X-Forwarded-For"))
-	ctx = context.WithValue(ctx, request.LogEntry, s.log)
-	if hs, stringer := h.(fmt.Stringer); stringer {
-		ctx = context.WithValue(ctx, request.Handler, hs.String())
-	}
-
 	// due to the middleware callee stack we have to update the 'req' value.
 	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
 
@@ -242,17 +244,10 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
-	outer := h
-	for {
-		if inner, ok := outer.(interface{ Child() http.Handler }); ok {
-			outer = inner.Child()
-			continue
-		}
-		break
-	}
+	inner := getChildHandler(h)
 
 	var err error
-	if limitHandler, ok := outer.(handler.BodyLimit); ok {
+	if limitHandler, ok := inner.(handler.BodyLimit); ok {
 		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
 	}
 	return err
@@ -303,4 +298,17 @@ func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 			gauge.Measurement(-1),
 		)
 	}
+}
+
+// getChildHandler returns the innermost handler which supports the Child interface.
+func getChildHandler(handler http.Handler) http.Handler {
+	outer := handler
+	for {
+		if inner, ok := outer.(interface{ Child() http.Handler }); ok {
+			outer = inner.Child()
+			continue
+		}
+		break
+	}
+	return outer
 }

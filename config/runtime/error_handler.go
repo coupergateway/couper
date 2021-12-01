@@ -63,5 +63,6 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 	}
+
 	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
 }

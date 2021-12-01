@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -405,18 +406,13 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	log, hook := test.NewLogger()
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		png := []byte(`�PNG
-
-
-IHDRH0=���gAMA���a	pHYs���B��tEXtSoftwarePaint.NET v3.5.100�r�pIDAThC���	�0���b!K�$�������1x={+��^��h
-�)��6���z�Qj�h
-�)��0�N4��FS�7l�5��"Ma4��F�=q���ь�FS�7l|�Ұ��nW�i�0IEND�B`)
+		ico, _ := os.ReadFile("testdata/file/favicon.ico")
 
 		rw.Header().Set("Content-Encoding", "gzip")  // wrong
 		rw.Header().Set("Content-Type", "text/html") // wrong
 		rw.Header().Set("Cache-Control", "no-cache, no-store, max-age=0")
 
-		_, err := rw.Write(png)
+		_, err := rw.Write(ico)
 		if err != nil {
 			t.Error(err)
 		}
@@ -499,10 +495,13 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	access := logging.NewAccessLog(&logging.Config{}, log)
-	access.ServeHTTP(rec, req.WithContext(ctx), ep)
+
+	outreq := req.WithContext(ctx)
+	ep.ServeHTTP(rec, outreq)
+	access.Do(rec, outreq)
 	rec.Flush()
 
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	if elapsed > time.Second+(time.Millisecond*50) {
 		t.Error("Expected canceled request")
 	}

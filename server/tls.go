@@ -141,7 +141,9 @@ func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.
 			req.URL.Host = req.Host
 
 			respW := writer.NewResponseWriter(rw, "")
-			accessLog.ServeHTTP(respW, req.WithContext(ctx), httpProxy)
+			outreq := req.WithContext(ctx)
+			httpProxy.ServeHTTP(respW, outreq)
+			accessLog.Do(respW, outreq)
 		}),
 		TLSConfig: initialConfig,
 	}

@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * [`custom_log_fields`](./docs/LOGS.md#custom-logging) attribute to be able to describe a user defined map for `custom` log field enrichment ([#388](https://github.com/avenga/couper/pull/388))
+
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
   * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
@@ -12,6 +15,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
   * exclude file descriptor limit startup-logs for Windows ([#396](https://github.com/avenga/couper/pull/396), [#383](https://github.com/avenga/couper/pull/383))
   * possible race conditions while updating JWKS for the [JWT access control](./docs/REFERENCE.md#jwt-block) ([#398](https://github.com/avenga/couper/pull/398))
+
+* **Dependencies**
+  * Update modules for [OpenAPI](./docs/REFERENCE.md#openapi-block) validation ([#399](https://github.com/avenga/couper/pull/399))
+    * `github.com/getkin/kin-openapi v0.49.0` => `github.com/getkin/kin-openapi v0.83.0`
 
 ---
 

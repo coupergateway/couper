@@ -1,10 +1,12 @@
 package logging
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
@@ -38,8 +40,7 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	}
 }
 
-func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextHandler http.Handler) {
-	nextHandler.ServeHTTP(rw, req)
+func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 	serveDone := time.Now()
 	startTime := req.Context().Value(request.StartTime).(time.Time)
 	fields := Fields{}
@@ -110,7 +111,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 
 	var statusCode int
 	var writtenBytes int
-	if recorder, ok := rw.(RecorderInfo); ok {
+	if recorder, ok := writer.(RecorderInfo); ok {
 		statusCode = recorder.StatusCode()
 		writtenBytes = recorder.WrittenBytes()
 	}
@@ -122,7 +123,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 	requestFields["status"] = statusCode
 
 	responseFields := Fields{
-		"headers": filterHeader(log.conf.ResponseHeaders, rw.Header()),
+		"headers": filterHeader(log.conf.ResponseHeaders, writer.Header()),
 	}
 	fields["response"] = responseFields
 
@@ -154,7 +155,7 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 		err = ctxErr
 	}
 
-	entry := log.logger.WithFields(logrus.Fields(fields))
+	entry := log.logger.WithFields(logrus.Fields(fields)).WithContext(req.Context())
 	entry.Time = startTime
 
 	if err != nil {
@@ -165,5 +166,13 @@ func (log *AccessLog) ServeHTTP(rw http.ResponseWriter, req *http.Request, nextH
 			return
 		}
 		entry.Info()
+	}
+}
+
+func UpdateCustomAccessLogContext(req *http.Request, body hcl.Body) {
+	if b := req.Context().Value(request.LogCustomAccess); b != nil {
+		bodies, _ := b.([]hcl.Body)
+		bodies = append(bodies, body)
+		*req = *req.WithContext(context.WithValue(req.Context(), request.LogCustomAccess, bodies))
 	}
 }

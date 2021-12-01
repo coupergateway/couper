@@ -233,6 +233,7 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 
 	logger.AddHook(&hooks.Error{})
 	logger.AddHook(&hooks.Context{})
+	logger.AddHook(&hooks.CustomLogs{})
 
 	if testHook != nil {
 		logger.AddHook(testHook)

@@ -20,14 +20,9 @@ import (
 const dirIndexFile = "index.html"
 
 var (
-	_ HasResponse    = &File{}
 	_ http.Handler   = &File{}
 	_ server.Context = &File{}
 )
-
-type HasResponse interface {
-	HasResponse(req *http.Request) bool
-}
 
 type File struct {
 	basePath   string

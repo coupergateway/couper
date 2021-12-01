@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -93,27 +94,28 @@ func ListToValue(l []interface{}) cty.Value {
 }
 
 func GoToValue(v interface{}) cty.Value {
-	switch v.(type) {
+	switch v := v.(type) {
 	case string:
 		return cty.StringVal(ToString(v))
 	case bool:
-		return cty.BoolVal(v.(bool))
+		return cty.BoolVal(v)
 	case int64:
-		return cty.NumberIntVal(v.(int64))
+		return cty.NumberIntVal(v)
 	case float64:
-		return cty.NumberFloatVal(v.(float64))
+		return cty.NumberFloatVal(v)
 	case []string:
 		var list []interface{}
-		for _, s := range v.([]string) {
+		for _, s := range v {
 			list = append(list, s)
 		}
 		return ListToValue(list)
 	case []interface{}:
-		return ListToValue(v.([]interface{}))
+		return ListToValue(v)
 	case map[string]interface{}:
-		return MapToValue(v.(map[string]interface{}))
+		return MapToValue(v)
+	default:
+		return cty.NullVal(cty.String)
 	}
-	return cty.NullVal(cty.String)
 }
 
 func MapToValue(m map[string]interface{}) cty.Value {
@@ -127,17 +129,17 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		if !validKey.MatchString(k) {
 			continue
 		}
-		switch v.(type) {
+		switch v := v.(type) {
 		case []string:
 			var list []interface{}
-			for _, s := range v.([]string) {
+			for _, s := range v {
 				list = append(list, s)
 			}
 			ctyMap[k] = ListToValue(list)
 		case []interface{}:
-			ctyMap[k] = ListToValue(v.([]interface{}))
+			ctyMap[k] = ListToValue(v)
 		case map[string]interface{}:
-			ctyMap[k] = MapToValue(v.(map[string]interface{}))
+			ctyMap[k] = MapToValue(v)
 		default:
 			ctyMap[k] = GoToValue(v)
 		}
@@ -248,6 +250,65 @@ func ValueToInt(v cty.Value) (n int64) {
 	return n
 }
 
+func ValueToLogFields(val cty.Value) logrus.Fields {
+	if val.IsNull() || !val.IsKnown() {
+		return nil
+	}
+
+	fields := logrus.Fields{}
+
+	for k, v := range val.AsValueMap() {
+		if isTuple(v) {
+			fields[k] = ValueToLogFieldsFromTuple(v)
+		} else {
+			switch v.Type() {
+			case cty.Bool:
+				fields[k] = v.True()
+			case cty.String:
+				fields[k] = v.AsString()
+			case cty.Number:
+				f, _ := v.AsBigFloat().Float64()
+				fields[k] = f
+			default:
+				if isObject(v) {
+					fields[k] = ValueToLogFields(v)
+				}
+			}
+		}
+	}
+
+	return fields
+}
+
+func ValueToLogFieldsFromTuple(val cty.Value) []interface{} {
+	if !isTuple(val) {
+		return nil
+	}
+
+	var values []interface{}
+	for _, v := range val.AsValueSlice() {
+		if isTuple(v) {
+			values = append(values, ValueToLogFieldsFromTuple(v))
+		} else {
+			switch v.Type() {
+			case cty.Bool:
+				values = append(values, v.True())
+			case cty.String:
+				values = append(values, v.AsString())
+			case cty.Number:
+				f, _ := v.AsBigFloat().Float64()
+				values = append(values, f)
+			default:
+				if isObject(v) {
+					values = append(values, ValueToLogFields(v))
+				}
+			}
+		}
+	}
+
+	return values
+}
+
 func SliceToString(sl []interface{}) string {
 	var str []string
 	for _, s := range sl {
@@ -259,25 +320,33 @@ func SliceToString(sl []interface{}) string {
 }
 
 func ToString(s interface{}) string {
-	switch s.(type) {
+	switch s := s.(type) {
 	case []string:
-		return strings.Join(s.([]string), ",")
+		return strings.Join(s, ",")
 	case []interface{}:
-		return SliceToString(s.([]interface{}))
+		return SliceToString(s)
 	case string:
-		return s.(string)
+		return s
 	case int:
-		return strconv.Itoa(s.(int))
+		return strconv.Itoa(s)
 	case float64:
 		return fmt.Sprintf("%0.f", s)
 	case bool:
-		if !s.(bool) {
+		if !s {
 			return "false"
 		}
 		return "true"
 	default:
+		return ""
 	}
-	return ""
+}
+
+// isObject checks by type name since object is not comparable by type.
+func isObject(v cty.Value) bool {
+	if v.IsNull() {
+		return false
+	}
+	return v.Type().FriendlyNameForConstraint() == "object"
 }
 
 // isTuple checks by type name since tuple is not comparable by type.

@@ -33,6 +33,7 @@ func NewBackend() *Backend {
 	b.mux.HandleFunc("/pdf", pdf)
 	b.mux.HandleFunc("/small", small)
 	b.mux.HandleFunc("/jwks.json", jwks)
+	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
 	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
@@ -195,4 +196,14 @@ func jwks(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	http.ServeContent(rw, req, "/jwks.json", info.ModTime(), file)
+}
+
+func oidc(rw http.ResponseWriter, req *http.Request) {
+	body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+	_, _ = rw.Write(body)
 }

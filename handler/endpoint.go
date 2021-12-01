@@ -121,6 +121,17 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext := eval.ContextFromRequest(req)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
+	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
+	if ok {
+		select {
+		case <-reqCtx.Done():
+			err = reqCtx.Err()
+			log.WithError(errors.ClientRequest.With(err)).Error()
+			return
+		case customLogEvalCtxCh <- evalContext:
+		}
+	}
+
 	// assume prio or err on conf load if set with response
 	if e.opts.Redirect != nil {
 		clientres = e.newRedirect()
@@ -156,7 +167,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			err = errors.Configuration
 
 			if isErrHandler {
-				err = req.Context().Value(request.Error).(*errors.Error)
+				err, _ = req.Context().Value(request.Error).(*errors.Error)
 			} else {
 				// TODO determine error priority, may solved with error_handler
 				// on roundtrip panic the context label is missing atm
@@ -285,6 +296,11 @@ func (e *Endpoint) Options() *server.Options {
 
 func (e *Endpoint) BufferOptions() eval.BufferOption {
 	return e.opts.BufferOpts
+}
+
+// BodyContext exposes the current endpoint hcl.Body.
+func (e *Endpoint) BodyContext() hcl.Body {
+	return e.opts.Context
 }
 
 func (e *Endpoint) RequestLimit() int64 {

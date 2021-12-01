@@ -103,65 +103,65 @@ func (ss *SecurityScheme) WithBearerFormat(value string) *SecurityScheme {
 	return ss
 }
 
-func (ss *SecurityScheme) Validate(c context.Context) error {
+func (value *SecurityScheme) Validate(ctx context.Context) error {
 	hasIn := false
 	hasBearerFormat := false
 	hasFlow := false
-	switch ss.Type {
+	switch value.Type {
 	case "apiKey":
 		hasIn = true
 	case "http":
-		scheme := ss.Scheme
+		scheme := value.Scheme
 		switch scheme {
 		case "bearer":
 			hasBearerFormat = true
 		case "basic", "negotiate", "digest":
 		default:
-			return fmt.Errorf("Security scheme of type 'http' has invalid 'scheme' value '%s'", scheme)
+			return fmt.Errorf("security scheme of type 'http' has invalid 'scheme' value %q", scheme)
 		}
 	case "oauth2":
 		hasFlow = true
 	case "openIdConnect":
-		if ss.OpenIdConnectUrl == "" {
-			return fmt.Errorf("No OIDC URL found for openIdConnect security scheme %q", ss.Name)
+		if value.OpenIdConnectUrl == "" {
+			return fmt.Errorf("no OIDC URL found for openIdConnect security scheme %q", value.Name)
 		}
 	default:
-		return fmt.Errorf("Security scheme 'type' can't be '%v'", ss.Type)
+		return fmt.Errorf("security scheme 'type' can't be %q", value.Type)
 	}
 
 	// Validate "in" and "name"
 	if hasIn {
-		switch ss.In {
+		switch value.In {
 		case "query", "header", "cookie":
 		default:
-			return fmt.Errorf("Security scheme of type 'apiKey' should have 'in'. It can be 'query', 'header' or 'cookie', not '%s'", ss.In)
+			return fmt.Errorf("security scheme of type 'apiKey' should have 'in'. It can be 'query', 'header' or 'cookie', not %q", value.In)
 		}
-		if ss.Name == "" {
-			return errors.New("Security scheme of type 'apiKey' should have 'name'")
+		if value.Name == "" {
+			return errors.New("security scheme of type 'apiKey' should have 'name'")
 		}
-	} else if len(ss.In) > 0 {
-		return fmt.Errorf("Security scheme of type '%s' can't have 'in'", ss.Type)
-	} else if len(ss.Name) > 0 {
-		return errors.New("Security scheme of type 'apiKey' can't have 'name'")
+	} else if len(value.In) > 0 {
+		return fmt.Errorf("security scheme of type %q can't have 'in'", value.Type)
+	} else if len(value.Name) > 0 {
+		return errors.New("security scheme of type 'apiKey' can't have 'name'")
 	}
 
 	// Validate "format"
 	// "bearerFormat" is an arbitrary string so we only check if the scheme supports it
-	if !hasBearerFormat && len(ss.BearerFormat) > 0 {
-		return fmt.Errorf("Security scheme of type '%v' can't have 'bearerFormat'", ss.Type)
+	if !hasBearerFormat && len(value.BearerFormat) > 0 {
+		return fmt.Errorf("security scheme of type %q can't have 'bearerFormat'", value.Type)
 	}
 
 	// Validate "flow"
 	if hasFlow {
-		flow := ss.Flows
+		flow := value.Flows
 		if flow == nil {
-			return fmt.Errorf("Security scheme of type '%v' should have 'flows'", ss.Type)
+			return fmt.Errorf("security scheme of type %q should have 'flows'", value.Type)
 		}
-		if err := flow.Validate(c); err != nil {
-			return fmt.Errorf("Security scheme 'flow' is invalid: %v", err)
+		if err := flow.Validate(ctx); err != nil {
+			return fmt.Errorf("security scheme 'flow' is invalid: %v", err)
 		}
-	} else if ss.Flows != nil {
-		return fmt.Errorf("Security scheme of type '%s' can't have 'flows'", ss.Type)
+	} else if value.Flows != nil {
+		return fmt.Errorf("security scheme of type %q can't have 'flows'", value.Type)
 	}
 	return nil
 }
@@ -191,20 +191,20 @@ func (flows *OAuthFlows) UnmarshalJSON(data []byte) error {
 	return jsoninfo.UnmarshalStrictStruct(data, flows)
 }
 
-func (flows *OAuthFlows) Validate(c context.Context) error {
+func (flows *OAuthFlows) Validate(ctx context.Context) error {
 	if v := flows.Implicit; v != nil {
-		return v.Validate(c, oAuthFlowTypeImplicit)
+		return v.Validate(ctx, oAuthFlowTypeImplicit)
 	}
 	if v := flows.Password; v != nil {
-		return v.Validate(c, oAuthFlowTypePassword)
+		return v.Validate(ctx, oAuthFlowTypePassword)
 	}
 	if v := flows.ClientCredentials; v != nil {
-		return v.Validate(c, oAuthFlowTypeClientCredentials)
+		return v.Validate(ctx, oAuthFlowTypeClientCredentials)
 	}
 	if v := flows.AuthorizationCode; v != nil {
-		return v.Validate(c, oAuthFlowAuthorizationCode)
+		return v.Validate(ctx, oAuthFlowAuthorizationCode)
 	}
-	return errors.New("No OAuth flow is defined")
+	return errors.New("no OAuth flow is defined")
 }
 
 type OAuthFlow struct {
@@ -223,19 +223,19 @@ func (flow *OAuthFlow) UnmarshalJSON(data []byte) error {
 	return jsoninfo.UnmarshalStrictStruct(data, flow)
 }
 
-func (flow *OAuthFlow) Validate(c context.Context, typ oAuthFlowType) error {
+func (flow *OAuthFlow) Validate(ctx context.Context, typ oAuthFlowType) error {
 	if typ == oAuthFlowAuthorizationCode || typ == oAuthFlowTypeImplicit {
 		if v := flow.AuthorizationURL; v == "" {
-			return errors.New("An OAuth flow is missing 'authorizationUrl in authorizationCode or implicit '")
+			return errors.New("an OAuth flow is missing 'authorizationUrl in authorizationCode or implicit '")
 		}
 	}
 	if typ != oAuthFlowTypeImplicit {
 		if v := flow.TokenURL; v == "" {
-			return errors.New("An OAuth flow is missing 'tokenUrl in not implicit'")
+			return errors.New("an OAuth flow is missing 'tokenUrl in not implicit'")
 		}
 	}
 	if v := flow.Scopes; v == nil {
-		return errors.New("An OAuth flow is missing 'scopes'")
+		return errors.New("an OAuth flow is missing 'scopes'")
 	}
 	return nil
 }

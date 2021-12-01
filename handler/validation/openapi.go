@@ -11,12 +11,14 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/routers"
+	"github.com/getkin/kin-openapi/routers/legacy"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 )
 
-var routers sync.Map
+var routersStore sync.Map
 
 type OpenAPI struct {
 	options *OpenAPIOptions
@@ -31,10 +33,10 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 	}
 }
 
-func (v *OpenAPI) getRouter(key, origin string) (*openapi3filter.Router, error) {
-	router, exists := routers.Load(key)
+func (v *OpenAPI) getRouter(key, origin string) (routers.Router, error) {
+	router, exists := routersStore.Load(key)
 	if !exists {
-		clonedSwagger := cloneSwagger(v.options.swagger)
+		clonedSwagger := cloneSwagger(v.options.doc)
 
 		var newServers []string
 		for _, s := range clonedSwagger.Servers {
@@ -69,16 +71,16 @@ func (v *OpenAPI) getRouter(key, origin string) (*openapi3filter.Router, error) 
 			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
 		}
 
-		r := openapi3filter.NewRouter()
-		if err := r.AddSwagger(clonedSwagger); err != nil {
+		r, err := legacy.NewRouter(clonedSwagger)
+		if err != nil {
 			return nil, err
 		}
 
-		routers.Store(key, r)
+		routersStore.Store(key, r)
 		return r, nil
 	}
 
-	return router.(*openapi3filter.Router), nil
+	return router.(routers.Router), nil
 }
 
 func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filter.RequestValidationInput, error) {
@@ -101,7 +103,7 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filte
 		return nil, nil
 	}
 
-	route, pathParams, err := router.FindRoute(req.Method, &serverURL)
+	route, pathParams, err := router.FindRoute(req)
 	if err != nil {
 		err = fmt.Errorf("'%s %s': %w", req.Method, req.URL.Path, err)
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
@@ -185,7 +187,7 @@ func (v *OpenAPI) ValidateResponse(beresp *http.Response, requestValidationInput
 	return nil
 }
 
-func cloneSwagger(s *openapi3.Swagger) *openapi3.Swagger {
+func cloneSwagger(s *openapi3.T) *openapi3.T {
 	sw := *s
 	// this is not a deep clone; we only want to add servers
 	sw.Servers = s.Servers[:]
