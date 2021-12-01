@@ -39,7 +39,6 @@ const (
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 var envContext *hcl.EvalContext
-var configBytes []byte
 
 func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
@@ -104,8 +103,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		Settings:    &defaults,
 	}
 
-	configBytes = src[:]
-
 	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
 	content, diags := body.Content(schema)
 	if content == nil {
@@ -115,6 +112,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 	// Read possible reference definitions first. Those are the
 	// base for refinement merges during server block read out.
 	var definedBackends Backends
+	var err error
 
 	for _, outerBlock := range content.Blocks {
 		switch outerBlock.Type {
@@ -136,9 +134,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 						}}
 					}
 
-					if err := uniqueAttributeKey(be.Body); err != nil {
-						return nil, err
-					}
 					definedBackends = append(definedBackends, NewBackend(name, be.Body))
 				}
 			}
@@ -148,11 +143,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			}
 
 			for _, oauth2Config := range couperConfig.Definitions.OAuth2AC {
-				err := uniqueAttributeKey(oauth2Config.Remain)
-				if err != nil {
-					return nil, err
-				}
-
 				bodyContent, _, diags := oauth2Config.HCLBody().PartialContent(oauth2Config.Schema(true))
 				if diags.HasErrors() {
 					return nil, diags
@@ -166,11 +156,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			}
 
 			for _, oidcConfig := range couperConfig.Definitions.OIDC {
-				err := uniqueAttributeKey(oidcConfig.Remain)
-				if err != nil {
-					return nil, err
-				}
-
 				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
 				if diags.HasErrors() {
 					return nil, diags
@@ -184,11 +169,6 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			}
 
 			for _, jwtConfig := range couperConfig.Definitions.JWT {
-				err := uniqueAttributeKey(jwtConfig.Remain)
-				if err != nil {
-					return nil, err
-				}
-
 				if jwtConfig.JWKsURL != "" {
 					bodyContent, _, diags := jwtConfig.HCLBody().PartialContent(jwtConfig.Schema(true))
 					if diags.HasErrors() {
@@ -436,11 +416,9 @@ func getBackendReference(definedBackends Backends, be config.BackendReference) (
 }
 
 func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check bool) error {
-	for _, endpoint := range endpoints {
-		if err := uniqueAttributeKey(endpoint.Remain); err != nil {
-			return err
-		}
+	var err error
 
+	for _, endpoint := range endpoints {
 		if check && endpoint.Pattern == "" {
 			var r hcl.Range
 			if endpoint.Remain != nil {
@@ -501,11 +479,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			err := uniqueAttributeKey(proxyConfig.Remain)
-			if err != nil {
-				return err
-			}
-
 			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
 			if err != nil {
 				return err
@@ -541,11 +514,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			renameAttribute(content, "query_params", "set_query_params")
 
 			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
-
-			err := uniqueAttributeKey(reqConfig.Remain)
-			if err != nil {
-				return err
-			}
 
 			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 			if err != nil {
@@ -754,8 +722,7 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body,
 		bend = MergeBodies([]hcl.Body{bend, wrapped})
 	}
 
-	diags := uniqueAttributeKey(bend)
-	return bend, diags
+	return bend, nil
 }
 
 func createCatchAllEndpoint() *config.Endpoint {
