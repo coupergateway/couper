@@ -192,7 +192,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			http.MethodPost,
 			"/get",
 			"backend validation error",
-			"'POST /get': Path doesn't support the HTTP method",
+			"'POST /get': method not allowed",
 		},
 		{
 			"invalid request, IgnoreRequestViolations",
@@ -200,7 +200,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			http.MethodPost,
 			"/get",
 			"",
-			"'POST /get': Path doesn't support the HTTP method",
+			"'POST /get': method not allowed",
 		},
 		{
 			"invalid response",

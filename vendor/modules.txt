@@ -25,12 +25,14 @@ github.com/docker/go-units
 # github.com/fatih/color v1.10.0
 ## explicit; go 1.13
 github.com/fatih/color
-# github.com/getkin/kin-openapi v0.49.0
+# github.com/getkin/kin-openapi v0.83.0
 ## explicit; go 1.14
 github.com/getkin/kin-openapi/jsoninfo
 github.com/getkin/kin-openapi/openapi3
 github.com/getkin/kin-openapi/openapi3filter
-github.com/getkin/kin-openapi/pathpattern
+github.com/getkin/kin-openapi/routers
+github.com/getkin/kin-openapi/routers/legacy
+github.com/getkin/kin-openapi/routers/legacy/pathpattern
 # github.com/ghodss/yaml v1.0.0
 ## explicit
 github.com/ghodss/yaml
@@ -88,10 +90,10 @@ github.com/mailru/easyjson/jwriter
 # github.com/mattermost/xml-roundtrip-validator v0.0.0-20201208211235-fe770d50d911
 ## explicit; go 1.14
 github.com/mattermost/xml-roundtrip-validator
-# github.com/mattn/go-colorable v0.1.8
+# github.com/mattn/go-colorable v0.1.9
 ## explicit; go 1.13
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.12
+# github.com/mattn/go-isatty v0.0.14
 ## explicit; go 1.12
 github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.1

@@ -8,7 +8,7 @@ require (
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.10.0
-	github.com/getkin/kin-openapi v0.49.0
+	github.com/getkin/kin-openapi v0.83.0
 	github.com/hashicorp/hcl/v2 v2.10.1
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -57,8 +57,8 @@ require (
 	github.com/jonboulle/clockwork v0.2.0 // indirect
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.0.0-20201208211235-fe770d50d911 // indirect
-	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-isatty v0.0.12 // indirect
+	github.com/mattn/go-colorable v0.1.9 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	go.opentelemetry.io/otel/internal/metric v0.23.0 // indirect
