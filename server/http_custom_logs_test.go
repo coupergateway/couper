@@ -105,48 +105,57 @@ func TestCustomLogs_Upstream(t *testing.T) {
 
 func TestCustomLogs_Local(t *testing.T) {
 	client := newClient()
-	helper := test.New(t)
 
 	shutdown, hook := newCouper("testdata/integration/logs/01_couper.hcl", test.New(t))
 	defer shutdown()
 
 	type testCase struct {
+		name string
 		path string
 		exp  logrus.Fields
 	}
 
 	for _, tc := range []testCase{
-		{"/secure", logrus.Fields{"error_handler": "GET"}},
-		{"/jwt", logrus.Fields{"jwt_error": "GET", "jwt_regular": "GET"}},
-		{"/jwt-wildcard", logrus.Fields{"jwt_error_wildcard": "GET", "jwt_regular": "GET"}},
-		{"/file.html", logrus.Fields{"files": "GET"}},
-		{"/spa", logrus.Fields{"spa": "GET"}},
+		{"basic-auth", "/secure", logrus.Fields{"error_handler": "GET"}},
+		{"jwt with error-handler", "/jwt", logrus.Fields{"jwt_error": "GET", "jwt_regular": "GET"}},
+		{"jwt with * error-handler", "/jwt-wildcard", logrus.Fields{"jwt_error_wildcard": "GET", "jwt_regular": "GET"}},
+		{"oauth2 error-handler", "/oauth2cb?pkcecv=qerbnr&error=qeuboub", logrus.Fields{"oauth2_error": "GET", "oauth2_regular": "GET"}},
+		{"oauth2 * error-handler", "/oauth2cb-wildcard?pkcecv=qerbnr&error=qeuboub", logrus.Fields{"oauth2_wildcard_error": "GET", "oauth2_regular": "GET"}},
+		{"saml with error-handler", "/saml/acs", logrus.Fields{"saml_error": "GET", "saml_regular": "GET"}},
+		{"saml with * error-handler", "/saml-wildcard/acs", logrus.Fields{"saml_wildcard_error": "GET", "saml_regular": "GET"}},
+		{"oidc with error-handler", "/oidc/cb", logrus.Fields{"oidc_error": "GET", "oidc_regular": "GET"}},
+		{"oidc with * error-handler", "/oidc-wildcard/cb", logrus.Fields{"oidc_wildcard_error": "GET", "oidc_regular": "GET"}},
+		{"file access", "/file.html", logrus.Fields{"files": "GET"}},
+		{"spa access", "/spa", logrus.Fields{"spa": "GET"}},
 	} {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
-		helper.Must(err)
+		t.Run(tc.name, func(st *testing.T) {
+			helper := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
 
-		hook.Reset()
-		_, err = client.Do(req)
-		helper.Must(err)
+			hook.Reset()
+			_, err = client.Do(req)
+			helper.Must(err)
 
-		// Wait for logs
-		time.Sleep(200 * time.Millisecond)
+			// Wait for logs
+			time.Sleep(200 * time.Millisecond)
 
-		// Access log
-		entries := hook.AllEntries()
-		if len(entries) == 0 {
-			t.Errorf("expected log entries, got none")
-			return
-		}
+			// Access log
+			entries := hook.AllEntries()
+			if len(entries) == 0 {
+				st.Errorf("expected log entries, got none")
+				return
+			}
 
-		got, ok := entries[0].Data["custom"].(logrus.Fields)
-		if !ok {
-			t.Fatal("expected custom log field, got none")
-		}
+			got, ok := entries[0].Data["custom"].(logrus.Fields)
+			if !ok {
+				st.Fatal("expected custom log field, got none")
+			}
 
-		if !reflect.DeepEqual(tc.exp, got) {
-			t.Error(cmp.Diff(tc.exp, got))
-		}
+			if !reflect.DeepEqual(tc.exp, got) {
+				st.Error(cmp.Diff(tc.exp, got))
+			}
+		})
 	}
 }
 

@@ -96,6 +96,53 @@ server "logs" {
         backend = "BE"
       }
     }
+
+    endpoint "/oauth2cb" {
+      access_control = ["oauth2-regular"]
+      proxy {
+        backend = "BE"
+      }
+    }
+
+    endpoint "/oauth2cb-wildcard" {
+      access_control = ["oauth2-wildcard"]
+      proxy {
+        backend = "BE"
+      }
+    }
+
+    endpoint "/saml/acs" {
+      access_control = ["SSO"]
+
+      response {
+        status = 418
+      }
+    }
+
+    endpoint "/saml-wildcard/acs" {
+      access_control = ["SSO-wildcard"]
+
+      response {
+        status = 418
+      }
+    }
+
+    endpoint "/oidc/cb" {
+      access_control = ["oidc"]
+
+      response {
+        status = 204
+      }
+    }
+
+    endpoint "/oidc-wildcard/cb" {
+      access_control = ["oidc-wildcard"]
+
+      response {
+        status = 204
+      }
+    }
+
   }
 }
 
@@ -147,6 +194,124 @@ definitions {
     error_handler {
       custom_log_fields = {
         jwt_error_wildcard = request.method
+      }
+    }
+  }
+
+  beta_oauth2 "oauth2-regular" {
+    grant_type = "authorization_code"
+    redirect_uri = "http://localhost:8080/oauth2cb" # value is not checked
+    authorization_endpoint = "https://authorization.server/oauth2/authorize"
+    token_endpoint = "not.checked/token"
+    token_endpoint_auth_method = "client_secret_post"
+    verifier_method = "ccm_s256"
+    verifier_value = request.query.pkcecv
+    client_id = "foo"
+    client_secret = "etbinbp4in"
+    custom_log_fields = {
+      oauth2_regular = request.method
+    }
+
+    error_handler "oauth2" {
+      custom_log_fields = {
+        oauth2_error = request.method
+      }
+    }
+  }
+
+  beta_oauth2 "oauth2-wildcard" {
+    grant_type = "authorization_code"
+    redirect_uri = "http://localhost:8080/oauth2cb-wildcard" # value is not checked
+    authorization_endpoint = "https://authorization.server/oauth2/authorize"
+    token_endpoint = "not.checked/token"
+    token_endpoint_auth_method = "client_secret_post"
+    verifier_method = "ccm_s256"
+    verifier_value = request.query.pkcecv
+    client_id = "foo"
+    client_secret = "etbinbp4in"
+    custom_log_fields = {
+      oauth2_regular = request.method
+    }
+
+    error_handler {
+      custom_log_fields = {
+        oauth2_wildcard_error = request.method
+      }
+    }
+  }
+
+  saml "SSO" {
+    idp_metadata_file = "../../../../accesscontrol/testdata/idp-metadata.xml"
+    sp_acs_url = "http://localhost:8080/saml/acs"
+    sp_entity_id = "local-test"
+    array_attributes = ["memberOf"]
+
+    custom_log_fields = {
+      saml_regular = request.method
+    }
+
+    error_handler "saml2" {
+      custom_log_fields = {
+        saml_error = request.method
+      }
+    }
+  }
+
+  saml "SSO-wildcard" {
+    idp_metadata_file = "../../../../accesscontrol/testdata/idp-metadata.xml"
+    sp_acs_url = "http://localhost:8080/saml/acs"
+    sp_entity_id = "local-test"
+    array_attributes = ["memberOf"]
+
+    custom_log_fields = {
+      saml_regular = request.method
+    }
+
+    error_handler {
+      custom_log_fields = {
+        saml_wildcard_error = request.method
+      }
+    }
+  }
+
+  beta_oidc "oidc" {
+    configuration_url = "${env.COUPER_TEST_BACKEND_ADDR}/.well-known/openid-configuration"
+    configuration_ttl = "1h"
+    client_id = "foo"
+    client_secret = "custom-logs-3344"
+    redirect_uri = "http://localhost:8080/oidc/cb" # value is not checked
+    scope = "profile email"
+    verifier_method = "nonce"
+    verifier_value = request.query.nnc
+
+    custom_log_fields = {
+      oidc_regular = request.method
+    }
+
+    error_handler "oauth2" {
+      custom_log_fields = {
+        oidc_error = request.method
+      }
+    }
+  }
+
+  beta_oidc "oidc-wildcard" {
+    configuration_url = "${env.COUPER_TEST_BACKEND_ADDR}/.well-known/openid-configuration"
+    configuration_ttl = "1h"
+    client_id = "foo"
+    client_secret = "custom-logs-3344"
+    redirect_uri = "http://localhost:8080/oidc/cb" # value is not checked
+    scope = "profile email"
+    verifier_method = "nonce"
+    verifier_value = request.query.nnc
+
+    custom_log_fields = {
+      oidc_regular = request.method
+    }
+
+    error_handler {
+      custom_log_fields = {
+        oidc_wildcard_error = request.method
       }
     }
   }
