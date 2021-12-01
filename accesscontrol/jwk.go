@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"reflect"
 )
 
 type JWK struct {
@@ -36,23 +35,6 @@ type rawJWK struct {
 	Y   *base64URLEncodedField `json:"y"`
 	//X5t *base64URLEncodedField `json:"x5t"`
 	//X5tS256" *base64URLEncodedField `json:"x5t#S256"`
-}
-
-func (j JWK) MarshalJSON() ([]byte, error) {
-	var raw *rawJWK
-	switch key := j.Key.(type) {
-	case *rsa.PublicKey:
-		raw = fromRsaPublicKey(key)
-	case *ecdsa.PublicKey:
-		raw = fromECDSAPublicKey(key)
-	default:
-		return nil, fmt.Errorf("kty '%s' not supported", reflect.TypeOf(key))
-	}
-	raw.Kid = j.KeyID
-	raw.Alg = j.Algorithm
-	raw.Use = j.Use
-
-	return json.Marshal(raw)
 }
 
 func (j *JWK) UnmarshalJSON(data []byte) error {
@@ -228,7 +210,7 @@ func getCurve(name string) (elliptic.Curve, error) {
 	case "P-521":
 		return elliptic.P521(), nil
 	}
-	return nil, fmt.Errorf("Invalid crv: %s", name)
+	return nil, fmt.Errorf("invalid crv: %s", name)
 }
 
 func getPublicKeyFromX5c(x5c []*base64EncodedField) (interface{}, error) {

@@ -90,6 +90,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 		{"invalid crv", "testdata/jwks_ecdsa.json", "invalid-crv", "ES512", "sig", false},
 		{"missing x", "testdata/jwks_ecdsa.json", "missing-x", "ES256", "sig", false},
 		{"missing y", "testdata/jwks_ecdsa.json", "missing-y", "ES256", "sig", false},
+		{"ok", "testdata/jwks_ecdsa.json", "ok", "ES256", "sig", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
