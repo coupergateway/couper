@@ -13,6 +13,22 @@
       "alg": "RS256",
       "use": "sig",
       "x5c": ["YXNkZmc="]
+    },
+    {
+      "kid": "es256",
+      "kty": "EC",
+      "alg": "ES256",
+      "use": "sig",
+      "x5c": ["MIIB4DCCAYWgAwIBAgIUVOOrmw8OvGQiCPvto/63eRffu/4wCgYIKoZIzj0EAwIwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0yMTExMzAwODExMjNaFw0yMTEyMzAwODExMjNaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASA/GyLdjYnUVauNeNpwBaZsH4Yi7Mo8utbkqKRrEu3C6gMTrWhpYwzgf32YY83uTgGZqaV7yd70+vutCFe6Twjo1MwUTAdBgNVHQ4EFgQUecyncvrCqWbCFtF9ecT6UezzNBgwHwYDVR0jBBgwFoAUecyncvrCqWbCFtF9ecT6UezzNBgwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNJADBGAiEAmpwfCIJwpcmTJfZ53uzuLMa+k3hfJHMV0sG9da+HruoCIQD3BsmHlynlcC6ucexs4bw3OxWsDrBR055wzoCS1tnOIg=="]
+    },
+    {
+      "kid": "es256-crv-x-y",
+      "kty": "EC",
+      "alg": "ES256",
+      "use": "sig",
+      "crv": "P-256",
+      "x": "gPxsi3Y2J1FWrjXjacAWmbB-GIuzKPLrW5KikaxLtws",
+      "y": "qAxOtaGljDOB_fZhjze5OAZmppXvJ3vT6-60IV7pPCM"
     }
   ]
 }

@@ -143,7 +143,77 @@ server "acs" {
     }
   }
 
+  endpoint "/jwt/rsa/pkcs1" {
+    disable_access_control = ["ba1"]
+    access_control = ["RSAToken1"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.RSAToken1.sub
+      }
+    }
+  }
+
+  endpoint "/jwt/rsa/pkcs8" {
+    disable_access_control = ["ba1"]
+    access_control = ["RSAToken8"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.RSAToken8.sub
+      }
+    }
+  }
+
+  endpoint "/jwt/rsa/bad" {
+    disable_access_control = ["ba1"]
+    access_control = ["RSATokenWrongAlgorithm"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.RSATokenWrongAlgorithm.sub
+      }
+    }
+  }
+
+  endpoint "/jwt/ecdsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["ECDSAToken"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.ECDSAToken.sub
+      }
+    }
+  }
+
+  endpoint "/jwt/ecdsa8" {
+    disable_access_control = ["ba1"]
+    access_control = ["ECDSAToken8"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.ECDSAToken8.sub
+      }
+    }
+  }
+
+  endpoint "/jwt/ecdsa/bad" {
+    disable_access_control = ["ba1"]
+    access_control = ["ECDSATokenWrongAlgorithm"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.ECDSATokenWrongAlgorithm.sub
+      }
+    }
+  }
+
   endpoint "/jwks/rsa" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS.sub
+      }
+    }
+  }
+
+  endpoint "/jwks/ecdsa" {
     disable_access_control = ["ba1"]
     access_control = ["JWKS"]
     response {
@@ -169,7 +239,7 @@ server "acs" {
     access_control = ["JWKS_not_found"]
     response {
       headers = {
-        x-jwt-sub = request.context.JWKS.sub
+        x-jwt-sub = request.context.JWKS_not_found.sub
       }
     }
   }
@@ -201,6 +271,12 @@ server "acs" {
       }
     }
   }
+  endpoint "/jwt/create" {
+    disable_access_control = ["ba1"]
+    response {
+      body = jwt_sign(request.query.type[0], {"sub":1234567890})
+    }
+  }
 }
 
 definitions {
@@ -230,6 +306,62 @@ definitions {
     header = "Authorization"
     signature_algorithm = "RS256"
     key_file = "../files/certificate.pem"
+  }
+  jwt "RSAToken1" {
+    header = "Authorization"
+    signature_algorithm = "RS256"
+    key =<<-EOF
+        -----BEGIN RSA PUBLIC KEY-----
+        MIIBCgKCAQEAxOubq8QN8gBVEwINCfVNvmZAhO+ZLeKZapT38OyZkqm+8BUs98cB
+        FmzUCiuN2cFrjuhoRAXj2YV/3lu0Sy/G3knLFbGSfuJ+oZuwYNDA3lasGJNZonRE
+        sAUJde1hI0uJbceJzcJDifUx2zGR5eCRQKlxxiV/irEy+wZ+/fN9xrue18BykLz6
+        HQBXu4mhc17q9qAZtx3hLBRxQwkZGbxumgYGdPXuh2YV82adw18wiZIXgVOvawgX
+        QvlVDnjSaLqE3RE/bkVmWkE4TRQuFYhqoEFV50RBILEWlwUHqNggL9zUw2/RdW1u
+        TyQJtEMRiz6WgiWaq0l9SkmlrSFA2SDA5wIDAQAB
+        -----END RSA PUBLIC KEY-----
+    EOF
+  }
+  jwt "RSAToken8" {
+    header = "Authorization"
+    signature_algorithm = "RS256"
+    key =<<-EOF
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxOubq8QN8gBVEwINCfVN
+        vmZAhO+ZLeKZapT38OyZkqm+8BUs98cBFmzUCiuN2cFrjuhoRAXj2YV/3lu0Sy/G
+        3knLFbGSfuJ+oZuwYNDA3lasGJNZonREsAUJde1hI0uJbceJzcJDifUx2zGR5eCR
+        QKlxxiV/irEy+wZ+/fN9xrue18BykLz6HQBXu4mhc17q9qAZtx3hLBRxQwkZGbxu
+        mgYGdPXuh2YV82adw18wiZIXgVOvawgXQvlVDnjSaLqE3RE/bkVmWkE4TRQuFYhq
+        oEFV50RBILEWlwUHqNggL9zUw2/RdW1uTyQJtEMRiz6WgiWaq0l9SkmlrSFA2SDA
+        5wIDAQAB
+        -----END PUBLIC KEY-----
+    EOF
+  }
+  jwt "RSATokenWrongAlgorithm" {
+    header = "Authorization"
+    signature_algorithm = "RS384"
+    key_file = "../files/certificate.pem"
+  }
+  jwt "ECDSAToken" {
+    header = "Authorization"
+    signature_algorithm = "ES256"
+    key_file = "../files/certificate-ecdsa.pem"
+    signing_ttl = "10s"
+    signing_key_file = "../files/ecdsa.key"
+  }
+  jwt "ECDSAToken8" {
+    header = "Authorization"
+    signature_algorithm = "ES256"
+    key =<<-EOF
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgPxsi3Y2J1FWrjXjacAWmbB+GIuz
+        KPLrW5KikaxLtwuoDE61oaWMM4H99mGPN7k4Bmamle8ne9Pr7rQhXuk8Iw==
+        -----END PUBLIC KEY-----
+    EOF
+  }
+  jwt "ECDSATokenWrongAlgorithm" {
+    header = "Authorization"
+    signature_algorithm = "ES384"
+    key_file = "../files/certificate-ecdsa.pem"
   }
   jwt "JWKS" {
     header = "Authorization"

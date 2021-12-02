@@ -1,7 +1,10 @@
 package lib
 
 import (
+	"crypto/ecdsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
@@ -58,11 +61,11 @@ func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 	key = keyBytes
 	if strings.HasPrefix(signatureAlgorithm, "RS") {
 		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
-		if parseErr != nil {
-			return nil, parseErr
-		}
+	} else if strings.HasPrefix(signatureAlgorithm, "ES") {
+		key, parseErr = parseECPrivateKeyFromPEM(keyBytes)
 	}
-	return key, nil
+
+	return key, parseErr
 }
 
 func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWTSigningConfig, error) {
@@ -222,4 +225,30 @@ func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClai
 
 	// sign token
 	return token.SignedString(key)
+}
+
+func parseECPrivateKeyFromPEM(key []byte) (*ecdsa.PrivateKey, error) {
+	var err error
+
+	// Parse PEM block
+	var block *pem.Block
+	if block, _ = pem.Decode(key); block == nil {
+		return nil, jwt.ErrKeyMustBePEMEncoded
+	}
+
+	// Parse the key
+	var parsedKey interface{}
+	if parsedKey, err = x509.ParseECPrivateKey(block.Bytes); err != nil {
+		if parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
+			return nil, err
+		}
+	}
+
+	var pkey *ecdsa.PrivateKey
+	var ok bool
+	if pkey, ok = parsedKey.(*ecdsa.PrivateKey); !ok {
+		return nil, jwt.ErrNotECPrivateKey
+	}
+
+	return pkey, nil
 }
