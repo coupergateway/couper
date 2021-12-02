@@ -17,7 +17,7 @@ const (
 	RedirectURI                   = "redirect_uri"
 	CodeVerifier                  = "code_verifier"
 	FnOAuthAuthorizationUrl       = "oauth2_authorization_url"
-	FnOAuthVerifier               = "beta_oauth_verifier"
+	FnOAuthVerifier               = "oauth2_verifier"
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
 )
 

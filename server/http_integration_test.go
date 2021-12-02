@@ -3973,7 +3973,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 	v2 := res.Header.Get("x-v-2")
 	hv := res.Header.Get("x-hv")
 	if v2 != v1 {
-		t.Errorf("multiple calls to beta_oauth_verifier() must return the same value:\n\t%s\n\t%s", v1, v2)
+		t.Errorf("multiple calls to oauth2_verifier() must return the same value:\n\t%s\n\t%s", v1, v2)
 	}
 	s256 := oauth2.Base64urlSha256(v1)
 	if hv != s256 {
@@ -4021,7 +4021,7 @@ func TestOAuthPKCEFunctions(t *testing.T) {
 
 	cv1_n := res.Header.Get("x-v-1")
 	if cv1_n == v1 {
-		t.Errorf("calls to beta_oauth_verifier() on different requests must not return the same value:\n\t%s\n\t%s", v1, cv1_n)
+		t.Errorf("calls to oauth2_verifier() on different requests must not return the same value:\n\t%s\n\t%s", v1, cv1_n)
 	}
 }
 
