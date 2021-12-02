@@ -84,6 +84,22 @@ server "acs" {
     }
   }
 
+  endpoint "/ba5" {
+    access_control = ["ba5"]
+    disable_access_control = ["ba1"]
+    proxy {
+      backend "test" {
+        set_request_headers = {
+          X-Ba-User = request.context.ba5.user
+          Authorization = request.headers.authorization # proxy blacklist
+        }
+        set_response_headers = {
+          X-BA-User = request.context.ba5.user
+        }
+      }
+    }
+  }
+
   endpoint "/jwt" {
     disable_access_control = ["ba1"]
     access_control = ["JWTToken"]
@@ -199,6 +215,10 @@ definitions {
   }
   basic_auth "ba4" {
     password = "asdf"
+  }
+  basic_auth "ba5" {
+    user     = "USR"
+    password = "PWD"
   }
   jwt "JWTToken" {
     header = "Authorization"

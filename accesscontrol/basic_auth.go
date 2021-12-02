@@ -2,6 +2,7 @@ package accesscontrol
 
 import (
 	"bufio"
+	"context"
 	"crypto/subtle"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
 
@@ -117,7 +119,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	if ba.user == user {
 		if ba.pass != "" {
 			if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
-				return nil
+				return ba.withUsername(req, user)
 			}
 			return errors.BasicAuth.Message("credential mismatch")
 		}
@@ -129,10 +131,27 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 
 	if len(ba.htFile) > 0 {
 		if validateAccessData(user, pass, ba.htFile) {
-			return nil
+			return ba.withUsername(req, user)
 		}
 		return errors.BasicAuth.Message("file: credential mismatch")
 	}
 
 	return errors.BasicAuth.Message("credential mismatch")
+}
+
+func (ba *BasicAuth) withUsername(req *http.Request, user string) error {
+	u := make(map[string]interface{})
+	u["user"] = user
+
+	ctx := req.Context()
+	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
+	if !ok {
+		acMap = make(map[string]interface{})
+	}
+	acMap[ba.name] = u
+
+	ctx = context.WithValue(ctx, request.AccessControls, acMap)
+	*req = *req.WithContext(ctx)
+
+	return nil
 }
