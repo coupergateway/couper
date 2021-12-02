@@ -384,7 +384,7 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `signing_key`       |string|-|Private key (in PEM format) for `RS*` variants.|-|-|
+| `signing_key`       |string|-|Private key (in PEM format) for `RS*` and `ES*` variants.|-|-|
 | `signing_key_file`  |string|-|Optional file reference instead of `signing_key` usage.|-|-|
 | `signing_ttl`       |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|
 
@@ -403,7 +403,7 @@ An example can be found
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `key`  |string|-|Private key (in PEM format) for `RS*` variants or the secret for `HS*` algorithm.|-|-|
+| `key`  |string|-|Private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`  |string|-|Optional file reference instead of `key` usage.|-|-|
 | `signature_algorithm`|-|-|-|&#9888; required. Valid values: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` `ES256` `ES384` `ES512`|-|
 | `ttl`  |[duration](#duration)|-|The token's time-to-live (creates the `exp` claim).|-|-|

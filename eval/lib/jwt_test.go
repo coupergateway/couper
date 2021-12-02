@@ -332,6 +332,51 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.flU1adXUEaZuqkFwhcgJ8U3OXYOTC6RQCWw9rb7nkTNzt7XrU13EPtlxH5_7lpAvyBn4iyOCiJd19y1paupyeYbHEgUGsVXa4Iu1jQ8I7C41ejLNybdg7XpRzf3zt6tMC3W9Bp0TYRqrykTiQ0W4pg0sGJCV-e30dSDgkfuS_TM",
 		},
 		{
+			"ES256 / key_file",
+			`
+			server {}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "ES256"
+					key_file = "testdata/ecdsa_256_priv.pem"
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"",
+		},
+		{
+			"ES384 / key w/ 'EC'",
+			`
+			server {}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "ES384"
+					key =<<-EOF
+						-----BEGIN EC PRIVATE KEY-----
+						ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDBq1TvCPgzWTeRiI4Aj0CqN
+						MduYWGwc4gZcHCj07O1H36z5MGdd4pj0T2B/QrY7D20=
+						-----END EC PRIVATE KEY-----
+					EOF
+					ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"",
+		},
+		{
 			"jwt / HS256 / key",
 			`
 			server "test" {
@@ -431,6 +476,32 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			`{"sub":"12345"}`,
 			"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.oSS8rC1KonyZ-JZTZhkqZb5bN0_2Lrbl4J33nLgWroc5vDvmLW0KnX0RQfXy0OjX4uBBYTThActqqqM6vidaXmBfsQ77uB9narWeAptRnKqEPlY-onTHDmTMCz7vQ9wbLT7Aa6MYlhRqKX5adpPPbwBUuhm2I-yMF80nSmFpSk0",
 		},
+		{
+			"jwt / ES512 / key",
+			`
+			server {}
+			definitions {
+				jwt "MySelfSignedToken" {
+					signature_algorithm = "ES512"
+					signing_key =<<-EOF
+						-----BEGIN PRIVATE KEY-----
+						MGACAQAwEAYHKoZIzj0CAQYFK4EEACMESTBHAgEBBEIBm9HVgPAxvAzYy5q6+DNM
+						4CQuGWaiBcwQSRSlLCVkfRclRf8BvTFRT8GATBsdSP/wl5xBFVeo/G7xu0t9wKK/
+						Cno=
+						-----END PRIVATE KEY-----
+					EOF
+					signing_ttl = "0"
+					claims = {
+					  iss = to_lower("The_Issuer")
+					  aud = to_upper("The_Audience")
+					}
+				}
+			}
+			`,
+			"MySelfSignedToken",
+			`{"sub":"12345"}`,
+			"",
+		},
 	}
 
 	for _, tt := range tests {
@@ -450,7 +521,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			if err != nil {
 				subT.Fatal(err)
 			}
-			if token.AsString() != tt.want {
+			if tt.want != "" && token.AsString() != tt.want {
 				subT.Errorf("Expected %q, got: %#v", tt.want, token.AsString())
 			}
 		})
@@ -952,6 +1023,28 @@ func TestJwtSignError(t *testing.T) {
 			"NoProfileForThisLabel",
 			`{"sub": "12345"}`,
 			`missing jwt_signing_profile or jwt (with signing_ttl) for given label "NoProfileForThisLabel"`,
+		},
+		{
+			"jwt / bad curve for algorithm",
+			`
+			server {}
+			definitions {
+				jwt_signing_profile "MyToken" {
+					signature_algorithm = "ES512"
+					key =<<-EOF
+						-----BEGIN EC PRIVATE KEY-----
+						MHcCAQEEIPhFjEWy9WowuN52bmIdbSD4gMKdBjFplPhU/jUf8GFyoAoGCCqGSM49
+						AwEHoUQDQgAEgPxsi3Y2J1FWrjXjacAWmbB+GIuzKPLrW5KikaxLtwuoDE61oaWM
+						M4H99mGPN7k4Bmamle8ne9Pr7rQhXuk8Iw==
+						-----END EC PRIVATE KEY-----
+					EOF
+					ttl = 0
+				}
+			}
+			`,
+			"MyToken",
+			`{"sub":"12345"}`,
+			"key is invalid: CurveBits in public key don't match those in signing method",
 		},
 	}
 
