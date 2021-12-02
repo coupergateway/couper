@@ -1,10 +1,10 @@
-package accesscontrol_test
+package jwk_test
 
 import (
 	"sync"
 	"testing"
 
-	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -23,7 +23,7 @@ func Test_JWKS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := ac.NewJWKS(tt.url, "", nil, nil)
+			_, err := jwk.NewJWKS(tt.url, "", nil, nil)
 			if err == nil && tt.error != "" {
 				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
 			}
@@ -46,7 +46,7 @@ func Test_JWKS_Load(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
 			_, err = jwks.Data()
 			if err != nil && tt.expParsed {
@@ -95,7 +95,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
 			_, err = jwks.Data()
 			helper.Must(err)
@@ -116,7 +116,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	memQuitCh := make(chan struct{})
 	defer close(memQuitCh)
 
-	jwks, err := ac.NewJWKS("file:testdata/jwks.json", "", nil, nil)
+	jwks, err := jwk.NewJWKS("file:testdata/jwks.json", "", nil, nil)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

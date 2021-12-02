@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/accesscontrol/jwk"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -51,7 +52,7 @@ type JWT struct {
 	rolesClaim     string
 	rolesMap       map[string][]string
 	scopeClaim     string
-	jwks           *JWKS
+	jwks           *jwk.JWKS
 }
 
 type JWTOptions struct {
@@ -64,7 +65,7 @@ type JWTOptions struct {
 	ScopeClaim     string
 	Source         JWTSource
 	Key            []byte
-	JWKS           *JWKS
+	JWKS           *jwk.JWKS
 }
 
 func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
