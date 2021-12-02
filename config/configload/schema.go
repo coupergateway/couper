@@ -1,13 +1,16 @@
 package configload
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 const (
@@ -18,17 +21,18 @@ const (
 
 var (
 	reFetchUnsupportedName = regexp.MustCompile(`\"([^"]+)\"`)
-	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\).`)
-	reFetchUnlabeledName   = regexp.MustCompile(`No labels are expected for (.*) blocks.`)
-	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here.`)
+	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\)\.`)
+	reFetchUnlabeledName   = regexp.MustCompile(`No labels are expected for (.*) blocks\.`)
+	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
+	reFetchUniqueKey       = regexp.MustCompile(`Key must be unique for (.*)\.`)
 )
 
-func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
-	attrs, blocks, diags := getSchemaComponents(body, obj)
+func ValidateConfigSchema(body hcl.Body, obj interface{}, src []byte) hcl.Diagnostics {
+	attrs, blocks, diags := getSchemaComponents(body, obj, src)
 	diags = filterValidErrors(attrs, blocks, diags)
 
 	for _, block := range blocks {
-		diags = diags.Extend(checkObjectFields(block, obj))
+		diags = diags.Extend(checkObjectFields(block, obj, src))
 	}
 
 	return uniqueErrors(diags)
@@ -53,6 +57,10 @@ func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagno
 				continue
 			}
 			if match := reFetchUnexpectedArg.MatchString(err.Detail); match {
+				errors = errors.Append(err)
+				continue
+			}
+			if match := reFetchUniqueKey.MatchString(err.Detail); match {
 				errors = errors.Append(err)
 				continue
 			}
@@ -84,7 +92,7 @@ func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagno
 	return errors
 }
 
-func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
+func checkObjectFields(block *hcl.Block, obj interface{}, src []byte) hcl.Diagnostics {
 	var errors hcl.Diagnostics
 	var checked bool
 
@@ -103,7 +111,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 
 		if field.Anonymous {
 			o := reflect.New(field.Type).Interface()
-			errors = errors.Extend(checkObjectFields(block, o))
+			errors = errors.Extend(checkObjectFields(block, o, src))
 
 			continue
 		}
@@ -122,7 +130,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 
 		if field.Type.Kind() == reflect.Ptr {
 			o := reflect.New(field.Type.Elem()).Interface()
-			errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+			errors = errors.Extend(ValidateConfigSchema(block.Body, o, src))
 
 			continue
 		} else if field.Type.Kind() == reflect.Slice {
@@ -153,7 +161,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 				}
 
 				o := reflect.New(elem).Interface()
-				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+				errors = errors.Extend(ValidateConfigSchema(block.Body, o, src))
 
 				continue
 			}
@@ -167,14 +175,14 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 
 	if !checked {
 		if i, ok := obj.(config.Inline); ok {
-			errors = errors.Extend(checkObjectFields(block, i.Inline()))
+			errors = errors.Extend(checkObjectFields(block, i.Inline(), src))
 		}
 	}
 
 	return errors
 }
 
-func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func getSchemaComponents(body hcl.Body, obj interface{}, src []byte) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
 	var (
 		attrs  = make(hcl.Attributes)
 		blocks hcl.Blocks
@@ -197,17 +205,17 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 		schema = config.WithErrorHandlerSchema(schema)
 	}
 
-	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
+	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors, src)
 
 	if i, ok := obj.(config.Inline); ok {
-		attrs, blocks, errors = completeSchemaComponents(body, i.Schema(true), attrs, blocks, errors)
+		attrs, blocks, errors = completeSchemaComponents(body, i.Schema(true), attrs, blocks, errors, src)
 	}
 
 	return attrs, blocks, errors
 }
 
 func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.Attributes,
-	blocks hcl.Blocks, errors hcl.Diagnostics) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+	blocks hcl.Blocks, errors hcl.Diagnostics, src []byte) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
 
 	content, diags := body.Content(schema)
 
@@ -236,6 +244,32 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 
 	if content != nil {
 		for name, attr := range content.Attributes {
+			if expr, ok := attr.Expr.(*hclsyntax.ObjectConsExpr); ok {
+				unique := make(map[string]hcl.Range)
+
+				for _, item := range expr.Items {
+					keyRange := item.KeyExpr.Range()
+					if keyRange.CanSliceBytes(src) {
+						key := keyRange.SliceBytes(src)
+						lwrKey := strings.ToLower(string(key))
+
+						if previous, exist := unique[lwrKey]; exist {
+							errors = errors.Append(&hcl.Diagnostic{
+								Subject:  &keyRange,
+								Severity: hcl.DiagError,
+								Summary: fmt.
+									Sprintf("key must be unique: '%s' was previously defined at: %s",
+										lwrKey,
+										previous.String()),
+								Detail: "Key must be unique for " + string(key) + ".",
+							})
+						}
+
+						unique[lwrKey] = keyRange
+					}
+				}
+			}
+
 			attrs[name] = attr
 		}
 
