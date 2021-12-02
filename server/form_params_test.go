@@ -148,7 +148,12 @@ func TestIntegration_FormParams(t *testing.T) {
 				subT.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
 			}
 
-			if hook.Entries[0].Message != tc.expErr {
+			entries := hook.AllEntries()
+			if len(entries) == 0 {
+				subT.Fatal("Expected log messages, got none")
+			}
+
+			if entries[0].Message != tc.expErr {
 				subT.Logf("%v", hook)
 				subT.Errorf("%d: Expected message log: %s", i, tc.expErr)
 			}
