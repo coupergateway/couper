@@ -157,7 +157,7 @@ func TestJwtSignStatic(t *testing.T) {
 			"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.LCzGZMYxwLAra2tHNDFBCSKVzMdZeZGxhgGuVr0e9mHDXMqpyOiCBWN2JB-9aDUNPHobwxEWofPY8M9icL3YXQ",
 		},
 		{
-			"RS256 / key",
+			"RS256 / PKCS#8 key",
 			`
 			server "test" {
 			}
@@ -165,21 +165,22 @@ func TestJwtSignStatic(t *testing.T) {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "RS256"
 					key = <<EOF
------BEGIN RSA PRIVATE KEY-----
-MIICWwIBAAKBgQDGSd+sSTss2uOuVJKpumpFAamlt1CWLMTAZNAabF71Ur0P6u83
-3RhAIjXDSA/QeVitzvqvCZpNtbOJVegaREqLMJqvFOUkFdLNRP3f9XjYFFvubo09
-tcjX6oGEREKDqLG2MfZ2Z8LVzuJc6SwZMgVFk/63rdAOci3W9u3zOSGj4QIDAQAB
-AoGAMzI1rw0FW1J0wLkTWQFJmOGSBLhs9Sk/75DX7kqWxe6D5A07kIfkUALFMNN1
-SdVa4R10uibXkULdxRLKJ6YEPLGAN3UmdbnBGxZ+fHAKY3PxM5lL9d7ET08A0u/8
-6vB+GZ8w0eqsp4EFzmXI5LS63cRo9GA5iliGpKWtd2IUA2UCQQDnZHJTHW21vrXv
-GqXoPxOoQAflxvnHYDgNQcRJxlEokFmSK405n7G2//NrsSnXYmUsA/wdh9YsAYZ3
-4xy6hKE3AkEA22Aw58FnypcRAKBTqEWHv957szAmz9R6mLJqG7283YWXL0VGDOuR
-qdC4QjMrix3O8WbJxGNaVCrvYKVtKEfPpwJAGGWw4C6UKLuI90L6BzjPW8gUjRej
-sm/kuREcHyM3320I5K6O32qFFGR8R/iQDtOjEzcAWCTAYjdu9CkQGGJvlQJAHpCR
-X8jfmCdiFA9CeKBvYHk0DOw5jB1Tk3DQPds6tDaHsOta7jPoEJvnADo25+QYUCP9
-GqKpFC8DORjzU3hl4wJACEzmqzAco2M4mVc+PxPX0b3LHaREyXURd+faFXUecxSF
-BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
------END RSA PRIVATE KEY-----
+-----BEGIN PRIVATE KEY-----
+MIICdQIBADANBgkqhkiG9w0BAQEFAASCAl8wggJbAgEAAoGBAMZJ36xJOyza465U
+kqm6akUBqaW3UJYsxMBk0BpsXvVSvQ/q7zfdGEAiNcNID9B5WK3O+q8Jmk21s4lV
+6BpESoswmq8U5SQV0s1E/d/1eNgUW+5ujT21yNfqgYREQoOosbYx9nZnwtXO4lzp
+LBkyBUWT/ret0A5yLdb27fM5IaPhAgMBAAECgYAzMjWvDQVbUnTAuRNZAUmY4ZIE
+uGz1KT/vkNfuSpbF7oPkDTuQh+RQAsUw03VJ1VrhHXS6JteRQt3FEsonpgQ8sYA3
+dSZ1ucEbFn58cApjc/EzmUv13sRPTwDS7/zq8H4ZnzDR6qyngQXOZcjktLrdxGj0
+YDmKWIakpa13YhQDZQJBAOdkclMdbbW+te8apeg/E6hAB+XG+cdgOA1BxEnGUSiQ
+WZIrjTmfsbb/82uxKddiZSwD/B2H1iwBhnfjHLqEoTcCQQDbYDDnwWfKlxEAoFOo
+RYe/3nuzMCbP1HqYsmobvbzdhZcvRUYM65Gp0LhCMyuLHc7xZsnEY1pUKu9gpW0o
+R8+nAkAYZbDgLpQou4j3QvoHOM9byBSNF6Oyb+S5ERwfIzffbQjkro7faoUUZHxH
++JAO06MTNwBYJMBiN270KRAYYm+VAkAekJFfyN+YJ2IUD0J4oG9geTQM7DmMHVOT
+cNA92zq0Noew61ruM+gQm+cAOjbn5BhQI/0aoqkULwM5GPNTeGXjAkAITOarMByj
+YziZVz4/E9fRvcsdpETJdRF359oVdR5zFIUFKFwYdmX2fNYO0RnOB1ftxsbmdFSj
+X7CHMFB1ihCa
+-----END PRIVATE KEY-----
 					EOF
 					ttl = "0"
 					claims = {
@@ -194,7 +195,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.oSS8rC1KonyZ-JZTZhkqZb5bN0_2Lrbl4J33nLgWroc5vDvmLW0KnX0RQfXy0OjX4uBBYTThActqqqM6vidaXmBfsQ77uB9narWeAptRnKqEPlY-onTHDmTMCz7vQ9wbLT7Aa6MYlhRqKX5adpPPbwBUuhm2I-yMF80nSmFpSk0",
 		},
 		{
-			"RS256 / key_file",
+			"RS256 / PKCS#1 key_file",
 			`
 			server "test" {
 			}
@@ -215,7 +216,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.oSS8rC1KonyZ-JZTZhkqZb5bN0_2Lrbl4J33nLgWroc5vDvmLW0KnX0RQfXy0OjX4uBBYTThActqqqM6vidaXmBfsQ77uB9narWeAptRnKqEPlY-onTHDmTMCz7vQ9wbLT7Aa6MYlhRqKX5adpPPbwBUuhm2I-yMF80nSmFpSk0",
 		},
 		{
-			"RS384 / key",
+			"RS384 / PKCS#1 key",
 			`
 			server "test" {
 			}
@@ -252,14 +253,14 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.GaKMl5KxXXTlOUgfZy-Cs81jvVhp-2TjEZIg58qnjIbHH7P0YtIr8p4ikTHQhie7oXs5iwzQPdPqwJSUYHlia3t118mv1ie0IWjqmXhOcWsEODQYHfshIfKaqfIZaF7WFBZXfNdXX4g-8_aUrNPevZ_6vVhHq2844cjaKH-XGl4",
 		},
 		{
-			"RS384 / key_file",
+			"RS384 / PKCS#8 key_file",
 			`
 			server "test" {
 			}
 			definitions {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "RS384"
-					key_file = "testdata/rsa_priv.pem"
+					key_file = "testdata/rsa_pkcs8_priv.pem"
 					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
@@ -273,7 +274,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.GaKMl5KxXXTlOUgfZy-Cs81jvVhp-2TjEZIg58qnjIbHH7P0YtIr8p4ikTHQhie7oXs5iwzQPdPqwJSUYHlia3t118mv1ie0IWjqmXhOcWsEODQYHfshIfKaqfIZaF7WFBZXfNdXX4g-8_aUrNPevZ_6vVhHq2844cjaKH-XGl4",
 		},
 		{
-			"RS384 / key",
+			"RS512 / PKCS#1 key",
 			`
 			server "test" {
 			}
@@ -310,14 +311,14 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.flU1adXUEaZuqkFwhcgJ8U3OXYOTC6RQCWw9rb7nkTNzt7XrU13EPtlxH5_7lpAvyBn4iyOCiJd19y1paupyeYbHEgUGsVXa4Iu1jQ8I7C41ejLNybdg7XpRzf3zt6tMC3W9Bp0TYRqrykTiQ0W4pg0sGJCV-e30dSDgkfuS_TM",
 		},
 		{
-			"RS384 / key_file",
+			"RS512 / PKCS#8 key_file",
 			`
 			server "test" {
 			}
 			definitions {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "RS512"
-					key_file = "testdata/rsa_priv.pem"
+					key_file = "testdata/rsa_pkcs8_priv.pem"
 					ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
@@ -373,7 +374,7 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.Hf-ZtIlsxR2bDOdAEMaDHaOBmfVWTQi9U68yV4YHW9w",
 		},
 		{
-			"jwt / RS256 / key",
+			"jwt / RS256 / PKCS#1 key",
 			`
 			server "test" {
 			}
@@ -410,14 +411,14 @@ BShcGHZl9nzWDtEZzgdX7cbG5nRUo1+whzBQdYoQmg==
 			"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJUSEVfQVVESUVOQ0UiLCJpc3MiOiJ0aGVfaXNzdWVyIiwic3ViIjoiMTIzNDUifQ.oSS8rC1KonyZ-JZTZhkqZb5bN0_2Lrbl4J33nLgWroc5vDvmLW0KnX0RQfXy0OjX4uBBYTThActqqqM6vidaXmBfsQ77uB9narWeAptRnKqEPlY-onTHDmTMCz7vQ9wbLT7Aa6MYlhRqKX5adpPPbwBUuhm2I-yMF80nSmFpSk0",
 		},
 		{
-			"jwt / RS256 / key_file",
+			"jwt / RS256 / PKCS#8 key_file",
 			`
 			server "test" {
 			}
 			definitions {
 				jwt "MySelfSignedToken" {
 					signature_algorithm = "RS256"
-					signing_key_file = "testdata/rsa_priv.pem"
+					signing_key_file = "testdata/rsa_pkcs8_priv.pem"
 					signing_ttl = "0"
 					claims = {
 					  iss = to_lower("The_Issuer")
