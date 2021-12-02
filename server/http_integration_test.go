@@ -3112,6 +3112,17 @@ func TestJWTAccessControl(t *testing.T) {
 		wantErrLog string
 	}
 
+	tokenRequest, reqerr := http.NewRequest(http.MethodGet, "http://back.end:8080/jwt/create?type=ECDSAToken", nil)
+	if reqerr != nil {
+		t.Fatal(reqerr)
+	}
+	tokenResponse, resperr := client.Do(tokenRequest)
+	if reqerr != nil {
+		t.Fatal(resperr)
+	}
+	bytes, _ := io.ReadAll(tokenResponse.Body)
+	localToken := string(bytes)
+
 	// RSA tokens created with server/testdata/integration/files/pkcs8.key
 	// ECDSA tokens created with server/testdata/integration/files/ecdsa.key
 	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
@@ -3140,6 +3151,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"token_value query", "/jwt/token_value_query?token=" + hmacToken, http.Header{}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"token_value body", "/jwt/token_value_body", http.Header{"Content-Type": {"application/json"}}, `{"token":"` + hmacToken + `"}`, http.StatusOK, `["foo","bar"]`, ""},
 		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
+		{"ECDSA local JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + localToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT PKCS8", "/jwt/ecdsa8", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusForbidden, "", "access control error: ECDSATokenWrongAlgorithm: token is unverifiable: signing method ES256 is invalid"},
 		{"ECDSA JWKS with certificate: kid=es256", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},

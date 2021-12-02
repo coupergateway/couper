@@ -271,6 +271,12 @@ server "acs" {
       }
     }
   }
+  endpoint "/jwt/create" {
+    disable_access_control = ["ba1"]
+    response {
+      body = jwt_sign(request.query.type[0], {"sub":1234567890})
+    }
+  }
 }
 
 definitions {
@@ -339,6 +345,8 @@ definitions {
     header = "Authorization"
     signature_algorithm = "ES256"
     key_file = "../files/certificate-ecdsa.pem"
+    signing_ttl = "10s"
+    signing_key_file = "../files/ecdsa.key"
   }
   jwt "ECDSAToken8" {
     header = "Authorization"
