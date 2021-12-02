@@ -3142,8 +3142,8 @@ func TestJWTAccessControl(t *testing.T) {
 		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT PKCS8", "/jwt/ecdsa8", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusForbidden, "", "access control error: ECDSATokenWrongAlgorithm: token is unverifiable: signing method ES256 is invalid"},
-		{"ECDSA JWKS", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
-		{"ECDSA JWKS", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken2}}, "", http.StatusOK, "", ""},
+		{"ECDSA JWKS with certificate: kid=es256", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
+		{"ECDSA JWKS with crv/x/y: kid=es256-crv-x-y", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken2}}, "", http.StatusOK, "", ""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
