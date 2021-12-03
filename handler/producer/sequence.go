@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/errors"
@@ -11,8 +12,14 @@ import (
 	"github.com/avenga/couper/telemetry"
 )
 
+type SequenceItem struct {
+	Backend http.RoundTripper
+	Context hcl.Body
+	Name    string // label
+}
+
 // Sequence represents a list of serialized requests
-type Sequence []*Request
+type Sequence []*SequenceItem
 
 func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span
@@ -25,12 +32,23 @@ func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<-
 	var lastResult *Result
 	var lastBeresps []*http.Response
 	var moreEntries bool
-	for _, seqReq := range s {
+	for _, seq := range s {
 		// update eval context
 		evalCtx := eval.ContextFromRequest(req)
 		outreq := req.WithContext(evalCtx.WithBeresps(lastBeresps...))
 
-		Requests{seqReq}.Produce(ctx, outreq, result)
+		if seq.Context == nil {
+			Proxies{&Proxy{Name: seq.Name,
+				RoundTrip: seq.Backend,
+			}}.Produce(ctx, outreq, result)
+		} else {
+			Requests{&Request{
+				Backend: seq.Backend,
+				Context: seq.Context,
+				Name:    seq.Name,
+			}}.Produce(ctx, outreq, result)
+		}
+
 		select {
 		case <-outreq.Context().Done():
 			return

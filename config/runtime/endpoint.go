@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/avenga/couper/cache"
@@ -82,9 +83,6 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	var response *producer.Response
 	// var redirect producer.Redirect // TODO: configure redirect block
-	proxies := make(producer.Proxies, 0)
-	//requests := make(producer.Requests, 0)
-	//requestSequence := make(producer.Sequence, 0)
 
 	if endpointConf.Response != nil {
 		response = &producer.Response{
@@ -105,7 +103,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 			Name:      proxyConf.Name,
 			RoundTrip: proxyHandler,
 		}
-		proxies = append(proxies, p)
+
 		allProxies[proxyConf.Name] = p
 		items = append(items, proxyConf)
 		blockBodies = append(blockBodies, proxyConf.Backend, innerBody, proxyConf.HCLBody())
@@ -130,7 +128,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	errCh := make(chan error, 1)
-	requestSequence, requests, _ := newSequence(allProxies, allRequests, errCh, items...)
+	sequence, requests, proxies := newSequence(allProxies, allRequests, errCh, items...)
 	if err := <-errCh; err != nil {
 		return nil, err
 	}
@@ -140,7 +138,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		return nil, diags
 	}
 	// TODO: redirect
-	if endpointConf.Response == nil && len(proxies)+len(requests) == 0 { // && redirect == nil
+	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequence) == 0 { // && redirect == nil
 		r := endpointConf.Remain.MissingItemRange()
 		m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -176,7 +174,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		ReqBodyLimit:    bodyLimit,
 		BufferOpts:      bufferOpts,
 		Requests:        requests,
-		RequestSequence: requestSequence,
+		RequestSequence: sequence,
 		Response:        response,
 		ServerOpts:      serverOptions,
 	}, nil
@@ -194,29 +192,52 @@ func newSequence(proxies map[string]*producer.Proxy, requests map[string]*produc
 		close(errCh)
 	}()
 
+	// start with default item
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].GetName() == "default"
+	})
+
 	deps, seen := make([]string, 0), make([]string, 0)
 	for _, item := range items {
 		resolveSequence(item, &deps, &seen)
 	}
+	println(strings.Join(deps, " -> "))
 
 	var reqs producer.Requests
 	var ps producer.Proxies
 	var seq producer.Sequence
 
 	for _, dep := range deps {
-		//if p, ok := proxies[dep]; ok {
-		//	seq = append(p)
-		//}
+		if p, ok := proxies[dep]; ok {
+			seq = append(seq, &producer.SequenceItem{
+				Backend: p.RoundTrip,
+				Name:    p.Name,
+			})
+		}
 		if r, ok := requests[dep]; ok {
-			seq = append(seq, r)
+			seq = append(seq, &producer.SequenceItem{
+				Backend: r.Backend,
+				Context: r.Context,
+				Name:    r.Name,
+			})
 		}
 	}
 
-leftovers:
+proxyLeftovers:
+	for name, p := range proxies {
+		for _, dep := range deps {
+			if name == dep {
+				continue proxyLeftovers
+			}
+		}
+		ps = append(ps, p)
+	}
+
+reqLeftovers:
 	for name, r := range requests {
 		for _, dep := range deps {
 			if name == dep {
-				continue leftovers
+				continue reqLeftovers
 			}
 		}
 		reqs = append(reqs, r)
