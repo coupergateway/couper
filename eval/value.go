@@ -306,7 +306,7 @@ func walk(variables, fallback cty.Value, traversal hcl.Traversal) cty.Value {
 	hasNext := len(traversal) > 1
 
 	currentFn := func(name string) (current cty.Value, exist bool) {
-		if variables.CanIterateElements() {
+		if variables.Type().IsObjectType() || variables.Type().IsMapType() {
 			current, exist = variables.AsValueMap()[name]
 		}
 		return current, exist

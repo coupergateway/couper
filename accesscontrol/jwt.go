@@ -2,6 +2,7 @@ package accesscontrol
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -46,7 +47,7 @@ type JWT struct {
 	source         JWTSource
 	hmacSecret     []byte
 	name           string
-	pubKey         *rsa.PublicKey
+	pubKey         interface{}
 	rolesClaim     string
 	rolesMap       map[string][]string
 	scopeClaim     string
@@ -136,7 +137,7 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC.algorithms = acjwt.RSAAlgorithms
+	jwtAC.algorithms = append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
 	jwtAC.jwks = options.JWKS
 
 	return jwtAC, nil
@@ -218,10 +219,11 @@ func (j *JWT) Validate(req *http.Request) error {
 		case *jwt.TokenExpiredError:
 			return errors.JwtTokenExpired.With(err)
 		case *jwt.UnverfiableTokenError:
-			return err.ErrorWrapper.Unwrap()
-		default:
-			return err
+			if unwrappedError := err.ErrorWrapper.Unwrap(); unwrappedError != nil {
+				return unwrappedError
+			}
 		}
+		return err
 	}
 
 	tokenClaims, err := j.validateClaims(token, claims)
@@ -275,6 +277,8 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 
 	switch j.algorithms[0] {
 	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
+		return j.pubKey, nil
+	case acjwt.AlgorithmECDSA256, acjwt.AlgorithmECDSA384, acjwt.AlgorithmECDSA512:
 		return j.pubKey, nil
 	case acjwt.AlgorithmHMAC256, acjwt.AlgorithmHMAC384, acjwt.AlgorithmHMAC512:
 		return j.hmacSecret, nil
@@ -475,7 +479,7 @@ func newParser(algos []acjwt.Algorithm, claims map[string]interface{}) (*jwt.Par
 
 // parsePublicPEMKey tries to parse all supported publicKey variations which
 // must be given in PEM encoded format.
-func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
+func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 	pemBlock, _ := pem.Decode(key)
 	if pemBlock == nil {
 		return nil, jwt.ErrKeyMustBePEMEncoded
@@ -491,13 +495,22 @@ func parsePublicPEMKey(key []byte) (pub *rsa.PublicKey, err error) {
 			if k, ok := cert.PublicKey.(*rsa.PublicKey); ok {
 				return k, nil
 			}
-			return nil, jwt.ErrNotRSAPublicKey
+			if k, ok := cert.PublicKey.(*ecdsa.PublicKey); ok {
+				return k, nil
+			}
+
+			return nil, fmt.Errorf("invalid RSA/ECDSA public key")
 		}
-		k, ok := pkixKey.(*rsa.PublicKey)
-		if !ok {
-			return nil, jwt.ErrNotRSAPublicKey
+
+		if k, ok := pkixKey.(*rsa.PublicKey); ok {
+			return k, nil
 		}
-		pubKey = k
+
+		if k, ok := pkixKey.(*ecdsa.PublicKey); ok {
+			return k, nil
+		}
+
+		return nil, fmt.Errorf("invalid RSA/ECDSA public key")
 	}
 	return pubKey, nil
 }
