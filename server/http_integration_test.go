@@ -4106,6 +4106,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
 			"token_endpoint": "http://` + req.Host + `/token",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 			_, werr := rw.Write(body)
@@ -4176,6 +4177,7 @@ func TestOIDCNonceFunctions(t *testing.T) {
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
 			"token_endpoint": "http://` + req.Host + `/token",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 			_, werr := rw.Write(body)
@@ -4240,6 +4242,7 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
 			"token_endpoint": "http://` + req.Host + `/token",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo",
 			"code_challenge_methods_supported": ["S256"]
 			}`)
@@ -4305,6 +4308,7 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
 			"token_endpoint": "http://` + req.Host + `/token",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 			_, werr := rw.Write(body)

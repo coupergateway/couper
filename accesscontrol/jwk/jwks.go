@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go/v4"
+
 	jsn "github.com/avenga/couper/json"
 )
 
@@ -39,6 +41,31 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 	sj := jsn.NewSyncedJSON(confContext, file, "jwks_url", uri, transport, "jwks" /* TODO which roundtrip name? */, timetolive, jwks)
 	jwks.syncedJSON = sj
 	return jwks, nil
+}
+
+func (j *JWKS) SetUri(uri string) {
+	j.syncedJSON.SetUri(uri)
+}
+
+func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
+	id := token.Header["kid"]
+	algorithm := token.Header["alg"]
+	if id == nil {
+		return nil, fmt.Errorf("missing \"kid\" in JOSE header")
+	}
+	if algorithm == nil {
+		return nil, fmt.Errorf("missing \"alg\" in JOSE header")
+	}
+	jwk, err := j.GetKey(id.(string), algorithm.(string), "sig")
+	if err != nil {
+		return nil, err
+	}
+
+	if jwk == nil {
+		return nil, fmt.Errorf("no matching %s JWK for kid %q", algorithm, id)
+	}
+
+	return jwk.Key, nil
 }
 
 func (j *JWKS) GetKeys(kid string) ([]JWK, error) {

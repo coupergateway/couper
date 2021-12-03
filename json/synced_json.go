@@ -44,6 +44,12 @@ func NewSyncedJSON(context context.Context, file, fileContext, uri string, trans
 	}
 }
 
+func (s *SyncedJSON) SetUri(uri string) {
+	s.mtx.Lock()
+	s.uri = uri
+	s.mtx.Unlock()
+}
+
 func (s *SyncedJSON) Data() (interface{}, error) {
 	var err error
 

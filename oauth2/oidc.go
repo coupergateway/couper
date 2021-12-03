@@ -96,6 +96,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
 		idToken, _, err := jwtParser.ParseUnverified(idTokenString, jwt.MapClaims{})
+		// idToken, err := jwtParser.Parse(idTokenString, o.config.JWKS.GetSigKeyForToken)
 		if err != nil {
 			return err
 		}

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload"
@@ -24,6 +25,7 @@ import (
 )
 
 func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
+	helper := test.New(t)
 
 	expFn := func(exp string) hcl.Expression {
 		e, diags := hclsyntax.ParseExpression([]byte(exp), "", hcl.InitialPos)
@@ -35,15 +37,23 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 
 	var origin *httptest.Server
 	origin = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		conf := &oidc.OpenidConfiguration{
-			AuthorizationEndpoint:         origin.URL + "/auth",
-			Issuer:                        "me",
-			TokenEndpoint:                 origin.URL + "/token",
-			UserinfoEndpoint:              origin.URL + "/userinfo",
-			CodeChallengeMethodsSupported: []string{"S256"},
+		var conf interface{}
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			conf = &oidc.OpenidConfiguration{
+				AuthorizationEndpoint:         origin.URL + "/auth",
+				CodeChallengeMethodsSupported: []string{config.CcmS256},
+				Issuer:                        "thatsme",
+				JwksUri:                       origin.URL + "/jwks",
+				TokenEndpoint:                 origin.URL + "/token",
+				UserinfoEndpoint:              origin.URL + "/userinfo",
+			}
+		} else if req.URL.Path == "/jwks" {
+			conf = jwk.JWKSData{}
 		}
-		b, _ := json.Marshal(conf)
-		_, _ = rw.Write(b)
+		b, err := json.Marshal(conf)
+		helper.Must(err)
+		_, err = rw.Write(b)
+		helper.Must(err)
 	}))
 
 	backend := configload.NewBackend("origin", test.NewRemainContext("origin", origin.URL))
@@ -60,7 +70,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			name: "redirect_uri with client request",
 			oauth2Config: &config.OIDC{
 				Name:             "auth-ref",
-				ConfigurationURL: origin.URL,
+				ConfigurationURL: origin.URL + "/.well-known/openid-configuration",
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
 						lib.RedirectURI: {
@@ -74,7 +84,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			name: "redirect_uri with backend_requests", // works since client and backend request are the same at response obj
 			oauth2Config: &config.OIDC{
 				Name:             "auth-ref",
-				ConfigurationURL: origin.URL,
+				ConfigurationURL: origin.URL + "/.well-known/openid-configuration",
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
 						lib.RedirectURI: {
@@ -88,7 +98,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			name: "redirect_uri with backend_responses",
 			oauth2Config: &config.OIDC{
 				Name:             "auth-ref",
-				ConfigurationURL: origin.URL,
+				ConfigurationURL: origin.URL + "/.well-known/openid-configuration",
 				Remain: hclbody.New(&hcl.BodyContent{
 					Attributes: map[string]*hcl.Attribute{
 						lib.RedirectURI: {

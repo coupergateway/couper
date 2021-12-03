@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config"
 	jsn "github.com/avenga/couper/json"
 )
@@ -16,6 +18,7 @@ type OpenidConfiguration struct {
 	AuthorizationEndpoint         string   `json:"authorization_endpoint"`
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 	Issuer                        string   `json:"issuer"`
+	JwksUri                       string   `json:"jwks_uri"`
 	TokenEndpoint                 string   `json:"token_endpoint"`
 	UserinfoEndpoint              string   `json:"userinfo_endpoint"`
 }
@@ -34,7 +37,10 @@ var (
 type Config struct {
 	*config.OIDC
 	Backend    http.RoundTripper
+	context    context.Context
 	syncedJSON *jsn.SyncedJSON
+	JWKS       *jwk.JWKS
+	mtx        sync.RWMutex
 }
 
 // NewConfig creates a new configuration for an OIDC client
@@ -48,8 +54,9 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
 		ttl = t
 	}
 
-	config := &Config{OIDC: oidc, Backend: backend}
-	sj := jsn.NewSyncedJSON(context.Background(), "", "", oidc.ConfigurationURL, backend, oidc.Name, ttl, config)
+	ctx := context.Background()
+	config := &Config{OIDC: oidc, context: ctx, Backend: backend}
+	sj := jsn.NewSyncedJSON(ctx, "", "", oidc.ConfigurationURL, backend, oidc.Name, ttl, config)
 	config.syncedJSON = sj
 	return config, nil
 }
@@ -123,13 +130,35 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		return nil, err
 	}
 
-	if c.OIDC.VerifierMethod == "" {
+	c.mtx.RLock()
+	oldVM := c.OIDC.VerifierMethod
+	oldJWKS := c.JWKS
+	c.mtx.RUnlock()
+	if oldVM == "" {
+		var newVM string
 		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
-			c.OIDC.VerifierMethod = config.CcmS256
+			newVM = config.CcmS256
 		} else {
-			c.OIDC.VerifierMethod = "nonce"
+			newVM = "nonce"
 		}
+		c.mtx.Lock()
+		c.OIDC.VerifierMethod = newVM
+		c.mtx.Unlock()
 	}
+
+	if oldJWKS == nil {
+		var newJWKS *jwk.JWKS
+		newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.Backend, c.context)
+		if err != nil {
+			return nil, err
+		}
+		c.mtx.Lock()
+		c.JWKS = newJWKS
+		c.mtx.Unlock()
+	} else {
+		oldJWKS.SetUri(jsonData.JwksUri)
+	}
+
 	return jsonData, nil
 }
 

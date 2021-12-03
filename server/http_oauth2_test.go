@@ -1,9 +1,11 @@
 package server_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -262,7 +264,12 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
+				keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+				helper.Must(err)
+				key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
+				helper.Must(parseErr)
+				idToken, err := lib.CreateJWT("RS256", key, mapClaims, map[string]interface{}{"kid": "rs256"})
+				helper.Must(err)
 				idTokenToAdd = `"id_token":"` + idToken + `",
 				`
 			}
@@ -285,10 +292,19 @@ func TestOAuth2_AccessControl(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/jwks" {
+			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			helper.Must(rerr)
+			b := bytes.NewBuffer(jsonBytes)
+			_, werr := b.WriteTo(rw)
+			helper.Must(werr)
+
+			return
 		} else if req.URL.Path == "/.well-known/openid-configuration" {
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"token_endpoint": "http://` + req.Host + `/token",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
@@ -423,7 +439,13 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 				"exp": 4000000000,
 				"iat": 1000,
 			}
-			idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
+			keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+			helper.Must(err)
+			key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
+			helper.Must(parseErr)
+			idToken, err := lib.CreateJWT("RS256", key, mapClaims, map[string]interface{}{"kid": "rs256"})
+			helper.Must(err)
+			// idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
 			idTokenToAdd := `"id_token":"` + idToken + `",
 			`
 
@@ -442,11 +464,20 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/jwks" {
+			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			helper.Must(rerr)
+			b := bytes.NewBuffer(jsonBytes)
+			_, werr := b.WriteTo(rw)
+			helper.Must(werr)
+
+			return
 		} else if req.URL.Path == "/.well-known/openid-configuration" {
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
 			"token_endpoint": "http://` + req.Host + `/token",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 			_, werr := rw.Write(body)

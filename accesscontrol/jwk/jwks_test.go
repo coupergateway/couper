@@ -4,6 +4,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dgrijalva/jwt-go/v4"
+
 	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/internal/test"
 )
@@ -54,6 +56,38 @@ func Test_JWKS_Load(t *testing.T) {
 			}
 			if err == nil && !tt.expParsed {
 				subT.Error("no jwks expected")
+			}
+		})
+	}
+}
+
+func Test_JWKS_GetSigKeyForToken(t *testing.T) {
+	tests := []struct {
+		name     string
+		file     string
+		kid      interface{}
+		alg      interface{}
+		expFound bool
+	}{
+		{"non-empty kid, non-empty alg", "testdata/jwks.json", "kid1", "RS256", true},
+		{"nil kid, non-empty alg", "testdata/jwks_no_kid.json", nil, "RS256", false},
+		{"non-empty kid, nil alg", "testdata/jwks_no_alg.json", "kid1", nil, false},
+		{"nil kid, nil alg", "testdata/jwks_no_kid_no_alg.json", nil, nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			helper.Must(err)
+			_, err = jwks.Data()
+			helper.Must(err)
+			token := &jwt.Token{Header: map[string]interface{}{"kid": tt.kid, "alg": tt.alg}}
+			jwk, err := jwks.GetSigKeyForToken(token)
+			if jwk == nil && tt.expFound {
+				subT.Errorf("no jwk found, %v", err)
+			}
+			if jwk != nil && !tt.expFound {
+				subT.Error("no jwk expected")
 			}
 		})
 	}

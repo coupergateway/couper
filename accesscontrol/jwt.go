@@ -254,26 +254,30 @@ func (j *JWT) Validate(req *http.Request) error {
 	return nil
 }
 
+func GetKeyFromJWKS(jwks *jwk.JWKS, token *jwt.Token) (interface{}, error) {
+	id := token.Header["kid"]
+	algorithm := token.Header["alg"]
+	if id == nil {
+		return nil, fmt.Errorf("missing \"kid\" in JOSE header")
+	}
+	if algorithm == nil {
+		return nil, fmt.Errorf("missing \"alg\" in JOSE header")
+	}
+	jwk, err := jwks.GetKey(id.(string), algorithm.(string), "sig")
+	if err != nil {
+		return nil, err
+	}
+
+	if jwk == nil {
+		return nil, fmt.Errorf("no matching %s JWK for kid %q", algorithm, id)
+	}
+
+	return jwk.Key, nil
+}
+
 func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 	if j.jwks != nil {
-		id := token.Header["kid"]
-		algorithm := token.Header["alg"]
-		if id == nil {
-			return nil, fmt.Errorf("missing \"kid\" in JOSE header")
-		}
-		if algorithm == nil {
-			return nil, fmt.Errorf("missing \"alg\" in JOSE header")
-		}
-		jwk, err := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
-		if err != nil {
-			return nil, err
-		}
-
-		if jwk == nil {
-			return nil, fmt.Errorf("no matching %s JWK for kid %q", algorithm, id)
-		}
-
-		return jwk.Key, nil
+		return j.jwks.GetSigKeyForToken(token)
 	}
 
 	switch j.algorithms[0] {
