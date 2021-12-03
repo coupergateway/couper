@@ -70,7 +70,7 @@ func Test_JWKS_GetSigKeyForToken(t *testing.T) {
 		expFound bool
 	}{
 		{"non-empty kid, non-empty alg", "testdata/jwks.json", "kid1", "RS256", true},
-		{"nil kid, non-empty alg", "testdata/jwks_no_kid.json", nil, "RS256", false},
+		{"nil kid, non-empty alg", "testdata/jwks_no_kid.json", nil, "RS256", true},
 		{"non-empty kid, nil alg", "testdata/jwks_no_alg.json", "kid1", nil, false},
 		{"nil kid, nil alg", "testdata/jwks_no_kid_no_alg.json", nil, nil, false},
 	}

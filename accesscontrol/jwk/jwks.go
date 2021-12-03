@@ -57,13 +57,13 @@ func (j *JWKS) SetUri(uri string) {
 }
 
 func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
-	id := token.Header["kid"]
 	algorithm := token.Header["alg"]
-	if id == nil {
-		return nil, fmt.Errorf("missing \"kid\" in JOSE header")
-	}
 	if algorithm == nil {
 		return nil, fmt.Errorf("missing \"alg\" in JOSE header")
+	}
+	id := token.Header["kid"]
+	if id == nil {
+		id = ""
 	}
 	jwk, err := j.GetKey(id.(string), algorithm.(string), "sig")
 	if err != nil {
