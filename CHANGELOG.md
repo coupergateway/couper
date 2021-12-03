@@ -12,6 +12,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
   * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
+  * The access control for the OIDC redirect endpoint ([`beta_oidc` block](./docs/REFERENCE.md#oidc-block-beta)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
 
 * **Fixed**
   * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
