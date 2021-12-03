@@ -10,6 +10,7 @@ import (
 var (
 	_ BackendReference = &Proxy{}
 	_ Inline           = &Proxy{}
+	_ SequenceItem     = &Proxy{}
 )
 
 // Proxy represents the <Proxy> object.
@@ -21,6 +22,7 @@ type Proxy struct {
 
 	// internally used
 	Backend hcl.Body
+	depends []SequenceItem
 }
 
 // Proxies represents a list of <Proxy> objects.
@@ -83,4 +85,16 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return meta.SchemaWithAttributes(schema)
+}
+
+func (p *Proxy) Add(item SequenceItem) {
+	p.depends = append(p.depends, item)
+}
+
+func (p *Proxy) Deps() []SequenceItem {
+	return p.depends[:]
+}
+
+func (p *Proxy) GetName() string {
+	return p.Name
 }

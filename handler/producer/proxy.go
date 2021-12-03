@@ -23,6 +23,7 @@ type Proxies []*Proxy
 func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
+	roundtripCreated := false
 
 	var rootSpan trace.Span
 	if len(pr) > 0 {
@@ -38,6 +39,10 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 				},
 				RoundTripName: currentName,
 			}
+
+			if !roundtripCreated {
+				close(results)
+			}
 		}
 	}()
 
@@ -52,6 +57,7 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 		// since proxy and backend may work on the "same" outReq this must be cloned.
 		outReq := clientReq.Clone(outCtx)
 
+		roundtripCreated = true
 		wg.Add(1)
 		go roundtrip(proxy.RoundTrip, outReq, results, wg)
 	}
@@ -60,10 +66,8 @@ func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results 
 		rootSpan.End()
 	}
 
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	wg.Wait()
+	close(results)
 }
 
 func (pr Proxies) Len() int {

@@ -461,7 +461,6 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
 
 		for _, proxyBlock := range proxies {
-			// TODO: refactor with request construction below // almost same ( later :-) )
 			proxyConfig := &config.Proxy{}
 			if diags := gohcl.DecodeBody(proxyBlock.Body, envContext, proxyConfig); diags.HasErrors() {
 				return diags
@@ -567,6 +566,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}
 		}
 
+		var allExpressions []hcl.Expression
 		for _, r := range endpoint.Requests {
 			names[r.Name] = struct{}{}
 
@@ -577,6 +577,46 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			if proxyRequestLabelRequired {
 				if err := uniqueLabelName(unique, r.Name, &itemRange); err != nil {
 					return err
+				}
+			}
+
+			// if sequence; collect references from variables
+			for _, b := range []hcl.Body{r.HCLBody(), r.Backend} {
+				switch sb := b.(type) {
+				case *hclsyntax.Body:
+					for _, attr := range sb.Attributes {
+						allExpressions = append(allExpressions, attr.Expr)
+					}
+				case mergedBodies:
+					for _, attrs := range sb.JustAllAttributes() {
+						for _, attr := range attrs {
+							allExpressions = append(allExpressions, attr.Expr)
+						}
+					}
+				}
+			}
+
+			for _, expr := range allExpressions {
+				for _, traversal := range expr.Variables() {
+					if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
+						continue
+					}
+
+					// do we have a request ref ?
+					for _, t := range traversal[1:] {
+						if tr, ok := t.(hcl.TraverseAttr); ok {
+							if _, ok = names[tr.Name]; ok {
+								for _, req := range endpoint.Requests {
+									if req.Name != tr.Name {
+										continue
+									}
+									r.Add(req)
+									break
+								}
+								break
+							}
+						}
+					}
 				}
 			}
 		}

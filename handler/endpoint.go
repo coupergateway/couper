@@ -41,10 +41,11 @@ type EndpointOptions struct {
 	BufferOpts     eval.BufferOption
 	ServerOpts     *server.Options
 
-	Proxies  producer.Roundtrips
-	Redirect *producer.Redirect
-	Requests producer.Roundtrips
-	Response *producer.Response
+	Proxies         producer.Roundtrips
+	Redirect        *producer.Redirect
+	Requests        producer.Roundtrips
+	RequestSequence producer.Sequence
+	Response        *producer.Response
 }
 
 type BodyLimit interface {
@@ -100,15 +101,18 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	proxyResults := make(producer.Results, e.opts.Proxies.Len())
 	requestResults := make(producer.Results, e.opts.Requests.Len())
+	sequenceResult := make(producer.Results, e.opts.RequestSequence.Len())
 
 	// go for it due to chan write on error
 	go e.opts.Proxies.Produce(subCtx, req, proxyResults)
 	go e.opts.Requests.Produce(subCtx, req, requestResults)
+	go e.opts.RequestSequence.Produce(subCtx, req, sequenceResult)
 
 	beresps := make(producer.ResultMap)
 	// TODO: read parallel, proxy first for now
 	e.readResults(subCtx, proxyResults, beresps)
 	e.readResults(subCtx, requestResults, beresps)
+	e.readResults(subCtx, sequenceResult, beresps)
 
 	select {
 	case <-reqCtx.Done():

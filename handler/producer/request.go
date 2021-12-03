@@ -134,10 +134,8 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		rootSpan.End()
 	}
 
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	wg.Wait()
+	close(results)
 }
 
 func (r Requests) Len() int {

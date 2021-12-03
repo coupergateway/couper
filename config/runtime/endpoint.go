@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/avenga/couper/cache"
 	"github.com/sirupsen/logrus"
@@ -82,7 +83,8 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	var response *producer.Response
 	// var redirect producer.Redirect // TODO: configure redirect block
 	proxies := make(producer.Proxies, 0)
-	requests := make(producer.Requests, 0)
+	//requests := make(producer.Requests, 0)
+	//requestSequence := make(producer.Sequence, 0)
 
 	if endpointConf.Response != nil {
 		response = &producer.Response{
@@ -91,6 +93,8 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, response.Context)
 	}
 
+	var items []config.SequenceItem
+	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
 		backend, innerBody, berr := newBackend(confCtx, proxyConf.Backend, log, proxyEnv, memStore)
 		if berr != nil {
@@ -102,21 +106,33 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 			RoundTrip: proxyHandler,
 		}
 		proxies = append(proxies, p)
+		allProxies[proxyConf.Name] = p
+		items = append(items, proxyConf)
 		blockBodies = append(blockBodies, proxyConf.Backend, innerBody, proxyConf.HCLBody())
 	}
 
+	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
 		backend, innerBody, berr := newBackend(confCtx, requestConf.Backend, log, proxyEnv, memStore)
 		if berr != nil {
 			return nil, berr
 		}
 
-		requests = append(requests, &producer.Request{
+		pr := &producer.Request{
 			Backend: backend,
 			Context: requestConf.Remain,
 			Name:    requestConf.Name,
-		})
+		}
+
+		allRequests[requestConf.Name] = pr
+		items = append(items, requestConf)
 		blockBodies = append(blockBodies, requestConf.Backend, innerBody, requestConf.HCLBody())
+	}
+
+	errCh := make(chan error, 1)
+	requestSequence, requests, _ := newSequence(allProxies, allRequests, errCh, items...)
+	if err := <-errCh; err != nil {
+		return nil, err
 	}
 
 	backendConf := *DefaultBackendConf
@@ -145,9 +161,6 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	bufferOpts := eval.MustBuffer(append(blockBodies, endpointConf.Remain)...)
-	if len(proxies)+len(requests) > 1 { // also buffer with more possible results
-		bufferOpts |= eval.BufferResponse
-	}
 
 	apiName := ""
 	if apiConf != nil {
@@ -155,15 +168,95 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	return &handler.EndpointOptions{
-		APIName:      apiName,
-		Context:      endpointConf.Remain,
-		Error:        errTpl,
-		LogPattern:   endpointConf.Pattern,
-		Proxies:      proxies,
-		ReqBodyLimit: bodyLimit,
-		BufferOpts:   bufferOpts,
-		Requests:     requests,
-		Response:     response,
-		ServerOpts:   serverOptions,
+		APIName:         apiName,
+		Context:         endpointConf.Remain,
+		Error:           errTpl,
+		LogPattern:      endpointConf.Pattern,
+		Proxies:         proxies,
+		ReqBodyLimit:    bodyLimit,
+		BufferOpts:      bufferOpts,
+		Requests:        requests,
+		RequestSequence: requestSequence,
+		Response:        response,
+		ServerOpts:      serverOptions,
 	}, nil
+}
+
+// newSequence lookups any request related dependency and sort them into a sequence.
+// Also return left-overs for parallel usage.
+func newSequence(proxies map[string]*producer.Proxy, requests map[string]*producer.Request, errCh chan<- error,
+	items ...config.SequenceItem) (producer.Sequence, producer.Requests, producer.Proxies) {
+
+	defer func() {
+		if rc := recover(); rc != nil {
+			errCh <- rc.(error)
+		}
+		close(errCh)
+	}()
+
+	deps, seen := make([]string, 0), make([]string, 0)
+	for _, item := range items {
+		resolveSequence(item, &deps, &seen)
+	}
+
+	var reqs producer.Requests
+	var ps producer.Proxies
+	var seq producer.Sequence
+
+	for _, dep := range deps {
+		//if p, ok := proxies[dep]; ok {
+		//	seq = append(p)
+		//}
+		if r, ok := requests[dep]; ok {
+			seq = append(seq, r)
+		}
+	}
+
+leftovers:
+	for name, r := range requests {
+		for _, dep := range deps {
+			if name == dep {
+				continue leftovers
+			}
+		}
+		reqs = append(reqs, r)
+	}
+
+	return seq, reqs, ps
+}
+
+func resolveSequence(item config.SequenceItem, resolved, seen *[]string) {
+	name := item.GetName()
+	*seen = append(*seen, name)
+	for _, dep := range item.Deps() {
+		if !containsString(resolved, dep.GetName()) {
+			if !containsString(seen, dep.GetName()) {
+				resolveSequence(dep, resolved, seen)
+			}
+
+			r := hcl.Range{} // try to obtain some config context
+			if b, ok := item.(interface{ HCLBody() hcl.Body }); ok {
+				r = b.HCLBody().MissingItemRange()
+			}
+			err := &hcl.Diagnostic{
+				Detail:   "circular sequence reference: " + strings.Join(*resolved, ",") + ": " + dep.GetName(),
+				Severity: hcl.DiagError,
+				Subject:  &r,
+				Summary:  "configuration error",
+			}
+			panic(err)
+
+		}
+	}
+
+	*resolved = append(*resolved, name)
+}
+
+func containsString(slice *[]string, needle string) bool {
+	for _, n := range *slice {
+		if n == needle {
+			return true
+		}
+	}
+	return false
 }
