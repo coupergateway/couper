@@ -6,6 +6,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/telemetry"
 )
@@ -19,17 +20,20 @@ func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<-
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequence", trace.WithSpanKind(trace.SpanKindProducer))
 	}
 
-	defer close(results)
-
 	result := make(chan *Result, 1)
-	outreq := req
+
 	var lastResult *Result
+	var lastBeresps []*http.Response
 	var moreEntries bool
 	for _, seqReq := range s {
+		// update eval context
+		evalCtx := eval.ContextFromRequest(req)
+		outreq := req.WithContext(evalCtx.WithBeresps(lastBeresps...))
+
 		Requests{seqReq}.Produce(ctx, outreq, result)
 		select {
 		case <-outreq.Context().Done():
-			return // TODO: handle results chan?
+			return
 		case lastResult, moreEntries = <-result:
 			if !moreEntries {
 				return
@@ -37,21 +41,21 @@ func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<-
 		}
 
 		if lastResult.Err != nil {
-			results <- lastResult // TODO: seq error
+			lastResult.Err = errors.Endpoint.Kind("sequence").With(lastResult.Err)
+			results <- lastResult
 			return
 		}
-		// update eval context
-		evalCtx := eval.ContextFromRequest(outreq)
-		*outreq = *outreq.WithContext(evalCtx.WithBeresps(lastResult.Beresp))
+
+		lastBeresps = append(lastBeresps, lastResult.Beresp)
 	}
 
 	if rootSpan != nil {
 		rootSpan.End()
 	}
 
-	// TODO: error handling
 	if lastResult == nil {
-		return
+		results <- &Result{Err: errors.Endpoint.Kind("sequence").
+			With(errors.New().Message("no result"))}
 	}
 
 	results <- lastResult

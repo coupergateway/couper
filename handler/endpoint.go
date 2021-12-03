@@ -69,7 +69,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		isErrHandler = strings.HasPrefix(e.opts.LogHandlerKind, "error_") // weak ref
 	)
 
-	// Bind some values for logging purposes
+	defer func() {
+		if rc := recover(); rc != nil {
+			log.WithField("panic", string(debug.Stack())).Error(rc)
+			if clientres == nil {
+				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
+			}
+		}
+	}()
+
+	// Bind some context related values for logging purposes
 	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
 	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
 	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
@@ -80,40 +89,18 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		span.SetAttributes(telemetry.KeyEndpoint.String(e.opts.LogPattern))
 	}
 
-	defer func() {
-		rc := recover()
-		if rc != nil {
-			log.WithField("panic", string(debug.Stack())).Error(rc)
-			if clientres == nil {
-				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
-			}
-		}
-	}()
-
-	// subCtx is handled by this endpoint handler and should not be attached to req
-	subCtx, cancel := context.WithCancel(reqCtx)
-	defer cancel()
-
 	if ee := eval.ApplyRequestContext(reqCtx, e.opts.Context, req); ee != nil {
 		e.opts.Error.ServeError(ee).ServeHTTP(rw, req)
 		return
 	}
 
-	proxyResults := make(producer.Results, e.opts.Proxies.Len())
-	requestResults := make(producer.Results, e.opts.Requests.Len())
-	sequenceResult := make(producer.Results, e.opts.RequestSequence.Len())
+	// subCtx is handled by this endpoint handler and should not be attached to req
+	subCtx, cancel := context.WithCancel(reqCtx)
+	defer cancel()
 
-	// go for it due to chan write on error
-	go e.opts.Proxies.Produce(subCtx, req, proxyResults)
-	go e.opts.Requests.Produce(subCtx, req, requestResults)
-	go e.opts.RequestSequence.Produce(subCtx, req, sequenceResult)
+	beresps := e.produce(subCtx, req)
 
-	beresps := make(producer.ResultMap)
-	// TODO: read parallel, proxy first for now
-	e.readResults(subCtx, proxyResults, beresps)
-	e.readResults(subCtx, requestResults, beresps)
-	e.readResults(subCtx, sequenceResult, beresps)
-
+	// check for client cancels before reading backend response bodies
 	select {
 	case <-reqCtx.Done():
 		err = reqCtx.Err()
@@ -125,6 +112,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	evalContext := eval.ContextFromRequest(req)
 	evalContext = evalContext.WithBeresps(beresps.List()...)
 
+	// send updated eval context over to the custom log hook
 	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
 	if ok {
 		select {
@@ -269,6 +257,30 @@ func (e *Endpoint) newRedirect() *http.Response {
 		//Body:   e.redirect.Body, // TODO: closeWrapper
 		StatusCode: status,
 	}
+}
+
+// produce hands over all possible outgoing requests to the producer interface and reads
+// the backend response results afterwards.
+func (e *Endpoint) produce(ctx context.Context, req *http.Request) producer.ResultMap {
+	results := make(producer.ResultMap)
+
+	trips := []producer.Roundtrips{e.opts.Proxies, e.opts.Requests, e.opts.RequestSequence}
+	tripCh := make(chan chan *producer.Result, len(trips))
+	for _, trip := range trips {
+		resultCh := make(chan *producer.Result, trip.Len())
+		go func(rt producer.Roundtrips, rc chan *producer.Result) {
+			rt.Produce(ctx, req, resultCh)
+			close(rc)
+		}(trip, resultCh)
+		tripCh <- resultCh
+	}
+	close(tripCh)
+
+	for resultCh := range tripCh {
+		e.readResults(ctx, resultCh, results)
+	}
+
+	return results
 }
 
 func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
