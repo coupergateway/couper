@@ -13,6 +13,15 @@ import (
 	jsn "github.com/avenga/couper/json"
 )
 
+var alg2kty = map[string]string{
+	"RS256": "RSA",
+	"RS384": "RSA",
+	"RS512": "RSA",
+	"ES256": "EC",
+	"ES384": "EC",
+	"ES512": "EC",
+}
+
 type JWKSData struct {
 	Keys []JWK `json:"keys"`
 }
@@ -92,8 +101,14 @@ func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 		return nil, err
 	}
 	for _, key := range keys {
-		if key.Algorithm == alg && key.Use == use {
-			return &key, nil
+		if key.Use == use {
+			if key.Algorithm == alg {
+				return &key, nil
+			} else if key.Algorithm == "" {
+				if kty, exists := alg2kty[alg]; exists && key.KeyType == kty {
+					return &key, nil
+				}
+			}
 		}
 	}
 	return nil, nil

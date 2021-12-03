@@ -115,7 +115,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 		{"no_kid: key for empty kid", "testdata/jwks_no_kid.json", "", "RS256", "sig", true},  // or better nil kid?
 		{"no_kid: no key for kid", "testdata/jwks_no_kid.json", "kid1", "RS256", "sig", false},
 		{"no_alg: key for empty alg", "testdata/jwks_no_alg.json", "kid1", "", "sig", true}, // or better nil alg?
-		{"no_alg: no key for alg", "testdata/jwks_no_alg.json", "kid1", "RS256", "sig", false},
+		{"no_alg: key for alg", "testdata/jwks_no_alg.json", "kid1", "RS256", "sig", true},
 		{"no_kid_no_alg: key for empty kid, empty alg, sig", "testdata/jwks_no_kid_no_alg.json", "", "", "sig", true},
 		{"no_kid_no_alg: key for kid, alg, sig", "testdata/jwks_no_kid_no_alg.json", "kid", "RS256", "sig", false},
 		{"no_kid_no_alg_no_use: key for empty kid, empty alg, sig", "testdata/jwks_no_kid_no_alg_no_use.json", "", "", "sig", false},

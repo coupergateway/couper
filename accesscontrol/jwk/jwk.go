@@ -16,6 +16,7 @@ import (
 type JWK struct {
 	Key       interface{}
 	KeyID     string
+	KeyType   string
 	Algorithm string
 	Use       string
 }
@@ -47,7 +48,7 @@ func (j *JWK) UnmarshalJSON(data []byte) error {
 	}
 
 	var key interface{}
-	jwk := JWK{KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
+	jwk := JWK{KeyID: raw.Kid, Algorithm: raw.Alg, KeyType: raw.Kty, Use: raw.Use}
 
 	switch raw.Kty {
 	case "RSA":
