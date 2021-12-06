@@ -98,3 +98,7 @@ func (p *Proxy) Deps() []SequenceItem {
 func (p *Proxy) GetName() string {
 	return p.Name
 }
+
+func (p *Proxy) GetBackend() hcl.Body {
+	return p.Backend
+}

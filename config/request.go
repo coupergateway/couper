@@ -15,7 +15,9 @@ var (
 type SequenceItem interface {
 	Add(item SequenceItem)
 	Deps() []SequenceItem
+	GetBackend() hcl.Body // TODO: may refactor to config.Item iface?
 	GetName() string
+	HCLBody() hcl.Body
 }
 
 // Request represents the <Request> object.
@@ -75,7 +77,6 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, r.HCLBody())
 }
 
-
 func (r *Request) Add(item SequenceItem) {
 	r.depends = append(r.depends, item)
 }
@@ -86,4 +87,8 @@ func (r *Request) Deps() []SequenceItem {
 
 func (r *Request) GetName() string {
 	return r.Name
+}
+
+func (r *Request) GetBackend() hcl.Body {
+	return r.Backend
 }

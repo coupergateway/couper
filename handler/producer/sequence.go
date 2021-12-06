@@ -18,8 +18,36 @@ type SequenceItem struct {
 	Name    string // label
 }
 
-// Sequence represents a list of serialized requests
+// Sequence represents a list of serialized items.
 type Sequence []*SequenceItem
+
+// Sequences holds several list of serialized items.
+type Sequences []Sequence
+
+func (seqs Sequences) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
+	var rootSpan trace.Span
+	if len(seqs) > 0 {
+		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequences", trace.WithSpanKind(trace.SpanKindProducer))
+	}
+
+	resultsCh := make(chan *Result, seqs.Len())
+
+	for _, s := range seqs {
+		go s.Produce(ctx, req, resultsCh)
+	}
+
+	for i := 0; i < seqs.Len(); i++ {
+		results <- <-resultsCh
+	}
+
+	if rootSpan != nil {
+		rootSpan.End()
+	}
+}
+
+func (seqs Sequences) Len() int {
+	return len(seqs)
+}
 
 func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span

@@ -41,11 +41,11 @@ type EndpointOptions struct {
 	BufferOpts     eval.BufferOption
 	ServerOpts     *server.Options
 
-	Proxies         producer.Roundtrips
-	Redirect        *producer.Redirect
-	Requests        producer.Roundtrips
-	RequestSequence producer.Sequence
-	Response        *producer.Response
+	Proxies   producer.Roundtrips
+	Redirect  *producer.Redirect
+	Requests  producer.Roundtrips
+	Sequences producer.Sequences
+	Response  *producer.Response
 }
 
 type BodyLimit interface {
@@ -264,7 +264,7 @@ func (e *Endpoint) newRedirect() *http.Response {
 func (e *Endpoint) produce(ctx context.Context, req *http.Request) producer.ResultMap {
 	results := make(producer.ResultMap)
 
-	trips := []producer.Roundtrips{e.opts.Proxies, e.opts.Requests, e.opts.RequestSequence}
+	trips := []producer.Roundtrips{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
 	tripCh := make(chan chan *producer.Result, len(trips))
 	for _, trip := range trips {
 		resultCh := make(chan *producer.Result, trip.Len())

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -128,7 +129,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	errCh := make(chan error, 1)
-	sequence, requests, proxies := newSequence(allProxies, allRequests, errCh, items...)
+	sequences, requests, proxies := newSequence(allProxies, allRequests, errCh, items...)
 	if err := <-errCh; err != nil {
 		return nil, err
 	}
@@ -138,7 +139,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		return nil, diags
 	}
 	// TODO: redirect
-	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequence) == 0 { // && redirect == nil
+	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
 		r := endpointConf.Remain.MissingItemRange()
 		m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -166,24 +167,24 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	return &handler.EndpointOptions{
-		APIName:         apiName,
-		Context:         endpointConf.Remain,
-		Error:           errTpl,
-		LogPattern:      endpointConf.Pattern,
-		Proxies:         proxies,
-		ReqBodyLimit:    bodyLimit,
-		BufferOpts:      bufferOpts,
-		Requests:        requests,
-		RequestSequence: sequence,
-		Response:        response,
-		ServerOpts:      serverOptions,
+		APIName:      apiName,
+		Context:      endpointConf.Remain,
+		Error:        errTpl,
+		LogPattern:   endpointConf.Pattern,
+		Proxies:      proxies,
+		ReqBodyLimit: bodyLimit,
+		BufferOpts:   bufferOpts,
+		Requests:     requests,
+		Sequences:    sequences,
+		Response:     response,
+		ServerOpts:   serverOptions,
 	}, nil
 }
 
 // newSequence lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
 func newSequence(proxies map[string]*producer.Proxy, requests map[string]*producer.Request, errCh chan<- error,
-	items ...config.SequenceItem) (producer.Sequence, producer.Requests, producer.Proxies) {
+	items ...config.SequenceItem) (producer.Sequences, producer.Requests, producer.Proxies) {
 
 	defer func() {
 		if rc := recover(); rc != nil {
@@ -197,37 +198,69 @@ func newSequence(proxies map[string]*producer.Proxy, requests map[string]*produc
 		return items[i].GetName() == "default"
 	})
 
-	deps, seen := make([]string, 0), make([]string, 0)
+	var allDeps [][]string
 	for _, item := range items {
+		deps := make([]string, 0)
+		seen := make([]string, 0)
 		resolveSequence(item, &deps, &seen)
+		allDeps = append(allDeps, deps)
 	}
-	println(strings.Join(deps, " -> "))
+
+	// part of other chain? filter out
+	allDeps = func() (result [][]string) {
+	all:
+		for _, deps := range allDeps {
+			if len(deps) == 1 {
+				continue
+			}
+
+			for _, otherDeps := range allDeps {
+				if len(deps) >= len(otherDeps) {
+					continue
+				}
+				if reflect.DeepEqual(deps, otherDeps[:len(deps)]) {
+					continue all
+				}
+			}
+			result = append(result, deps)
+		}
+
+		return result
+	}()
+
+	fmt.Printf("%#v\n", allDeps)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
-	var seq producer.Sequence
+	var seqs producer.Sequences
 
-	for _, dep := range deps {
-		if p, ok := proxies[dep]; ok {
-			seq = append(seq, &producer.SequenceItem{
-				Backend: p.RoundTrip,
-				Name:    p.Name,
-			})
+	for _, deps := range allDeps {
+		var seq producer.Sequence
+		for _, dep := range deps {
+			if p, ok := proxies[dep]; ok {
+				seq = append(seq, &producer.SequenceItem{
+					Backend: p.RoundTrip,
+					Name:    p.Name,
+				})
+			}
+			if r, ok := requests[dep]; ok {
+				seq = append(seq, &producer.SequenceItem{
+					Backend: r.Backend,
+					Context: r.Context,
+					Name:    r.Name,
+				})
+			}
 		}
-		if r, ok := requests[dep]; ok {
-			seq = append(seq, &producer.SequenceItem{
-				Backend: r.Backend,
-				Context: r.Context,
-				Name:    r.Name,
-			})
-		}
+		seqs = append(seqs, seq)
 	}
 
 proxyLeftovers:
 	for name, p := range proxies {
-		for _, dep := range deps {
-			if name == dep {
-				continue proxyLeftovers
+		for _, deps := range allDeps {
+			for _, dep := range deps {
+				if name == dep {
+					continue proxyLeftovers
+				}
 			}
 		}
 		ps = append(ps, p)
@@ -235,15 +268,17 @@ proxyLeftovers:
 
 reqLeftovers:
 	for name, r := range requests {
-		for _, dep := range deps {
-			if name == dep {
-				continue reqLeftovers
+		for _, deps := range allDeps {
+			for _, dep := range deps {
+				if name == dep {
+					continue reqLeftovers
+				}
 			}
 		}
 		reqs = append(reqs, r)
 	}
 
-	return seq, reqs, ps
+	return seqs, reqs, ps
 }
 
 func resolveSequence(item config.SequenceItem, resolved, seen *[]string) {
@@ -253,6 +288,7 @@ func resolveSequence(item config.SequenceItem, resolved, seen *[]string) {
 		if !containsString(resolved, dep.GetName()) {
 			if !containsString(seen, dep.GetName()) {
 				resolveSequence(dep, resolved, seen)
+				continue
 			}
 
 			r := hcl.Range{} // try to obtain some config context
