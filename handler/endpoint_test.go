@@ -383,7 +383,7 @@ type mockProducerResult struct {
 	rt http.RoundTripper
 }
 
-func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results chan<- *producer.Result) {
+func (m *mockProducerResult) Produce(r *http.Request, results chan<- *producer.Result) {
 	if m == nil || m.rt == nil {
 		return
 	}

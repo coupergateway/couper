@@ -20,10 +20,10 @@ type Proxy struct {
 
 type Proxies []*Proxy
 
-func (pr Proxies) Produce(ctx context.Context, clientReq *http.Request, results chan<- *Result) {
+func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
-
+	ctx := clientReq.Context()
 	var rootSpan trace.Span
 	if len(pr) > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "proxies", trace.WithSpanKind(trace.SpanKindProducer))

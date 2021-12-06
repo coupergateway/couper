@@ -274,6 +274,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 }
 
 func TestBackend_director(t *testing.T) {
+	t.Skip("TODO: test-hook to obtain values")
 	helper := test.New(t)
 
 	log, _ := logrustest.NewNullLogger()

@@ -1,7 +1,6 @@
 package producer
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
@@ -24,8 +23,9 @@ type Sequence []*SequenceItem
 // Sequences holds several list of serialized items.
 type Sequences []Sequence
 
-func (seqs Sequences) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
+func (seqs Sequences) Produce(req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span
+	ctx := req.Context()
 	if len(seqs) > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequences", trace.WithSpanKind(trace.SpanKindProducer))
 	}
@@ -33,7 +33,7 @@ func (seqs Sequences) Produce(ctx context.Context, req *http.Request, results ch
 	resultsCh := make(chan *Result, seqs.Len())
 
 	for _, s := range seqs {
-		go s.Produce(ctx, req, resultsCh)
+		go s.Produce(req, resultsCh)
 	}
 
 	for i := 0; i < seqs.Len(); i++ {
@@ -49,8 +49,9 @@ func (seqs Sequences) Len() int {
 	return len(seqs)
 }
 
-func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
+func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span
+	ctx := req.Context()
 	if len(s) > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequence", trace.WithSpanKind(trace.SpanKindProducer))
 	}
@@ -68,13 +69,13 @@ func (s Sequence) Produce(ctx context.Context, req *http.Request, results chan<-
 		if seq.Context == nil {
 			Proxies{&Proxy{Name: seq.Name,
 				RoundTrip: seq.Backend,
-			}}.Produce(ctx, outreq, result)
+			}}.Produce(outreq, result)
 		} else {
 			Requests{&Request{
 				Backend: seq.Backend,
 				Context: seq.Context,
 				Name:    seq.Name,
-			}}.Produce(ctx, outreq, result)
+			}}.Produce(outreq, result)
 		}
 
 		select {

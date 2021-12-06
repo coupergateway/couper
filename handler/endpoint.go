@@ -98,7 +98,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
-	beresps := e.produce(subCtx, req)
+	beresps := e.produce(req.WithContext(subCtx))
 
 	// check for client cancels before reading backend response bodies
 	select {
@@ -261,7 +261,7 @@ func (e *Endpoint) newRedirect() *http.Response {
 
 // produce hands over all possible outgoing requests to the producer interface and reads
 // the backend response results afterwards.
-func (e *Endpoint) produce(ctx context.Context, req *http.Request) producer.ResultMap {
+func (e *Endpoint) produce(req *http.Request) producer.ResultMap {
 	results := make(producer.ResultMap)
 
 	trips := []producer.Roundtrips{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
@@ -269,7 +269,7 @@ func (e *Endpoint) produce(ctx context.Context, req *http.Request) producer.Resu
 	for _, trip := range trips {
 		resultCh := make(chan *producer.Result, trip.Len())
 		go func(rt producer.Roundtrips, rc chan *producer.Result) {
-			rt.Produce(ctx, req, resultCh)
+			rt.Produce(req, resultCh)
 			close(rc)
 		}(trip, resultCh)
 		tripCh <- resultCh
@@ -277,18 +277,16 @@ func (e *Endpoint) produce(ctx context.Context, req *http.Request) producer.Resu
 	close(tripCh)
 
 	for resultCh := range tripCh {
-		e.readResults(ctx, resultCh, results)
+		e.readResults(resultCh, results)
 	}
 
 	return results
 }
 
-func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
+func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
 	i := 0
 	for {
 		select {
-		case <-ctx.Done():
-			return
 		case r, more := <-requestResults:
 			if !more {
 				return

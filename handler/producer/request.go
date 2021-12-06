@@ -29,10 +29,10 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
+func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
-
+	ctx := req.Context()
 	var rootSpan trace.Span
 	if r.Len() > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "requests", trace.WithSpanKind(trace.SpanKindProducer))
