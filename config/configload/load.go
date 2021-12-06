@@ -639,17 +639,22 @@ func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
 
 				// do we have a ref ?
 				for _, t := range traversal[1:] {
-					if tr, ok := t.(hcl.TraverseAttr); ok {
-						if _, ok = names[tr.Name]; ok {
-							for _, i := range items {
-								if i.GetName() != tr.Name || i == seqItem {
-									continue
-								}
-								seqItem.Add(i)
-								break
-							}
-							break
+					tr, ok := t.(hcl.TraverseAttr)
+					if !ok {
+						continue
+					}
+
+					_, ok = names[tr.Name]
+					if !ok {
+						continue
+					}
+
+					for _, i := range items {
+						if i.GetName() != tr.Name || i == seqItem {
+							continue
 						}
+						seqItem.Add(i)
+						break
 					}
 				}
 			}
