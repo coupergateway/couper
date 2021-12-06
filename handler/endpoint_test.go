@@ -385,7 +385,6 @@ type mockProducerResult struct {
 
 func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results chan<- *producer.Result) {
 	if m == nil || m.rt == nil {
-		close(results)
 		return
 	}
 
@@ -395,7 +394,6 @@ func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results
 		Beresp:        res,
 		Err:           err,
 	}
-	close(results)
 }
 
 func (m *mockProducerResult) Len() int {
