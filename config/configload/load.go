@@ -566,57 +566,16 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}
 		}
 
-		var allExpressions []hcl.Expression
 		for _, r := range endpoint.Requests {
 			names[r.Name] = struct{}{}
 
-			if err := validLabelName(r.Name, &itemRange); err != nil {
+			if err = validLabelName(r.Name, &itemRange); err != nil {
 				return err
 			}
 
 			if proxyRequestLabelRequired {
-				if err := uniqueLabelName(unique, r.Name, &itemRange); err != nil {
+				if err = uniqueLabelName(unique, r.Name, &itemRange); err != nil {
 					return err
-				}
-			}
-
-			// if sequence; collect references from variables
-			for _, b := range []hcl.Body{r.HCLBody(), r.Backend} {
-				switch sb := b.(type) {
-				case *hclsyntax.Body:
-					for _, attr := range sb.Attributes {
-						allExpressions = append(allExpressions, attr.Expr)
-					}
-				case mergedBodies:
-					for _, attrs := range sb.JustAllAttributes() {
-						for _, attr := range attrs {
-							allExpressions = append(allExpressions, attr.Expr)
-						}
-					}
-				}
-			}
-
-			for _, expr := range allExpressions {
-				for _, traversal := range expr.Variables() {
-					if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
-						continue
-					}
-
-					// do we have a request ref ?
-					for _, t := range traversal[1:] {
-						if tr, ok := t.(hcl.TraverseAttr); ok {
-							if _, ok = names[tr.Name]; ok {
-								for _, req := range endpoint.Requests {
-									if req.Name != tr.Name {
-										continue
-									}
-									r.Add(req)
-									break
-								}
-								break
-							}
-						}
-					}
 				}
 			}
 		}
@@ -629,6 +588,8 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}}
 		}
 
+		addSequenceDeps(names, endpoint)
+
 		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
 		if err := configureErrorHandler(epErrorHandler, definedBackends); err != nil {
 			return err
@@ -636,6 +597,64 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 	}
 
 	return nil
+}
+
+func collectExpressions(bodies ...hcl.Body) []hcl.Expression {
+	allExpressions := make([]hcl.Expression, 0)
+
+	for _, b := range bodies {
+		switch sb := b.(type) {
+		case *hclsyntax.Body:
+			for _, attr := range sb.Attributes {
+				allExpressions = append(allExpressions, attr.Expr)
+			}
+		case mergedBodies:
+			for _, attrs := range sb.JustAllAttributes() {
+				for _, attr := range attrs {
+					allExpressions = append(allExpressions, attr.Expr)
+				}
+			}
+		}
+	}
+	return allExpressions
+}
+
+// addSequenceDeps collects possible dependencies from variables.
+func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
+	var items []config.SequenceItem
+	for _, conf := range endpoint.Proxies {
+		items = append(items, conf)
+	}
+	for _, conf := range endpoint.Requests {
+		items = append(items, conf)
+	}
+
+	for _, seqItem := range items {
+		allExpressions := collectExpressions(seqItem.HCLBody())
+		for _, expr := range allExpressions {
+			for _, traversal := range expr.Variables() {
+				if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
+					continue
+				}
+
+				// do we have a ref ?
+				for _, t := range traversal[1:] {
+					if tr, ok := t.(hcl.TraverseAttr); ok {
+						if _, ok = names[tr.Name]; ok {
+							for _, i := range items {
+								if i.GetName() != tr.Name {
+									continue
+								}
+								seqItem.Add(i)
+								break
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
