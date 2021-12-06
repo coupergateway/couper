@@ -642,7 +642,7 @@ func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
 					if tr, ok := t.(hcl.TraverseAttr); ok {
 						if _, ok = names[tr.Name]; ok {
 							for _, i := range items {
-								if i.GetName() != tr.Name {
+								if i.GetName() != tr.Name || i == seqItem {
 									continue
 								}
 								seqItem.Add(i)

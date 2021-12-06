@@ -228,8 +228,6 @@ func newSequence(proxies map[string]*producer.Proxy, requests map[string]*produc
 		return result
 	}()
 
-	fmt.Printf("%#v\n", allDeps)
-
 	var reqs producer.Requests
 	var ps producer.Proxies
 	var seqs producer.Sequences
