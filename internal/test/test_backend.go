@@ -37,6 +37,7 @@ func NewBackend() *Backend {
 	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
+	b.mux.HandleFunc("/reflect", reflect)
 
 	return b
 }
@@ -206,4 +207,11 @@ func oidc(rw http.ResponseWriter, req *http.Request) {
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 	_, _ = rw.Write(body)
+}
+
+func reflect(rw http.ResponseWriter, req *http.Request) {
+	for k, v := range req.Header {
+		rw.Header()[k] = v
+	}
+	_, _ = io.Copy(rw, req.Body)
 }

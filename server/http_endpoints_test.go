@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"path"
 	"reflect"
 	"strconv"
@@ -436,4 +437,54 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEndpointSequence(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "11_couper.hcl"), helper)
+	defer shutdown()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Y-Value", "my-value")
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	type testcase struct {
+		name     string
+		path     string
+		expected test.Header
+	}
+
+	for _, tc := range []testcase{
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value"}},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
+			h.Must(err)
+
+			req.Header.Set("Origin", origin.URL)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				st.Fatal("expected status ok")
+			}
+
+			for k, v := range tc.expected {
+				if hv := res.Header.Get(k); hv != v {
+					st.Errorf("%q: want %q, got %q", k, v, hv)
+					break
+				}
+			}
+		})
+	}
+
 }
