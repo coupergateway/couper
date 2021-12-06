@@ -461,7 +461,9 @@ func TestEndpointSequence(t *testing.T) {
 	for _, tc := range []testcase{
 		{"simple request sequence", "/simple", test.Header{"x": "my-value"}},
 		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value"}},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}},
 		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
