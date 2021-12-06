@@ -164,19 +164,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 }
 
 func newClient() *http.Client {
-	dialer := &net.Dialer{}
-	return &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				_, port, _ := net.SplitHostPort(addr)
-				if port != "" {
-					return dialer.DialContext(ctx, "tcp4", "127.0.0.1:"+port)
-				}
-				return dialer.DialContext(ctx, "tcp4", "127.0.0.1")
-			},
-			DisableCompression: true,
-		},
-	}
+	return test.NewHTTPClient()
 }
 
 func cleanup(shutdown func(), helper *test.Helper) {
