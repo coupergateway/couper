@@ -132,32 +132,24 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 
 	c.mtx.RLock()
 	oldVM := c.OIDC.VerifierMethod
-	oldJWKS := c.JWKS
 	c.mtx.RUnlock()
+	newVM := oldVM
 	if oldVM == "" {
-		var newVM string
 		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
 			newVM = config.CcmS256
 		} else {
 			newVM = "nonce"
 		}
-		c.mtx.Lock()
-		c.OIDC.VerifierMethod = newVM
-		c.mtx.Unlock()
 	}
 
-	if oldJWKS == nil {
-		var newJWKS *jwk.JWKS
-		newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.Backend, c.context)
-		if err != nil {
-			return nil, err
-		}
-		c.mtx.Lock()
-		c.JWKS = newJWKS
-		c.mtx.Unlock()
-	} else {
-		oldJWKS.SetUri(jsonData.JwksUri)
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.Backend, c.context)
+	if err != nil {
+		return nil, err
 	}
+	c.mtx.Lock()
+	c.OIDC.VerifierMethod = newVM
+	c.JWKS = newJWKS
+	c.mtx.Unlock()
 
 	return jsonData, nil
 }

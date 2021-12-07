@@ -52,10 +52,6 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 	return jwks, nil
 }
 
-func (j *JWKS) SetUri(uri string) {
-	j.syncedJSON.SetUri(uri)
-}
-
 func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
 	algorithm := token.Header["alg"]
 	if algorithm == nil {
