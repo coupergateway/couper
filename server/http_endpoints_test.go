@@ -490,3 +490,110 @@ func TestEndpointSequence(t *testing.T) {
 	}
 
 }
+
+func TestEndpointSequenceClientCancel(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(path.Join(testdataPath, "12_couper.hcl"), helper)
+	defer shutdown()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		cancel()
+		time.Sleep(time.Second / 2)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	req.Header.Set("Origin", origin.URL)
+
+	_, err = client.Do(req.WithContext(ctx))
+	if err != nil && errors.Unwrap(err) != context.Canceled {
+		helper.Must(err)
+	}
+
+	time.Sleep(time.Second / 2)
+
+	logs := hook.AllEntries()
+
+	var ctxCanceledSeen, statusOKseen bool
+	for _, entry := range logs {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		if strings.Contains(entry.Message, context.Canceled.Error()) {
+			ctxCanceledSeen = true
+		}
+
+		if entry.Message == "" && entry.Data["status"] == 200 {
+			statusOKseen = true
+		}
+	}
+
+	if !ctxCanceledSeen || !statusOKseen {
+		t.Errorf("Expected one sucessful and one failed backend request")
+	}
+
+}
+
+func TestEndpointSequenceBackendTimeout(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(path.Join(testdataPath, "13_couper.hcl"), helper)
+	defer shutdown()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		time.Sleep(time.Second)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	req.Header.Set("Origin", origin.URL)
+
+	res, err := client.Do(req)
+	if err != nil {
+		helper.Must(err)
+	}
+
+	if res.StatusCode != http.StatusBadGateway {
+		t.Fatalf("Expected status 502, got: %d", res.StatusCode)
+	}
+
+	time.Sleep(time.Second / 4)
+
+	logs := hook.AllEntries()
+
+	var ctxDeadlineSeen, statusOKseen bool
+	for _, entry := range logs {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		if entry.Message == "backend timeout error: deadline exceeded" {
+			ctxDeadlineSeen = true
+		}
+
+		if entry.Message == "" && entry.Data["status"] == 200 {
+			statusOKseen = true
+		}
+	}
+
+	if !ctxDeadlineSeen || !statusOKseen {
+		t.Errorf("Expected one sucessful and one failed backend request")
+	}
+
+}
