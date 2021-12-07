@@ -299,3 +299,59 @@ func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
 
 	return unique
 }
+
+func bodyToContent(body hcl.Body) *hcl.BodyContent {
+	content := &hcl.BodyContent{
+		MissingItemRange: body.MissingItemRange(),
+	}
+	b, ok := body.(*hclsyntax.Body)
+	if !ok {
+		return content
+	}
+
+	if len(b.Attributes) > 0 {
+		content.Attributes = make(hcl.Attributes)
+	}
+	for name, attr := range b.Attributes {
+		content.Attributes[name] = &hcl.Attribute{
+			Name:      attr.Name,
+			Expr:      attr.Expr,
+			Range:     attr.Range(),
+			NameRange: attr.NameRange,
+		}
+	}
+
+	for _, block := range b.Blocks {
+		content.Blocks = append(content.Blocks, &hcl.Block{
+			Body:        block.Body,
+			DefRange:    block.DefRange(),
+			LabelRanges: block.LabelRanges,
+			Labels:      block.Labels,
+			Type:        block.Type,
+			TypeRange:   block.TypeRange,
+		})
+	}
+
+	return content
+}
+
+func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
+	headerSchema := &hcl.BodySchema{
+		Blocks: []hcl.BlockHeaderSchema{
+			{Type: blockType},
+		}}
+	content, _, diags := body.PartialContent(headerSchema)
+	if diags.HasErrors() {
+		derr := diags.Errs()[0].(*hcl.Diagnostic)
+		if derr.Summary == "Extraneous label for "+blockType { // retry with label
+			headerSchema.Blocks[0].LabelNames = []string{nameLabel}
+			content, _, diags = body.PartialContent(headerSchema)
+			if diags.HasErrors() { // due to interface nil check, do not return empty diags
+				return nil, diags
+			}
+			return content, nil
+		}
+		return nil, diags
+	}
+	return content, nil
+}
