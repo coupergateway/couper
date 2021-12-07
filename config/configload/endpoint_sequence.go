@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/body"
 )
 
 // addSequenceDeps collects possible dependencies from variables.
@@ -59,11 +60,31 @@ func collectExpressions(bodies ...hcl.Body) []hcl.Expression {
 			for _, attr := range sb.Attributes {
 				allExpressions = append(allExpressions, attr.Expr)
 			}
+
+			for _, block := range sb.Blocks {
+				for _, attr := range block.Body.Attributes {
+					allExpressions = append(allExpressions, attr.Expr)
+				}
+			}
+		case *body.Body:
+			content, _, _ := sb.PartialContent(nil)
+			for _, attr := range content.Attributes {
+				allExpressions = append(allExpressions, attr.Expr)
+			}
+			for _, block := range content.Blocks {
+				allExpressions = append(allExpressions, collectExpressions(block.Body)...)
+			}
 		case mergedBodies:
+			// top-level attrs
 			for _, attrs := range sb.JustAllAttributes() {
 				for _, attr := range attrs {
 					allExpressions = append(allExpressions, attr.Expr)
 				}
+			}
+
+			// nested block attrs
+			for _, mb := range sb {
+				allExpressions = append(allExpressions, collectExpressions(mb)...)
 			}
 		}
 	}
