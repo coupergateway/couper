@@ -76,7 +76,7 @@ func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
 func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
 	var keys []JWK
 
-	jwksData, err := j.Data()
+	jwksData, err := j.Data("")
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +110,8 @@ func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 	return nil, nil
 }
 
-func (j *JWKS) Data() (*JWKSData, error) {
-	data, err := j.syncedJSON.Data()
+func (j *JWKS) Data(uid string) (*JWKSData, error) {
+	data, err := j.syncedJSON.Data(uid)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (j *JWKS) Data() (*JWKSData, error) {
 	return &jwksData, nil
 }
 
-func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
+func (j *JWKS) Unmarshal(rawJSON []byte, _ string) (interface{}, error) {
 	var jsonData JWKSData
 	err := json.Unmarshal(rawJSON, &jsonData)
 	if err != nil {

@@ -64,7 +64,7 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
 func (c *Config) GetVerifierMethod(uid string) (string, error) {
 	if c.VerifierMethod == "" {
-		_, err := c.Data()
+		_, err := c.Data(uid)
 		if err != nil {
 			return "", err
 		}
@@ -74,7 +74,7 @@ func (c *Config) GetVerifierMethod(uid string) (string, error) {
 }
 
 func (c *Config) GetAuthorizationEndpoint(uid string) (string, error) {
-	openidConfigurationData, err := c.Data()
+	openidConfigurationData, err := c.Data(uid)
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +83,7 @@ func (c *Config) GetAuthorizationEndpoint(uid string) (string, error) {
 }
 
 func (c *Config) GetIssuer() (string, error) {
-	openidConfigurationData, err := c.Data()
+	openidConfigurationData, err := c.Data("")
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +92,7 @@ func (c *Config) GetIssuer() (string, error) {
 }
 
 func (c *Config) GetTokenEndpoint() (string, error) {
-	openidConfigurationData, err := c.Data()
+	openidConfigurationData, err := c.Data("")
 	if err != nil {
 		return "", err
 	}
@@ -101,7 +101,7 @@ func (c *Config) GetTokenEndpoint() (string, error) {
 }
 
 func (c *Config) GetUserinfoEndpoint() (string, error) {
-	openidConfigurationData, err := c.Data()
+	openidConfigurationData, err := c.Data("")
 	if err != nil {
 		return "", err
 	}
@@ -109,8 +109,8 @@ func (c *Config) GetUserinfoEndpoint() (string, error) {
 	return openidConfigurationData.UserinfoEndpoint, nil
 }
 
-func (c *Config) Data() (*OpenidConfiguration, error) {
-	data, err := c.syncedJSON.Data()
+func (c *Config) Data(uid string) (*OpenidConfiguration, error) {
+	data, err := c.syncedJSON.Data(uid)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (c *Config) Data() (*OpenidConfiguration, error) {
 	return &openidConfigurationData, nil
 }
 
-func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
+func (c *Config) Unmarshal(rawJSON []byte, uid string) (interface{}, error) {
 	var jsonData OpenidConfiguration
 	err := json.Unmarshal(rawJSON, &jsonData)
 	if err != nil {
@@ -146,6 +146,7 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	newJWKS.Data(uid)
 	c.mtx.Lock()
 	c.OIDC.VerifierMethod = newVM
 	c.JWKS = newJWKS

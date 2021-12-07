@@ -13,7 +13,7 @@ import (
 )
 
 type SyncedJSONUnmarshaller interface {
-	Unmarshal(rawJSON []byte) (interface{}, error)
+	Unmarshal(rawJSON []byte, uid string) (interface{}, error)
 }
 
 type SyncedJSON struct {
@@ -44,7 +44,7 @@ func NewSyncedJSON(context context.Context, file, fileContext, uri string, trans
 	}
 }
 
-func (s *SyncedJSON) Data() (interface{}, error) {
+func (s *SyncedJSON) Data(uid string) (interface{}, error) {
 	var err error
 
 	s.mtx.RLock()
@@ -53,7 +53,7 @@ func (s *SyncedJSON) Data() (interface{}, error) {
 	s.mtx.RUnlock()
 
 	if data == nil || expired {
-		data, err = s.Load()
+		data, err = s.Load(uid)
 		if err != nil {
 			return nil, fmt.Errorf("error loading synced JSON: %v", err)
 		}
@@ -62,7 +62,7 @@ func (s *SyncedJSON) Data() (interface{}, error) {
 	return data, nil
 }
 
-func (s *SyncedJSON) Load() (interface{}, error) {
+func (s *SyncedJSON) Load(uid string) (interface{}, error) {
 	var rawJSON []byte
 
 	if s.file != "" {
@@ -78,6 +78,9 @@ func (s *SyncedJSON) Load() (interface{}, error) {
 		}
 		ctx := context.WithValue(s.context, request.URLAttribute, s.uri)
 		ctx = context.WithValue(ctx, request.RoundTripName, s.roundTripName)
+		if uid != "" {
+			ctx = context.WithValue(ctx, request.UID, uid)
+		}
 		req = req.WithContext(ctx)
 		response, err := s.transport.RoundTrip(req)
 		if err != nil {
@@ -98,7 +101,7 @@ func (s *SyncedJSON) Load() (interface{}, error) {
 		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}
 
-	jsonData, err := s.unmarshaller.Unmarshal(rawJSON)
+	jsonData, err := s.unmarshaller.Unmarshal(rawJSON, uid)
 	if err != nil {
 		return nil, err
 	}
