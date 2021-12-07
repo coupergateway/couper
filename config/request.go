@@ -12,13 +12,6 @@ var (
 	_ SequenceItem     = &Request{}
 )
 
-type SequenceItem interface {
-	Body
-	Add(item SequenceItem)
-	Deps() []SequenceItem
-	GetName() string
-}
-
 // Request represents the <Request> object.
 type Request struct {
 	BackendName string   `hcl:"backend,optional"`
