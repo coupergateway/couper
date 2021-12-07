@@ -9,4 +9,6 @@ type Definitions struct {
 	SAML              []*SAML              `hcl:"saml,block"`
 	OAuth2AC          []*OAuth2AC          `hcl:"beta_oauth2,block"`
 	OIDC              []*OIDC              `hcl:"oidc,block"`
+	// TODO remove for version 1.8
+	BetaOIDC []*OIDC `hcl:"beta_oidc,block"`
 }

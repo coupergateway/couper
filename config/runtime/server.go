@@ -567,6 +567,21 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 
 			oidcConfigs[oidcConf.Name] = oidcConfig
 		}
+		// TODO remove for version 1.8
+		for _, oidcConf := range conf.Definitions.BetaOIDC {
+			confErr := errors.Configuration.Label(oidcConf.Name)
+			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcConfig, err := oidc.NewConfig(oidcConf, backend, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			oidcConfigs[oidcConf.Name] = oidcConfig
+		}
 	}
 
 	return oidcConfigs, nil
@@ -682,6 +697,32 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		}
 
 		for _, oidcConf := range conf.Definitions.OIDC {
+			confErr := errors.Configuration.Label(oidcConf.Name)
+			oidcConfig := oidcConfigs[oidcConf.Name]
+			oidcClient, err := oauth2.NewOidc(oidcConfig)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			if oidcConfig.VerifierMethod != "" &&
+				oidcConfig.VerifierMethod != config.CcmS256 &&
+				oidcConfig.VerifierMethod != "nonce" {
+				return nil, errors.Configuration.
+					Label(oidcConf.Name).
+					Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
+			}
+
+			oa, err := ac.NewOAuth2Callback(oidcClient)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
+				return nil, confErr.With(err)
+			}
+		}
+		// TODO remove for version 1.8
+		for _, oidcConf := range conf.Definitions.BetaOIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
 			oidcConfig := oidcConfigs[oidcConf.Name]
 			oidcClient, err := oauth2.NewOidc(oidcConfig)
