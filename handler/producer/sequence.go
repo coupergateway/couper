@@ -1,11 +1,13 @@
 package producer
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/telemetry"
@@ -64,7 +66,9 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	for _, seq := range s {
 		// update eval context
 		evalCtx := eval.ContextFromRequest(req)
-		outreq := req.WithContext(evalCtx.WithBeresps(lastBeresps...))
+		outCtx := evalCtx.WithBeresps(lastBeresps...)
+		outreq := req.
+			WithContext(context.WithValue(outCtx, request.BufferOptions, req.Context().Value(request.BufferOptions)))
 
 		if seq.Context == nil {
 			Proxies{&Proxy{Name: seq.Name,

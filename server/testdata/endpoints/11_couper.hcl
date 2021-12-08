@@ -2,6 +2,10 @@ server { # sequences
   endpoint "/simple" {
     request "resolve" {
       url = "${request.headers.origin}/"
+      headers = {
+        Accept = "application/json"
+        X-Value = "my-value"
+      }
     }
 
     request {
@@ -9,6 +13,7 @@ server { # sequences
       headers = {
         x = backend_responses.resolve.headers.y-value
       }
+      json_body = backend_responses.resolve.json_body
     }
   }
 

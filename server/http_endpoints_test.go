@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/avenga/couper/internal/test"
 )
@@ -448,22 +451,28 @@ func TestEndpointSequence(t *testing.T) {
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Y-Value", "my-value")
-		rw.WriteHeader(http.StatusNoContent)
+		if req.Header.Get("Accept") == "application/json" {
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(rw, `{"value":"%s"}`, req.Header.Get("X-Value"))
+		} else {
+			rw.WriteHeader(http.StatusNoContent)
+		}
 	}))
 	defer origin.Close()
 
 	type testcase struct {
-		name     string
-		path     string
-		expected test.Header
+		name           string
+		path           string
+		expectedHeader test.Header
+		expectedBody   string
 	}
 
 	for _, tc := range []testcase{
-		{"simple request sequence", "/simple", test.Header{"x": "my-value"}},
-		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value"}},
-		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}},
-		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}},
-		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}},
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value"}, ""},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, ""},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, ""},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, ""},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
@@ -480,12 +489,22 @@ func TestEndpointSequence(t *testing.T) {
 				st.Fatal("expected status ok")
 			}
 
-			for k, v := range tc.expected {
+			for k, v := range tc.expectedHeader {
 				if hv := res.Header.Get(k); hv != v {
 					st.Errorf("%q: want %q, got %q", k, v, hv)
 					break
 				}
 			}
+
+			if tc.expectedBody != "" {
+				result, err := io.ReadAll(res.Body)
+				h.Must(err)
+
+				if tc.expectedBody != string(result) {
+					st.Errorf("unexpected body:\n%s", cmp.Diff(tc.expectedBody, string(result)))
+				}
+			}
+
 		})
 	}
 
