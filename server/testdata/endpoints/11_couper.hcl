@@ -20,12 +20,17 @@ server { # sequences
   endpoint "/simple-proxy" {
     request "resolve" {
       url = "${request.headers.origin}/"
+      headers = {
+        Accept = "application/json"
+        X-Value = "my-proxy-value"
+      }
     }
 
     proxy {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
       set_request_headers = {
         x = backend_responses.resolve.headers.y-value
+        y = backend_responses.resolve.body
       }
     }
   }

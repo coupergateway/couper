@@ -469,7 +469,7 @@ func TestEndpointSequence(t *testing.T) {
 
 	for _, tc := range []testcase{
 		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`},
-		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value"}, ""},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, ""},
 		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, ""},
 		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, ""},
 		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, ""},
