@@ -88,7 +88,7 @@ func (t *Template) WithContextFunc(fn http.HandlerFunc) *Template {
 
 }
 
-func (t *Template) ServeError(err error) http.Handler {
+func (t *Template) WithError(err error) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", t.mime)
 
@@ -132,10 +132,10 @@ func (t *Template) ServeError(err error) http.Handler {
 		// fallback behaviour, execute internal template once
 		if tplErr != nil && (t != DefaultHTML && t != DefaultJSON) {
 			if !strings.Contains(t.mime, "text/html") {
-				DefaultJSON.ServeError(goErr).ServeHTTP(rw, req)
+				DefaultJSON.WithError(goErr).ServeHTTP(rw, req)
 				return
 			}
-			DefaultHTML.ServeError(goErr).ServeHTTP(rw, req)
+			DefaultHTML.WithError(goErr).ServeHTTP(rw, req)
 		} else if tplErr != nil && t.log != nil {
 			t.log.WithFields(data).Error(tplErr)
 		}

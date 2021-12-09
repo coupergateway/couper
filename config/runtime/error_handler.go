@@ -45,11 +45,11 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				if err != nil {
 					return nil, err
 				}
-				if epOpts.Error == nil || h.ErrorFile == "" {
-					epOpts.Error = opts.epOpts.Error
+				if epOpts.ErrorTemplate == nil || h.ErrorFile == "" {
+					epOpts.ErrorTemplate = opts.epOpts.ErrorTemplate
 				}
 
-				epOpts.Error = epOpts.Error.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
+				epOpts.ErrorTemplate = epOpts.ErrorTemplate.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
 					beresp := &http.Response{Header: rw.Header()}
 					_ = eval.ApplyResponseContext(r.Context(), contextBody, beresp)
 				})
@@ -65,5 +65,5 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 		}
 	}
 
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.ErrorTemplate), nil
 }

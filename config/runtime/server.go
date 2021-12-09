@@ -196,7 +196,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
 				&protectedOptions{
-					epOpts:       &handler.EndpointOptions{Error: serverOptions.ServerErrTpl},
+					epOpts:       &handler.EndpointOptions{ErrorTemplate: serverOptions.ServerErrTpl},
 					handler:      spaHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
@@ -243,7 +243,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
 				&protectedOptions{
-					epOpts:       &handler.EndpointOptions{Error: serverOptions.FilesErrTpl},
+					epOpts:       &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpl},
 					handler:      fileHandler,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
@@ -323,7 +323,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			var epHandler http.Handler
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				epHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+				epHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
 				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:       epOpts,
@@ -361,7 +361,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			accessControl := newAC(srvConf, parentAPI)
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				protectedHandler = epOpts.Error.ServeError(errors.RouteNotFound)
+				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			}
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,

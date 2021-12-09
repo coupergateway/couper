@@ -73,7 +73,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil {
-		f.srvOptions.FilesErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -93,7 +93,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.Request) {
 	if !f.HasResponse(req) {
-		f.srvOptions.FilesErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil || info.IsDir() {
-		f.srvOptions.FilesErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()

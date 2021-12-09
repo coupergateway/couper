@@ -18,7 +18,7 @@ func main() {
 	// hold list of possible base kinds which can be skipped for type definitions
 	b, err := os.ReadFile(filepath.Join("errors", "couper.go"))
 	must(err)
-	result := regexp.MustCompile(`\t(\w+)\s+= &Error{.*\n`).FindAllStringSubmatch(string(b), -1)
+	result := regexp.MustCompile(`\t(\w+)\s+= &ErrorTemplate{.*\n`).FindAllStringSubmatch(string(b), -1)
 	for _, r := range result {
 		couperErrors = append(couperErrors, r[1])
 	}
@@ -67,7 +67,7 @@ var (
 
 // typeDefinitions holds all related error definitions which are
 // catchable with an error_handler definition.
-type typeDefinitions map[string]*Error
+type typeDefinitions map[string]*ErrorTemplate
 
 // types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.

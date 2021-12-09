@@ -34,7 +34,7 @@ type EndpointOptions struct {
 	APIName        string
 	BufferOpts     eval.BufferOption
 	Context        hcl.Body
-	Error          *errors.Template
+	ErrorTemplate  *errors.Template
 	ErrorHandler   http.Handler
 	IsErrorHandler bool
 	LogHandlerKind string
@@ -73,7 +73,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if rc := recover(); rc != nil {
 			log.WithField("panic", string(debug.Stack())).Error(rc)
 			if clientres == nil {
-				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
+				e.opts.ErrorTemplate.WithError(errors.Server).ServeHTTP(rw, req)
 			}
 		}
 	}()
@@ -90,7 +90,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if ee := eval.ApplyRequestContext(reqCtx, e.opts.Context, req); ee != nil {
-		e.opts.Error.ServeError(ee).ServeHTTP(rw, req)
+		e.opts.ErrorTemplate.WithError(ee).ServeHTTP(rw, req)
 		return
 	}
 
@@ -237,7 +237,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// always apply before write: redirect, response
 	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
-		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
+		e.opts.ErrorTemplate.WithError(err).ServeHTTP(rw, req)
 		return
 	}
 

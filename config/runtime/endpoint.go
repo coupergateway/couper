@@ -167,17 +167,17 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	return &handler.EndpointOptions{
-		APIName:      apiName,
-		Context:      endpointConf.Remain,
-		Error:        errTpl,
-		LogPattern:   endpointConf.Pattern,
-		Proxies:      proxies,
-		ReqBodyLimit: bodyLimit,
-		BufferOpts:   bufferOpts,
-		Requests:     requests,
-		Sequences:    sequences,
-		Response:     response,
-		ServerOpts:   serverOptions,
+		APIName:       apiName,
+		Context:       endpointConf.Remain,
+		ErrorTemplate: errTpl,
+		LogPattern:    endpointConf.Pattern,
+		Proxies:       proxies,
+		ReqBodyLimit:  bodyLimit,
+		BufferOpts:    bufferOpts,
+		Requests:      requests,
+		Sequences:     sequences,
+		Response:      response,
+		ServerOpts:    serverOptions,
 	}, nil
 }
 
