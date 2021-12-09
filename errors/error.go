@@ -63,6 +63,14 @@ func (e *Error) Kinds() []string {
 	for i := len(e.kinds); i > 0; i-- {
 		reversed = append(reversed, e.kinds[i-1])
 	}
+
+	if eer, ok := e.inner.(*Error); ok {
+		k := eer.Kinds()
+		if len(k) > 0 {
+			reversed = append(reversed, k[0])
+		}
+	}
+
 	return reversed
 }
 
