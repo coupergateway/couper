@@ -147,7 +147,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			err = errors.Server
 		}
 	}
-	
+
 	if handled := e.handleError(rw, req, evalContext, err); handled {
 		return
 	}
