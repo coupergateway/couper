@@ -5,12 +5,23 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/avenga/couper/errors"
 )
 
+var couperErrors []string
+
 func main() {
 	println("generating error types:\n")
+
+	// hold list of possible base kinds which can be skipped for type definitions
+	b, err := os.ReadFile(filepath.Join("errors", "couper.go"))
+	must(err)
+	result := regexp.MustCompile(`\t(\w+)\s+= &Error{.*\n`).FindAllStringSubmatch(string(b), -1)
+	for _, r := range result {
+		couperErrors = append(couperErrors, r[1])
+	}
 
 	errTypes := map[string]int{}
 	sortedErrTypes := make([]string, len(errors.Definitions))
@@ -45,12 +56,14 @@ var (
 	must(err)
 
 	for idx, kind := range sortedErrTypes {
+		if isDefined(kind) {
+			continue
+		}
 		_, err = io.WriteString(generated, fmt.Sprintf("\t%s = Definitions[%d]\n", errors.SnakeToCamel(kind), idx))
 		must(err)
 	}
 
-	_, err = io.WriteString(generated, fmt.Sprintf(`
-)
+	_, err = io.WriteString(generated, fmt.Sprintf(`)
 
 // typeDefinitions holds all related error definitions which are
 // catchable with an error_handler definition.
@@ -68,8 +81,7 @@ var types = typeDefinitions{
 		must(err)
 	}
 
-	_, err = io.WriteString(generated, fmt.Sprintf(`
-}
+	_, err = io.WriteString(generated, fmt.Sprintf(`}
 
 // IsKnown tells the configuration callee if Couper
 // has a defined error type with the given name.
@@ -82,6 +94,16 @@ func IsKnown(errorType string) bool {
 
 	must(err)
 
+}
+
+// isDefined checks if the given typeName is defined and must be skipped for declaration with true result.
+func isDefined(typeName string) bool {
+	for _, t := range couperErrors {
+		if errors.SnakeToCamel(typeName) == t {
+			return true
+		}
+	}
+	return false
 }
 
 func must(err error) {

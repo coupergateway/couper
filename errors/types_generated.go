@@ -3,17 +3,17 @@
 package errors
 
 var (
-	BasicAuth                   = Definitions[0]
-	BasicAuthCredentialsMissing = Definitions[1]
-	Jwt                         = Definitions[2]
-	JwtTokenExpired             = Definitions[3]
-	JwtTokenInvalid             = Definitions[4]
-	JwtTokenMissing             = Definitions[5]
-	Oauth2                      = Definitions[6]
-	Saml2                       = Definitions[7]
-	BetaOperationDenied         = Definitions[8]
-	BetaScope                   = Definitions[9]
-	BetaInsufficientScope       = Definitions[10]
+	BasicAuth                   = Definitions[1]
+	BasicAuthCredentialsMissing = Definitions[2]
+	Jwt                         = Definitions[3]
+	JwtTokenExpired             = Definitions[4]
+	JwtTokenInvalid             = Definitions[5]
+	JwtTokenMissing             = Definitions[6]
+	Oauth2                      = Definitions[7]
+	Saml2                       = Definitions[8]
+	BetaOperationDenied         = Definitions[9]
+	BetaScope                   = Definitions[10]
+	BetaInsufficientScope       = Definitions[11]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -23,6 +23,7 @@ type typeDefinitions map[string]*Error
 // types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var types = typeDefinitions{
+	"access_control":                 AccessControl,
 	"basic_auth":                     BasicAuth,
 	"basic_auth_credentials_missing": BasicAuthCredentialsMissing,
 	"jwt":                            Jwt,
