@@ -66,8 +66,8 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 	beresp, err := rt.RoundTrip(req)
 	span.End()
 
-	if expStatus, ok := req.Context().Value(request.EndpointExpectedStatus).([]int64);
-		beresp != nil && ok && len(expStatus) > 0 {
+	if expStatus, ok := req.Context().Value(request.EndpointExpectedStatus).([]int64); beresp != nil &&
+		ok && len(expStatus) > 0 {
 		var seen bool
 		for _, exp := range expStatus {
 			if beresp.StatusCode == int(exp) {

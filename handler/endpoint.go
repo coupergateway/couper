@@ -78,12 +78,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
-	// Bind some context related values for logging purposes
-	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
-	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
-	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
-	reqCtx = context.WithValue(reqCtx, request.BufferOptions, e.opts.BufferOpts)
-	*req = *req.WithContext(reqCtx)
+	reqCtx := e.withContext(req)
+
 	if e.opts.LogPattern != "" {
 		span := trace.SpanFromContext(reqCtx)
 		span.SetAttributes(telemetry.KeyEndpoint.String(e.opts.LogPattern))
@@ -98,7 +94,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
-	beresps := e.produce(req.WithContext(subCtx))
+	beresps, err := e.produce(req.WithContext(subCtx))
 
 	// check for client cancels before reading backend response bodies
 	select {
@@ -111,6 +107,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	evalContext := eval.ContextFromRequest(req)
 	if !e.opts.IsErrorHandler {
+		// error handler endpoints gets called with current beresps variables
+		// calling them again with this empty beresps list would override them
 		evalContext = evalContext.WithBeresps(beresps.List()...)
 	}
 
@@ -126,93 +124,31 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// assume prio or err on conf load if set with response
-	if e.opts.Redirect != nil {
-		clientres = e.newRedirect()
-	} else if e.opts.Response != nil {
-		// TODO: refactor with error_handler, catch at least panics for now
-		for _, b := range beresps {
-			if b.Err == nil {
-				continue
-			}
-
-			switch b.Err.(type) {
-			case producer.ResultPanic:
-				log.WithError(b.Err).Error()
-			}
-
-			if b.Err != nil {
-				err = b.Err
-				break
-			}
-		}
-
-		if err == nil {
-			_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
-			defer span.End()
-			clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
-		}
-	} else {
-		if result, ok := beresps["default"]; ok {
-			clientres = result.Beresp
-			err = result.Err
-		} else {
-			// fallback
-			err = errors.Configuration
-
-			if e.opts.IsErrorHandler {
-				err, _ = req.Context().Value(request.Error).(*errors.Error)
-			} else {
-				if e.opts.ErrorHandler != nil {
-					e.opts.ErrorHandler.ServeHTTP(rw, req)
-					return
-				}
-
-				// on roundtrip panic the context label is missing atm
-				// pick the first err from beresps
-				for _, br := range beresps {
-					if br != nil && br.Err != nil {
-						err = br.Err
-						break
-					}
-				}
-			}
+	// handle errors first before entering the happy path
+	if !e.opts.IsErrorHandler {
+		if handled := e.handleError(rw, req, evalContext, err); handled {
+			return
 		}
 	}
 
-	if err != nil {
-		serveErr := err
-		switch err.(type) { // TODO proper err mapping and handling
-		case net.Error:
-			serveErr = errors.Request.With(err)
-			if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
-				serveErr = errors.Proxy.With(err)
-			}
-		case producer.ResultPanic:
-			serveErr = errors.Server.With(err)
-			log.WithError(err).Error()
+	// assume configured priority, prefer redirect to response and default ones
+	if e.opts.Redirect != nil {
+		clientres = e.newRedirect()
+	} else if e.opts.Response != nil {
+		_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
+		defer span.End()
+		clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
+	} else if result, exist := beresps["default"]; exist {
+		clientres = result.Beresp
+		err = result.Err
+	} else if e.opts.IsErrorHandler && err == nil {
+		err, ok = req.Context().Value(request.Error).(error)
+		if !ok {
+			err = errors.Server
 		}
-
-		if e.opts.ErrorHandler != nil {
-			e.opts.ErrorHandler.ServeHTTP(rw, req.WithContext(context.WithValue(evalContext, request.Error, serveErr)))
-			return
-		}
-
-		content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
-		errFromCtx := req.Context().Value(request.Error)
-		if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && errFromCtx == err && ok {
-			if statusCode, applyErr := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
-				if serr, k := serveErr.(*errors.Error); k {
-					serveErr = serr.Status(statusCode)
-				} else {
-					serveErr = errors.Server.With(serveErr).Status(statusCode)
-				}
-			} else if applyErr != nil {
-				e.log.WithError(applyErr)
-			}
-		}
-
-		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
+	}
+	
+	if handled := e.handleError(rw, req, evalContext, err); handled {
 		return
 	}
 
@@ -260,6 +196,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	_ = clientres.Body.Close()
 }
 
+// withContext binds some endpoint context related values for logging and buffer purposes.
+func (e *Endpoint) withContext(req *http.Request) context.Context {
+	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
+	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
+	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
+	reqCtx = context.WithValue(reqCtx, request.BufferOptions, e.opts.BufferOpts)
+	*req = *req.WithContext(reqCtx)
+	return reqCtx
+}
+
 func (e *Endpoint) newRedirect() *http.Response {
 	// TODO use http.RedirectHandler
 	status := http.StatusMovedPermanently
@@ -271,8 +217,8 @@ func (e *Endpoint) newRedirect() *http.Response {
 }
 
 // produce hands over all possible outgoing requests to the producer interface and reads
-// the backend response results afterwards.
-func (e *Endpoint) produce(req *http.Request) producer.ResultMap {
+// the backend response results afterwards. Returns first occurred backend error.
+func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	results := make(producer.ResultMap)
 
 	trips := []producer.Roundtrips{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
@@ -291,7 +237,16 @@ func (e *Endpoint) produce(req *http.Request) producer.ResultMap {
 		e.readResults(resultCh, results)
 	}
 
-	return results
+	var err error // TODO: prefer default resp err
+	// TODO: additionally log all panic error types
+	for _, r := range results {
+		if r.Err != nil {
+			err = r.Err
+			break
+		}
+	}
+
+	return results, err
 }
 
 func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
@@ -313,6 +268,50 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps producer
 			beresps[name] = r
 		}
 	}
+}
+
+func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, evalCtx *eval.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	ctxErr := req.Context().Value(request.Error)
+	serveErr := err
+	switch err.(type) {
+	case net.Error:
+		serveErr = errors.Request.With(err)
+		if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
+			serveErr = errors.Proxy.With(err)
+		}
+	case producer.ResultPanic:
+		serveErr = errors.Server.With(err)
+	}
+
+	if e.opts.ErrorHandler != nil {
+		if ctxErr == nil {
+			ctxErr = serveErr
+		}
+		e.opts.ErrorHandler.ServeHTTP(rw, req.WithContext(context.WithValue(evalCtx, request.Error, ctxErr)))
+		return true
+	}
+
+	content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
+
+	// modify response status code if set
+	if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && ctxErr == err && ok {
+		if statusCode, applyErr := eval.ApplyResponseStatus(evalCtx, attr, nil); statusCode > 0 {
+			if serr, k := serveErr.(*errors.Error); k {
+				serveErr = serr.Status(statusCode)
+			} else {
+				serveErr = errors.Server.With(serveErr).Status(statusCode)
+			}
+		} else if applyErr != nil {
+			e.log.WithError(applyErr)
+		}
+	}
+
+	e.opts.ErrorTemplate.WithError(serveErr).ServeHTTP(rw, req)
+	return true
 }
 
 func (e *Endpoint) Options() *server.Options {
