@@ -61,15 +61,24 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	urlVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), p.context, "url")
+	// 4. apply some hcl context
+	hclCtx := eval.ContextFromRequest(req).HCLContext()
+	expStatusVal, err := eval.ValueFromBodyAttribute(hclCtx, p.context, "expected_status")
+	if err != nil {
+		return nil, err
+	}
+
+	outCtx := context.WithValue(req.Context(), request.EndpointExpectedStatus, seetie.ValueToIntSlice(expStatusVal))
+
+	urlVal, err := eval.ValueFromBodyAttribute(hclCtx, p.context, "url")
 	if err != nil {
 		return nil, err
 	}
 
 	if url := seetie.ValueToString(urlVal); url != "" {
-		ctx := context.WithValue(req.Context(), request.URLAttribute, url)
-		*req = *req.WithContext(ctx)
+		outCtx = context.WithValue(outCtx, request.URLAttribute, url)
 	}
+	*req = *req.WithContext(outCtx)
 
 	if err = p.registerWebsocketsResponse(req); err != nil {
 		return nil, err

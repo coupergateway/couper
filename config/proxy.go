@@ -42,9 +42,10 @@ func (p Proxy) HCLBody() hcl.Body {
 func (p Proxy) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		Backend    *Backend    `hcl:"backend,block"`
-		URL        string      `hcl:"url,optional"`
-		Websockets *Websockets `hcl:"websockets,block"`
+		Backend        *Backend    `hcl:"backend,block"`
+		ExpectedStatus []int       `hcl:"expected_status,optional"`
+		URL            string      `hcl:"url,optional"`
+		Websockets     *Websockets `hcl:"websockets,block"`
 	}
 
 	return &Inline{}
