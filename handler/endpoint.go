@@ -110,7 +110,9 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	evalContext := eval.ContextFromRequest(req)
-	evalContext = evalContext.WithBeresps(beresps.List()...)
+	if !e.opts.IsErrorHandler {
+		evalContext = evalContext.WithBeresps(beresps.List()...)
+	}
 
 	// send updated eval context over to the custom log hook
 	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
