@@ -92,7 +92,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 
 		if lastResult.Err != nil {
-			lastResult.Err = errors.Endpoint.Kind("sequence").With(lastResult.Err)
+			lastResult.Err = errors.Sequence.With(lastResult.Err)
 			results <- lastResult
 			return
 		}
@@ -105,8 +105,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	}
 
 	if lastResult == nil {
-		results <- &Result{Err: errors.Endpoint.Kind("sequence").
-			With(errors.New().Message("no result"))}
+		results <- &Result{Err: errors.Sequence.With(errors.New().Message("no result"))}
 	}
 
 	results <- lastResult

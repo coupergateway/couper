@@ -26,6 +26,6 @@ var Definitions = []*Error{
 
 	BackendValidation,
 
-	Endpoint,
+	Endpoint.Kind("sequence"),
 	Endpoint.Kind("unexpected_status"),
 }

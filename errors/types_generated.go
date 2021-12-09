@@ -14,6 +14,7 @@ var (
 	BetaOperationDenied         = Definitions[9]
 	BetaScope                   = Definitions[10]
 	BetaInsufficientScope       = Definitions[11]
+	Sequence                    = Definitions[13]
 	UnexpectedStatus            = Definitions[14]
 )
 
@@ -37,7 +38,7 @@ var types = typeDefinitions{
 	"beta_scope":                     BetaScope,
 	"beta_insufficient_scope":        BetaInsufficientScope,
 	"backend_validation":             BackendValidation,
-	"endpoint":                       Endpoint,
+	"sequence":                       Sequence,
 	"unexpected_status":              UnexpectedStatus,
 }
 
