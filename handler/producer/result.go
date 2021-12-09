@@ -67,15 +67,21 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 	span.End()
 
 	if expStatus, ok := req.Context().Value(request.EndpointExpectedStatus).([]int64); beresp != nil && ok {
+		var seen bool
 		for _, exp := range expStatus {
-			if beresp.StatusCode != int(exp) {
-				results <- &Result{
-					Beresp:        beresp,
-					Err:           errors.UnexpectedStatus.With(err),
-					RoundTripName: rtn,
-				}
-				return
+			if beresp.StatusCode == int(exp) {
+				seen = true
+				break
 			}
+		}
+
+		if !seen {
+			results <- &Result{
+				Beresp:        beresp,
+				Err:           errors.UnexpectedStatus.With(err),
+				RoundTripName: rtn,
+			}
+			return
 		}
 	}
 
