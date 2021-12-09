@@ -41,7 +41,7 @@ func (r Request) Inline() interface{} {
 	type Inline struct {
 		Backend        *Backend             `hcl:"backend,block"`
 		Body           string               `hcl:"body,optional"`
-		ExpectedStatus []int                `hcl:"expected_status"`
+		ExpectedStatus []int                `hcl:"expected_status,optional"`
 		FormBody       string               `hcl:"form_body,optional"`
 		Headers        map[string]string    `hcl:"headers,optional"`
 		JsonBody       string               `hcl:"json_body,optional"`
