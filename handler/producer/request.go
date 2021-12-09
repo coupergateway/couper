@@ -105,6 +105,14 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			continue
 		}
 
+		expStatusVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "expected_status")
+		if err != nil {
+			results <- &Result{Err: err}
+			continue
+		}
+
+		outCtx = context.WithValue(outCtx, request.EndpointExpectedStatus, seetie.ValueToIntSlice(expStatusVal))
+
 		if defaultContentType != "" {
 			outreq.Header.Set("Content-Type", defaultContentType)
 		}

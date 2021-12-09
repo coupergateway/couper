@@ -14,6 +14,7 @@ var (
 	BetaOperationDenied         = Definitions[9]
 	BetaScope                   = Definitions[10]
 	BetaInsufficientScope       = Definitions[11]
+	UnexpectedStatus            = Definitions[14]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -35,6 +36,9 @@ var types = typeDefinitions{
 	"beta_operation_denied":          BetaOperationDenied,
 	"beta_scope":                     BetaScope,
 	"beta_insufficient_scope":        BetaInsufficientScope,
+	"backend_validation":             BackendValidation,
+	"endpoint":                       Endpoint,
+	"unexpected_status":              UnexpectedStatus,
 }
 
 // IsKnown tells the configuration callee if Couper

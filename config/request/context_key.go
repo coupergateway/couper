@@ -9,6 +9,7 @@ const (
 	BackendName
 	BufferOptions
 	Endpoint
+	EndpointExpectedStatus
 	EndpointKind
 	Error
 	Handler

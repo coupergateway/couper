@@ -13,9 +13,9 @@ var (
 	AccessControl     = &Error{synopsis: "access control error", kinds: []string{"access_control"}, httpStatus: http.StatusForbidden}
 	Backend           = &Error{synopsis: "backend error", httpStatus: http.StatusBadGateway}
 	BackendTimeout    = &Error{synopsis: "backend timeout error", httpStatus: http.StatusGatewayTimeout}
-	BackendValidation = &Error{synopsis: "backend validation error", httpStatus: http.StatusBadRequest}
+	BackendValidation = &Error{synopsis: "backend validation error", kinds: []string{"backend_validation"}, httpStatus: http.StatusBadRequest}
 	ClientRequest     = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
-	Endpoint          = &Error{synopsis: "endpoint request error", httpStatus: http.StatusBadGateway}
+	Endpoint          = &Error{synopsis: "endpoint request error", kinds: []string{"endpoint"}, httpStatus: http.StatusBadGateway}
 	Evaluation        = &Error{synopsis: "expression evaluation error", kinds: []string{"evaluation"}, httpStatus: http.StatusInternalServerError}
 	Configuration     = &Error{synopsis: "configuration error", kinds: []string{"configuration"}, httpStatus: http.StatusInternalServerError}
 	Proxy             = &Error{synopsis: "proxy error", httpStatus: http.StatusBadGateway}

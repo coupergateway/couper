@@ -23,4 +23,9 @@ var Definitions = []*Error{
 
 	AccessControl.Kind("beta_scope"),
 	AccessControl.Kind("beta_scope").Kind("beta_insufficient_scope"),
+
+	BackendValidation,
+
+	Endpoint,
+	Endpoint.Kind("unexpected_status"),
 }

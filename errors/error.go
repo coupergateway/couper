@@ -83,6 +83,9 @@ func (e *Error) Messagef(msg string, args ...interface{}) *Error {
 }
 
 func (e *Error) With(inner error) *Error {
+	if inner == nil {
+		return e
+	}
 	err := e.clone()
 	err.inner = inner
 	return err

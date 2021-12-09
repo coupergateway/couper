@@ -192,7 +192,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		if e.opts.ErrorHandler != nil {
-			e.opts.ErrorHandler.ServeHTTP(rw, req.WithContext(context.WithValue(req.Context(), request.Error, serveErr)))
+			e.opts.ErrorHandler.ServeHTTP(rw, req.WithContext(context.WithValue(evalContext, request.Error, serveErr)))
 			return
 		}
 
