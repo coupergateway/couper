@@ -305,7 +305,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			scopeDefinitions := ACDefinitions{ // misuse of definitions obj for now
+			errorHandlerDefinitions := ACDefinitions{ // misuse of definitions obj for now
 				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
 			}
 
@@ -317,7 +317,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 				modifier = []hcl.Body{parentAPI.Remain, srvConf.Remain}
 
-				scopeDefinitions["api"] = &AccessControl{ErrorHandler: parentAPI.ErrorHandler}
+				errorHandlerDefinitions["api"] = &AccessControl{ErrorHandler: parentAPI.ErrorHandler}
 			}
 			epOpts.LogHandlerKind = kind.String()
 
@@ -325,6 +325,18 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				epHandler = epOpts.Error.ServeError(errors.RouteNotFound)
 			} else {
+				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+					epOpts:       epOpts,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				}, log, errorHandlerDefinitions, "api", "endpoint")
+				if err != nil {
+					return nil, err
+				}
+				if epErrorHandler != nil {
+					epOpts.ErrorHandler = epErrorHandler
+				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 			}
 
@@ -339,7 +351,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				memStore:     memStore,
 				proxyFromEnv: conf.Settings.NoProxyFromEnv,
 				srvOpts:      serverOptions,
-			}, log, scopeDefinitions, "api", "endpoint")
+			}, log, errorHandlerDefinitions, "api", "endpoint")
 			if err != nil {
 				return nil, err
 			}

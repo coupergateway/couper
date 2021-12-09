@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -33,12 +32,14 @@ type Endpoint struct {
 
 type EndpointOptions struct {
 	APIName        string
+	BufferOpts     eval.BufferOption
 	Context        hcl.Body
 	Error          *errors.Template
+	ErrorHandler   http.Handler
+	IsErrorHandler bool
 	LogHandlerKind string
 	LogPattern     string
 	ReqBodyLimit   int64
-	BufferOpts     eval.BufferOption
 	ServerOpts     *server.Options
 
 	Proxies   producer.Roundtrips
@@ -63,10 +64,9 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) 
 
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var (
-		clientres    *http.Response
-		err          error
-		log          = e.log.WithContext(req.Context())
-		isErrHandler = strings.HasPrefix(e.opts.LogHandlerKind, "error_") // weak ref
+		clientres *http.Response
+		err       error
+		log       = e.log.WithContext(req.Context())
 	)
 
 	defer func() {
@@ -158,10 +158,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			// fallback
 			err = errors.Configuration
 
-			if isErrHandler {
+			if e.opts.IsErrorHandler {
 				err, _ = req.Context().Value(request.Error).(*errors.Error)
 			} else {
-				// TODO determine error priority, may solved with error_handler
+				if e.opts.ErrorHandler != nil {
+					e.opts.ErrorHandler.ServeHTTP(rw, req)
+					return
+				}
+
 				// on roundtrip panic the context label is missing atm
 				// pick the first err from beresps
 				for _, br := range beresps {
@@ -187,9 +191,14 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			log.WithError(err).Error()
 		}
 
+		if e.opts.ErrorHandler != nil {
+			e.opts.ErrorHandler.ServeHTTP(rw, req.WithContext(context.WithValue(req.Context(), request.Error, serveErr)))
+			return
+		}
+
 		content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
 		errFromCtx := req.Context().Value(request.Error)
-		if attr, ok := content.Attributes["set_response_status"]; isErrHandler && errFromCtx == err && ok {
+		if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && errFromCtx == err && ok {
 			if statusCode, applyErr := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
 				if serr, k := serveErr.(*errors.Error); k {
 					serveErr = serr.Status(statusCode)

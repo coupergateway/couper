@@ -59,6 +59,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				}
 
 				epOpts.LogHandlerKind = "error_" + k
+				epOpts.IsErrorHandler = true
 				kindsHandler[k] = handler.NewEndpoint(epOpts, log, nil)
 			}
 		}
