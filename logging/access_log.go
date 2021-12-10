@@ -170,9 +170,10 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 }
 
 func UpdateCustomAccessLogContext(req *http.Request, body hcl.Body) {
+	bodies := []hcl.Body{body}
 	if b := req.Context().Value(request.LogCustomAccess); b != nil {
-		bodies, _ := b.([]hcl.Body)
-		bodies = append(bodies, body)
-		*req = *req.WithContext(context.WithValue(req.Context(), request.LogCustomAccess, bodies))
+		previousBodies, _ := b.([]hcl.Body)
+		bodies = append(previousBodies, bodies...)
 	}
+	*req = *req.WithContext(context.WithValue(req.Context(), request.LogCustomAccess, bodies))
 }
