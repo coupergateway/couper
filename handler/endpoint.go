@@ -63,10 +63,12 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) 
 }
 
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	reqCtx := e.withContext(req)
+
 	var (
 		clientres *http.Response
 		err       error
-		log       = e.log.WithContext(req.Context())
+		log       = e.log.WithContext(reqCtx)
 	)
 
 	defer func() {
@@ -77,8 +79,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}()
-
-	reqCtx := e.withContext(req)
 
 	if e.opts.LogPattern != "" {
 		span := trace.SpanFromContext(reqCtx)
@@ -117,8 +117,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if ok {
 		select {
 		case <-reqCtx.Done():
-			err = reqCtx.Err()
-			log.WithError(errors.ClientRequest.With(err)).Error()
 			return
 		case customLogEvalCtxCh <- evalContext:
 		}
@@ -290,8 +288,9 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, evalCt
 	if e.opts.ErrorHandler != nil {
 		if ctxErr == nil {
 			ctxErr = serveErr
+			*req = *req.WithContext(context.WithValue(evalCtx, request.Error, ctxErr))
 		}
-		e.opts.ErrorHandler.ServeHTTP(rw, req.WithContext(context.WithValue(evalCtx, request.Error, ctxErr)))
+		e.opts.ErrorHandler.ServeHTTP(rw, req)
 		return true
 	}
 
