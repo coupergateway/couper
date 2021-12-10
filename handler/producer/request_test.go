@@ -29,6 +29,7 @@ func TestRequests_Produce(t *testing.T) {
 		}
 		rw.WriteHeader(s)
 	}))
+	defer origin.Close()
 
 	logger, _ := test.NewLogger()
 	logEntry := logger.WithContext(context.Background())
