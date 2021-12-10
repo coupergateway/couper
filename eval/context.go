@@ -223,8 +223,10 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
 	}
 
-	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(bereqs)
-	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(resps)
+	// Prevent overriding existing variables with successive calls to this method.
+	// Could happen with error_handler within an endpoint. Merge them.
+	updateBackendVariables(ctx.eval, BackendRequests, bereqs)
+	updateBackendVariables(ctx.eval, BackendResponses, resps)
 
 	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
 	originUrl, _ := url.Parse(clientOrigin)
@@ -232,6 +234,17 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	ctx.updateFunctions()
 
 	return ctx
+}
+
+func updateBackendVariables(evalCtx *hcl.EvalContext, key string, cmap ContextMap) {
+	if !evalCtx.Variables[key].IsNull() && evalCtx.Variables[key].LengthInt() > 0 {
+		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)})
+		if !merged.IsNull() {
+			evalCtx.Variables[key] = merged
+		}
+	} else {
+		evalCtx.Variables[key] = cty.ObjectVal(cmap)
+	}
 }
 
 // WithJWTSigningConfigs initially sets up the lib.FnJWTSign function.

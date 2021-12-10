@@ -106,11 +106,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	evalContext := eval.ContextFromRequest(req)
-	if !e.opts.IsErrorHandler {
-		// error handler endpoints gets called with current beresps variables
-		// calling them again with this empty beresps list would override them
-		evalContext = evalContext.WithBeresps(beresps.List()...)
-	}
+	evalContext = evalContext.WithBeresps(beresps.List()...)
 
 	// send updated eval context over to the custom log hook
 	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
