@@ -129,7 +129,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	errCh := make(chan error, 1)
-	sequences, requests, proxies := newSequence(allProxies, allRequests, errCh, items...)
+	sequences, requests, proxies := newSequences(allProxies, allRequests, errCh, items...)
 	if err := <-errCh; err != nil {
 		return nil, err
 	}
@@ -181,9 +181,9 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}, nil
 }
 
-// newSequence lookups any request related dependency and sort them into a sequence.
+// newSequences lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
-func newSequence(proxies map[string]*producer.Proxy, requests map[string]*producer.Request, errCh chan<- error,
+func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request, errCh chan<- error,
 	items ...config.SequenceItem) (producer.Sequences, producer.Requests, producer.Proxies) {
 
 	defer func() {
