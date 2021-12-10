@@ -62,9 +62,7 @@ func collectExpressions(bodies ...hcl.Body) []hcl.Expression {
 			}
 
 			for _, block := range sb.Blocks {
-				for _, attr := range block.Body.Attributes {
-					allExpressions = append(allExpressions, attr.Expr)
-				}
+				allExpressions = append(allExpressions, collectExpressions(block.Body)...)
 			}
 		case *body.Body:
 			content, _, _ := sb.PartialContent(nil)
