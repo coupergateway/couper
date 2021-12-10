@@ -20,7 +20,7 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
-func TestRequests_Produce(t *testing.T) {
+func Test_ProduceExpectedStatus(t *testing.T) {
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		s, err := strconv.Atoi(req.Header.Get("X-Status"))
 		if err != nil {
@@ -52,14 +52,14 @@ func TestRequests_Produce(t *testing.T) {
 		reflectStatus int // send via header, reflected by origin as http status-code
 		expectedErr   error
 	}{
-		{"normal", nil, http.StatusNoContent, nil},
-		{"/w expected_status /w unexpected response", &hcl.Attribute{
+		{"/wo status", nil, http.StatusNoContent, nil},
+		{"/w status /w unexpected response", &hcl.Attribute{
 			Name: "expected_status",
 			Expr: &hclsyntax.LiteralValueExpr{Val: toListVal(200, 304)}},
 			http.StatusNotAcceptable,
 			errors.UnexpectedStatus,
 		},
-		{"/w expected_status /w expected response", &hcl.Attribute{
+		{"/w status /w expected response", &hcl.Attribute{
 			Name: "expected_status",
 			Expr: &hclsyntax.LiteralValueExpr{Val: toListVal(200, 304)}},
 			http.StatusNotModified,
