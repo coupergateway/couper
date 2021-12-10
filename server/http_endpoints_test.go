@@ -19,6 +19,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 const testdataPath = "testdata/endpoints"
@@ -548,12 +549,20 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 			continue
 		}
 
+		path, _ := entry.Data["request"].(logging.Fields)["path"]
+
 		if strings.Contains(entry.Message, context.Canceled.Error()) {
 			ctxCanceledSeen = true
+			if path != "/" {
+				t.Errorf("expected '/' to fail")
+			}
 		}
 
 		if entry.Message == "" && entry.Data["status"] == 200 {
 			statusOKseen = true
+			if path != "/reflect" {
+				t.Errorf("expected '/reflect' to be ok")
+			}
 		}
 	}
 
@@ -602,12 +611,20 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 			continue
 		}
 
+		path, _ := entry.Data["request"].(logging.Fields)["path"]
+
 		if entry.Message == "backend timeout error: deadline exceeded" {
 			ctxDeadlineSeen = true
+			if path != "/" {
+				t.Errorf("expected '/' to fail")
+			}
 		}
 
 		if entry.Message == "" && entry.Data["status"] == 200 {
 			statusOKseen = true
+			if path != "/reflect" {
+				t.Errorf("expected '/reflect' to be ok")
+			}
 		}
 	}
 
