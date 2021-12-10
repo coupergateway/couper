@@ -5,6 +5,7 @@
   - [Error messages](#error-messages)
   - [Access control error_handler](#access-control-error_handler)
   - [Scope related error_handler](#scope-related-error_handler)
+  - [Endpoint related error_handler](#endpoint-related-error_handler)
     - [error_handler specification](#error_handler-specification)
     - [Error types](#error-types)
 
@@ -28,6 +29,10 @@ For this purpose every access control definition of `basic_auth`, `jwt` or `saml
 Since an [AC](#access-control-error_handler) error handler is rather general than scopes handled per endpoint or http-method but are still protected with the
 same access-control. Reacting to those more path specific errors you can define one or more `error_handler` blocks within
 an `api` or `endpoint` block.
+
+## Endpoint related `error_handler`
+
+TBA
 
 ### `error_handler` specification
 
