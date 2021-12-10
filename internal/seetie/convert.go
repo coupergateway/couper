@@ -205,7 +205,7 @@ func ValueToStringSlice(src cty.Value) []string {
 
 func ValueToIntSlice(src cty.Value) []int64 {
 	var n []int64
-	if !src.IsKnown() || src.IsNull() {
+	if !src.IsKnown() || src.IsNull() || !src.CanIterateElements() {
 		return n
 	}
 
