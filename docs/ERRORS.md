@@ -6,8 +6,8 @@
   - [Access control error_handler](#access-control-error_handler)
   - [Scope related error_handler](#scope-related-error_handler)
   - [Endpoint related error_handler](#endpoint-related-error_handler)
-    - [error_handler specification](#error_handler-specification)
-    - [Error types](#error-types)
+  - [error_handler specification](#error_handler-specification)
+  - [Error types](#error-types)
 
 ## Introduction
 
@@ -34,7 +34,7 @@ an `api` or `endpoint` block.
 
 TBA
 
-### `error_handler` specification
+## `error_handler` specification
 
 The error handler label specifies which [error type](#error-types)
 should be handled. Multiple labels are allowed. The label can be omitted to catch all errors which are related to this access control definition. This has the same behavior as the error type `*`, that catches all errors explicitly.
@@ -54,7 +54,7 @@ error_handler "jwt_token_missing" {
 }
 ```
 
-### Error types
+## Error types
 
 All errors have a specific type. You can find it in the log field `error_type`. Furthermore, errors can be associated with a list of less specific types. Your error handlers will be evaluated from the most to the least specific one. Only the first matching error handler is executed.
 
