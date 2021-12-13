@@ -8,6 +8,9 @@
   - [Endpoint related error_handler](#endpoint-related-error_handler)
   - [error_handler specification](#error_handler-specification)
   - [Error types](#error-types)
+    - [Access control error types](#access-control-error-types)
+    - [API/endpoint error types](#api/endpoint-error-types)
+    - [Endpoint error types](#endpoint-error-types)
 
 ## Introduction
 
@@ -58,9 +61,10 @@ error_handler "jwt_token_missing" {
 
 All errors have a specific type. You can find it in the log field `error_type`. Furthermore, errors can be associated with a list of less specific types. Your error handlers will be evaluated from the most to the least specific one. Only the first matching error handler is executed.
 
+### Access control error types
+
 | Type (and super types)                          | Description                                                                                      | Default handling                                                            |
 |:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
-| **Access control**                              |                                                                                                  |                                                                             |
 | `basic_auth`                                    | All `basic_auth` related errors, e.g. unknown user or wrong password.                            | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
 | `basic_auth_credentials_missing` (`basic_auth`) | Client does not provide any credentials.                                                         | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
 | `jwt`                                           | All `jwt` related errors.                                                                        | Send error template with status `403`.                                      |
@@ -69,9 +73,18 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | `jwt_token_invalid` (`jwt`)                     | The token is not sufficient, e.g. because required claims are missing or have unexpected values. | Send error template with status `403`.                                      |
 | `saml2`                                         | All `saml2` related errors                                                                       | Send error template with status `403`.                                      |
 | `oauth2`                                        | All `beta_oauth2`/`oidc` related errors                                                          | Send error template with status `403`.                                      |
+
+### API/endpoint error types
+
+| Type (and super types)                          | Description                                                                                      | Default handling                                                            |
+|:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
 | `beta_scope`                                    | All `beta_scope` related errors                                                                  | Send error template with status `403`.                                      |
 | `beta_insufficient_scope`                       | The request is not in the scope granted to the requester.                                        | Send error template with status `403`.                                      |
 | `beta_operation_denied`                         | The request method is not permitted.                                                             | Send error template with status `403`.                                      |
-| **Endpoint**                                    |                                                                                                  |                                                                             |
+
+### Endpoint error types
+
+| Type (and super types)                          | Description                                                                                      | Default handling                                                            |
+|:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
 | `sequence`                                      | A `request` or `proxy` block request has been failed while depending on another one              | Send error template with status `502`.                                      |
 | `unexpected_status`                             | A `request` or `proxy` block response status code does not match the to `expected_status` list   | Send error template with status `502`.                                      |
