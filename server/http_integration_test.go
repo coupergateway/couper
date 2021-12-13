@@ -3949,7 +3949,7 @@ func TestCORS_Configuration(t *testing.T) {
 }
 
 func TestLog_Level(t *testing.T) {
-	shutdown, hook := newCouper("testdata/integration/logging/01_couper.hcl", test.New(t))
+	shutdown, hook := newCouper("testdata/integration/logs/03_couper.hcl", test.New(t))
 	defer shutdown()
 
 	client := newClient()
