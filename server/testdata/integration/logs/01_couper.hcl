@@ -143,6 +143,22 @@ server "logs" {
       }
     }
 
+    endpoint "/error-handler/endpoint" {
+      access_control = ["JWT"]
+
+      beta_scope = "required"
+
+      response {
+        status = 204
+      }
+
+      error_handler "beta_insufficient_scope" {
+        custom_log_fields = {
+          error_handler = request.method
+        }
+      }
+    }
+
   }
 }
 
