@@ -633,3 +633,44 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 	}
 
 }
+
+func TestEndpointErrorHandler(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "14_couper.hcl"), helper)
+	defer shutdown()
+
+	type testcase struct {
+		name           string
+		path           string
+		expectedHeader test.Header
+		expectedStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"error_handler not triggered", "/ok", test.Header{"x": "application/json"}, http.StatusOK},
+		{"error_handler triggered with beresp body", "/not-ok", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
+			h.Must(err)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.expectedStatus {
+				st.Fatalf("want: %d, got: %d", tc.expectedStatus, res.StatusCode)
+			}
+
+			for k, v := range tc.expectedHeader {
+				if hv := res.Header.Get(k); hv != v {
+					st.Errorf("%q: want %q, got %q", k, v, hv)
+					break
+				}
+			}
+		})
+	}
+}
