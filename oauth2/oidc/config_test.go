@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/avenga/couper/cache"
+	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/handler/transport"
@@ -16,7 +16,7 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
-func TestConfig_getFreshIfExpiredSynced(t *testing.T) {
+func TestConfig_Synced(t *testing.T) {
 	helper := test.New(t)
 
 	log, _ := test.NewLogger()
@@ -24,12 +24,18 @@ func TestConfig_getFreshIfExpiredSynced(t *testing.T) {
 
 	var origin *httptest.Server
 	origin = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		conf := &oidc.OpenidConfiguration{
-			AuthorizationEndpoint:         origin.URL + "/auth",
-			Issuer:                        "thatsme",
-			TokenEndpoint:                 origin.URL + "/token",
-			UserinfoEndpoint:              origin.URL + "/userinfo",
-			CodeChallengeMethodsSupported: []string{config.CcmS256},
+		var conf interface{}
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			conf = &oidc.OpenidConfiguration{
+				AuthorizationEndpoint:         origin.URL + "/auth",
+				CodeChallengeMethodsSupported: []string{config.CcmS256},
+				Issuer:                        "thatsme",
+				JwksUri:                       origin.URL + "/jwks",
+				TokenEndpoint:                 origin.URL + "/token",
+				UserinfoEndpoint:              origin.URL + "/userinfo",
+			}
+		} else if req.URL.Path == "/jwks" {
+			conf = jwk.JWKSData{}
 		}
 
 		b, err := json.Marshal(conf)
@@ -39,12 +45,8 @@ func TestConfig_getFreshIfExpiredSynced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	memQuitCh := make(chan struct{})
-	defer close(memQuitCh)
-	memStore := cache.New(logger, memQuitCh)
-
 	be := transport.NewBackend(configload.EmptyBody(), &transport.Config{}, nil, logger)
-	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL}, be, memStore)
+	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL + "/.well-known/openid-configuration"}, be)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

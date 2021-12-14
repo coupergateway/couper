@@ -20,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
@@ -560,7 +561,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				return nil, confErr.With(err)
 			}
 
-			oidcConfig, err := oidc.NewConfig(oidcConf, backend, memStore)
+			oidcConfig, err := oidc.NewConfig(oidcConf, backend)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -711,7 +712,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	return accessControls, nil
 }
 
-func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*ac.JWKS, error) {
+func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
 	var backend http.RoundTripper
 
 	if jwtConf.Backend != nil {
@@ -723,7 +724,7 @@ func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.Ev
 	}
 
 	evalContext := conf.Context.Value(request.ContextType).(context.Context)
-	jwks, err := ac.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend, evalContext)
+	jwks, err := jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend, evalContext)
 	if err != nil {
 		return nil, err
 	}
