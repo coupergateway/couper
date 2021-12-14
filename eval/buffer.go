@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
 )
@@ -47,39 +46,21 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 	}
 
 	var allExprs []hcl.Expression
-	var syntaxAttrs []hclsyntax.Attributes
-	// TODO: follow func call and their referenced remains
-	for _, b := range bodies {
-		if sb, ok := b.(*hclsyntax.Body); ok {
-			syntaxAttrs = append(syntaxAttrs, sb.Attributes)
-			for _, block := range sb.Blocks {
-				syntaxAttrs = append(syntaxAttrs, block.Body.Attributes)
-				if opt := bufferWithBlock(block.Type); opt != BufferNone {
-					result |= opt
-				}
-			}
-			continue
-		}
+	allAttributes := body.CollectAttributes(bodies...)
+	allBlockTypes := body.CollectBlockTypes(bodies...)
 
-		if all, ok := b.(body.Attributes); ok {
-			attrs := all.JustAllAttributes()
-			for _, attr := range attrs {
-				for _, v := range attr {
-					if opt := bufferWithAttribute(v.Name); opt != BufferNone {
-						result |= opt
-					}
-					allExprs = append(allExprs, v.Expr)
-				}
-			}
+	for _, blockType := range allBlockTypes {
+		if opt := bufferWithBlock(blockType); opt != BufferNone {
+			result |= opt
 		}
 	}
 
-	for _, attr := range syntaxAttrs {
-		for _, v := range attr {
-			if opt := bufferWithAttribute(v.Name); opt != BufferNone {
-				result |= opt
-			}
-			allExprs = append(allExprs, v.Expr)
+	// TODO: follow func call and their referenced remains
+	for _, attr := range allAttributes {
+		allExprs = append(allExprs, attr.Expr)
+
+		if opt := bufferWithAttribute(attr.Name); opt != BufferNone {
+			result |= opt
 		}
 	}
 

@@ -2,7 +2,6 @@ package configload
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
@@ -19,7 +18,7 @@ func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
 	}
 
 	for _, seqItem := range items {
-		allExpressions := collectExpressions(seqItem.HCLBody())
+		allExpressions := body.CollectExpressions(seqItem.HCLBody())
 		for _, expr := range allExpressions {
 			for _, traversal := range expr.Variables() {
 				if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
@@ -49,42 +48,4 @@ func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
 			}
 		}
 	}
-}
-
-func collectExpressions(bodies ...hcl.Body) []hcl.Expression {
-	allExpressions := make([]hcl.Expression, 0)
-
-	for _, b := range bodies {
-		switch sb := b.(type) {
-		case *hclsyntax.Body:
-			for _, attr := range sb.Attributes {
-				allExpressions = append(allExpressions, attr.Expr)
-			}
-
-			for _, block := range sb.Blocks {
-				allExpressions = append(allExpressions, collectExpressions(block.Body)...)
-			}
-		case *body.Body:
-			content, _, _ := sb.PartialContent(nil)
-			for _, attr := range content.Attributes {
-				allExpressions = append(allExpressions, attr.Expr)
-			}
-			for _, block := range content.Blocks {
-				allExpressions = append(allExpressions, collectExpressions(block.Body)...)
-			}
-		case body.MergedBodies:
-			// top-level attrs
-			for _, attrs := range sb.JustAllAttributes() {
-				for _, attr := range attrs {
-					allExpressions = append(allExpressions, attr.Expr)
-				}
-			}
-
-			// nested block attrs
-			for _, mb := range sb {
-				allExpressions = append(allExpressions, collectExpressions(mb)...)
-			}
-		}
-	}
-	return allExpressions
 }
