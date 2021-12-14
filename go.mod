@@ -8,7 +8,7 @@ require (
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
-	github.com/getkin/kin-openapi v0.84.0
+	github.com/getkin/kin-openapi v0.86.0
 	github.com/hashicorp/hcl/v2 v2.11.1
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -33,11 +33,11 @@ require (
 	go.opentelemetry.io/otel/sdk/export/metric v0.23.0
 	go.opentelemetry.io/otel/sdk/metric v0.23.0
 	go.opentelemetry.io/otel/trace v1.0.0-RC3
-	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e
-	golang.org/x/net v0.0.0-20211201190559-0a0e4e1bb54c
-	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
+	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
+	golang.org/x/net v0.0.0-20211209124913-491a49abca63
+	golang.org/x/sys v0.0.0-20211213223007-03aa0b5f6827 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
+	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
 	google.golang.org/grpc v1.42.0
 )
 
