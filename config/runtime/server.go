@@ -576,7 +576,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				return nil, confErr.With(err)
 			}
 
-			oidcConfig, err := oidc.NewConfig(oidcConf, backend, memStore)
+			oidcConfig, err := oidc.NewConfig(oidcConf, backend)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
