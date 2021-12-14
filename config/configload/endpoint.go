@@ -92,7 +92,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 				}
 
 				if wsBody != nil {
-					proxyBlock.Body = MergeBodies([]hcl.Body{proxyBlock.Body, wsBody})
+					proxyBlock.Body = hclbody.MergeBodies(proxyBlock.Body, wsBody)
 				}
 			}
 
@@ -132,7 +132,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			renameAttribute(content, "headers", "set_request_headers")
 			renameAttribute(content, "query_params", "set_query_params")
 
-			reqConfig.Remain = MergeBodies([]hcl.Body{leftOvers, hclbody.New(content)})
+			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
 
 			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
 			if err != nil {
@@ -223,7 +223,7 @@ func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
 		if *proxyConfig.Websockets {
 			block := &hcl.Block{
 				Type: "websockets",
-				Body: EmptyBody(),
+				Body: hclbody.EmptyBody(),
 			}
 
 			body = hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{block}})

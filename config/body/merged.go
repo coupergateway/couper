@@ -1,12 +1,11 @@
 // File based on "github.com/hashicorp/hcl/v2/merged.go" except diagnostic errors for duplicates
 // since we explicitly want them and apply an override.
 
-package configload
+package body
 
 import (
 	"fmt"
 
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/hashicorp/hcl/v2"
 )
 
@@ -15,7 +14,7 @@ var reportDuplicates = false
 
 // MergeBodies is like MergeFiles except it deals directly with bodies, rather
 // than with entire files.
-func MergeBodies(bodies []hcl.Body) hcl.Body {
+func MergeBodies(bodies ...hcl.Body) hcl.Body {
 	if len(bodies) == 0 {
 		// Swap out for our singleton empty body, to reduce the number of
 		// empty slices we have hanging around.
@@ -23,13 +22,13 @@ func MergeBodies(bodies []hcl.Body) hcl.Body {
 	}
 
 	// If any of the given bodies are already merged bodies, we'll unpack
-	// to flatten to a single mergedBodies, since that's conceptually simpler.
+	// to flatten to a single MergedBodies, since that's conceptually simpler.
 	// This also, as a side-effect, eliminates any empty bodies, since
 	// empties are merged bodies with no inner bodies.
 	var newLen int
 	var flatten bool
 	for _, body := range bodies {
-		if children, merged := body.(mergedBodies); merged {
+		if children, merged := body.(MergedBodies); merged {
 			newLen += len(children)
 			flatten = true
 		} else {
@@ -37,8 +36,8 @@ func MergeBodies(bodies []hcl.Body) hcl.Body {
 		}
 	}
 
-	if !flatten { // not just newLen == len, because we might have mergedBodies with single bodies inside
-		return mergedBodies(bodies)
+	if !flatten { // not just newLen == len, because we might have MergedBodies with single bodies inside
+		return MergedBodies(bodies)
 	}
 
 	if newLen == 0 {
@@ -48,16 +47,16 @@ func MergeBodies(bodies []hcl.Body) hcl.Body {
 
 	newBodies := make([]hcl.Body, 0, newLen)
 	for _, body := range bodies {
-		if children, merged := body.(mergedBodies); merged {
+		if children, merged := body.(MergedBodies); merged {
 			newBodies = append(newBodies, children...)
 		} else {
 			newBodies = append(newBodies, body)
 		}
 	}
-	return mergedBodies(newBodies)
+	return MergedBodies(newBodies)
 }
 
-var emptyBody = mergedBodies([]hcl.Body{})
+var emptyBody = MergedBodies([]hcl.Body{})
 
 // EmptyBody returns a body with no content. This body can be used as a
 // placeholder when a body is required but no body content is available.
@@ -65,7 +64,7 @@ func EmptyBody() hcl.Body {
 	return emptyBody
 }
 
-type mergedBodies []hcl.Body
+type MergedBodies []hcl.Body
 
 // Content returns the content produced by applying the given schema to all
 // of the merged bodies and merging the result.
@@ -75,18 +74,18 @@ type mergedBodies []hcl.Body
 // with which to return good diagnostics. Applications working with merged
 // bodies may wish to mark all attributes as optional and then check for
 // required attributes afterwards, to produce better diagnostics.
-func (mb mergedBodies) Content(schema *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
+func (mb MergedBodies) Content(schema *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
 	// the returned body will always be empty in this case, because mergedContent
 	// will only ever call Content on the child bodies.
 	content, _, diags := mb.mergedContent(schema, false)
 	return content, diags
 }
 
-func (mb mergedBodies) PartialContent(schema *hcl.BodySchema) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
+func (mb MergedBodies) PartialContent(schema *hcl.BodySchema) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
 	return mb.mergedContent(schema, true)
 }
 
-func (mb mergedBodies) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
+func (mb MergedBodies) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
 	attrs := make(map[string]*hcl.Attribute)
 	var diags hcl.Diagnostics
 
@@ -106,7 +105,7 @@ func (mb mergedBodies) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
 }
 
 // MissingItemRange returns the first non-empty range if any.
-func (mb mergedBodies) MissingItemRange() hcl.Range {
+func (mb MergedBodies) MissingItemRange() hcl.Range {
 	if len(mb) == 0 {
 		// Nothing useful to return here, so we'll return some garbage.
 		return hcl.Range{
@@ -124,7 +123,7 @@ func (mb mergedBodies) MissingItemRange() hcl.Range {
 	return mb[0].MissingItemRange()
 }
 
-func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
+func (mb MergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
 	// We need to produce a new schema with none of the attributes marked as
 	// required, since _any one_ of our bodies can contribute an attribute value.
 	// We'll separately check that all required attributes are present at
@@ -199,13 +198,12 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 
 				diags = append(diags, mergeAttributes(contentAttrs, thisContentAttrs)...)
 
-				content.Blocks[idx].Body = MergeBodies([]hcl.Body{
+				content.Blocks[idx].Body = MergeBodies(
 					thisContentBlock.Body, // keep child blocks
-					hclbody.New(&hcl.BodyContent{
+					New(&hcl.BodyContent{
 						Attributes:       contentAttrs,
-						MissingItemRange: content.Blocks[idx].DefRange,
-					}),
-				})
+						MissingItemRange: content.Blocks[idx].DefRange}),
+				)
 			}
 		}
 	}
@@ -237,18 +235,18 @@ func (mb mergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 		}
 	}
 
-	leftoverBody := MergeBodies(mergedLeftovers)
+	leftoverBody := MergeBodies(mergedLeftovers...)
 	return content, leftoverBody, diags
 }
 
 // JustAllAttributes returns a list of attributes in order. Since these bodies got added as partialContent
 // we do not have to supply a scheme or handle the underlying diagnostics.
-func (mb mergedBodies) JustAllAttributes() []hcl.Attributes {
+func (mb MergedBodies) JustAllAttributes() []hcl.Attributes {
 	return mb.JustAllAttributesWithName("")
 }
 
 // JustAllAttributesWithName behaviour is the same as JustAllAttributes with a filtered slice.
-func (mb mergedBodies) JustAllAttributesWithName(name string) []hcl.Attributes {
+func (mb MergedBodies) JustAllAttributesWithName(name string) []hcl.Attributes {
 	var result []hcl.Attributes
 
 	for _, body := range mb {

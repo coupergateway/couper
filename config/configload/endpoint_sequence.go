@@ -72,7 +72,7 @@ func collectExpressions(bodies ...hcl.Body) []hcl.Expression {
 			for _, block := range content.Blocks {
 				allExpressions = append(allExpressions, collectExpressions(block.Body)...)
 			}
-		case mergedBodies:
+		case body.MergedBodies:
 			// top-level attrs
 			for _, attrs := range sb.JustAllAttributes() {
 				for _, attr := range attrs {

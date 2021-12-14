@@ -93,10 +93,10 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 
 	// Apply current attributes to the referenced body.
 	if len(content.Attributes) > 0 && reference != nil {
-		reference = MergeBodies([]hcl.Body{reference, hclbody.New(&hcl.BodyContent{
+		reference = hclbody.MergeBodies(reference, hclbody.New(&hcl.BodyContent{
 			Attributes:       content.Attributes,
-			MissingItemRange: content.MissingItemRange,
-		})})
+			MissingItemRange: content.MissingItemRange}),
+		)
 	}
 
 	var backendBlock *hcl.Block
@@ -127,7 +127,7 @@ func mergeBackendBodies(definedBackends Backends, inline config.Inline) (hcl.Bod
 		}
 	}
 
-	return MergeBodies([]hcl.Body{refOverride, backendBlock.Body}), nil
+	return hclbody.MergeBodies(refOverride, backendBlock.Body), nil
 }
 
 // getBackendReference tries to fetch a backend from `definitions`
@@ -190,7 +190,7 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body,
 				{Type: backend, Body: oauth2Backend},
 			}})},
 		}})
-		bend = MergeBodies([]hcl.Body{bend, wrapped})
+		bend = hclbody.MergeBodies(bend, wrapped)
 	}
 
 	return bend, nil
