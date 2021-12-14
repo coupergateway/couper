@@ -134,7 +134,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		berespErr := &http.Response{
+			Request: req,
+		} // provide outreq (variable) on error cases
+		return berespErr, err
 	}
 
 	if !eval.IsUpgradeResponse(req, beresp) {
