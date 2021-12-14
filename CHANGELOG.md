@@ -6,12 +6,13 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * [`custom_log_fields`](./docs/LOGS.md#custom-logging) attribute to be able to describe a user defined map for `custom` log field enrichment ([#388](https://github.com/avenga/couper/pull/388))
-  * * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessable via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
+  * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessable via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
   * [`jwt` block](./docs/REFERENCE.md#jwt-block)/[`jwt_signing_profile` block](./docs/REFERENCE.md#jwt-signing-profile-block) with ECDSA support ([#401](https://github.com/avenga/couper/issues/401))
 
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
   * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
+  * The access control for the OIDC redirect endpoint ([`beta_oidc` block](./docs/REFERENCE.md#oidc-block-beta)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
   * Unbeta [OIDC block](./docs/REFERENCE.md#oidc-block). The old block name is still usable with Couper 1.7, but will no longer work with Couper 1.8. ([#400](https://github.com/avenga/couper/pull/400))
   * Unbeta the `oauth2_authorization_url()` and `oauth2_verifier()` [function](./docs/REFERENCE.md#functions). The prefix is changed from `beta_oauth_...` to `oauth2_...`. The old function names are still usable with Couper 1.7, but will no longer work with Couper 1.8. ([#400](https://github.com/avenga/couper/pull/400))
 

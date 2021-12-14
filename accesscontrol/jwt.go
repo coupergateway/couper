@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/accesscontrol/jwk"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -51,7 +52,7 @@ type JWT struct {
 	rolesClaim     string
 	rolesMap       map[string][]string
 	scopeClaim     string
-	jwks           *JWKS
+	jwks           *jwk.JWKS
 }
 
 type JWTOptions struct {
@@ -64,7 +65,7 @@ type JWTOptions struct {
 	ScopeClaim     string
 	Source         JWTSource
 	Key            []byte
-	JWKS           *JWKS
+	JWKS           *jwk.JWKS
 }
 
 func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
@@ -213,6 +214,11 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
+	ctx := req.Context()
+	if j.jwks != nil {
+		// load JWKS if needed and associate with request uid
+		j.jwks.Data(ctx.Value(request.UID).(string))
+	}
 	token, err := parser.Parse(tokenValue, j.getValidationKey)
 	if err != nil {
 		switch err := err.(type) {
@@ -231,7 +237,6 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})
@@ -253,26 +258,30 @@ func (j *JWT) Validate(req *http.Request) error {
 	return nil
 }
 
+func GetKeyFromJWKS(jwks *jwk.JWKS, token *jwt.Token) (interface{}, error) {
+	id := token.Header["kid"]
+	algorithm := token.Header["alg"]
+	if id == nil {
+		return nil, fmt.Errorf("missing \"kid\" in JOSE header")
+	}
+	if algorithm == nil {
+		return nil, fmt.Errorf("missing \"alg\" in JOSE header")
+	}
+	jwk, err := jwks.GetKey(id.(string), algorithm.(string), "sig")
+	if err != nil {
+		return nil, err
+	}
+
+	if jwk == nil {
+		return nil, fmt.Errorf("no matching %s JWK for kid %q", algorithm, id)
+	}
+
+	return jwk.Key, nil
+}
+
 func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 	if j.jwks != nil {
-		id := token.Header["kid"]
-		algorithm := token.Header["alg"]
-		if id == nil {
-			return nil, fmt.Errorf("missing \"kid\" in JOSE header")
-		}
-		if algorithm == nil {
-			return nil, fmt.Errorf("missing \"alg\" in JOSE header")
-		}
-		jwk, err := j.jwks.GetKey(id.(string), algorithm.(string), "sig")
-		if err != nil {
-			return nil, err
-		}
-
-		if jwk == nil {
-			return nil, fmt.Errorf("no matching %s JWK for kid %q", algorithm, id)
-		}
-
-		return jwk.Key, nil
+		return j.jwks.GetSigKeyForToken(token)
 	}
 
 	switch j.algorithms[0] {

@@ -1,10 +1,12 @@
-package accesscontrol_test
+package jwk_test
 
 import (
 	"sync"
 	"testing"
 
-	ac "github.com/avenga/couper/accesscontrol"
+	"github.com/dgrijalva/jwt-go/v4"
+
+	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -23,7 +25,7 @@ func Test_JWKS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := ac.NewJWKS(tt.url, "", nil, nil)
+			_, err := jwk.NewJWKS(tt.url, "", nil, nil)
 			if err == nil && tt.error != "" {
 				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
 			}
@@ -46,14 +48,46 @@ func Test_JWKS_Load(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
-			_, err = jwks.Load()
+			_, err = jwks.Data("")
 			if err != nil && tt.expParsed {
 				subT.Error("no jwks parsed")
 			}
 			if err == nil && !tt.expParsed {
 				subT.Error("no jwks expected")
+			}
+		})
+	}
+}
+
+func Test_JWKS_GetSigKeyForToken(t *testing.T) {
+	tests := []struct {
+		name     string
+		file     string
+		kid      interface{}
+		alg      interface{}
+		expFound bool
+	}{
+		{"non-empty kid, non-empty alg", "testdata/jwks.json", "kid1", "RS256", true},
+		{"nil kid, non-empty alg", "testdata/jwks_no_kid.json", nil, "RS256", true},
+		{"non-empty kid, nil alg", "testdata/jwks_no_alg.json", "kid1", nil, false},
+		{"nil kid, nil alg", "testdata/jwks_no_kid_no_alg.json", nil, nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			helper.Must(err)
+			_, err = jwks.Data("")
+			helper.Must(err)
+			token := &jwt.Token{Header: map[string]interface{}{"kid": tt.kid, "alg": tt.alg}}
+			jwk, err := jwks.GetSigKeyForToken(token)
+			if jwk == nil && tt.expFound {
+				subT.Errorf("no jwk found, %v", err)
+			}
+			if jwk != nil && !tt.expFound {
+				subT.Error("no jwk expected")
 			}
 		})
 	}
@@ -80,8 +114,8 @@ func Test_JWKS_GetKey(t *testing.T) {
 		{"no_use: key for empty use", "testdata/jwks_no_use.json", "kid1", "RS256", "", true}, // not useful: we always call with "sig"
 		{"no_kid: key for empty kid", "testdata/jwks_no_kid.json", "", "RS256", "sig", true},  // or better nil kid?
 		{"no_kid: no key for kid", "testdata/jwks_no_kid.json", "kid1", "RS256", "sig", false},
-		{"no_alg: no key for empty alg", "testdata/jwks_no_alg.json", "kid1", "", "sig", true}, // or better nil alg?
-		{"no_alg: no key for alg", "testdata/jwks_no_alg.json", "kid1", "RS256", "sig", false},
+		{"no_alg: key for empty alg", "testdata/jwks_no_alg.json", "kid1", "", "sig", true}, // or better nil alg?
+		{"no_alg: key for alg", "testdata/jwks_no_alg.json", "kid1", "RS256", "sig", true},
 		{"no_kid_no_alg: key for empty kid, empty alg, sig", "testdata/jwks_no_kid_no_alg.json", "", "", "sig", true},
 		{"no_kid_no_alg: key for kid, alg, sig", "testdata/jwks_no_kid_no_alg.json", "kid", "RS256", "sig", false},
 		{"no_kid_no_alg_no_use: key for empty kid, empty alg, sig", "testdata/jwks_no_kid_no_alg_no_use.json", "", "", "sig", false},
@@ -95,9 +129,9 @@ func Test_JWKS_GetKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := ac.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
 			helper.Must(err)
-			_, err = jwks.Load()
+			_, err = jwks.Data("")
 			helper.Must(err)
 			jwk, err := jwks.GetKey(tt.kid, tt.alg, tt.use)
 			if jwk == nil && tt.expFound {
@@ -116,7 +150,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	memQuitCh := make(chan struct{})
 	defer close(memQuitCh)
 
-	jwks, err := ac.NewJWKS("file:testdata/jwks.json", "", nil, nil)
+	jwks, err := jwk.NewJWKS("file:testdata/jwks.json", "", nil, nil)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

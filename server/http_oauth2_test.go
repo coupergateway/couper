@@ -1,9 +1,11 @@
 package server_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -262,7 +264,18 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
+				keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+				helper.Must(err)
+				key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
+				helper.Must(parseErr)
+				var kid string
+				if strings.HasSuffix(code, "-wkid-id") {
+					kid = "not-found"
+				} else {
+					kid = "rs256"
+				}
+				idToken, err := lib.CreateJWT("RS256", key, mapClaims, map[string]interface{}{"kid": kid})
+				helper.Must(err)
 				idTokenToAdd = `"id_token":"` + idToken + `",
 				`
 			}
@@ -285,10 +298,19 @@ func TestOAuth2_AccessControl(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/jwks" {
+			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			helper.Must(rerr)
+			b := bytes.NewBuffer(jsonBytes)
+			_, werr := b.WriteTo(rw)
+			helper.Must(werr)
+
+			return
 		} else if req.URL.Path == "/.well-known/openid-configuration" {
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"token_endpoint": "http://` + req.Host + `/token",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
@@ -340,6 +362,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code, missing aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-maud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing aud claim in ID token, claims='jwt.MapClaims{\"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
 		{"code, null aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-naud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: aud claim in ID token must not be null"},
 		{"code, wrong aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-waud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token audience is invalid: 'foo' wasn't found in aud claim"},
+		{"code, wrong kid", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wkid-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token is unverifiable: Keyfunc returned an error"},
 		{"code; client_secret_basic; PKCE", "04_couper.hcl", http.MethodGet, "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; client_secret_post", "05_couper.hcl", http.MethodGet, "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "client_id=foo&client_secret=etbinbp4in&code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "", ""},
 		{"code, state param", "06_couper.hcl", http.MethodGet, "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st}}, http.StatusOK, "code=qeuboub&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
@@ -423,7 +446,13 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 				"exp": 4000000000,
 				"iat": 1000,
 			}
-			idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
+			keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+			helper.Must(err)
+			key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
+			helper.Must(parseErr)
+			idToken, err := lib.CreateJWT("RS256", key, mapClaims, map[string]interface{}{"kid": "rs256"})
+			helper.Must(err)
+			// idToken, _ := lib.CreateJWT("HS256", []byte("$e(rEt"), mapClaims, nil)
 			idTokenToAdd := `"id_token":"` + idToken + `",
 			`
 
@@ -442,11 +471,20 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/jwks" {
+			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			helper.Must(rerr)
+			b := bytes.NewBuffer(jsonBytes)
+			_, werr := b.WriteTo(rw)
+			helper.Must(werr)
+
+			return
 		} else if req.URL.Path == "/.well-known/openid-configuration" {
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
 			"token_endpoint": "http://` + req.Host + `/token",
+			"jwks_uri": "http://` + req.Host + `/jwks",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 			_, werr := rw.Write(body)
