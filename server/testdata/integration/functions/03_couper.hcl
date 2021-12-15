@@ -40,7 +40,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-pkce-relative" {
+  beta_oidc "ac-pkce-relative" { # TODO change to oidc for version 1.8
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email"
