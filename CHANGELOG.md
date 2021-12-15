@@ -6,13 +6,15 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * [`custom_log_fields`](./docs/LOGS.md#custom-logging) attribute to be able to describe a user defined map for `custom` log field enrichment ([#388](https://github.com/avenga/couper/pull/388))
-  * * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessable via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
+  * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessable via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
   * [`jwt` block](./docs/REFERENCE.md#jwt-block)/[`jwt_signing_profile` block](./docs/REFERENCE.md#jwt-signing-profile-block) with ECDSA support ([#401](https://github.com/avenga/couper/issues/401))
 
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
   * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
-  * The access control for the OIDC redirect endpoint ([`beta_oidc` block](./docs/REFERENCE.md#oidc-block-beta)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
+  * The access control for the OIDC redirect endpoint ([`oidc` block](./docs/REFERENCE.md#oidc-block)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
+  * Unbeta [OIDC block](./docs/REFERENCE.md#oidc-block). The old block name is still usable with Couper 1.7, but will no longer work with Couper 1.8. ([#400](https://github.com/avenga/couper/pull/400))
+  * Unbeta the `oauth2_authorization_url()` and `oauth2_verifier()` [function](./docs/REFERENCE.md#functions). The prefix is changed from `beta_oauth_...` to `oauth2_...`. The old function names are still usable with Couper 1.7, but will no longer work with Couper 1.8. ([#400](https://github.com/avenga/couper/pull/400))
 
 * **Fixed**
   * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
@@ -53,7 +55,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * For each SAML attribute listed in [`array_attributes`](./docs/REFERENCE.md#saml-block) at least an empty array is created in `request.context.<label>.attributes.<name>` ([#369](https://github.com/avenga/couper/pull/369))
   * HCL: Missing support for RelativeTraversalExpr, IndexExpr, UnaryOpExpr ([#389](https://github.com/avenga/couper/pull/389))
   * HCL: Missing support for different variable index key types ([#391](https://github.com/avenga/couper/pull/391))
-  * [OIDC](./docs/REFERENCE.md#oidc-block-beta): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
+  * [OIDC](./docs/REFERENCE.md#oidc-block): rejecting an ID token lacking an `aud` claim or with a `null` value `aud` ([#393](https://github.com/avenga/couper/pull/393))
 
 ## [1.5](https://github.com/avenga/couper/releases/tag/1.5)
 
@@ -73,7 +75,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
       The evaluation has two steps now and will look up variables first and prepares the given expression to return `Nil` as fallback.
 
 * **Fixed**
-  * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block-beta) ([#319](https://github.com/avenga/couper/pull/319))
+  * Key for storing and reading [OpenID configuration](./docs/REFERENCE.md#oidc-block) ([#319](https://github.com/avenga/couper/pull/319))
 
 * [**Beta**](./docs/BETA.md)
   * `beta_scope_claim` attribute to [`jwt` block](./docs/REFERENCE.md#jwt-block); `beta_scope` attribute to [`api`](./docs/REFERENCE.md#api-block) and [`endpoint` block](./docs/REFERENCE.md#endpoint-block)s; [error types](./docs/ERRORS.md#error-types) `beta_operation_denied` and `beta_insufficient_scope` ([#315](https://github.com/avenga/couper/pull/315))
@@ -89,7 +91,7 @@ Release date: 2021-08-26
 
 This release introduces [_Beta Features_](./docs/BETA.md). We use beta features to develop and experiment with new, complex features for you while still being able to maintain our compatibility promise. You can see beta features as a feature preview. To make users aware that a beta feature is used their configuration items are prefixed with `beta_`.
 
-The first beta features incorporate the OAuth2 functionality into the Access Control capabilities of Couper. The [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta) implements OAuth2 Authorization Code Grant Flows. The companion block [`beta_oidc {}`](./docs/REFERENCE.md#oidc-block-beta) implements [OIDC](https://openid.net/connect/), which allows simple integration of 3rd-party systems such as Google, Github or Keycloak for SSO (Single-Sign-On).
+The first beta features incorporate the OAuth2 functionality into the Access Control capabilities of Couper. The [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta) implements OAuth2 Authorization Code Grant Flows. The companion block [`beta_oidc {}`](./docs/REFERENCE.md#oidc-block) implements [OIDC](https://openid.net/connect/), which allows simple integration of 3rd-party systems such as Google, Github or Keycloak for SSO (Single-Sign-On).
 
 Together with transparent [Websockets](docs/REFERENCE.md#websockets-block) support that you can enable in your `proxy {}` block, you can guard existing Web applications with Couper via OIDC.
 
@@ -132,7 +134,7 @@ If your applications are running in multiple setups, like testing and production
 
 * [**Beta**](./docs/BETA.md)
   * OAuth2 Authorization Code Grant Flow: [`beta_oauth2 {}` block](./docs/REFERENCE.md#oauth2-ac-block-beta);  [`beta_oauth_authorization_url()`](./docs/REFERENCE.md#functions) and [`beta_oauth_verifier()`](./docs/REFERENCE.md#functions) ([#247](https://github.com/avenga/couper/pull/247))
-  * OIDC Authorization Code Grant Flow: [`beta_oidc {}` block](./docs/REFERENCE.md#oidc-block-beta) ([#273](https://github.com/avenga/couper/pull/273))
+  * OIDC Authorization Code Grant Flow: [`beta_oidc {}` block](./docs/REFERENCE.md#oidc-block) ([#273](https://github.com/avenga/couper/pull/273))
 
 ## [1.3.1](https://github.com/avenga/couper/compare/1.3...1.3.1)
 

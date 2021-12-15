@@ -3,8 +3,8 @@ server "oidc-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-pkce = beta_oauth_authorization_url("ac-pkce")
-        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative")
+        x-au-pkce = oauth2_authorization_url("ac-pkce")
+        x-au-pkce-rel = oauth2_authorization_url("ac-pkce-relative")
       }
     }
   }
@@ -13,7 +13,7 @@ server "oidc-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-nonce = beta_oauth_authorization_url("ac-nonce")
+        x-au-nonce = oauth2_authorization_url("ac-nonce")
       }
     }
   }
@@ -22,14 +22,14 @@ server "oidc-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-default = beta_oauth_authorization_url("ac-default")
+        x-au-default = oauth2_authorization_url("ac-default")
       }
     }
   }
 }
 
 definitions {
-  beta_oidc "ac-pkce" {
+  oidc "ac-pkce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email"
@@ -40,7 +40,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-pkce-relative" {
+  beta_oidc "ac-pkce-relative" { # TODO change to oidc for version 1.8
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email"
@@ -51,7 +51,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-nonce" {
+  oidc "ac-nonce" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile"
@@ -62,7 +62,7 @@ definitions {
     verifier_value = "not_used_here"
   }
 
-  beta_oidc "ac-default" {
+  oidc "ac-default" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     scope = "profile email address"

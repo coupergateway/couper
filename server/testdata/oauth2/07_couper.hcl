@@ -10,7 +10,7 @@ server "client" {
 }
 
 definitions {
-  beta_oidc "ac" {
+  oidc "ac" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     client_id = "foo"

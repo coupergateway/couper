@@ -307,9 +307,13 @@ func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	if c.oauth2 != nil {
 		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.eval, c.oauth2, c.getCodeVerifier, origin, Value)
 		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
+		// TODO remove for version 1.8
+		c.eval.Functions["beta_oauth_authorization_url"] = oauth2fn
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
+	// TODO remove for version 1.8
+	c.eval.Functions["beta_oauth_verifier"] = c.eval.Functions[lib.FnOAuthVerifier]
 
 	if c.saml != nil {
 		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)

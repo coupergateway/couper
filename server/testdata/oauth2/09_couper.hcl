@@ -10,7 +10,7 @@ server "client" {
 }
 
 definitions {
-  beta_oidc "ac" {
+  oidc "ac" {
     configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
     client_id = "foo"
     client_secret = "etbinbp4in"

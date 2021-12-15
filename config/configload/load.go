@@ -168,6 +168,19 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 					return nil, err
 				}
 			}
+			// TODO remove for version 1.8
+			for _, oidcConfig := range couperConfig.Definitions.BetaOIDC {
+				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
+				if diags.HasErrors() {
+					return nil, diags
+				}
+				oidcConfig.BodyContent = bodyContent
+
+				oidcConfig.Backend, err = newBackend(definedBackends, oidcConfig)
+				if err != nil {
+					return nil, err
+				}
+			}
 
 			for _, jwtConfig := range couperConfig.Definitions.JWT {
 				if jwtConfig.JWKsURL != "" {

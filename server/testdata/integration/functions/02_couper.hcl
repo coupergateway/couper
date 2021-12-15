@@ -2,11 +2,11 @@ server "oauth-functions" {
   endpoint "/pkce" {
     response {
       headers = {
-        x-v-1 = beta_oauth_verifier()
-        x-v-2 = beta_oauth_verifier()
+        x-v-1 = oauth2_verifier()
+        x-v-2 = beta_oauth_verifier() # TODO change to oauth2_verifier() for version 1.8
         x-hv = internal_oauth_hashed_verifier()
-        x-au-pkce = beta_oauth_authorization_url("ac-pkce")
-        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative")
+        x-au-pkce = oauth2_authorization_url("ac-pkce")
+        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative") # TODO change to oauth2_authorization_url() for version 1.8
       }
     }
   }
@@ -15,7 +15,7 @@ server "oauth-functions" {
     response {
       headers = {
         x-hv = internal_oauth_hashed_verifier()
-        x-au-state = beta_oauth_authorization_url("ac-state")
+        x-au-state = oauth2_authorization_url("ac-state")
       }
     }
   }

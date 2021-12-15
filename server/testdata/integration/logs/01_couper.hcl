@@ -274,7 +274,7 @@ definitions {
     }
   }
 
-  beta_oidc "oidc" {
+  oidc "oidc" {
     configuration_url = "${env.COUPER_TEST_BACKEND_ADDR}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     client_id = "foo"
@@ -295,7 +295,7 @@ definitions {
     }
   }
 
-  beta_oidc "oidc-wildcard" {
+  oidc "oidc-wildcard" {
     configuration_url = "${env.COUPER_TEST_BACKEND_ADDR}/.well-known/openid-configuration"
     configuration_ttl = "1h"
     client_id = "foo"
