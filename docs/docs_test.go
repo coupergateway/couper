@@ -53,15 +53,15 @@ func TestDocs_Links(t *testing.T) {
 		raw, readErr := os.ReadFile(file.Name())
 		helper.Must(readErr)
 
-		regexLinks := regexp.MustCompile(`]\((\w+\.md)?#([^)]+)\)`)
+		regexLinks := regexp.MustCompile(`]\((\./)?(\w+\.md)?#([^)]+)\)`)
 		allLinks := regexLinks.FindAllStringSubmatch(string(raw), -1)
 		var links []item
 		for _, match := range allLinks {
-			if len(match) > 2 && isMarkdownFilename(match[1]) {
-				links = append(links, item{reference: match[1], value: match[2]})
+			if len(match) > 2 && isMarkdownFilename(match[2]) {
+				links = append(links, item{reference: match[2], value: match[3]})
 				continue
 			}
-			links = append(links, item{value: match[2]})
+			links = append(links, item{value: match[3]})
 		}
 
 		regexAnchors := regexp.MustCompile(`(?m)^#+ (.+)$`)
