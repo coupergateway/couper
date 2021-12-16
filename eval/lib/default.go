@@ -8,7 +8,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 )
 
-var CoalesceFunc = function.New(&function.Spec{
+var DefaultFunc = function.New(&function.Spec{
 	VarParam: &function.Parameter{
 		Name:             "vals",
 		Type:             cty.DynamicPseudoType,
@@ -29,6 +29,11 @@ var CoalesceFunc = function.New(&function.Spec{
 				return cty.UnknownVal(retType), nil
 			}
 			if argVal.IsNull() || argVal.Type() == cty.NilType {
+				continue
+			}
+
+			// If the fallback type is a string and this argument too but an empty one, consider them as unset.
+			if argVal.Type() == cty.String && argVal.AsString() == "" && retType == cty.String {
 				continue
 			}
 
