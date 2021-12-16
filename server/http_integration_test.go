@@ -3702,6 +3702,7 @@ func TestFunctions(t *testing.T) {
 			"X-Default-5": "prefix-default",
 			"X-Default-6": "default",
 			"X-Default-7": "default",
+			"X-Default-8": "default-8",
 		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
