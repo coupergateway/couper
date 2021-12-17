@@ -39,6 +39,6 @@ var DefaultFunc = function.New(&function.Spec{
 
 			return convert.Convert(argVal, retType)
 		}
-		return cty.NilVal, fmt.Errorf("no non-null or nil-type arguments")
+		return args[len(args)-1], nil
 	},
 })
