@@ -34,6 +34,10 @@ server "api" {
           x-default-6 = "${default(request.cookies.undef, "default")}" # template wrap expr
           x-default-7 = default(env.MY_UNSET_ENV, "default")
           x-default-8 = default(request.query.r, ["default-8"])[0]
+          x-default-9 = default(request.cookies.undef, "")
+          x-default-10 = default(request.cookies.undef, request.cookies.undef)
+          x-default-11 = default(request.cookies.undef, 0)
+          x-default-12 = default(request.cookies.undef, false)
         }
       }
     }
