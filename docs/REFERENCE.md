@@ -206,7 +206,7 @@ The `backend` block defines the connection to a local/remote backend service.
 | `hostname`                      | string |-|Value of the HTTP host header field for the origin request. |Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.|-|
 | `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with the scheme `http://...`.|-|
 | `path`                          | string|-|Changeable part of upstream URL.|-|-|
-| `path_prefix`  | string|-|Prefixes all backend request paths with the given prefix|&#9888; Must start with the scheme `http://...`. |-|
+| `path_prefix`                   | string|-|Prefixes all backend request paths with the given prefix|-|-|
 | `connect_timeout`                | [duration](#duration) | `10s`      | The total timeout for dialing and connect to the origin.   |-                                   |-|
 | `disable_certificate_validation` | bool               | `false`       | Disables the peer certificate validation.                                              |      - |-|
 | `disable_connection_reuse`       | bool               | `false`        | Disables reusage of connections to the origin.                                          |    -  |-|
