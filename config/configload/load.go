@@ -29,7 +29,7 @@ const (
 	request      = "request"
 	server       = "server"
 	settings     = "settings"
-	// defaultNameLabel maps the the hcl label attr 'name'.
+	// defaultNameLabel maps the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )
 

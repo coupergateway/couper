@@ -89,39 +89,6 @@ func GetHostPort(hostPort string) (string, int, error) {
 	return host, port, nil
 }
 
-func bodiesWithACBodies(defs *config.Definitions, body hcl.Body, ac, dac []string) []hcl.Body {
-	bodies := []hcl.Body{body}
-
-	allAccessControls := collect.ErrorHandlerSetters(defs)
-
-	for _, ehs := range allAccessControls {
-		acConf, ok := ehs.(config.Body)
-		if !ok {
-			continue
-		}
-
-		t := reflect.ValueOf(acConf)
-		elem := t
-
-		if t.Kind() == reflect.Ptr {
-			elem = t.Elem()
-		}
-
-		nameValue := elem.FieldByName("Name")
-		if !nameValue.CanInterface() {
-			continue
-		}
-
-		for _, name := range config.NewAccessControl(ac, dac).List() {
-			if value, vk := nameValue.Interface().(string); vk && value == name {
-				bodies = append(bodies, acConf.HCLBody())
-			}
-		}
-	}
-
-	return bodies
-}
-
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
 func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (ServerConfiguration, error) {
@@ -180,10 +147,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 		}
 
-		serverBodies := bodiesWithACBodies(
-			conf.Definitions, srvConf.Remain,
-			srvConf.AccessControl, srvConf.DisableAccessControl,
-		)
+		serverBodies := bodiesWithACBodies(conf.Definitions, srvConf.AccessControl, srvConf.DisableAccessControl)
+		serverBodies = append(serverBodies, srvConf.HCLBody())
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
@@ -213,12 +178,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
 
-			spaBodies := bodiesWithACBodies(
-				conf.Definitions, srvConf.Spa.Remain,
-				srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl,
-			)
+			spaBodies := bodiesWithACBodies(conf.Definitions, srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl)
 			spaHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, spaBodies...), spaHandler, "",
+				append(serverBodies, append(spaBodies, srvConf.Spa.HCLBody())...), spaHandler, "",
 			)
 
 			for _, spaPath := range srvConf.Spa.Paths {
@@ -260,12 +222,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
 
-			fileBodies := bodiesWithACBodies(
-				conf.Definitions, srvConf.Files.Remain,
-				srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl,
-			)
+			fileBodies := bodiesWithACBodies(conf.Definitions, srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl)
 			fileHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, fileBodies...), fileHandler, "",
+				append(serverBodies, append(fileBodies, srvConf.Files.HCLBody())...), fileHandler, "",
 			)
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
@@ -386,18 +345,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			bodies := serverBodies
 			if parentAPI != nil {
-				apiBodies := bodiesWithACBodies(
-					conf.Definitions, parentAPI.Remain,
-					parentAPI.AccessControl, parentAPI.DisableAccessControl,
-				)
-				bodies = append(bodies, apiBodies...)
+				apiBodies := bodiesWithACBodies(conf.Definitions, parentAPI.AccessControl, parentAPI.DisableAccessControl)
+				bodies = append(bodies, append(apiBodies, parentAPI.HCLBody())...)
 			}
-			epBodies := bodiesWithACBodies(
-				conf.Definitions, endpointConf.Remain,
-				endpointConf.AccessControl, endpointConf.DisableAccessControl,
-			)
+			acBodies := bodiesWithACBodies(conf.Definitions, endpointConf.AccessControl, endpointConf.DisableAccessControl)
 			epHandler = middleware.NewCustomLogsHandler(
-				append(bodies, epBodies...), epHandler, epOpts.LogHandlerKind,
+				append(bodies, append(acBodies, endpointConf.HCLBody())...), epHandler, epOpts.LogHandlerKind,
 			)
 
 			endpointHandlers[endpointConf] = epHandler
@@ -409,6 +362,39 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	}
 
 	return serverConfiguration, nil
+}
+
+func bodiesWithACBodies(defs *config.Definitions, ac, dac []string) []hcl.Body {
+	var bodies []hcl.Body
+
+	allAccessControls := collect.ErrorHandlerSetters(defs)
+
+	for _, ehs := range allAccessControls {
+		acConf, ok := ehs.(config.Body)
+		if !ok {
+			continue
+		}
+
+		t := reflect.ValueOf(acConf)
+		elem := t
+
+		if t.Kind() == reflect.Ptr {
+			elem = t.Elem()
+		}
+
+		nameValue := elem.FieldByName("Name")
+		if !nameValue.CanInterface() {
+			continue
+		}
+
+		for _, name := range config.NewAccessControl(ac, dac).List() {
+			if value, vk := nameValue.Interface().(string); vk && value == name {
+				bodies = append(bodies, acConf.HCLBody())
+			}
+		}
+	}
+
+	return bodies
 }
 
 func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
