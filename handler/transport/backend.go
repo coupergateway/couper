@@ -80,7 +80,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {
+	if err := eval.ApplyRequestContext(eval.ContextFromRequest(req).HCLContextSync(), b.context, req); err != nil {
 		return nil, err
 	}
 
@@ -158,8 +158,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
 	// from this result.
 	evalCtx := eval.ContextFromRequest(req)
-	evalCtx = evalCtx.WithBeresp(beresp)
-	err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
+	evalCtx = evalCtx.WithBeresps(beresp)
+	err = eval.ApplyResponseContext(evalCtx.HCLContext(), b.context, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
 		varSync.Set(beresp)

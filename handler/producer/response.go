@@ -27,7 +27,7 @@ func NewResponse(req *http.Request, resp hcl.Body, statusCode int) (*http.Respon
 		Request:    req,
 	}
 
-	hclCtx := eval.ContextFromRequest(req).HCLContext()
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	content, _, diags := resp.PartialContent(config.ResponseInlineSchema)
 	if diags.HasErrors() {

@@ -51,8 +51,10 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del(key)
 	}
 
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+
 	// 2. Apply proxy-body
-	if err := eval.ApplyRequestContext(req.Context(), p.context, req); err != nil {
+	if err := eval.ApplyRequestContext(hclCtx, p.context, req); err != nil {
 		return nil, err
 	}
 
@@ -62,7 +64,6 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	// 4. apply some hcl context
-	hclCtx := eval.ContextFromRequest(req).HCLContext()
 	expStatusVal, err := eval.ValueFromBodyAttribute(hclCtx, p.context, "expected_status")
 	if err != nil {
 		return nil, err
@@ -130,7 +131,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	transport.RemoveHopHeaders(beresp.Header)
 
 	evalCtx := eval.ContextFromRequest(req)
-	err = eval.ApplyResponseContext(evalCtx, p.context, beresp)
+	err = eval.ApplyResponseContext(evalCtx.HCLContextSync(), p.context, beresp)
 
 	return beresp, err
 }
@@ -154,6 +155,8 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
 	*req = *req.WithContext(ctx)
 
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+
 	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
 	if !eval.IsUpgradeRequest(req) {
 		return nil
@@ -168,7 +171,7 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 	if diags.HasErrors() {
 		return diags
 	}
-	if err := eval.ApplyRequestContext(req.Context(), wsBody, req); err != nil {
+	if err := eval.ApplyRequestContext(hclCtx, wsBody, req); err != nil {
 		return err
 	}
 
@@ -177,7 +180,7 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 		return nil
 	}
 
-	val, err := eval.Value(eval.ContextFromRequest(req).HCLContext(), attr.Expr)
+	val, err := eval.Value(hclCtx, attr.Expr)
 	if err != nil {
 		return err
 	}
@@ -214,7 +217,7 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
 	evalCtx := eval.ContextFromRequest(req)
 
 	if rw, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
-		rw.AddModifier(evalCtx, wsBody, p.context)
+		rw.AddModifier(evalCtx.HCLContextSync(), wsBody, p.context)
 	}
 
 	return nil

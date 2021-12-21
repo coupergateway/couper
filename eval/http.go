@@ -2,7 +2,6 @@ package eval
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -101,14 +100,9 @@ func SetBody(req *http.Request, body []byte) {
 	parseForm(req)
 }
 
-func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) error {
+func ApplyRequestContext(httpCtx *hcl.EvalContext, body hcl.Body, req *http.Request) error {
 	if req == nil {
 		return nil
-	}
-
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
 	}
 
 	headerCtx := req.Header
@@ -368,7 +362,7 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 	return seetie.ValueToLogFields(val)
 }
 
-func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
+func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
 	}
@@ -390,12 +384,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 	return nil
 }
 
-func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.Response) (int, error) {
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
-	}
-
+func ApplyResponseStatus(httpCtx *hcl.EvalContext, attr *hcl.Attribute, beresp *http.Response) (int, error) {
 	statusValue, err := Value(httpCtx, attr.Expr)
 	if err != nil {
 		return 0, err
@@ -410,7 +399,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 	if beresp != nil {
 		if status == 204 {
 			beresp.Request.Context().
-				Value(request.LogEntry).(*logrus.Entry).WithContext(ctx).
+				Value(request.LogEntry).(*logrus.Entry).
 				Warn("set_response_status: removing body, if any due to status-code 204")
 
 			beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
@@ -424,12 +413,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 	return int(status), nil
 }
 
-func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
-	}
-
+func ApplyResponseHeaderOps(httpCtx *hcl.EvalContext, body hcl.Body, headers ...http.Header) error {
 	attrs, err := getAllAttributes(body)
 	if err != nil {
 		return err

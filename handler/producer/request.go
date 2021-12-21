@@ -50,7 +50,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 		}
 	}()
 
-	hclCtx := eval.ContextFromRequest(req).HCLContext()
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync() // also synced for requests due to sequence case
 
 	for _, or := range r {
 		// span end by result reader
@@ -119,7 +119,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 		eval.SetBody(outreq, []byte(body))
 
 		*outreq = *outreq.WithContext(outCtx)
-		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
+		err = eval.ApplyRequestContext(hclCtx, or.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue

@@ -62,7 +62,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if r, ok := rw.(*writer.Response); ok {
 		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext, s.modifier...)
+		r.AddModifier(evalContext.HCLContext(), s.modifier...)
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)

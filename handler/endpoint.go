@@ -85,7 +85,7 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		span.SetAttributes(telemetry.KeyEndpoint.String(e.opts.LogPattern))
 	}
 
-	if ee := eval.ApplyRequestContext(reqCtx, e.opts.Context, req); ee != nil {
+	if ee := eval.ApplyRequestContext(eval.ContextFromRequest(req).HCLContext(), e.opts.Context, req); ee != nil {
 		e.opts.ErrorTemplate.WithError(ee).ServeHTTP(rw, req)
 		return
 	}
@@ -140,6 +140,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
+	httpCtx := eval.ContextFromRequest(req).HCLContextSync()
+
 	w, ok := rw.(*writer.Response)
 	if !ok {
 		log.Errorf("response writer: type error")
@@ -149,12 +151,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		w.AddModifier(eval.ContextFromRequest(req), e.modifier...)
+		w.AddModifier(httpCtx, e.modifier...)
 		rw = w
 	}
 
 	// always apply before write: redirect, response
-	if err = eval.ApplyResponseContext(eval.ContextFromRequest(req), e.opts.Context, clientres); err != nil {
+	if err = eval.ApplyResponseContext(httpCtx, e.opts.Context, clientres); err != nil {
 		e.opts.ErrorTemplate.WithError(err).ServeHTTP(rw, req)
 		return
 	}
@@ -283,7 +285,7 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err er
 	// modify response status code if set
 	if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && ctxErr == err && ok {
 		if statusCode, applyErr := eval.
-			ApplyResponseStatus(eval.ContextFromRequest(req), attr, nil); statusCode > 0 {
+			ApplyResponseStatus(eval.ContextFromRequest(req).HCLContextSync(), attr, nil); statusCode > 0 {
 			if serr, k := serveErr.(*errors.Error); k {
 				serveErr = serr.Status(statusCode)
 			} else {

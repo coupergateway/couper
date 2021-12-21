@@ -51,7 +51,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 
 				epOpts.ErrorTemplate = epOpts.ErrorTemplate.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
 					beresp := &http.Response{Header: rw.Header()}
-					_ = eval.ApplyResponseContext(r.Context(), contextBody, beresp)
+					_ = eval.ApplyResponseContext(eval.ContextFromRequest(r).HCLContextSync(), contextBody, beresp)
 				})
 
 				if epOpts.Response != nil && reflect.DeepEqual(epOpts.Response.Context, emptyBody) {
