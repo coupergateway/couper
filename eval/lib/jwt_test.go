@@ -667,7 +667,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			exp, _ := resultClaims["exp"].(float64)
 			if !fuzzyEqual(int64(exp)-now, tt.wantTTL, 1) {
-				subT.Errorf(string(body))
+				subT.Error(string(body))
 				subT.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
 			}
 			if resultClaims["x-method"] == nil {
