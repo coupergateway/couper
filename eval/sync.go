@@ -23,7 +23,7 @@ type syncPair struct {
 
 // Set finalized cty req/resp pair.
 func (sv *SyncedVariables) Set(beresp *http.Response) {
-	name, bereqV, berespV := newBerespValues(beresp.Request.Context(), beresp)
+	name, bereqV, berespV := newBerespValues(beresp.Request.Context(), true, beresp)
 	sv.items.Store(name, &syncPair{
 		name:   name,
 		bereq:  bereqV,

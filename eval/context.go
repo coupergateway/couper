@@ -185,7 +185,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			continue
 		}
 
-		name, bereqVal, berespVal := newBerespValues(ctx, beresp)
+		name, bereqVal, berespVal := newBerespValues(ctx, false, beresp)
 		bereqs[name] = bereqVal
 		resps[name] = berespVal
 	}
@@ -203,7 +203,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	return ctx
 }
 
-func newBerespValues(ctx context.Context, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
+func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
 
 	name = "default"
@@ -237,7 +237,7 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (name string, b
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
 	var respBody, respJsonBody cty.Value
-	if !IsUpgradeResponse(bereq, beresp) {
+	if readBody && !IsUpgradeResponse(bereq, beresp) {
 		bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
 		if ok && (bufferOption&BufferResponse) == BufferResponse {
 			respBody, respJsonBody = parseRespBody(beresp)
