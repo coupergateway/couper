@@ -143,7 +143,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		}
 
 		serverBodies := bodiesWithACBodies(conf.Definitions, srvConf.AccessControl, srvConf.DisableAccessControl)
-		serverBodies = append(serverBodies, srvConf.HCLBody())
+		serverBodies = append(serverBodies, srvConf.Remain)
 
 		var spaHandler http.Handler
 		if srvConf.Spa != nil {
@@ -175,7 +175,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			spaBodies := bodiesWithACBodies(conf.Definitions, srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl)
 			spaHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, append(spaBodies, srvConf.Spa.HCLBody())...), spaHandler, "",
+				append(serverBodies, append(spaBodies, srvConf.Spa.Remain)...), spaHandler, "",
 			)
 
 			for _, spaPath := range srvConf.Spa.Paths {
@@ -219,7 +219,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			fileBodies := bodiesWithACBodies(conf.Definitions, srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl)
 			fileHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, append(fileBodies, srvConf.Files.HCLBody())...), fileHandler, "",
+				append(serverBodies, append(fileBodies, srvConf.Files.Remain)...), fileHandler, "",
 			)
 
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
@@ -341,11 +341,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			bodies := serverBodies
 			if parentAPI != nil {
 				apiBodies := bodiesWithACBodies(conf.Definitions, parentAPI.AccessControl, parentAPI.DisableAccessControl)
-				bodies = append(bodies, append(apiBodies, parentAPI.HCLBody())...)
+				bodies = append(bodies, append(apiBodies, parentAPI.Remain)...)
 			}
-			acBodies := bodiesWithACBodies(conf.Definitions, endpointConf.AccessControl, endpointConf.DisableAccessControl)
+			bodies = append(bodies, bodiesWithACBodies(conf.Definitions, endpointConf.AccessControl, endpointConf.DisableAccessControl)...)
 			epHandler = middleware.NewCustomLogsHandler(
-				append(bodies, append(acBodies, endpointConf.HCLBody())...), epHandler, epOpts.LogHandlerKind,
+				append(bodies, endpointConf.Remain), epHandler, epOpts.LogHandlerKind,
 			)
 
 			endpointHandlers[endpointConf] = epHandler
