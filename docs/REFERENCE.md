@@ -138,7 +138,7 @@ produce an explicit or implicit client response.
 
 #### Endpoint Sequence
 
-If a `request` and/or `proxy` block definitions are sequential based on their `backend_responses.*` variable references
+If `request` and/or `proxy` block definitions are sequential based on their `backend_responses.*` variable references
 at load-time they will be executed sequentially. Unexpected responses can be caught with [error handling](ERRORS.md#endpoint-related-error_handler).
 
 ### Proxy Block

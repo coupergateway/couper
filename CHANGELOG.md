@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessable via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
   * [`jwt` block](./docs/REFERENCE.md#jwt-block)/[`jwt_signing_profile` block](./docs/REFERENCE.md#jwt-signing-profile-block) with ECDSA support ([#401](https://github.com/avenga/couper/issues/401))
   * Support for [sequences](./docs/REFERENCE.md#endpoint-sequence) of outgoing endpoint requests ([#405](https://github.com/avenga/couper/issues/405))
+  * [`unexpected_status`](./docs/ERRORS.md#endpoint-error-types) error type ([#405](https://github.com/avenga/couper/issues/405))
 
 * **Changed**
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
