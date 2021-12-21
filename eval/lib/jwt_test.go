@@ -665,7 +665,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			if resultClaims["exp"] == nil {
 				subT.Errorf("Expected exp claim, got: %#v", body)
 			}
-			exp := resultClaims["exp"].(float64)
+			exp, _ := resultClaims["exp"].(float64)
 			if !fuzzyEqual(int64(exp)-now, tt.wantTTL, 1) {
 				subT.Errorf(string(body))
 				subT.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
@@ -680,9 +680,9 @@ func TestJwtSignDynamic(t *testing.T) {
 			if resultClaims["x-status"] == nil {
 				subT.Errorf("Expected x-status claim, got: %#v", body)
 			}
-			status := int64(resultClaims["x-status"].(float64))
+			status, _ := resultClaims["x-status"].(float64)
 			if status != 200 {
-				subT.Errorf("Expected: %d, got: %d", http.StatusOK, status)
+				subT.Errorf("Expected: %d, got: %d", http.StatusOK, int64(status))
 			}
 		})
 	}
