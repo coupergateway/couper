@@ -9,7 +9,7 @@
   - [error_handler specification](#error_handler-specification)
   - [Error types](#error-types)
     - [Access control error types](#access-control-error-types)
-    - [API/endpoint error types](#api/endpoint-error-types)
+    - [API/endpoint error types](#apiendpoint-error-types)
     - [Endpoint error types](#endpoint-error-types)
 
 ## Introduction
@@ -35,7 +35,8 @@ an `api` or `endpoint` block.
 
 ## Endpoint related `error_handler`
 
-TBA
+A [sequence](REFERENCE.md#endpoint-sequence) error can be handled in combination with the `expected_status` attribute for `request`
+and `proxy` block definitions and an `error_handler` definition with the [related](#endpoint-error-types) type label.
 
 ## `error_handler` specification
 
