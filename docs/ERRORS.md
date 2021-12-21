@@ -9,7 +9,7 @@
   - [error_handler specification](#error_handler-specification)
   - [Error types](#error-types)
     - [Access control error types](#access-control-error-types)
-    - [API/endpoint error types](#apiendpoint-error-types)
+    - [API/endpoint error types](#api-and-endpoint-error-types)
     - [Endpoint error types](#endpoint-error-types)
 
 ## Introduction
@@ -75,7 +75,7 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | `saml2`                                         | All `saml2` related errors                                                                       | Send error template with status `403`.                                      |
 | `oauth2`                                        | All `beta_oauth2`/`oidc` related errors                                                          | Send error template with status `403`.                                      |
 
-### API/endpoint error types
+### API and endpoint error types
 
 | Type (and super types)                          | Description                                                                                      | Default handling                                                            |
 |:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|

@@ -7,6 +7,7 @@
     - [SPA Block](#spa-block)
     - [API Block](#api-block)
     - [Endpoint Block](#endpoint-block)
+      - [Endpoint Sequence](#endpoint-sequence)
     - [Proxy Block](#proxy-block)
     - [Request Block](#request-block)
     - [Response Block](#response-block)
