@@ -2,7 +2,6 @@ package eval
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -41,6 +40,8 @@ const (
 	attrSetResHeaders = "set_response_headers"
 	attrAddResHeaders = "add_response_headers"
 	attrDelResHeaders = "remove_response_headers"
+
+	attrCustomLogFields = "custom_log_fields"
 )
 
 // SetGetBody determines if we have to buffer a request body for further processing.
@@ -99,14 +100,9 @@ func SetBody(req *http.Request, body []byte) {
 	parseForm(req)
 }
 
-func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) error {
+func ApplyRequestContext(httpCtx *hcl.EvalContext, body hcl.Body, req *http.Request) error {
 	if req == nil {
 		return nil
-	}
-
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
 	}
 
 	headerCtx := req.Header
@@ -330,6 +326,10 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 	return upgradeType(req.Header) == upgradeType(res.Header)
 }
 
+var customLogFieldsSchema = &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+	{Name: attrCustomLogFields},
+}}
+
 func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry) logrus.Fields {
 	var values []cty.Value
 
@@ -338,16 +338,20 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 			continue // Test cases
 		}
 
-		bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
+		bodyContent, _, _ := body.PartialContent(customLogFieldsSchema)
 
-		if logs, ok := bodyContent.Attributes["custom_log_fields"]; ok {
-			val, err := Value(httpCtx, logs.Expr)
-			if err != nil {
-				logger.Debug(err)
-			} else {
-				values = append(values, val)
-			}
+		logs, ok := bodyContent.Attributes[attrCustomLogFields]
+		if !ok {
+			continue
 		}
+
+		val, err := Value(httpCtx, logs.Expr)
+		if err != nil {
+			logger.Debug(err)
+			continue
+		}
+
+		values = append(values, val)
 	}
 
 	val, err := lib.Merge(values)
@@ -358,7 +362,7 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 	return seetie.ValueToLogFields(val)
 }
 
-func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Response) error {
+func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
 	}
@@ -380,12 +384,7 @@ func ApplyResponseContext(ctx context.Context, body hcl.Body, beresp *http.Respo
 	return nil
 }
 
-func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.Response) (int, error) {
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
-	}
-
+func ApplyResponseStatus(httpCtx *hcl.EvalContext, attr *hcl.Attribute, beresp *http.Response) (int, error) {
 	statusValue, err := Value(httpCtx, attr.Expr)
 	if err != nil {
 		return 0, err
@@ -400,7 +399,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 	if beresp != nil {
 		if status == 204 {
 			beresp.Request.Context().
-				Value(request.LogEntry).(*logrus.Entry).WithContext(ctx).
+				Value(request.LogEntry).(*logrus.Entry).
 				Warn("set_response_status: removing body, if any due to status-code 204")
 
 			beresp.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
@@ -414,12 +413,7 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 	return int(status), nil
 }
 
-func ApplyResponseHeaderOps(ctx context.Context, body hcl.Body, headers ...http.Header) error {
-	var httpCtx *hcl.EvalContext
-	if c, ok := ctx.Value(request.ContextType).(*Context); ok {
-		httpCtx = c.HCLContext()
-	}
-
+func ApplyResponseHeaderOps(httpCtx *hcl.EvalContext, body hcl.Body, headers ...http.Header) error {
 	attrs, err := getAllAttributes(body)
 	if err != nil {
 		return err

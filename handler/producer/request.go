@@ -29,13 +29,12 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
+func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
-	roundtripCreated := false
-
+	ctx := req.Context()
 	var rootSpan trace.Span
-	if len(r) > 0 {
+	if r.Len() > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "requests", trace.WithSpanKind(trace.SpanKindProducer))
 	}
 
@@ -48,15 +47,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 				},
 				RoundTripName: currentName,
 			}
-
-			if !roundtripCreated {
-				close(results)
-			}
 		}
 	}()
 
-	evalctx := ctx.Value(request.ContextType).(*eval.Context)
-	updated := evalctx.WithClientRequest(req)
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync() // also synced for requests due to sequence case
 
 	for _, or := range r {
 		// span end by result reader
@@ -70,21 +64,21 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		var method, url string
 
-		methodVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "method")
+		methodVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "method")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
 		}
 		method = seetie.ValueToString(methodVal)
 
-		urlVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "url")
+		urlVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "url")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
 		}
 		url = seetie.ValueToString(urlVal)
 
-		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), bodyContent)
+		body, defaultContentType, err := eval.GetBody(hclCtx, bodyContent)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -110,6 +104,14 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 			continue
 		}
 
+		expStatusVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "expected_status")
+		if err != nil {
+			results <- &Result{Err: err}
+			continue
+		}
+
+		outCtx = context.WithValue(outCtx, request.EndpointExpectedStatus, seetie.ValueToIntSlice(expStatusVal))
+
 		if defaultContentType != "" {
 			outreq.Header.Set("Content-Type", defaultContentType)
 		}
@@ -117,7 +119,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		eval.SetBody(outreq, []byte(body))
 
 		*outreq = *outreq.WithContext(outCtx)
-		err = eval.ApplyRequestContext(outCtx, or.Context, outreq)
+		err = eval.ApplyRequestContext(hclCtx, or.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -125,7 +127,6 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 
 		span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(outreq)...)
 
-		roundtripCreated = true
 		wg.Add(1)
 		go roundtrip(or.Backend, outreq, results, wg)
 	}
@@ -134,10 +135,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 		rootSpan.End()
 	}
 
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	wg.Wait()
 }
 
 func (r Requests) Len() int {

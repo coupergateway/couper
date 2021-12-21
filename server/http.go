@@ -186,14 +186,14 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.Host = s.getHost(req)
 	host, _, err := runtime.GetHostPort(req.Host)
 	if err != nil {
-		h = errors.DefaultHTML.ServeError(errors.ClientRequest)
+		h = errors.DefaultHTML.WithError(errors.ClientRequest)
 	}
 
 	mux, ok := s.muxers[host]
 	if !ok {
 		mux, ok = s.muxers["*"]
 		if !ok && h == nil {
-			h = errors.DefaultHTML.ServeError(errors.Configuration)
+			h = errors.DefaultHTML.WithError(errors.Configuration)
 		}
 	}
 
@@ -211,7 +211,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if err = s.setGetBody(h, req); err != nil {
-		h = mux.opts.ServerOptions.ServerErrTpl.ServeError(err)
+		h = mux.opts.ServerOptions.ServerErrTpl.WithError(err)
 	}
 
 	req.URL.Host = req.Host

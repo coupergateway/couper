@@ -321,13 +321,15 @@ func TestBackend_director(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.WithContext(tt.ctx)
 
-			_, _ = backend.RoundTrip(req) // implicit director()
+			beresp, _ := backend.RoundTrip(req) // implicit director()
+			// outreq gets set on error cases
+			outreq := beresp.Request
 
 			attr, _ := hclContext.JustAttributes()
 			hostnameExp, ok := attr["hostname"]
 
-			if !ok && tt.expReq.Host != req.Host {
-				subT.Errorf("expected same host value, want: %q, got: %q", req.Host, tt.expReq.Host)
+			if !ok && tt.expReq.Host != outreq.Host {
+				subT.Errorf("expected same host value, want: %q, got: %q", outreq.Host, tt.expReq.Host)
 			} else if ok {
 				hostVal, _ := hostnameExp.Expr.Value(eval.NewContext(nil, nil).HCLContext())
 				hostname := seetie.ValueToString(hostVal)
@@ -336,8 +338,8 @@ func TestBackend_director(t *testing.T) {
 				}
 			}
 
-			if req.URL.Path != tt.expReq.URL.Path {
-				subT.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, req.URL.Path)
+			if outreq.URL.Path != tt.expReq.URL.Path {
+				subT.Errorf("expected path: %q, got: %q", tt.expReq.URL.Path, outreq.URL.Path)
 			}
 		})
 	}

@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"path"
 	"reflect"
 	"strconv"
@@ -14,7 +16,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 const testdataPath = "testdata/endpoints"
@@ -433,6 +438,243 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 			}
 			if val := res.Header.Get("Content-Length"); val != tc.expLen {
 				subT.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
+			}
+		})
+	}
+}
+
+func TestEndpointSequence(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(path.Join(testdataPath, "11_couper.hcl"), helper)
+	defer shutdown()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Y-Value", "my-value")
+		if req.Header.Get("Accept") == "application/json" {
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(rw, `{"value":"%s"}`, req.Header.Get("X-Value"))
+		} else {
+			rw.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	defer origin.Close()
+
+	type testcase struct {
+		name           string
+		path           string
+		expectedHeader test.Header
+		expectedBody   string
+	}
+
+	for _, tc := range []testcase{
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, ""},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, ""},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, ""},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, ""},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
+			h.Must(err)
+
+			req.Header.Set("Origin", origin.URL)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				st.Fatal("expected status ok")
+			}
+
+			for k, v := range tc.expectedHeader {
+				if hv := res.Header.Get(k); hv != v {
+					st.Errorf("%q: want %q, got %q", k, v, hv)
+					break
+				}
+			}
+
+			if tc.expectedBody != "" {
+				result, err := io.ReadAll(res.Body)
+				h.Must(err)
+
+				if tc.expectedBody != string(result) {
+					st.Errorf("unexpected body:\n%s", cmp.Diff(tc.expectedBody, string(result)))
+				}
+			}
+
+		})
+	}
+
+}
+
+func TestEndpointSequenceClientCancel(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(path.Join(testdataPath, "12_couper.hcl"), helper)
+	defer shutdown()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		cancel()
+		time.Sleep(time.Second / 2)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	req.Header.Set("Origin", origin.URL)
+
+	_, err = client.Do(req.WithContext(ctx))
+	if err != nil && errors.Unwrap(err) != context.Canceled {
+		helper.Must(err)
+	}
+
+	time.Sleep(time.Second / 2)
+
+	logs := hook.AllEntries()
+
+	var ctxCanceledSeen, statusOKseen bool
+	for _, entry := range logs {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		path, _ := entry.Data["request"].(logging.Fields)["path"]
+
+		if strings.Contains(entry.Message, context.Canceled.Error()) {
+			ctxCanceledSeen = true
+			if path != "/" {
+				t.Errorf("expected '/' to fail")
+			}
+		}
+
+		if entry.Message == "" && entry.Data["status"] == 200 {
+			statusOKseen = true
+			if path != "/reflect" {
+				t.Errorf("expected '/reflect' to be ok")
+			}
+		}
+	}
+
+	if !ctxCanceledSeen || !statusOKseen {
+		t.Errorf("Expected one sucessful and one failed backend request")
+	}
+
+}
+
+func TestEndpointSequenceBackendTimeout(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(path.Join(testdataPath, "13_couper.hcl"), helper)
+	defer shutdown()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		time.Sleep(time.Second)
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	req.Header.Set("Origin", origin.URL)
+
+	res, err := client.Do(req)
+	if err != nil {
+		helper.Must(err)
+	}
+
+	if res.StatusCode != http.StatusBadGateway {
+		t.Fatalf("Expected status 502, got: %d", res.StatusCode)
+	}
+
+	time.Sleep(time.Second / 4)
+
+	logs := hook.AllEntries()
+
+	var ctxDeadlineSeen, statusOKseen bool
+	for _, entry := range logs {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		path, _ := entry.Data["request"].(logging.Fields)["path"]
+
+		if entry.Message == "backend timeout error: deadline exceeded" {
+			ctxDeadlineSeen = true
+			if path != "/" {
+				t.Errorf("expected '/' to fail")
+			}
+		}
+
+		if entry.Message == "" && entry.Data["status"] == 200 {
+			statusOKseen = true
+			if path != "/reflect" {
+				t.Errorf("expected '/reflect' to be ok")
+			}
+		}
+	}
+
+	if !ctxDeadlineSeen || !statusOKseen {
+		t.Errorf("Expected one sucessful and one failed backend request")
+	}
+
+}
+
+func TestEndpointErrorHandler(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(path.Join(testdataPath, "14_couper.hcl"), helper)
+	defer shutdown()
+	defer func() {
+		for _, e := range hook.AllEntries() {
+			t.Logf("%#v", e.Data)
+		}
+	}()
+
+	type testcase struct {
+		name           string
+		path           string
+		expectedHeader test.Header
+		expectedStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"error_handler not triggered", "/ok", test.Header{"x": "application/json"}, http.StatusOK},
+		{"error_handler triggered with beresp body", "/not-ok", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
+			h.Must(err)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.expectedStatus {
+				st.Fatalf("want: %d, got: %d", tc.expectedStatus, res.StatusCode)
+			}
+
+			for k, v := range tc.expectedHeader {
+				if hv := res.Header.Get(k); hv != v {
+					st.Errorf("%q: want %q, got %q", k, v, hv)
+					break
+				}
 			}
 		})
 	}

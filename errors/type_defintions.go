@@ -5,6 +5,8 @@ import "net/http"
 // Definitions holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var Definitions = []*Error{
+	AccessControl,
+
 	AccessControl.Kind("basic_auth").Status(http.StatusUnauthorized),
 	AccessControl.Kind("basic_auth").Kind("basic_auth_credentials_missing").Status(http.StatusUnauthorized),
 
@@ -21,4 +23,9 @@ var Definitions = []*Error{
 
 	AccessControl.Kind("beta_scope"),
 	AccessControl.Kind("beta_scope").Kind("beta_insufficient_scope"),
+
+	BackendValidation,
+
+	Endpoint.Kind("sequence"),
+	Endpoint.Kind("unexpected_status"),
 }

@@ -25,12 +25,12 @@ func NewErrorHandler(kindsHandler map[string]http.Handler, errTpl *errors.Templa
 func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	err, ok := req.Context().Value(request.Error).(*errors.Error)
 	if !ok { // all errors within this context should have this type, otherwise an implementation error
-		e.template.ServeError(errors.Server).ServeHTTP(rw, req)
+		e.template.WithError(errors.Server).ServeHTTP(rw, req)
 		return
 	}
 
 	if e.kindsHandler == nil { // nothing defined, just serve err with template
-		e.template.ServeError(err).ServeHTTP(rw, req)
+		e.template.WithError(err).ServeHTTP(rw, req)
 		return
 	}
 
@@ -60,5 +60,5 @@ func (e *Error) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// fallback with no matching error handler
-	e.template.ServeError(err).ServeHTTP(rw, req)
+	e.template.WithError(err).ServeHTTP(rw, req)
 }

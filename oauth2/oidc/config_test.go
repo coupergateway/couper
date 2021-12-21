@@ -8,9 +8,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/oauth2/oidc"
@@ -45,7 +46,7 @@ func TestConfig_Synced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	be := transport.NewBackend(configload.EmptyBody(), &transport.Config{}, nil, logger)
+	be := transport.NewBackend(hcl.EmptyBody(), &transport.Config{}, nil, logger)
 	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL + "/.well-known/openid-configuration"}, be)
 	helper.Must(err)
 

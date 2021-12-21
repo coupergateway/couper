@@ -63,6 +63,14 @@ func (e *Error) Kinds() []string {
 	for i := len(e.kinds); i > 0; i-- {
 		reversed = append(reversed, e.kinds[i-1])
 	}
+
+	if eer, ok := e.inner.(*Error); ok {
+		k := eer.Kinds()
+		if len(k) > 0 {
+			reversed = append(reversed, k[0])
+		}
+	}
+
 	return reversed
 }
 
@@ -83,6 +91,9 @@ func (e *Error) Messagef(msg string, args ...interface{}) *Error {
 }
 
 func (e *Error) With(inner error) *Error {
+	if inner == nil {
+		return e
+	}
 	err := e.clone()
 	err.inner = inner
 	return err

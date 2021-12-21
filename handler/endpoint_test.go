@@ -87,9 +87,9 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
-				Error:        errors.DefaultJSON,
-				Context:      remain.Inline,
-				ReqBodyLimit: 1024,
+				ErrorTemplate: errors.DefaultJSON,
+				Context:       remain.Inline,
+				ReqBodyLimit:  1024,
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
 				},
@@ -211,9 +211,9 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 					&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
-					Error:        errors.DefaultJSON,
-					Context:      hcl.EmptyBody(),
-					ReqBodyLimit: 1024,
+					ErrorTemplate: errors.DefaultJSON,
+					Context:       hcl.EmptyBody(),
+					ReqBodyLimit:  1024,
 					Proxies: producer.Proxies{
 						&producer.Proxy{Name: "default", RoundTrip: backend},
 					},
@@ -333,10 +333,10 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
-				BufferOpts:   bufOpts,
-				Context:      helper.NewInlineContext(tc.remain),
-				Error:        errors.DefaultJSON,
-				ReqBodyLimit: 1024,
+				BufferOpts:    bufOpts,
+				Context:       helper.NewInlineContext(tc.remain),
+				ErrorTemplate: errors.DefaultJSON,
+				ReqBodyLimit:  1024,
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
 				},
@@ -383,9 +383,8 @@ type mockProducerResult struct {
 	rt http.RoundTripper
 }
 
-func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results chan<- *producer.Result) {
+func (m *mockProducerResult) Produce(r *http.Request, results chan<- *producer.Result) {
 	if m == nil || m.rt == nil {
-		close(results)
 		return
 	}
 
@@ -395,7 +394,6 @@ func (m *mockProducerResult) Produce(_ context.Context, r *http.Request, results
 		Beresp:        res,
 		Err:           err,
 	}
-	close(results)
 }
 
 func (m *mockProducerResult) Len() int {
@@ -426,10 +424,10 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	mockProducer := &mockProducerResult{rt}
 
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
-		Context:  hcl.EmptyBody(),
-		Error:    errors.DefaultJSON,
-		Proxies:  &mockProducerResult{},
-		Requests: mockProducer,
+		Context:       hcl.EmptyBody(),
+		ErrorTemplate: errors.DefaultJSON,
+		Proxies:       &mockProducerResult{},
+		Requests:      mockProducer,
 	}, log.WithContext(context.Background()), nil)
 
 	ctx := context.Background()
@@ -478,10 +476,10 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	mockProducer := &mockProducerResult{rt}
 
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
-		Context:  hcl.EmptyBody(),
-		Error:    errors.DefaultJSON,
-		Proxies:  &mockProducerResult{},
-		Requests: mockProducer,
+		Context:       hcl.EmptyBody(),
+		ErrorTemplate: errors.DefaultJSON,
+		Proxies:       &mockProducerResult{},
+		Requests:      mockProducer,
 	}, log.WithContext(ctx), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "https://couper.io/", nil)

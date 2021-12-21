@@ -143,7 +143,56 @@ server "logs" {
       }
     }
 
+    endpoint "/error-handler/endpoint" {
+      access_control = ["JWT"]
+
+      beta_scope = "required"
+
+      response {
+        status = 204
+      }
+
+      error_handler "beta_insufficient_scope" {
+        custom_log_fields = {
+          error_handler = request.method
+        }
+      }
+    }
   }
+
+  endpoint "/standard" {
+    request "resolve" {
+      backend = "BE"
+    }
+
+    proxy {
+      backend = "BE"
+    }
+
+    custom_log_fields = {
+      item-1 = backend_responses.resolve.json_body.Json.list[0]
+      item-2 = backend_responses.default.json_body.Json.list[0]
+    }
+  }
+
+  endpoint "/sequence" {
+    request "resolve" {
+      backend = "BE"
+    }
+
+    proxy {
+      backend = "BE"
+      set_request_headers = {
+        x-status = backend_responses.resolve.status
+      }
+    }
+
+    custom_log_fields = {
+      seq-item-1 = backend_responses.resolve.json_body.Json.list[0]
+      seq-item-2 = backend_responses.default.json_body.Json.list[0]
+    }
+  }
+
 }
 
 definitions {

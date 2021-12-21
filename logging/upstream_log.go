@@ -70,42 +70,42 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["request"] = requestFields
 
 	oCtx, openAPIContext := validation.NewWithContext(req.Context())
-	*req = *req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
+	outreq := req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
 
 	rtStart := time.Now()
-	beresp, err := u.next.RoundTrip(req)
+	beresp, err := u.next.RoundTrip(outreq)
 	rtDone := time.Now()
 
-	if req.Host != "" {
-		requestFields["origin"] = req.Host
-		requestFields["host"], requestFields["port"] = splitHostPort(req.Host)
+	if outreq.Host != "" {
+		requestFields["origin"] = outreq.Host
+		requestFields["host"], requestFields["port"] = splitHostPort(outreq.Host)
 		if requestFields["port"] == "" {
 			delete(requestFields, "port")
 		}
 	}
 
 	path := &url.URL{
-		Path:       req.URL.Path,
-		RawPath:    req.URL.RawPath,
-		RawQuery:   req.URL.RawQuery,
-		ForceQuery: req.URL.ForceQuery,
-		Fragment:   req.URL.Fragment,
+		Path:       outreq.URL.Path,
+		RawPath:    outreq.URL.RawPath,
+		RawQuery:   outreq.URL.RawQuery,
+		ForceQuery: outreq.URL.ForceQuery,
+		Fragment:   outreq.URL.Fragment,
 	}
 	requestFields["path"] = path.String()
-	requestFields["headers"] = filterHeader(u.config.RequestHeaders, req.Header)
+	requestFields["headers"] = filterHeader(u.config.RequestHeaders, outreq.Header)
 
-	fields["url"] = req.URL.String()
+	fields["url"] = outreq.URL.String()
 
-	if req.URL.User != nil && req.URL.User.Username() != "" {
-		fields["auth_user"] = req.URL.User.Username()
-	} else if user, _, ok := req.BasicAuth(); ok && user != "" {
+	if outreq.URL.User != nil && outreq.URL.User.Username() != "" {
+		fields["auth_user"] = outreq.URL.User.Username()
+	} else if user, _, ok := outreq.BasicAuth(); ok && user != "" {
 		fields["auth_user"] = user
 	}
 
-	if tr, ok := req.Context().Value(request.TokenRequest).(string); ok && tr != "" {
+	if tr, ok := outreq.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
 
-		if retries, ok := req.Context().Value(request.TokenRequestRetries).(uint8); ok && retries > 0 {
+		if retries, ok := outreq.Context().Value(request.TokenRequestRetries).(uint8); ok && retries > 0 {
 			fields["token_request_retry"] = retries
 		}
 	}
@@ -135,7 +135,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["timings"] = timingResults
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
-	entry := u.log.WithFields(logrus.Fields(fields)).WithContext(req.Context())
+	entry := u.log.WithFields(logrus.Fields(fields)).WithContext(outreq.Context())
 	entry.Time = startTime
 
 	if err != nil {

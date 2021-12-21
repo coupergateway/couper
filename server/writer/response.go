@@ -22,7 +22,7 @@ type writer interface {
 }
 
 type modifier interface {
-	AddModifier(*eval.Context, ...hcl.Body)
+	AddModifier(*hcl.EvalContext, ...hcl.Body)
 }
 
 var (
@@ -46,7 +46,7 @@ type Response struct {
 	rawBytesWritten int
 	bytesWritten    int
 	// modifier
-	evalCtx  *eval.Context
+	evalCtx  *hcl.EvalContext
 	modifier []hcl.Body
 }
 
@@ -182,7 +182,7 @@ func (r *Response) WrittenBytes() int {
 	return r.bytesWritten
 }
 
-func (r *Response) AddModifier(evalCtx *eval.Context, modifier ...hcl.Body) {
+func (r *Response) AddModifier(evalCtx *hcl.EvalContext, modifier ...hcl.Body) {
 	r.evalCtx = evalCtx
 	r.modifier = append(r.modifier, modifier...)
 }
@@ -193,6 +193,6 @@ func (r *Response) applyModifier() {
 	}
 
 	for _, body := range r.modifier {
-		eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
+		_ = eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
 	}
 }

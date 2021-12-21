@@ -203,6 +203,21 @@ func ValueToStringSlice(src cty.Value) []string {
 	return l
 }
 
+func ValueToIntSlice(src cty.Value) []int64 {
+	var n []int64
+	if !src.IsKnown() || src.IsNull() || !src.CanIterateElements() {
+		return n
+	}
+
+	for _, s := range src.AsValueSlice() {
+		if !s.IsKnown() {
+			continue
+		}
+		n = append(n, ValueToInt(s))
+	}
+	return n
+}
+
 var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 
 // ValueToString explicitly drops all other (unknown) types and

@@ -3,15 +3,14 @@ package test
 import (
 	"context"
 
-	"github.com/avenga/couper/handler/transport"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/transport"
 )
 
 func (h *Helper) NewProxy(conf *transport.Config, backendContext, proxyContext hcl.Body) *handler.Proxy {
@@ -43,5 +42,5 @@ func (h *Helper) NewInlineContext(inlineHCL string) hcl.Body {
 
 	var remain hclBody
 	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewContext(nil, nil).HCLContext(), &remain))
-	return configload.MergeBodies([]hcl.Body{remain.Inline})
+	return body.MergeBodies(remain.Inline)
 }

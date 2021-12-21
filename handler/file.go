@@ -73,7 +73,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil {
-		f.srvOptions.FilesErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -85,7 +85,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if r, ok := rw.(*writer.Response); ok {
 		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext, f.modifier...)
+		r.AddModifier(evalContext.HCLContext(), f.modifier...)
 	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
@@ -93,14 +93,14 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.Request) {
 	if !f.HasResponse(req) {
-		f.srvOptions.FilesErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 
 	if !strings.HasSuffix(reqPath, "/") {
 		if r, ok := rw.(*writer.Response); ok {
 			evalContext := eval.ContextFromRequest(req)
-			r.AddModifier(evalContext, f.modifier...)
+			r.AddModifier(evalContext.HCLContext(), f.modifier...)
 		}
 
 		rw.Header().Set("Location", utils.JoinPath(req.URL.Path, "/"))
@@ -112,14 +112,14 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil || info.IsDir() {
-		f.srvOptions.FilesErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
 
 	if r, ok := rw.(*writer.Response); ok {
 		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext, f.modifier...)
+		r.AddModifier(evalContext.HCLContext(), f.modifier...)
 	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)

@@ -9,6 +9,7 @@ import (
 var (
 	_ BackendReference = &Request{}
 	_ Inline           = &Request{}
+	_ SequenceItem     = &Request{}
 )
 
 // Request represents the <Request> object.
@@ -19,6 +20,7 @@ type Request struct {
 
 	// Internally used
 	Backend hcl.Body
+	depends []SequenceItem
 }
 
 // Requests represents a list of <Requests> objects.
@@ -37,14 +39,15 @@ func (r Request) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (r Request) Inline() interface{} {
 	type Inline struct {
-		Backend     *Backend             `hcl:"backend,block"`
-		Body        string               `hcl:"body,optional"`
-		FormBody    string               `hcl:"form_body,optional"`
-		JsonBody    string               `hcl:"json_body,optional"`
-		Headers     map[string]string    `hcl:"headers,optional"`
-		Method      string               `hcl:"method,optional"`
-		QueryParams map[string]cty.Value `hcl:"query_params,optional"`
-		URL         string               `hcl:"url,optional"`
+		Backend        *Backend             `hcl:"backend,block"`
+		Body           string               `hcl:"body,optional"`
+		ExpectedStatus []int                `hcl:"expected_status,optional"`
+		FormBody       string               `hcl:"form_body,optional"`
+		Headers        map[string]string    `hcl:"headers,optional"`
+		JsonBody       string               `hcl:"json_body,optional"`
+		Method         string               `hcl:"method,optional"`
+		QueryParams    map[string]cty.Value `hcl:"query_params,optional"`
+		URL            string               `hcl:"url,optional"`
 	}
 
 	return &Inline{}
@@ -65,4 +68,16 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, r.HCLBody())
+}
+
+func (r *Request) Add(item SequenceItem) {
+	r.depends = append(r.depends, item)
+}
+
+func (r *Request) Deps() []SequenceItem {
+	return r.depends[:]
+}
+
+func (r *Request) GetName() string {
+	return r.Name
 }

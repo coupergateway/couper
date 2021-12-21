@@ -28,10 +28,11 @@ test-coverage:
 	go test -short -timeout 300s -covermode=count -coverprofile=command.coverage ./command
 	go test -short -timeout 300s -covermode=count -coverprofile=config.coverage ./config
 	go test -short -timeout 300s -covermode=count -coverprofile=docs.coverage ./docs
-	# go test -short -timeout 300s -covermode=count -coverprofile=errors.coverage ./errors
+	go test -short -timeout 300s -covermode=count -coverprofile=errors.coverage ./errors
 	go test -short -timeout 300s -covermode=count -coverprofile=eval.coverage ./eval
 	go test -short -timeout 300s -covermode=count -coverprofile=handler.coverage ./handler
-	# go test -short -timeout 300s -covermode=count -coverprofile=logging.coverage ./logging
+	go test -short -timeout 300s -covermode=count -coverprofile=producer.coverage ./handler/producer
+	go test -short -timeout 300s -covermode=count -coverprofile=logging.coverage ./logging
 	go test -short -timeout 300s -covermode=count -coverprofile=server.coverage ./server
 	go test -short -timeout 300s -covermode=count -coverprofile=main.coverage ./
 
@@ -41,9 +42,10 @@ test-coverage-show:
 	go tool cover -html=command.coverage
 	go tool cover -html=config.coverage
 	go tool cover -html=docs.coverage
-	# go tool cover -html=errors.coverage
+	go tool cover -html=errors.coverage
 	go tool cover -html=eval.coverage
 	go tool cover -html=handler.coverage
-	# go tool cover -html=logging.coverage
+	go tool cover -html=producer.coverage
+	go tool cover -html=logging.coverage
 	go tool cover -html=server.coverage
 	go tool cover -html=main.coverage

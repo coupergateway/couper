@@ -45,13 +45,13 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				if err != nil {
 					return nil, err
 				}
-				if epOpts.Error == nil || h.ErrorFile == "" {
-					epOpts.Error = opts.epOpts.Error
+				if epOpts.ErrorTemplate == nil || h.ErrorFile == "" {
+					epOpts.ErrorTemplate = opts.epOpts.ErrorTemplate
 				}
 
-				epOpts.Error = epOpts.Error.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
+				epOpts.ErrorTemplate = epOpts.ErrorTemplate.WithContextFunc(func(rw http.ResponseWriter, r *http.Request) {
 					beresp := &http.Response{Header: rw.Header()}
-					_ = eval.ApplyResponseContext(r.Context(), contextBody, beresp)
+					_ = eval.ApplyResponseContext(eval.ContextFromRequest(r).HCLContextSync(), contextBody, beresp)
 				})
 
 				if epOpts.Response != nil && reflect.DeepEqual(epOpts.Response.Context, emptyBody) {
@@ -59,10 +59,11 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				}
 
 				epOpts.LogHandlerKind = "error_" + k
+				epOpts.IsErrorHandler = true
 				kindsHandler[k] = handler.NewEndpoint(epOpts, log, nil)
 			}
 		}
 	}
 
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.Error), nil
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.ErrorTemplate), nil
 }

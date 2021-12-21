@@ -1,4 +1,4 @@
-package configload_test
+package body_test
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
 )
 
@@ -83,7 +83,7 @@ block {
 	}
 
 	schema, _ = gohcl.ImpliedBodySchema(bodies.Block[0])
-	content, _, diags = configload.MergeBodies(hclBodies[:]).PartialContent(schema)
+	content, _, diags = body.MergeBodies(hclBodies[:]...).PartialContent(schema)
 	if diags.HasErrors() {
 		t.Error(diags)
 	}

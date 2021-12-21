@@ -18,7 +18,7 @@ type Response struct {
 	Context hcl.Body
 }
 
-func NewResponse(req *http.Request, resp hcl.Body, evalCtx *eval.Context, statusCode int) (*http.Response, error) {
+func NewResponse(req *http.Request, resp hcl.Body, statusCode int) (*http.Response, error) {
 	clientres := &http.Response{
 		Header:     make(http.Header),
 		Proto:      req.Proto,
@@ -27,7 +27,7 @@ func NewResponse(req *http.Request, resp hcl.Body, evalCtx *eval.Context, status
 		Request:    req,
 	}
 
-	hclCtx := evalCtx.HCLContext()
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	content, _, diags := resp.PartialContent(config.ResponseInlineSchema)
 	if diags.HasErrors() {

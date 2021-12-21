@@ -143,7 +143,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		// and handle api related errors accordingly.
 		// Otherwise look for existing files or spa fallback.
 		if tpl, api := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
-			return tpl.ServeError(errors.RouteNotFound.Label(api.BasePath)) // TODO: api label
+			return tpl.WithError(errors.RouteNotFound.Label(api.BasePath)) // TODO: api label
 		}
 
 		fileHandler, exist := m.hasFileResponse(req)
@@ -159,7 +159,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			}
 
 			// Fallback
-			return m.opts.ServerOptions.ServerErrTpl.ServeError(errors.RouteNotFound)
+			return m.opts.ServerOptions.ServerErrTpl.WithError(errors.RouteNotFound)
 		}
 	}
 

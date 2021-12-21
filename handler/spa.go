@@ -45,24 +45,24 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(s.file)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
-			s.srvOptions.ServerErrTpl.ServeError(errors.RouteNotFound).ServeHTTP(rw, req)
+			s.srvOptions.ServerErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 			return
 		}
 
-		s.srvOptions.ServerErrTpl.ServeError(errors.Configuration).ServeHTTP(rw, req)
+		s.srvOptions.ServerErrTpl.WithError(errors.Configuration).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
 	if err != nil || fileInfo.IsDir() {
-		s.srvOptions.ServerErrTpl.ServeError(errors.Configuration).ServeHTTP(rw, req)
+		s.srvOptions.ServerErrTpl.WithError(errors.Configuration).ServeHTTP(rw, req)
 		return
 	}
 
 	if r, ok := rw.(*writer.Response); ok {
 		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext, s.modifier...)
+		r.AddModifier(evalContext.HCLContext(), s.modifier...)
 	}
 
 	http.ServeContent(rw, req, s.file, fileInfo.ModTime(), file)

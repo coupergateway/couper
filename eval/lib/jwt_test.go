@@ -663,26 +663,26 @@ func TestJwtSignDynamic(t *testing.T) {
 			helper.Must(err)
 
 			if resultClaims["exp"] == nil {
-				subT.Errorf("Expected exp claim, got: %#v", body)
+				subT.Errorf("Expected exp claim, got: %s", body)
 			}
-			exp := resultClaims["exp"].(float64)
+			exp, _ := resultClaims["exp"].(float64)
 			if !fuzzyEqual(int64(exp)-now, tt.wantTTL, 1) {
-				subT.Errorf(string(body))
+				subT.Error(string(body))
 				subT.Errorf("Expected %d, got: %d", tt.wantTTL, int64(exp)-now)
 			}
 			if resultClaims["x-method"] == nil {
-				subT.Errorf("Expected x-method claim, got: %#v", body)
+				subT.Errorf("Expected x-method claim, got: %s", body)
 			}
 			if resultClaims["x-method"] != tt.wantMeth {
 				subT.Errorf("Expected: %s, got: %s", tt.wantMeth, resultClaims["x-method"])
 			}
 
 			if resultClaims["x-status"] == nil {
-				subT.Errorf("Expected x-status claim, got: %#v", body)
+				subT.Errorf("Expected x-status claim, got: %s", body)
 			}
-			status := int64(resultClaims["x-status"].(float64))
+			status, _ := resultClaims["x-status"].(float64)
 			if status != 200 {
-				subT.Errorf("Expected: %d, got: %d", http.StatusOK, status)
+				subT.Errorf("Expected: %d, got: %d", http.StatusOK, int64(status))
 			}
 		})
 	}

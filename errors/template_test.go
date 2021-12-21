@@ -27,7 +27,7 @@ func TestTemplate_ServeError(t1 *testing.T) {
 		t1.Run(tt.name, func(subT *testing.T) {
 			rec := writer.NewResponseWriter(httptest.NewRecorder(), "")
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			errors.DefaultJSON.ServeError(tt.err).ServeHTTP(rec, req)
+			errors.DefaultJSON.WithError(tt.err).ServeHTTP(rec, req)
 
 			rec.Flush()
 

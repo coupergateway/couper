@@ -53,21 +53,9 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 }
 
 func fire(entry *logrus.Entry, bodyKey request.ContextKey) {
-	var evalCtx *eval.Context
-
-	customEvalCtxCh, ok := entry.Context.Value(request.LogCustomEvalResult).(chan *eval.Context)
-	if ok {
-		select {
-		case evalCtx = <-customEvalCtxCh:
-		default: // pass through, e.g. on early errors we will not receive something useful
-		}
-	}
-
-	if evalCtx == nil {
-		evalCtx, ok = entry.Context.Value(request.ContextType).(*eval.Context)
-		if !ok {
-			return
-		}
+	evalCtx, ok := entry.Context.Value(request.ContextType).(*eval.Context)
+	if !ok {
+		return
 	}
 
 	bodies := entry.Context.Value(bodyKey)
@@ -80,7 +68,7 @@ func fire(entry *logrus.Entry, bodyKey request.ContextKey) {
 		return
 	}
 
-	if fields := eval.ApplyCustomLogs(evalCtx.HCLContext(), hclBodies, entry); len(fields) > 0 {
+	if fields := eval.ApplyCustomLogs(evalCtx.HCLContextSync(), hclBodies, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
 }

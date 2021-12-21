@@ -2,22 +2,13 @@ package configload
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
-
-func Test_refineEndpoints_noPattern(t *testing.T) {
-	err := refineEndpoints(nil, config.Endpoints{{Pattern: ""}}, true)
-	if err == nil || !strings.HasSuffix(err.Error(), "endpoint: missing path pattern; ") {
-		t.Errorf("refineEndpoints() error = %v, wantErr: endpoint: missing path pattern ", err)
-	}
-}
 
 func Test_VerifyBodyAttributes(t *testing.T) {
 	type testCase struct {
@@ -192,13 +183,13 @@ func TestLabels(t *testing.T) {
 				_, err = runtime.NewServerConfiguration(conf, log, nil)
 			}
 
-			var error = ""
+			var errMsg string
 			if err != nil {
-				error = err.Error()
+				errMsg = err.Error()
 			}
 
-			if tt.error != error {
-				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, error)
+			if tt.error != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errMsg)
 			}
 		})
 	}

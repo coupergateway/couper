@@ -45,7 +45,7 @@ func (u *UID) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil {
-		errors.DefaultHTML.ServeError(errors.ClientRequest.With(err)).ServeHTTP(rw, req)
+		errors.DefaultHTML.WithError(errors.ClientRequest.With(err)).ServeHTTP(rw, req)
 		return
 	}
 

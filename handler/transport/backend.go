@@ -78,13 +78,15 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{b.context})
 	*req = *req.WithContext(ctx)
 
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(req.Context(), b.context, req); err != nil {
+	if err := eval.ApplyRequestContext(hclCtx, b.context, req); err != nil {
 		return nil, err
 	}
 
-	tc, err := b.evalTransport(req)
+	tc, err := b.evalTransport(hclCtx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +136,13 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		berespErr := &http.Response{
+			Request: req,
+		} // provide outreq (variable) on error cases
+		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+			varSync.Set(berespErr)
+		}
+		return berespErr, err
 	}
 
 	if !eval.IsUpgradeResponse(req, beresp) {
@@ -153,15 +161,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// from this result.
 	evalCtx := eval.ContextFromRequest(req)
 	evalCtx = evalCtx.WithBeresps(beresp)
-	err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
+	err = eval.ApplyResponseContext(evalCtx.HCLContext(), b.context, beresp)
 
-	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
-	if ok {
-		select {
-		case <-req.Context().Done():
-			return beresp, err
-		case customLogEvalCtxCh <- evalCtx:
-		}
+	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+		varSync.Set(beresp)
 	}
 
 	return beresp, err
@@ -301,12 +304,7 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
-	var httpContext *hcl.EvalContext
-	if httpCtx, ok := req.Context().Value(request.ContextType).(*eval.Context); ok {
-		httpContext = httpCtx.HCLContext()
-	}
-
+func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*Config, error) {
 	log := b.upstreamLog.LogEntry()
 
 	bodyContent, _, diags := b.context.PartialContent(config.BackendInlineSchema)
@@ -324,7 +322,7 @@ func (b *Backend) evalTransport(req *http.Request) (*Config, error) {
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
 	} {
-		if v, err := eval.ValueFromAttribute(httpContext, bodyContent, p.attrName); err != nil {
+		if v, err := eval.ValueFromAttribute(httpCtx, bodyContent, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
 		} else if v != cty.NilVal {
 			*p.target = seetie.ValueToString(v)

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -33,18 +32,21 @@ type Endpoint struct {
 
 type EndpointOptions struct {
 	APIName        string
+	BufferOpts     eval.BufferOption
 	Context        hcl.Body
-	Error          *errors.Template
+	ErrorTemplate  *errors.Template
+	ErrorHandler   http.Handler
+	IsErrorHandler bool
 	LogHandlerKind string
 	LogPattern     string
 	ReqBodyLimit   int64
-	BufferOpts     eval.BufferOption
 	ServerOpts     *server.Options
 
-	Proxies  producer.Roundtrips
-	Redirect *producer.Redirect
-	Requests producer.Roundtrips
-	Response *producer.Response
+	Proxies   producer.Roundtrips
+	Redirect  *producer.Redirect
+	Requests  producer.Roundtrips
+	Sequences producer.Sequences
+	Response  *producer.Response
 }
 
 type BodyLimit interface {
@@ -61,55 +63,40 @@ func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) 
 }
 
 func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	reqCtx := e.withContext(req)
+
 	var (
-		clientres    *http.Response
-		err          error
-		log          = e.log.WithContext(req.Context())
-		isErrHandler = strings.HasPrefix(e.opts.LogHandlerKind, "error_") // weak ref
+		clientres *http.Response
+		err       error
+		log       = e.log.WithContext(reqCtx)
 	)
 
-	// Bind some values for logging purposes
-	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
-	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
-	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
-	reqCtx = context.WithValue(reqCtx, request.BufferOptions, e.opts.BufferOpts)
-	*req = *req.WithContext(reqCtx)
+	defer func() {
+		if rc := recover(); rc != nil {
+			log.WithField("panic", string(debug.Stack())).Error(rc)
+			if clientres == nil {
+				e.opts.ErrorTemplate.WithError(errors.Server).ServeHTTP(rw, req)
+			}
+		}
+	}()
+
 	if e.opts.LogPattern != "" {
 		span := trace.SpanFromContext(reqCtx)
 		span.SetAttributes(telemetry.KeyEndpoint.String(e.opts.LogPattern))
 	}
 
-	defer func() {
-		rc := recover()
-		if rc != nil {
-			log.WithField("panic", string(debug.Stack())).Error(rc)
-			if clientres == nil {
-				e.opts.Error.ServeError(errors.Server).ServeHTTP(rw, req)
-			}
-		}
-	}()
+	if ee := eval.ApplyRequestContext(eval.ContextFromRequest(req).HCLContext(), e.opts.Context, req); ee != nil {
+		e.opts.ErrorTemplate.WithError(ee).ServeHTTP(rw, req)
+		return
+	}
 
 	// subCtx is handled by this endpoint handler and should not be attached to req
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
 
-	if ee := eval.ApplyRequestContext(reqCtx, e.opts.Context, req); ee != nil {
-		e.opts.Error.ServeError(ee).ServeHTTP(rw, req)
-		return
-	}
+	beresps, err := e.produce(req.WithContext(subCtx))
 
-	proxyResults := make(producer.Results, e.opts.Proxies.Len())
-	requestResults := make(producer.Results, e.opts.Requests.Len())
-
-	// go for it due to chan write on error
-	go e.opts.Proxies.Produce(subCtx, req, proxyResults)
-	go e.opts.Requests.Produce(subCtx, req, requestResults)
-
-	beresps := make(producer.ResultMap)
-	// TODO: read parallel, proxy first for now
-	e.readResults(subCtx, proxyResults, beresps)
-	e.readResults(subCtx, requestResults, beresps)
-
+	// check for client cancels before reading backend response bodies
 	select {
 	case <-reqCtx.Done():
 		err = reqCtx.Err()
@@ -118,98 +105,32 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
-	evalContext := eval.ContextFromRequest(req)
-	evalContext = evalContext.WithBeresps(beresps.List()...)
-
-	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
-	if ok {
-		select {
-		case <-reqCtx.Done():
-			err = reqCtx.Err()
-			log.WithError(errors.ClientRequest.With(err)).Error()
+	// handle errors first before entering the happy path
+	if !e.opts.IsErrorHandler {
+		if handled := e.handleError(rw, req, err); handled {
 			return
-		case customLogEvalCtxCh <- evalContext:
 		}
 	}
 
-	// assume prio or err on conf load if set with response
+	// assume configured priority, prefer redirect to response and default ones
 	if e.opts.Redirect != nil {
 		clientres = e.newRedirect()
 	} else if e.opts.Response != nil {
-		// TODO: refactor with error_handler, catch at least panics for now
-		for _, b := range beresps {
-			if b.Err == nil {
-				continue
-			}
-
-			switch b.Err.(type) {
-			case producer.ResultPanic:
-				log.WithError(b.Err).Error()
-			}
-
-			if b.Err != nil {
-				err = b.Err
-				break
-			}
-		}
-
-		if err == nil {
-			_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
-			defer span.End()
-			clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
-		}
-	} else {
-		if result, ok := beresps["default"]; ok {
-			clientres = result.Beresp
-			err = result.Err
-		} else {
-			// fallback
-			err = errors.Configuration
-
-			if isErrHandler {
-				err, _ = req.Context().Value(request.Error).(*errors.Error)
-			} else {
-				// TODO determine error priority, may solved with error_handler
-				// on roundtrip panic the context label is missing atm
-				// pick the first err from beresps
-				for _, br := range beresps {
-					if br != nil && br.Err != nil {
-						err = br.Err
-						break
-					}
-				}
-			}
+		_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
+		defer span.End()
+		clientres, err = producer.NewResponse(req, e.opts.Response.Context, http.StatusOK)
+	} else if result, exist := beresps["default"]; exist {
+		clientres = result.Beresp
+		err = result.Err
+	} else if e.opts.IsErrorHandler && err == nil {
+		var ok bool
+		err, ok = req.Context().Value(request.Error).(error)
+		if !ok {
+			err = errors.Server
 		}
 	}
 
-	if err != nil {
-		serveErr := err
-		switch err.(type) { // TODO proper err mapping and handling
-		case net.Error:
-			serveErr = errors.Request.With(err)
-			if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
-				serveErr = errors.Proxy.With(err)
-			}
-		case producer.ResultPanic:
-			serveErr = errors.Server.With(err)
-			log.WithError(err).Error()
-		}
-
-		content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
-		errFromCtx := req.Context().Value(request.Error)
-		if attr, ok := content.Attributes["set_response_status"]; isErrHandler && errFromCtx == err && ok {
-			if statusCode, applyErr := eval.ApplyResponseStatus(evalContext, attr, nil); statusCode > 0 {
-				if serr, k := serveErr.(*errors.Error); k {
-					serveErr = serr.Status(statusCode)
-				} else {
-					serveErr = errors.Server.With(serveErr).Status(statusCode)
-				}
-			} else if applyErr != nil {
-				e.log.WithError(applyErr)
-			}
-		}
-
-		e.opts.Error.ServeError(serveErr).ServeHTTP(rw, req)
+	if handled := e.handleError(rw, req, err); handled {
 		return
 	}
 
@@ -218,6 +139,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		log.Errorf("endpoint write: %v", ctxErr)
 	default:
 	}
+
+	httpCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	w, ok := rw.(*writer.Response)
 	if !ok {
@@ -228,13 +151,13 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		w.AddModifier(evalContext, e.modifier...)
+		w.AddModifier(httpCtx, e.modifier...)
 		rw = w
 	}
 
 	// always apply before write: redirect, response
-	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
-		e.opts.Error.ServeError(err).ServeHTTP(rw, req)
+	if err = eval.ApplyResponseContext(httpCtx, e.opts.Context, clientres); err != nil {
+		e.opts.ErrorTemplate.WithError(err).ServeHTTP(rw, req)
 		return
 	}
 
@@ -257,6 +180,16 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	_ = clientres.Body.Close()
 }
 
+// withContext binds some endpoint context related values for logging and buffer purposes.
+func (e *Endpoint) withContext(req *http.Request) context.Context {
+	reqCtx := context.WithValue(req.Context(), request.Endpoint, e.opts.LogPattern)
+	reqCtx = context.WithValue(reqCtx, request.EndpointKind, e.opts.LogHandlerKind)
+	reqCtx = context.WithValue(reqCtx, request.APIName, e.opts.APIName)
+	reqCtx = context.WithValue(reqCtx, request.BufferOptions, e.opts.BufferOpts)
+	*req = *req.WithContext(reqCtx)
+	return reqCtx
+}
+
 func (e *Endpoint) newRedirect() *http.Response {
 	// TODO use http.RedirectHandler
 	status := http.StatusMovedPermanently
@@ -267,12 +200,43 @@ func (e *Endpoint) newRedirect() *http.Response {
 	}
 }
 
-func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
+// produce hands over all possible outgoing requests to the producer interface and reads
+// the backend response results afterwards. Returns first occurred backend error.
+func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
+	results := make(producer.ResultMap)
+
+	trips := []producer.Roundtrips{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
+	tripCh := make(chan chan *producer.Result, len(trips))
+	for _, trip := range trips {
+		resultCh := make(chan *producer.Result, trip.Len())
+		go func(rt producer.Roundtrips, rc chan *producer.Result) {
+			rt.Produce(req, resultCh)
+			close(rc)
+		}(trip, resultCh)
+		tripCh <- resultCh
+	}
+	close(tripCh)
+
+	for resultCh := range tripCh {
+		e.readResults(resultCh, results)
+	}
+
+	var err error // TODO: prefer default resp err
+	// TODO: additionally log all panic error types
+	for _, r := range results {
+		if r.Err != nil {
+			err = r.Err
+			break
+		}
+	}
+
+	return results, err
+}
+
+func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
 	i := 0
 	for {
 		select {
-		case <-ctx.Done():
-			return
 		case r, more := <-requestResults:
 			if !more {
 				return
@@ -288,6 +252,52 @@ func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Resu
 			beresps[name] = r
 		}
 	}
+}
+
+func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	ctxErr := req.Context().Value(request.Error)
+	serveErr := err
+	switch err.(type) {
+	case net.Error:
+		serveErr = errors.Request.With(err)
+		if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
+			serveErr = errors.Proxy.With(err)
+		}
+	case producer.ResultPanic:
+		serveErr = errors.Server.With(err)
+	}
+
+	if e.opts.ErrorHandler != nil {
+		if ctxErr == nil {
+			ctxErr = serveErr
+			*req = *req.WithContext(context.WithValue(req.Context(), request.Error, ctxErr))
+		}
+		e.opts.ErrorHandler.ServeHTTP(rw, req)
+		return true
+	}
+
+	content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
+
+	// modify response status code if set
+	if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && ctxErr == err && ok {
+		if statusCode, applyErr := eval.
+			ApplyResponseStatus(eval.ContextFromRequest(req).HCLContextSync(), attr, nil); statusCode > 0 {
+			if serr, k := serveErr.(*errors.Error); k {
+				serveErr = serr.Status(statusCode)
+			} else {
+				serveErr = errors.Server.With(serveErr).Status(statusCode)
+			}
+		} else if applyErr != nil {
+			e.log.WithError(applyErr)
+		}
+	}
+
+	e.opts.ErrorTemplate.WithError(serveErr).ServeHTTP(rw, req)
+	return true
 }
 
 func (e *Endpoint) Options() *server.Options {
