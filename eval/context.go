@@ -206,6 +206,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 func newBerespValues(ctx context.Context, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
 
+	name = "default"
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 		name = n
 	}
