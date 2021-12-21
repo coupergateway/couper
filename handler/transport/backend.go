@@ -137,6 +137,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		berespErr := &http.Response{
 			Request: req,
 		} // provide outreq (variable) on error cases
+		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+			varSync.Set(berespErr)
+		}
 		return berespErr, err
 	}
 
@@ -155,16 +158,11 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
 	// from this result.
 	evalCtx := eval.ContextFromRequest(req)
-	evalCtx = evalCtx.WithBeresps(beresp)
+	evalCtx = evalCtx.WithBeresp(beresp)
 	err = eval.ApplyResponseContext(evalCtx, b.context, beresp)
 
-	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
-	if ok {
-		select {
-		case <-req.Context().Done():
-			return beresp, err
-		case customLogEvalCtxCh <- evalCtx:
-		}
+	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+		varSync.Set(beresp)
 	}
 
 	return beresp, err

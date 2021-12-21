@@ -131,8 +131,20 @@ func TestCustomLogs_Local(t *testing.T) {
 		{"endpoint with error-handler", "/error-handler/endpoint",
 			test.Header{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Qf0lkeZKZ3NJrYm3VdgiQiQ6QTrjCvISshD_q9F8GAM"},
 			logrus.Fields{"error_handler": "GET", "jwt_regular": "GET"}},
+		{"endpoint standard", "/standard", nil, logrus.Fields{
+			"server": "couper test-backend",
+			"item-1": "item1",
+			"item-2": "item1",
+		}},
+		{"endpoint sequence", "/sequence", nil, logrus.Fields{
+			"server":     "couper test-backend",
+			"seq-item-1": "item1",
+			"seq-item-2": "item1",
+		}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
 			helper := test.New(st)
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
 			helper.Must(err)
@@ -141,12 +153,13 @@ func TestCustomLogs_Local(t *testing.T) {
 				req.Header.Set(k, v)
 			}
 
-			hook.Reset()
-			_, err = client.Do(req)
+			res, err := client.Do(req)
 			helper.Must(err)
 
+			helper.Must(res.Body.Close())
+
 			// Wait for logs
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(time.Second / 5)
 
 			// Access log
 			entries := hook.AllEntries()
@@ -155,7 +168,18 @@ func TestCustomLogs_Local(t *testing.T) {
 				return
 			}
 
-			got, ok := entries[0].Data["custom"].(logrus.Fields)
+			var accessLogEntry *logrus.Entry
+			for _, e := range entries {
+				if e.Data["type"] == "couper_access" {
+					accessLogEntry = e
+					break
+				}
+			}
+			if accessLogEntry == nil {
+				st.Fatal("Expected access log entry")
+			}
+
+			got, ok := accessLogEntry.Data["custom"].(logrus.Fields)
 			if !ok {
 				st.Fatal("expected custom log field, got none")
 			}

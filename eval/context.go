@@ -47,6 +47,7 @@ type Context struct {
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
 	src               []byte
+	syncedVariables   *SyncedVariables
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
@@ -105,9 +106,11 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		oauth2:            c.oauth2[:],
 		jwtSigningConfigs: c.jwtSigningConfigs,
 		saml:              c.saml[:],
+		syncedVariables:   NewSyncedVariables(),
 	}
 
 	if rc := req.Context(); rc != nil {
+		rc = context.WithValue(rc, request.ContextVariablesSynced, ctx.syncedVariables)
 		ctx.inner = context.WithValue(rc, request.ContextType, ctx)
 	}
 
@@ -154,6 +157,9 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
+	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
+	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
+
 	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
 
@@ -168,6 +174,7 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		oauth2:            c.oauth2[:],
 		jwtSigningConfigs: c.jwtSigningConfigs,
 		saml:              c.saml[:],
+		syncedVariables:   c.syncedVariables,
 	}
 	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
 
@@ -178,55 +185,15 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 			continue
 		}
 
-		bereq := beresp.Request
-		name := BackendDefault // TODO: name related error handling? override previous one for now
-		if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
-			name = n
-		}
-
-		p := bereq.URL.Port()
-		if p == "" {
-			if bereq.URL.Scheme == "https" {
-				p = "443"
-			} else {
-				p = "80"
-			}
-		}
-		port, _ := strconv.ParseInt(p, 10, 64)
-
-		body, jsonBody := parseReqBody(bereq)
-		bereqs[name] = cty.ObjectVal(ContextMap{
-			Method:   cty.StringVal(bereq.Method),
-			URL:      cty.StringVal(bereq.URL.String()),
-			Origin:   cty.StringVal(NewRawOrigin(bereq.URL).String()),
-			Protocol: cty.StringVal(bereq.URL.Scheme),
-			Host:     cty.StringVal(bereq.URL.Hostname()),
-			Port:     cty.NumberIntVal(port),
-			Path:     cty.StringVal(bereq.URL.Path),
-			Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
-			Body:     body,
-			JsonBody: jsonBody,
-			FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
-		}.Merge(newVariable(ctx.inner, bereq.Cookies(), bereq.Header)))
-
-		var respBody, respJsonBody cty.Value
-		if !IsUpgradeResponse(bereq, beresp) {
-			bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
-			if ok && (bufferOption&BufferResponse) == BufferResponse {
-				respBody, respJsonBody = parseRespBody(beresp)
-			}
-		}
-		resps[name] = cty.ObjectVal(ContextMap{
-			HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
-			JsonBody:   respJsonBody,
-			Body:       respBody,
-		}.Merge(newVariable(ctx.inner, beresp.Cookies(), beresp.Header)))
+		name, bereqVal, berespVal := newBerespValues(ctx, beresp)
+		bereqs[name] = bereqVal
+		resps[name] = berespVal
 	}
 
 	// Prevent overriding existing variables with successive calls to this method.
 	// Could happen with error_handler within an endpoint. Merge them.
-	updateBackendVariables(ctx.eval, BackendRequests, bereqs)
-	updateBackendVariables(ctx.eval, BackendResponses, resps)
+	c.updateBackendVariables(ctx.eval, BackendRequests, bereqs)
+	c.updateBackendVariables(ctx.eval, BackendResponses, resps)
 
 	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
 	originUrl, _ := url.Parse(clientOrigin)
@@ -236,7 +203,55 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 	return ctx
 }
 
-func updateBackendVariables(evalCtx *hcl.EvalContext, key string, cmap ContextMap) {
+func newBerespValues(ctx context.Context, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
+	bereq := beresp.Request
+
+	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
+		name = n
+	}
+
+	p := bereq.URL.Port()
+	if p == "" {
+		if bereq.URL.Scheme == "https" {
+			p = "443"
+		} else {
+			p = "80"
+		}
+	}
+	port, _ := strconv.ParseInt(p, 10, 64)
+
+	body, jsonBody := parseReqBody(bereq)
+	bereqVal = cty.ObjectVal(ContextMap{
+		Method:   cty.StringVal(bereq.Method),
+		URL:      cty.StringVal(bereq.URL.String()),
+		Origin:   cty.StringVal(NewRawOrigin(bereq.URL).String()),
+		Protocol: cty.StringVal(bereq.URL.Scheme),
+		Host:     cty.StringVal(bereq.URL.Hostname()),
+		Port:     cty.NumberIntVal(port),
+		Path:     cty.StringVal(bereq.URL.Path),
+		Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
+		Body:     body,
+		JsonBody: jsonBody,
+		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
+
+	var respBody, respJsonBody cty.Value
+	if !IsUpgradeResponse(bereq, beresp) {
+		bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
+		if ok && (bufferOption&BufferResponse) == BufferResponse {
+			respBody, respJsonBody = parseRespBody(beresp)
+		}
+	}
+	berespVal = cty.ObjectVal(ContextMap{
+		HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
+		JsonBody:   respJsonBody,
+		Body:       respBody,
+	}.Merge(newVariable(ctx, beresp.Cookies(), beresp.Header)))
+
+	return name, bereqVal, berespVal
+}
+
+func (c *Context) updateBackendVariables(evalCtx *hcl.EvalContext, key string, cmap ContextMap) {
 	if !evalCtx.Variables[key].IsNull() && evalCtx.Variables[key].LengthInt() > 0 {
 		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)})
 		if !merged.IsNull() {
@@ -290,6 +305,17 @@ func (c *Context) WithSAML(s []*config.SAML) *Context {
 
 func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
+}
+
+func (c *Context) HCLContextSync() *hcl.EvalContext {
+	if c.syncedVariables == nil {
+		return c.eval
+	}
+
+	e := c.cloneEvalContext()
+	c.syncedVariables.Sync(e.Variables)
+
+	return e
 }
 
 func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {

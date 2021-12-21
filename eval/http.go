@@ -41,6 +41,8 @@ const (
 	attrSetResHeaders = "set_response_headers"
 	attrAddResHeaders = "add_response_headers"
 	attrDelResHeaders = "remove_response_headers"
+
+	attrCustomLogFields = "custom_log_fields"
 )
 
 // SetGetBody determines if we have to buffer a request body for further processing.
@@ -330,6 +332,10 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 	return upgradeType(req.Header) == upgradeType(res.Header)
 }
 
+var customLogFieldsSchema = &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+	{Name: attrCustomLogFields},
+}}
+
 func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry) logrus.Fields {
 	var values []cty.Value
 
@@ -338,16 +344,20 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 			continue // Test cases
 		}
 
-		bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
+		bodyContent, _, _ := body.PartialContent(customLogFieldsSchema)
 
-		if logs, ok := bodyContent.Attributes["custom_log_fields"]; ok {
-			val, err := Value(httpCtx, logs.Expr)
-			if err != nil {
-				logger.Debug(err)
-			} else {
-				values = append(values, val)
-			}
+		logs, ok := bodyContent.Attributes[attrCustomLogFields]
+		if !ok {
+			continue
 		}
+
+		val, err := Value(httpCtx, logs.Expr)
+		if err != nil {
+			logger.Debug(err)
+			continue
+		}
+
+		values = append(values, val)
 	}
 
 	val, err := lib.Merge(values)

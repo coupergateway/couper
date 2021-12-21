@@ -50,8 +50,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 		}
 	}()
 
-	evalctx := ctx.Value(request.ContextType).(*eval.Context)
-	updated := evalctx.WithClientRequest(req)
+	hclCtx := eval.ContextFromRequest(req).HCLContext()
 
 	for _, or := range r {
 		// span end by result reader
@@ -65,21 +64,21 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 
 		var method, url string
 
-		methodVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "method")
+		methodVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "method")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
 		}
 		method = seetie.ValueToString(methodVal)
 
-		urlVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "url")
+		urlVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "url")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
 		}
 		url = seetie.ValueToString(urlVal)
 
-		body, defaultContentType, err := eval.GetBody(updated.HCLContext(), bodyContent)
+		body, defaultContentType, err := eval.GetBody(hclCtx, bodyContent)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -105,7 +104,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			continue
 		}
 
-		expStatusVal, err := eval.ValueFromAttribute(updated.HCLContext(), bodyContent, "expected_status")
+		expStatusVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "expected_status")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue

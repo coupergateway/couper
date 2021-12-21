@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"path"
 	"reflect"
 	"strconv"
@@ -92,12 +91,8 @@ func GetHostPort(hostPort string) (string, int, error) {
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
 func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (ServerConfiguration, error) {
-	// confCtx is created to evaluate request / response related configuration errors on start.
-	noopReq, _ := http.NewRequest(http.MethodGet, "https://couper.io", nil)
-	noopResp := httptest.NewRecorder().Result()
-	noopResp.Request = noopReq
-	evalContext := conf.Context.Value(request.ContextType).(*eval.Context)
-	confCtx := evalContext.WithClientRequest(noopReq).WithBeresps(noopResp).HCLContext()
+	evalContext := conf.Context.Value(request.ContextType).(*eval.Context) // usually environment vars
+	confCtx := evalContext.HCLContext()
 
 	oidcConfigs, ocErr := configureOidcConfigs(conf, confCtx, log, memStore)
 	if ocErr != nil {

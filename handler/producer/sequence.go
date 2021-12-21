@@ -1,15 +1,12 @@
 package producer
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/telemetry"
 )
 
@@ -53,10 +50,16 @@ func (seqs Sequences) Len() int {
 
 func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span
+
 	ctx := req.Context()
 	if len(s) > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequence", trace.WithSpanKind(trace.SpanKindProducer))
 	}
+	defer func() {
+		if rootSpan != nil {
+			rootSpan.End()
+		}
+	}()
 
 	result := make(chan *Result, 1)
 
@@ -64,11 +67,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	var lastBeresps []*http.Response
 	var moreEntries bool
 	for _, seq := range s {
-		// update eval context
-		evalCtx := eval.ContextFromRequest(req)
-		outCtx := evalCtx.WithBeresps(lastBeresps...)
-		outreq := req.
-			WithContext(context.WithValue(outCtx, request.BufferOptions, req.Context().Value(request.BufferOptions)))
+		outreq := req.WithContext(ctx)
 
 		if seq.Context == nil {
 			Proxies{&Proxy{Name: seq.Name,
@@ -98,10 +97,6 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 
 		lastBeresps = append(lastBeresps, lastResult.Beresp)
-	}
-
-	if rootSpan != nil {
-		rootSpan.End()
 	}
 
 	if lastResult == nil {

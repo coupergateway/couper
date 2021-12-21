@@ -638,8 +638,13 @@ func TestEndpointErrorHandler(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "14_couper.hcl"), helper)
+	shutdown, hook := newCouper(path.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
+	defer func() {
+		for _, e := range hook.AllEntries() {
+			t.Logf("%#v", e.Data)
+		}
+	}()
 
 	type testcase struct {
 		name           string

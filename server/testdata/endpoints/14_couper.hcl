@@ -6,6 +6,11 @@ server { # error_handler
       expected_status = [200, 204]
     }
 
+    custom_log_fields = {
+      beresp_res = backend_responses.resolve
+      beresp_def = backend_responses.default
+    }
+
     proxy {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
       set_request_headers = {

@@ -105,22 +105,9 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	default:
 	}
 
-	evalContext := eval.ContextFromRequest(req)
-	evalContext = evalContext.WithBeresps(beresps.List()...)
-
-	// send updated eval context over to the custom log hook
-	customLogEvalCtxCh, ok := req.Context().Value(request.LogCustomEvalResult).(chan *eval.Context)
-	if ok {
-		select {
-		case <-reqCtx.Done():
-			return
-		case customLogEvalCtxCh <- evalContext:
-		}
-	}
-
 	// handle errors first before entering the happy path
 	if !e.opts.IsErrorHandler {
-		if handled := e.handleError(rw, req, evalContext, err); handled {
+		if handled := e.handleError(rw, req, err); handled {
 			return
 		}
 	}
@@ -131,18 +118,19 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	} else if e.opts.Response != nil {
 		_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
 		defer span.End()
-		clientres, err = producer.NewResponse(req, e.opts.Response.Context, evalContext, http.StatusOK)
+		clientres, err = producer.NewResponse(req, e.opts.Response.Context, http.StatusOK)
 	} else if result, exist := beresps["default"]; exist {
 		clientres = result.Beresp
 		err = result.Err
 	} else if e.opts.IsErrorHandler && err == nil {
+		var ok bool
 		err, ok = req.Context().Value(request.Error).(error)
 		if !ok {
 			err = errors.Server
 		}
 	}
 
-	if handled := e.handleError(rw, req, evalContext, err); handled {
+	if handled := e.handleError(rw, req, err); handled {
 		return
 	}
 
@@ -161,12 +149,12 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		w.AddModifier(evalContext, e.modifier...)
+		w.AddModifier(eval.ContextFromRequest(req), e.modifier...)
 		rw = w
 	}
 
 	// always apply before write: redirect, response
-	if err = eval.ApplyResponseContext(evalContext, e.opts.Context, clientres); err != nil {
+	if err = eval.ApplyResponseContext(eval.ContextFromRequest(req), e.opts.Context, clientres); err != nil {
 		e.opts.ErrorTemplate.WithError(err).ServeHTTP(rw, req)
 		return
 	}
@@ -264,7 +252,7 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps producer
 	}
 }
 
-func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, evalCtx *eval.Context, err error) bool {
+func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err error) bool {
 	if err == nil {
 		return false
 	}
@@ -284,7 +272,7 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, evalCt
 	if e.opts.ErrorHandler != nil {
 		if ctxErr == nil {
 			ctxErr = serveErr
-			*req = *req.WithContext(context.WithValue(evalCtx, request.Error, ctxErr))
+			*req = *req.WithContext(context.WithValue(req.Context(), request.Error, ctxErr))
 		}
 		e.opts.ErrorHandler.ServeHTTP(rw, req)
 		return true
@@ -294,7 +282,8 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, evalCt
 
 	// modify response status code if set
 	if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && ctxErr == err && ok {
-		if statusCode, applyErr := eval.ApplyResponseStatus(evalCtx, attr, nil); statusCode > 0 {
+		if statusCode, applyErr := eval.
+			ApplyResponseStatus(eval.ContextFromRequest(req), attr, nil); statusCode > 0 {
 			if serr, k := serveErr.(*errors.Error); k {
 				serveErr = serr.Status(statusCode)
 			} else {
