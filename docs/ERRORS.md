@@ -35,7 +35,7 @@ an `api` or `endpoint` block.
 
 ## Endpoint related `error_handler`
 
-A [sequence](REFERENCE.md#endpoint-sequence) error can be handled in combination with the `expected_status` attribute for `request`
+A [sequence](REFERENCE.md#endpoint-sequence), a simple `request` or `proxy` error can be handled in combination with the `expected_status` attribute for `request`
 and `proxy` block definitions and an `error_handler` definition with the [related](#endpoint-error-types) type label.
 
 ## `error_handler` specification
