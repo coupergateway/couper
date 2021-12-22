@@ -1,13 +1,16 @@
 package runtime
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -208,7 +211,13 @@ func TestServer_validatePortHosts(t *testing.T) {
 			tt.args.conf.Context = eval.NewContext(nil, nil)
 			tt.args.conf.Settings = &config.DefaultSettings
 
-			if _, err := NewServerConfiguration(tt.args.conf, nil, nil); (err != nil) != tt.wantErr {
+			logger, _ := test.NewLogger()
+			log := logger.WithContext(context.Background())
+			quitCh := make(chan struct{})
+			defer close(quitCh)
+			memStore := cache.New(log, quitCh)
+
+			if _, err := NewServerConfiguration(tt.args.conf, log, memStore); (err != nil) != tt.wantErr {
 				subT.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

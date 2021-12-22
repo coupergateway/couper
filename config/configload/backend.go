@@ -16,19 +16,28 @@ import (
 type Backends []*Backend
 
 type Backend struct {
-	attr   *hclsyntax.Attribute
 	Config hcl.Body
 	name   string
 }
 
+var defaultBackend = hclbody.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+	"name":            {Name: "name", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("anonymous")}},
+	"connect_timeout": {Name: "connect_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("10s")}},
+	"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("60s")}},
+	"timeout":         {Name: "timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("300s")}},
+}})
+
 func NewBackend(name string, config hcl.Body) *Backend {
-	return &Backend{
-		attr: &hclsyntax.Attribute{
+	content := &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		"name": {
 			Name: "name",
 			Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(name)},
 		},
+	}}
+
+	return &Backend{
+		Config: hclbody.MergeBodies(defaultBackend, config, hclbody.New(content)),
 		name:   name,
-		Config: config,
 	}
 }
 
@@ -50,14 +59,6 @@ func (b Backends) WithName(name string) (hcl.Body, error) {
 
 	for _, item := range b {
 		if item.name == name {
-			if syntaxBody, ok := item.Config.(*hclsyntax.Body); ok {
-				if _, ok = syntaxBody.Attributes["name"]; ok {
-					return item.Config, nil
-				}
-				// explicit set on every call since this could be affected by user content.
-				// TODO: internal obj with hidden attributes
-				syntaxBody.Attributes["name"] = item.attr
-			}
 			return item.Config, nil
 		}
 	}
@@ -166,17 +167,8 @@ func newBackend(definedBackends Backends, inlineConfig config.Inline) (hcl.Body,
 	}
 
 	if bend == nil {
-		// Create a default backend
-		bend = hclbody.New(&hcl.BodyContent{
-			Attributes: map[string]*hcl.Attribute{
-				"name": {
-					Name: "name",
-					Expr: &hclsyntax.LiteralValueExpr{
-						Val: cty.StringVal(defaultNameLabel),
-					},
-				},
-			},
-		})
+		// Create an anonymous backend with default settings
+		bend = defaultBackend
 	}
 
 	oauth2Backend, err := newOAuthBackend(definedBackends, bend)

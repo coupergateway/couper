@@ -131,7 +131,12 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 						}}
 					}
 
-					definedBackends = append(definedBackends, NewBackend(name, be.Body))
+					b := NewBackend(name, be.Body)
+					definedBackends = append(definedBackends, b)
+
+					couperConfig.Definitions.Backend = append(couperConfig.Definitions.Backend,
+						&config.Backend{Remain: b.Config, Name: b.name},
+					)
 				}
 			}
 

@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-
-	"github.com/avenga/couper/config/runtime"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+
+	"github.com/avenga/couper/cache"
+	"github.com/avenga/couper/config/runtime"
 )
 
 func Test_VerifyBodyAttributes(t *testing.T) {
@@ -180,7 +181,10 @@ func TestLabels(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log, nil)
+				tmpStoreCh := make(chan struct{})
+				tmpMemStore := cache.New(log, tmpStoreCh)
+				defer close(tmpStoreCh)
+				_, err = runtime.NewServerConfiguration(conf, log, tmpMemStore)
 			}
 
 			var errMsg string

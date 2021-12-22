@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/cache"
@@ -92,7 +91,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, innerBody, berr := newBackend(confCtx, proxyConf.Backend, log, proxyEnv, memStore)
+		backend, innerBody, berr := NewBackend(confCtx, proxyConf.Backend, log, proxyEnv, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -108,7 +107,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
-		backend, innerBody, berr := newBackend(confCtx, requestConf.Backend, log, proxyEnv, memStore)
+		backend, innerBody, berr := NewBackend(confCtx, requestConf.Backend, log, proxyEnv, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -125,10 +124,6 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)
 
-	backendConf := *DefaultBackendConf
-	if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
-		return nil, diags
-	}
 	// TODO: redirect
 	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
 		r := endpointConf.Remain.MissingItemRange()
