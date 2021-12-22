@@ -447,7 +447,7 @@ func TestEndpointSequence(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "11_couper.hcl"), helper)
+	shutdown, hook := newCouper(path.Join(testdataPath, "11_couper.hcl"), helper)
 	defer shutdown()
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -461,21 +461,26 @@ func TestEndpointSequence(t *testing.T) {
 	}))
 	defer origin.Close()
 
+	type log map[string]string
+
 	type testcase struct {
 		name           string
 		path           string
 		expectedHeader test.Header
 		expectedBody   string
+		expectedLog    log
 	}
 
 	for _, tc := range []testcase{
-		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`},
-		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, ""},
-		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, ""},
-		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, ""},
-		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, ""},
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve"}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
 			h := test.New(st)
 
 			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
@@ -503,6 +508,28 @@ func TestEndpointSequence(t *testing.T) {
 
 				if tc.expectedBody != string(result) {
 					st.Errorf("unexpected body:\n%s", cmp.Diff(tc.expectedBody, string(result)))
+				}
+			}
+
+			for _, e := range hook.AllEntries() {
+				if e.Data["type"] != "couper_backend" {
+					continue
+				}
+
+				requestName, _ := e.Data["request"].(logging.Fields)["name"].(string)
+
+				// test result for expected named ones
+				if _, exist := tc.expectedLog[requestName]; !exist {
+					continue
+				}
+
+				dependsOn, ok := e.Data["depends_on"]
+				if !ok {
+					st.Fatal("Expected 'depends_on' log field")
+				}
+
+				if dependsOn != tc.expectedLog[requestName] {
+					st.Errorf("Expected 'depends_on' log field value: %q, got: %q", "a", dependsOn)
 				}
 			}
 
