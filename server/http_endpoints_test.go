@@ -475,8 +475,8 @@ func TestEndpointSequence(t *testing.T) {
 		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}},
 		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}},
 		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
-		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
-		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve"}},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
