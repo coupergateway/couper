@@ -42,4 +42,34 @@ server { # error_handler
       }
     }
   }
+
+  endpoint "/not-ok-sequence" {
+    request "resolve" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+
+      expected_status = [200, 204]
+    }
+
+    custom_log_fields = {
+      beresp_res = backend_responses.resolve
+      beresp_def = backend_responses.default
+    }
+
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      set_request_headers = {
+        x = backend_responses.resolve.headers.content-type
+      }
+      expected_status = [418]
+    }
+
+    error_handler "unexpected_status" {
+      response {
+        headers = {
+          x = backend_responses.default.headers.x
+        }
+        status = 418
+      }
+    }
+  }
 }
