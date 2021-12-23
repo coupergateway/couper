@@ -97,6 +97,12 @@ func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 			Type: Header,
 		}
 	}
+	if h == "" && c == "" {
+		return JWTSource{
+			Name: "Authorization",
+			Type: Header,
+		}
+	}
 	return JWTSource{}
 }
 

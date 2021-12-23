@@ -366,7 +366,7 @@ required _label_.
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `cookie`  |string|-|Read token value from a cookie.|cannot be used together with `header` or `token_value` |`cookie = "AccessToken"`|
 | `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
-| `header`          |string|-|Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
+| `header`          |string| `Authorization` |Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
 | `token_value` | string | - | expression to obtain the token | cannot be used together with `cookie` or `header` | `token_value = request.form_body.token[0]`|
 | `key`           |string|-|Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
