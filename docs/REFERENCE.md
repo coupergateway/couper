@@ -380,6 +380,9 @@ required _label_.
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
 
+The attributes `header`, `cookie` and `token_value` are mutually exclusive.
+If all three attributes are missing, `header = "Authorization"` will be implied, i.e. the token will be read from the incoming `Authorization` header.
+
 If the key to verify the signatures of tokens does not change over time, it should be specified via either `key` or `key_file` (together with `signature_algorithm`).
 Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.
 
