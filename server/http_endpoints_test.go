@@ -647,17 +647,20 @@ func TestEndpointErrorHandler(t *testing.T) {
 	}()
 
 	type testcase struct {
-		name           string
-		path           string
-		expectedHeader test.Header
-		expectedStatus int
+		name              string
+		path              string
+		expectedHeader    test.Header
+		expectedStatus    int
+		expectedErrorType string
 	}
 
 	for _, tc := range []testcase{
-		{"error_handler not triggered", "/ok", test.Header{"x": "application/json"}, http.StatusOK},
-		{"error_handler triggered with beresp body", "/not-ok", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot},
+		{"error_handler not triggered", "/ok", test.Header{"x": "application/json"}, http.StatusOK, ""},
+		{"error_handler triggered with beresp body", "/not-ok", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot, "unexpected_status"},
+		{"error_handler triggered with beresp body - sequence", "/not-ok-sequence", test.Header{"x": "application/json"}, http.StatusTeapot, "unexpected_status"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
 			h := test.New(st)
 
 			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
@@ -674,6 +677,16 @@ func TestEndpointErrorHandler(t *testing.T) {
 				if hv := res.Header.Get(k); hv != v {
 					st.Errorf("%q: want %q, got %q", k, v, hv)
 					break
+				}
+			}
+			if tc.expectedErrorType != "" {
+				for _, e := range hook.AllEntries() {
+					if e.Data["type"] != "couper_access" {
+						continue
+					}
+					if e.Data["error_type"] != tc.expectedErrorType {
+						st.Errorf("want: %q, got: %q", tc.expectedErrorType, e.Data["error_type"])
+					}
 				}
 			}
 		})
