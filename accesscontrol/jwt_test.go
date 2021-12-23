@@ -665,6 +665,19 @@ func TestJwtConfig(t *testing.T) {
 			"jwt key: read error: required: configured attribute or file",
 		},
 		{
+			"ok: signature_algorithm + key (default: header = Authorization)",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    key = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
 			"ok: signature_algorithm + key + header",
 			`
 			server "test" {}

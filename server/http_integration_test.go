@@ -3199,7 +3199,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := "configuration error: missing-source: token source is invalid"
+	expectedMsg := "configuration error: invalid-source: token source is invalid"
 
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	logErr, _ := err.(errors.GoError)

@@ -297,18 +297,15 @@ definitions {
     password = "PWD"
   }
   jwt "JWTToken" {
-    header = "Authorization"
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     beta_scope_claim = "scope"
   }
   jwt "RSAToken" {
-    header = "Authorization"
     signature_algorithm = "RS256"
     key_file = "../files/certificate.pem"
   }
   jwt "RSAToken1" {
-    header = "Authorization"
     signature_algorithm = "RS256"
     key =<<-EOF
         -----BEGIN RSA PUBLIC KEY-----
@@ -337,19 +334,16 @@ definitions {
     EOF
   }
   jwt "RSATokenWrongAlgorithm" {
-    header = "Authorization"
     signature_algorithm = "RS384"
     key_file = "../files/certificate.pem"
   }
   jwt "ECDSAToken" {
-    header = "Authorization"
     signature_algorithm = "ES256"
     key_file = "../files/certificate-ecdsa.pem"
     signing_ttl = "10s"
     signing_key_file = "../files/ecdsa.key"
   }
   jwt "ECDSAToken8" {
-    header = "Authorization"
     signature_algorithm = "ES256"
     key =<<-EOF
         -----BEGIN PUBLIC KEY-----
@@ -359,21 +353,17 @@ definitions {
     EOF
   }
   jwt "ECDSATokenWrongAlgorithm" {
-    header = "Authorization"
     signature_algorithm = "ES384"
     key_file = "../files/certificate-ecdsa.pem"
   }
   jwt "JWKS" {
-    header = "Authorization"
     jwks_url = "file:../files/jwks.json"
   }
   jwt "JWKS_scope" {
-    header = "Authorization"
     jwks_url = "file:../files/jwks.json"
     beta_scope_claim = "scope"
   }
   jwt "JWKSRemote" {
-    header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
   }
   jwt "JWKS_not_found" {
@@ -381,14 +371,12 @@ definitions {
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
   }
   jwt "JWKSBackend" {
-    header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend {
       origin = env.COUPER_TEST_BACKEND_ADDR
     }
   }
   jwt "JWKSBackendRef" {
-    header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend = "jwks"
   }
