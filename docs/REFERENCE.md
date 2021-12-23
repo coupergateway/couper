@@ -366,7 +366,7 @@ required _label_.
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
 | `cookie`  |string|-|Read token value from a cookie.|cannot be used together with `header` or `token_value` |`cookie = "AccessToken"`|
 | `custom_log_fields` | map | - | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | &#9888; Inherited by nested blocks. | - |
-| `header`          |string| `Authorization` |Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
+| `header`          |string|-|Read token value from a request header field.|&#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.|`header = "Authorization"` |
 | `token_value` | string | - | expression to obtain the token | cannot be used together with `cookie` or `header` | `token_value = request.form_body.token[0]`|
 | `key`           |string|-|Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.|-|-|
 | `key_file`          |string|-|Optional file reference instead of `key` usage.|-|-|
@@ -379,6 +379,9 @@ required _label_.
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
+
+The attributes `header`, `cookie` and `token_value` are mutually exclusive.
+If all three attributes are missing, `header = "Authorization"` will be implied, i.e. the token will be read from the incoming `Authorization` header.
 
 If the key to verify the signatures of tokens does not change over time, it should be specified via either `key` or `key_file` (together with `signature_algorithm`).
 Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.

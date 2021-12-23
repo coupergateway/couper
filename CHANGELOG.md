@@ -12,7 +12,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `expected_status` attribute for `request` and `proxy` block definitions which can be caught with [error handling](./docs/ERRORS.md#endpoint-related-error_handler) ([#405](https://github.com/avenga/couper/issues/405))
 
 * **Changed**
-  * `header = "Authorization"` is now the default authentication mechanism for JWT and may be omitted ([#413](https://github.com/avenga/couper/issues/413))
+  * `header = "Authorization"` is now the default token source for [JWT](./docs/REFERENCE.md#jwt-block) and may be omitted ([#413](https://github.com/avenga/couper/issues/413))
   * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
   * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
   * The access control for the OIDC redirect endpoint ([`oidc` block](./docs/REFERENCE.md#oidc-block)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
