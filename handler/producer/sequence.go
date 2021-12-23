@@ -91,7 +91,9 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 
 		if lastResult.Err != nil {
-			lastResult.Err = errors.Sequence.With(lastResult.Err)
+			if _, ok := lastResult.Err.(*errors.Error); !ok {
+				lastResult.Err = errors.Sequence.With(lastResult.Err)
+			}
 			results <- lastResult
 			return
 		}
