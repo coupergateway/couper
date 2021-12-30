@@ -2,7 +2,7 @@ package producer
 
 import (
 	"net/http"
-	
+
 	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
