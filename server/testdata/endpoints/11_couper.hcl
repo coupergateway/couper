@@ -155,7 +155,6 @@ server { # sequences
         b = backend_responses.last.headers.b
         x = backend_responses.default.headers.x
         y = backend_responses.resolve_gamma.headers.y-value
-        z = backend_responses.standalone.headers.y-value
       }
     }
   }

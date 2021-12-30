@@ -477,18 +477,17 @@ func TestEndpointSequence(t *testing.T) {
 		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
 		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
 		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
-		//{"complex nested request/proxy sequences", "/parallel-complex-nested", test.Header{
-		//	"a": "my-value",
-		//	"b": "my-value",
-		//	"x": "my-value",
-		//	"y": "my-value",
-		//	"z": "my-value",
-		//}, "", log{
-		//	"default":       "resolve",
-		//	"resolve":       "resolve_first",
-		//	"resolve_gamma": "resolve_gamma_first",
-		//	"last":          "resolve",
-		//}},
+		{"complex nested request/proxy sequences", "/parallel-complex-nested", test.Header{
+			"a": "my-value",
+			"b": "my-value",
+			"x": "my-value",
+			"y": "my-value",
+		}, "", log{
+			"default":       "resolve",
+			"resolve":       "resolve_first",
+			"resolve_gamma": "resolve_gamma_first",
+			"last":          "resolve,resolve_gamma",
+		}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()

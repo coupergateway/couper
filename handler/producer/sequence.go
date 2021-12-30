@@ -1,13 +1,11 @@
 package producer
 
 import (
-	"context"
 	"net/http"
-
+	
 	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/telemetry"
 )
@@ -34,7 +32,8 @@ func (seqs Sequences) Produce(req *http.Request, results chan<- *Result) {
 	resultsCh := make(chan *Result, seqs.Len())
 
 	for _, s := range seqs {
-		go s.Produce(req, resultsCh)
+		outreq := req.WithContext(ctx)
+		go s.Produce(outreq, resultsCh)
 	}
 
 	for i := 0; i < seqs.Len(); i++ {
@@ -70,9 +69,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	var moreEntries bool
 	for _, seq := range s {
 		outCtx := ctx
-		if lastResult != nil {
-			outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, lastResult.RoundTripName)
-		}
+
 		outreq := req.WithContext(outCtx)
 
 		seq.Produce(outreq, result)

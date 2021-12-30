@@ -240,39 +240,44 @@ func newSequence(seq *config.Sequence,
 	deps := seq.Deps()
 	var rt producer.Roundtrip
 
+	var previous []string
 	if len(deps) > 1 { // more deps per item can be parallelized
 		var seqs producer.Sequences
 		for _, d := range deps {
 			seqs = append(seqs, newSequence(d, proxies, requests))
+			previous = append(previous, d.Name)
 		}
 		rt = seqs
 	} else if len(deps) == 1 {
 		rt = newSequence(deps[0], proxies, requests)
+		previous = append(previous, deps[0].Name)
 	}
 
-	item := newSequenceItem(seq.Name, proxies, requests)
+	item := newSequenceItem(seq.Name, strings.Join(previous, ","), proxies, requests)
 	if rt != nil {
 		return producer.Sequence{rt, item}
 	}
 	return item
 }
 
-func newSequenceItem(name string,
+func newSequenceItem(name, previous string,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 	if p, ok := proxies[name]; ok {
 		return producer.Proxies{
 			&producer.Proxy{
-				Name:      p.Name,
-				RoundTrip: p.RoundTrip,
+				Name:             p.Name,
+				RoundTrip:        p.RoundTrip,
+				PreviousSequence: previous,
 			}}
 	}
 	if r, ok := requests[name]; ok {
 		return producer.Requests{
 			&producer.Request{
-				Backend: r.Backend,
-				Context: r.Context,
-				Name:    r.Name,
+				Backend:          r.Backend,
+				Context:          r.Context,
+				Name:             r.Name,
+				PreviousSequence: previous,
 			}}
 	}
 	return nil
