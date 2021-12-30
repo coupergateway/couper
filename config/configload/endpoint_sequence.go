@@ -7,45 +7,61 @@ import (
 	"github.com/avenga/couper/config/body"
 )
 
-// addSequenceDeps collects possible dependencies from variables.
-func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
-	var items []config.SequenceItem
-	for _, conf := range endpoint.Proxies {
-		items = append(items, conf)
+// buildSequences collects possible dependencies from 'backend_responses' variable.
+func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) {
+	sequences := map[string]*config.Sequence{}
+
+	for name, b := range names {
+		refs := responseReferences(b)
+
+		if len(refs) == 0 {
+			continue
+		}
+
+		seq, exist := sequences[name]
+		if !exist {
+			seq = &config.Sequence{Name: name, BodyRange: b.MissingItemRange()}
+			sequences[name] = seq
+		}
+
+		for _, r := range refs {
+			ref, ok := sequences[r]
+			if !ok {
+				ref = &config.Sequence{Name: r, BodyRange: b.MissingItemRange()}
+				sequences[r] = ref
+			}
+			seq.Add(ref)
+		}
 	}
-	for _, conf := range endpoint.Requests {
-		items = append(items, conf)
+
+	for _, s := range sequences {
+		if !s.HasParent() {
+			endpoint.Sequences = append(endpoint.Sequences, s)
+		}
 	}
+}
 
-	for _, seqItem := range items {
-		allExpressions := body.CollectExpressions(seqItem.HCLBody())
-		for _, expr := range allExpressions {
-			for _, traversal := range expr.Variables() {
-				if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
-					continue
-				}
+func responseReferences(b hcl.Body) []string {
+	var result []string
+	unique := map[string]struct{}{}
 
-				// do we have a ref ?
-				for _, t := range traversal[1:] {
-					tr, ok := t.(hcl.TraverseAttr)
-					if !ok {
-						continue
-					}
+	for _, expr := range body.CollectExpressions(b) {
+		for _, traversal := range expr.Variables() {
+			if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
+				continue
+			}
 
-					_, ok = names[tr.Name]
-					if !ok {
-						continue
-					}
+			tr, ok := traversal[1].(hcl.TraverseAttr)
+			if !ok {
+				continue
+			}
 
-					for _, i := range items {
-						if i.GetName() != tr.Name || i == seqItem {
-							continue
-						}
-						seqItem.Add(i)
-						break
-					}
-				}
+			if _, ok = unique[tr.Name]; !ok {
+				unique[tr.Name] = struct{}{}
+				result = append(result, tr.Name)
 			}
 		}
 	}
+
+	return result
 }

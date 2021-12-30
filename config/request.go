@@ -9,7 +9,6 @@ import (
 var (
 	_ BackendReference = &Request{}
 	_ Inline           = &Request{}
-	_ SequenceItem     = &Request{}
 )
 
 // Request represents the <Request> object.
@@ -20,7 +19,6 @@ type Request struct {
 
 	// Internally used
 	Backend hcl.Body
-	depends []SequenceItem
 }
 
 // Requests represents a list of <Requests> objects.
@@ -68,16 +66,4 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, r.HCLBody())
-}
-
-func (r *Request) Add(item SequenceItem) {
-	r.depends = append(r.depends, item)
-}
-
-func (r *Request) Deps() []SequenceItem {
-	return r.depends[:]
-}
-
-func (r *Request) GetName() string {
-	return r.Name
 }

@@ -2,21 +2,19 @@ package runtime
 
 import (
 	"fmt"
-	"reflect"
-	"sort"
 	"strings"
 
-	"github.com/avenga/couper/cache"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/producer"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
 func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endpointMap, error) {
@@ -92,7 +90,6 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, response.Context)
 	}
 
-	var items []config.SequenceItem
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
 		backend, innerBody, berr := newBackend(confCtx, proxyConf.Backend, log, proxyEnv, memStore)
@@ -106,7 +103,6 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allProxies[proxyConf.Name] = p
-		items = append(items, proxyConf)
 		blockBodies = append(blockBodies, proxyConf.Backend, innerBody, proxyConf.HCLBody())
 	}
 
@@ -124,12 +120,11 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allRequests[requestConf.Name] = pr
-		items = append(items, requestConf)
 		blockBodies = append(blockBodies, requestConf.Backend, innerBody, requestConf.HCLBody())
 	}
 
 	errCh := make(chan error, 1)
-	sequences, requests, proxies := newSequences(allProxies, allRequests, errCh, items...)
+	sequences, requests, proxies := newSequences(allProxies, allRequests, errCh, endpointConf.Sequences...)
 	if err := <-errCh; err != nil {
 		return nil, err
 	}
@@ -184,7 +179,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 // newSequences lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
 func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request, errCh chan<- error,
-	items ...config.SequenceItem) (producer.Sequences, producer.Requests, producer.Proxies) {
+	items ...*config.Sequence) (producer.Sequences, producer.Requests, producer.Proxies) {
 
 	defer func() {
 		if rc := recover(); rc != nil {
@@ -193,11 +188,7 @@ func newSequences(proxies map[string]*producer.Proxy, requests map[string]*produ
 		close(errCh)
 	}()
 
-	// start with default item
-	sort.SliceStable(items, func(i, j int) bool {
-		return items[i].GetName() == "default"
-	})
-
+	// just check cyclic deps here
 	var allDeps [][]string
 	for _, item := range items {
 		deps := make([]string, 0)
@@ -206,50 +197,13 @@ func newSequences(proxies map[string]*producer.Proxy, requests map[string]*produ
 		allDeps = append(allDeps, deps)
 	}
 
-	// part of other chain? filter out
-	allDeps = func() (result [][]string) {
-	all:
-		for _, deps := range allDeps {
-			if len(deps) == 1 {
-				continue
-			}
-
-			for _, otherDeps := range allDeps {
-				if len(deps) >= len(otherDeps) {
-					continue
-				}
-				if reflect.DeepEqual(deps, otherDeps[:len(deps)]) {
-					continue all
-				}
-			}
-			result = append(result, deps)
-		}
-
-		return result
-	}()
-
 	var reqs producer.Requests
 	var ps producer.Proxies
 	var seqs producer.Sequences
 
-	for _, deps := range allDeps {
-		var seq producer.Sequence
-		for _, dep := range deps {
-			if p, ok := proxies[dep]; ok {
-				seq = append(seq, &producer.SequenceItem{
-					Backend: p.RoundTrip,
-					Name:    p.Name,
-				})
-			}
-			if r, ok := requests[dep]; ok {
-				seq = append(seq, &producer.SequenceItem{
-					Backend: r.Backend,
-					Context: r.Context,
-					Name:    r.Name,
-				})
-			}
-		}
-		seqs = append(seqs, seq)
+	// read from prepared config sequences
+	for _, seq := range items {
+		seqs = append(seqs, newSequence(seq, proxies, requests))
 	}
 
 proxyLeftovers:
@@ -279,24 +233,65 @@ reqLeftovers:
 	return seqs, reqs, ps
 }
 
-func resolveSequence(item config.SequenceItem, resolved, seen *[]string) {
-	name := item.GetName()
+func newSequence(seq *config.Sequence,
+	proxies map[string]*producer.Proxy,
+	requests map[string]*producer.Request) producer.Roundtrip {
+
+	deps := seq.Deps()
+	var rt producer.Roundtrip
+
+	if len(deps) > 1 { // more deps per item can be parallelized
+		var seqs producer.Sequences
+		for _, d := range deps {
+			seqs = append(seqs, newSequence(d, proxies, requests))
+		}
+		rt = seqs
+	} else if len(deps) == 1 {
+		rt = newSequence(deps[0], proxies, requests)
+	}
+
+	item := newSequenceItem(seq.Name, proxies, requests)
+	if rt != nil {
+		return producer.Sequence{rt, item}
+	}
+	return item
+}
+
+func newSequenceItem(name string,
+	proxies map[string]*producer.Proxy,
+	requests map[string]*producer.Request) producer.Roundtrip {
+	if p, ok := proxies[name]; ok {
+		return producer.Proxies{
+			&producer.Proxy{
+				Name:      p.Name,
+				RoundTrip: p.RoundTrip,
+			}}
+	}
+	if r, ok := requests[name]; ok {
+		return producer.Requests{
+			&producer.Request{
+				Backend: r.Backend,
+				Context: r.Context,
+				Name:    r.Name,
+			}}
+	}
+	return nil
+}
+
+func resolveSequence(item *config.Sequence, resolved, seen *[]string) {
+	name := item.Name
 	*seen = append(*seen, name)
 	for _, dep := range item.Deps() {
-		if !containsString(resolved, dep.GetName()) {
-			if !containsString(seen, dep.GetName()) {
+		if !containsString(resolved, dep.Name) {
+			if !containsString(seen, dep.Name) {
 				resolveSequence(dep, resolved, seen)
 				continue
 			}
 
-			r := hcl.Range{} // try to obtain some config context
-			if b, ok := item.(interface{ HCLBody() hcl.Body }); ok {
-				r = b.HCLBody().MissingItemRange()
-			}
 			err := &hcl.Diagnostic{
-				Detail:   "circular sequence reference: " + strings.Join(*resolved, ",") + ": " + dep.GetName(),
+				Detail:   "circular sequence reference: " + strings.Join(*resolved, ",") + ": " + dep.Name,
 				Severity: hcl.DiagError,
-				Subject:  &r,
+				Subject:  &dep.BodyRange,
 				Summary:  "configuration error",
 			}
 			panic(err)

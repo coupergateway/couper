@@ -19,10 +19,10 @@ type SequenceItem struct {
 }
 
 // Sequence represents a list of serialized items.
-type Sequence []*SequenceItem
+type Sequence []Roundtrip
 
 // Sequences holds several list of serialized items.
-type Sequences []Sequence
+type Sequences []Roundtrip
 
 func (seqs Sequences) Produce(req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span
@@ -63,7 +63,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 	}()
 
-	result := make(chan *Result, 1)
+	result := make(chan *Result, len(s))
 
 	var lastResult *Result
 	var lastBeresps []*http.Response
@@ -75,17 +75,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 		outreq := req.WithContext(outCtx)
 
-		if seq.Context == nil {
-			Proxies{&Proxy{Name: seq.Name,
-				RoundTrip: seq.Backend,
-			}}.Produce(outreq, result)
-		} else {
-			Requests{&Request{
-				Backend: seq.Backend,
-				Context: seq.Context,
-				Name:    seq.Name,
-			}}.Produce(outreq, result)
-		}
+		seq.Produce(outreq, result)
 
 		select {
 		case <-outreq.Context().Done():

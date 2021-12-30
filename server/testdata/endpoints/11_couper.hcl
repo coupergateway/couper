@@ -110,4 +110,53 @@ server { # sequences
       }
     }
   }
+
+  endpoint "/parallel-complex-nested" {
+    request "last" { # seq waiting for the other sequences in parallel
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      headers = {
+        a = backend_responses.resolve_gamma.headers.y-value
+        b = backend_responses.resolve.headers.y-value
+      }
+    }
+
+    request "resolve" { # use the reflected origin header to obtain the y-value
+      url = "${backend_responses.resolve_first.headers.origin}/"
+    }
+
+    request "resolve_first" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      headers = {
+        origin = request.headers.origin
+      }
+    }
+
+    request "resolve_gamma" { # use the reflected origin header to obtain the y-value
+      url = "${backend_responses.resolve_gamma_first.headers.origin}/"
+    }
+
+    request "resolve_gamma_first" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      headers = {
+        origin = request.headers.origin
+      }
+    }
+
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      set_request_headers = {
+        x = backend_responses.resolve.headers.y-value
+      }
+    }
+
+    response {
+      headers = {
+        a = backend_responses.last.headers.a
+        b = backend_responses.last.headers.b
+        x = backend_responses.default.headers.x
+        y = backend_responses.resolve_gamma.headers.y-value
+        z = backend_responses.standalone.headers.y-value
+      }
+    }
+  }
 }

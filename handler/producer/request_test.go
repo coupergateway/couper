@@ -98,7 +98,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 
 		testNames := []string{"request", "proxy"}
 
-		for i, rt := range []producer.Roundtrips{requests, proxies} {
+		for i, rt := range []producer.Roundtrip{requests, proxies} {
 			t.Run(testNames[i]+"_"+tt.name, func(t *testing.T) {
 
 				ctx := eval.NewContext(nil, nil).WithClientRequest(clientRequest)
