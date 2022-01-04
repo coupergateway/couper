@@ -529,7 +529,7 @@ func TestEndpointSequence(t *testing.T) {
 				}
 
 				if dependsOn != tc.expectedLog[requestName] {
-					st.Errorf("Expected 'depends_on' log field value: %q, got: %q", "a", dependsOn)
+					st.Errorf("Expected 'depends_on' log for %q with field value: %q, got: %q", requestName, tc.expectedLog[requestName], dependsOn)
 				}
 			}
 
