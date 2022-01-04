@@ -682,7 +682,7 @@ func TestEndpointCyclicSequence(t *testing.T) {
 		t.Fatal("Expected an cyclic hcl diagnostics error")
 	}
 
-	exp := "circular sequence reference: a, b"
+	exp := "circular sequence reference: b,a,b"
 	if diags.Detail != exp {
 		t.Errorf("\nWant:\t%s\nGot:\t%s", exp, diags.Detail)
 	}

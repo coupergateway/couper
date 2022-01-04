@@ -25,8 +25,21 @@ func (s *Sequence) Add(ref *Sequence) {
 	ref.parent = s
 
 	if s.hasSeen(ref.Name) {
+		var refs []string
+
+		if s.HasParent() { // collect sequence names
+			parent := s.parent
+			for parent != nil {
+				refs = append(refs, parent.Name)
+				if parent == s {
+					break
+				}
+				parent = parent.parent
+			}
+		}
+
 		err := &hcl.Diagnostic{
-			Detail:   fmt.Sprintf("circular sequence reference: %s, %s", s.Name, ref.Name),
+			Detail:   fmt.Sprintf("circular sequence reference: %s", strings.Join(append(refs, ref.Name), ",")),
 			Severity: hcl.DiagError,
 			Subject:  &s.BodyRange,
 			Summary:  "configuration error",
