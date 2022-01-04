@@ -1,6 +1,8 @@
 package configload
 
 import (
+	"sort"
+
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
@@ -17,7 +19,14 @@ func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err e
 		}
 	}()
 
-	for name, b := range names {
+	var sortedNames sort.StringSlice
+	for name := range names {
+		sortedNames = append(sortedNames, name)
+	}
+	sortedNames.Sort()
+
+	for _, name := range sortedNames {
+		b := names[name]
 		refs := responseReferences(b)
 
 		if len(refs) == 0 {

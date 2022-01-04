@@ -675,16 +675,27 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 }
 
 func TestEndpointCyclicSequence(t *testing.T) {
-	_, err := configload.LoadFile(filepath.Join(testdataPath, "15_couper.hcl"))
+	for _, testcase := range []struct{ file, exp string }{
+		{file: "15_couper.hcl", exp: "circular sequence reference: a,b,a"},
+		{file: "16_couper.hcl", exp: "circular sequence reference: a,aa,aaa,a"},
+	} {
+		t.Run(testcase.file, func(st *testing.T) {
+			// since we will switch the working dir, reset afterwards
+			defer cleanup(func() {}, test.New(t))
 
-	diags, ok := err.(*hcl.Diagnostic)
-	if !ok {
-		t.Fatal("Expected an cyclic hcl diagnostics error")
-	}
+			path := filepath.Join(testdataPath, testcase.file)
+			_, err := configload.LoadFile(path)
 
-	exp := "circular sequence reference: b,a,b"
-	if diags.Detail != exp {
-		t.Errorf("\nWant:\t%s\nGot:\t%s", exp, diags.Detail)
+			diags, ok := err.(*hcl.Diagnostic)
+			if !ok {
+				st.Errorf("Expected an cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
+				st.Fatal(err, path)
+			}
+
+			if diags.Detail != testcase.exp {
+				st.Errorf("\nWant:\t%s\nGot:\t%s", testcase.exp, diags.Detail)
+			}
+		})
 	}
 }
 
