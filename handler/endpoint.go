@@ -208,6 +208,11 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	trips := []producer.Roundtrip{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
 	tripCh := make(chan chan *producer.Result, len(trips))
 	for _, trip := range trips {
+		// use-case: just a response block within an endpoint
+		if trip == nil {
+			continue
+		}
+
 		resultCh := make(chan *producer.Result, trip.Len())
 		go func(rt producer.Roundtrip, rc chan *producer.Result) {
 			rt.Produce(req, resultCh)

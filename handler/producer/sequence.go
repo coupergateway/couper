@@ -53,7 +53,8 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	var rootSpan trace.Span
 
 	ctx := req.Context()
-	if len(s) > 0 {
+	l := s.Len()
+	if l > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequence", trace.WithSpanKind(trace.SpanKindProducer))
 	}
 	defer func() {
@@ -62,7 +63,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 	}()
 
-	result := make(chan *Result, len(s))
+	result := make(chan *Result, l)
 
 	var lastResult *Result
 	var lastBeresps []*http.Response
@@ -102,8 +103,9 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 }
 
 func (s Sequence) Len() int {
-	if len(s) > 0 {
-		return 1
+	var sum int
+	for _, t := range s {
+		sum += t.Len()
 	}
-	return 0
+	return sum
 }
