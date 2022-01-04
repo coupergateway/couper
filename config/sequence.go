@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -23,8 +24,14 @@ func (s *Sequence) Add(ref *Sequence) {
 
 	ref.parent = s
 
-	if s.hasSeen(ref.Name) { // TODO: handle here instead of runtime pkg
-		panic("cyclic" + s.Name + "|" + ref.Name)
+	if s.hasSeen(ref.Name) {
+		err := &hcl.Diagnostic{
+			Detail:   fmt.Sprintf("circular sequence reference: %s, %s", s.Name, ref.Name),
+			Severity: hcl.DiagError,
+			Subject:  &s.BodyRange,
+			Summary:  "configuration error",
+		}
+		panic(err)
 	}
 
 	s.deps = append(s.deps, ref)
@@ -61,6 +68,10 @@ func (s *Sequence) hasSeen(name string) bool {
 	}
 
 	s.seen[name] = struct{}{}
+
+	if s.HasParent() && s.parent.hasSeen(name) {
+		return true
+	}
 
 	return false
 }

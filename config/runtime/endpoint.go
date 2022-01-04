@@ -123,11 +123,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, requestConf.Backend, innerBody, requestConf.HCLBody())
 	}
 
-	errCh := make(chan error, 1)
-	sequences, requests, proxies := newSequences(allProxies, allRequests, errCh, endpointConf.Sequences...)
-	if err := <-errCh; err != nil {
-		return nil, err
-	}
+	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)
 
 	backendConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
@@ -178,17 +174,10 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 // newSequences lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
-func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request, errCh chan<- error,
+func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
 	items ...*config.Sequence) (producer.Sequences, producer.Requests, producer.Proxies) {
 
-	defer func() {
-		if rc := recover(); rc != nil {
-			errCh <- rc.(error)
-		}
-		close(errCh)
-	}()
-
-	// just check cyclic deps here
+	// just collect for filtering
 	var allDeps [][]string
 	for _, item := range items {
 		deps := make([]string, 0)
@@ -292,15 +281,6 @@ func resolveSequence(item *config.Sequence, resolved, seen *[]string) {
 				resolveSequence(dep, resolved, seen)
 				continue
 			}
-
-			err := &hcl.Diagnostic{
-				Detail:   "circular sequence reference: " + strings.Join(*resolved, ",") + ": " + dep.Name,
-				Severity: hcl.DiagError,
-				Subject:  &dep.BodyRange,
-				Summary:  "configuration error",
-			}
-			panic(err)
-
 		}
 	}
 

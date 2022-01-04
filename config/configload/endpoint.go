@@ -194,10 +194,12 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}}
 		}
 
-		buildSequences(names, endpoint)
+		if err = buildSequences(names, endpoint); err != nil {
+			return err
+		}
 
 		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
-		if err := configureErrorHandler(epErrorHandler, definedBackends); err != nil {
+		if err = configureErrorHandler(epErrorHandler, definedBackends); err != nil {
 			return err
 		}
 	}

@@ -8,8 +8,14 @@ import (
 )
 
 // buildSequences collects possible dependencies from 'backend_responses' variable.
-func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) {
+func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err error) {
 	sequences := map[string]*config.Sequence{}
+
+	defer func() {
+		if rc := recover(); rc != nil {
+			err = rc.(error)
+		}
+	}()
 
 	for name, b := range names {
 		refs := responseReferences(b)
@@ -30,7 +36,11 @@ func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) {
 				ref = &config.Sequence{Name: r, BodyRange: b.MissingItemRange()}
 				sequences[r] = ref
 			}
-			seq.Add(ref)
+			// Do not add ourselves
+			// Use case: modify response headers with current response
+			if seq != ref {
+				seq.Add(ref)
+			}
 		}
 	}
 
@@ -39,6 +49,8 @@ func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) {
 			endpoint.Sequences = append(endpoint.Sequences, s)
 		}
 	}
+
+	return err
 }
 
 func responseReferences(b hcl.Body) []string {
