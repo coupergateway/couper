@@ -14,8 +14,9 @@ import (
 )
 
 type Proxy struct {
-	Name      string // label
-	RoundTrip http.RoundTripper
+	Name             string // label
+	PreviousSequence string
+	RoundTrip        http.RoundTripper
 }
 
 type Proxies []*Proxy
@@ -45,6 +46,9 @@ func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
 		currentName = proxy.Name
 		outCtx := withRoundTripName(ctx, proxy.Name)
 		outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
+		if proxy.PreviousSequence != "" {
+			outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, proxy.PreviousSequence)
+		}
 
 		// span end by result reader
 		outCtx, _ = telemetry.NewSpanFromContext(outCtx, proxy.Name, trace.WithSpanKind(trace.SpanKindServer))

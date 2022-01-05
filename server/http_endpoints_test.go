@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -17,7 +17,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/hcl/v2"
 
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
 )
@@ -81,7 +83,7 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "01_couper.hcl"), helper)
+	shutdown, logHook := newCouper(filepath.Join(testdataPath, "01_couper.hcl"), helper)
 	defer shutdown()
 
 	defer func() {
@@ -123,7 +125,7 @@ func TestEndpoints_BerespBody(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "08_couper.hcl"), helper)
+	shutdown, logHook := newCouper(filepath.Join(testdataPath, "08_couper.hcl"), helper)
 	defer shutdown()
 
 	defer func() {
@@ -162,7 +164,7 @@ func TestEndpoints_ReqBody(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "08_couper.hcl"), helper)
+	shutdown, logHook := newCouper(filepath.Join(testdataPath, "08_couper.hcl"), helper)
 	defer shutdown()
 
 	defer func() {
@@ -210,7 +212,7 @@ func TestEndpoints_ProxyReqResCancel(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "01_couper.hcl"), helper)
+	shutdown, logHook := newCouper(filepath.Join(testdataPath, "01_couper.hcl"), helper)
 	defer shutdown()
 
 	defer func() {
@@ -251,7 +253,7 @@ func TestEndpoints_RequestLimit(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "06_couper.hcl"), helper)
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "06_couper.hcl"), helper)
 	defer shutdown()
 
 	body := strings.NewReader(`{"foo" = "bar"}`)
@@ -273,7 +275,7 @@ func TestEndpoints_Res(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, logHook := newCouper(path.Join(testdataPath, "02_couper.hcl"), helper)
+	shutdown, logHook := newCouper(filepath.Join(testdataPath, "02_couper.hcl"), helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
@@ -306,7 +308,7 @@ func TestEndpoints_UpstreamBasicAuthAndXFF(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "03_couper.hcl"), helper)
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "03_couper.hcl"), helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/anything", nil)
@@ -348,7 +350,7 @@ func TestEndpoints_Muxing(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "05_couper.hcl"), helper)
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "05_couper.hcl"), helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
@@ -370,7 +372,7 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "09_couper.hcl"), helper)
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "09_couper.hcl"), helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
@@ -405,7 +407,7 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 	client := newClient()
 
-	confPath := path.Join("testdata/endpoints/10_couper.hcl")
+	confPath := filepath.Join("testdata/endpoints/10_couper.hcl")
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
@@ -447,7 +449,7 @@ func TestEndpointSequence(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
-	shutdown, _ := newCouper(path.Join(testdataPath, "11_couper.hcl"), helper)
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "11_couper.hcl"), helper)
 	defer shutdown()
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -461,21 +463,37 @@ func TestEndpointSequence(t *testing.T) {
 	}))
 	defer origin.Close()
 
+	type log map[string]string
+
 	type testcase struct {
 		name           string
 		path           string
 		expectedHeader test.Header
 		expectedBody   string
+		expectedLog    log
 	}
 
 	for _, tc := range []testcase{
-		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`},
-		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, ""},
-		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, ""},
-		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, ""},
-		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, ""},
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
+		{"complex nested request/proxy sequences", "/parallel-complex-nested", test.Header{
+			"a": "my-value",
+			"b": "my-value",
+			"x": "my-value",
+			"y": "my-value",
+		}, "", log{
+			"default":       "resolve",
+			"resolve":       "resolve_first",
+			"resolve_gamma": "resolve_gamma_first",
+			"last":          "resolve,resolve_gamma",
+		}},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
 			h := test.New(st)
 
 			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
@@ -506,6 +524,28 @@ func TestEndpointSequence(t *testing.T) {
 				}
 			}
 
+			for _, e := range hook.AllEntries() {
+				if e.Data["type"] != "couper_backend" {
+					continue
+				}
+
+				requestName, _ := e.Data["request"].(logging.Fields)["name"].(string)
+
+				// test result for expected named ones
+				if _, exist := tc.expectedLog[requestName]; !exist {
+					continue
+				}
+
+				dependsOn, ok := e.Data["depends_on"]
+				if !ok {
+					st.Fatal("Expected 'depends_on' log field")
+				}
+
+				if dependsOn != tc.expectedLog[requestName] {
+					st.Errorf("Expected 'depends_on' log for %q with field value: %q, got: %q", requestName, tc.expectedLog[requestName], dependsOn)
+				}
+			}
+
 		})
 	}
 
@@ -515,7 +555,7 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper(path.Join(testdataPath, "12_couper.hcl"), helper)
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "12_couper.hcl"), helper)
 	defer shutdown()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -576,7 +616,7 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper(path.Join(testdataPath, "13_couper.hcl"), helper)
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "13_couper.hcl"), helper)
 	defer shutdown()
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -634,11 +674,36 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 
 }
 
+func TestEndpointCyclicSequence(t *testing.T) {
+	for _, testcase := range []struct{ file, exp string }{
+		{file: "15_couper.hcl", exp: "circular sequence reference: a,b,a"},
+		{file: "16_couper.hcl", exp: "circular sequence reference: a,aa,aaa,a"},
+	} {
+		t.Run(testcase.file, func(st *testing.T) {
+			// since we will switch the working dir, reset afterwards
+			defer cleanup(func() {}, test.New(t))
+
+			path := filepath.Join(testdataPath, testcase.file)
+			_, err := configload.LoadFile(path)
+
+			diags, ok := err.(*hcl.Diagnostic)
+			if !ok {
+				st.Errorf("Expected an cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
+				st.Fatal(err, path)
+			}
+
+			if diags.Detail != testcase.exp {
+				st.Errorf("\nWant:\t%s\nGot:\t%s", testcase.exp, diags.Detail)
+			}
+		})
+	}
+}
+
 func TestEndpointErrorHandler(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper(path.Join(testdataPath, "14_couper.hcl"), helper)
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
 	defer func() {
 		for _, e := range hook.AllEntries() {

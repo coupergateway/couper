@@ -1,51 +1,88 @@
 package configload
 
 import (
+	"sort"
+
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
 )
 
-// addSequenceDeps collects possible dependencies from variables.
-func addSequenceDeps(names map[string]struct{}, endpoint *config.Endpoint) {
-	var items []config.SequenceItem
-	for _, conf := range endpoint.Proxies {
-		items = append(items, conf)
+// buildSequences collects possible dependencies from 'backend_responses' variable.
+func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err error) {
+	sequences := map[string]*config.Sequence{}
+
+	defer func() {
+		if rc := recover(); rc != nil {
+			err = rc.(error)
+		}
+	}()
+
+	var sortedNames sort.StringSlice
+	for name := range names {
+		sortedNames = append(sortedNames, name)
 	}
-	for _, conf := range endpoint.Requests {
-		items = append(items, conf)
-	}
+	sortedNames.Sort()
 
-	for _, seqItem := range items {
-		allExpressions := body.CollectExpressions(seqItem.HCLBody())
-		for _, expr := range allExpressions {
-			for _, traversal := range expr.Variables() {
-				if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
-					continue
-				}
+	for _, name := range sortedNames {
+		b := names[name]
+		refs := responseReferences(b)
 
-				// do we have a ref ?
-				for _, t := range traversal[1:] {
-					tr, ok := t.(hcl.TraverseAttr)
-					if !ok {
-						continue
-					}
+		if len(refs) == 0 {
+			continue
+		}
 
-					_, ok = names[tr.Name]
-					if !ok {
-						continue
-					}
+		seq, exist := sequences[name]
+		if !exist {
+			seq = &config.Sequence{Name: name, BodyRange: b.MissingItemRange()}
+			sequences[name] = seq
+		}
 
-					for _, i := range items {
-						if i.GetName() != tr.Name || i == seqItem {
-							continue
-						}
-						seqItem.Add(i)
-						break
-					}
-				}
+		for _, r := range refs {
+			ref, ok := sequences[r]
+			if !ok {
+				ref = &config.Sequence{Name: r, BodyRange: b.MissingItemRange()}
+				sequences[r] = ref
+			}
+			// Do not add ourselves
+			// Use case: modify response headers with current response
+			if seq != ref {
+				seq.Add(ref)
 			}
 		}
 	}
+
+	for _, s := range sequences {
+		if !s.HasParent() {
+			endpoint.Sequences = append(endpoint.Sequences, s)
+		}
+	}
+
+	return err
+}
+
+func responseReferences(b hcl.Body) []string {
+	var result []string
+	unique := map[string]struct{}{}
+
+	for _, expr := range body.CollectExpressions(b) {
+		for _, traversal := range expr.Variables() {
+			if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
+				continue
+			}
+
+			tr, ok := traversal[1].(hcl.TraverseAttr)
+			if !ok {
+				continue
+			}
+
+			if _, ok = unique[tr.Name]; !ok {
+				unique[tr.Name] = struct{}{}
+				result = append(result, tr.Name)
+			}
+		}
+	}
+
+	return result
 }

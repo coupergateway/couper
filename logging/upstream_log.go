@@ -46,6 +46,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		"method": req.Method,
 	}
 
+	if depOn, ok := req.Context().Value(request.EndpointSequenceDependsOn).(string); ok && depOn != "" {
+		fields["depends_on"] = depOn
+	}
+
 	if u.config.TypeFieldKey != "" {
 		fields["type"] = u.config.TypeFieldKey
 	}

@@ -12,6 +12,7 @@ const (
 	Endpoint
 	EndpointExpectedStatus
 	EndpointKind
+	EndpointSequenceDependsOn
 	Error
 	Handler
 	LogCustomAccess

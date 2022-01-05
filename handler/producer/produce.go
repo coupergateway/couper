@@ -5,13 +5,13 @@ import (
 )
 
 var (
-	_ Roundtrips = Proxies{}
-	_ Roundtrips = Requests{}
-	_ Roundtrips = Sequences{}
-	_ Roundtrips = Sequence{}
+	_ Roundtrip = Proxies{}
+	_ Roundtrip = Requests{}
+	_ Roundtrip = Sequences{}
+	_ Roundtrip = Sequence{}
 )
 
-type Roundtrips interface {
+type Roundtrip interface {
 	Produce(req *http.Request, results chan<- *Result)
 	Len() int
 }

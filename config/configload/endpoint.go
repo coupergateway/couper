@@ -155,11 +155,11 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}
 		}
 
-		names := map[string]struct{}{}
+		names := map[string]hcl.Body{}
 		unique := map[string]struct{}{}
 		itemRange := endpoint.Remain.MissingItemRange()
 		for _, p := range endpoint.Proxies {
-			names[p.Name] = struct{}{}
+			names[p.Name] = p.Remain
 
 			if err := validLabelName(p.Name, &itemRange); err != nil {
 				return err
@@ -173,7 +173,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 		}
 
 		for _, r := range endpoint.Requests {
-			names[r.Name] = struct{}{}
+			names[r.Name] = r.Remain
 
 			if err = validLabelName(r.Name, &itemRange); err != nil {
 				return err
@@ -194,10 +194,12 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 			}}
 		}
 
-		addSequenceDeps(names, endpoint)
+		if err = buildSequences(names, endpoint); err != nil {
+			return err
+		}
 
 		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
-		if err := configureErrorHandler(epErrorHandler, definedBackends); err != nil {
+		if err = configureErrorHandler(epErrorHandler, definedBackends); err != nil {
 			return err
 		}
 	}
