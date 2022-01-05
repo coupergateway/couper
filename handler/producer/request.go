@@ -21,9 +21,10 @@ import (
 
 // Request represents the producer <Request> object.
 type Request struct {
-	Backend http.RoundTripper
-	Context hcl.Body
-	Name    string // label
+	Backend          http.RoundTripper
+	Context          hcl.Body
+	Name             string // label
+	PreviousSequence string
 }
 
 // Requests represents the producer <Requests> object.
@@ -55,6 +56,9 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 	for _, or := range r {
 		// span end by result reader
 		outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(ctx, or.Name), or.Name, trace.WithSpanKind(trace.SpanKindClient))
+		if or.PreviousSequence != "" {
+			outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, or.PreviousSequence)
+		}
 
 		bodyContent, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
 		if diags.HasErrors() {

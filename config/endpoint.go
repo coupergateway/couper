@@ -23,8 +23,9 @@ type Endpoint struct {
 	Scope                cty.Value `hcl:"beta_scope,optional"`
 
 	// internally configured due to multi-label options
-	Proxies  Proxies
-	Requests Requests
+	Proxies   Proxies
+	Requests  Requests
+	Sequences Sequences
 }
 
 // Endpoints represents a list of <Endpoint> objects.
