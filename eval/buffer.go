@@ -37,7 +37,7 @@ func (i BufferOption) Response() bool {
 }
 
 // MustBuffer determines if any of the hcl.bodies makes use of 'body', 'form_body' or 'json_body' or
-// of known attributes and variables which requires a parsed client-request body.
+// of known attributes and variables which requires a parsed client-request or backend-repsonse body.
 func MustBuffer(bodies ...hcl.Body) BufferOption {
 	result := BufferNone
 

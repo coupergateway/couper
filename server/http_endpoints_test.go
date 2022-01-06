@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -751,6 +752,58 @@ func TestEndpointErrorHandler(t *testing.T) {
 					}
 					if e.Data["error_type"] != tc.expectedErrorType {
 						st.Errorf("want: %q, got: %q", tc.expectedErrorType, e.Data["error_type"])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestEndpointACBufferOptions(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "17_couper.hcl"), helper)
+	defer shutdown()
+
+	type testcase struct {
+		name              string
+		path              string
+		token             string
+		expectedStatus    int
+		expectedErrorType string
+	}
+
+	for _, tc := range []testcase{
+		{"with ac and wrong token", "/with-ac", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.p_L2kBaXuGvD2AhW5WEheAKLErYXPDR-LKj_dZ5G_XI", http.StatusForbidden, "jwt"},
+		{"with ac and without token", "/with-ac", "", http.StatusUnauthorized, "jwt_token_missing"},
+		{"with ac and valid token", "/with-ac", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.6M2CwQMZ-PkeSyREi5scviq0EilhUUSgax6W9TmxmS8", http.StatusOK, ""},
+		{"without ac", "/without-ac", "", http.StatusOK, ""},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+			h := test.New(st)
+
+			body := url.Values{"token": []string{tc.token}}.Encode()
+			req, err := http.NewRequest(http.MethodPost, "http://domain.local:8080"+tc.path, strings.NewReader(body))
+			h.Must(err)
+
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.expectedStatus {
+				st.Errorf("want: %d, got: %d", tc.expectedStatus, res.StatusCode)
+			}
+
+			if tc.expectedErrorType != "" {
+				for _, e := range hook.AllEntries() {
+					if e.Data["type"] != "couper_access" {
+						continue
+					}
+					if e.Data["error_type"] != tc.expectedErrorType {
+						st.Errorf("want: %q, got: %v", tc.expectedErrorType, e.Data["error_type"])
 					}
 				}
 			}

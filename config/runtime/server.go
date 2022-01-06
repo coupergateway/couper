@@ -259,6 +259,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			// Evaluate access-control related buffer options.
+			acBodies := bodiesWithACBodies(conf.Definitions,
+				newAC(srvConf, parentAPI).
+					Merge(config.
+						NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl)).List(), nil)
+			epOpts.BufferOpts |= eval.MustBuffer(acBodies...)
+
 			errorHandlerDefinitions := ACDefinitions{ // misuse of definitions obj for now
 				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
 			}
