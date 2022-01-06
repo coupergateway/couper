@@ -772,7 +772,7 @@ func TestEndpointACBufferOptions(t *testing.T) {
 	urlencoded := func(token string) string {
 		return url.Values{"token": []string{token}}.Encode()
 	}
-	json := func(token string) string {
+	jsonFn := func(token string) string {
 		return fmt.Sprintf("{%q: %q}", "token", token)
 	}
 	plain := func(token string) string {
@@ -793,9 +793,9 @@ func TestEndpointACBufferOptions(t *testing.T) {
 		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusForbidden, "jwt"},
 		{"with ac (token in-form_body) and without token", "/in-form_body", "", urlencoded, "application/x-www-form-urlencoded", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-form_body) and valid token", "/in-form_body", validToken, urlencoded, "application/x-www-form-urlencoded", http.StatusOK, ""},
-		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, json, "application/json", http.StatusForbidden, "jwt"},
-		{"with ac (token in-json_body) and without token", "/in-json_body", "", json, "application/json", http.StatusUnauthorized, "jwt_token_missing"},
-		{"with ac (token in-json_body) and valid token", "/in-json_body", validToken, json, "application/json", http.StatusOK, ""},
+		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, jsonFn, "application/json", http.StatusForbidden, "jwt"},
+		{"with ac (token in-json_body) and without token", "/in-json_body", "", jsonFn, "application/json", http.StatusUnauthorized, "jwt_token_missing"},
+		{"with ac (token in-json_body) and valid token", "/in-json_body", validToken, jsonFn, "application/json", http.StatusOK, ""},
 		{"with ac (token in-body) and wrong token", "/in-body", invalidToken, plain, "text/plain", http.StatusForbidden, "jwt"},
 		{"with ac (token in-body) and without token", "/in-body", "", plain, "text/plain", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-body) and valid token", "/in-body", validToken, plain, "text/plain", http.StatusOK, ""},
@@ -813,9 +813,11 @@ func TestEndpointACBufferOptions(t *testing.T) {
 			h.Must(err)
 
 			req.Header.Set("Content-Type", tc.contentType)
-
 			res, err := client.Do(req)
 			h.Must(err)
+
+			_, _ = io.Copy(io.Discard, res.Body)
+			h.Must(res.Body.Close())
 
 			if res.StatusCode != tc.expectedStatus {
 				st.Errorf("want: %d, got: %d", tc.expectedStatus, res.StatusCode)
