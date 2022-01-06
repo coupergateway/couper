@@ -766,29 +766,41 @@ func TestEndpointACBufferOptions(t *testing.T) {
 	shutdown, hook := newCouper(filepath.Join(testdataPath, "17_couper.hcl"), helper)
 	defer shutdown()
 
+	invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.p_L2kBaXuGvD2AhW5WEheAKLErYXPDR-LKj_dZ5G_XI"
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.6M2CwQMZ-PkeSyREi5scviq0EilhUUSgax6W9TmxmS8"
+
+	urlencoded := func(token string) string {
+		return url.Values{"token": []string{token}}.Encode()
+	}
+
 	type testcase struct {
 		name              string
 		path              string
 		token             string
+		bodyFunc          func(string) string
+		contentType       string
 		expectedStatus    int
 		expectedErrorType string
 	}
 
 	for _, tc := range []testcase{
-		{"with ac and wrong token", "/with-ac", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.p_L2kBaXuGvD2AhW5WEheAKLErYXPDR-LKj_dZ5G_XI", http.StatusForbidden, "jwt"},
-		{"with ac and without token", "/with-ac", "", http.StatusUnauthorized, "jwt_token_missing"},
-		{"with ac and valid token", "/with-ac", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.6M2CwQMZ-PkeSyREi5scviq0EilhUUSgax6W9TmxmS8", http.StatusOK, ""},
-		{"without ac", "/without-ac", "", http.StatusOK, ""},
+		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusForbidden, "jwt"},
+		{"with ac (token in-form_body) and without token", "/in-form_body", "", urlencoded, "application/x-www-form-urlencoded", http.StatusUnauthorized, "jwt_token_missing"},
+		{"with ac (token in-form_body) and valid token", "/in-form_body", validToken, urlencoded, "application/x-www-form-urlencoded", http.StatusOK, ""},
+		{"without ac", "/without-ac", "", nil, "text/plain", http.StatusOK, ""},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
 			h := test.New(st)
 
-			body := url.Values{"token": []string{tc.token}}.Encode()
+			body := ""
+			if tc.bodyFunc != nil {
+				body = tc.bodyFunc(tc.token)
+			}
 			req, err := http.NewRequest(http.MethodPost, "http://domain.local:8080"+tc.path, strings.NewReader(body))
 			h.Must(err)
 
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("Content-Type", tc.contentType)
 
 			res, err := client.Do(req)
 			h.Must(err)

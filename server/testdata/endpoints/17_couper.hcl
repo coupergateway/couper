@@ -1,13 +1,12 @@
 server {
-  access_control = ["in-form_body"]
-  endpoint "/with-ac" { # error_type=jwt ... status=403
+  endpoint "/in-form_body" {
+    access_control = ["in-form_body"]
     response {
       body = request.url
     }
   }
 
-  endpoint "/without-ac" { # error_type=jwt_token_missing ... status=401
-    disable_access_control = ["in-form_body"]
+  endpoint "/without-ac" {
     response {
       body = request.url
     }
