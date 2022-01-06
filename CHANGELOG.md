@@ -25,6 +25,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * possible race conditions while updating JWKS for the [JWT access control](./docs/REFERENCE.md#jwt-block) ([#398](https://github.com/avenga/couper/pull/398))
   * panic while accessing primitive variables with a key ([#377](https://github.com/avenga/couper/issues/377))
   * [`default()`](./docs/REFERENCE.md#functions) function continues to their fallback value if this is a string type and an argument evaluates to an empty string ([#408](https://github.com/avenga/couper/issues/408))
+  * missing read of client-request bodies if related variables are used in referenced access controls only (e.g. jwt token source) ([#415](https://github.com/avenga/couper/pull/415))
 
 * **Dependencies**
   * Update modules for [OpenAPI](./docs/REFERENCE.md#openapi-block) validation ([#399](https://github.com/avenga/couper/pull/399))
