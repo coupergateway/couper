@@ -11,6 +11,7 @@
 ## Getting started
 
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
+  * or via [homebrew](https://brew.sh/): `brew tap avenga/couper && brew install couper`
 * The [documentation](https://github.com/avenga/couper/tree/master/docs) gives an introduction to Couper.
 * Check out the [example repository](https://github.com/avenga/couper-examples) to learn about Couper's features in detail.
 * Dive into the [Configuration Reference](docs/REFERENCE.md)
@@ -37,11 +38,13 @@ Key features are:
   * JWT  Validation & Signing
   * Single Sign On with SAML2
   * OAuth2 Client Credentials
+  * OpenID-connect
 * **Configurable Service Connectivity**
 * Upstream Validation & CORS
 * SPA & Web Serving
 * Error Handling
 * Observability
+  * Prometheus exporter
 
 The full list of features of Couper 1.x is [here](FEATURES.md) or at [couper.io](https://couper.io/en/features).
 
