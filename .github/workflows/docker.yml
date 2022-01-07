@@ -50,6 +50,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
           type=edge,event=branch
+          type=ref,event=pr
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request'
