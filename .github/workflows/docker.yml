@@ -73,7 +73,7 @@ jobs:
         platforms: linux/amd64,linux/arm64
         labels: ${{ steps.meta.outputs.labels }}
         tags: ${{ steps.meta.outputs.tags }}
-        push: true
+        push: ${{ GitHub.event_name != 'pull_request' }}
 
     - name: Build and push docker image with specific tag
       if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
