@@ -1,4 +1,7 @@
-FROM golang:1.17 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.17 AS builder
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
 WORKDIR /go/src/app
 COPY . .
@@ -12,7 +15,7 @@ RUN go generate && \
 	-o /couper main.go && \
 	ls -lh /couper
 
-FROM scratch
+FROM --platform=$BUILDPLATFORM scratch
 # copy debian tls ca certs (from golang image)
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /couper /couper
