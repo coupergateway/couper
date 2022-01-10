@@ -695,7 +695,7 @@ func TestOAuth2_Locking(t *testing.T) {
 
 	confPath := "testdata/oauth2/1_retries_couper.hcl"
 	shutdown, hook := newCouperWithTemplate(
-		confPath, test.New(t), map[string]interface{}{
+		confPath, helper, map[string]interface{}{
 			"asOrigin": oauthOrigin.URL,
 			"rsOrigin": ResourceOrigin.URL,
 		},
