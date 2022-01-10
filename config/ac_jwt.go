@@ -15,25 +15,26 @@ type Claims hcl.Expression
 // JWT represents the <JWT> object.
 type JWT struct {
 	ErrorHandlerSetter
-	BackendName        string              `hcl:"backend,optional"`
-	Claims             Claims              `hcl:"claims,optional"`
-	ClaimsRequired     []string            `hcl:"required_claims,optional"`
-	Cookie             string              `hcl:"cookie,optional"`
-	Header             string              `hcl:"header,optional"`
-	JWKsURL            string              `hcl:"jwks_url,optional"`
-	JWKsTTL            string              `hcl:"jwks_ttl,optional"`
-	Key                string              `hcl:"key,optional"`
-	KeyFile            string              `hcl:"key_file,optional"`
-	Name               string              `hcl:"name,label"`
-	Remain             hcl.Body            `hcl:",remain"`
-	RolesClaim         string              `hcl:"beta_roles_claim,optional"`
-	RolesMap           map[string][]string `hcl:"beta_roles_map,optional"`
-	ScopeClaim         string              `hcl:"beta_scope_claim,optional"`
-	SignatureAlgorithm string              `hcl:"signature_algorithm,optional"`
-	SigningKey         string              `hcl:"signing_key,optional"`
-	SigningKeyFile     string              `hcl:"signing_key_file,optional"`
-	SigningTTL         string              `hcl:"signing_ttl,optional"`
-	TokenValue         hcl.Expression      `hcl:"token_value,optional"`
+	BackendName           string              `hcl:"backend,optional"`
+	Claims                Claims              `hcl:"claims,optional"`
+	ClaimsRequired        []string            `hcl:"required_claims,optional"`
+	Cookie                string              `hcl:"cookie,optional"`
+	DisablePrivateCaching bool                `hcl:"disable_private_caching,optional"`
+	Header                string              `hcl:"header,optional"`
+	JWKsURL               string              `hcl:"jwks_url,optional"`
+	JWKsTTL               string              `hcl:"jwks_ttl,optional"`
+	Key                   string              `hcl:"key,optional"`
+	KeyFile               string              `hcl:"key_file,optional"`
+	Name                  string              `hcl:"name,label"`
+	Remain                hcl.Body            `hcl:",remain"`
+	RolesClaim            string              `hcl:"beta_roles_claim,optional"`
+	RolesMap              map[string][]string `hcl:"beta_roles_map,optional"`
+	ScopeClaim            string              `hcl:"beta_scope_claim,optional"`
+	SignatureAlgorithm    string              `hcl:"signature_algorithm,optional"`
+	SigningKey            string              `hcl:"signing_key,optional"`
+	SigningKeyFile        string              `hcl:"signing_key_file,optional"`
+	SigningTTL            string              `hcl:"signing_ttl,optional"`
+	TokenValue            hcl.Expression      `hcl:"token_value,optional"`
 
 	// Internally used
 	BodyContent *hcl.BodyContent

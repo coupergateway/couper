@@ -33,6 +33,10 @@ type AccessControl interface {
 	Validate(req *http.Request) error
 }
 
+type DisablePrivateCaching interface {
+	DisablePrivateCaching() bool
+}
+
 type ProtectedHandler interface {
 	Child() http.Handler
 }
@@ -55,6 +59,14 @@ func (i ListItem) Validate(req *http.Request) error {
 
 func (i ListItem) ErrorHandler() http.Handler {
 	return i.controlErrHandler
+}
+
+func (i ListItem) DisablePrivateCaching() (bool, bool) {
+	if c, ok := i.control.(DisablePrivateCaching); ok {
+		return c.DisablePrivateCaching(), true
+	}
+
+	return false, false
 }
 
 func (f ValidateFunc) Validate(req *http.Request) error {
