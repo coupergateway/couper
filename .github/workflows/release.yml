@@ -99,4 +99,20 @@ jobs:
     steps:
       - name: 'checkout'
         uses: actions/checkout@v2
-        # tg > tpl > commit
+      - name: 'prepare template'
+        run: |
+          curl https://github.com/malud/temgo/releases/download/0.2.1/tg -o tg
+          chmod +x tg
+          ./tg -i ./github/workflows/couper.rb
+      - name: 'publish formula'
+        uses: dmnemec/copy_file_to_another_repo_action@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.GH_COUPER_API_TOKEN }}
+        with:
+          source_file: './github/workflows/couper.rb'
+          destination_repo: 'avenga/homebrew-couper'
+          destination_folder: './'
+          destination_branch: 'main'
+          user_email: 'gitbot@couper.io'
+          user_name: 'couper-gitbot'
+          commit_message: 'Update formula to ${GITHUB_REF_NAME} release'
