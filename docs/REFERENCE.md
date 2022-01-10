@@ -379,6 +379,7 @@ required _label_.
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
+| `disable_private_caching` | bool | `false` | If set to `true`, Couper does not add the `private` directive to the `Cache-Control` HTTP header field value. | - | - |
 
 The attributes `header`, `cookie` and `token_value` are mutually exclusive.
 If all three attributes are missing, `header = "Authorization"` will be implied, i.e. the token will be read from the incoming `Authorization` header.
