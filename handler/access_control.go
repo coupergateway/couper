@@ -6,6 +6,7 @@ import (
 
 	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/server/writer"
 )
 
 var (
@@ -26,7 +27,13 @@ func NewAccessControl(protected http.Handler, list accesscontrol.List) *AccessCo
 }
 
 func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	r, ok := rw.(*writer.Response)
+
 	for _, control := range a.acl {
+		if disable, implements := control.DisablePrivateCaching(); ok && implements && !disable {
+			r.AddPrivateCC()
+		}
+
 		if err := control.Validate(req); err != nil {
 			*req = *req.WithContext(context.WithValue(req.Context(), request.Error, err))
 			control.ErrorHandler().ServeHTTP(rw, req)

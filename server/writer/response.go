@@ -48,6 +48,8 @@ type Response struct {
 	// modifier
 	evalCtx  *hcl.EvalContext
 	modifier []hcl.Body
+	// security
+	addPrivateCC bool
 }
 
 // NewResponseWriter creates a new Response object.
@@ -135,6 +137,11 @@ func (r *Response) WriteHeader(statusCode int) {
 	r.configureHeader()
 	r.applyModifier()
 
+	// !!! Execute after modifier !!!
+	if r.addPrivateCC {
+		r.Header().Add("Cache-Control", "private")
+	}
+
 	if statusCode == 0 {
 		r.rw.Header().Set(errors.HeaderErrorCode, errors.Server.Error())
 		statusCode = errors.Server.HTTPStatus()
@@ -180,6 +187,10 @@ func (r *Response) StatusCode() int {
 
 func (r *Response) WrittenBytes() int {
 	return r.bytesWritten
+}
+
+func (r *Response) AddPrivateCC() {
+	r.addPrivateCC = true
 }
 
 func (r *Response) AddModifier(evalCtx *hcl.EvalContext, modifier ...hcl.Body) {
