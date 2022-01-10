@@ -87,9 +87,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	if outreq.URL != nil {
-		requestFields["proto"] = outreq.URL.Scheme
-	}
+	requestFields["proto"] = outreq.URL.Scheme
 
 	path := &url.URL{
 		Path:       outreq.URL.Path,
