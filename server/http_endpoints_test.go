@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -751,6 +752,84 @@ func TestEndpointErrorHandler(t *testing.T) {
 					}
 					if e.Data["error_type"] != tc.expectedErrorType {
 						st.Errorf("want: %q, got: %q", tc.expectedErrorType, e.Data["error_type"])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestEndpointACBufferOptions(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "17_couper.hcl"), helper)
+	defer shutdown()
+
+	invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.p_L2kBaXuGvD2AhW5WEheAKLErYXPDR-LKj_dZ5G_XI"
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.6M2CwQMZ-PkeSyREi5scviq0EilhUUSgax6W9TmxmS8"
+
+	urlencoded := func(token string) string {
+		return url.Values{"token": []string{token}}.Encode()
+	}
+	jsonFn := func(token string) string {
+		return fmt.Sprintf("{%q: %q}", "token", token)
+	}
+	plain := func(token string) string {
+		return token
+	}
+
+	type testcase struct {
+		name              string
+		path              string
+		token             string
+		bodyFunc          func(string) string
+		contentType       string
+		expectedStatus    int
+		expectedErrorType string
+	}
+
+	for _, tc := range []testcase{
+		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusForbidden, "jwt"},
+		{"with ac (token in-form_body) and without token", "/in-form_body", "", urlencoded, "application/x-www-form-urlencoded", http.StatusUnauthorized, "jwt_token_missing"},
+		{"with ac (token in-form_body) and valid token", "/in-form_body", validToken, urlencoded, "application/x-www-form-urlencoded", http.StatusOK, ""},
+		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, jsonFn, "application/json", http.StatusForbidden, "jwt"},
+		{"with ac (token in-json_body) and without token", "/in-json_body", "", jsonFn, "application/json", http.StatusUnauthorized, "jwt_token_missing"},
+		{"with ac (token in-json_body) and valid token", "/in-json_body", validToken, jsonFn, "application/json", http.StatusOK, ""},
+		{"with ac (token in-body) and wrong token", "/in-body", invalidToken, plain, "text/plain", http.StatusForbidden, "jwt"},
+		{"with ac (token in-body) and without token", "/in-body", "", plain, "text/plain", http.StatusUnauthorized, "jwt_token_missing"},
+		{"with ac (token in-body) and valid token", "/in-body", validToken, plain, "text/plain", http.StatusOK, ""},
+		{"without ac", "/without-ac", "", nil, "text/plain", http.StatusOK, ""},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+			h := test.New(st)
+
+			body := ""
+			if tc.bodyFunc != nil {
+				body = tc.bodyFunc(tc.token)
+			}
+			req, err := http.NewRequest(http.MethodPost, "http://domain.local:8080"+tc.path, strings.NewReader(body))
+			h.Must(err)
+
+			req.Header.Set("Content-Type", tc.contentType)
+			res, err := client.Do(req)
+			h.Must(err)
+
+			_, _ = io.Copy(io.Discard, res.Body)
+			h.Must(res.Body.Close())
+
+			if res.StatusCode != tc.expectedStatus {
+				st.Errorf("want: %d, got: %d", tc.expectedStatus, res.StatusCode)
+			}
+
+			if tc.expectedErrorType != "" {
+				for _, e := range hook.AllEntries() {
+					if e.Data["type"] != "couper_access" {
+						continue
+					}
+					if e.Data["error_type"] != tc.expectedErrorType {
+						st.Errorf("want: %q, got: %v", tc.expectedErrorType, e.Data["error_type"])
 					}
 				}
 			}

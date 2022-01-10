@@ -22,6 +22,7 @@
 * JWT signing
 * SAML
 * OAuth 2.0 client credentials
+* OpenID-connect
 
 ## Security
 
@@ -33,7 +34,9 @@
 
 * Request context IDs
 * Logging
+  * Custom Logging
 * Health check
+* Prometheus exporter
 
 ## SPA & Web Serving
 
