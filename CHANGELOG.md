@@ -1,23 +1,43 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/1.6...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.7.0...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+---
+
+## [1.7](https://github.com/avenga/couper/releases/tag/1.7)
+
+We will start 2022 with our newest Couper release, so we would like to highlight some exciting features.
+
+Our **OpenID-Connect** configuration specification has been proven as final. So we removed all related `beta_` prefixes.
+Couper will still support related `beta_` options until version `1.8`. See changes below for more details.
+
+Now Couper provides even more insights with **custom logging**. You are allowed to add the `custom_log_fields` attribute
+all over your configuration file with access to available variables.
+Check out our [example](https://github.com/avenga/couper-examples/tree/master/custom-logging) to find out how it works.
+
+Sometimes there is a need for simple data enrichment or exchange where two services are somehow related to each other.
+This is where **sequences** comes in and will help you to execute specific requests one by one within an endpoint route.
+How Couper can help here is explained in our [sequence example](https://github.com/avenga/couper-examples/tree/master/sequences).
+
+To further improve the developer experience with Couper the container image supports amd64 and arm64 architecture now.
+On top of that the binary installation has been improved for [homebrew](https://brew.sh/) users: `brew tap avenga/couper && brew install couper`
+
 * **Added**
   * [`custom_log_fields`](./docs/LOGS.md#custom-logging) attribute to be able to describe a user defined map for `custom` log field enrichment ([#388](https://github.com/avenga/couper/pull/388))
-  * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessible via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
-  * [`jwt` block](./docs/REFERENCE.md#jwt-block)/[`jwt_signing_profile` block](./docs/REFERENCE.md#jwt-signing-profile-block) with ECDSA support ([#401](https://github.com/avenga/couper/issues/401))
   * Support for [sequences](./docs/REFERENCE.md#endpoint-sequence) of outgoing endpoint requests ([#405](https://github.com/avenga/couper/issues/405))
   * `expected_status` attribute for `request` and `proxy` block definitions which can be caught with [error handling](./docs/ERRORS.md#endpoint-related-error_handler) ([#405](https://github.com/avenga/couper/issues/405))
+  * [`jwt` block](./docs/REFERENCE.md#jwt-block)/[`jwt_signing_profile` block](./docs/REFERENCE.md#jwt-signing-profile-block) with ECDSA support ([#401](https://github.com/avenga/couper/issues/401))
+  * The `user` as context variable from a [Basic Auth](./docs/REFERENCE.md#basic-auth-block) is now accessible via `request.context.<label>.user` for successfully authenticated requests ([#402](https://github.com/avenga/couper/pull/402))
 
 * **Changed**
-  * `header = "Authorization"` is now the default token source for [JWT](./docs/REFERENCE.md#jwt-block) and may be omitted ([#413](https://github.com/avenga/couper/issues/413))
-  * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
-  * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
-  * The access control for the OIDC redirect endpoint ([`oidc` block](./docs/REFERENCE.md#oidc-block)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
   * Unbeta [OIDC block](./docs/REFERENCE.md#oidc-block). The old block name is still usable with Couper 1.7, but will no longer work with Couper 1.8. ([#400](https://github.com/avenga/couper/pull/400))
   * Unbeta the `oauth2_authorization_url()` and `oauth2_verifier()` [function](./docs/REFERENCE.md#functions). The prefix is changed from `beta_oauth_...` to `oauth2_...`. The old function names are still usable with Couper 1.7, but will no longer work with Couper 1.8. ([#400](https://github.com/avenga/couper/pull/400))
+  * The access control for the OIDC redirect endpoint ([`oidc` block](./docs/REFERENCE.md#oidc-block)) now verifies ID token signatures ([#404](https://github.com/avenga/couper/pull/404))
+  * `header = "Authorization"` is now the default token source for [JWT](./docs/REFERENCE.md#jwt-block) and may be omitted ([#413](https://github.com/avenga/couper/issues/413))
+  * Improved the validation for unique keys in all map-attributes in the config ([#403](https://github.com/avenga/couper/pull/403))
+  * Missing [scope or roles claims](./docs/REFERENCE.md#jwt-block), or scope or roles claim with unsupported values are now ignored instead of causing an error ([#380](https://github.com/avenga/couper/issues/380))
 
 * **Fixed**
   * build-date configuration for binary and docker builds ([#396](https://github.com/avenga/couper/pull/396))
@@ -30,8 +50,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Dependencies**
   * Update modules for [OpenAPI](./docs/REFERENCE.md#openapi-block) validation ([#399](https://github.com/avenga/couper/pull/399))
     * `github.com/getkin/kin-openapi v0.49.0` => `github.com/getkin/kin-openapi v0.83.0`
-
----
 
 ## [1.6](https://github.com/avenga/couper/releases/tag/1.6)
 
