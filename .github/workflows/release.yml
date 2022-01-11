@@ -14,6 +14,7 @@ jobs:
       matrix:
         goos: [linux, windows]
         goarch: [amd64, arm64]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v2
       - name: Set outputs
@@ -35,6 +36,7 @@ jobs:
     strategy:
       matrix:
         goarch: [amd64, arm64]
+      fail-fast: false
     env:
       AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,8 +85,8 @@ jobs:
         id: 'vars'
         run: |
           mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          sha256sum ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          echo "::set-output name=${{ matrix.goarch }}::$(sha256sum ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1)"
+          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          echo "::set-output name=${{ matrix.goarch }}::$(shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1)"
 #      - name: 'upload image'
 #        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
   brewlease:
