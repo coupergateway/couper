@@ -4,9 +4,12 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
+
 ---
 
-## [1.7](https://github.com/avenga/couper/releases/tag/1.7)
+## [1.7](https://github.com/avenga/couper/releases/tag/v1.7.0)
 
 We start 2022 with fresh release of Couper with some exciting features.
 
@@ -44,7 +47,6 @@ On top of that the binary installation has been improved for [homebrew](https://
   * panic while accessing primitive variables with a key ([#377](https://github.com/avenga/couper/issues/377))
   * [`default()`](./docs/REFERENCE.md#functions) function continues to the next fallback value if this is a string type and an argument evaluates to an empty string ([#408](https://github.com/avenga/couper/issues/408))
   * missing read of client-request bodies if related variables are used in referenced access controls only (e.g. JWT token source) ([#415](https://github.com/avenga/couper/pull/415))
-  * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
 
 * **Dependencies**
   * Update [kin-openapi](https://github.com/getkin/kin-openapi) used for [OpenAPI](./docs/REFERENCE.md#openapi-block) validation to `v0.83.0` ([#399](https://github.com/avenga/couper/pull/399))

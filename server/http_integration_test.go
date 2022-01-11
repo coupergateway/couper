@@ -816,7 +816,7 @@ func TestHTTPServer_BackendLogPath(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if p := hook.Entries[0].Data["request"].(logging.Fields)["path"]; p != "/path?query" {
+	if p := hook.AllEntries()[0].Data["request"].(logging.Fields)["path"]; p != "/path?query" {
 		t.Errorf("Unexpected path given: %s", p)
 	}
 }
@@ -835,8 +835,40 @@ func TestHTTPServer_BackendLogPathInEndpoint(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if p := hook.Entries[0].Data["request"].(logging.Fields)["path"]; p != "/new/path/abc?query" {
+	if p := hook.AllEntries()[0].Data["request"].(logging.Fields)["path"]; p != "/new/path/abc?query" {
 		t.Errorf("Unexpected path given: %s", p)
+	}
+}
+
+func TestHTTPServer_BackendLogRequestProto(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/api/15_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	var backendLogsSeen int
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] == "couper_access" {
+			continue
+		}
+
+		backendLogsSeen++
+
+		if p := entry.Data["request"].(logging.Fields)["proto"]; p != "http" {
+			t.Errorf("want proto http, got: %q", p)
+		}
+	}
+
+	if backendLogsSeen != 2 {
+		t.Error("expected two backend request logs")
 	}
 }
 
@@ -854,7 +886,7 @@ func TestHTTPServer_PathInvalidFragment(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if m := hook.Entries[0].Message; m != "configuration error: path attribute: invalid fragment found in \"/path#xxx\"" {
+	if m := hook.AllEntries()[0].Message; m != "configuration error: path attribute: invalid fragment found in \"/path#xxx\"" {
 		t.Errorf("Unexpected message given: %s", m)
 	}
 }
@@ -873,7 +905,7 @@ func TestHTTPServer_PathInvalidQuery(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if m := hook.Entries[0].Message; m != "configuration error: path attribute: invalid query string found in \"/path?xxx\"" {
+	if m := hook.AllEntries()[0].Message; m != "configuration error: path attribute: invalid query string found in \"/path?xxx\"" {
 		t.Errorf("Unexpected message given: %s", m)
 	}
 }
@@ -892,7 +924,7 @@ func TestHTTPServer_PathPrefixInvalidFragment(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if m := hook.Entries[0].Message; m != "configuration error: path_prefix attribute: invalid fragment found in \"/path#xxx\"" {
+	if m := hook.AllEntries()[0].Message; m != "configuration error: path_prefix attribute: invalid fragment found in \"/path#xxx\"" {
 		t.Errorf("Unexpected message given: %s", m)
 	}
 }
@@ -911,7 +943,7 @@ func TestHTTPServer_PathPrefixInvalidQuery(t *testing.T) {
 	_, err = client.Do(req)
 	helper.Must(err)
 
-	if m := hook.Entries[0].Message; m != "configuration error: path_prefix attribute: invalid query string found in \"/path?xxx\"" {
+	if m := hook.AllEntries()[0].Message; m != "configuration error: path_prefix attribute: invalid query string found in \"/path?xxx\"" {
 		t.Errorf("Unexpected message given: %s", m)
 	}
 }
@@ -1006,7 +1038,8 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	if l := len(logHook.Entries); l != 2 {
+	entries := logHook.AllEntries()
+	if l := len(entries); l != 2 {
 		t.Fatalf("Unexpected number of log lines: %d", l)
 	}
 
@@ -1014,8 +1047,8 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	helper.Must(err)
 	helper.Must(res.Body.Close())
 
-	backendLog := logHook.Entries[0]
-	accessLog := logHook.Entries[1]
+	backendLog := entries[0]
+	accessLog := entries[1]
 
 	if tp, ok := backendLog.Data["type"]; !ok || tp != "couper_backend" {
 		t.Fatalf("Unexpected log type: %s", tp)
