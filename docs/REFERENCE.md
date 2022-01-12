@@ -526,7 +526,7 @@ gateway instance.
 | -       | no label | -               |
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
-| :------------------------------ | :----- | :------------------ | :---------- | :---------------- | :------ |
+|:--------------------------------| :----- | :------------------ | :---------- | :---------------- | :------ |
 | `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [oidc](#oidc-block). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
@@ -544,6 +544,7 @@ gateway instance.
 | `beta_metrics`                  | bool   | `false`             | Option to enable the Prometheus [metrics](METRICS.md) exporter. | - | - |
 | `beta_metrics_port`             | number | `9090`              | Prometheus exporter listen port. | - | - |
 | `beta_service_name`             | string | `couper`            | The service name which applies to the `service_name` metric labels. | - | - |
+| `ca_file`                       | string | `""`                | Option for adding the given PEM encoded ca-certificate to the existing system certificate pool for all outgoing connections. |-|-|
 
 ### Defaults Block
 
