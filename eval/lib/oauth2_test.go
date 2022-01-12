@@ -56,7 +56,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 		helper.Must(err)
 	}))
 
-	backend := configload.NewBackend("origin", test.NewRemainContext("origin", origin.URL))
+	backendConfig, _ := configload.NewBackendConfigBody("origin", test.NewRemainContext("origin", origin.URL))
 
 	log, _ := test.NewLogger()
 	logger := log.WithContext(context.Background())
@@ -127,7 +127,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			res.Header.Set("x-want", tt.want)
 
 			tc := &transport.Config{}
-			conf, err := oidc.NewConfig(tt.oauth2Config, transport.NewBackend(backend.Config,
+			conf, err := oidc.NewConfig(tt.oauth2Config, transport.NewBackend(backendConfig,
 				tc.With("http", "couper.io", "couper.io", ""),
 				&transport.BackendOptions{}, logger))
 			helper.Must(err)

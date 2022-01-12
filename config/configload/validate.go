@@ -7,18 +7,21 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
+var regexLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
 // https://datatracker.ietf.org/doc/html/rfc7231#section-4
 // https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
 var methodRegExp = regexp.MustCompile("^[!#$%&'*+\\-.\\^_`|~0-9a-zA-Z]+$")
 
-func validLabelName(name string, hr *hcl.Range) error {
-	if !regexProxyRequestLabel.MatchString(name) {
+func validLabel(name string, subject *hcl.Range) error {
+	if !regexLabel.MatchString(name) {
 		return hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'",
-			Subject:  hr,
+			Subject:  subject,
 		}}
 	}
+
 	return nil
 }
 
@@ -31,13 +34,16 @@ func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) err
 				Subject:  hr,
 			}}
 		}
+
 		return hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  fmt.Sprintf("proxy and request labels are required and must be unique: %q", name),
 			Subject:  hr,
 		}}
 	}
+
 	unique[name] = struct{}{}
+
 	return nil
 }
 
@@ -45,17 +51,20 @@ func verifyBodyAttributes(content *hcl.BodyContent) error {
 	_, existsBody := content.Attributes["body"]
 	_, existsFormBody := content.Attributes["form_body"]
 	_, existsJsonBody := content.Attributes["json_body"]
+
 	if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
 		rangeAttr := "body"
 		if !existsBody {
 			rangeAttr = "form_body"
 		}
+
 		return hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "request can only have one of body, form_body or json_body attributes",
 			Subject:  &content.Attributes[rangeAttr].Range,
 		}}
 	}
+
 	return nil
 }
 
