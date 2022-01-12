@@ -4,9 +4,12 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
+
 ---
 
-## [1.7](https://github.com/avenga/couper/releases/tag/1.7)
+## [1.7](https://github.com/avenga/couper/releases/tag/v1.7.0)
 
 We start 2022 with fresh release of Couper with some exciting features.
 
