@@ -239,6 +239,15 @@ func NewLoader(body hcl.Body, src []byte, filename, dirPath string) (*Loader, hc
 	}, nil
 }
 
+
+func getRange(body hcl.Body) hcl.Range {
+	if b, ok := body.(*hclsyntax.Body); ok {
+		return b.SrcRange
+	}
+
+	return body.MissingItemRange()
+}
+
 func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
 	var err error
 
@@ -273,6 +282,12 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 						return nil, hcl.Diagnostics{&hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  fmt.Sprintf("duplicate backend name: %q", name),
+							Subject:  &be.LabelRanges[0],
+						}}
+					} else if strings.HasPrefix(name, "anonymous_") {
+						return nil, hcl.Diagnostics{&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  fmt.Sprintf("backend name must not start with 'anonymous_': %q", name),
 							Subject:  &be.LabelRanges[0],
 						}}
 					}

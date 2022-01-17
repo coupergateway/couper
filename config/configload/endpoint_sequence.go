@@ -35,14 +35,14 @@ func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err e
 
 		seq, exist := sequences[name]
 		if !exist {
-			seq = &config.Sequence{Name: name, BodyRange: b.MissingItemRange()}
+			seq = &config.Sequence{Name: name, BodyRange: getRange(b)}
 			sequences[name] = seq
 		}
 
 		for _, r := range refs {
 			ref, ok := sequences[r]
 			if !ok {
-				ref = &config.Sequence{Name: r, BodyRange: b.MissingItemRange()}
+				ref = &config.Sequence{Name: r, BodyRange: getRange(b)}
 				sequences[r] = ref
 			}
 			// Do not add ourselves

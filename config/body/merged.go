@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 // reportDuplicates is the global switch to handle force merges.
@@ -114,8 +115,14 @@ func (mb MergedBodies) MissingItemRange() hcl.Range {
 	}
 
 	for _, b := range mb {
-		if !b.MissingItemRange().Empty() {
-			return b.MissingItemRange()
+		if be, ok := b.(*hclsyntax.Body); ok {
+			if !be.SrcRange.Empty() {
+				return be.SrcRange
+			}
+		} else {
+			if !b.MissingItemRange().Empty() {
+				return b.MissingItemRange()
+			}
 		}
 	}
 

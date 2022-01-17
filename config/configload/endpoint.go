@@ -43,7 +43,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 		if check && endpoint.Pattern == "" {
 			var r hcl.Range
 			if endpoint.Remain != nil {
-				r = endpoint.Remain.MissingItemRange()
+				r = getRange(endpoint.Remain)
 			}
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,

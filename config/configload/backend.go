@@ -39,7 +39,7 @@ var defaultBackend = hclbody.New(&hcl.BodyContent{
 })
 
 func NewBackendConfigBody(name string, config hcl.Body) (hcl.Body, error) {
-	subject := config.MissingItemRange()
+	subject := getRange(config)
 	if diags := validLabel(name, &subject); diags != nil {
 		return nil, diags
 	}
@@ -59,12 +59,17 @@ func NewBackendConfigBody(name string, config hcl.Body) (hcl.Body, error) {
 // mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
 func mergeBackendBodies(loader *Loader, inline config.Inline) (hcl.Body, error) {
 	var reference hcl.Body
+
 	if beRef, ok := inline.(config.BackendReference); ok {
-		r, err := getBackendReference(loader, beRef)
-		if err != nil {
-			return nil, err
+		if name := beRef.Reference(); name != "" {
+			reference, ok = loader.defsBackends[name]
+			if !ok {
+				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "backend reference is not defined: " + name,
+				}}
+			}
 		}
-		reference = r
 	}
 
 	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
@@ -95,8 +100,18 @@ func mergeBackendBodies(loader *Loader, inline config.Inline) (hcl.Body, error) 
 	}
 
 	// Case: `backend {}`, anonymous backend.
-	if len(backendBlock.Labels) == 0 {
-		return backendBlock.Body, nil
+	if len(backendBlock.Labels) == 0 || backendBlock.Labels[0] == "" {
+		itemRange := getRange(backendBlock.Body)
+
+		name := fmt.Sprintf("%s_%d_%d", "anonymous",
+			itemRange.Start.Line,
+			itemRange.Start.Column,
+		)
+
+		body, _ := NewBackendConfigBody(name, backendBlock.Body)
+		loader.anonBackends[name] = body
+
+		return body, nil
 	}
 
 	// Case: `backend "reference" {}`, referenced backend.
@@ -120,38 +135,6 @@ func mergeBackendBodies(loader *Loader, inline config.Inline) (hcl.Body, error) 
 	return hclbody.MergeBodies(refOverride, backendBlock.Body), nil
 }
 
-// getBackendReference tries to fetch a backend from `definitions`
-// block by a reference name, e.g. `backend = "name"`.
-func getBackendReference(loader *Loader, be config.BackendReference) (hcl.Body, error) {
-	name := be.Reference()
-
-	// backend string attribute just not set
-	if name == "" {
-		return nil, nil
-	}
-
-	reference, ok := loader.defsBackends[name]
-	if !ok {
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "backend reference is not defined: " + name,
-		}}
-	}
-
-	// a name is given but we have no definition
-	if body, ok := be.(config.Inline); ok {
-		if b := body.HCLBody(); reference == nil && b != nil {
-			r := b.MissingItemRange()
-			return nil, hcl.Diagnostics{&hcl.Diagnostic{
-				Subject: &r,
-				Summary: fmt.Sprintf("backend reference '%s' is not defined", name),
-			}}
-		}
-	}
-
-	return reference, nil
-}
-
 func newBackend(loader *Loader, inlineConfig config.Inline) (hcl.Body, error) {
 	bend, err := mergeBackendBodies(loader, inlineConfig)
 	if err != nil {
@@ -159,37 +142,52 @@ func newBackend(loader *Loader, inlineConfig config.Inline) (hcl.Body, error) {
 	}
 
 	if bend == nil {
-		// Create a default backend
-		bend = hclbody.New(&hcl.BodyContent{
-			Attributes: map[string]*hcl.Attribute{
-				"name": {
-					Name: "name",
-					Expr: &hclsyntax.LiteralValueExpr{
-						Val: cty.StringVal(defaultNameLabel),
-					},
-				},
-			},
-		})
+		name := "anonymous_" + defaultNameLabel
+
+		if _, ok := loader.anonBackends[name]; !ok {
+			// Create an anonymous backend with default settings.
+			bend = defaultBackend
+
+			bend, err = NewBackendConfigBody(name, bend)
+			if err != nil {
+				return nil, err
+			}
+
+			loader.anonBackends[name] = bend
+		}
+
+		return loader.anonBackends[name], nil
 	}
 
-	oauth2Backend, err := newOAuthBackend(loader, bend)
+	oauth2Backend, err := newOAuthBackendConfigBody(loader, bend)
 	if err != nil {
 		return nil, err
 	}
 
 	if oauth2Backend != nil {
-		wrapped := hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{
-			{Type: oauth2, Body: hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{
-				{Type: backend, Body: oauth2Backend},
-			}})},
-		}})
+		wrapped := hclbody.New(&hcl.BodyContent{
+			Blocks: []*hcl.Block{
+				{
+					Type: oauth2,
+					Body: hclbody.New(&hcl.BodyContent{
+						Blocks: []*hcl.Block{
+							{
+								Type: backend,
+								Body: oauth2Backend,
+							},
+						},
+					}),
+				},
+			},
+		})
+
 		bend = hclbody.MergeBodies(bend, wrapped)
 	}
 
 	return bend, nil
 }
 
-func newOAuthBackend(loader *Loader, parent hcl.Body) (hcl.Body, error) {
+func newOAuthBackendConfigBody(loader *Loader, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
 		return nil, err
@@ -216,14 +214,22 @@ func newOAuthBackend(loader *Loader, parent hcl.Body) (hcl.Body, error) {
 		}
 	}
 
+	block := &hcl.Block{}
+
 	oauthBackend, err := mergeBackendBodies(loader, beConfig)
 	if err != nil {
 		return nil, err
+	} else if oauthBackend != nil {
+		block = &hcl.Block{
+			Type:   backend,
+			Body:   oauthBackend,
+			Labels: []string{beConfig.Name},
+		}
 	}
 
-	return newBackend(loader, &config.OAuth2ReqAuth{Remain: hclbody.New(&hcl.BodyContent{
-		Blocks: []*hcl.Block{
-			{Type: backend, Body: oauthBackend},
-		},
-	})})
+	return newBackend(loader, &config.OAuth2ReqAuth{
+		Remain: hclbody.New(&hcl.BodyContent{
+			Blocks: []*hcl.Block{block},
+		}),
+	})
 }
