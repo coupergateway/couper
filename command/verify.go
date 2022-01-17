@@ -43,6 +43,8 @@ func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error
 	}
 
 	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+
 	tmpMemStore := cache.New(logger, tmpStoreCh)
 
 	_, err = runtime.NewServerConfiguration(cf, logger, tmpMemStore)

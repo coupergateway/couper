@@ -22,6 +22,7 @@ import (
 
 	ac "github.com/avenga/couper/accesscontrol"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
@@ -896,26 +897,31 @@ func TestJwtConfig(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
+				logger := log.WithContext(context.TODO())
+
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
 
-			var error = ""
+			var errMsg = ""
 			if err != nil {
 				if _, ok := err.(errors.GoError); ok {
-					error = err.(errors.GoError).LogError()
+					errMsg = err.(errors.GoError).LogError()
 				} else {
-					error = err.Error()
+					errMsg = err.Error()
 				}
 			}
 
-			if tt.error == "" && error == "" {
+			if tt.error == "" && errMsg == "" {
 				return
 			}
 
 			expectedError := "configuration error: myac: " + tt.error
 
-			if expectedError != error {
-				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, error)
+			if expectedError != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)
 			}
 		})
 	}

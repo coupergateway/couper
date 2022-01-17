@@ -22,6 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/internal/test"
@@ -67,7 +68,13 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	helper.Must(err)
 	conf.Settings.DefaultPort = 0
 
-	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+
+	logger := log.WithContext(context.TODO())
+	tmpMemStore := cache.New(logger, tmpStoreCh)
+
+	srvConf, err := runtime.NewServerConfiguration(conf, logger, tmpMemStore)
 	helper.Must(err)
 
 	spaContent, err := os.ReadFile(conf.Servers[0].Spa.BootstrapFile)
@@ -163,7 +170,13 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	spaContent, err := os.ReadFile(conf.Servers[0].Spa.BootstrapFile)
 	helper.Must(err)
 
-	srvConf, err := runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+
+	logger := log.WithContext(context.TODO())
+	tmpMemStore := cache.New(logger, tmpStoreCh)
+
+	srvConf, err := runtime.NewServerConfiguration(conf, logger, tmpMemStore)
 	helper.Must(err)
 
 	couper := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf[0])
