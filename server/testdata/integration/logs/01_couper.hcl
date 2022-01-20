@@ -111,8 +111,8 @@ server "logs" {
       }
     }
 
-    endpoint "/saml/acs" {
-      access_control = ["SSO"]
+    endpoint "/saml-saml2/acs" {
+      access_control = ["SSO-saml2"]
 
       response {
         status = 418
@@ -289,7 +289,7 @@ definitions {
     }
   }
 
-  saml "SSO" {
+  saml "SSO-saml2" {
     idp_metadata_file = "../../../../accesscontrol/testdata/idp-metadata.xml"
     sp_acs_url = "http://localhost:8080/saml/acs"
     sp_entity_id = "local-test"
@@ -301,7 +301,7 @@ definitions {
 
     error_handler "saml2" {
       custom_log_fields = {
-        saml_error = request.method
+        saml_saml2_error = request.method
       }
     }
   }

@@ -122,7 +122,7 @@ func TestCustomLogs_Local(t *testing.T) {
 		{"jwt with * error-handler", "/jwt-wildcard", nil, logrus.Fields{"jwt_error_wildcard": "GET", "jwt_regular": "GET"}},
 		{"oauth2 error-handler", "/oauth2cb?pkcecv=qerbnr&error=qeuboub", nil, logrus.Fields{"oauth2_error": "GET", "oauth2_regular": "GET"}},
 		{"oauth2 * error-handler", "/oauth2cb-wildcard?pkcecv=qerbnr&error=qeuboub", nil, logrus.Fields{"oauth2_wildcard_error": "GET", "oauth2_regular": "GET"}},
-		{"saml with error-handler", "/saml/acs", nil, logrus.Fields{"saml_error": "GET", "saml_regular": "GET"}},
+		{"saml with saml2 error-handler", "/saml-saml2/acs", nil, logrus.Fields{"saml_saml2_error": "GET", "saml_regular": "GET"}},
 		{"saml with * error-handler", "/saml-wildcard/acs", nil, logrus.Fields{"saml_wildcard_error": "GET", "saml_regular": "GET"}},
 		{"oidc with error-handler", "/oidc/cb", nil, logrus.Fields{"oidc_error": "GET", "oidc_regular": "GET"}},
 		{"oidc with * error-handler", "/oidc-wildcard/cb", nil, logrus.Fields{"oidc_wildcard_error": "GET", "oidc_regular": "GET"}},
