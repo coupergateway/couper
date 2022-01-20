@@ -119,6 +119,14 @@ server "logs" {
       }
     }
 
+    endpoint "/saml-saml/acs" {
+      access_control = ["SSO-saml"]
+
+      response {
+        status = 418
+      }
+    }
+
     endpoint "/saml-wildcard/acs" {
       access_control = ["SSO-wildcard"]
 
@@ -302,6 +310,23 @@ definitions {
     error_handler "saml2" {
       custom_log_fields = {
         saml_saml2_error = request.method
+      }
+    }
+  }
+
+  saml "SSO-saml" {
+    idp_metadata_file = "../../../../accesscontrol/testdata/idp-metadata.xml"
+    sp_acs_url = "http://localhost:8080/saml/acs"
+    sp_entity_id = "local-test"
+    array_attributes = ["memberOf"]
+
+    custom_log_fields = {
+      saml_regular = request.method
+    }
+
+    error_handler "saml" {
+      custom_log_fields = {
+        saml_saml_error = request.method
       }
     }
   }
