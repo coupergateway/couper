@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/reader"
@@ -23,6 +24,7 @@ import (
 )
 
 const (
+	anonDefName  = "anonymous_default"
 	api          = "api"
 	backend      = "backend"
 	definitions  = "definitions"
@@ -231,16 +233,27 @@ func NewLoader(body hcl.Body, src []byte, filename, dirPath string) (*Loader, hc
 		Settings:    &defaults,
 	}
 
-	return &Loader{
+	loader := &Loader{
 		config:       couperConfig,
 		context:      couperConfig.Context.(*eval.Context).HCLContext(),
 		anonBackends: make(map[string]hcl.Body),
 		defsBackends: make(map[string]hcl.Body),
-	}, nil
+	}
+
+	// Create an anonymous backend with default settings.
+	loader.anonBackends[anonDefName] = hclbody.MergeBodies(
+		defaultBackend,
+		hclbody.New(newBackendNameContent(anonDefName)),
+	)
+
+	return loader, nil
 }
 
-
 func getRange(body hcl.Body) hcl.Range {
+	if body == nil {
+		return hcl.Range{}
+	}
+
 	if b, ok := body.(*hclsyntax.Body); ok {
 		return b.SrcRange
 	}
@@ -508,6 +521,8 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 	if len(loader.config.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
+
+	loader.config.AnonymousBackends = loader.anonBackends
 
 	return loader.config, nil
 }

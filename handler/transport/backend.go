@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -80,9 +81,16 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
+	ctxBody, _ := req.Context().Value(request.BackendContext).(hcl.Body)
+	if ctxBody != nil {
+		ctxBody = body.MergeBodies(b.context, ctxBody)
+	} else {
+		ctxBody = b.context
+	}
+
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(hclCtx, b.context, req); err != nil {
+	if err := eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
 		return nil, err
 	}
 

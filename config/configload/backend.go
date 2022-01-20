@@ -44,7 +44,15 @@ func NewBackendConfigBody(name string, config hcl.Body) (hcl.Body, error) {
 		return nil, diags
 	}
 
-	content := &hcl.BodyContent{
+	return hclbody.MergeBodies(
+		defaultBackend,
+		config,
+		hclbody.New(newBackendNameContent(name)),
+	), nil
+}
+
+func newBackendNameContent(name string) *hcl.BodyContent {
+	return &hcl.BodyContent{
 		Attributes: map[string]*hcl.Attribute{
 			"name": {
 				Name: "name",
@@ -52,8 +60,6 @@ func NewBackendConfigBody(name string, config hcl.Body) (hcl.Body, error) {
 			},
 		},
 	}
-
-	return hclbody.MergeBodies(defaultBackend, config, hclbody.New(content)), nil
 }
 
 // mergeBackendBodies appends the left side object with newly defined attributes or overrides already defined ones.
@@ -100,7 +106,11 @@ func mergeBackendBodies(loader *Loader, inline config.Inline) (hcl.Body, error) 
 	}
 
 	// Case: `backend {}`, anonymous backend.
-	if len(backendBlock.Labels) == 0 || backendBlock.Labels[0] == "" {
+	if len(backendBlock.Labels) == 0 /*|| backendBlock.Labels[0] == ""*/ {
+		if len(backendBlock.Labels) == 0 && backendBlock.Body == nil {
+			return backendBlock.Body, nil
+		}
+
 		itemRange := getRange(backendBlock.Body)
 
 		name := fmt.Sprintf("%s_%d_%d", "anonymous",
@@ -135,28 +145,14 @@ func mergeBackendBodies(loader *Loader, inline config.Inline) (hcl.Body, error) 
 	return hclbody.MergeBodies(refOverride, backendBlock.Body), nil
 }
 
-func newBackend(loader *Loader, inlineConfig config.Inline) (hcl.Body, error) {
-	bend, err := mergeBackendBodies(loader, inlineConfig)
+func newBackend(loader *Loader, inline config.Inline) (hcl.Body, error) {
+	bend, err := mergeBackendBodies(loader, inline)
 	if err != nil {
 		return nil, err
 	}
 
 	if bend == nil {
-		name := "anonymous_" + defaultNameLabel
-
-		if _, ok := loader.anonBackends[name]; !ok {
-			// Create an anonymous backend with default settings.
-			bend = defaultBackend
-
-			bend, err = NewBackendConfigBody(name, bend)
-			if err != nil {
-				return nil, err
-			}
-
-			loader.anonBackends[name] = bend
-		}
-
-		return loader.anonBackends[name], nil
+		return loader.anonBackends[anonDefName], nil
 	}
 
 	oauth2Backend, err := newOAuthBackendConfigBody(loader, bend)
@@ -214,22 +210,16 @@ func newOAuthBackendConfigBody(loader *Loader, parent hcl.Body) (hcl.Body, error
 		}
 	}
 
-	block := &hcl.Block{}
-
 	oauthBackend, err := mergeBackendBodies(loader, beConfig)
 	if err != nil {
 		return nil, err
-	} else if oauthBackend != nil {
-		block = &hcl.Block{
-			Type:   backend,
-			Body:   oauthBackend,
-			Labels: []string{beConfig.Name},
-		}
 	}
 
 	return newBackend(loader, &config.OAuth2ReqAuth{
 		Remain: hclbody.New(&hcl.BodyContent{
-			Blocks: []*hcl.Block{block},
+			Blocks: []*hcl.Block{
+				{Type: backend, Body: oauthBackend},
+			},
 		}),
 	})
 }

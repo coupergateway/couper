@@ -7,6 +7,7 @@ const (
 	ContextVariablesSynced
 	APIName
 	AccessControls
+	BackendContext
 	BackendName
 	BufferOptions
 	Endpoint

@@ -11,6 +11,7 @@ server "api" {
           path   = "/resource"
 
           oauth2 {
+			// default
             token_endpoint = "{{.asOrigin}}/oauth2"
             client_id      = "user"
             client_secret  = "pass word"

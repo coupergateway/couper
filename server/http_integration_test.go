@@ -2844,6 +2844,8 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 }
 
 func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) {
+	t.Skip() // FIXME: Remove the test after backend-refactoring?
+
 	helper := test.New(t)
 	client := newClient()
 
