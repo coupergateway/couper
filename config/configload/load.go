@@ -222,15 +222,15 @@ func NewLoader(body hcl.Body, src []byte, filename, dirPath string) (*Loader, hc
 		return nil, diags
 	}
 
-	defaults := config.DefaultSettings
-	defaults.AcceptForwarded = &config.AcceptForwarded{}
+	defSettings := config.DefaultSettings
+	defSettings.AcceptForwarded = &config.AcceptForwarded{}
 
 	couperConfig := &config.Couper{
 		Context:     eval.NewContext([][]byte{src}, defaultsBlock.Defaults),
 		Definitions: &config.Definitions{},
 		Dirpath:     dirPath,
 		Filename:    filename,
-		Settings:    &defaults,
+		Settings:    &defSettings,
 	}
 
 	loader := &Loader{
@@ -306,16 +306,16 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 						}}
 					}
 
-					body, diags := NewBackendConfigBody(name, be.Body)
-					if diags != nil {
-						return nil, diags
+					backendBody, berr := NewBackendConfigBody(name, be.Body)
+					if berr != nil {
+						return nil, berr
 					}
 
-					loader.defsBackends[name] = body
+					loader.defsBackends[name] = backendBody
 
 					loader.config.Definitions.Backend = append(
 						loader.config.Definitions.Backend,
-						&config.Backend{Remain: body, Name: name},
+						&config.Backend{Remain: backendBody, Name: name},
 					)
 				}
 			}
