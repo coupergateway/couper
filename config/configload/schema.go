@@ -311,7 +311,7 @@ func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
 
 func bodyToContent(body hcl.Body) *hcl.BodyContent {
 	content := &hcl.BodyContent{
-		MissingItemRange: getRange(body),
+		MissingItemRange: *getRange(body),
 	}
 	b, ok := body.(*hclsyntax.Body)
 	if !ok {

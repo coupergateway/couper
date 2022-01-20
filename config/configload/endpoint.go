@@ -41,14 +41,14 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 
 	for _, endpoint := range endpoints {
 		if check && endpoint.Pattern == "" {
-			var r hcl.Range
+			var r *hcl.Range
 			if endpoint.Remain != nil {
 				r = getRange(endpoint.Remain)
 			}
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "endpoint: missing path pattern",
-				Subject:  &r,
+				Subject:  r,
 			}}
 		}
 

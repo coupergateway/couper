@@ -243,22 +243,23 @@ func NewLoader(body hcl.Body, src []byte, filename, dirPath string) (*Loader, hc
 	// Create an anonymous backend with default settings.
 	loader.anonBackends[anonDefName] = hclbody.MergeBodies(
 		defaultBackend,
-		hclbody.New(newBackendNameContent(anonDefName)),
+		hclbody.New(newContentWithName(anonDefName)),
 	)
 
 	return loader, nil
 }
 
-func getRange(body hcl.Body) hcl.Range {
+func getRange(body hcl.Body) *hcl.Range {
 	if body == nil {
-		return hcl.Range{}
+		return &hcl.Range{}
 	}
 
 	if b, ok := body.(*hclsyntax.Body); ok {
-		return b.SrcRange
+		return &b.SrcRange
 	}
 
-	return body.MissingItemRange()
+	r := body.MissingItemRange()
+	return &r
 }
 
 func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
