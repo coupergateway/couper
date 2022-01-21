@@ -17,6 +17,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -3319,6 +3320,61 @@ func TestJWTAccessControl_round(t *testing.T) {
 			}
 			if !cmp.Equal(tc.expGroups, groupsclaimArray) {
 				subT.Errorf(cmp.Diff(tc.expGroups, groupsclaimArray))
+			}
+		})
+	}
+}
+
+func TestJWT_CacheControl_private(t *testing.T) {
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.qSLnmYgnkcOjxlOjFhUHQpCfTQ5elzKY3Mq6gRVT4iI"
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/10_couper.hcl", test.New(t))
+	defer shutdown()
+
+	var noCC []string
+
+	type testCase struct {
+		name      string
+		path      string
+		setToken  bool
+		expStatus int
+		expCC     []string
+	}
+
+	for _, tc := range []testCase{
+		{"no token; no cc from ep", "/cc-private/no-cc", false, 401, []string{"private"}},
+		{"no token; cc public from ep", "/cc-private/cc-public", false, 401, []string{"private"}},
+		{"no token; no cc from ep; disable", "/no-cc-private/no-cc", false, 401, noCC},
+		{"no token; cc public from ep; disable", "/no-cc-private/cc-public", false, 401, noCC},
+		{"token; no cc from ep", "/cc-private/no-cc", true, 204, []string{"private"}},
+		{"token; cc public from ep", "/cc-private/cc-public", true, 204, []string{"private", "public"}},
+		{"token; no public cc from ep; disable", "/no-cc-private/no-cc", true, 204, noCC},
+		{"token; cc public from ep; disable", "/no-cc-private/cc-public", true, 204, []string{"public"}},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+			if tc.setToken {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				subT.Errorf("expected Status %d, got: %d", tc.expStatus, res.StatusCode)
+				return
+			}
+
+			cc := res.Header.Values("Cache-Control")
+			sort.Strings(cc)
+
+			if !cmp.Equal(tc.expCC, cc) {
+				subT.Errorf("%s", cmp.Diff(tc.expCC, cc))
 			}
 		})
 	}
