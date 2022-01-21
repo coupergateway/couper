@@ -79,7 +79,8 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		}
 
 		typ := c.Type()
-		if typ == cty.Bool && c.False() {
+		if typ == cty.Bool && c.False() ||
+			typ == cty.String && c.AsString() == "" {
 			return newLiteralValueExpr(ctx, expr.FalseResult)
 		}
 		return newLiteralValueExpr(ctx, expr.TrueResult)
