@@ -158,6 +158,15 @@ server "cty.NilVal" {
     }
   }
 
+  endpoint "/conditional/string" {
+    response {
+      headers = {
+        X-Value = request.query.s[0] ? request.query.s[0] : "empty"
+        Z-Value = "y"
+      }
+    }
+  }
+
   endpoint "/conditional/nested" {
     response {
       headers = {

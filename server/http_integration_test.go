@@ -4424,6 +4424,7 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/conditional/false", true, ""},
 		{"/conditional/true", false, ""},
 		{"/conditional/null", false, ""},
+		{"/conditional/string?s=foo", true, "foo"},
 		{"/conditional/nested", true, ""},
 		{"/conditional/nested/true", true, ""},
 		{"/conditional/nested/false", true, ""},

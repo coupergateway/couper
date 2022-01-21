@@ -76,7 +76,10 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		c, _ := expr.Condition.Value(ctx)
 		if c.IsNull() {
 			return &hclsyntax.LiteralValueExpr{Val: cty.NilVal, SrcRange: expr.SrcRange}
-		} else if c.False() {
+		}
+
+		typ := c.Type()
+		if typ == cty.Bool && c.False() {
 			return newLiteralValueExpr(ctx, expr.FalseResult)
 		}
 		return newLiteralValueExpr(ctx, expr.TrueResult)
