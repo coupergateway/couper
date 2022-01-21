@@ -609,53 +609,44 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		for _, jwtConf := range conf.Definitions.JWT {
 			confErr := errors.Configuration.Label(jwtConf.Name)
 
-			var jwt *ac.JWT
+			jwtOptions := &ac.JWTOptions{
+				Claims:                jwtConf.Claims,
+				ClaimsRequired:        jwtConf.ClaimsRequired,
+				DisablePrivateCaching: jwtConf.DisablePrivateCaching,
+				Name:                  jwtConf.Name,
+				RolesClaim:            jwtConf.RolesClaim,
+				RolesMap:              jwtConf.RolesMap,
+				ScopeClaim:            jwtConf.ScopeClaim,
+				Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
+			}
+			var (
+				jwt *ac.JWT
+				err error
+			)
 			if jwtConf.JWKsURL != "" {
 				noProxy := conf.Settings.NoProxyFromEnv
-				jwks, err := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
-				if err != nil {
-					return nil, confErr.With(err)
+				jwks, jerr := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
+				if jerr != nil {
+					return nil, confErr.With(jerr)
 				}
 
-				jwt, err = ac.NewJWTFromJWKS(&ac.JWTOptions{
-					Claims:                jwtConf.Claims,
-					ClaimsRequired:        jwtConf.ClaimsRequired,
-					DisablePrivateCaching: jwtConf.DisablePrivateCaching,
-					Name:                  jwtConf.Name,
-					RolesClaim:            jwtConf.RolesClaim,
-					RolesMap:              jwtConf.RolesMap,
-					ScopeClaim:            jwtConf.ScopeClaim,
-					Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
-					JWKS:                  jwks,
-				})
-				if err != nil {
-					return nil, confErr.With(err)
-				}
+				jwtOptions.JWKS = jwks
+				jwt, err = ac.NewJWTFromJWKS(jwtOptions)
 			} else {
-				key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
-				if err != nil {
-					return nil, confErr.With(err)
+				key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
+				if kerr != nil {
+					return nil, confErr.With(kerr)
 				}
 
-				jwt, err = ac.NewJWT(&ac.JWTOptions{
-					Algorithm:             jwtConf.SignatureAlgorithm,
-					Claims:                jwtConf.Claims,
-					ClaimsRequired:        jwtConf.ClaimsRequired,
-					DisablePrivateCaching: jwtConf.DisablePrivateCaching,
-					Key:                   key,
-					Name:                  jwtConf.Name,
-					RolesClaim:            jwtConf.RolesClaim,
-					RolesMap:              jwtConf.RolesMap,
-					ScopeClaim:            jwtConf.ScopeClaim,
-					Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
-				})
-
-				if err != nil {
-					return nil, confErr.With(err)
-				}
+				jwtOptions.Algorithm = jwtConf.SignatureAlgorithm
+				jwtOptions.Key = key
+				jwt, err = ac.NewJWT(jwtOptions)
+			}
+			if err != nil {
+				return nil, confErr.With(err)
 			}
 
-			if err := accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
 			}
 		}
