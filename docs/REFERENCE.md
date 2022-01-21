@@ -358,6 +358,8 @@ Like all [Access Control](#access-control) types, the `jwt` block is defined in
 the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its
 required _label_.
 
+Since responses from endpoints protected by JWT access controls are not publicly cacheable, a `Cache-Control: private` header field is added to the response, unless this feature is disabled with `disable_private_caching = true`.
+
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
 | `jwt`| [Definitions Block](#definitions-block)| &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
