@@ -42,8 +42,8 @@ func NewBackendConfigBody(name string, config hcl.Body) (hcl.Body, error) {
 	if err := validLabel(name, getRange(config)); err != nil {
 		return nil, err
 	}
+
 	return hclbody.MergeBodies(
-		defaultBackend,
 		config,
 		hclbody.New(newContentWithName(name)),
 	), nil
@@ -131,11 +131,7 @@ func mergeBackendBodies(loader *Loader, inline config.Inline) (hcl.Body, error) 
 	refOverride, ok := loader.defsBackends[backendBlock.Labels[0]]
 	if !ok {
 		// Case: referenced backend is not defined in definitions.
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "backend reference is not defined: " + backendBlock.Labels[0],
-			Subject:  &backendBlock.DefRange,
-		}}
+		return nil, newDiagErr(&backendBlock.DefRange, "backend reference is not defined: "+backendBlock.Labels[0])
 	}
 
 	// link backend block name (label) to attribute 'name'
@@ -168,7 +164,7 @@ func newBackend(loader *Loader, inline config.Inline) (hcl.Body, error) {
 		bend = hclbody.MergeBodies(bend, wrapped)
 	}
 
-	return bend, nil
+	return hclbody.MergeBodies(defaultBackend, bend), nil
 }
 
 func newOAuthBackendConfigBody(loader *Loader, parent hcl.Body) (hcl.Body, error) {

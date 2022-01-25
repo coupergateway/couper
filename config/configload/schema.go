@@ -364,3 +364,16 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 	}
 	return content, nil
 }
+
+func getRange(body hcl.Body) *hcl.Range {
+	if body == nil {
+		return &hcl.Range{}
+	}
+
+	if b, ok := body.(*hclsyntax.Body); ok {
+		return &b.SrcRange
+	}
+
+	r := body.MissingItemRange()
+	return &r
+}

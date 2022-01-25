@@ -249,19 +249,6 @@ func NewLoader(body hcl.Body, src []byte, filename, dirPath string) (*Loader, hc
 	return loader, nil
 }
 
-func getRange(body hcl.Body) *hcl.Range {
-	if body == nil {
-		return &hcl.Range{}
-	}
-
-	if b, ok := body.(*hclsyntax.Body); ok {
-		return &b.SrcRange
-	}
-
-	r := body.MissingItemRange()
-	return &r
-}
-
 func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
 	var err error
 
@@ -490,7 +477,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 				}
 			}
 
-			err := refineEndpoints(loader, apiConfig.Endpoints, true)
+			err = refineEndpoints(loader, apiConfig.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
@@ -505,7 +492,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		}
 
 		// standalone endpoints
-		err := refineEndpoints(loader, serverConfig.Endpoints, true)
+		err = refineEndpoints(loader, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
