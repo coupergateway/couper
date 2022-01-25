@@ -4545,3 +4545,53 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		})
 	}
 }
+
+func TestEndpoint_ForLoop(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/endpoint_eval/21_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path      string
+		header    http.Header
+		expResult string
+	}
+
+	for _, tc := range []testCase{
+		{"/for0", http.Header{}, `["a","b"]`},
+		{"/for1", http.Header{}, `[0,1]`},
+		{"/for2", http.Header{}, `{"a":0,"b":1}`},
+		{"/for3", http.Header{}, `{"a":[0,1],"b":[2]}`},
+		{"/for4", http.Header{}, `["a","b"]`},
+		{"/for5", http.Header{"x-1": []string{"val1"}, "x-2": []string{"val2"}, "y": []string{`["x-1","x-2"]`}, "z": []string{"pfx"}}, `{"pfx-x-1":"val1","pfx-x-2":"val2"}`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			req.Header = tc.header
+			helper.Must(err)
+
+			hook.Reset()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			helper.Must(res.Body.Close())
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("Expected Status OK, got: %d", res.StatusCode)
+				return
+			}
+
+			result := string(resBytes)
+			if result != tc.expResult {
+				subT.Errorf("Want: %s, got: %v", tc.expResult, result)
+			}
+		})
+	}
+}
