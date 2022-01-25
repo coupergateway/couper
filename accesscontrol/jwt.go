@@ -30,7 +30,10 @@ const (
 	Value
 )
 
-var _ AccessControl = &JWT{}
+var (
+	_ AccessControl         = &JWT{}
+	_ DisablePrivateCaching = &JWT{}
+)
 
 type (
 	JWTSourceType uint8
@@ -42,30 +45,32 @@ type (
 )
 
 type JWT struct {
-	algorithms     []acjwt.Algorithm
-	claims         hcl.Expression
-	claimsRequired []string
-	source         JWTSource
-	hmacSecret     []byte
-	name           string
-	pubKey         interface{}
-	rolesClaim     string
-	rolesMap       map[string][]string
-	scopeClaim     string
-	jwks           *jwk.JWKS
+	algorithms            []acjwt.Algorithm
+	claims                hcl.Expression
+	claimsRequired        []string
+	disablePrivateCaching bool
+	source                JWTSource
+	hmacSecret            []byte
+	name                  string
+	pubKey                interface{}
+	rolesClaim            string
+	rolesMap              map[string][]string
+	scopeClaim            string
+	jwks                  *jwk.JWKS
 }
 
 type JWTOptions struct {
-	Algorithm      string
-	Claims         hcl.Expression
-	ClaimsRequired []string
-	Name           string // TODO: more generic (validate)
-	RolesClaim     string
-	RolesMap       map[string][]string
-	ScopeClaim     string
-	Source         JWTSource
-	Key            []byte
-	JWKS           *jwk.JWKS
+	Algorithm             string
+	Claims                hcl.Expression
+	ClaimsRequired        []string
+	DisablePrivateCaching bool
+	Name                  string // TODO: more generic (validate)
+	RolesClaim            string
+	RolesMap              map[string][]string
+	ScopeClaim            string
+	Source                JWTSource
+	Key                   []byte
+	JWKS                  *jwk.JWKS
 }
 
 func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
@@ -160,15 +165,20 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 	}
 
 	jwtAC := &JWT{
-		claims:         options.Claims,
-		claimsRequired: options.ClaimsRequired,
-		name:           options.Name,
-		rolesClaim:     options.RolesClaim,
-		rolesMap:       options.RolesMap,
-		scopeClaim:     options.ScopeClaim,
-		source:         options.Source,
+		claims:                options.Claims,
+		claimsRequired:        options.ClaimsRequired,
+		disablePrivateCaching: options.DisablePrivateCaching,
+		name:                  options.Name,
+		rolesClaim:            options.RolesClaim,
+		rolesMap:              options.RolesMap,
+		scopeClaim:            options.ScopeClaim,
+		source:                options.Source,
 	}
 	return jwtAC, nil
+}
+
+func (j *JWT) DisablePrivateCaching() bool {
+	return j.disablePrivateCaching
 }
 
 // Validate reading the token from configured source and validates against the key.

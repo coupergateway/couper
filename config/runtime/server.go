@@ -618,14 +618,15 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				}
 
 				jwt, err = ac.NewJWTFromJWKS(&ac.JWTOptions{
-					Claims:         jwtConf.Claims,
-					ClaimsRequired: jwtConf.ClaimsRequired,
-					Name:           jwtConf.Name,
-					RolesClaim:     jwtConf.RolesClaim,
-					RolesMap:       jwtConf.RolesMap,
-					ScopeClaim:     jwtConf.ScopeClaim,
-					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
-					JWKS:           jwks,
+					Claims:                jwtConf.Claims,
+					ClaimsRequired:        jwtConf.ClaimsRequired,
+					DisablePrivateCaching: jwtConf.DisablePrivateCaching,
+					Name:                  jwtConf.Name,
+					RolesClaim:            jwtConf.RolesClaim,
+					RolesMap:              jwtConf.RolesMap,
+					ScopeClaim:            jwtConf.ScopeClaim,
+					Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
+					JWKS:                  jwks,
 				})
 				if err != nil {
 					return nil, confErr.With(err)
@@ -637,15 +638,16 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				}
 
 				jwt, err = ac.NewJWT(&ac.JWTOptions{
-					Algorithm:      jwtConf.SignatureAlgorithm,
-					Claims:         jwtConf.Claims,
-					ClaimsRequired: jwtConf.ClaimsRequired,
-					Key:            key,
-					Name:           jwtConf.Name,
-					RolesClaim:     jwtConf.RolesClaim,
-					RolesMap:       jwtConf.RolesMap,
-					ScopeClaim:     jwtConf.ScopeClaim,
-					Source:         ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
+					Algorithm:             jwtConf.SignatureAlgorithm,
+					Claims:                jwtConf.Claims,
+					ClaimsRequired:        jwtConf.ClaimsRequired,
+					DisablePrivateCaching: jwtConf.DisablePrivateCaching,
+					Key:                   key,
+					Name:                  jwtConf.Name,
+					RolesClaim:            jwtConf.RolesClaim,
+					RolesMap:              jwtConf.RolesMap,
+					ScopeClaim:            jwtConf.ScopeClaim,
+					Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 				})
 
 				if err != nil {
