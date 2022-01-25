@@ -61,12 +61,12 @@ func (i ListItem) ErrorHandler() http.Handler {
 	return i.controlErrHandler
 }
 
-func (i ListItem) DisablePrivateCaching() (bool, bool) {
+func (i ListItem) DisablePrivateCaching() bool {
 	if c, ok := i.control.(DisablePrivateCaching); ok {
-		return c.DisablePrivateCaching(), true
+		return c.DisablePrivateCaching()
 	}
-
-	return false, false
+	// not implemented, always disabled
+	return true
 }
 
 func (f ValidateFunc) Validate(req *http.Request) error {

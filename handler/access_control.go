@@ -30,7 +30,7 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	r, ok := rw.(*writer.Response)
 
 	for _, control := range a.acl {
-		if disable, implements := control.DisablePrivateCaching(); ok && implements && !disable {
+		if ok && !control.DisablePrivateCaching() {
 			r.AddPrivateCC()
 		}
 
