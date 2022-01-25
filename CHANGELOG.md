@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
+  * handling of `for` loops in HCL ([#426](https://github.com/avenga/couper/pull/426))
 
 ---
 

@@ -140,13 +140,7 @@ func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Exp
 		}
 		return expr
 	case *hclsyntax.ForExpr:
-		// expr.CollExpr can't be null
-		// TODO: CondExpr must use local variables to get a non nil-literal
-		//expr.CondExpr = newLiteralValueExpr(ctx, expr.CondExpr) // null without 'if' and must result in bool
-		if expr.KeyExpr != nil { // nil if producing a tuple
-			expr.KeyExpr = newLiteralValueExpr(ctx, expr.KeyExpr)
-		}
-		expr.ValExpr = newLiteralValueExpr(ctx, expr.ValExpr)
+		expr.CollExpr = newLiteralValueExpr(ctx, expr.CollExpr)
 		return expr
 	case *hclsyntax.ParenthesesExpr:
 		expr.Expression = newLiteralValueExpr(ctx, expr.Expression)
@@ -202,7 +196,9 @@ func clone(exp hcl.Expression) hclsyntax.Expression {
 		}
 		return ex
 	case *hclsyntax.ForExpr:
-		return expr
+		ex := *expr
+		ex.CollExpr = clone(expr.CollExpr)
+		return &ex
 	case *hclsyntax.FunctionCallExpr:
 		ex := *expr
 		ex.Args = make([]hclsyntax.Expression, 0)
