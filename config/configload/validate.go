@@ -13,13 +13,17 @@ var regexLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 // https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
 var methodRegExp = regexp.MustCompile("^[!#$%&'*+\\-.\\^_`|~0-9a-zA-Z]+$")
 
+func newDiagErr(subject *hcl.Range, summary string) error {
+	return hcl.Diagnostics{&hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  summary,
+		Subject:  subject,
+	}}
+}
+
 func validLabel(name string, subject *hcl.Range) error {
 	if !regexLabel.MatchString(name) {
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'",
-			Subject:  subject,
-		}}
+		return newDiagErr(subject, "label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'")
 	}
 
 	return nil
@@ -28,18 +32,10 @@ func validLabel(name string, subject *hcl.Range) error {
 func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
 	if _, exist := unique[name]; exist {
 		if name == defaultNameLabel {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "proxy and request labels are required and only one 'default' label is allowed",
-				Subject:  hr,
-			}}
+			return newDiagErr(hr, "proxy and request labels are required and only one 'default' label is allowed")
 		}
 
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("proxy and request labels are required and must be unique: %q", name),
-			Subject:  hr,
-		}}
+		return newDiagErr(hr, fmt.Sprintf("proxy and request labels are required and must be unique: %q", name))
 	}
 
 	unique[name] = struct{}{}
@@ -58,11 +54,8 @@ func verifyBodyAttributes(content *hcl.BodyContent) error {
 			rangeAttr = "form_body"
 		}
 
-		return hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "request can only have one of body, form_body or json_body attributes",
-			Subject:  &content.Attributes[rangeAttr].Range,
-		}}
+		return newDiagErr(&content.Attributes[rangeAttr].Range,
+			"request can only have one of body, form_body or json_body attributes")
 	}
 
 	return nil
@@ -71,11 +64,7 @@ func verifyBodyAttributes(content *hcl.BodyContent) error {
 func validMethods(methods []string, hr *hcl.Range) error {
 	for _, method := range methods {
 		if !methodRegExp.MatchString(method) {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "method contains invalid character(s)",
-				Subject:  hr,
-			}}
+			return newDiagErr(hr, "method contains invalid character(s)")
 		}
 	}
 

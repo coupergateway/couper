@@ -293,17 +293,11 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 					name := be.Labels[0]
 
 					if _, ok := loader.defsBackends[name]; ok {
-						return nil, hcl.Diagnostics{&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  fmt.Sprintf("duplicate backend name: %q", name),
-							Subject:  &be.LabelRanges[0],
-						}}
+						return nil, newDiagErr(&be.LabelRanges[0],
+							fmt.Sprintf("duplicate backend name: %q", name))
 					} else if strings.HasPrefix(name, "anonymous_") {
-						return nil, hcl.Diagnostics{&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  fmt.Sprintf("backend name must not start with 'anonymous_': %q", name),
-							Subject:  &be.LabelRanges[0],
-						}}
+						return nil, newDiagErr(&be.LabelRanges[0],
+							fmt.Sprintf("backend name must not start with 'anonymous_': %q", name))
 					}
 
 					backendBody, berr := NewBackendConfigBody(name, be.Body)

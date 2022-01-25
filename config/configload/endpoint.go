@@ -45,11 +45,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 			if endpoint.Remain != nil {
 				r = getRange(endpoint.Remain)
 			}
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "endpoint: missing path pattern",
-				Subject:  r,
-			}}
+			return newDiagErr(r, "endpoint: missing path pattern")
 		}
 
 		endpointContent := bodyToContent(endpoint.Remain)
@@ -64,11 +60,9 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 		requests := endpointContent.Blocks.OfType(request)
 
 		if check && len(proxies)+len(requests) == 0 && endpoint.Response == nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "missing 'default' proxy or request block, or a response definition",
-				Subject:  &endpointContent.MissingItemRange,
-			}}
+			return newDiagErr(&endpointContent.MissingItemRange,
+				"missing 'default' proxy or request block, or a response definition",
+			)
 		}
 
 		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
@@ -154,11 +148,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 			_, existsBody := content.Attributes["body"]
 			_, existsJsonBody := content.Attributes["json_body"]
 			if existsBody && existsJsonBody {
-				return hcl.Diagnostics{&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "response can only have one of body or json_body attributes",
-					Subject:  &content.Attributes["body"].Range,
-				}}
+				return newDiagErr(&content.Attributes["body"].Range, "response can only have one of body or json_body attributes")
 			}
 		}
 
@@ -194,11 +184,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 		}
 
 		if _, ok := names[defaultNameLabel]; check && !ok && endpoint.Response == nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Missing a 'default' proxy or request definition, or a response block",
-				Subject:  &subject,
-			}}
+			return newDiagErr(&subject, "Missing a 'default' proxy or request definition, or a response block")
 		}
 
 		if err = buildSequences(names, endpoint); err != nil {
