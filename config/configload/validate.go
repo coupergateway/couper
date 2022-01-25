@@ -5,6 +5,8 @@ import (
 	"regexp"
 
 	"github.com/hashicorp/hcl/v2"
+
+	"github.com/avenga/couper/config"
 )
 
 var regexLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -58,6 +60,16 @@ func verifyBodyAttributes(content *hcl.BodyContent) error {
 			"request can only have one of body, form_body or json_body attributes")
 	}
 
+	return nil
+}
+
+func verifyResponseBodyAttrs(b hcl.Body) error {
+	content, _, _ := b.PartialContent(config.ResponseInlineSchema)
+	_, existsBody := content.Attributes["body"]
+	_, existsJsonBody := content.Attributes["json_body"]
+	if existsBody && existsJsonBody {
+		return newDiagErr(&content.Attributes["body"].Range, "response can only have one of body or json_body attributes")
+	}
 	return nil
 }
 

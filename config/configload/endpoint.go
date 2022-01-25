@@ -144,11 +144,8 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 		}
 
 		if endpoint.Response != nil {
-			content, _, _ := endpoint.Response.HCLBody().PartialContent(config.ResponseInlineSchema)
-			_, existsBody := content.Attributes["body"]
-			_, existsJsonBody := content.Attributes["json_body"]
-			if existsBody && existsJsonBody {
-				return newDiagErr(&content.Attributes["body"].Range, "response can only have one of body or json_body attributes")
+			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody()); err != nil {
+				return err
 			}
 		}
 
