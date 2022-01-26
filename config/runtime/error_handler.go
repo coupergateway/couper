@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 
@@ -23,7 +24,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 		for _, h := range definition.ErrorHandler {
 			for _, k := range h.Kinds {
 				if _, exist := kindsHandler[k]; exist {
-					log.Fatal("error type handler exists already: " + k)
+					return nil, fmt.Errorf("error handler type already exists: " + k)
 				}
 
 				contextBody := h.HCLBody()
