@@ -306,13 +306,6 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			}
 
 			for _, oauth2Config := range loader.config.Definitions.OAuth2AC {
-				bodyContent, _, diags := oauth2Config.HCLBody().PartialContent(oauth2Config.Schema(true))
-				if diags.HasErrors() {
-					return nil, diags
-				}
-
-				oauth2Config.BodyContent = bodyContent
-
 				oauth2Config.Backend, err = newBackend(loader, oauth2Config)
 				if err != nil {
 					return nil, err
@@ -321,12 +314,6 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 
 			// TODO remove beta element for version 1.8
 			for _, oidcConfig := range append(loader.config.Definitions.OIDC, loader.config.Definitions.BetaOIDC...) {
-				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
-				if diags.HasErrors() {
-					return nil, diags
-				}
-				oidcConfig.BodyContent = bodyContent
-
 				oidcConfig.Backend, err = newBackend(loader, oidcConfig)
 				if err != nil {
 					return nil, err

@@ -29,8 +29,7 @@ type OAuth2AC struct {
 	VerifierMethod          string   `hcl:"verifier_method"`
 
 	// internally used
-	Backend     hcl.Body
-	BodyContent *hcl.BodyContent
+	Backend hcl.Body
 }
 
 // Reference implements the <BackendReference> interface.
@@ -70,10 +69,6 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, oa.HCLBody())
-}
-
-func (oa *OAuth2AC) GetBodyContent() *hcl.BodyContent {
-	return oa.BodyContent
 }
 
 func (oa OAuth2AC) GetName() string {

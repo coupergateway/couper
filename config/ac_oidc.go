@@ -25,8 +25,7 @@ type OIDC struct {
 	VerifierMethod          string   `hcl:"verifier_method,optional"`
 
 	// internally used
-	Backend     hcl.Body
-	BodyContent *hcl.BodyContent
+	Backend hcl.Body
 }
 
 // Reference implements the <BackendReference> interface.
@@ -66,10 +65,6 @@ func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return newBackendSchema(schema, o.HCLBody())
-}
-
-func (o *OIDC) GetBodyContent() *hcl.BodyContent {
-	return o.BodyContent
 }
 
 func (o OIDC) GetName() string {
