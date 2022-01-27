@@ -319,20 +319,8 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 				}
 			}
 
-			for _, oidcConfig := range loader.config.Definitions.OIDC {
-				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
-				if diags.HasErrors() {
-					return nil, diags
-				}
-				oidcConfig.BodyContent = bodyContent
-
-				oidcConfig.Backend, err = newBackend(loader, oidcConfig)
-				if err != nil {
-					return nil, err
-				}
-			}
-			// TODO remove for version 1.8
-			for _, oidcConfig := range loader.config.Definitions.BetaOIDC {
+			// TODO remove beta element for version 1.8
+			for _, oidcConfig := range append(loader.config.Definitions.OIDC, loader.config.Definitions.BetaOIDC...) {
 				bodyContent, _, diags := oidcConfig.HCLBody().PartialContent(oidcConfig.Schema(true))
 				if diags.HasErrors() {
 					return nil, diags
