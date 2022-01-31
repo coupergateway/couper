@@ -188,6 +188,9 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 		name, bereqVal, berespVal := newBerespValues(ctx, false, beresp)
 		bereqs[name] = bereqVal
 		resps[name] = berespVal
+
+		ctx.eval.Variables[BackendRequest] = bereqVal
+		ctx.eval.Variables[BackendResponse] = berespVal
 	}
 
 	// Prevent overriding existing variables with successive calls to this method.
