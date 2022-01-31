@@ -71,17 +71,21 @@ func fire(entry *logrus.Entry, bodyKey request.ContextKey) {
 	ctx := evalCtx.HCLContextSync()
 
 	if request.LogCustomUpstream == bodyKey {
-		for k, v := range ctx.Variables[eval.BackendRequests].AsValueMap() {
-			if k == entry.Context.Value(request.RoundTripName) {
-				ctx.Variables[eval.BackendRequest] = v
-				break
+		if _, ok := ctx.Variables[eval.BackendRequests]; ok {
+			for k, v := range ctx.Variables[eval.BackendRequests].AsValueMap() {
+				if k == entry.Context.Value(request.RoundTripName) {
+					ctx.Variables[eval.BackendRequest] = v
+					break
+				}
 			}
 		}
 
-		for k, v := range ctx.Variables[eval.BackendResponses].AsValueMap() {
-			if k == entry.Context.Value(request.RoundTripName) {
-				ctx.Variables[eval.BackendResponse] = v
-				break
+		if _, ok := ctx.Variables[eval.BackendResponses]; ok {
+			for k, v := range ctx.Variables[eval.BackendResponses].AsValueMap() {
+				if k == entry.Context.Value(request.RoundTripName) {
+					ctx.Variables[eval.BackendResponse] = v
+					break
+				}
 			}
 		}
 	}
