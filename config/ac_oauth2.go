@@ -8,8 +8,8 @@ import (
 var (
 	_ BackendReference    = &OAuth2AC{}
 	_ Inline              = &OAuth2AC{}
-	_ OAuth2AcClient      = &OAuth2AC{}
 	_ OAuth2AcAS          = &OAuth2AC{}
+	_ OAuth2AcClient      = &OAuth2AC{}
 	_ OAuth2Authorization = &OAuth2AC{}
 )
 
@@ -33,17 +33,17 @@ type OAuth2AC struct {
 }
 
 // Reference implements the <BackendReference> interface.
-func (oa OAuth2AC) Reference() string {
+func (oa *OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
 // HCLBody implements the <Inline> interface.
-func (oa OAuth2AC) HCLBody() hcl.Body {
+func (oa *OAuth2AC) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
 // Inline implements the <Inline> interface.
-func (oa OAuth2AC) Inline() interface{} {
+func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
 		Backend       *Backend                  `hcl:"backend,block"`
 		LogFields     map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
@@ -55,7 +55,7 @@ func (oa OAuth2AC) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
+func (oa *OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
 		return schema
@@ -71,42 +71,42 @@ func (oa OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, oa.HCLBody())
 }
 
-func (oa OAuth2AC) GetName() string {
+func (oa *OAuth2AC) GetName() string {
 	return oa.Name
 }
 
-func (oa OAuth2AC) GetClientID() string {
+func (oa *OAuth2AC) GetClientID() string {
 	return oa.ClientID
 }
 
-func (oa OAuth2AC) GetClientSecret() string {
+func (oa *OAuth2AC) GetClientSecret() string {
 	return oa.ClientSecret
 }
 
-func (oa OAuth2AC) GetGrantType() string {
+func (oa *OAuth2AC) GetGrantType() string {
 	return oa.GrantType
 }
 
-func (oa OAuth2AC) GetScope() string {
+func (oa *OAuth2AC) GetScope() string {
 	if oa.Scope == nil {
 		return ""
 	}
 	return *oa.Scope
 }
 
-func (oa OAuth2AC) GetAuthorizationEndpoint(_ string) (string, error) {
+func (oa *OAuth2AC) GetAuthorizationEndpoint(_ string) (string, error) {
 	return oa.AuthorizationEndpoint, nil
 }
 
-func (oa OAuth2AC) GetTokenEndpoint() (string, error) {
+func (oa *OAuth2AC) GetTokenEndpoint() (string, error) {
 	return oa.TokenEndpoint, nil
 }
 
-func (oa OAuth2AC) GetTokenEndpointAuthMethod() *string {
+func (oa *OAuth2AC) GetTokenEndpointAuthMethod() *string {
 	return oa.TokenEndpointAuthMethod
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or state)
-func (oa OAuth2AC) GetVerifierMethod(_ string) (string, error) {
+func (oa *OAuth2AC) GetVerifierMethod(_ string) (string, error) {
 	return oa.VerifierMethod, nil
 }

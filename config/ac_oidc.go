@@ -29,17 +29,17 @@ type OIDC struct {
 }
 
 // Reference implements the <BackendReference> interface.
-func (o OIDC) Reference() string {
+func (o *OIDC) Reference() string {
 	return o.BackendName
 }
 
 // HCLBody implements the <Inline> interface.
-func (o OIDC) HCLBody() hcl.Body {
+func (o *OIDC) HCLBody() hcl.Body {
 	return o.Remain
 }
 
 // Inline implements the <Inline> interface.
-func (o OIDC) Inline() interface{} {
+func (o *OIDC) Inline() interface{} {
 	type Inline struct {
 		Backend       *Backend                  `hcl:"backend,block"`
 		LogFields     map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
@@ -51,7 +51,7 @@ func (o OIDC) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (o OIDC) Schema(inline bool) *hcl.BodySchema {
+func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(o)
 		return schema
@@ -67,29 +67,29 @@ func (o OIDC) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, o.HCLBody())
 }
 
-func (o OIDC) GetName() string {
+func (o *OIDC) GetName() string {
 	return o.Name
 }
 
-func (o OIDC) GetClientID() string {
+func (o *OIDC) GetClientID() string {
 	return o.ClientID
 }
 
-func (o OIDC) GetClientSecret() string {
+func (o *OIDC) GetClientSecret() string {
 	return o.ClientSecret
 }
 
-func (o OIDC) GetGrantType() string {
+func (o *OIDC) GetGrantType() string {
 	return "authorization_code"
 }
 
-func (o OIDC) GetScope() string {
+func (o *OIDC) GetScope() string {
 	if o.Scope == nil {
 		return "openid"
 	}
 	return "openid " + *o.Scope
 }
 
-func (o OIDC) GetTokenEndpointAuthMethod() *string {
+func (o *OIDC) GetTokenEndpointAuthMethod() *string {
 	return o.TokenEndpointAuthMethod
 }
