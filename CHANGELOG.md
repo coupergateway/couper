@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * `disable_private_caching` attribute for the [JWT Block](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))
+  * [`backend_request`](./docs/REFERENCE.md#backend_request) and [`backend_response`](./docs/REFERENCE.md#backend_response) variables ([#430](https://github.com/avenga/couper/pull/430))
 
 * **Fixed**
   * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))

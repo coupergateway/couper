@@ -32,7 +32,9 @@
     - [couper](#couper)
     - [env](#env)
     - [request](#request)
+    - [backend_request](#backend_request)
     - [backend_requests](#backend_requests)
+    - [backend_response](#backend_response)
     - [backend_responses](#backend_responses)
   - [Functions](#functions)
   - [Modifiers](#modifiers)
@@ -649,6 +651,13 @@ and for OIDC additionally:
 - `id_token_claims`: a map of claims from the ID token
 - `userinfo`: a map of claims retrieved from the userinfo endpoint
 
+### `backend_request`
+
+`backend_request` is a list of request variables like `backend_requests.<label>`
+(see [backend_requests](#backend_requests) below). The `backend_request` is only
+available in a [Backend Block](#backend-block) and represents the request of this
+block.
+
 ### `backend_requests`
 
 `backend_requests.<label>` is a list of all backend requests, and their variables.
@@ -673,6 +682,13 @@ To access the HTTP method of the `default` request use `backend_requests.default
 | `host`                           | string          | Host of the backend request URL                                                                                                                                                                                                                                                      | `www.example.com`                           |
 | `port`                           | integer         | Port of the backend request URL                                                                                                                                                                                                                                                      | `443`                                       |
 | `path`                           | string          | Backend request URL path                                                                                                                                                                                                                                                             | `/path/to`                                  |
+
+### `backend_response`
+
+`backend_response` is a list of responses variables like `backend_responses.<label>`
+(see [backend_responses](#backend_responses) below). The `backend_response` is only
+available in a [Backend Block](#backend-block) and represents the response of this
+block.
 
 ### `backend_responses`
 
