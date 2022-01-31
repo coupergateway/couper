@@ -202,12 +202,16 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 
 func TestOAuth2_AccessControl(t *testing.T) {
 	client := newClient()
-	helper := test.New(t)
 
 	st := "qeirtbnpetrbi"
 	state := oauth2.Base64urlSha256(st)
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		errResp := func(err error) {
+			rw.WriteHeader(http.StatusInternalServerError)
+			_, _ = rw.Write([]byte(err.Error()))
+		}
+
 		if req.URL.Path == "/token" {
 			if accept := req.Header.Get("Accept"); accept != "application/json" {
 				t.Errorf("expected Accept %q, got: %q", "application/json", accept)
@@ -272,17 +276,30 @@ func TestOAuth2_AccessControl(t *testing.T) {
 					mapClaims["nonce"] = nonce
 				}
 				keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
-				helper.Must(err)
+				if err != nil {
+					errResp(err)
+					return
+				}
+
 				key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
-				helper.Must(parseErr)
+				if parseErr != nil {
+					errResp(err)
+					return
+				}
+
 				var kid string
 				if strings.HasSuffix(code, "-wkid-id") {
 					kid = "not-found"
 				} else {
 					kid = "rs256"
 				}
+
 				idToken, err := lib.CreateJWT("RS256", key, mapClaims, map[string]interface{}{"kid": kid})
-				helper.Must(err)
+				if err != nil {
+					errResp(err)
+					return
+				}
+
 				idTokenToAdd = `"id_token":"` + idToken + `",
 				`
 			}
@@ -296,21 +313,30 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				"authorization": "` + req.Header.Get("Authorization") + `"
 			}`)
 			_, werr := rw.Write(body)
-			helper.Must(werr)
+			if werr != nil {
+				t.Log(werr)
+			}
 
 			return
 		} else if req.URL.Path == "/userinfo" {
 			body := []byte(`{"sub": "myself"}`)
 			_, werr := rw.Write(body)
-			helper.Must(werr)
+			if werr != nil {
+				t.Log(werr)
+			}
 
 			return
 		} else if req.URL.Path == "/jwks" {
 			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
-			helper.Must(rerr)
+			if rerr != nil {
+				errResp(rerr)
+				return
+			}
 			b := bytes.NewBuffer(jsonBytes)
 			_, werr := b.WriteTo(rw)
-			helper.Must(werr)
+			if werr != nil {
+				t.Log(werr)
+			}
 
 			return
 		} else if req.URL.Path == "/.well-known/openid-configuration" {
@@ -322,8 +348,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)
 			_, werr := rw.Write(body)
-			helper.Must(werr)
-
+			if werr != nil {
+				t.Log(werr)
+			}
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
@@ -378,10 +405,10 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code; nonce param; relative redirect_uri", "09_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-id&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
-			defer shutdown()
-
 			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			defer shutdown()
 
 			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
 			h.Must(err)
@@ -516,28 +543,28 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_85_13"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL})
+			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL})
 			defer shutdown()
 
-			helper := test.New(subT)
-
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
-			helper.Must(err)
+			h.Must(err)
 
 			req.Header.Set("Cookie", "pkcecv=qerbnr")
 
 			res, err := client.Do(req)
-			helper.Must(err)
+			h.Must(err)
 
 			if res.StatusCode != http.StatusOK {
 				subT.Errorf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
 			}
 
 			tokenResBytes, err := io.ReadAll(res.Body)
-			helper.Must(err)
+			h.Must(err)
 
 			var jData map[string]interface{}
-			json.Unmarshal(tokenResBytes, &jData)
+			h.Must(json.Unmarshal(tokenResBytes, &jData))
 			if sub, ok := jData["sub"]; ok {
 				if sub != "myself" {
 					subT.Errorf("expected sub %q, got: %q", "myself", sub)
@@ -611,16 +638,15 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 		{"inline backend", "/rs2", "anonymous_115_15"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+			h := test.New(subT)
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
 			defer shutdown()
 
-			helper := test.New(subT)
-
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
-			helper.Must(err)
+			h.Must(err)
 
 			res, err := client.Do(req)
-			helper.Must(err)
+			h.Must(err)
 
 			if res.StatusCode != http.StatusNoContent {
 				subT.Errorf("expected Status %d, got: %d", http.StatusNoContent, res.StatusCode)
