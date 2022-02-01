@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/reader"
@@ -24,7 +23,6 @@ import (
 )
 
 const (
-	anonDefName  = "anonymous_default"
 	api          = "api"
 	backend      = "backend"
 	definitions  = "definitions"
@@ -38,13 +36,6 @@ const (
 	// defaultNameLabel maps the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )
-
-type Loader struct {
-	config       *config.Couper
-	context      *hcl.EvalContext
-	anonBackends map[string]hcl.Body
-	defsBackends map[string]hcl.Body
-}
 
 var defaultsConfig *config.Defaults
 var evalContext *eval.Context
@@ -216,39 +207,6 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	return LoadConfig(hclBody, src, filename, "")
 }
 
-func NewLoader(body hcl.Body, src []byte, filename, dirPath string) (*Loader, hcl.Diagnostics) {
-	defaultsBlock := &config.DefaultsBlock{}
-	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
-		return nil, diags
-	}
-
-	defSettings := config.DefaultSettings
-	defSettings.AcceptForwarded = &config.AcceptForwarded{}
-
-	couperConfig := &config.Couper{
-		Context:     eval.NewContext([][]byte{src}, defaultsBlock.Defaults),
-		Definitions: &config.Definitions{},
-		Dirpath:     dirPath,
-		Filename:    filename,
-		Settings:    &defSettings,
-	}
-
-	loader := &Loader{
-		config:       couperConfig,
-		context:      couperConfig.Context.(*eval.Context).HCLContext(),
-		anonBackends: make(map[string]hcl.Body),
-		defsBackends: make(map[string]hcl.Body),
-	}
-
-	// Create an anonymous backend with default settings.
-	loader.anonBackends[anonDefName] = hclbody.MergeBodies(
-		defaultBackend,
-		hclbody.New(newContentWithName(anonDefName)),
-	)
-
-	return loader, nil
-}
-
 func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
 	var err error
 
@@ -256,18 +214,12 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		return nil, diags
 	}
 
-	loader, diags := NewLoader(body, src, filename, dirPath)
-	if diags != nil {
-		return nil, diags
+	helper, err := newHelper(body, src, filename)
+	if err != nil {
+		return nil, err
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(loader.config)
-	content, diags := body.Content(schema)
-	if content == nil {
-		return nil, fmt.Errorf("invalid configuration: %w", diags)
-	}
-
-	for _, outerBlock := range content.Blocks {
+	for _, outerBlock := range helper.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
 			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
@@ -275,93 +227,46 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 				return nil, diags
 			}
 
+			// backends first
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
-					name := be.Labels[0]
-
-					if _, ok := loader.defsBackends[name]; ok {
-						return nil, newDiagErr(&be.LabelRanges[0],
-							fmt.Sprintf("duplicate backend name: %q", name))
-					} else if strings.HasPrefix(name, "anonymous_") {
-						return nil, newDiagErr(&be.LabelRanges[0],
-							fmt.Sprintf("backend name must not start with 'anonymous_': %q", name))
+					if err = helper.addBackend(be); err != nil {
+						return nil, err
 					}
+				}
 
-					backendBody, berr := NewBackendConfigBody(name, be.Body)
-					if berr != nil {
-						return nil, berr
-					}
-
-					loader.defsBackends[name] = backendBody
-
-					loader.config.Definitions.Backend = append(
-						loader.config.Definitions.Backend,
-						&config.Backend{Remain: backendBody, Name: name},
-					)
+				if err = helper.configureDefinedBackends(); err != nil {
+					return nil, err
 				}
 			}
 
-			if diags = gohcl.DecodeBody(leftOver, loader.context, loader.config.Definitions); diags.HasErrors() {
+			// decode all other blocks into definition struct
+			if diags = gohcl.DecodeBody(leftOver, helper.context, helper.config.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
 
-			for _, oauth2Config := range loader.config.Definitions.OAuth2AC {
-				oauth2Config.Backend, err = newBackend(loader, oauth2Config)
-				if err != nil {
-					return nil, err
-				}
+			if err = helper.configureACBackends(); err != nil {
+				return nil, err
 			}
 
-			// TODO remove beta element for version 1.8
-			for _, oidcConfig := range append(loader.config.Definitions.OIDC, loader.config.Definitions.BetaOIDC...) {
-				oidcConfig.Backend, err = newBackend(loader, oidcConfig)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			for _, jwtConfig := range loader.config.Definitions.JWT {
-				if jwtConfig.JWKsURL != "" {
-					bodyContent, _, diags := jwtConfig.HCLBody().PartialContent(jwtConfig.Schema(true))
-					if diags.HasErrors() {
-						return nil, diags
-					}
-					jwtConfig.BodyContent = bodyContent
-
-					jwtConfig.Backend, err = newBackend(loader, jwtConfig)
-					if err != nil {
-						return nil, err
-					}
-
-					jwtConfig.BackendName = ""
-				}
-				if err = jwtConfig.Check(); err != nil {
-					return nil, errors.Configuration.Label(jwtConfig.Name).With(err)
-				}
-			}
-
-			acErrorHandler := collect.ErrorHandlerSetters(loader.config.Definitions)
-			if err := configureErrorHandler(acErrorHandler, loader); err != nil {
+			acErrorHandler := collect.ErrorHandlerSetters(helper.config.Definitions)
+			if err = configureErrorHandler(acErrorHandler, helper); err != nil {
 				return nil, err
 			}
 
 		case settings:
-			if diags = gohcl.DecodeBody(outerBlock.Body, loader.context, loader.config.Settings); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(outerBlock.Body, helper.context, helper.config.Settings); diags.HasErrors() {
 				return nil, diags
 			}
-			if err := loader.config.Settings.SetAcceptForwarded(); err != nil {
-				diag := &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("invalid accept_forwarded_url: %q", err),
-					Subject:  &outerBlock.DefRange,
-				}
-				return nil, diag
+
+			if err = helper.config.Settings.SetAcceptForwarded(); err != nil {
+				return nil, newDiagErr(&outerBlock.DefRange, fmt.Sprintf("invalid accept_forwarded_url: %q", err))
 			}
 		}
 	}
 
 	// Prepare dynamic functions
-	for _, profile := range loader.config.Definitions.JWTSigningProfile {
+	for _, profile := range helper.config.Definitions.JWTSigningProfile {
 		if profile.Headers != nil {
 			expression, _ := profile.Headers.Value(nil)
 			headers := seetie.ValueToMap(expression)
@@ -369,13 +274,12 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			var errorMessage string
 			if _, exists := headers["alg"]; exists {
 				errorMessage = `"alg" cannot be set via "headers"`
-			} else if _, exists := headers["typ"]; exists {
+			} else if _, exists = headers["typ"]; exists {
 				errorMessage = `"typ" cannot be set via "headers"`
 			}
 
 			if errorMessage != "" {
-				err := fmt.Errorf(errorMessage)
-				return nil, errors.Configuration.Label(profile.Name).With(err)
+				return nil, errors.Configuration.Label(profile.Name).With(fmt.Errorf(errorMessage))
 			}
 		}
 
@@ -386,7 +290,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		profile.KeyBytes = key
 	}
 
-	for _, saml := range loader.config.Definitions.SAML {
+	for _, saml := range helper.config.Definitions.SAML {
 		metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
 		if err != nil {
 			return nil, errors.Configuration.Label(saml.Name).With(err)
@@ -395,7 +299,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 	}
 
 	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
-	for _, profile := range loader.config.Definitions.JWTSigningProfile {
+	for _, profile := range helper.config.Definitions.JWTSigningProfile {
 		if _, exists := jwtSigningConfigs[profile.Name]; exists {
 			return nil, errors.Configuration.Messagef("jwt_signing_profile block with label %s already defined", profile.Name)
 		}
@@ -405,7 +309,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		}
 		jwtSigningConfigs[profile.Name] = signConf
 	}
-	for _, jwt := range loader.config.Definitions.JWT {
+	for _, jwt := range helper.config.Definitions.JWT {
 		signConf, err := lib.NewJWTSigningConfigFromJWT(jwt)
 		if err != nil {
 			return nil, errors.Configuration.Label(jwt.Name).With(err)
@@ -418,15 +322,15 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		}
 	}
 
-	loader.config.Context = loader.config.Context.(*eval.Context).
+	helper.config.Context = helper.config.Context.(*eval.Context).
 		WithJWTSigningConfigs(jwtSigningConfigs).
-		WithOAuth2AC(loader.config.Definitions.OAuth2AC).
-		WithSAML(loader.config.Definitions.SAML)
+		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
+		WithSAML(helper.config.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range bodyToContent(body).Blocks.OfType(server) {
 		serverConfig := &config.Server{}
-		if diags = gohcl.DecodeBody(serverBlock.Body, loader.context, serverConfig); diags.HasErrors() {
+		if diags := gohcl.DecodeBody(serverBlock.Body, helper.context, serverConfig); diags.HasErrors() {
 			return nil, diags
 		}
 
@@ -438,7 +342,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		// Read api blocks and merge backends with server and definitions backends.
 		for _, apiBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(api) {
 			apiConfig := &config.API{}
-			if diags = gohcl.DecodeBody(apiBlock.Body, loader.context, apiConfig); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(apiBlock.Body, helper.context, apiConfig); diags.HasErrors() {
 				return nil, diags
 			}
 
@@ -452,7 +356,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 				}
 			}
 
-			err = refineEndpoints(loader, apiConfig.Endpoints, true)
+			err = refineEndpoints(helper, apiConfig.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
@@ -461,25 +365,23 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 
 			apiErrorHandler := collect.ErrorHandlerSetters(apiConfig)
-			if err = configureErrorHandler(apiErrorHandler, loader); err != nil {
+			if err = configureErrorHandler(apiErrorHandler, helper); err != nil {
 				return nil, err
 			}
 		}
 
 		// standalone endpoints
-		err = refineEndpoints(loader, serverConfig.Endpoints, true)
+		err = refineEndpoints(helper, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
 
-		loader.config.Servers = append(loader.config.Servers, serverConfig)
+		helper.config.Servers = append(helper.config.Servers, serverConfig)
 	}
 
-	if len(loader.config.Servers) == 0 {
+	if len(helper.config.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
-	loader.config.AnonymousBackends = loader.anonBackends
-
-	return loader.config, nil
+	return helper.config, nil
 }

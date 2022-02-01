@@ -1,6 +1,10 @@
 package body
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+)
 
 var _ hcl.Body = &Body{}
 
@@ -15,6 +19,17 @@ type Body struct {
 
 func New(content *hcl.BodyContent) hcl.Body {
 	return &Body{content}
+}
+
+func NewContentWithAttrName(name, value string) *hcl.BodyContent {
+	return &hcl.BodyContent{
+		Attributes: map[string]*hcl.Attribute{
+			name: {
+				Name: name,
+				Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(value)},
+			},
+		},
+	}
 }
 
 func (e *Body) Content(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {

@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
+var _ BackendInitialization = &JWT{}
 var _ Inline = &JWT{}
 
 // Claims represents the <Claims> object.
@@ -39,7 +40,15 @@ type JWT struct {
 
 	// Internally used
 	BodyContent *hcl.BodyContent
-	Backend     hcl.Body
+	Backends    map[string]hcl.Body
+}
+
+func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
+	if j.Backends == nil {
+		j.Backends = make(map[string]hcl.Body)
+	}
+	j.Backends["backend"], err = backendFunc("backend", j.BackendName, j)
+	return err
 }
 
 // Reference implements the <BackendReference> interface.
@@ -80,7 +89,9 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 }
 
 func (j *JWT) Check() error {
-	if j.BackendName != "" && j.Backend != nil {
+	if j.BackendName != "" || j.Backends != nil {
+		return errors.New("backend not needed without jwks_url")
+	} else if j.BackendName != "" && len(j.Backends) > 0 {
 		return errors.New("backend must be either block or attribute")
 	}
 
@@ -96,14 +107,8 @@ func (j *JWT) Check() error {
 				return errors.New(name + " cannot be used together with jwks_url")
 			}
 		}
-	} else {
-		if j.BackendName != "" || j.Backend != nil {
-			return errors.New("backend not needed without jwks_url")
-		}
-
-		if j.SignatureAlgorithm == "" {
-			return errors.New("signature_algorithm or jwks_url required")
-		}
+	} else if j.SignatureAlgorithm == "" {
+		return errors.New("signature_algorithm or jwks_url required")
 	}
 
 	return nil

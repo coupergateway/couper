@@ -113,18 +113,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		}
 	}
 
-	// Populate anonymous backends...
-	// for name, backend := range conf.AnonymousBackends {
-	// 	if name == "anonymous_default" {
-	// 		continue
-	// 	}
-
-	// 	_, _, err := NewBackend(confCtx, backend, log, conf.Settings.NoProxyFromEnv, memStore)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf, log)
 		if err != nil {
@@ -462,27 +450,16 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, _, err := NewBackend(confCtx, oidcConf.Backend, log, conf.Settings, memStore)
-			if err != nil {
-				return nil, confErr.With(err)
+			backends := map[string]http.RoundTripper{}
+			for k, backendBody := range oidcConf.Backends {
+				var err error
+				backends[k], _, err = NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+				if err != nil {
+					return nil, confErr.With(err)
+				}
 			}
 
-			oidcConfig, err := oidc.NewConfig(oidcConf, backend)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			oidcConfigs[oidcConf.Name] = oidcConfig
-		}
-		// TODO remove for version 1.8
-		for _, oidcConf := range conf.Definitions.BetaOIDC {
-			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, _, err := NewBackend(confCtx, oidcConf.Backend, log, conf.Settings, memStore)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			oidcConfig, err := oidc.NewConfig(oidcConf, backend)
+			oidcConfig, err := oidc.NewConfig(oidcConf, backends)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -544,7 +521,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, _, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf.Settings, memStore)
+			var backendBody hcl.Body
+			if oauth2Conf.Backends != nil {
+				backendBody, _ = oauth2Conf.Backends["backend"]
+			}
+			backend, _, err := NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -565,32 +546,6 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		}
 
 		for _, oidcConf := range conf.Definitions.OIDC {
-			confErr := errors.Configuration.Label(oidcConf.Name)
-			oidcConfig := oidcConfigs[oidcConf.Name]
-			oidcClient, err := oauth2.NewOidc(oidcConfig)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			if oidcConfig.VerifierMethod != "" &&
-				oidcConfig.VerifierMethod != config.CcmS256 &&
-				oidcConfig.VerifierMethod != "nonce" {
-				return nil, errors.Configuration.
-					Label(oidcConf.Name).
-					Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
-			}
-
-			oa, err := ac.NewOAuth2Callback(oidcClient)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
-		}
-		// TODO remove for version 1.8
-		for _, oidcConf := range conf.Definitions.BetaOIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
 			oidcConfig := oidcConfigs[oidcConf.Name]
 			oidcClient, err := oauth2.NewOidc(oidcConfig)
@@ -665,12 +620,15 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
 	var backend http.RoundTripper
 
-	if jwtConf.Backend != nil {
-		b, _, err := NewBackend(confContext, jwtConf.Backend, log, conf.Settings, memStore)
-		if err != nil {
-			return nil, err
+	if jwtConf.Backends != nil {
+		backendBody, ok := jwtConf.Backends["backend"]
+		if ok {
+			b, _, err := NewBackend(confContext, backendBody, log, conf.Settings, memStore)
+			if err != nil {
+				return nil, err
+			}
+			backend = b
 		}
-		backend = b
 	}
 
 	evalContext := conf.Context.Value(request.ContextType).(context.Context)

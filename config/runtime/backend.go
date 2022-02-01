@@ -22,8 +22,6 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	const prefix = "backend_"
 	name, err := getBackendName(ctx, body)
 
-	fmt.Printf(">>>>> %#v\n", name)
-
 	if err != nil {
 		return nil, nil, err
 	}

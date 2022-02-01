@@ -56,7 +56,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 		helper.Must(err)
 	}))
 
-	backendConfig, _ := configload.NewBackendConfigBody("origin", test.NewRemainContext("origin", origin.URL))
+	backendConfig, _ := configload.NewNamedBody("origin", test.NewRemainContext("origin", origin.URL))
 
 	log, _ := test.NewLogger()
 	logger := log.WithContext(context.Background())
@@ -127,9 +127,17 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			res.Header.Set("x-want", tt.want)
 
 			tc := &transport.Config{}
-			conf, err := oidc.NewConfig(tt.oauth2Config, transport.NewBackend(backendConfig,
+
+			backend := transport.NewBackend(backendConfig,
 				tc.With("http", "couper.io", "couper.io", ""),
-				&transport.BackendOptions{}, logger))
+				&transport.BackendOptions{}, logger)
+
+			// TODO: call prepare iface instead
+			backends := map[string]http.RoundTripper{
+				"configuration_backend": backend,
+			}
+
+			conf, err := oidc.NewConfig(tt.oauth2Config, backends)
 			helper.Must(err)
 
 			ctx := eval.NewContext(nil, &config.Defaults{}).

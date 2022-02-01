@@ -36,7 +36,7 @@ func newCatchAllEndpoint() *config.Endpoint {
 	}
 }
 
-func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) error {
+func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) error {
 	var err error
 
 	for _, endpoint := range endpoints {
@@ -69,7 +69,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 
 		for _, proxyBlock := range proxies {
 			proxyConfig := &config.Proxy{}
-			if diags := gohcl.DecodeBody(proxyBlock.Body, loader.context, proxyConfig); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(proxyBlock.Body, helper.context, proxyConfig); diags.HasErrors() {
 				return diags
 			}
 			if len(proxyBlock.Labels) > 0 {
@@ -99,7 +99,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			proxyConfig.Backend, err = newBackend(loader, proxyConfig)
+			proxyConfig.Backend, err = prepareBackend(helper, backend, proxyConfig.BackendName, proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -109,7 +109,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 
 		for _, reqBlock := range requests {
 			reqConfig := &config.Request{}
-			if diags := gohcl.DecodeBody(reqBlock.Body, loader.context, reqConfig); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(reqBlock.Body, helper.context, reqConfig); diags.HasErrors() {
 				return diags
 			}
 
@@ -135,7 +135,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 
 			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
 
-			reqConfig.Backend, err = newBackend(loader, reqConfig)
+			reqConfig.Backend, err = prepareBackend(helper, backend, reqConfig.BackendName, reqConfig)
 			if err != nil {
 				return err
 			}
@@ -189,7 +189,7 @@ func refineEndpoints(loader *Loader, endpoints config.Endpoints, check bool) err
 		}
 
 		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
-		if err = configureErrorHandler(epErrorHandler, loader); err != nil {
+		if err = configureErrorHandler(epErrorHandler, helper); err != nil {
 			return err
 		}
 	}

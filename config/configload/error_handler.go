@@ -19,7 +19,7 @@ type kindContent struct {
 	kinds []string
 }
 
-func configureErrorHandler(setter []collect.ErrorHandlerSetter, loader *Loader) error {
+func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *Helper) error {
 	for _, ehs := range setter {
 		body, ok := ehs.(config.Body)
 		if !ok {
@@ -32,7 +32,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, loader *Loader) 
 		}
 
 		for _, hc := range ehc {
-			errHandlerConf, confErr := newErrorHandlerConfig(hc, loader)
+			errHandlerConf, confErr := newErrorHandlerConfig(hc, helper)
 			if confErr != nil {
 				return confErr
 			}
@@ -129,9 +129,9 @@ func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	return allKinds, nil
 }
 
-func newErrorHandlerConfig(content kindContent, loader *Loader) (*config.ErrorHandler, error) {
+func newErrorHandlerConfig(content kindContent, helper *Helper) (*config.ErrorHandler, error) {
 	errHandlerConf := &config.ErrorHandler{Kinds: content.kinds}
-	if d := gohcl.DecodeBody(content.body, loader.context, errHandlerConf); d.HasErrors() {
+	if d := gohcl.DecodeBody(content.body, helper.context, errHandlerConf); d.HasErrors() {
 		return nil, d
 	}
 
@@ -141,7 +141,7 @@ func newErrorHandlerConfig(content kindContent, loader *Loader) (*config.ErrorHa
 		Remain:    content.body,
 	}
 
-	if err := refineEndpoints(loader, config.Endpoints{ep}, false); err != nil {
+	if err := refineEndpoints(helper, config.Endpoints{ep}, false); err != nil {
 		return nil, err
 	}
 

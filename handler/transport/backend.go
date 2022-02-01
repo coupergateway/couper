@@ -322,7 +322,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
-	var origin, hostname, proxyURL string
+	var origin, hostname, proxyURL, backendURL string
 	type pair struct {
 		attrName string
 		target   *string
@@ -331,6 +331,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 		{"origin", &origin},
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
+		{"backend_url", &backendURL}, // prepared by configload
 	} {
 		if v, err := eval.ValueFromAttribute(httpCtx, bodyContent, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
@@ -347,8 +348,13 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 			Messagef("invalid url: %s", originURL.String())
 	}
 
-	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
-		urlAttr, err := url.Parse(rawURL)
+	// TODO: jwks_uri initialization
+	if backendURL == "" {
+		backendURL, _ = req.Context().Value(request.URLAttribute).(string)
+	}
+
+	if backendURL != "" {
+		urlAttr, err := url.Parse(backendURL)
 		if err != nil {
 			return nil, errors.Configuration.Label(b.name).With(err)
 		}

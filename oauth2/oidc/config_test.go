@@ -47,7 +47,10 @@ func TestConfig_Synced(t *testing.T) {
 	defer origin.Close()
 
 	be := transport.NewBackend(hcl.EmptyBody(), &transport.Config{}, nil, logger)
-	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL + "/.well-known/openid-configuration"}, be)
+	backends := map[string]http.RoundTripper{
+		"configuration_backend": be,
+	}
+	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL + "/.well-known/openid-configuration"}, backends)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

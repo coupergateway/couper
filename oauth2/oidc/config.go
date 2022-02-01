@@ -36,7 +36,7 @@ var (
 // Config represents the configuration for an OIDC client
 type Config struct {
 	*config.OIDC
-	Backend    http.RoundTripper
+	backends   map[string]http.RoundTripper
 	context    context.Context
 	syncedJSON *jsn.SyncedJSON
 	JWKS       *jwk.JWKS
@@ -44,7 +44,7 @@ type Config struct {
 }
 
 // NewConfig creates a new configuration for an OIDC client
-func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
+func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
 	ttl := defaultTTL
 	if oidc.ConfigurationTTL != "" {
 		t, err := time.ParseDuration(oidc.ConfigurationTTL)
@@ -55,10 +55,19 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
 	}
 
 	ctx := context.Background()
-	config := &Config{OIDC: oidc, context: ctx, Backend: backend}
-	sj := jsn.NewSyncedJSON(ctx, "", "", oidc.ConfigurationURL, backend, oidc.Name, ttl, config)
-	config.syncedJSON = sj
-	return config, nil
+	conf := &Config{
+		OIDC:     oidc,
+		backends: backends,
+		context:  ctx,
+	}
+
+	sj := jsn.NewSyncedJSON(ctx, "", "", oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, conf)
+	conf.syncedJSON = sj
+	return conf, nil
+}
+
+func (c *Config) AuthorizationBackend() http.RoundTripper {
+	return c.backends["authorization_backend"]
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
@@ -142,11 +151,14 @@ func (c *Config) Unmarshal(rawJSON []byte, uid string) (interface{}, error) {
 		}
 	}
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.Backend, c.context)
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.backends["jwks_uri_backend"], c.context)
 	if err != nil {
 		return nil, err
 	}
-	newJWKS.Data(uid)
+	_, err = newJWKS.Data(uid)
+	if err != nil {
+		return nil, err
+	}
 	c.mtx.Lock()
 	c.OIDC.VerifierMethod = newVM
 	c.JWKS = newJWKS

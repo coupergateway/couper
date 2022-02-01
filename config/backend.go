@@ -52,6 +52,9 @@ func (b Backend) Inline() interface{} {
 		PathPrefix     string                    `hcl:"path_prefix,optional"`
 		ProxyURL       string                    `hcl:"proxy,optional"`
 		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
+
+		// set by backend preparation
+		BackendURL string `hcl:"backend_url,optional"`
 	}
 
 	return &Inline{}
