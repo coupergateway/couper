@@ -54,29 +54,30 @@ func TestBackend_BackendVariable(t *testing.T) {
 
 		name := entry.Data["request"].(logging.Fields)["name"]
 		data := entry.Data["custom"].(logrus.Fields)
+		// The Cookie request header is not proxied, so *-req is not set in log.
 
 		if name == "default" {
 			check++
 
-			if data["default-res"] != "application/json" || data["default-ua"] != "Couper" {
+			if len(data) != 2 || data["default-res"] != "application/json" || data["default-ua"] != "Couper" {
 				t.Errorf("unexpected data given: %#v", data)
 			}
 		} else if name == "request" {
 			check++
 
-			if data["request-res"] != "text/plain; charset=utf-8" || data["request-ua"] != "" {
+			if len(data) != 2 || data["request-res"] != "text/plain; charset=utf-8" || data["request-ua"] != "" {
 				t.Errorf("unexpected data given: %#v", data)
 			}
 		} else if name == "r1" {
 			check++
 
-			if data["definitions-res"] != "text/plain; charset=utf-8" || data["definitions-ua"] != "" {
+			if len(data) != 2 || data["definitions-res"] != "text/plain; charset=utf-8" || data["definitions-ua"] != "" {
 				t.Errorf("unexpected data given: %#v", data)
 			}
 		} else if name == "r2" {
 			check++
 
-			if data["definitions-res"] != "application/json" || data["definitions-ua"] != "" {
+			if len(data) != 2 || data["definitions-res"] != "application/json" || data["definitions-ua"] != "" {
 				t.Errorf("unexpected data given: %#v", data)
 			}
 		}
