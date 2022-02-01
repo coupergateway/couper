@@ -30,7 +30,16 @@ type OAuth2AC struct {
 	VerifierMethod          string   `hcl:"verifier_method"`
 
 	// internally used
-	Backend hcl.Body
+	Backends map[string]hcl.Body
+}
+
+func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {
+	if oa.Backends == nil {
+		oa.Backends = make(map[string]hcl.Body)
+	}
+	oa.Backends["backend"], err = backendFunc("backend", oa.TokenEndpoint, oa)
+
+	return err
 }
 
 func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {
