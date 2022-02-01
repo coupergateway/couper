@@ -66,17 +66,20 @@ func Value(ctx *hcl.EvalContext, exp hcl.Expression) (cty.Value, error) {
 func newLiteralValueExpr(ctx *hcl.EvalContext, exp hcl.Expression) hclsyntax.Expression {
 	switch expr := exp.(type) {
 	case *hclsyntax.ConditionalExpr:
+		var cond cty.Value
 		if val := newLiteralValueExpr(ctx, expr.Condition); val != nil {
-			expr.Condition = val
+			c, diags := val.Value(ctx)
+			// allow only bool predicates
+			if c.Type() != cty.Bool || diags.HasErrors() {
+				return expr
+			}
+			cond = c
 		}
 
 		// Conditional results must not be cty.NilVal and from same type
 		// so evaluate already replaced condition first and return
 		// LiteralValueExpr instead of a ConditionalExpr.
-		c, _ := expr.Condition.Value(ctx)
-		if c.IsNull() {
-			return &hclsyntax.LiteralValueExpr{Val: cty.NilVal, SrcRange: expr.SrcRange}
-		} else if c.False() {
+		if cond.False() {
 			return newLiteralValueExpr(ctx, expr.FalseResult)
 		}
 		return newLiteralValueExpr(ctx, expr.TrueResult)

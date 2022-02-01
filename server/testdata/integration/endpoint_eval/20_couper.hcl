@@ -149,15 +149,6 @@ server "cty.NilVal" {
     }
   }
 
-  endpoint "/conditional/null" {
-    response {
-      headers = {
-        X-Value = null ? request.form_body.state : "x"
-        Z-Value = "y"
-      }
-    }
-  }
-
   endpoint "/conditional/nested" {
     response {
       headers = {
@@ -281,6 +272,49 @@ server "cty.NilVal" {
         X-Value = request.query.foo.ooops
         Z-Value = "y"
       }
+    }
+  }
+
+
+  endpoint "/conditional/null" {
+    response {
+      status = null ? 204 : 400
+    }
+  }
+
+  endpoint "/conditional/string" {
+    response {
+      status = "foo" ? 204 : 400
+    }
+  }
+
+  endpoint "/conditional/number" {
+    response {
+      status = 2 ? 204 : 400
+    }
+  }
+
+  endpoint "/conditional/tuple" {
+    response {
+      status = [] ? 204 : 400
+    }
+  }
+
+  endpoint "/conditional/object" {
+    response {
+      status = {} ? 204 : 400
+    }
+  }
+
+  endpoint "/conditional/string/expr" {
+    response {
+      status = {"a": "foo"}.a ? 204 : 400
+    }
+  }
+
+  endpoint "/conditional/number/expr" {
+    response {
+      status = {"a": 2}.a ? 204 : 400
     }
   }
 }
