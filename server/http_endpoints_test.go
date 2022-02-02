@@ -42,7 +42,7 @@ func TestBackend_BackendVariable(t *testing.T) {
 	req.Header.Set("User-Agent", "Couper")
 
 	hook.Reset()
-	_, err = client.Do(req)
+	res, err := client.Do(req)
 	helper.Must(err)
 
 	var check int
@@ -85,6 +85,10 @@ func TestBackend_BackendVariable(t *testing.T) {
 
 	if check != 4 {
 		t.Error("missing 4 backend logs")
+	}
+
+	if got := res.Header.Get("Test-Header"); got != "application/json" {
+		t.Errorf("Unexpected header given: %#v", got)
 	}
 }
 

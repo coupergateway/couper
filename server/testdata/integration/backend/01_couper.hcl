@@ -9,6 +9,10 @@ server {
           default-req = backend_request.headers.cookie
           default-ua  = backend_request.headers.user-agent
         }
+
+        set_response_headers = {
+          test-header = backend_response.headers.content-type
+        }
       }
     }
 
