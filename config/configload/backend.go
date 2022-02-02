@@ -37,7 +37,7 @@ var defaultBackend = hclbody.New(&hcl.BodyContent{
 	},
 })
 
-func prepareBackend(helper *Helper, attrName, attrValue string, block config.Inline) (hcl.Body, error) {
+func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inline) (hcl.Body, error) {
 	var reference string // backend definitions
 	var backendBody hcl.Body
 	var err error
@@ -141,7 +141,7 @@ func newOAuthBackend(helper *Helper, parent hcl.Body) (hcl.Body, error) {
 		return nil, diags
 	}
 
-	return prepareBackend(helper, "", "", conf)
+	return PrepareBackend(helper, "", "", conf)
 }
 
 func wrapOauth2Backend(content hcl.Body) hcl.Body {

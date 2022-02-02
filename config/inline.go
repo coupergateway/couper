@@ -14,7 +14,7 @@ type BackendReference interface {
 	Reference() string
 }
 
-type PrepareBackendFunc func(string, string, Inline) (hcl.Body, error)
+type PrepareBackendFunc func(attr string, val string, body Inline) (hcl.Body, error)
 
 type BackendInitialization interface {
 	Prepare(backendFunc PrepareBackendFunc) error

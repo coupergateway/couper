@@ -99,7 +99,7 @@ func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) err
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			proxyConfig.Backend, err = prepareBackend(helper, backend, proxyConfig.BackendName, proxyConfig)
+			proxyConfig.Backend, err = PrepareBackend(helper, backend, proxyConfig.BackendName, proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -135,7 +135,7 @@ func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) err
 
 			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
 
-			reqConfig.Backend, err = prepareBackend(helper, backend, reqConfig.BackendName, reqConfig)
+			reqConfig.Backend, err = PrepareBackend(helper, backend, reqConfig.BackendName, reqConfig)
 			if err != nil {
 				return err
 			}
