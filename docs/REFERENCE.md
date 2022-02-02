@@ -685,14 +685,12 @@ To access the HTTP method of the `default` request use `backend_requests.default
 
 ### `backend_response`
 
-`backend_response` is a list of responses variables like `backend_responses.<label>`
-(see [backend_responses](#backend_responses) below). The `backend_response` is only
-available in a [Backend Block](#backend-block) and represents the response of this
-block.
+`backend_response` represents the current backend response.  It is only
+available in a [Backend Block](#backend-block), and has the same attributes as a backend response in `backend_responses.<label>` (see [backend_responses](#backend_responses) below).
 
 ### `backend_responses`
 
-`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
+`backend_responses` is an object with all backend responses and their attributes.
 Use the related label to access a specific response.
 [Request](#request-block) and [Proxy](#proxy-block) blocks without a label will be available as `default`.
 To access the HTTP status code of the `default` response use `backend_responses.default.status` .
