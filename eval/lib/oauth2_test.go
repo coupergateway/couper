@@ -135,7 +135,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			ctx := eval.NewContext(nil, &config.Defaults{}).
 				WithOidcConfig(oidc.Configs{conf.Name: conf}).
 				WithClientRequest(req).
-				WithBeresps(res)
+				WithBeresp(res)
 
 			hclCtx := ctx.HCLContext()
 			val, err := hclCtx.Functions[lib.FnOAuthAuthorizationUrl].Call([]cty.Value{cty.StringVal("auth-ref")})

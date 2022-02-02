@@ -166,7 +166,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	return ctx
 }
 
-func (c *Context) WithBeresps(beresp *http.Response) *Context {
+func (c *Context) WithBeresp(beresp *http.Response) *Context {
 	ctx := &Context{
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
