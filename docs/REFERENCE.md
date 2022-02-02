@@ -653,14 +653,12 @@ and for OIDC additionally:
 
 ### `backend_request`
 
-`backend_request` is a list of request variables like `backend_requests.<label>`
-(see [backend_requests](#backend_requests) below). The `backend_request` is only
-available in a [Backend Block](#backend-block) and represents the request of this
-block.
+`backend_request` holds information about the current backend request. It is only
+available in a [Backend Block](#backend-block), and has the same attributes as a backend request in `backend_requests.<label>` (see [backend_requests](#backend_requests) below).
 
 ### `backend_requests`
 
-`backend_requests.<label>` is a list of all backend requests, and their variables.
+`backend_requests` is an object with all backend requests and their attributes.
 To access a specific request use the related label. [Request](#request-block) and
 [Proxy](#proxy-block) blocks without a label will be available as `default`.
 To access the HTTP method of the `default` request use `backend_requests.default.method` .
