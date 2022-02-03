@@ -69,16 +69,16 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 			rootName := traversal.RootName()
 
 			if len(traversal) == 1 {
-				if rootName == ClientRequest {
+				if rootName == ClientRequest || rootName == BackendRequest {
 					result |= BufferRequest
 				}
-				if rootName == BackendResponses {
+				if rootName == BackendResponses || rootName == BackendResponse {
 					result |= BufferResponse
 				}
 				continue
 			}
 
-			if rootName != ClientRequest && rootName != BackendResponses {
+			if rootName != ClientRequest && rootName != BackendRequest && rootName != BackendResponses && rootName != BackendResponse {
 				continue
 			}
 
@@ -89,34 +89,47 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 				case Body:
 					switch rootName {
 					case ClientRequest:
+						fallthrough
+					case BackendRequest:
 						result |= BufferRequest
+
+					case BackendResponse:
+						fallthrough
 					case BackendResponses:
 						result |= BufferResponse
 					}
 				case CTX: // e.g. jwt token (value) could be read from any (body) source
-					if rootName == ClientRequest {
+					if rootName == ClientRequest || rootName == BackendRequest {
 						result |= BufferRequest
 					}
 				case FormBody:
-					if rootName == ClientRequest {
+					if rootName == ClientRequest || rootName == BackendRequest {
 						result |= BufferRequest
 					}
 				case JsonBody:
 					switch rootName {
 					case ClientRequest:
+						fallthrough
+					case BackendRequest:
 						result |= BufferRequest
+
+					case BackendResponse:
+						fallthrough
 					case BackendResponses:
 						result |= BufferResponse
 					}
 				default:
 					// e.g. backend_responses.default
-					if rootName == BackendResponses && len(traversal) == 2 {
-						result |= BufferResponse
+					if len(traversal) == 2 {
+						if rootName == BackendResponse || rootName == BackendResponses {
+							result |= BufferResponse
+						}
 					}
 				}
 			}
 		}
 	}
+
 	return result
 }
 
