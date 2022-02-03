@@ -137,7 +137,7 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 		beConf.OAuth2.Retries = &one
 	}
 
-	oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, authBackend)
+	oauth2Client, err := oauth2.NewClientCredentialsClient(beConf.OAuth2, authBackend)
 	if err != nil {
 		return nil, body, err
 	}

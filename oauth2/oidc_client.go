@@ -16,27 +16,27 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
-// OidcClient represents an OIDC client using the authorization code flow.
+// OidcClient represents an open-id-connect client using the authorization code flow.
 type OidcClient struct {
-	*OAuth2AcClient
+	*AuthCodeClient
 	config    *oidc.Config
 	issLock   sync.RWMutex
 	issuer    string
 	jwtParser *jwt.Parser
 }
 
-// NewOidc creates a new OIDC client.
-func NewOidc(oidcConfig *oidc.Config) (*OidcClient, error) {
-	acClient, err := NewOAuth2AC(oidcConfig, oidcConfig, oidcConfig.AuthorizationBackend())
+// NewOidcClient creates a new OIDC client.
+func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
+	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, oidcConfig.AuthorizationBackend())
 	if err != nil {
 		return nil, err
 	}
 
 	o := &OidcClient{
-		OAuth2AcClient: acClient,
+		AuthCodeClient: acClient,
 		config:         oidcConfig,
 	}
-	o.AcClient = o
+	o.AuthCodeFlowClient = o
 	return o, nil
 }
 

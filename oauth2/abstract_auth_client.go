@@ -17,25 +17,18 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-// AcClient represents an OAuth2 client using the authorization code flow.
-type AcClient interface {
-	GetName() string
-	GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
-	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
-}
-
-type AbstractAcClient struct {
-	AcClient
-	Client
+type AbstractAuthCodeClient struct {
+	AuthCodeFlowClient
+	*Client
 	name string
 }
 
-func (a AbstractAcClient) GetName() string {
+func (a AbstractAuthCodeClient) GetName() string {
 	return a.name
 }
 
-// GetTokenResponse retrieves the response from the token endpoint
-func (a AbstractAcClient) GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
+// GetTokenResponse retrieves the response from the token endpoint.
+func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
@@ -107,54 +100,6 @@ func (a AbstractAcClient) GetTokenResponse(req *http.Request, callbackURL *url.U
 	}
 
 	return tokenResponseData, nil
-}
-
-// OAuth2AcClient represents an OAuth2 client using the (plain) authorization code flow.
-type OAuth2AcClient struct {
-	*AbstractAcClient
-}
-
-// NewOAuth2AC creates a new OAuth2 Authorization Code client.
-func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2AcClient, error) {
-	grantType := acClientConf.GetGrantType()
-	if grantType != "authorization_code" {
-		return nil, fmt.Errorf("grant_type %s not supported", grantType)
-	}
-
-	if teAuthMethod := acClientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
-		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
-			return nil, fmt.Errorf("token_endpoint_auth_method %s not supported", *teAuthMethod)
-		}
-	}
-
-	switch acClientConf.(type) {
-	case *config.OAuth2AC:
-		verifierMethod, err := acClientConf.GetVerifierMethod("")
-		if err != nil {
-			return nil, err
-		}
-
-		if verifierMethod != config.CcmS256 && verifierMethod != "nonce" && verifierMethod != "state" {
-			return nil, fmt.Errorf("verifier_method %s not supported", verifierMethod)
-		}
-	default:
-		// skip this for oidc configurations due to possible startup errors
-	}
-
-	client := Client{
-		Backend:      backend,
-		asConfig:     oauth2AsConf,
-		clientConfig: acClientConf,
-		grantType:    grantType,
-	}
-	o := &OAuth2AcClient{&AbstractAcClient{Client: client, name: acClientConf.GetName()}}
-	o.AcClient = o
-	return o, nil
-}
-
-// validateTokenResponseData validates the token response data (no-op)
-func (o *OAuth2AcClient) validateTokenResponseData(_ context.Context, _ map[string]interface{}, _, _, _ string) error {
-	return nil
 }
 
 func Base64urlSha256(value string) string {
