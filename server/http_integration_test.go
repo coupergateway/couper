@@ -3428,6 +3428,8 @@ func Test_Scope(t *testing.T) {
 		{"by role: operation not permitted", http.MethodDelete, "/role/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
 		{"by role: additional scope required by *: insufficient scope", http.MethodGet, "/role/bar", true, http.StatusForbidden, ``, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
 		{"by role: no additional scope required: sufficient scope", http.MethodDelete, "/role/bar", true, http.StatusNoContent, `["a","b"]`, "", ""},
+		{"by scope/role, mapped from scope", http.MethodGet, "/scope_and_role/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
+		{"by scope/role, mapped scope mapped from role", http.MethodGet, "/scope_and_role/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
 	} {
 		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(subT *testing.T) {
 			helper := test.New(subT)
