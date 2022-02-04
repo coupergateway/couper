@@ -20,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -66,6 +65,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	backend := &Backend{
 		context:          ctx,
 		logEntry:         logEntry,
+		name:             tc.BackendName,
 		openAPIValidator: openAPI,
 		options:          opts,
 		transportConf:    tc,
@@ -76,17 +76,15 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{b.context})
+	ctxBody, _ := req.Context().Value(request.BackendContext).(hcl.Body)
+	if ctxBody == nil {
+		ctxBody = b.context
+	}
+
+	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{ctxBody})
 	*req = *req.WithContext(ctx)
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
-
-	ctxBody, _ := req.Context().Value(request.BackendContext).(hcl.Body)
-	if ctxBody != nil {
-		ctxBody = body.MergeBodies(b.context, ctxBody)
-	} else {
-		ctxBody = b.context
-	}
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
@@ -94,12 +92,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	tc, err := b.evalTransport(hclCtx, req)
+	tc, err := b.evalTransport(hclCtx, ctxBody, req)
 	if err != nil {
 		return nil, err
 	}
 
-	deadlineErr := b.withTimeout(req)
+	deadlineErr := b.withTimeout(req, tc)
 
 	req.URL.Host = tc.Origin
 	req.URL.Scheme = tc.Scheme
@@ -171,7 +169,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
 	evalCtx = evalCtx.WithBeresp(beresp, readBody)
-	err = eval.ApplyResponseContext(evalCtx.HCLContext(), b.context, beresp)
+	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
 		varSync.Set(beresp)
@@ -281,8 +279,8 @@ func (b *Backend) getAttribute(req *http.Request, name string) string {
 	return seetie.ValueToString(attrVal)
 }
 
-func (b *Backend) withTimeout(req *http.Request) <-chan error {
-	timeout := b.transportConf.Timeout
+func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
+	timeout := conf.Timeout
 	ws := false
 	if to, ok := req.Context().Value(request.WebsocketsTimeout).(time.Duration); ok {
 		timeout = to
@@ -314,15 +312,16 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*Config, error) {
+func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *http.Request) (*Config, error) {
 	log := b.upstreamLog.LogEntry()
 
-	bodyContent, _, diags := b.context.PartialContent(config.BackendInlineSchema)
+	bodyContent, _, diags := params.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
 	var origin, hostname, proxyURL, backendURL string
+	var connectTimeout, ttfbTimeout, timeout string
 	type pair struct {
 		attrName string
 		target   *string
@@ -331,7 +330,11 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 		{"origin", &origin},
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
-		{"backend_url", &backendURL}, // prepared by configload
+		{"_backend_url", &backendURL}, // prepared by config-load
+		// dynamic timings
+		{"connect_timeout", &connectTimeout},
+		{"ttfb_timeout", &ttfbTimeout},
+		{"timeout", &timeout},
 	} {
 		if v, err := eval.ValueFromAttribute(httpCtx, bodyContent, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
@@ -365,8 +368,8 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 				errctx = "token_endpoint"
 			}
 			return nil, errors.Configuration.Label(b.name).Kind(errctx).
-				Messagef("backend: the host '%s' must be equal to 'backend.origin': %q",
-					urlAttr.Host, origin)
+				Messagef("backend: the host '%s' must be equal to 'backend.origin' host: '%s'",
+					urlAttr.Host, originURL.Host)
 		}
 
 		originURL.Host = urlAttr.Host
@@ -391,7 +394,9 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 			Messagef("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
 	}
 
-	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil
+	return b.transportConf.
+		WithTarget(originURL.Scheme, originURL.Host, hostname, proxyURL).
+		WithTimings(connectTimeout, ttfbTimeout, timeout), nil
 }
 
 // setUserAgent sets an empty one if none is present or empty

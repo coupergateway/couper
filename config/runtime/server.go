@@ -738,16 +738,6 @@ func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
 	return portsHosts, nil
 }
 
-// parseDuration sets the target value if the given duration string is not empty.
-func parseDuration(src string, target *time.Duration) error {
-	d, err := time.ParseDuration(src)
-	if src != "" && err != nil {
-		return err
-	}
-	*target = d
-	return nil
-}
-
 func parseBodyLimit(limit string) (int64, error) {
 	const defaultReqBodyLimit = "64MiB"
 	requestBodyLimit := defaultReqBodyLimit

@@ -16,7 +16,6 @@ var (
 
 // Backend represents the <Backend> object.
 type Backend struct {
-	ConnectTimeout         string   `hcl:"connect_timeout,optional"`
 	DisableCertValidation  bool     `hcl:"disable_certificate_validation,optional"`
 	DisableConnectionReuse bool     `hcl:"disable_connection_reuse,optional"`
 	HTTP2                  bool     `hcl:"http2,optional"`
@@ -24,8 +23,6 @@ type Backend struct {
 	Name                   string   `hcl:"name,label"`
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
 	Remain                 hcl.Body `hcl:",remain"`
-	TTFBTimeout            string   `hcl:"ttfb_timeout,optional"`
-	Timeout                string   `hcl:"timeout,optional"`
 
 	// explicit configuration on load
 	OAuth2 *OAuth2ReqAuth
@@ -46,12 +43,15 @@ func (b Backend) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
 		BasicAuth      string                    `hcl:"basic_auth,optional"`
+		ConnectTimeout string                    `hcl:"connect_timeout,optional"`
 		Hostname       string                    `hcl:"hostname,optional"`
 		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 		Origin         string                    `hcl:"origin,optional"`
 		PathPrefix     string                    `hcl:"path_prefix,optional"`
 		ProxyURL       string                    `hcl:"proxy,optional"`
 		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
+		TTFBTimeout    string                    `hcl:"ttfb_timeout,optional"`
+		Timeout        string                    `hcl:"timeout,optional"`
 
 		// set by backend preparation
 		BackendURL string `hcl:"backend_url,optional"`

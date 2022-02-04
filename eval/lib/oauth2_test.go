@@ -129,7 +129,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 			tc := &transport.Config{}
 
 			backend := transport.NewBackend(backendConfig,
-				tc.With("http", "couper.io", "couper.io", ""),
+				tc.WithTarget("http", "couper.io", "couper.io", ""),
 				&transport.BackendOptions{}, logger)
 
 			// TODO: call prepare iface instead

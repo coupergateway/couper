@@ -127,7 +127,7 @@ func Get(conf *Config, log *logrus.Entry) *http.Transport {
 	return nil
 }
 
-func (c *Config) With(scheme, origin, hostname, proxyURL string) *Config {
+func (c *Config) WithTarget(scheme, origin, hostname, proxyURL string) *Config {
 	const defaultScheme = "http"
 	conf := *c
 	if scheme != "" {
@@ -158,6 +158,23 @@ func (c *Config) With(scheme, origin, hostname, proxyURL string) *Config {
 	}
 
 	return &conf
+}
+
+func (c *Config) WithTimings(connect, ttfb, timeout string) *Config {
+	conf := *c
+	parseDuration(connect, &conf.ConnectTimeout)
+	parseDuration(ttfb, &conf.TTFBTimeout)
+	parseDuration(timeout, &conf.Timeout)
+	return &conf
+}
+
+// parseDuration sets the target value if the given duration string is not empty.
+func parseDuration(src string, target *time.Duration) {
+	d, err := time.ParseDuration(src)
+	if src != "" && err != nil {
+		return
+	}
+	*target = d
 }
 
 func (c *Config) hash() string {

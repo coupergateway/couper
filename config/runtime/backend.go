@@ -76,18 +76,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		MaxConnections:         beConf.MaxConnections,
 	}
 
-	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
-		return nil, nil, err
-	}
-
-	if err := parseDuration(beConf.TTFBTimeout, &tc.TTFBTimeout); err != nil {
-		return nil, nil, err
-	}
-
-	if err := parseDuration(beConf.Timeout, &tc.Timeout); err != nil {
-		return nil, nil, err
-	}
-
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
 		fmt.Printf("RUNTIME DONE '%#v' \n", err)
