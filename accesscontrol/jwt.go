@@ -56,6 +56,7 @@ type JWT struct {
 	rolesClaim            string
 	rolesMap              map[string][]string
 	scopeClaim            string
+	scopeMap              map[string][]string
 	jwks                  *jwk.JWKS
 }
 
@@ -68,6 +69,7 @@ type JWTOptions struct {
 	RolesClaim            string
 	RolesMap              map[string][]string
 	ScopeClaim            string
+	ScopeMap              map[string][]string
 	Source                JWTSource
 	Key                   []byte
 	JWKS                  *jwk.JWKS
@@ -172,6 +174,7 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 		rolesClaim:            options.RolesClaim,
 		rolesMap:              options.RolesMap,
 		scopeClaim:            options.ScopeClaim,
+		scopeMap:              options.ScopeMap,
 		source:                options.Source,
 	}
 	return jwtAC, nil
@@ -352,6 +355,8 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}, log *logrus.Ent
 
 	scopeValues = j.addScopeValueFromRoles(tokenClaims, scopeValues, log)
 
+	scopeValues = j.addMappedScopeValues(scopeValues, scopeValues)
+
 	return scopeValues
 }
 
@@ -380,7 +385,7 @@ func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeVa
 			vals = append(vals, s)
 		}
 		for _, val := range vals {
-			scopeValues = addScopeValue(scopeValues, val)
+			scopeValues, _ = addScopeValue(scopeValues, val)
 		}
 	} else {
 		scopesString, ok := scopesFromClaim.(string)
@@ -389,7 +394,7 @@ func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeVa
 			return scopeValues
 		}
 		for _, s := range strings.Split(scopesString, " ") {
-			scopeValues = addScopeValue(scopeValues, s)
+			scopeValues, _ = addScopeValue(scopeValues, s)
 		}
 	}
 	return scopeValues
@@ -434,30 +439,58 @@ func (j *JWT) addScopeValueFromRoles(tokenClaims map[string]interface{}, scopeVa
 	for _, r := range roleValues {
 		if scopes, exist := j.rolesMap[r]; exist {
 			for _, s := range scopes {
-				scopeValues = addScopeValue(scopeValues, s)
+				scopeValues, _ = addScopeValue(scopeValues, s)
 			}
 		}
 	}
 
 	if scopes, exist := j.rolesMap["*"]; exist {
 		for _, s := range scopes {
-			scopeValues = addScopeValue(scopeValues, s)
+			scopeValues, _ = addScopeValue(scopeValues, s)
 		}
 	}
 	return scopeValues
 }
 
-func addScopeValue(scopeValues []string, scope string) []string {
+func (j *JWT) addMappedScopeValues(source, target []string) []string {
+	if j.scopeMap == nil {
+		return target
+	}
+
+	for _, val := range source {
+		mappedValues, exist := j.scopeMap[val]
+		if !exist {
+			// no mapping for value
+			continue
+		}
+
+		var l []string
+		for _, mv := range mappedValues {
+			var added bool
+			// add value from mapping?
+			target, added = addScopeValue(target, mv)
+			if !added {
+				continue
+			}
+			l = append(l, mv)
+		}
+		// recursion: call only with values not already in target
+		target = j.addMappedScopeValues(l, target)
+	}
+	return target
+}
+
+func addScopeValue(scopeValues []string, scope string) ([]string, bool) {
 	scope = strings.TrimSpace(scope)
 	if scope == "" {
-		return scopeValues
+		return scopeValues, false
 	}
 	for _, s := range scopeValues {
 		if s == scope {
-			return scopeValues
+			return scopeValues, false
 		}
 	}
-	return append(scopeValues, scope)
+	return append(scopeValues, scope), true
 }
 
 func getBearer(val string) (string, error) {
