@@ -10,6 +10,9 @@ server "scoped jwt" {
       }
       response {
         status = 204
+        headers = {
+          x-granted-scope = json_encode(request.context.scopes)
+        }
       }
     }
     endpoint "/bar" {
@@ -19,6 +22,9 @@ server "scoped jwt" {
       }
       response {
         status = 204
+        headers = {
+          x-granted-scope = json_encode(request.context.scopes)
+        }
       }
     }
   }
@@ -33,6 +39,9 @@ server "scoped jwt" {
       }
       response {
         status = 204
+        headers = {
+          x-granted-scope = json_encode(request.context.scopes)
+        }
       }
     }
     endpoint "/bar" {
@@ -42,6 +51,9 @@ server "scoped jwt" {
       }
       response {
         status = 204
+        headers = {
+          x-granted-scope = json_encode(request.context.scopes)
+        }
       }
     }
   }
