@@ -376,6 +376,7 @@ Since responses from endpoints protected by JWT access controls are not publicly
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["roles"]`|
 | `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
+| `beta_scope_map` |map|-| mapping of scope values to additional scope values | Maps values from `beta_scope_claim` and those created from `beta_roles_map`. The map is called recursively. |`beta_scope_map = { sc1 = ["sc3", "sc4"], sc2 = ["sc5"] }`|
 | `beta_roles_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_roles_claim = "roles"`|
 | `beta_roles_map` |map|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_roles_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
