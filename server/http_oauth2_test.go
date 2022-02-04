@@ -538,9 +538,9 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "as"},
-		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_56_13"},
+		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_59_29_token_backend"},
 		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "as"},
-		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_85_13"},
+		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_88_21_configuration_backend"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
@@ -559,6 +559,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 			if res.StatusCode != http.StatusOK {
 				subT.Errorf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
 			}
+			defer res.Body.Close()
 
 			tokenResBytes, err := io.ReadAll(res.Body)
 			h.Must(err)
@@ -635,7 +636,7 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"referenced backend", "/rs1", "as"},
-		{"inline backend", "/rs2", "anonymous_115_15"},
+		{"inline backend", "/rs2", "anonymous_119_13"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)

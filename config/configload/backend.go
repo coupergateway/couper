@@ -59,22 +59,32 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 			r := backendBody.MissingItemRange()
 			return nil, newDiagErr(&r, "backend reference is not defined: "+reference)
 		}
-		if backendBody == nil { // definitions case
-			backendBody = refBody
-		} else {
-			backendBody = hclbody.MergeBodies(refBody, backendBody)
+
+		if backendBody == nil {
+			if attrName == "_init" { // initial definitions case
+				backendBody = hclbody.MergeBodies(defaultBackend, refBody)
+			} else { // plain reference without params
+				return refBody, nil
+			}
+		} else { // with backend params - do not repeat referenced hcl stack, just the name
+			// TODO: origin equality check here?
+			backendBody = hclbody.MergeBodies(
+				hclbody.New(hclbody.NewContentWithAttrName("name", reference)),
+				backendBody)
 		}
 	} else {
 		labelBody := block.HCLBody()
 		var labelSuffix string
 		// anonymous backend based on a single attr, take the attr range instead
-		if attrName != "" && backendBody == nil {
+		if attrName != "" && reference == "" {
 			labelBody, labelSuffix = refineAnonLabel(attrName, labelBody)
 		}
 
 		anonLabel := newAnonLabel(block.HCLBody()) + labelSuffix
 		if backendBody == nil {
 			backendBody = defaultBackend
+		} else {
+			backendBody = hclbody.MergeBodies(defaultBackend, backendBody)
 		}
 
 		backendBody, err = NewNamedBody(anonLabel, backendBody)
@@ -86,7 +96,7 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 	// configure backend with known endpoint url
 	if attrValue != "" {
 		backendBody = hclbody.MergeBodies(backendBody,
-			hclbody.New(hclbody.NewContentWithAttrName("backend_url", attrValue)))
+			hclbody.New(hclbody.NewContentWithAttrName("_backend_url", attrValue)))
 	}
 
 	// watch out for oauth blocks and nested backend definitions
@@ -141,7 +151,7 @@ func newOAuthBackend(helper *Helper, parent hcl.Body) (hcl.Body, error) {
 		return nil, diags
 	}
 
-	return PrepareBackend(helper, "", "", conf)
+	return PrepareBackend(helper, "", conf.TokenEndpoint, conf)
 }
 
 func wrapOauth2Backend(content hcl.Body) hcl.Body {

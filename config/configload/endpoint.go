@@ -99,7 +99,7 @@ func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) err
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			proxyConfig.Backend, err = PrepareBackend(helper, backend, proxyConfig.BackendName, proxyConfig)
+			proxyConfig.Backend, err = PrepareBackend(helper, "", "", proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -135,7 +135,7 @@ func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) err
 
 			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
 
-			reqConfig.Backend, err = PrepareBackend(helper, backend, reqConfig.BackendName, reqConfig)
+			reqConfig.Backend, err = PrepareBackend(helper, "", "", reqConfig)
 			if err != nil {
 				return err
 			}
@@ -155,12 +155,12 @@ func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) err
 		for _, p := range endpoint.Proxies {
 			names[p.Name] = p.Remain
 
-			if err := validLabel(p.Name, &subject); err != nil {
+			if err = validLabel(p.Name, &subject); err != nil {
 				return err
 			}
 
 			if proxyRequestLabelRequired {
-				if err := uniqueLabelName(unique, p.Name, &subject); err != nil {
+				if err = uniqueLabelName(unique, p.Name, &subject); err != nil {
 					return err
 				}
 			}

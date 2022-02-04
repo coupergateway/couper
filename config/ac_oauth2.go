@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	hclbody "github.com/avenga/couper/config/body"
 )
 
 var (
@@ -29,6 +31,10 @@ type OAuth2AC struct {
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	VerifierMethod          string   `hcl:"verifier_method"`
 
+	// configuration related backends
+	AuthorizationBackendName string `hcl:"authorization_backend,optional"`
+	TokenBackendName         string `hcl:"token_backend,optional"`
+
 	// internally used
 	Backends map[string]hcl.Body
 }
@@ -37,7 +43,21 @@ func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if oa.Backends == nil {
 		oa.Backends = make(map[string]hcl.Body)
 	}
-	oa.Backends["backend"], err = backendFunc("backend", oa.TokenEndpoint, oa)
+
+	fields := BackendAttrFields(oa)
+	for _, field := range fields {
+		fieldValue := AttrValueFromTagField(field, oa)
+		oa.Backends[field], err = backendFunc(field, fieldValue, oa)
+		if err != nil {
+			return err
+		}
+	}
+
+	// map endpoint urls
+	oa.Backends["authorization_backend"] = hclbody.MergeBodies(oa.Backends["authorization_backend"],
+		hclbody.New(hclbody.NewContentWithAttrName("_backend_url", oa.AuthorizationEndpoint)))
+	oa.Backends["token_backend"] = hclbody.MergeBodies(oa.Backends["token_backend"],
+		hclbody.New(hclbody.NewContentWithAttrName("_backend_url", oa.TokenEndpoint)))
 
 	return err
 }

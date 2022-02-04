@@ -30,17 +30,10 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	// The store is newly created per run.
 	backend := store.Get(prefix + name)
 	if backend != nil {
-		// TODO: check for merge bodies only?
 		return transport.NewBackendContext(body, backend.(http.RoundTripper)), body, nil
 	}
 
-	ctxBody := body
-	// prevent setting a context from the first anonymous backend, initialize with an empty body instead
-	// if name == "default" {
-	// 	ctxBody = hcl.EmptyBody()
-	// }
-
-	backend, modifiedBody, err := newBackend(ctx, ctxBody, log, settings.NoProxyFromEnv, settings.Certificate, store)
+	backend, modifiedBody, err := newBackend(ctx, body, log, settings.NoProxyFromEnv, settings.Certificate, store)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -72,7 +72,7 @@ func (h *Helper) addBackend(block *hcl.Block) error {
 
 func (h *Helper) configureDefinedBackends() error {
 	for name, b := range h.defsBackends {
-		be, err := PrepareBackend(h, backend, "", &config.Backend{Name: name, Remain: b})
+		be, err := PrepareBackend(h, "_init", "", &config.Backend{Name: name, Remain: b})
 		if err != nil {
 			return err
 		}
@@ -80,6 +80,8 @@ func (h *Helper) configureDefinedBackends() error {
 			h.config.Definitions.Backend,
 			&config.Backend{Remain: be, Name: name},
 		)
+
+		h.defsBackends[name] = be
 	}
 	return nil
 }

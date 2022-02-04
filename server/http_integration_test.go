@@ -1816,7 +1816,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			jsonResult.Origin = res.Header.Get("X-Origin")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				subT.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}

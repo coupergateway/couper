@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
@@ -523,7 +522,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
 			var backendBody hcl.Body
 			if oauth2Conf.Backends != nil {
-				backendBody, _ = oauth2Conf.Backends["backend"]
+				backendBody, _ = oauth2Conf.Backends["token_backend"]
 			}
 			backend, _, err := NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
 			if err != nil {
