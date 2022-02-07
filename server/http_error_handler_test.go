@@ -1,16 +1,13 @@
 package server_test
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
 
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/eval"
@@ -115,18 +112,12 @@ func TestAccessControl_ErrorHandler_BasicAuth_Wildcard(t *testing.T) {
 }
 
 func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
-	helper := test.New(t)
-	couperConfig, err := configload.LoadFiles("testdata/integration/error_handler/03_couper.hcl", "")
-	helper.Must(err)
+	_, err := configload.LoadFiles("testdata/integration/error_handler/03_couper.hcl", "")
 
-	log, _ := logrustest.NewNullLogger()
-	ctx := context.TODO()
+	expectedMsg := "03_couper.hcl:24,12-12: Missing required argument; The argument \"grant_type\" is required, but no definition was found."
 
-	expectedMsg := "03_couper.hcl:24,5-11: Missing required argument; The argument \"grant_type\" is required, but was not set."
-
-	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	if err == nil {
-		t.Error("logErr should not be nil")
+		t.Error("config error should not be nil")
 	} else if !strings.HasSuffix(err.Error(), expectedMsg) {
 		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, err.Error())
 	}
