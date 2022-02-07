@@ -4469,6 +4469,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/.well-known/openid-configuration" {
+			rw.Header().Set("Content-Type", "Application/json")
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
@@ -4478,7 +4479,11 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
-
+			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
@@ -4551,6 +4556,11 @@ func TestOIDCNonceFunctions(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
+			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
@@ -4615,9 +4625,14 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
-
+			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
 			return
 		}
+
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
 	defer oauthOrigin.Close()
@@ -4680,7 +4695,11 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
-
+			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
