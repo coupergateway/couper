@@ -24,7 +24,8 @@ type OAuth2ReqAuth struct {
 	next         http.RoundTripper
 }
 
-// NewOAuth2ReqAuth creates a new <http.RoundTripper> object.
+// NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
+// to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	oauth2Client *oauth2.ClientCredentialsClient, next http.RoundTripper) (http.RoundTripper, error) {
 	return &OAuth2ReqAuth{

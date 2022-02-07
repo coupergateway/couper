@@ -594,7 +594,7 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	// authorization server creates JWT access token with sub claim from X-Sub request header
+	// authorization server creates JWT access token with sub-claim from X-Sub request header
 	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		sub := req.Header.Get("X-Sub")
 		if req.URL.Path == "/token" {

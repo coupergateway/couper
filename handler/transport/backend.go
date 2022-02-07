@@ -77,7 +77,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctxBody, _ := req.Context().Value(request.BackendContext).(hcl.Body)
-	if ctxBody == nil {
+	if ctxBody == nil || isTokenRequest(req) {
 		ctxBody = b.context
 	}
 
@@ -429,6 +429,13 @@ func setGzipReader(beresp *http.Response) error {
 	beresp.Header.Del("Content-Length")
 	beresp.Body = eval.NewReadCloser(src, beresp.Body)
 	return nil
+}
+
+// isTokenRequest determines a specific type of backend requests which may be initialized
+// with a backend-context wrapper and this would lead to a wrong backend context for this kind of requests.
+func isTokenRequest(req *http.Request) bool {
+	v, _ := req.Context().Value(request.TokenRequest).(string)
+	return v == "oauth2"
 }
 
 // RemoveConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.
