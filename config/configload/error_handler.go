@@ -111,12 +111,12 @@ func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	var allKinds []string
 	for _, kinds := range block.Labels {
 		all := strings.Split(kinds, " ")
-		for _, a := range all {
+		for i, a := range all {
 			if a == "" {
 				err := hcl.Diagnostic{
 					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("invalid error_handler label format: %v", block.Labels),
-					Subject:  &block.DefRange,
+					Summary:  "empty error_handler label",
+					Subject:  &block.LabelRanges[i],
 				}
 				return nil, errors.Configuration.Message(err.Error())
 			}
