@@ -70,7 +70,7 @@ func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, erro
 	}
 
 	for _, block := range content.Blocks.OfType(errorHandler) {
-		kinds, err := newKindsFromLabels(block.Labels)
+		kinds, err := newKindsFromLabels(block)
 		if err != nil {
 			return nil, err
 		}
@@ -107,13 +107,18 @@ func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, erro
 }
 
 // newKindsFromLabels reads two possible kind formats and returns them per slice entry.
-func newKindsFromLabels(labels []string) ([]string, error) {
+func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	var allKinds []string
-	for _, kinds := range labels {
+	for _, kinds := range block.Labels {
 		all := strings.Split(kinds, " ")
-		for _, a := range all {
+		for i, a := range all {
 			if a == "" {
-				return nil, errors.Configuration.Messagef("invalid format: %v", labels)
+				err := hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "empty error_handler label",
+					Subject:  &block.LabelRanges[i],
+				}
+				return nil, errors.Configuration.Message(err.Error())
 			}
 		}
 		allKinds = append(allKinds, all...)
