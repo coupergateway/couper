@@ -73,9 +73,17 @@ func verifyResponseBodyAttrs(b hcl.Body) error {
 	return nil
 }
 
-var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections", "openapi"}
+var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections"}
+var openApiBlockSchema = &hcl.BodySchema{
+	Blocks: []hcl.BlockHeaderSchema{
+		{
+			Type: "openapi",
+		},
+	},
+}
 
 func invalidRefinement(body hcl.Body) error {
+	const message = "backend reference: refinement for %q is not permitted"
 	attrs, _ := body.JustAttributes()
 	if attrs == nil {
 		return nil
@@ -83,10 +91,15 @@ func invalidRefinement(body hcl.Body) error {
 	for _, name := range invalidAttributes {
 		attr, exist := attrs[name]
 		if exist {
-			return newDiagErr(&attr.NameRange,
-				fmt.Sprintf("backend reference: refinement for %q is not permitted", attr.Name))
+			return newDiagErr(&attr.NameRange, fmt.Sprintf(message, attr.Name))
 		}
 	}
+
+	content, _, _ := body.PartialContent(openApiBlockSchema)
+	if content != nil && len(content.Blocks.OfType("openapi")) > 0 {
+		return newDiagErr(&content.Blocks.OfType("openapi")[0].DefRange, fmt.Sprintf(message, "openapi"))
+	}
+
 	return nil
 }
 
