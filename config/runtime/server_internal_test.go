@@ -2,15 +2,13 @@ package runtime
 
 import (
 	"context"
-	"reflect"
-	"testing"
-	"time"
-
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/test"
+	"reflect"
+	"testing"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -248,24 +246,6 @@ func TestServer_GetCORS(t *testing.T) {
 
 	if got := whichCORS(parent, curr); got != nil {
 		t.Errorf("Unexpected CORS given: %#v", got)
-	}
-}
-
-func TestServer_ParseDuration(t *testing.T) {
-	var target time.Duration
-
-	if err := parseDuration("non-duration", &target); err == nil {
-		t.Error("Unexpected NIL-error given")
-	}
-	if target != 0 {
-		t.Errorf("Unexpected duration given: %#v", target)
-	}
-
-	if err := parseDuration("1ms", &target); err != nil {
-		t.Errorf("Unexpected error given: %#v", err)
-	}
-	if target != 1000000 {
-		t.Errorf("Unexpected duration given: %#v", target)
 	}
 }
 
