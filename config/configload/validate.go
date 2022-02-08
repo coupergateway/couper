@@ -73,6 +73,39 @@ func verifyResponseBodyAttrs(b hcl.Body) error {
 	return nil
 }
 
+var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections", "openapi"}
+
+func invalidRefinement(body hcl.Body) error {
+	attrs, _ := body.JustAttributes()
+	if attrs == nil {
+		return nil
+	}
+	for _, name := range invalidAttributes {
+		attr, exist := attrs[name]
+		if exist {
+			return newDiagErr(&attr.NameRange,
+				fmt.Sprintf("backend reference: refinement for %q is not permitted", attr.Name))
+		}
+	}
+	return nil
+}
+
+func invalidOriginRefinement(reference, params hcl.Body) error {
+	const origin = "origin"
+	refAttrs, _ := reference.JustAttributes()
+	paramAttrs, _ := params.JustAttributes()
+
+	refOrigin, _ := refAttrs[origin]
+	paramOrigin, _ := paramAttrs[origin]
+
+	if paramOrigin != nil && refOrigin != nil {
+		if paramOrigin.Expr != refOrigin.Expr {
+			return newDiagErr(&paramOrigin.Range, fmt.Sprintf("backend reference: origin must be equal"))
+		}
+	}
+	return nil
+}
+
 func validMethods(methods []string, hr *hcl.Range) error {
 	for _, method := range methods {
 		if !methodRegExp.MatchString(method) {
