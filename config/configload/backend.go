@@ -67,7 +67,12 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 				return refBody, nil
 			}
 		} else { // with backend params - do not repeat referenced hcl stack, just the name
-			// TODO: origin equality check here?
+			if err = invalidRefinement(backendBody); err != nil {
+				return nil, err
+			}
+			if err = invalidOriginRefinement(refBody, backendBody); err != nil {
+				return nil, err
+			}
 			backendBody = hclbody.MergeBodies(
 				hclbody.New(hclbody.NewContentWithAttrName("name", reference)),
 				backendBody)
@@ -208,4 +213,37 @@ func refineAnonLabel(attrName string, body hcl.Body) (labelBody hcl.Body, labelS
 		}
 	}
 	return labelBody, labelSuffix
+}
+
+var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections", "openapi"}
+
+func invalidRefinement(body hcl.Body) error {
+	attrs, _ := body.JustAttributes()
+	if attrs == nil {
+		return nil
+	}
+	for _, name := range invalidAttributes {
+		attr, exist := attrs[name]
+		if exist {
+			return newDiagErr(&attr.NameRange,
+				fmt.Sprintf("backend reference: refinement for %q is not permitted", attr.Name))
+		}
+	}
+	return nil
+}
+
+func invalidOriginRefinement(reference, params hcl.Body) error {
+	const origin = "origin"
+	refAttrs, _ := reference.JustAttributes()
+	paramAttrs, _ := params.JustAttributes()
+
+	refOrigin, _ := refAttrs[origin]
+	paramOrigin, _ := paramAttrs[origin]
+
+	if paramOrigin != nil && refOrigin != nil {
+		if paramOrigin.Expr != refOrigin.Expr {
+			return newDiagErr(&paramOrigin.Range, fmt.Sprintf("backend reference: origin must be equal"))
+		}
+	}
+	return nil
 }

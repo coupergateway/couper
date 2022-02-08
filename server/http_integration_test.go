@@ -2952,7 +2952,7 @@ func TestConfigBodyContent(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/config/01_couper.hcl", test.New(t))
+	shutdown, _ := newCouper("testdata/integration/config/01_couper.hcl", helper)
 	defer shutdown()
 
 	// default port changed in config

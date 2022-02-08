@@ -7,10 +7,7 @@ server "hcl" {
     }
     endpoint "/expired" {
       proxy {
-        backend "b" {
-          origin = "https://expired.badssl.com"
-          path = "/"
-        }
+        backend = "b"
       }
     }
   }
@@ -23,8 +20,9 @@ definitions {
   }
 
   backend "b" {
-    origin = "http://1.2.3.4"
     disable_certificate_validation = true
+    origin = "https://expired.badssl.com"
+    path = "/"
   }
 
   basic_auth "parse-only" {}
