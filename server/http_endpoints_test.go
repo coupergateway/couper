@@ -655,7 +655,7 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 			continue
 		}
 
-		path, _ := entry.Data["request"].(logging.Fields)["path"]
+		path := entry.Data["request"].(logging.Fields)["path"]
 
 		if strings.Contains(entry.Message, context.Canceled.Error()) {
 			ctxCanceledSeen = true
@@ -717,7 +717,7 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 			continue
 		}
 
-		path, _ := entry.Data["request"].(logging.Fields)["path"]
+		path := entry.Data["request"].(logging.Fields)["path"]
 
 		if entry.Message == "backend timeout error: deadline exceeded" {
 			ctxDeadlineSeen = true
