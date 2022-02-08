@@ -779,7 +779,6 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 		}
 
 		path := entry.Data["request"].(logging.Fields)["path"]
-
 		if entry.Message == "backend timeout error: anonymous_3_23: deadline exceeded" {
 			ctxDeadlineSeen = true
 			if path != "/" {
@@ -832,6 +831,14 @@ func TestEndpointErrorHandler(t *testing.T) {
 
 	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range hook.AllEntries() {
+			t.Logf("%#v", e.Data)
+		}
+	}()
 
 	type testcase struct {
 		name              string
