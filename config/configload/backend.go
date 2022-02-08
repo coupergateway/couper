@@ -37,20 +37,18 @@ var defaultBackend = hclbody.New(&hcl.BodyContent{
 	},
 })
 
+// PrepareBackend is a method which is mandatory to call for preparing any kind of backend.
+// This applies to defined, reference, anonymous and endpoint/url related configurations.
+// This method will be called recursively and is used as wrapped injector for
+// access-control backends via config.PrepareBackendFunc.
 func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inline) (hcl.Body, error) {
 	var reference string // backend definitions
 	var backendBody hcl.Body
 	var err error
 
-	reference, backendBody, err = getBackendBody(block)
+	reference, backendBody, err = getBackendReference(block)
 	if err != nil {
 		return nil, err
-	}
-
-	if beref, ok := block.(config.BackendReference); ok {
-		if beref.Reference() != "" {
-			reference = beref.Reference()
-		}
 	}
 
 	if reference != "" {
@@ -77,7 +75,7 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 				hclbody.New(hclbody.NewContentWithAttrName("name", reference)),
 				backendBody)
 		}
-	} else {
+	} else { // anonymous backend block
 		labelBody := block.HCLBody()
 		var labelSuffix string
 		// anonymous backend based on a single attr, take the attr range instead
@@ -86,13 +84,14 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 		}
 
 		anonLabel := newAnonLabel(block.HCLBody()) + labelSuffix
+		// ensure our default settings
 		if backendBody == nil {
 			backendBody = defaultBackend
 		} else {
 			backendBody = hclbody.MergeBodies(defaultBackend, backendBody)
 		}
 
-		backendBody, err = NewNamedBody(anonLabel, backendBody)
+		backendBody, err = newBodyWithName(anonLabel, backendBody)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +117,8 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 	return backendBody, nil
 }
 
-func getBackendBody(inline config.Inline) (string, hcl.Body, error) {
+// getBackendReference reads a referenced backend name and the refined backend block content if any.
+func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
 	var reference string
 
 	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
@@ -127,17 +127,24 @@ func getBackendBody(inline config.Inline) (string, hcl.Body, error) {
 	}
 
 	backends := content.Blocks.OfType(backend)
-	if len(backends) > 0 {
-		body := backends[0].Body
-		if len(backends[0].Labels) > 0 {
-			reference = backends[0].Labels[0]
+	if len(backends) == 0 {
+		if beref, ok := inline.(config.BackendReference); ok {
+			if beref.Reference() != "" {
+				reference = beref.Reference()
+			}
 		}
-		return reference, body, nil
+		return reference, nil, nil
 	}
-	return reference, nil, nil
+
+	body := backends[0].Body
+	if len(backends[0].Labels) > 0 {
+		reference = backends[0].Labels[0]
+	}
+	return reference, body, nil
 }
 
-// TODO: circular dep check
+// newOAuthBackend prepares a nested backend within a backend-oauth2 block.
+// TODO: Check a possible circular dependency with given parent backend(s).
 func newOAuthBackend(helper *Helper, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
@@ -182,7 +189,7 @@ func newBackendBlock(content hcl.Body) hcl.Body {
 	})
 }
 
-func NewNamedBody(nameValue string, config hcl.Body) (hcl.Body, error) {
+func newBodyWithName(nameValue string, config hcl.Body) (hcl.Body, error) {
 	if err := validLabel(nameValue, getRange(config)); err != nil {
 		return nil, err
 	}
