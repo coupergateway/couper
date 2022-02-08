@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -76,9 +77,22 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctxBody, _ := req.Context().Value(request.BackendContext).(hcl.Body)
-	if ctxBody == nil || isTokenRequest(req) {
+	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
+	if ctxBody == nil {
 		ctxBody = b.context
+	} else {
+		attrs, _ := b.context.JustAttributes()
+		// TODO: startup - perf
+		merged := []hcl.Body{b.context, ctxBody}
+		if o, exist := attrs["origin"]; exist {
+			// THIS origin always wins since config-load ensures a proper value.
+			// MAY be wrong if this backend is a nested one (oauth2) and the token request inherits the params context.
+			merged = append(merged, hclbody.New(hclbody.NewContentWithAttr(o)))
+		}
+		if o, exist := attrs["_backend_url"]; exist {
+			merged = append(merged, hclbody.New(hclbody.NewContentWithAttr(o)))
+		}
+		ctxBody = hclbody.MergeBodies(merged...)
 	}
 
 	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{ctxBody})
@@ -429,13 +443,6 @@ func setGzipReader(beresp *http.Response) error {
 	beresp.Header.Del("Content-Length")
 	beresp.Body = eval.NewReadCloser(src, beresp.Body)
 	return nil
-}
-
-// isTokenRequest determines a specific type of backend requests which may be initialized
-// with a backend-context wrapper and this would lead to a wrong backend context for this kind of requests.
-func isTokenRequest(req *http.Request) bool {
-	v, _ := req.Context().Value(request.TokenRequest).(string)
-	return v == "oauth2"
 }
 
 // RemoveConnectionHeaders removes hop-by-hop headers listed in the "Connection" header of h.

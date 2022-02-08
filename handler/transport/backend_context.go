@@ -23,5 +23,6 @@ func NewBackendContext(body hcl.Body, rt http.RoundTripper) http.RoundTripper {
 }
 
 func (b *BackendContext) RoundTrip(req *http.Request) (*http.Response, error) {
-	return b.rt.RoundTrip(req.WithContext(context.WithValue(req.Context(), request.BackendContext, b.body)))
+	ctx := context.WithValue(req.Context(), request.BackendParams, b.body)
+	return b.rt.RoundTrip(req.WithContext(ctx))
 }

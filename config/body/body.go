@@ -22,14 +22,16 @@ func New(content *hcl.BodyContent) hcl.Body {
 }
 
 func NewContentWithAttrName(name, value string) *hcl.BodyContent {
-	return &hcl.BodyContent{
-		Attributes: map[string]*hcl.Attribute{
-			name: {
-				Name: name,
-				Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(value)},
-			},
-		},
-	}
+	return NewContentWithAttr(&hcl.Attribute{
+		Name: name,
+		Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(value)},
+	})
+}
+
+func NewContentWithAttr(attr *hcl.Attribute) *hcl.BodyContent {
+	return &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		attr.Name: attr,
+	}}
 }
 
 func (e *Body) Content(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
