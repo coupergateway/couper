@@ -324,9 +324,9 @@ func TestBackend_director(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
-			backend := transport.NewBackend(hclContext, &transport.Config{
-				Timeout: time.Second,
-			}, nil, nullLog)
+			backend := transport.NewBackend(hclbody.MergeBodies(hclContext,
+				hclbody.New(hclbody.NewContentWithAttrName("timeout", "1s")),
+			), &transport.Config{}, nil, nullLog)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.WithContext(tt.ctx)
