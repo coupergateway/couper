@@ -1,10 +1,11 @@
 package config
 
 import (
-	"errors"
-
+	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/errors"
 )
 
 var _ BackendInitialization = &JWT{}
@@ -44,11 +45,20 @@ type JWT struct {
 }
 
 func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
-	if j.Backends == nil {
-		j.Backends = make(map[string]hcl.Body)
+	if j.JWKsURL != "" {
+		if j.Backends == nil {
+			j.Backends = make(map[string]hcl.Body)
+		}
+		j.Backends["backend"], err = backendFunc("jwks_url", j.JWKsURL, j)
+		if err != nil {
+			return err
+		}
 	}
-	j.Backends["backend"], err = backendFunc("backend", j.BackendName, j)
-	return err
+
+	if err = j.check(); err != nil {
+		return errors.Configuration.Label(j.Name).With(err)
+	}
+	return nil
 }
 
 // Reference implements the <BackendReference> interface.
@@ -88,11 +98,15 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 	return newBackendSchema(schema, j.HCLBody())
 }
 
-func (j *JWT) Check() error {
-	if j.BackendName != "" || j.Backends != nil {
-		return errors.New("backend not needed without jwks_url")
-	} else if j.BackendName != "" && len(j.Backends) > 0 {
-		return errors.New("backend must be either block or attribute")
+func (j *JWT) check() error {
+	if j.JWKsURL == "" && j.SignatureAlgorithm == "" {
+		return fmt.Errorf("signature_algorithm or jwks_url attribute required")
+	}
+
+	if j.JWKsURL == "" && (j.BackendName != "" || j.Backends != nil) {
+		return fmt.Errorf("backend is obsolete without jwks_url attribute")
+	} else if j.BackendName != "" && j.Backends == nil {
+		return fmt.Errorf("backend must be either a block or an attribute")
 	}
 
 	if j.JWKsURL != "" {
@@ -104,11 +118,9 @@ func (j *JWT) Check() error {
 
 		for name, value := range attributes {
 			if value != "" {
-				return errors.New(name + " cannot be used together with jwks_url")
+				return fmt.Errorf("%s cannot be used together with jwks_url", name)
 			}
 		}
-	} else if j.SignatureAlgorithm == "" {
-		return errors.New("signature_algorithm or jwks_url required")
 	}
 
 	return nil

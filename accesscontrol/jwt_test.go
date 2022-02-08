@@ -676,7 +676,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm or jwks_url required",
+			"signature_algorithm or jwks_url attribute required",
 		},
 		{
 			"signature_algorithm, missing key/key_file",
@@ -868,11 +868,12 @@ func TestJwtConfig(t *testing.T) {
 			  jwt "myac" {
 			    backend = "foo"
 			    header = "..."
+				signature_algorithm = "asdf"
 			  }
 			  backend "foo" {}
 			}
 			`,
-			"backend not needed without jwks_url",
+			"backend is obsolete without jwks_url attribute",
 		},
 		{
 			"ok: jwks_url + backend reference",
