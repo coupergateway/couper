@@ -8,7 +8,7 @@ _For additional information, tutorials and documentation please visit the [coupe
 
 ## Usage
 
-Couper requires a [configuration file](https://github.com/avenga/couper/tree/master/docs#conf_file) which have to be provided on start.
+Couper requires a [configuration file](https://github.com/avenga/couper/tree/master/docs#configuration-file) which have to be provided on start.
 See our [documentation](https://github.com/avenga/couper/tree/master/docs) how to configure _couper_.
 
 This image contains a basic configuration to serve files from `/htdocs` directory.
