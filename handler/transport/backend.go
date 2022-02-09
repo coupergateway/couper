@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"time"
@@ -302,15 +303,36 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 	}
 
 	errCh := make(chan error, 1)
-	if timeout <= 0 {
+	if timeout+conf.TTFBTimeout <= 0 {
 		return errCh
 	}
 
-	ctx, cancel := context.WithCancel(req.Context())
-	*req = *req.WithContext(ctx)
+	ctx, cancel := context.WithCancel(context.WithValue(req.Context(), request.ConnectTimeout, conf.ConnectTimeout))
+
+	ttfbTimeout := make(chan time.Time, 1) // size to always cleanup related go-routine
+	ttfbInTime := make(chan struct{})
+	ctxTrace := &httptrace.ClientTrace{
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			if conf.TTFBTimeout <= 0 {
+				return
+			}
+			go func() {
+				ttfbTimeout <- <-time.After(conf.TTFBTimeout)
+			}()
+		},
+		GotFirstResponseByte: func() {
+			close(ttfbInTime)
+		},
+	}
+
+	*req = *req.WithContext(httptrace.WithClientTrace(ctx, ctxTrace))
+
 	go func(cancelFn func(), c context.Context, ec chan error) {
 		defer cancelFn()
-		deadline := time.After(timeout)
+		deadline := make(<-chan time.Time)
+		if timeout > 0 {
+			deadline = time.After(timeout)
+		}
 		select {
 		case <-deadline:
 			if ws {
@@ -319,6 +341,12 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 				ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
 			}
 			return
+		case <-ttfbTimeout:
+			select {
+			case <-ttfbInTime: // last 'minute' call
+			default:
+				ec <- errors.BackendTimeout.Label(b.name).Message("timeout awaiting response headers")
+			}
 		case <-c.Done():
 			return
 		}

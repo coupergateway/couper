@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
@@ -64,7 +65,6 @@ func Get(conf *Config, log *logrus.Entry) *http.Transport {
 
 		d := &net.Dialer{
 			KeepAlive: 60 * time.Second,
-			Timeout:   conf.ConnectTimeout,
 		}
 
 		var proxyFunc func(req *http.Request) (*url.URL, error)
@@ -101,20 +101,26 @@ func Get(conf *Config, log *logrus.Entry) *http.Transport {
 				stx, span := telemetry.NewSpanFromContext(ctx, "connect", trace.WithAttributes(attribute.String("couper.address", addr)))
 				defer span.End()
 
+				connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
+				if connectTimeout > 0 {
+					dtx, cancel := context.WithDeadline(stx, time.Now().Add(connectTimeout))
+					stx = dtx
+					defer cancel()
+				}
+
 				conn, err := d.DialContext(stx, network, address)
 				if err != nil {
 					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
 				}
 				return NewOriginConn(stx, conn, conf, logEntry), nil
 			},
-			DisableCompression:    true,
-			DisableKeepAlives:     conf.DisableConnectionReuse,
-			ForceAttemptHTTP2:     conf.HTTP2,
-			MaxConnsPerHost:       conf.MaxConnections,
-			Proxy:                 proxyFunc,
-			ResponseHeaderTimeout: conf.TTFBTimeout,
-			TLSClientConfig:       tlsConf,
-			TLSNextProto:          nextProto,
+			DisableCompression: true,
+			DisableKeepAlives:  conf.DisableConnectionReuse,
+			ForceAttemptHTTP2:  conf.HTTP2,
+			MaxConnsPerHost:    conf.MaxConnections,
+			Proxy:              proxyFunc,
+			TLSClientConfig:    tlsConf,
+			TLSNextProto:       nextProto,
 		}
 
 		transports.Store(key, transport)
@@ -179,6 +185,7 @@ func parseDuration(src string, target *time.Duration) {
 
 func (c *Config) hash() string {
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%v", c)))
+	key := fmt.Sprintf("%s|%s|%s|%s", c.BackendName, c.Scheme, c.Hostname, c.Origin)
+	h.Write([]byte(key))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

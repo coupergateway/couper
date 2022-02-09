@@ -54,8 +54,8 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	}{
 		{"with zero timings", test.NewRemainContext("origin", origin.URL), httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
 		{"with overall timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "1m", "30s", "500ms"), httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
-		{"with connect timeout", withTimingsFn(test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), "500ms", "30s", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
-		{"with ttfb timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "1m", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
+		{"with connect timeout", withTimingsFn(test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), "750ms", "500ms", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
+		{"with ttfb timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "10s", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
 
 	logger, hook := logrustest.NewNullLogger()
@@ -77,7 +77,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 			if tt.expectedErr != "" &&
 				(err == nil || !isErr || !strings.HasSuffix(gerr.LogError(), tt.expectedErr)) {
-				subT.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
+				subT.Errorf("Expected err %s, got: %#v", tt.expectedErr, err)
 			}
 		})
 	}
