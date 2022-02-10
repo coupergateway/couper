@@ -186,11 +186,21 @@ func Test_JWT_Validate(t *testing.T) {
 			req         *http.Request
 			wantErrKind string
 		}{
-			{"src: header /w empty bearer", fields{
+			{"src: header /w no authorization header", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization", nil),
 				pubKey:    pubKeyBytes,
 			}, httptest.NewRequest(http.MethodGet, "/", nil), "jwt_token_missing"},
+			{"src: header /w different auth-scheme", fields{
+				algorithm: algo,
+				source:    ac.NewJWTSource("", "Authorization", nil),
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Basic qbqnb"), "jwt_token_missing"},
+			{"src: header /w empty bearer", fields{
+				algorithm: algo,
+				source:    ac.NewJWTSource("", "Authorization", nil),
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR"), "jwt_token_missing"},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization", nil),
