@@ -20,6 +20,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Fixed**
   * improved protection against sniffing using unauthorized requests with non-standard method to non-existant endpoints in protected API ([#441](https://github.com/avenga/couper/pull/441))
   * Couper handles OS-Signal `INT` in all cases in combination with the `-watch` argument ([#456](https://github.com/avenga/couper/pull/456))
+  * some [error types](./docs/ERRORS.md#access-control-error-types) related to [JWT](./docs/REFERENCE.md#jwt-block) ([#438](https://github.com/avenga/couper/pull/438))
 
 ---
 
