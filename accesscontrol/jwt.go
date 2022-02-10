@@ -199,7 +199,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		if strings.ToLower(j.source.Name) == "authorization" {
 			if tokenValue = req.Header.Get(j.source.Name); tokenValue != "" {
 				if tokenValue, err = getBearer(tokenValue); err != nil {
-					return err
+					return errors.JwtTokenMissing.With(err)
 				}
 			}
 		} else {
@@ -498,7 +498,7 @@ func getBearer(val string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(val), bearer) {
 		return strings.Trim(val[len(bearer):], " "), nil
 	}
-	return "", errors.JwtTokenExpired.Message("bearer required with authorization header")
+	return "", fmt.Errorf("bearer required with authorization header")
 }
 
 func newParser(algos []acjwt.Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
