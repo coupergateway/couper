@@ -49,6 +49,7 @@ func realmain(arguments []string) int {
 	type globalFlags struct {
 		DebugEndpoint       bool          `env:"debug"`
 		FilePath            string        `env:"file"`
+		DirPath             string        `env:"file_directory"`
 		FileWatch           bool          `env:"watch"`
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
 		FileWatchRetries    int           `env:"watch_retries"`
@@ -60,7 +61,8 @@ func realmain(arguments []string) int {
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
 	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
-	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./my-path/couper.hcl")
+	set.StringVar(&flags.FilePath, "f", "", "-f ./my-path/couper.hcl")
+	set.StringVar(&flags.DirPath, "d", "", "-d ./path/to/couper.d")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
@@ -93,6 +95,10 @@ func realmain(arguments []string) int {
 		return 1
 	}
 	env.Decode(&flags)
+
+	if flags.DirPath == "" && flags.FilePath == "" {
+		flags.FilePath = config.DefaultFilename
+	}
 
 	if cmd == "verify" {
 		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
