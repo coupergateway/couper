@@ -245,10 +245,10 @@ func (j *JWT) Validate(req *http.Request) error {
 			return errors.JwtTokenExpired.With(err)
 		case *jwt.UnverfiableTokenError:
 			if unwrappedError := err.ErrorWrapper.Unwrap(); unwrappedError != nil {
-				return unwrappedError
+				return errors.JwtTokenInvalid.With(unwrappedError)
 			}
 		}
-		return err
+		return errors.JwtTokenInvalid.With(err)
 	}
 
 	tokenClaims, err := j.validateClaims(token, claims)
