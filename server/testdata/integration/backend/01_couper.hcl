@@ -38,6 +38,34 @@ server {
       backend = "BE"
     }
   }
+
+  endpoint "/request" {
+    request "default" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+
+      headers = {
+        x-foo = "bar"
+      }
+      json_body = {
+        a = 1
+      }
+
+      backend {
+        set_response_headers = {
+          x-from-request-header = backend_request.headers.x-foo
+          x-from-requests-header = backend_requests.default.headers.x-foo 
+          x-from-request-json-body = backend_request.json_body.a
+          x-from-requests-json-body = backend_requests.default.json_body.a
+        }
+        custom_log_fields = {
+          x-from-request-header = backend_request.headers.x-foo
+          x-from-requests-header = backend_requests.default.headers.x-foo
+          x-from-request-body = backend_request.json_body.a
+          x-from-requests-body = backend_requests.default.json_body.a
+        }
+      }
+    }
+  }
 }
 
 definitions {

@@ -28,6 +28,43 @@ import (
 
 const testdataPath = "testdata/endpoints"
 
+func TestBackend_BackendVariable_Request(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/backend/01_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/request", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.Header.Get("X-From-Request-Header") != "bar" ||
+		res.Header.Get("X-From-Request-Json-Body") != "1" ||
+		res.Header.Get("X-From-Requests-Header") != "bar" ||
+		res.Header.Get("X-From-Requests-Json-Body") != "1" {
+		t.Errorf("Unexpected header given: %#v", res.Header)
+	}
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		data := entry.Data["custom"].(logrus.Fields)
+
+		if data["x-from-request-body"] != float64(1) ||
+			data["x-from-request-header"] != "bar" ||
+			data["x-from-requests-body"] != float64(1) ||
+			data["x-from-requests-header"] != "bar" {
+			t.Errorf("Unexpected logs given: %#v", data)
+		}
+	}
+}
+
 func TestBackend_BackendVariable(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
