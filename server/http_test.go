@@ -624,7 +624,7 @@ func TestHTTPServer_RequestID(t *testing.T) {
 			helper.Must(err)
 
 			// Wait for log
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 
 			lastLog := hook.LastEntry()
 

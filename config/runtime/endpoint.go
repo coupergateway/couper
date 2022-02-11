@@ -91,7 +91,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, innerBody, berr := NewBackend(confCtx, proxyConf.Backend, log, settings, memStore)
+		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, settings, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -102,12 +102,12 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allProxies[proxyConf.Name] = p
-		blockBodies = append(blockBodies, proxyConf.Backend, innerBody, proxyConf.HCLBody())
+		blockBodies = append(blockBodies, proxyConf.Backend, proxyConf.HCLBody())
 	}
 
 	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
-		backend, innerBody, berr := NewBackend(confCtx, requestConf.Backend, log, settings, memStore)
+		backend, berr := NewBackend(confCtx, requestConf.Backend, log, settings, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -119,7 +119,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allRequests[requestConf.Name] = pr
-		blockBodies = append(blockBodies, requestConf.Backend, innerBody, requestConf.HCLBody())
+		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
 	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)

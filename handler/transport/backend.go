@@ -43,10 +43,9 @@ type Backend struct {
 	logEntry         *logrus.Entry
 	name             string
 	openAPIValidator *validation.OpenAPI
-	options          *BackendOptions
+	tokenRequest     TokenRequest
 	transportConf    *Config
 	upstreamLog      *logging.UpstreamLog
-	// TODO: OrderedList for origin AC, middlewares etc.
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
@@ -60,8 +59,10 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 
 	var openAPI *validation.OpenAPI
+	var tr TokenRequest
 	if opts != nil {
 		openAPI = validation.NewOpenAPI(opts.OpenAPI)
+		tr = opts.AuthBackend
 	}
 
 	backend := &Backend{
@@ -69,7 +70,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 		logEntry:         logEntry,
 		name:             tc.BackendName,
 		openAPIValidator: openAPI,
-		options:          opts,
+		tokenRequest:     tr,
 		transportConf:    tc,
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
@@ -78,26 +79,24 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
+	// for token-request retry purposes
+	originalReq := req.Clone(req.Context())
+
+	if err := b.withTokenRequest(req); err != nil {
+		return nil, err
+	}
+
 	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
 	if ctxBody == nil {
 		ctxBody = b.context
 	} else {
-		attrs, _ := b.context.JustAttributes()
-		// TODO: startup - perf
-		merged := []hcl.Body{b.context, ctxBody}
-		if o, exist := attrs["origin"]; exist {
-			// THIS origin always wins since config-load ensures a proper value.
-			// MAY be wrong if this backend is a nested one (oauth2) and the token request inherits the params context.
-			merged = append(merged, hclbody.New(hclbody.NewContentWithAttr(o)))
-		}
-		if o, exist := attrs["_backend_url"]; exist {
-			merged = append(merged, hclbody.New(hclbody.NewContentWithAttr(o)))
-		}
-		ctxBody = hclbody.MergeBodies(merged...)
+		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
 	}
 
-	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{ctxBody})
-	*req = *req.WithContext(ctx)
+	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
+	if logCh != nil {
+		logCh <- ctxBody
+	}
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
@@ -164,6 +163,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 			varSync.Set(berespErr)
 		}
 		return berespErr, err
+	}
+
+	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
+		return beresp, rerr
+	} else if retry {
+		return b.RoundTrip(originalReq)
 	}
 
 	if !eval.IsUpgradeResponse(req, beresp) {
@@ -262,6 +267,50 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		duration.Measurement(endSeconds))
 
 	return beresp, nil
+}
+
+const backendTokenRequest = "backendTokenRequest"
+
+func (b *Backend) withTokenRequest(req *http.Request) error {
+	if b.tokenRequest == nil {
+		return nil
+	}
+
+	trValue, _ := req.Context().Value(backendTokenRequest).(string)
+	if trValue != "" { // prevent loop
+		return nil
+	}
+
+	// prevent mixing context values - start from scratch
+	ctx, cancel := context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, backendTokenRequest, "tr")
+
+	go func(req *http.Request, cancelFn func()) {
+		defer cancelFn()
+		select {
+		case <-req.Context().Done():
+		}
+	}(req, cancel)
+
+	return b.tokenRequest.WithToken(req.WithContext(ctx))
+}
+
+func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
+	if b.tokenRequest == nil {
+		return false, nil
+	}
+
+	trValue, _ := req.Context().Value(backendTokenRequest).(string)
+	if trValue != "" { // prevent loop
+		return false, nil
+	}
+
+	retry, err := b.tokenRequest.RetryWithToken(req, res)
+	if err != nil {
+		return retry, err
+	}
+	// on retry, we will not read the body
+	return retry, res.Body.Close()
 }
 
 func (b *Backend) withPathPrefix(req *http.Request) error {

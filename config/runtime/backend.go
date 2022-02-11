@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"fmt"
 	"math"
 	"net/http"
 
@@ -18,43 +17,43 @@ import (
 )
 
 func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
-	settings *config.Settings, store *cache.MemoryStore) (http.RoundTripper, hcl.Body, error) {
+	settings *config.Settings, store *cache.MemoryStore) (http.RoundTripper, error) {
 	const prefix = "backend_"
 	name, err := getBackendName(ctx, body)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Making use of the store here since a global variable leads to extra efforts for integration tests.
 	// The store is newly created per run.
 	backend := store.Get(prefix + name)
 	if backend != nil {
-		return transport.NewBackendContext(body, backend.(http.RoundTripper)), body, nil
+		return transport.NewBackendContext(body, backend.(http.RoundTripper)), nil
 	}
 
-	backend, modifiedBody, err := newBackend(ctx, body, log, settings.NoProxyFromEnv, settings.Certificate, store)
+	backend, err = newBackend(ctx, body, log, settings.NoProxyFromEnv, settings.Certificate, store)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// to prevent weird debug sessions; max to set the internal memStore ttl limit.
 	store.Set(prefix+name, backend, math.MaxInt64)
 
-	return backend.(http.RoundTripper), modifiedBody, nil
+	return backend.(http.RoundTripper), nil
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (http.RoundTripper, hcl.Body, error) {
+	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
-		return nil, nil, diags
+		return nil, diags
 	}
 
 	if beConf.Name == "" {
 		name, err := getBackendName(evalCtx, backendCtx)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		beConf.Name = name
 	}
@@ -71,45 +70,46 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
-		fmt.Printf("RUNTIME DONE '%#v' \n", err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	options := &transport.BackendOptions{
 		OpenAPI: openAPIopts,
 	}
-	backend := transport.NewBackend(backendCtx, tc, options, log)
 
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
-	if oauthContent == nil {
-		return backend, backendCtx, nil
+	if oauthContent != nil {
+		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
+			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, certificate, memStore)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-		return newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, certificate, memStore, backend)
-	}
+	backend := transport.NewBackend(backendCtx, tc, options, log)
 
-	return backend, backendCtx, nil
+	return backend, nil
 }
 
 func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore, backend http.RoundTripper) (http.RoundTripper, hcl.Body, error) {
+	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
 
 	beConf.OAuth2 = &config.OAuth2ReqAuth{}
 
 	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
-		return nil, nil, diags
+		return nil, diags
 	}
 
 	innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
 	if diags.HasErrors() {
-		return nil, nil, diags
+		return nil, diags
 	}
 
 	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-	authBackend, body, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, certificate, memStore)
+	authBackend, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, certificate, memStore)
 	if authErr != nil {
-		return nil, nil, authErr
+		return nil, authErr
 	}
 
 	// Set default value
@@ -120,11 +120,11 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 
 	oauth2Client, err := oauth2.NewClientCredentialsClient(beConf.OAuth2, authBackend)
 	if err != nil {
-		return nil, body, err
+		return nil, err
 	}
 
-	rt, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client, backend)
-	return rt, body, err
+	tr, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client)
+	return tr, err
 }
 
 func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {

@@ -42,9 +42,9 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 		if t, exists := entry.Data["type"]; exists {
 			switch t {
 			case acTypeField:
-				fire(entry, request.LogCustomAccess)
+				fireAccess(entry)
 			case beTypeField:
-				fire(entry, request.LogCustomUpstream)
+				fireUpstream(entry)
 			}
 		}
 	}
@@ -52,13 +52,13 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
-func fire(entry *logrus.Entry, bodyKey request.ContextKey) {
+func fireAccess(entry *logrus.Entry) {
 	evalCtx, ok := entry.Context.Value(request.ContextType).(*eval.Context)
 	if !ok {
 		return
 	}
 
-	bodies := entry.Context.Value(bodyKey)
+	bodies := entry.Context.Value(request.LogCustomAccess)
 	if bodies == nil {
 		return
 	}
@@ -91,6 +91,28 @@ func fire(entry *logrus.Entry, bodyKey request.ContextKey) {
 	}
 
 	if fields := eval.ApplyCustomLogs(ctx, hclBodies, entry); len(fields) > 0 {
+		entry.Data[customLogField] = fields
+	}
+}
+
+func fireUpstream(entry *logrus.Entry) {
+	evalCtx, ok := entry.Context.Value(request.ContextType).(*eval.Context)
+	if !ok {
+		return
+	}
+	bodyCh, _ := entry.Context.Value(request.LogCustomUpstream).(chan hcl.Body)
+	if bodyCh == nil {
+		return
+	}
+
+	var bodies []hcl.Body
+	select {
+	case body := <-bodyCh:
+		bodies = append(bodies, body)
+	case <-entry.Context.Done():
+	}
+
+	if fields := eval.ApplyCustomLogs(evalCtx.HCLContextSync(), bodies, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
 }

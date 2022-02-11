@@ -105,7 +105,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	// Populate defined backends first...
 	if conf.Definitions != nil {
 		for _, backend := range conf.Definitions.Backend {
-			_, _, err := NewBackend(confCtx, backend.HCLBody(), log, conf.Settings, memStore)
+			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf.Settings, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -452,7 +452,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 			backends := map[string]http.RoundTripper{}
 			for k, backendBody := range oidcConf.Backends {
 				var err error
-				backends[k], _, err = NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+				backends[k], err = NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
 				if err != nil {
 					return nil, confErr.With(err)
 				}
@@ -524,7 +524,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			if oauth2Conf.Backends != nil {
 				backendBody, _ = oauth2Conf.Backends["token_backend"]
 			}
-			backend, _, err := NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+			backend, err := NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -622,7 +622,7 @@ func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.Ev
 	if jwtConf.Backends != nil {
 		backendBody, ok := jwtConf.Backends["backend"]
 		if ok {
-			b, _, err := NewBackend(confContext, backendBody, log, conf.Settings, memStore)
+			b, err := NewBackend(confContext, backendBody, log, conf.Settings, memStore)
 			if err != nil {
 				return nil, err
 			}
