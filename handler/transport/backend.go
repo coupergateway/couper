@@ -135,8 +135,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	b.withBasicAuth(req)
-	if err = b.withPathPrefix(req); err != nil {
+	b.withBasicAuth(req, ctxBody)
+	if err = b.withPathPrefix(req, ctxBody); err != nil {
 		return nil, err
 	}
 
@@ -313,8 +313,8 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 	return retry, res.Body.Close()
 }
 
-func (b *Backend) withPathPrefix(req *http.Request) error {
-	if pathPrefix := b.getAttribute(req, "path_prefix"); pathPrefix != "" {
+func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
+	if pathPrefix := b.getAttribute(req, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
 			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in \"%s\"", pathPrefix)
@@ -328,15 +328,15 @@ func (b *Backend) withPathPrefix(req *http.Request) error {
 	return nil
 }
 
-func (b *Backend) withBasicAuth(req *http.Request) {
-	if creds := b.getAttribute(req, "basic_auth"); creds != "" {
+func (b *Backend) withBasicAuth(req *http.Request, hclContext hcl.Body) {
+	if creds := b.getAttribute(req, "basic_auth", hclContext); creds != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(creds))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 }
 
-func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), b.context, name)
+func (b *Backend) getAttribute(req *http.Request, name string, hclContext hcl.Body) string {
+	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), hclContext, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}

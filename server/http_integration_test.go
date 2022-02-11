@@ -1162,6 +1162,94 @@ func TestHTTPServer_Backends_Reference(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_Backends_Reference_BasicAuth(t *testing.T) {
+	client := newClient()
+
+	configPath := "testdata/integration/config/13_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, _ := newCouper(configPath, helper)
+	defer shutdown()
+
+	type testcase struct {
+		path     string
+		wantAuth bool
+	}
+
+	for _, tc := range []testcase{
+		{"/", false},
+		{"/granted", true},
+	} {
+		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+		helper.Must(err)
+
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		b, err := io.ReadAll(res.Body)
+		helper.Must(err)
+
+		helper.Must(res.Body.Close())
+
+		type result struct {
+			Headers http.Header
+		}
+		r := result{}
+		helper.Must(json.Unmarshal(b, &r))
+
+		if tc.wantAuth && !strings.HasPrefix(r.Headers.Get("Authorization"), "Basic ") {
+			t.Error("expected Authorization header value")
+		}
+	}
+}
+
+func TestHTTPServer_Backends_Reference_PathPrefix(t *testing.T) {
+	client := newClient()
+
+	configPath := "testdata/integration/config/12_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, _ := newCouper(configPath, helper)
+	defer shutdown()
+
+	type testcase struct {
+		path       string
+		wantPath   string
+		wantStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"/", "/anything", http.StatusOK},
+		{"/prefixed", "/my-prefix/anything", http.StatusNotFound},
+	} {
+		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+		helper.Must(err)
+
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		type result struct {
+			Path string
+		}
+
+		b, err := io.ReadAll(res.Body)
+		helper.Must(err)
+
+		helper.Must(res.Body.Close())
+
+		r := result{}
+		helper.Must(json.Unmarshal(b, &r))
+
+		if res.StatusCode != tc.wantStatus {
+			t.Errorf("expected status: %d, got %d", tc.wantStatus, res.StatusCode)
+		}
+
+		if r.Path != tc.wantPath {
+			t.Errorf("expected path: %q, got: %q", tc.wantPath, r.Path)
+		}
+	}
+}
+
 func TestHTTPServer_OriginVsURL(t *testing.T) {
 	client := newClient()
 
