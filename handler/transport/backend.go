@@ -305,12 +305,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 		return false, nil
 	}
 
-	retry, err := b.tokenRequest.RetryWithToken(req, res)
-	if err != nil {
-		return retry, err
-	}
-	// on retry, we will not read the body
-	return retry, res.Body.Close()
+	return b.tokenRequest.RetryWithToken(req, res)
 }
 
 func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
