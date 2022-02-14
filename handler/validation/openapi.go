@@ -18,10 +18,11 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
-var routersStore sync.Map
-
 type OpenAPI struct {
-	options *OpenAPIOptions
+	options    *OpenAPIOptions
+	router     routers.Router
+	syncRouter *sync.Once
+	syncErr    error
 }
 
 func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
@@ -29,61 +30,52 @@ func NewOpenAPI(opts *OpenAPIOptions) *OpenAPI {
 		return nil
 	}
 	return &OpenAPI{
-		options: opts,
+		options:    opts,
+		syncRouter: &sync.Once{},
 	}
 }
 
-func (v *OpenAPI) getRouter(key, origin string) (routers.Router, error) {
-	router, exists := routersStore.Load(key)
-	if !exists {
-		clonedSwagger := cloneSwagger(v.options.doc)
+func (v *OpenAPI) newRouter(origin string) {
+	clonedSwagger := cloneSwagger(v.options.doc)
 
-		var newServers []string
-		for _, s := range clonedSwagger.Servers {
-			// Do not touch a url if template variables are used.
-			if names, err := s.ParameterNames(); len(names) > 0 || err != nil {
-				continue
-			}
-
-			su, err := url.Parse(s.URL)
-			if err != nil {
-				return nil, err
-			}
-
-			if !su.IsAbs() {
-				newServers = append(newServers, origin+s.URL)
-				continue
-			}
-
-			if su.Port() == "" && (su.Scheme == "https" || su.Scheme == "http") {
-				su.Host = su.Hostname() + ":"
-				if su.Scheme == "https" {
-					su.Host += "443"
-				} else {
-					su.Host += "80"
-				}
-				s.URL = su.String()
-			}
-
+	var newServers []string
+	for _, s := range clonedSwagger.Servers {
+		// Do not touch a url if template variables are used.
+		if names, err := s.ParameterNames(); len(names) > 0 || err != nil {
+			continue
 		}
 
-		for _, ns := range newServers {
-			clonedSwagger.AddServer(&openapi3.Server{URL: ns})
-		}
-
-		r, err := legacy.NewRouter(clonedSwagger)
+		su, err := url.Parse(s.URL)
 		if err != nil {
-			return nil, err
+			v.syncErr = err
+			return
 		}
 
-		routersStore.Store(key, r)
-		return r, nil
+		if !su.IsAbs() {
+			newServers = append(newServers, origin+s.URL)
+			continue
+		}
+
+		if su.Port() == "" && (su.Scheme == "https" || su.Scheme == "http") {
+			su.Host = su.Hostname() + ":"
+			if su.Scheme == "https" {
+				su.Host += "443"
+			} else {
+				su.Host += "80"
+			}
+			s.URL = su.String()
+		}
+
 	}
 
-	return router.(routers.Router), nil
+	for _, ns := range newServers {
+		clonedSwagger.AddServer(&openapi3.Server{URL: ns})
+	}
+
+	v.router, v.syncErr = legacy.NewRouter(clonedSwagger)
 }
 
-func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filter.RequestValidationInput, error) {
+func (v *OpenAPI) ValidateRequest(req *http.Request) (*openapi3filter.RequestValidationInput, error) {
 	// reqURL is modified due to origin transport configuration
 	serverURL := *req.URL
 	// possible hostname attribute override
@@ -92,7 +84,12 @@ func (v *OpenAPI) ValidateRequest(req *http.Request, key string) (*openapi3filte
 	} else {
 		serverURL.Host = req.Host + ":" + serverURL.Port()
 	}
-	router, err := v.getRouter(key, serverURL.Scheme+"://"+serverURL.Host)
+
+	v.syncRouter.Do(func() {
+		v.newRouter(serverURL.Scheme + "://" + serverURL.Host)
+	})
+
+	router, err := v.router, v.syncErr
 	if err != nil {
 		if ctx, ok := req.Context().Value(request.OpenAPI).(*OpenAPIContext); ok {
 			ctx.errors = append(ctx.errors, err)
