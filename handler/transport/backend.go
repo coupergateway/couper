@@ -285,12 +285,12 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(ctx, backendTokenRequest, "tr")
 
-	go func(req *http.Request, cancelFn func()) {
+	go func(done <-chan struct{}, cancelFn func()) {
 		defer cancelFn()
 		select {
-		case <-req.Context().Done():
+		case <-done:
 		}
-	}(req, cancel)
+	}(req.Context().Done(), cancel)
 
 	return b.tokenRequest.WithToken(req.WithContext(ctx))
 }
