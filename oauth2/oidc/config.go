@@ -66,8 +66,8 @@ func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Confi
 	return conf, nil
 }
 
-func (c *Config) AuthorizationBackend() http.RoundTripper {
-	return c.backends["authorization_backend"]
+func (c *Config) TokenBackend() http.RoundTripper {
+	return c.backends["token_backend"]
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)

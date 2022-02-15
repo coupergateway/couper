@@ -27,7 +27,7 @@ type OidcClient struct {
 
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
-	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, oidcConfig.AuthorizationBackend())
+	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, oidcConfig.TokenBackend())
 	if err != nil {
 		return nil, err
 	}

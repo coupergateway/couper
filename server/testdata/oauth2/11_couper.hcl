@@ -5,11 +5,11 @@ server "oauth-client" {
         backend = "rs1"
       }
     }
-     endpoint "/rs2" {
-       proxy {
-         backend = "rs2"
-       }
-     }
+    endpoint "/rs2" {
+      proxy {
+       backend = "rs2"
+      }
+    }
   }
 
    endpoint "/oauth1/redir" {
