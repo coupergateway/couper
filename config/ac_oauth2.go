@@ -19,7 +19,7 @@ var (
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
 	ErrorHandlerSetter
-	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"`
+	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"` // used for lib.FnOAuthAuthorizationUrl
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
@@ -32,8 +32,7 @@ type OAuth2AC struct {
 	VerifierMethod          string   `hcl:"verifier_method"`
 
 	// configuration related backends
-	AuthorizationBackendName string `hcl:"authorization_backend,optional"`
-	TokenBackendName         string `hcl:"token_backend,optional"`
+	TokenBackendName string `hcl:"token_backend,optional"`
 
 	// internally used
 	Backends map[string]hcl.Body
@@ -54,8 +53,6 @@ func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	}
 
 	// map endpoint urls
-	oa.Backends["authorization_backend"] = hclbody.MergeBodies(oa.Backends["authorization_backend"],
-		hclbody.New(hclbody.NewContentWithAttrName("_backend_url", oa.AuthorizationEndpoint)))
 	oa.Backends["token_backend"] = hclbody.MergeBodies(oa.Backends["token_backend"],
 		hclbody.New(hclbody.NewContentWithAttrName("_backend_url", oa.TokenEndpoint)))
 

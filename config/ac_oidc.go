@@ -30,7 +30,6 @@ type OIDC struct {
 	VerifierMethod          string   `hcl:"verifier_method,optional"`
 
 	// configuration related backends
-	AuthorizationBackendName string `hcl:"authorization_backend,optional"`
 	ConfigurationBackendName string `hcl:"configuration_backend,optional"`
 	JWKSBackendName          string `hcl:"jwks_uri_backend,optional"`
 	TokenBackendName         string `hcl:"token_backend,optional"`
