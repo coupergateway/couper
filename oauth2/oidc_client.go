@@ -16,7 +16,7 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
-// OidcClient represents an open-id-connect client using the authorization code flow.
+// OidcClient represents an OpenID Connect client using the authorization code flow.
 type OidcClient struct {
 	*AuthCodeClient
 	config    *oidc.Config
