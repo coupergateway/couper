@@ -500,12 +500,14 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/userinfo" {
+			rw.Header().Set("Content-Type", "application/json")
 			body := []byte(`{"sub": "` + sub + `"}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
 
 			return
 		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "application/json")
 			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
 			helper.Must(rerr)
 			b := bytes.NewBuffer(jsonBytes)
@@ -514,6 +516,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/.well-known/openid-configuration" {
+			rw.Header().Set("Content-Type", "application/json")
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
