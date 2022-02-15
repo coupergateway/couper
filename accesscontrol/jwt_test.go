@@ -405,7 +405,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			true,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: true",
+			"invalid scope claim value type, ignoring claim, value true",
 			noScope,
 		},
 		{
@@ -414,7 +414,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			1.23,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: 1.23",
+			"invalid scope claim value type, ignoring claim, value 1.23",
 			noScope,
 		},
 		{
@@ -423,7 +423,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]bool{true, false},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: []interface {}{true, false}",
+			"invalid scope claim value type, ignoring claim, value []interface {}{true, false}",
 			noScope,
 		},
 		{
@@ -432,7 +432,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]int{1, 2},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: []interface {}{1, 2}",
+			"invalid scope claim value type, ignoring claim, value []interface {}{1, 2}",
 			noScope,
 		},
 		{
@@ -441,7 +441,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value: []interface {}{"eins", 2}`,
+			`invalid scope claim value type, ignoring claim, value []interface {}{"eins", 2}`,
 			noScope,
 		},
 		{
@@ -450,7 +450,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
+			`invalid scope claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
 			noScope,
 		},
 		{
@@ -522,7 +522,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			true,
-			"invalid roles claim value type, ignoring claim, value: true",
+			"invalid roles claim value type, ignoring claim, value true",
 			[]string{"default"},
 		},
 		{
@@ -531,7 +531,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			1.23,
-			"invalid roles claim value type, ignoring claim, value: 1.23",
+			"invalid roles claim value type, ignoring claim, value 1.23",
 			[]string{"default"},
 		},
 		{
@@ -540,7 +540,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]bool{true, false},
-			"invalid roles claim value type, ignoring claim, value: []interface {}{true, false}",
+			"invalid roles claim value type, ignoring claim, value []interface {}{true, false}",
 			[]string{"default"},
 		},
 		{
@@ -549,7 +549,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]int{1, 2},
-			"invalid roles claim value type, ignoring claim, value: []interface {}{1, 2}",
+			"invalid roles claim value type, ignoring claim, value []interface {}{1, 2}",
 			[]string{"default"},
 		},
 		{
@@ -558,7 +558,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]interface{}{"user1", 2},
-			`invalid roles claim value type, ignoring claim, value: []interface {}{"user1", 2}`,
+			`invalid roles claim value type, ignoring claim, value []interface {}{"user1", 2}`,
 			[]string{"default"},
 		},
 		{
@@ -567,7 +567,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
-			`invalid roles claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
+			`invalid roles claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
 			[]string{"default"},
 		},
 		{

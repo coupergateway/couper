@@ -219,16 +219,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
-	claims := make(map[string]interface{})
-	if j.claims != nil {
-		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
-		if verr != nil {
-			return verr
-		}
-		claims = seetie.ValueToMap(val)
-	}
-
-	parser, err := newParser(j.algorithms, claims)
+	claims, iss, aud, err := j.getConfiguredClaims(req)
 	if err != nil {
 		return err
 	}
@@ -238,6 +229,8 @@ func (j *JWT) Validate(req *http.Request) error {
 		// load JWKS if needed and associate with request uid
 		j.jwks.Data(ctx.Value(request.UID).(string))
 	}
+
+	parser := newParser(j.algorithms, iss, aud)
 	token, err := parser.Parse(tokenValue, j.getValidationKey)
 	if err != nil {
 		switch err := err.(type) {
@@ -315,6 +308,37 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 	}
 }
 
+// getConfiguredClaims evaluates the expected claim values from the configuration, and especially iss and aud
+func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, string, string, error) {
+	claims := make(map[string]interface{})
+	var iss, aud string
+	if j.claims != nil {
+		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
+		if verr != nil {
+			return nil, "", "", verr
+		}
+		claims = seetie.ValueToMap(val)
+
+		var ok bool
+		if issVal, exists := claims["iss"]; exists {
+			iss, ok = issVal.(string)
+			if !ok {
+				return nil, "", "", errors.Configuration.Message("invalid value type, string expected (claims / iss)")
+			}
+		}
+
+		if audVal, exists := claims["aud"]; exists {
+			aud, ok = audVal.(string)
+			if !ok {
+				return nil, "", "", errors.Configuration.Message("invalid value type, string expected (claims / aud)")
+			}
+		}
+	}
+
+	return claims, iss, aud, nil
+}
+
+// validateClaims validates the token claims against the list of required claims and the expected claims values
 func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (map[string]interface{}, error) {
 	var tokenClaims jwt.MapClaims
 	if tc, ok := token.Claims.(jwt.MapClaims); ok {
@@ -342,7 +366,7 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 		}
 
 		if val != v {
-			return nil, fmt.Errorf("unexpected value for claim %s: %q, expected %q", k, val, v)
+			return nil, fmt.Errorf("unexpected value for claim %s, got %q, expected %q", k, val, v)
 		}
 	}
 	return tokenClaims, nil
@@ -360,7 +384,7 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}, log *logrus.Ent
 	return scopeValues
 }
 
-const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value: %#v"
+const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value %#v"
 
 func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) []string {
 	if j.scopeClaim == "" {
@@ -501,7 +525,8 @@ func getBearer(val string) (string, error) {
 	return "", fmt.Errorf("bearer required with authorization header")
 }
 
-func newParser(algos []acjwt.Algorithm, claims map[string]interface{}) (*jwt.Parser, error) {
+// newParser creates a new parser with issuer/audience validation if configured via iss/aud in expected claims
+func newParser(algos []acjwt.Algorithm, iss, aud string) *jwt.Parser {
 	var algorithms []string
 	for _, a := range algos {
 		algorithms = append(algorithms, a.String())
@@ -511,28 +536,16 @@ func newParser(algos []acjwt.Algorithm, claims map[string]interface{}) (*jwt.Par
 		jwt.WithLeeway(time.Second),
 	}
 
-	if claims == nil {
-		options = append(options, jwt.WithoutAudienceValidation())
-		return jwt.NewParser(options...), nil
-	}
-
-	if iss, ok := claims["iss"]; ok {
-		if err := isStringType(iss); err != nil {
-			return nil, fmt.Errorf("iss: %w", err)
-		}
-		options = append(options, jwt.WithIssuer(iss.(string)))
-	}
-
-	if aud, ok := claims["aud"]; ok {
-		if err := isStringType(aud); err != nil {
-			return nil, fmt.Errorf("aud: %w", err)
-		}
-		options = append(options, jwt.WithAudience(aud.(string)))
+	if aud != "" {
+		options = append(options, jwt.WithAudience(aud))
 	} else {
 		options = append(options, jwt.WithoutAudienceValidation())
 	}
+	if iss != "" {
+		options = append(options, jwt.WithIssuer(iss))
+	}
 
-	return jwt.NewParser(options...), nil
+	return jwt.NewParser(options...)
 }
 
 // parsePublicPEMKey tries to parse all supported publicKey variations which
@@ -571,13 +584,4 @@ func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 		return nil, fmt.Errorf("invalid RSA/ECDSA public key")
 	}
 	return pubKey, nil
-}
-
-func isStringType(val interface{}) error {
-	switch val.(type) {
-	case string:
-		return nil
-	default:
-		return fmt.Errorf("invalid value type")
-	}
 }
