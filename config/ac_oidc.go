@@ -30,13 +30,11 @@ type OIDC struct {
 	VerifierMethod          string   `hcl:"verifier_method,optional"`
 
 	// configuration related backends
-	AuthorizationBackendName       string `hcl:"authorization_backend,optional"`
-	ConfigurationBackendName       string `hcl:"configuration_backend,optional"`
-	DeviceAuthorizationBackendName string `hcl:"device_authorization_backend,optional"`
-	JWKSBackendName                string `hcl:"jwks_uri_backend,optional"`
-	RevocationBackendName          string `hcl:"revocation_backend,optional"`
-	TokenBackendName               string `hcl:"token_backend,optional"`
-	UserinfoBackendName            string `hcl:"userinfo_backend,optional"`
+	AuthorizationBackendName string `hcl:"authorization_backend,optional"`
+	ConfigurationBackendName string `hcl:"configuration_backend,optional"`
+	JWKSBackendName          string `hcl:"jwks_uri_backend,optional"`
+	TokenBackendName         string `hcl:"token_backend,optional"`
+	UserinfoBackendName      string `hcl:"userinfo_backend,optional"`
 
 	// internally used
 	Backends map[string]hcl.Body
