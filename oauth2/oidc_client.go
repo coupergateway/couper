@@ -20,6 +20,7 @@ import (
 type OidcClient struct {
 	*AuthCodeClient
 	config    *oidc.Config
+	backends  map[string]http.RoundTripper
 	issLock   sync.RWMutex
 	issuer    string
 	jwtParser *jwt.Parser
@@ -27,15 +28,17 @@ type OidcClient struct {
 
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
-	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, oidcConfig.TokenBackend())
+	o := &OidcClient{
+		config:   oidcConfig,
+		backends: oidcConfig.Backends(),
+	}
+
+	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, o.backends["token_backend"])
 	if err != nil {
 		return nil, err
 	}
 
-	o := &OidcClient{
-		AuthCodeClient: acClient,
-		config:         oidcConfig,
-	}
+	o.AuthCodeClient = acClient
 	o.AuthCodeFlowClient = o
 	return o, nil
 }
@@ -241,7 +244,7 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 		return nil, err
 	}
 
-	userinfoRes, err := o.Backend.RoundTrip(userinfoReq)
+	userinfoRes, err := o.backends["userinfo_backend"].RoundTrip(userinfoReq)
 	if err != nil {
 		return nil, err
 	}

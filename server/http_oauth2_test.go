@@ -471,6 +471,10 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		sub := req.Header.Get("X-Sub")
 		if req.URL.Path == "/token" {
+			if req.Method != http.MethodPost {
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
 			mapClaims := jwt.MapClaims{
@@ -540,10 +544,10 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "as"},
-		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_59_29_token_backend"},
-		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "as"},
-		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_88_21_configuration_backend"},
+		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "token"},
+		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_61_6_token_endpoint"},
+		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "token"},
+		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_90_21_configuration_backend"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
@@ -638,8 +642,8 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"referenced backend", "/rs1", "as"},
-		{"inline backend", "/rs2", "anonymous_119_13"},
+		{"referenced backend", "/rs1", "token"},
+		{"inline backend", "/rs2", "anonymous_121_13"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)

@@ -44,14 +44,19 @@ func (o *OIDC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 		o.Backends = make(map[string]hcl.Body)
 	}
 
-	fields := BackendAttrFields(o)
+	backendBase, err := backendFunc("", "", o)
+	if err != nil {
+		return err
+	}
 
+	fields := BackendAttrFields(o)
 	for _, field := range fields {
 		fieldValue := AttrValueFromTagField(field, o)
 		o.Backends[field], err = backendFunc(field, fieldValue, o)
 		if err != nil {
 			return err
 		}
+		o.Backends[field] = hclbody.MergeBodies(backendBase, o.Backends[field])
 
 		// exceptions
 		if field == "configuration_backend" && o.ConfigurationURL != "" {

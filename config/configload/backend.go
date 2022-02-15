@@ -2,6 +2,8 @@ package configload
 
 import (
 	"fmt"
+	"strings"
+	
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -51,6 +53,10 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 		return nil, err
 	}
 
+	if reference == "" && strings.HasSuffix(attrName, "_backend") && attrValue != "" {
+		reference = attrValue
+	}
+
 	if reference != "" {
 		refBody, ok := helper.defsBackends[reference]
 		if !ok {
@@ -76,14 +82,14 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 				backendBody)
 		}
 	} else { // anonymous backend block
-		labelBody := block.HCLBody()
+		var labelRange *hcl.Range
 		var labelSuffix string
 		// anonymous backend based on a single attr, take the attr range instead
 		if attrName != "" && reference == "" {
-			labelBody, labelSuffix = refineAnonLabel(attrName, labelBody)
+			labelRange, labelSuffix = refineAnonLabel(attrName, block.HCLBody())
 		}
 
-		anonLabel := newAnonLabel(block.HCLBody()) + labelSuffix
+		anonLabel := newAnonLabel(block.HCLBody(), labelRange) + labelSuffix
 		// ensure our default settings
 		if backendBody == nil {
 			backendBody = defaultBackend
@@ -200,9 +206,12 @@ func newBodyWithName(nameValue string, config hcl.Body) (hcl.Body, error) {
 	), nil
 }
 
-func newAnonLabel(body hcl.Body) string {
+func newAnonLabel(body hcl.Body, labelRange *hcl.Range) string {
 	const anon = "anonymous"
-	itemRange := getRange(body)
+	itemRange := labelRange
+	if itemRange == nil {
+		itemRange = getRange(body)
+	}
 
 	return fmt.Sprintf("%s_%d_%d", anon,
 		itemRange.Start.Line,
@@ -210,14 +219,12 @@ func newAnonLabel(body hcl.Body) string {
 	)
 }
 
-func refineAnonLabel(attrName string, body hcl.Body) (labelBody hcl.Body, labelSuffix string) {
-	labelBody = body
+func refineAnonLabel(attrName string, body hcl.Body) (labelRange *hcl.Range, labelSuffix string) {
 	if syntaxBody, ok := body.(*hclsyntax.Body); ok {
 		if attr, exist := syntaxBody.Attributes[attrName]; exist {
-			labelBody = hclbody.New(&hcl.BodyContent{MissingItemRange: attr.Expr.StartRange()})
-		} else { // not defined, no line mapping possible
-			labelSuffix += "_" + attrName
+			labelRange = &attr.NameRange
 		}
+		labelSuffix += "_" + attrName
 	}
-	return labelBody, labelSuffix
+	return labelRange, labelSuffix
 }

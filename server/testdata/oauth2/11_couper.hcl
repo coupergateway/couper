@@ -46,7 +46,7 @@ definitions {
    beta_oauth2 "ac-oauth-1" {
      authorization_endpoint = "{{.asOrigin}}/auth"
      token_endpoint = "{{.asOrigin}}/token"
-     backend = "as"
+     backend = "token"
      client_id = "foo"
      client_secret = "etbinbp4in"
      grant_type = "authorization_code"
@@ -77,13 +77,15 @@ definitions {
    oidc "ac-oidc-1" {
      configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
      configuration_ttl = "1h"
-     backend = "as"
+     configuration_backend = "configuration"
+     token_backend = "token"
      client_id = "foo"
      client_secret = "etbinbp4in"
      verifier_method = "ccm_s256"
      verifier_value = request.cookies.pkcecv
      redirect_uri = "http://localhost:8080/oidc/redir"
    }
+
    # with inline backend
    oidc "ac-oidc-2" {
      configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
@@ -107,7 +109,7 @@ definitions {
     origin = "{{.rsOrigin}}"
     oauth2 {
       token_endpoint = "{{.asOrigin}}/token"
-      backend = "as"
+      backend = "token"
       client_id = "foo"
       client_secret = "etbinbp4in"
       grant_type = "client_credentials"
@@ -130,12 +132,23 @@ definitions {
      }
    }
 
-  # backend for authorization server
-  backend "as" {
+  # authorization server split by context for debugging purposes
+  backend "configuration" {
     origin = "{{.asOrigin}}"
     add_request_headers = {
       x-sub = "myself"
     }
   }
 
+  backend "token" {
+    origin = "{{.asOrigin}}"
+    add_request_headers = {
+      x-sub = "myself"
+    }
+  }
+
+}
+
+settings {
+  no_proxy_from_env = true
 }
