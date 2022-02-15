@@ -520,11 +520,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			var backendBody hcl.Body
-			if oauth2Conf.Backends != nil {
-				backendBody, _ = oauth2Conf.Backends["token_backend"]
-			}
-			backend, err := NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf.Settings, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}

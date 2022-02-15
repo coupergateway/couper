@@ -560,7 +560,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != http.StatusOK {
-				subT.Errorf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
+				subT.Fatalf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
 			}
 			defer res.Body.Close()
 
