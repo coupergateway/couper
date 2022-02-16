@@ -3,7 +3,7 @@ package configload
 import (
 	"fmt"
 	"strings"
-	
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -53,11 +53,11 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 		return nil, err
 	}
 
-	if reference == "" && strings.HasSuffix(attrName, "_backend") && attrValue != "" {
-		reference = attrValue
-	}
-
 	if reference != "" {
+		if strings.HasSuffix(attrName, "_backend") && attrValue != "" { // specific attribute overrides; prefer
+			reference = attrValue
+		}
+
 		refBody, ok := helper.defsBackends[reference]
 		if !ok {
 			r := backendBody.MissingItemRange()

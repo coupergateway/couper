@@ -77,7 +77,7 @@ definitions {
    oidc "ac-oidc-1" {
      configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
      configuration_ttl = "1h"
-     configuration_backend = "configuration"
+     backend = "configuration" # base for configuration_backend, token_backend
      token_backend = "token"
      client_id = "foo"
      client_secret = "etbinbp4in"

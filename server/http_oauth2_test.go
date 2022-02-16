@@ -546,7 +546,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 	for _, tc := range []testCase{
 		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "token"},
 		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_61_6_token_endpoint"},
-		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "token"},
+		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "configuration"},
 		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_90_21_configuration_backend"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
