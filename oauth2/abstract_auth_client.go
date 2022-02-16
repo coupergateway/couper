@@ -96,9 +96,6 @@ func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL 
 	}
 
 	if err = a.validateTokenResponseData(req.Context(), tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
-		if jerr, ok := err.(interface{ Unwrap() error }); ok {
-			err = jerr.Unwrap()
-		}
 		return nil, errors.Oauth2.Message("token response validation error").With(err)
 	}
 
