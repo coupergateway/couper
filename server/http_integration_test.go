@@ -167,7 +167,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 
 	for _, entry := range hook.AllEntries() {
 		if entry.Level < logrus.WarnLevel {
-			defer cleanup(cancelFn, helper) // ok in loop, next line is the end
+			defer os.Exit(1) // ok in loop, next line is the end
 			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
 		}
 	}
@@ -3269,7 +3269,13 @@ func TestAPICatchAll(t *testing.T) {
 
 func Test_LoadAccessControl(t *testing.T) {
 	// Tests the config load with ACs and "error_handler" blocks...
-	shutdown, _ := newCouper("testdata/integration/config/07_couper.hcl", test.New(t))
+	backend := test.NewBackend()
+	defer backend.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/config/07_couper.hcl", test.New(t), map[string]interface{}{
+		"asOrigin": backend.Addr(),
+	})
+
 	test.WaitForOpenPort(8080)
 	shutdown()
 }
