@@ -28,7 +28,7 @@ import (
 
 const testdataPath = "testdata/endpoints"
 
-func TestBackend_BackendVariable_Request(t *testing.T) {
+func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -58,17 +58,32 @@ func TestBackend_BackendVariable_Request(t *testing.T) {
 			continue
 		}
 
+		responseHeaders := entry.Data["response"].(logging.Fields)["headers"].(map[string]string)
 		data := entry.Data["custom"].(logrus.Fields)
 
-		if data["x-from-request-json-body"] != float64(1) ||
-			data["x-from-request-header"] != "bar" ||
-			data["x-from-requests-json-body"] != float64(1) ||
-			data["x-from-requests-header"] != "bar" ||
-			data["x-from-response-header"] != "application/json" ||
-			data["x-from-response-json-body"] != "/anything" ||
-			data["x-from-responses-header"] != "application/json" ||
-			data["x-from-responses-json-body"] != "/anything" {
-			t.Errorf("Unexpected logs given: %#v", data)
+		url := entry.Data["url"]
+		if url == "http://localhost:8081/token" {
+			if data["x-from-request-body"] != "grant_type=client_credentials" ||
+				// data["x-from-request-form-body"] != "client_credentials" || // not yet
+				data["x-from-request-header"] != "Basic cXBlYjpiZW4=" ||
+				data["x-from-response-header"] != "60s" ||
+				data["x-from-response-body"] != `{"access_token":"the_access_token","expires_in":60}` ||
+				data["x-from-response-json-body"] != "the_access_token" ||
+				responseHeaders["location"] != "Basic cXBlYjpiZW4=||60s|" {
+				// responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" { // not yet
+				t.Errorf("Unexpected logs given: %#v", data)
+			}
+		} else {
+			if data["x-from-request-json-body"] != float64(1) ||
+				data["x-from-request-header"] != "bar" ||
+				data["x-from-requests-json-body"] != float64(1) ||
+				data["x-from-requests-header"] != "bar" ||
+				data["x-from-response-header"] != "application/json" ||
+				data["x-from-response-json-body"] != "/anything" ||
+				data["x-from-responses-header"] != "application/json" ||
+				data["x-from-responses-json-body"] != "/anything" {
+				t.Errorf("Unexpected logs given: %#v", data)
+			}
 		}
 	}
 }

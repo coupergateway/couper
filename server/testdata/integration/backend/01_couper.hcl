@@ -1,4 +1,5 @@
 server {
+  hosts = ["*:8080"]
   endpoint "/" {
     proxy "default" {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -71,6 +72,26 @@ server {
           x-from-response-json-body = backend_response.json_body.Url
           x-from-responses-json-body = backend_responses.default.json_body.Url
         }
+        oauth2 {
+          grant_type = "client_credentials"
+          token_endpoint = "http://localhost:8081/token"
+          client_id = "qpeb"
+          client_secret = "ben"
+          backend {
+            set_response_headers = {
+              # use a response header field that is actually logged
+              location = "${backend_request.headers.authorization}|${backend_request.form_body.grant_type[0]}|${backend_response.headers.x-pires-in}|${backend_response.json_body.access_token}"
+            }
+            custom_log_fields = {
+              x-from-request-header = backend_request.headers.authorization
+              x-from-request-body = backend_request.body
+              x-from-request-form-body = backend_request.form_body.grant_type[0]
+              x-from-response-header = backend_response.headers.x-pires-in
+              x-from-response-body = backend_response.body
+              x-from-response-json-body = backend_response.json_body.access_token
+            }
+          }
+        }
       }
     }
   }
@@ -82,6 +103,23 @@ definitions {
       definitions-res = backend_response.headers.content-type
       definitions-req = backend_request.headers.cookie
       definitions-ua  = backend_request.headers.user-agent
+    }
+  }
+}
+
+server "as" {
+  hosts = ["*:8081"]
+  api {
+    endpoint "/token" {
+      response {
+        headers = {
+          x-pires-in = "60s"
+        }
+        json_body = {
+          access_token = "the_access_token"
+          expires_in = 60
+        }
+      }
     }
   }
 }
