@@ -3,7 +3,6 @@
 package runtime
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -588,7 +587,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		err error
 	)
 	if jwtConf.JWKsURL != "" {
-		jwks, jerr := configureJWKS(jwtConf, conf, confCtx, log, memStore)
+		jwks, jerr := configureJWKS(jwtConf, confCtx, log, memStore)
 		if jerr != nil {
 			return nil, jerr
 		}
@@ -612,7 +611,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	return jwt, nil
 }
 
-func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
+func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
 	var backend http.RoundTripper
 
 	if jwtConf.Backends != nil {
@@ -626,13 +625,7 @@ func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.Ev
 		}
 	}
 
-	evalContext := conf.Context.Value(request.ContextType).(context.Context)
-	jwks, err := jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend, evalContext)
-	if err != nil {
-		return nil, err
-	}
-
-	return jwks, nil
+	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend)
 }
 
 type protectedOptions struct {

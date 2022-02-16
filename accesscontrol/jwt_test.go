@@ -811,12 +811,12 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
 			`,
-			"",
+			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end: no such host`,
 		},
 		{
 			"signature_algorithm + jwks_url",
@@ -825,7 +825,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
@@ -839,7 +839,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    key = "..."
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
@@ -853,7 +853,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    key_file = "..."
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
@@ -883,12 +883,12 @@ func TestJwtConfig(t *testing.T) {
 			  jwt "myac" {
 			    backend = "foo"
 			    header = "..."
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			  }
 			  backend "foo" {}
 			}
 			`,
-			"",
+			`backend error: foo: connecting to foo "no-back.end:80" failed: dial tcp: lookup no-back.end: no such host`,
 		},
 	}
 

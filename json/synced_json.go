@@ -17,7 +17,6 @@ type SyncedJSONUnmarshaller interface {
 }
 
 type SyncedJSON struct {
-	context       context.Context
 	file          string
 	fileContext   string
 	uri           string
@@ -31,9 +30,8 @@ type SyncedJSON struct {
 	mtx    sync.RWMutex
 }
 
-func NewSyncedJSON(context context.Context, file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) *SyncedJSON {
-	return &SyncedJSON{
-		context:       context,
+func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
+	sj := &SyncedJSON{
 		file:          file,
 		fileContext:   fileContext,
 		uri:           uri,
@@ -42,18 +40,19 @@ func NewSyncedJSON(context context.Context, file, fileContext, uri string, trans
 		ttl:           ttl,
 		unmarshaller:  unmarshaller,
 	}
+	_, err := sj.loadSynced("initial")
+	return sj, err
 }
 
 func (s *SyncedJSON) Data(uid string) (interface{}, error) {
-	var err error
-
 	s.mtx.RLock()
 	data := s.data
 	expired := s.hasExpired()
 	s.mtx.RUnlock()
 
 	if data == nil || expired {
-		data, err = s.Load(uid)
+		var err error
+		data, err = s.loadSynced(uid)
 		if err != nil {
 			return nil, fmt.Errorf("error loading synced JSON: %v", err)
 		}
@@ -62,10 +61,16 @@ func (s *SyncedJSON) Data(uid string) (interface{}, error) {
 	return data, nil
 }
 
-func (s *SyncedJSON) Load(uid string) (interface{}, error) {
+// loadSynced must block all other requests.
+func (s *SyncedJSON) loadSynced(uid string) (interface{}, error) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	var rawJSON []byte
 
-	if s.file != "" {
+	if s.data != nil && !s.hasExpired() { // edge case if someone hangs at this methods lock
+		return s.data, nil
+	} else if s.file != "" {
 		j, err := reader.ReadFromFile(s.fileContext, s.file)
 		if err != nil {
 			return nil, err
@@ -76,7 +81,7 @@ func (s *SyncedJSON) Load(uid string) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		ctx := context.WithValue(s.context, request.URLAttribute, s.uri)
+		ctx := context.WithValue(context.Background(), request.URLAttribute, s.uri)
 		ctx = context.WithValue(ctx, request.RoundTripName, s.roundTripName)
 		if uid != "" {
 			ctx = context.WithValue(ctx, request.UID, uid)
@@ -105,9 +110,6 @@ func (s *SyncedJSON) Load(uid string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
 
 	s.data = jsonData
 	s.expiry = time.Now().Unix() + int64(s.ttl.Seconds())

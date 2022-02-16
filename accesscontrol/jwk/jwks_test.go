@@ -25,7 +25,7 @@ func Test_JWKS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := jwk.NewJWKS(tt.url, "", nil, nil)
+			_, err := jwk.NewJWKS(tt.url, "", nil)
 			if err == nil && tt.error != "" {
 				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
 			}
@@ -48,7 +48,7 @@ func Test_JWKS_Load(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
 			_, err = jwks.Data("")
 			if err != nil && tt.expParsed {
@@ -77,7 +77,7 @@ func Test_JWKS_GetSigKeyForToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
 			_, err = jwks.Data("")
 			helper.Must(err)
@@ -129,7 +129,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
 			_, err = jwks.Data("")
 			helper.Must(err)
@@ -150,7 +150,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	memQuitCh := make(chan struct{})
 	defer close(memQuitCh)
 
-	jwks, err := jwk.NewJWKS("file:testdata/jwks.json", "", nil, nil)
+	jwks, err := jwk.NewJWKS("file:testdata/jwks.json", "", nil)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

@@ -61,9 +61,10 @@ func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Confi
 		context:  ctx,
 	}
 
-	sj := jsn.NewSyncedJSON(ctx, "", "", oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, conf)
-	conf.syncedJSON = sj
-	return conf, nil
+	var err error
+	conf.syncedJSON, err = jsn.NewSyncedJSON("", "",
+		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, conf)
+	return conf, err
 }
 
 func (c *Config) Backends() map[string]http.RoundTripper {
@@ -151,11 +152,7 @@ func (c *Config) Unmarshal(rawJSON []byte, uid string) (interface{}, error) {
 		}
 	}
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.backends["jwks_uri_backend"], c.context)
-	if err != nil {
-		return nil, err
-	}
-	_, err = newJWKS.Data(uid)
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.backends["jwks_uri_backend"])
 	if err != nil {
 		return nil, err
 	}

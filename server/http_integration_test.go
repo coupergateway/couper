@@ -156,7 +156,11 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
 			command.RunCmdTestCallback()
 			shutdownFn()
-			panic(err)
+			if lerr, ok := err.(*errors.Error); ok {
+				panic(lerr.LogError())
+			} else {
+				panic(err)
+			}
 		}
 	}()
 	<-waitForCh
