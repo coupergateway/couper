@@ -122,7 +122,7 @@ func (j *JWKS) Data(uid string) (*JWKSData, error) {
 	return &jwksData, nil
 }
 
-func (j *JWKS) Unmarshal(rawJSON []byte, _ string) (interface{}, error) {
+func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
 	var jsonData JWKSData
 	err := json.Unmarshal(rawJSON, &jsonData)
 	if err != nil {

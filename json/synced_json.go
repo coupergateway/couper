@@ -13,7 +13,7 @@ import (
 )
 
 type SyncedJSONUnmarshaller interface {
-	Unmarshal(rawJSON []byte, uid string) (interface{}, error)
+	Unmarshal(rawJSON []byte) (interface{}, error)
 }
 
 type SyncedJSON struct {
@@ -106,7 +106,7 @@ func (s *SyncedJSON) loadSynced(uid string) (interface{}, error) {
 		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}
 
-	jsonData, err := s.unmarshaller.Unmarshal(rawJSON, uid)
+	jsonData, err := s.unmarshaller.Unmarshal(rawJSON)
 	if err != nil {
 		return nil, err
 	}

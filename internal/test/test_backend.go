@@ -201,8 +201,9 @@ func jwks(rw http.ResponseWriter, req *http.Request) {
 
 func oidc(rw http.ResponseWriter, req *http.Request) {
 	body := []byte(`{
-			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"issuer": "https://authorization.server",
+			"jwks_uri": "http://` + req.Host + `/jwks.json",
 			"token_endpoint": "http://` + req.Host + `/token",
 			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
 			}`)

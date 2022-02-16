@@ -133,7 +133,7 @@ func (c *Config) Data(uid string) (*OpenidConfiguration, error) {
 	return &openidConfigurationData, nil
 }
 
-func (c *Config) Unmarshal(rawJSON []byte, uid string) (interface{}, error) {
+func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 	var jsonData OpenidConfiguration
 	err := json.Unmarshal(rawJSON, &jsonData)
 	if err != nil {
