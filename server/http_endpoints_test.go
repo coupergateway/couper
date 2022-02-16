@@ -45,7 +45,11 @@ func TestBackend_BackendVariable_Request(t *testing.T) {
 	if res.Header.Get("X-From-Request-Header") != "bar" ||
 		res.Header.Get("X-From-Request-Json-Body") != "1" ||
 		res.Header.Get("X-From-Requests-Header") != "bar" ||
-		res.Header.Get("X-From-Requests-Json-Body") != "1" {
+		res.Header.Get("X-From-Requests-Json-Body") != "1" ||
+		// res.Header.Get("X-From-Response-Json-Body") != "/anything" || // not yet
+		// res.Header.Get("X-From-Responses-Json-Body") != "/anything" || // not yet
+		res.Header.Get("X-From-Response-Header") != "application/json" ||
+		res.Header.Get("X-From-Responses-Header") != "application/json" {
 		t.Errorf("Unexpected header given: %#v", res.Header)
 	}
 
@@ -56,10 +60,14 @@ func TestBackend_BackendVariable_Request(t *testing.T) {
 
 		data := entry.Data["custom"].(logrus.Fields)
 
-		if data["x-from-request-body"] != float64(1) ||
+		if data["x-from-request-json-body"] != float64(1) ||
 			data["x-from-request-header"] != "bar" ||
-			data["x-from-requests-body"] != float64(1) ||
-			data["x-from-requests-header"] != "bar" {
+			data["x-from-requests-json-body"] != float64(1) ||
+			data["x-from-requests-header"] != "bar" ||
+			data["x-from-response-header"] != "application/json" ||
+			data["x-from-response-json-body"] != "/anything" ||
+			data["x-from-responses-header"] != "application/json" ||
+			data["x-from-responses-json-body"] != "/anything" {
 			t.Errorf("Unexpected logs given: %#v", data)
 		}
 	}
