@@ -647,7 +647,7 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/12_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/14_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
