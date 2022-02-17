@@ -98,7 +98,8 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	o.issLock.RUnlock()
 
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
-		idToken, err := jwtParser.Parse(idTokenString, o.config.JWKS.GetSigKeyForToken)
+
+		idToken, err := jwtParser.Parse(idTokenString, o.Keyfunc)
 		if err != nil {
 			return err
 		}
@@ -132,6 +133,11 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	}
 
 	return errors.Oauth2.Message("missing id_token in token response")
+}
+
+func (o *OidcClient) Keyfunc(token *jwt.Token) (interface{}, error) {
+	return o.config.JWKS().
+		GetSigKeyForToken(token)
 }
 
 func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, hashedVerifierValue, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {

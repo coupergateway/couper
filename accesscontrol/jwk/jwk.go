@@ -39,8 +39,8 @@ type rawJWK struct {
 }
 
 func (j *JWK) UnmarshalJSON(data []byte) error {
-	var raw rawJWK
-	err := json.Unmarshal(data, &raw)
+	raw := &rawJWK{}
+	err := json.Unmarshal(data, raw)
 	if err != nil {
 		// TODO log warning properly
 		fmt.Printf("Invalid JWK: %v\n", err)
@@ -48,7 +48,7 @@ func (j *JWK) UnmarshalJSON(data []byte) error {
 	}
 
 	var key interface{}
-	jwk := JWK{KeyID: raw.Kid, Algorithm: raw.Alg, KeyType: raw.Kty, Use: raw.Use}
+	jwk := &JWK{KeyID: raw.Kid, Algorithm: raw.Alg, KeyType: raw.Kty, Use: raw.Use}
 
 	switch raw.Kty {
 	case "RSA":
@@ -100,7 +100,7 @@ func (j *JWK) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	*j = jwk
+	*j = *jwk
 
 	return nil
 }

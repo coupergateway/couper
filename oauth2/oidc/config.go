@@ -39,8 +39,9 @@ type Config struct {
 	backends   map[string]http.RoundTripper
 	context    context.Context
 	syncedJSON *jsn.SyncedJSON
-	JWKS       *jwk.JWKS
-	mtx        sync.RWMutex
+	jwks       *jwk.JWKS
+	cmu        sync.RWMutex // conf
+	jmu        sync.RWMutex // jkws
 }
 
 // NewConfig creates a new configuration for an OIDC client
@@ -125,41 +126,47 @@ func (c *Config) Data(uid string) (*OpenidConfiguration, error) {
 		return nil, err
 	}
 
-	openidConfigurationData, ok := data.(OpenidConfiguration)
+	openidConfigurationData, ok := data.(*OpenidConfiguration)
 	if !ok {
 		return nil, fmt.Errorf("data not OpenID configuration data: %#v", data)
 	}
 
-	return &openidConfigurationData, nil
+	return openidConfigurationData, nil
+}
+
+func (c *Config) JWKS() *jwk.JWKS {
+	c.jmu.RLock()
+	defer c.jmu.RUnlock()
+	j := *c.jwks
+	return &j
 }
 
 func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
-	var jsonData OpenidConfiguration
-	err := json.Unmarshal(rawJSON, &jsonData)
+	jsonData := &OpenidConfiguration{}
+	err := json.Unmarshal(rawJSON, jsonData)
 	if err != nil {
 		return nil, err
 	}
 
-	c.mtx.RLock()
-	oldVM := c.OIDC.VerifierMethod
-	c.mtx.RUnlock()
-	newVM := oldVM
-	if oldVM == "" {
+	c.cmu.Lock()
+	defer c.cmu.Unlock()
+
+	if c.OIDC.VerifierMethod == "" {
 		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
-			newVM = config.CcmS256
+			c.OIDC.VerifierMethod = config.CcmS256
 		} else {
-			newVM = "nonce"
+			c.OIDC.VerifierMethod = "nonce"
 		}
 	}
 
 	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.backends["jwks_uri_backend"])
-	if err != nil {
-		return nil, err
+	if err != nil { // do not replace possible working jwks on err
+		return jsonData, err
 	}
-	c.mtx.Lock()
-	c.OIDC.VerifierMethod = newVM
-	c.JWKS = newJWKS
-	c.mtx.Unlock()
+
+	c.jmu.Lock()
+	c.jwks = newJWKS
+	c.jmu.Unlock()
 
 	return jsonData, nil
 }

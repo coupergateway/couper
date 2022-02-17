@@ -40,29 +40,12 @@ func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, r
 		ttl:           ttl,
 		unmarshaller:  unmarshaller,
 	}
-	_, err := sj.loadSynced("initial")
+	_, err := sj.Data("")
 	return sj, err
 }
 
+// Data must block all other requests.
 func (s *SyncedJSON) Data(uid string) (interface{}, error) {
-	s.mtx.RLock()
-	data := s.data
-	expired := s.hasExpired()
-	s.mtx.RUnlock()
-
-	if data == nil || expired {
-		var err error
-		data, err = s.loadSynced(uid)
-		if err != nil {
-			return nil, fmt.Errorf("error loading synced JSON: %v", err)
-		}
-	}
-
-	return data, nil
-}
-
-// loadSynced must block all other requests.
-func (s *SyncedJSON) loadSynced(uid string) (interface{}, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

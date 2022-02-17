@@ -22,7 +22,7 @@ var alg2kty = map[string]string{
 }
 
 type JWKSData struct {
-	Keys []JWK `json:"keys"`
+	Keys []*JWK `json:"keys"`
 }
 
 type JWKS struct {
@@ -71,8 +71,8 @@ func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
 	return jwk.Key, nil
 }
 
-func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
-	var keys []JWK
+func (j *JWKS) GetKeys(kid string) ([]*JWK, error) {
+	var keys []*JWK
 
 	jwksData, err := j.Data("")
 	if err != nil {
@@ -97,10 +97,10 @@ func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 	for _, key := range keys {
 		if key.Use == use {
 			if key.Algorithm == alg {
-				return &key, nil
+				return key, nil
 			} else if key.Algorithm == "" {
 				if kty, exists := alg2kty[alg]; exists && key.KeyType == kty {
-					return &key, nil
+					return key, nil
 				}
 			}
 		}
@@ -114,19 +114,16 @@ func (j *JWKS) Data(uid string) (*JWKSData, error) {
 		return nil, err
 	}
 
-	jwksData, ok := data.(JWKSData)
+	jwksData, ok := data.(*JWKSData)
 	if !ok {
 		return nil, fmt.Errorf("data not JWKS data: %#v", data)
 	}
 
-	return &jwksData, nil
+	return jwksData, nil
 }
 
 func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
-	var jsonData JWKSData
-	err := json.Unmarshal(rawJSON, &jsonData)
-	if err != nil {
-		return nil, err
-	}
-	return jsonData, nil
+	jsonData := &JWKSData{}
+	err := json.Unmarshal(rawJSON, jsonData)
+	return jsonData, err
 }
