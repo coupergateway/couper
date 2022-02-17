@@ -1,16 +1,28 @@
 package jwk_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/accesscontrol/jwk"
+	"github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 )
 
 func Test_JWKS(t *testing.T) {
+
+	origin := test.NewBackend()
+	defer origin.Close()
+
+	log, _ := test.NewLogger()
+
+	backend := transport.NewBackend(body.New(body.NewContentWithAttrName("origin", origin.Addr())),
+		&transport.Config{}, nil, log.WithContext(context.Background()))
+
 	tests := []struct {
 		name  string
 		url   string
@@ -19,18 +31,17 @@ func Test_JWKS(t *testing.T) {
 		{"missing_scheme", "no-scheme", `unsupported JWKS URI scheme: "no-scheme"`},
 		{"short url", "file", `unsupported JWKS URI scheme: "file"`},
 		{"short url", "https", `unsupported JWKS URI scheme: "https"`},
-		{"ok file", "file:jwks.json", ""},
-		{"ok http", "http://jwks.json", ""},
-		{"ok https", "https://jwks.json", ""},
+		{"ok file", "file:testdata/jwks.json", ""},
+		{"ok http", origin.Addr() + "/jwks.json", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := jwk.NewJWKS(tt.url, "", nil)
+			_, err := jwk.NewJWKS(tt.url, "", backend)
 			if err == nil && tt.error != "" {
 				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
 			}
 			if err != nil && err.Error() != tt.error {
-				subT.Errorf("Unexpected error:\n\tWant: %v\n\tGot:  %v", tt.error, err)
+				subT.Errorf("Unexpected error:\n\tWant: %v\n\tGot:  %#v", tt.error, err)
 			}
 		})
 	}
