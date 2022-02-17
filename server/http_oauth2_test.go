@@ -545,9 +545,9 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "token"},
-		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_61_6_token_endpoint"},
+		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_49_6_token_endpoint"},
 		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "token"},
-		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_90_21_token_backend"},
+		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_78_21_token_backend"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
@@ -643,11 +643,11 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"referenced backend", "/rs1", "token"},
-		{"inline backend", "/rs2", "anonymous_121_13"},
+		{"inline backend", "/rs2", "anonymous_32_13"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/12_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
