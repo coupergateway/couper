@@ -32,7 +32,9 @@
     - [couper](#couper)
     - [env](#env)
     - [request](#request)
+    - [backend_request](#backend_request)
     - [backend_requests](#backend_requests)
+    - [backend_response](#backend_response)
     - [backend_responses](#backend_responses)
   - [Functions](#functions)
   - [Modifiers](#modifiers)
@@ -650,9 +652,14 @@ and for OIDC additionally:
 - `id_token_claims`: a map of claims from the ID token
 - `userinfo`: a map of claims retrieved from the userinfo endpoint
 
+### `backend_request`
+
+`backend_request` holds information about the current backend request. It is only
+available in a [Backend Block](#backend-block), and has the same attributes as a backend request in `backend_requests.<label>` (see [backend_requests](#backend_requests) below).
+
 ### `backend_requests`
 
-`backend_requests.<label>` is a list of all backend requests, and their variables.
+`backend_requests` is an object with all backend requests and their attributes.
 To access a specific request use the related label. [Request](#request-block) and
 [Proxy](#proxy-block) blocks without a label will be available as `default`.
 To access the HTTP method of the `default` request use `backend_requests.default.method` .
@@ -675,9 +682,14 @@ To access the HTTP method of the `default` request use `backend_requests.default
 | `port`                           | integer         | Port of the backend request URL                                                                                                                                                                                                                                                      | `443`                                       |
 | `path`                           | string          | Backend request URL path                                                                                                                                                                                                                                                             | `/path/to`                                  |
 
+### `backend_response`
+
+`backend_response` represents the current backend response.  It is only
+available in a [Backend Block](#backend-block), and has the same attributes as a backend response in `backend_responses.<label>` (see [backend_responses](#backend_responses) below).
+
 ### `backend_responses`
 
-`backend_responses.<label>` is a list of all backend responses, and their variables. Same behaviour as for `backend_requests`.
+`backend_responses` is an object with all backend responses and their attributes.
 Use the related label to access a specific response.
 [Request](#request-block) and [Proxy](#proxy-block) blocks without a label will be available as `default`.
 To access the HTTP status code of the `default` response use `backend_responses.default.status` .

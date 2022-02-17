@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/internal/test"
@@ -26,6 +27,130 @@ import (
 )
 
 const testdataPath = "testdata/endpoints"
+
+func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/backend/01_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/request", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.Header.Get("X-From-Request-Header") != "bar" ||
+		res.Header.Get("X-From-Request-Json-Body") != "1" ||
+		res.Header.Get("X-From-Requests-Header") != "bar" ||
+		res.Header.Get("X-From-Requests-Json-Body") != "1" ||
+		// res.Header.Get("X-From-Response-Json-Body") != "/anything" || // not yet
+		// res.Header.Get("X-From-Responses-Json-Body") != "/anything" || // not yet
+		res.Header.Get("X-From-Response-Header") != "application/json" ||
+		res.Header.Get("X-From-Responses-Header") != "application/json" {
+		t.Errorf("Unexpected header given: %#v", res.Header)
+	}
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		responseHeaders := entry.Data["response"].(logging.Fields)["headers"].(map[string]string)
+		data := entry.Data["custom"].(logrus.Fields)
+
+		url := entry.Data["url"]
+		if url == "http://localhost:8081/token" {
+			if data["x-from-request-body"] != "grant_type=client_credentials" ||
+				// data["x-from-request-form-body"] != "client_credentials" || // not yet
+				data["x-from-request-header"] != "Basic cXBlYjpiZW4=" ||
+				data["x-from-response-header"] != "60s" ||
+				data["x-from-response-body"] != `{"access_token":"the_access_token","expires_in":60}` ||
+				data["x-from-response-json-body"] != "the_access_token" ||
+				responseHeaders["location"] != "Basic cXBlYjpiZW4=||60s|" {
+				// responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" { // not yet
+				t.Errorf("Unexpected logs given: %#v", data)
+			}
+		} else {
+			if data["x-from-request-json-body"] != float64(1) ||
+				data["x-from-request-header"] != "bar" ||
+				data["x-from-requests-json-body"] != float64(1) ||
+				data["x-from-requests-header"] != "bar" ||
+				data["x-from-response-header"] != "application/json" ||
+				data["x-from-response-json-body"] != "/anything" ||
+				data["x-from-responses-header"] != "application/json" ||
+				data["x-from-responses-json-body"] != "/anything" {
+				t.Errorf("Unexpected logs given: %#v", data)
+			}
+		}
+	}
+}
+
+func TestBackend_BackendVariable(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/backend/01_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
+	helper.Must(err)
+
+	req.Header.Set("Cookie", "Cookie")
+	req.Header.Set("User-Agent", "Couper")
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	var check int
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		name := entry.Data["request"].(logging.Fields)["name"]
+		data := entry.Data["custom"].(logrus.Fields)
+		// The Cookie request header is not proxied, so *-req is not set in log.
+
+		if name == "default" {
+			check++
+
+			if len(data) != 2 || data["default-res"] != "application/json" || data["default-ua"] != "Couper" {
+				t.Errorf("unexpected data given: %#v", data)
+			}
+		} else if name == "request" {
+			check++
+
+			if len(data) != 2 || data["request-res"] != "text/plain; charset=utf-8" || data["request-ua"] != "" {
+				t.Errorf("unexpected data given: %#v", data)
+			}
+		} else if name == "r1" {
+			check++
+
+			if len(data) != 2 || data["definitions-res"] != "text/plain; charset=utf-8" || data["definitions-ua"] != "" {
+				t.Errorf("unexpected data given: %#v", data)
+			}
+		} else if name == "r2" {
+			check++
+
+			if len(data) != 2 || data["definitions-res"] != "application/json" || data["definitions-ua"] != "" {
+				t.Errorf("unexpected data given: %#v", data)
+			}
+		}
+	}
+
+	if check != 4 {
+		t.Error("missing 4 backend logs")
+	}
+
+	if got := res.Header.Get("Test-Header"); got != "application/json" {
+		t.Errorf("Unexpected header given: %#v", got)
+	}
+}
 
 func TestEndpoints_Protected404(t *testing.T) {
 	client := newClient()
