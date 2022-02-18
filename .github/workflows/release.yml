@@ -17,6 +17,14 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
+
+      - name: 'wait for tests'
+        uses: lewagon/wait-on-check-action@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'go-test-build'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
       - name: Set outputs
         id: vars
         run: |
@@ -43,10 +51,20 @@ jobs:
       VERSION_PACKAGE: 'github.com/avenga/couper/utils'
     steps:
       - uses: actions/checkout@v2
+
       - name: 'setup go'
         uses: actions/setup-go@v2
         with:
           go-version: 1.17.x
+
+      - name: 'wait for tests'
+        uses: lewagon/wait-on-check-action@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'go-test-build'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
       - name: 'import certificate'
         uses: devbotsxyz/import-signing-certificate@v1
         with:
