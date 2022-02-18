@@ -59,7 +59,7 @@ jobs:
         run: go install github.com/wangyoucao577/assets-uploader/...@v0.8.0
       - name: 'build couper'
         run: |
-          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -race -v -o ./.macos/Couper.app/Contents/couper main.go
+          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -v -o ./.macos/Couper.app/Contents/couper main.go
       - name: 'cleanup finder attributes'
         run: |
           xattr -c ./.macos/Couper.app/Contents/Info.plist
