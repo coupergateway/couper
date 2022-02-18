@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - v1.*
-      - v1-test.*
 #  release:
 #    types: [prereleased,released]
 
