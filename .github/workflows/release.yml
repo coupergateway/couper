@@ -6,7 +6,7 @@ on:
 
 jobs:
   linux-windows:
-    name: Release Go Binary
+    name: 'build linux and windows binaries'
     runs-on: ubuntu-latest
     env:
       VERSION_PACKAGE: 'github.com/avenga/couper/utils'
@@ -25,12 +25,14 @@ jobs:
           check-name: 'go-test-build'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
+
       - name: Set outputs
         id: vars
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
-      - uses: wangyoucao577/go-release-action@v1.22
+
+      - uses: wangyoucao577/go-release-action@v1.24
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
@@ -39,7 +41,10 @@ jobs:
           binary_name: "couper"
           ldflags: "-X ${VERSION_PACKAGE}.VersionName=${GITHUB_REF_NAME} -X ${VERSION_PACKAGE}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${VERSION_PACKAGE}.BuildDate=${{ steps.vars.outputs.build_date }}"
           sha256sum: true
+          post_command: |
+            echo "::set-output name=${{ matrix.goos }}_${{ matrix.goarch }}::$SHA256_SUM"
   macos:
+    name: 'build and sign MacOS binary'
     runs-on: macos-11
     strategy:
       matrix:
@@ -75,7 +80,7 @@ jobs:
         run: go install github.com/mitchellh/gon/...@v0.2.3
       - name: 'install assets-uploader'
         run: go install github.com/wangyoucao577/assets-uploader/...@v0.8.0
-      - name: 'build couper'
+      - name: 'build Couper'
         run: |
           go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -v -o ./.macos/Couper.app/Contents/couper main.go
       - name: 'cleanup finder attributes'
@@ -85,7 +90,7 @@ jobs:
           plutil -convert xml1 .macos/Entitlements.plist && plutil -lint .macos/Entitlements.plist
       - name: 'verify identity'
         run: security find-identity -v
-      - name: 'sign couper binary'
+      - name: 'sign Couper binary'
         run: codesign -i "binary.com.avenga.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
       - name: 'create signed binary archive' # keep utf8 things with ditto
         run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/couper ./.macos/couper.zip
@@ -111,11 +116,13 @@ jobs:
     name: 'update homebrew formula'
     runs-on: ubuntu-latest
     needs:
-#      - linux-windows
+      - linux-windows
       - macos
     env:
       MACOS_AMD64_SHA256: ${{ needs.macos.steps.vars.outputs.amd64 }}
       MACOS_ARM64_SHA256: ${{ needs.macos.steps.vars.outputs.arm64 }}
+      LINUX_ARM64_SHA256: ${{ needs.linux-windows.steps.vars.outputs.linux_arm64 }}
+      LINUX_AMD64_SHA256: ${{ needs.linux-windows.steps.vars.outputs.linux_amd64 }}
     steps:
       - name: 'checkout'
         uses: actions/checkout@v2
