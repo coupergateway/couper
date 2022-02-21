@@ -240,13 +240,7 @@ func mergeDefinitions(bodies []hcl.Body) (*hcl.Block, error) {
 				}
 
 				if len(innerBlock.Labels) == 0 {
-					return nil, hcl.Diagnostics{
-						&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  fmt.Sprintf("All %s blocks must have a label", innerBlock.Type),
-							Subject:  &innerBlock.DefRange,
-						},
-					}
+					return nil, errorUniqueLabels(innerBlock)
 				}
 
 				definitions[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
