@@ -3126,6 +3126,7 @@ func TestAPICatchAll(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
