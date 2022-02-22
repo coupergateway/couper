@@ -312,9 +312,9 @@ func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
 	if pathPrefix := b.getAttribute(req, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
-			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in \"%s\"", pathPrefix)
-		} else if i := strings.Index(pathPrefix, "?"); i >= 0 {
-			return errors.Configuration.Messagef("path_prefix attribute: invalid query string found in \"%s\"", pathPrefix)
+			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in %q", pathPrefix)
+		} else if i = strings.Index(pathPrefix, "?"); i >= 0 {
+			return errors.Configuration.Messagef("path_prefix attribute: invalid query string found in %q", pathPrefix)
 		}
 
 		req.URL.Path = utils.JoinPath("/", pathPrefix, req.URL.Path)
