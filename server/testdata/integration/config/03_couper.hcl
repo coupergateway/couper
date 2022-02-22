@@ -58,9 +58,8 @@ server "acs" {
     base_path = "/v5"
     access_control = ["ba2"]
     endpoint "/exists" {
-      error_file = "../server_error.html" # error_file in endpoint
-      proxy {
-        backend = "test"
+      response {
+        body = "exists"
       }
     }
   }
