@@ -88,7 +88,8 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 
 		req.Header.Del("Authorization")
 		*req = *req.WithContext(ctx)
-		return true, oa.WithToken(req)
+		err := oa.WithToken(req.Clone(ctx))
+		return true, err
 	}
 	return false, nil
 }
