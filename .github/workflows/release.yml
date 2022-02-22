@@ -50,6 +50,7 @@ jobs:
           md5sum: false
           asset_name: "couper-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           release_name: ${{ github.ref_name }}
+          overwrite: true
           post_command: |
             echo "::set-output name=${{ matrix.goos }}_${{ matrix.goarch }}::$SHA256_SUM"
   macos:
