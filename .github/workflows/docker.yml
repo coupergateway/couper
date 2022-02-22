@@ -2,7 +2,7 @@ name: Docker
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, release.* ]
     paths-ignore:
       - '**/README.md'
       - '.github/workflows/weekly-fuzz.yml'
@@ -21,73 +21,72 @@ jobs:
     timeout-minutes: 10
     steps:
 
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: '1.17'
-      id: go
-    - run: go version
+      - name: 'wait for tests'
+        uses: lewagon/wait-on-check-action@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'go test & build'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
 
-    - name: checkout
-      uses: actions/checkout@v2
-      if: github.event_name != 'workflow_dispatch'
+      - name: checkout
+        uses: actions/checkout@v2
+        if: github.event_name != 'workflow_dispatch'
 
-    - name: checkout given tag
-      uses: actions/checkout@v2
-      if: github.event_name == 'workflow_dispatch'
-      with:
-        ref: ${{ github.event.inputs.tag }}
+      - name: checkout given tag
+        uses: actions/checkout@v2
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          ref: ${{ github.event.inputs.tag }}
 
-    - name: Test
-      run: go test -v -timeout 300s -race ./...
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: avenga/couper
+          tags: |
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=edge,event=branch
 
-    - name: Docker meta
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: avenga/couper
-        tags: |
-          type=semver,pattern={{major}}.{{minor}}.{{patch}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=edge,event=branch
+      - name: Login to DockerHub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Login to DockerHub
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      - name: Build and push docker image with edge tag
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push' # due to release branch, pin to master
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: ${{ GitHub.event_name != 'pull_request' }}
 
-    - name: Build and push docker image with edge tag
-      if: github.event_name == 'push'
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ steps.meta.outputs.tags }}
-        push: ${{ GitHub.event_name != 'pull_request' }}
+      - name: Build and push docker image with specific tag
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: ${{ GitHub.event_name != 'pull_request' }}
 
-    - name: Build and push docker image with specific tag
-      if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ steps.meta.outputs.tags }}
-        push: ${{ GitHub.event_name != 'pull_request' }}
-
-    - name: Docker Hub Description
-      if: github.event_name == 'release'
-      uses: peter-evans/dockerhub-description@v2
-      with:
-        readme-filepath: './DOCKER.md'
-        username: '${{ secrets.DOCKER_USERNAME }}'
-        password: '${{ secrets.DOCKER_PASSWORD }}'
-        repository: avenga/couper
+      - name: Docker Hub Description
+        if: github.event_name == 'release'
+        uses: peter-evans/dockerhub-description@v2
+        with:
+          readme-filepath: './DOCKER.md'
+          username: '${{ secrets.DOCKER_USERNAME }}'
+          password: '${{ secrets.DOCKER_PASSWORD }}'
+          repository: avenga/couper

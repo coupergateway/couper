@@ -1,13 +1,27 @@
 name: Release
 
 on:
-  release:
-    types: [prereleased,released]
+  push:
+    tags:
+      - v1.*
 
 jobs:
-  linux-windows:
-    name: Release Go Binary
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - name: 'wait for tests'
+        uses: lewagon/wait-on-check-action@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'go test & build'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+  linux-windows:
+    name: 'build linux and windows binaries'
+    runs-on: ubuntu-latest
+    needs:
+      - test
     env:
       VERSION_PACKAGE: 'github.com/avenga/couper/utils'
     strategy:
@@ -15,14 +29,22 @@ jobs:
         goos: [linux, windows]
         goarch: [amd64, arm64]
       fail-fast: false
+    outputs:
+      linux_amd64: ${{ steps.build.outputs.linux_amd64 }}
+      linux_arm64: ${{ steps.build.outputs.linux_arm64 }}
+      windows_amd64: ${{ steps.build.outputs.windows_amd64 }}
+      windows_arm64: ${{ steps.build.outputs.windows_arm64 }}
     steps:
       - uses: actions/checkout@v2
+
       - name: Set outputs
         id: vars
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
-      - uses: wangyoucao577/go-release-action@v1.22
+
+      - uses: wangyoucao577/go-release-action@v1.25
+        id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
@@ -31,8 +53,17 @@ jobs:
           binary_name: "couper"
           ldflags: "-X ${VERSION_PACKAGE}.VersionName=${GITHUB_REF_NAME} -X ${VERSION_PACKAGE}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${VERSION_PACKAGE}.BuildDate=${{ steps.vars.outputs.build_date }}"
           sha256sum: true
+          md5sum: false
+          asset_name: "couper-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          release_name: ${{ github.ref_name }}
+          overwrite: true
+          post_command: |
+            echo "::set-output name=${{ matrix.goos }}_${{ matrix.goarch }}::$SHA256_SUM"
   macos:
+    name: 'build and sign MacOS binary'
     runs-on: macos-11
+    needs:
+      - test
     strategy:
       matrix:
         goarch: [amd64, arm64]
@@ -41,12 +72,17 @@ jobs:
       AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       VERSION_PACKAGE: 'github.com/avenga/couper/utils'
+    outputs:
+      amd64: ${{ steps.upload.outputs.amd64 }}
+      arm64: ${{ steps.upload.outputs.arm64 }}
     steps:
       - uses: actions/checkout@v2
+
       - name: 'setup go'
         uses: actions/setup-go@v2
         with:
           go-version: 1.17.x
+
       - name: 'import certificate'
         uses: devbotsxyz/import-signing-certificate@v1
         with:
@@ -56,10 +92,10 @@ jobs:
       - name: 'install gon'
         run: go install github.com/mitchellh/gon/...@v0.2.3
       - name: 'install assets-uploader'
-        run: go install github.com/wangyoucao577/assets-uploader/...@v0.8.0
-      - name: 'build couper'
+        run: go install github.com/wangyoucao577/assets-uploader/...@v0.9.0
+      - name: 'build Couper'
         run: |
-          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -race -v -o ./.macos/Couper.app/Contents/couper main.go
+          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -v -o ./.macos/Couper.app/Contents/couper main.go
       - name: 'cleanup finder attributes'
         run: |
           xattr -c ./.macos/Couper.app/Contents/Info.plist
@@ -67,54 +103,57 @@ jobs:
           plutil -convert xml1 .macos/Entitlements.plist && plutil -lint .macos/Entitlements.plist
       - name: 'verify identity'
         run: security find-identity -v
-      - name: 'sign couper binary'
+      - name: 'sign Couper binary'
         run: codesign -i "binary.com.avenga.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
       - name: 'create signed binary archive' # keep utf8 things with ditto
         run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/couper ./.macos/couper.zip
-#      - name: 'create macOS dmg with signed binary'
-#        run: |
-#          mkdir -p ./.macos/Couper.app/Contents/MacOS
-#          mv ./.macos/Couper.app/Contents/couper ./.macos/Couper.app/Contents/MacOS/couper
-#          codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/Entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
-#          cd .macos && go run make.go && cd ..
+      #      - name: 'create macOS dmg with signed binary'
+      #        run: |
+      #          mkdir -p ./.macos/Couper.app/Contents/MacOS
+      #          mv ./.macos/Couper.app/Contents/couper ./.macos/Couper.app/Contents/MacOS/couper
+      #          codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/Entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
+      #          cd .macos && go run make.go && cd ..
       - name: 'notarize' # and stable'
         run: gon -log-level=info -log-json ./.gon.hcl
-#      - name: 'verify image notarization'
-#        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
+      #      - name: 'verify image notarization'
+      #        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
       - name: 'upload archive'
-        id: 'vars'
+        id: 'upload'
         run: |
-          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          echo "::set-output name=${{ matrix.goarch }}::$(shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1)"
-#      - name: 'upload image'
-#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -tag $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
+          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.sha256 -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          echo "::set-output name=${{ matrix.goarch }}::$(cat ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256)"
+  #      - name: 'upload image'
+  #        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
   brewlease:
     name: 'update homebrew formula'
     runs-on: ubuntu-latest
     needs:
-#      - linux-windows
+      - linux-windows
       - macos
-    env:
-      MACOS_AMD64_SHA256: ${{ needs.macos.steps.vars.outputs.amd64 }}
-      MACOS_ARM64_SHA256: ${{ needs.macos.steps.vars.outputs.arm64 }}
     steps:
       - name: 'checkout'
         uses: actions/checkout@v2
       - name: 'prepare template'
+        env:
+          MACOS_AMD64_SHA256: ${{ needs.macos.outputs.amd64 }}
+          MACOS_ARM64_SHA256: ${{ needs.macos.outputs.arm64 }}
+          LINUX_ARM64_SHA256: ${{ needs.linux-windows.outputs.linux_arm64 }}
+          LINUX_AMD64_SHA256: ${{ needs.linux-windows.outputs.linux_amd64 }}
         run: |
-          curl https://github.com/malud/temgo/releases/download/0.2.1/tg -o tg
+          curl -L https://github.com/malud/temgo/releases/download/0.2.1/tg -o tg
           chmod +x tg
-          ./tg -i ./github/workflows/couper.rb
+          ./tg -i ${GITHUB_WORKSPACE}/.github/workflows/couper.rb
       - name: 'publish formula'
-        uses: dmnemec/copy_file_to_another_repo_action@main
+        uses: dmnemec/copy_file_to_another_repo_action@v1.1.1
         env:
           API_TOKEN_GITHUB: ${{ secrets.GH_COUPER_API_TOKEN }}
         with:
-          source_file: './github/workflows/couper.rb'
+          source_file: '${{ github.workspace }}/.github/workflows/couper.rb'
           destination_repo: 'avenga/homebrew-couper'
           destination_folder: './'
           destination_branch: 'main'
+          destination_branch_create: 'release.${{ github.ref_name }}' # due to testing purposes; create branch for merging later on
           user_email: 'gitbot@couper.io'
           user_name: 'couper-gitbot'
-          commit_message: 'Update formula to ${GITHUB_REF_NAME} release'
+          commit_message: 'Update formula to ${{ github.ref_name }} release'
