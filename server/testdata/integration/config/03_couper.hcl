@@ -57,6 +57,9 @@ server "acs" {
   api {
     base_path = "/v5"
     access_control = ["ba2"]
+    cors {
+      allowed_origins = ["*"]
+    }
     endpoint "/exists" {
       response {
         body = "exists"
