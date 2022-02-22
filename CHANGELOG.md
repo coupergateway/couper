@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.7.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.7.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.7.1](https://github.com/avenga/couper/releases/tag/v1.7.1)
 
 * **Fixed**
   * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
