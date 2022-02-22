@@ -71,6 +71,9 @@ func mergeServers(bodies []hcl.Body) (hcl.Blocks, error) {
 				}
 
 				uniqueServerLabels[serverKey] = struct{}{}
+			} else {
+				// Create unique key for multiple server blocks inside a single config file.
+				serverKey += fmt.Sprintf("|%p", &serverKey)
 			}
 
 			if results[serverKey] == nil {
@@ -111,6 +114,9 @@ func mergeServers(bodies []hcl.Body) (hcl.Blocks, error) {
 						}
 
 						uniqueAPILabels[apiKey] = struct{}{}
+					} else {
+						// Create unique key for multiple api blocks inside a single config file.
+						apiKey += fmt.Sprintf("|%p", &apiKey)
 					}
 
 					if results[serverKey].apis[apiKey] == nil {
@@ -235,6 +241,7 @@ func mergeDefinitions(bodies []hcl.Body) (*hcl.Block, error) {
 			}
 
 			for _, innerBlock := range innerContent.Blocks {
+				fmt.Printf(">>> %#v::%#v\n", innerBlock.Type, innerBlock.Labels[0])
 				if definitions[innerBlock.Type] == nil {
 					definitions[innerBlock.Type] = make(data)
 				}

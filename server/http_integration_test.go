@@ -84,7 +84,7 @@ func teardown() {
 	testBackend.Close()
 }
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), "")
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3281,7 +3281,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	couperConfig, err := configload.LoadFiles("testdata/integration/config/05_couper.hcl", "")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -4982,13 +4982,13 @@ func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"/conditional/null", "expression evaluation error: 20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
-		{"/conditional/string", "expression evaluation error: 20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/number", "expression evaluation error: 20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/tuple", "expression evaluation error: 20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/object", "expression evaluation error: 20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/string/expr", "expression evaluation error: 20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/number/expr", "expression evaluation error: 20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/null", "20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
+		{"/conditional/string", "20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number", "20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/tuple", "20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/object", "20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/string/expr", "20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number/expr", "20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -5018,7 +5018,10 @@ func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
 			time.Sleep(time.Millisecond * 100)
 			entry := hook.LastEntry()
 			if entry != nil && entry.Level == logrus.ErrorLevel {
-				if entry.Message != tc.expMessage {
+				if !strings.HasPrefix(entry.Message, "expression evaluation error: ") {
+					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
+				}
+				if !strings.HasSuffix(entry.Message, tc.expMessage) {
 					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
 				}
 			}
