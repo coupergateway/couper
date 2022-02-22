@@ -133,17 +133,17 @@ jobs:
         run: |
           curl -L https://github.com/malud/temgo/releases/download/0.2.1/tg -o tg
           chmod +x tg
-          ./tg -i ./github/workflows/couper.rb
+          ./tg -i ${GITHUB_WORKSPACE}/.github/workflows/couper.rb
       - name: 'publish formula'
         uses: dmnemec/copy_file_to_another_repo_action@v1.1.1
         env:
           API_TOKEN_GITHUB: ${{ secrets.GH_COUPER_API_TOKEN }}
         with:
-          source_file: './github/workflows/couper.rb'
+          source_file: '${{ github.workspace }}/.github/workflows/couper.rb'
           destination_repo: 'avenga/homebrew-couper'
           destination_folder: './'
           destination_branch: 'main'
-          destination_branch_create: 'release.${GITHUB_REF_NAME}' # due to testing purposes; create branch for merging later on
+          destination_branch_create: 'release.${{ github.ref_name }}' # due to testing purposes; create branch for merging later on
           user_email: 'gitbot@couper.io'
           user_name: 'couper-gitbot'
-          commit_message: 'Update formula to ${GITHUB_REF_NAME} release'
+          commit_message: 'Update formula to ${{ github.ref_name }} release'
