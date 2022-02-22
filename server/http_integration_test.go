@@ -3117,6 +3117,7 @@ func TestAPICatchAll(t *testing.T) {
 	defer shutdown()
 
 	type testCase struct {
+		name       string
 		path       string
 		method     string
 		header     http.Header
@@ -3125,16 +3126,16 @@ func TestAPICatchAll(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"/v5/exists", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusOK, ""},
-		{"/v5/exists", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
-		{"/v5/exists", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
-		{"/v5/not-exist", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
-		{"/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
-		{"/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
-		{"/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
-		{"/v5/not-exist", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
+		{"exists, authorized", "/v5/exists", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusOK, ""},
+		{"exists, unauthorized", "/v5/exists", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"exists, CORS pre-flight", "/v5/exists", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
+		{"not-exist, authorized", "/v5/not-exist", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, unauthorized", "/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, non-standard method, unauthorized", "/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"not-exist, CORS pre-flight", "/v5/not-exist", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
