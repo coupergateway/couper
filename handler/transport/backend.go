@@ -285,13 +285,13 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(ctx, backendTokenRequest, "tr")
 
+	// propagate cancels
 	go func(done <-chan struct{}, cancelFn func()) {
-		defer cancelFn()
-		select {
-		case <-done:
-		}
+		<-done
+		cancelFn()
 	}(req.Context().Done(), cancel)
 
+	// WithContext() instead of Clone() due to header-map modification.
 	return b.tokenRequest.WithToken(req.WithContext(ctx))
 }
 
@@ -353,18 +353,29 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 
 	ctx, cancel := context.WithCancel(context.WithValue(req.Context(), request.ConnectTimeout, conf.ConnectTimeout))
 
+	downstreamTrace := httptrace.ContextClientTrace(ctx) // e.g. log-timings
+
 	ttfbTimeout := make(chan time.Time, 1) // size to always cleanup related go-routine
 	ttfbInTime := make(chan struct{})
 	ctxTrace := &httptrace.ClientTrace{
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			if downstreamTrace != nil && downstreamTrace.WroteRequest != nil {
+				downstreamTrace.WroteRequest(info)
+			}
+
 			if conf.TTFBTimeout <= 0 {
 				return
 			}
+
 			go func() {
 				ttfbTimeout <- <-time.After(conf.TTFBTimeout)
 			}()
 		},
 		GotFirstResponseByte: func() {
+			if downstreamTrace != nil && downstreamTrace.GotFirstResponseByte != nil {
+				downstreamTrace.GotFirstResponseByte()
+			}
+
 			close(ttfbInTime)
 		},
 	}
