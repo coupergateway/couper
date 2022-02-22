@@ -241,7 +241,6 @@ func mergeDefinitions(bodies []hcl.Body) (*hcl.Block, error) {
 			}
 
 			for _, innerBlock := range innerContent.Blocks {
-				fmt.Printf(">>> %#v::%#v\n", innerBlock.Type, innerBlock.Labels[0])
 				if definitions[innerBlock.Type] == nil {
 					definitions[innerBlock.Type] = make(data)
 				}
