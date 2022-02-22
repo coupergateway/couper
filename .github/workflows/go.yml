@@ -5,7 +5,6 @@ on:
     branches: [ master, release.* ]
     tags:
       - v1.*
-      - v1-test.*
     paths-ignore:
       - '**/README.md'
       - '.github/workflows/weekly-fuzz.yml'

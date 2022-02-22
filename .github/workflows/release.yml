@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - v1.*
-#  release:
-#    types: [prereleased,released]
 
 jobs:
   test:
@@ -40,7 +38,7 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
 
-      - uses: malud/go-release-action@feature/release-name
+      - uses: wangyoucao577/go-release-action@v1.25
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
