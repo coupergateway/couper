@@ -103,7 +103,7 @@ func realmain(arguments []string) int {
 	if cmd == "verify" {
 		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
 
-		err := command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath}, nil, log)
+		err := command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath, flags.DirPath}, nil, log)
 		if err != nil {
 			return 1
 		}
