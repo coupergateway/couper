@@ -14,7 +14,7 @@ on:
       package-version:
         description: Package version
         required: true
-        default: ${{ GITHUB_REF_NAME }}
+        default: ${{ github.ref_name }}
         type: string
       token-name:
         description: secret containing npm publish token
