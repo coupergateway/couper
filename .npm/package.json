@@ -1,0 +1,33 @@
+{
+  "name": "{{ PACKAGE_NAME }}",
+  "version": "{{ PACKAGE_VERSION }}",
+  "description": "A lightweight API gateway designed to support API-driven Web projects",
+  "keywords": [
+    "couper",
+    "API",
+    "gateway"
+  ],
+  "license": "MIT",
+  "homepage": "https://couper.io/",
+  "bin": {
+    "couper": "couper"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/{{ GITHUB_REPOSITORY }}"
+  },
+  "scripts": {
+    "start": "couper run",
+    "couper": "couper",
+    "verify": "couper verify",
+    "help": "couper help",
+    "version": "couper version",
+    "postinstall": "node install.js"
+  },
+  "main": "couper-binary.js",
+  "dependencies": {
+    "axios": "^0.26.0",
+    "tar": "^6.1.11",
+    "unzip-stream": "^0.3.1"
+  }
+}
