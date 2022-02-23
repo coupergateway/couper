@@ -322,7 +322,7 @@ func TestCORS_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			corsHandler := NewCORSHandler(tt.corsOptions, upstreamHandler)
+			corsHandler := NewCORSHandler(tt.corsOptions, nil, upstreamHandler)
 
 			req := httptest.NewRequest(http.MethodPost, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {
@@ -364,6 +364,11 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		}
 	})
 
+	var methodAllowed methodAllowedFunc
+	methodAllowed = func(method string) bool {
+		return method == http.MethodPost
+	}
+
 	tests := []struct {
 		name                    string
 		corsOptions             *CORSOptions
@@ -381,6 +386,22 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 			map[string]string{
 				"Access-Control-Allow-Origin":      "https://www.example.com",
 				"Access-Control-Allow-Methods":     "POST",
+				"Access-Control-Allow-Headers":     "",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age":           "",
+			},
+			[]string{"Origin", "Access-Control-Request-Method"},
+		},
+		{
+			"specific origin, with ACRM, method not allowed",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			map[string]string{
+				"Origin":                        "https://www.example.com",
+				"Access-Control-Request-Method": "PUT",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "",
 				"Access-Control-Allow-Headers":     "",
 				"Access-Control-Allow-Credentials": "",
 				"Access-Control-Max-Age":           "",
@@ -519,7 +540,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			corsHandler := NewCORSHandler(tt.corsOptions, upstreamHandler)
+			corsHandler := NewCORSHandler(tt.corsOptions, methodAllowed, upstreamHandler)
 
 			req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
 			for name, value := range tt.requestHeaders {

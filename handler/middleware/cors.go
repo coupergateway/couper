@@ -15,8 +15,9 @@ import (
 var _ http.Handler = &CORS{}
 
 type CORS struct {
-	options     *CORSOptions
-	nextHandler http.Handler
+	options       *CORSOptions
+	methodAllowed methodAllowedFunc
+	nextHandler   http.Handler
 }
 
 type CORSOptions struct {
@@ -66,13 +67,14 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewCORSHandler(opts *CORSOptions, nextHandler http.Handler) http.Handler {
+func NewCORSHandler(opts *CORSOptions, methodAllowed methodAllowedFunc, nextHandler http.Handler) http.Handler {
 	if opts == nil {
 		return nextHandler
 	}
 	return &CORS{
-		options:     opts,
-		nextHandler: nextHandler,
+		options:       opts,
+		methodAllowed: methodAllowed,
+		nextHandler:   nextHandler,
 	}
 }
 
@@ -128,7 +130,9 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		// Reflect request header value
 		acrm := req.Header.Get("Access-Control-Request-Method")
 		if acrm != "" {
-			headers.Set("Access-Control-Allow-Methods", acrm)
+			if c.methodAllowed == nil || c.methodAllowed(acrm) {
+				headers.Set("Access-Control-Allow-Methods", acrm)
+			}
 			headers.Add("Vary", "Access-Control-Request-Method")
 		}
 		// Reflect request header value

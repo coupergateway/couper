@@ -29,7 +29,9 @@ type AllowedMethodsHandler struct {
 	notAllowedHandler http.Handler
 }
 
-func NewAllowedMethodsHandler(allowedMethods []string, allowedHandler, notAllowedHandler http.Handler) (http.Handler, error) {
+type methodAllowedFunc func(string) bool
+
+func NewAllowedMethodsHandler(allowedMethods []string, allowedHandler, notAllowedHandler http.Handler) (*AllowedMethodsHandler, error) {
 	amh := &AllowedMethodsHandler{
 		allowedMethods:    make(map[string]struct{}),
 		allowedHandler:    allowedHandler,
@@ -62,6 +64,12 @@ func (a *AllowedMethodsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 	}
 
 	a.allowedHandler.ServeHTTP(rw, req)
+}
+
+func (a *AllowedMethodsHandler) MethodAllowed(method string) bool {
+	method = strings.TrimSpace(strings.ToUpper(method))
+	_, ok := a.allowedMethods[method]
+	return ok
 }
 
 func (a *AllowedMethodsHandler) Child() http.Handler {

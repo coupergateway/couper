@@ -4622,6 +4622,55 @@ func TestAllowedMethods(t *testing.T) {
 	}
 }
 
+func TestAllowedMethodsCORS_Preflight(t *testing.T) {
+	client := newClient()
+
+	confPath := "testdata/settings/13_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name          string
+		path          string
+		requestMethod string
+		status        int
+		allowMethods  []string
+		couperError   string
+	}
+
+	for _, tc := range []testCase{
+		{"unrestricted, CORS preflight, POST allowed", "/api1/unrestricted", http.MethodPost, http.StatusNoContent, []string{"POST"}, ""},
+		{"restricted, CORS preflight, POST allowed", "/api1/restricted", http.MethodPost, http.StatusNoContent, []string{"POST"}, ""}, // CORS preflight ok even if OPTIONS is otherwise not allowed
+		{"restricted, CORS preflight, PUT not allowed", "/api1/restricted", http.MethodPut, http.StatusNoContent, nil, ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			logHook.Reset()
+			req, err := http.NewRequest(http.MethodOptions, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+			req.Header.Set("Origin", "https://www.example.com")
+			req.Header.Set("Access-Control-Request-Method", tc.requestMethod)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given; want: %d; got: %d", tc.status, res.StatusCode)
+			}
+
+			allowMethods := res.Header.Values("Access-Control-Allow-Methods")
+			if !cmp.Equal(tc.allowMethods, allowMethods) {
+				subT.Errorf(cmp.Diff(tc.allowMethods, allowMethods))
+			}
+
+			couperError := res.Header.Get("Couper-Error")
+			if tc.couperError != couperError {
+				subT.Errorf("Unexpected couper-error given; want: %q; got: %q", tc.couperError, couperError)
+			}
+		})
+	}
+}
+
 func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 	client := newClient()
 

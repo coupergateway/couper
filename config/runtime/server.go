@@ -171,7 +171,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, cerr
 			}
 
-			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
+			spaHandler = middleware.NewCORSHandler(corsOptions, nil, spaHandler)
 
 			spaBodies := bodiesWithACBodies(conf.Definitions, srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl)
 			spaHandler = middleware.NewCustomLogsHandler(
@@ -215,7 +215,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, cerr
 			}
 
-			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
+			fileHandler = middleware.NewCORSHandler(corsOptions, nil, fileHandler)
 
 			fileBodies := bodiesWithACBodies(conf.Definitions, srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl)
 			fileHandler = middleware.NewCustomLogsHandler(
@@ -328,10 +328,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				allowedMethods = parentAPI.AllowedMethods
 			}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			protectedHandler, err = middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
+			var allowedMethodsHandler *middleware.AllowedMethodsHandler
+			allowedMethodsHandler, err = middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
 			if err != nil {
 				return nil, err
 			}
+			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
@@ -351,7 +353,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			epHandler = middleware.NewCORSHandler(corsOptions, epHandler)
+			epHandler = middleware.NewCORSHandler(corsOptions, allowedMethodsHandler.MethodAllowed, epHandler)
 
 			bodies := serverBodies
 			if parentAPI != nil {
