@@ -14,6 +14,7 @@ var _ Inline = &Endpoint{}
 type Endpoint struct {
 	ErrorHandlerSetter
 	AccessControl        []string  `hcl:"access_control,optional"`
+	AllowedMethods       []string  `hcl:"allowed_methods,optional"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Pattern              string    `hcl:"pattern,label"`
