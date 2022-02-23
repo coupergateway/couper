@@ -75,6 +75,11 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	)
 
 	if dirPath != "" {
+		dirPath, err := filepath.Abs(dirPath)
+		if err != nil {
+			return nil, err
+		}
+
 		// ReadDir ... returns a list ... sorted by filename.
 		listing, err := ioutil.ReadDir(dirPath)
 		if err != nil {
@@ -156,7 +161,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	return LoadConfig(configBody, nil, filepath.Base(filePath))
+	return LoadConfig(configBody, nil, filepath.Base(filePath), dirPath)
 }
 
 func LoadFile(filePath string) (*config.Couper, error) {
@@ -181,10 +186,10 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, src, filename)
+	return LoadConfig(hclBody, src, filename, "")
 }
 
-func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
 	if diags := ValidateConfigSchema(body, &config.Couper{}, src); diags.HasErrors() {
 		return nil, diags
 	}
@@ -206,6 +211,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
 		Filename:    filename,
+		Dirpath:     dirPath,
 		Settings:    &defaults,
 	}
 
