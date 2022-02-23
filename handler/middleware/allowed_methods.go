@@ -40,10 +40,16 @@ func NewAllowedMethodsHandler(allowedMethods []string, allowedHandler, notAllowe
 	}
 	for _, method := range allowedMethods {
 		method = strings.TrimSpace(strings.ToUpper(method))
-		if !methodRegExp.Match([]byte(method)) {
-			return nil, fmt.Errorf("allowed_methods: invalid character in method %q", method)
+		if method == "*" {
+			for _, m := range defaultAllowedMethods {
+				amh.allowedMethods[m] = struct{}{}
+			}
+		} else {
+			if !methodRegExp.Match([]byte(method)) {
+				return nil, fmt.Errorf("allowed_methods: invalid character in method %q", method)
+			}
+			amh.allowedMethods[method] = struct{}{}
 		}
-		amh.allowedMethods[method] = struct{}{}
 	}
 
 	return amh, nil

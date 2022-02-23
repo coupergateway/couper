@@ -4560,6 +4560,26 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"}, // BREW not supported by scope AC
 		{"restricted, CORS preflight", http.MethodOptions, "/api1/restricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
 
+		{"wildcard, GET", http.MethodGet, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, HEAD", http.MethodHead, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, POST", http.MethodPost, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, PUT", http.MethodPut, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, PATCH", http.MethodPatch, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, DELETE", http.MethodDelete, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, OPTIONS", http.MethodOptions, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, TRACE", http.MethodTrace, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard, BREW", "BREW", "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"wildcard and more, GET", http.MethodGet, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, HEAD", http.MethodHead, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, POST", http.MethodPost, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PUT", http.MethodPut, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PATCH", http.MethodPatch, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, DELETE", http.MethodDelete, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, OPTIONS", http.MethodOptions, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+
 		{"restricted methods override, GET", http.MethodGet, "/api2/restricted", http.Header{}, http.StatusOK, ""},
 		{"restricted methods override, HEAD", http.MethodHead, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted methods override, POST", http.MethodPost, "/api2/restricted", http.Header{}, http.StatusOK, ""},

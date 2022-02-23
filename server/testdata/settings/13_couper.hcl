@@ -1,13 +1,13 @@
 server {
   api {
     base_path = "/api1"
-    access_control = ["token"]
 
     cors {
       allowed_origins = ["*"]
     }
 
     endpoint "/unrestricted" {
+      access_control = ["token"]
       beta_scope = {
         get = "foo"
         head = "foo"
@@ -23,6 +23,7 @@ server {
     }
 
     endpoint "/restricted" {
+      access_control = ["token"]
       allowed_methods = ["GET", "Post", "delete", "tRaCe", "BREW"]
       beta_scope = {
         get = "foo"
@@ -33,6 +34,22 @@ server {
         # no delete, no options, no trace
         brew = "foo"
       }
+
+      response {
+        body = "a"
+      }
+    }
+
+    endpoint "/wildcard" {
+      allowed_methods = ["*"]
+
+      response {
+        body = "a"
+      }
+    }
+
+    endpoint "/wildcardAndMore" {
+      allowed_methods = ["get", "*", "PuT", "brew"]
 
       response {
         body = "a"
