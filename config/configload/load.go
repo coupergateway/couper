@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/reader"
@@ -58,7 +58,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	hclParser := hclparse.NewParser()
 
 	var (
-		parsedBodies []hcl.Body
+		parsedBodies []*hclsyntax.Body
 		hasIndexHCL  bool
 	)
 
@@ -84,7 +84,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 				return nil, diags
 			}
 
-			parsedBodies = append(parsedBodies, parsed.Body)
+			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
 		}
 	}
 
@@ -94,7 +94,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 			return nil, diags
 		}
 
-		parsedBodies = append([]hcl.Body{parsed.Body}, parsedBodies...)
+		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 	}
 	if filePath != "" {
 		parsed, diags := hclParser.ParseHCLFile(filePath)
@@ -102,7 +102,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 			return nil, diags
 		}
 
-		parsedBodies = append([]hcl.Body{parsed.Body}, parsedBodies...)
+		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 
 		_, err := SetWorkingDirectory(filePath)
 		if err != nil {
@@ -140,11 +140,9 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	configBlocks = append(configBlocks, defaults)
 	configBlocks = append(configBlocks, settings)
 
-	configBody := hclbody.New(
-		&hcl.BodyContent{
-			Blocks: configBlocks,
-		},
-	)
+	configBody := &hclsyntax.Body{
+		Blocks: configBlocks,
+	}
 
 	return LoadConfig(configBody, nil, filepath.Base(filePath))
 }
@@ -219,7 +217,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			}
 
 			if backendContent != nil {
-				for _, be := range backendContent.Blocks.OfType("backend") {
+				for _, be := range backendContent.Blocks {
 					name := be.Labels[0]
 					ref, _ := definedBackends.WithName(name)
 					if ref != nil {
@@ -380,13 +378,8 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		WithOAuth2AC(couperConfig.Definitions.OAuth2AC).
 		WithSAML(couperConfig.Definitions.SAML)
 
-	serverContent, err := contentByType("server", body)
-	if err != nil {
-		return nil, err
-	}
-
 	// Read per server block and merge backend settings which results in a final server configuration.
-	for _, serverBlock := range serverContent.Blocks.OfType("server") {
+	for _, serverBlock := range bodyToContent(body).Blocks.OfType(server) {
 		serverConfig := &config.Server{}
 		if diags = gohcl.DecodeBody(serverBlock.Body, envContext, serverConfig); diags.HasErrors() {
 			return nil, diags
@@ -397,13 +390,8 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 			serverConfig.Name = serverBlock.Labels[0]
 		}
 
-		apiContent, err := contentByType("api", serverBlock.Body)
-		if err != nil {
-			return nil, err
-		}
-
 		// Read api blocks and merge backends with server and definitions backends.
-		for _, apiBlock := range apiContent.Blocks.OfType("api") {
+		for _, apiBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(api) {
 			apiConfig := &config.API{}
 			if diags = gohcl.DecodeBody(apiBlock.Body, envContext, apiConfig); diags.HasErrors() {
 				return nil, diags
@@ -434,7 +422,7 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 		}
 
 		// standalone endpoints
-		err = refineEndpoints(definedBackends, serverConfig.Endpoints, true)
+		err := refineEndpoints(definedBackends, serverConfig.Endpoints, true)
 		if err != nil {
 			return nil, err
 		}
