@@ -59,31 +59,41 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 		}
 
 		responseHeaders := entry.Data["response"].(logging.Fields)["headers"].(map[string]string)
-		data := entry.Data["custom"].(logrus.Fields)
+		data, _ := entry.Data["custom"].(logrus.Fields)
 
-		url := entry.Data["url"]
-		if url == "http://localhost:8081/token" {
-			if data["x-from-request-body"] != "grant_type=client_credentials" ||
-				data["x-from-request-form-body"] != "client_credentials" ||
-				data["x-from-request-header"] != "Basic cXBlYjpiZW4=" ||
-				data["x-from-response-header"] != "60s" ||
-				data["x-from-response-body"] != `{"access_token":"the_access_token","expires_in":60}` ||
-				data["x-from-response-json-body"] != "the_access_token" {
-				t.Errorf("Unexpected logs given: %#v", data)
+		if data != nil && entry.Data["url"] == "http://localhost:8081/token" {
+			expected := map[string]string{
+				"x-from-request-body": "grant_type=client_credentials",
+				"x-from-request-form-body":  "client_credentials",
+				"x-from-request-header":     "Basic cXBlYjpiZW4=",
+				"x-from-response-header":    "60s",
+				"x-from-response-body":      `{"access_token":"the_access_token","expires_in":60}`,
+				"x-from-response-json-body": "the_access_token",
 			}
-			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" {
-				t.Errorf("Unexpected responseHeaders given: %#v", responseHeaders)
+			expectedHeaders := map[string]string{
+				"location": "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token",
+			}
+
+			if diff := cmp.Diff(data, expected); diff != "" {
+				t.Error(diff)
+			}
+
+			if diff := cmp.Diff(responseHeaders, expectedHeaders); diff != "" {
+				t.Error(diff)
 			}
 		} else {
-			if data["x-from-request-json-body"] != float64(1) ||
-				data["x-from-request-header"] != "bar" ||
-				data["x-from-requests-json-body"] != float64(1) ||
-				data["x-from-requests-header"] != "bar" ||
-				data["x-from-response-header"] != "application/json" ||
-				data["x-from-response-json-body"] != "/anything" ||
-				data["x-from-responses-header"] != "application/json" ||
-				data["x-from-responses-json-body"] != "/anything" {
-				t.Errorf("Unexpected logs given: %#v", data)
+			expected := map[string]interface{}{
+				"x-from-request-json-body":   float64(1),
+				"x-from-request-header":      "bar",
+				"x-from-requests-json-body":  float64(1),
+				"x-from-requests-header":     "bar",
+				"x-from-response-header":     "application/json",
+				"x-from-response-json-body":  "/anything",
+				"x-from-responses-header":    "application/json",
+				"x-from-responses-json-body": "/anything",
+			}
+			if diff := cmp.Diff(data, expected); diff != "" {
+				t.Error(diff)
 			}
 		}
 	}
