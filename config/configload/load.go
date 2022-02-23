@@ -45,6 +45,20 @@ func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
 }
 
+func parseFile(filePath string) (*hcl.File, error) {
+	_, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	parsed, diags := hclparse.NewParser().ParseHCLFile(filePath)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	return parsed, nil
+}
+
 // SetWorkingDirectory sets the working directory to the given configuration file path.
 func SetWorkingDirectory(configFile string) (string, error) {
 	if err := os.Chdir(filepath.Dir(configFile)); err != nil {
@@ -55,8 +69,6 @@ func SetWorkingDirectory(configFile string) (string, error) {
 }
 
 func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
-	hclParser := hclparse.NewParser()
-
 	var (
 		parsedBodies []*hclsyntax.Body
 		hasIndexHCL  bool
@@ -79,9 +91,9 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 				continue
 			}
 
-			parsed, diags := hclParser.ParseHCLFile(dirPath + "/" + file.Name())
-			if diags.HasErrors() {
-				return nil, diags
+			parsed, err := parseFile(dirPath + "/" + file.Name())
+			if err != nil {
+				return nil, err
 			}
 
 			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
@@ -89,22 +101,22 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	}
 
 	if hasIndexHCL {
-		parsed, diags := hclParser.ParseHCLFile(dirPath + "/" + config.DefaultFilename)
-		if diags.HasErrors() {
-			return nil, diags
+		parsed, err := parseFile(dirPath + "/" + config.DefaultFilename)
+		if err != nil {
+			return nil, err
 		}
 
 		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 	}
 	if filePath != "" {
-		parsed, diags := hclParser.ParseHCLFile(filePath)
-		if diags.HasErrors() {
-			return nil, diags
+		parsed, err := parseFile(filePath)
+		if err != nil {
+			return nil, err
 		}
 
 		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 
-		_, err := SetWorkingDirectory(filePath)
+		_, err = SetWorkingDirectory(filePath)
 		if err != nil {
 			return nil, err
 		}
