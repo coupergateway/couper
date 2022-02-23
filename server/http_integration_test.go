@@ -3131,7 +3131,7 @@ func TestAPICatchAll(t *testing.T) {
 		{"exists, CORS pre-flight", "/v5/exists", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
 		{"not-exist, authorized", "/v5/not-exist", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
 		{"not-exist, unauthorized", "/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
-		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"not-exist, non-standard method, unauthorized", "/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
 		{"not-exist, CORS pre-flight", "/v5/not-exist", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
 	} {
@@ -4512,6 +4512,64 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth2_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestAllowedMethods(t *testing.T) {
+	client := newClient()
+
+	confPath := "testdata/settings/13_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJzY29wZSI6ImZvbyJ9.7zkwmXTmzFTKHC0Qnpw7uQCcacogWUvi_JU56uWJlkw"
+
+	type testCase struct {
+		name           string
+		method         string
+		path           string
+		requestHeaders http.Header
+		status         int
+		couperError    string
+	}
+
+	for _, tc := range []testCase{
+		{"path not found, authorized", http.MethodGet, "/api1/not-found", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusNotFound, "route not found error"},
+
+		{"unrestricted, authorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, HEAD", http.MethodHead, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, POST", http.MethodPost, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, PUT", http.MethodPut, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, PATCH", http.MethodPatch, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, DELETE", http.MethodDelete, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, OPTIONS", http.MethodOptions, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, TRACE", http.MethodTrace, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, authorized, BREW", "BREW", "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"unrestricted, unauthorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
+		{"unrestricted, unauthorized, BREW", "BREW", "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
+
+		{"unrestricted, CORS preflight", http.MethodOptions, "/api1/unrestricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			logHook.Reset()
+			req, err := http.NewRequest(tc.method, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+			req.Header = tc.requestHeaders
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given; want: %d; got: %d", tc.status, res.StatusCode)
+			}
+
+			couperError := res.Header.Get("Couper-Error")
+			if tc.couperError != couperError {
+				subT.Errorf("Unexpected couper-error given; want: %q; got: %q", tc.couperError, couperError)
+			}
+		})
 	}
 }
 

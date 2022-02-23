@@ -67,7 +67,7 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	for path, h := range opts.EndpointRoutes {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, allowedMethods, path, h, true)
+		mux.mustAddRoute(mux.endpointRoot, nil, path, h, true)
 	}
 
 	for path, h := range opts.FileRoutes {
@@ -105,6 +105,14 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string
 	if forEndpoint && strings.HasSuffix(path, wildcardSearch) {
 		route := mustCreateNode(root, handler, "", path)
 		m.handler[route] = handler
+		return m
+	}
+
+	if methods == nil {
+		// EndpointRoutes allowed methods are handled by handler
+		route := mustCreateNode(root, handler, "", path)
+		m.handler[route] = handler
+
 		return m
 	}
 

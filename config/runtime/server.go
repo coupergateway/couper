@@ -320,6 +320,14 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 
 			accessControl := newAC(srvConf, parentAPI)
+
+			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
+			// pass allowedMethods nil to use default allowed methods
+			protectedHandler, err = middleware.NewAllowedMethodsHandler(nil, protectedHandler, notAllowedMethodsHandler)
+			if err != nil {
+				return nil, err
+			}
+
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
