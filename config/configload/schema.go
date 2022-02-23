@@ -8,9 +8,11 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 const (
@@ -245,27 +247,34 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 	if content != nil {
 		for name, attr := range content.Attributes {
 			if expr, ok := attr.Expr.(*hclsyntax.ObjectConsExpr); ok {
-				unique := make(map[string]hcl.Range)
 
-				for _, item := range expr.Items {
-					keyRange := item.KeyExpr.Range()
-					if keyRange.CanSliceBytes(src) {
-						key := keyRange.SliceBytes(src)
-						lwrKey := strings.ToLower(string(key))
+				value, _ := attr.Expr.Value(nil)
+				if value.CanIterateElements() {
+					unique := make(map[string]struct{})
 
-						if previous, exist := unique[lwrKey]; exist {
+					iter := value.ElementIterator()
+
+					for {
+						if !iter.Next() {
+							break
+						}
+
+						k, _ := iter.Element()
+						if k.Type() != cty.String {
+							continue
+						}
+
+						keyName := strings.ToLower(seetie.ValueToString(k))
+						if _, ok := unique[keyName]; ok {
 							errors = errors.Append(&hcl.Diagnostic{
-								Subject:  &keyRange,
+								Subject:  &expr.SrcRange,
 								Severity: hcl.DiagError,
-								Summary: fmt.
-									Sprintf("key must be unique: '%s' was previously defined at: %s",
-										lwrKey,
-										previous.String()),
-								Detail: "Key must be unique for " + string(key) + ".",
+								Summary:  fmt.Sprintf("key in an attribute must be unique: '%s'", keyName),
+								Detail:   "Key must be unique for " + string(keyName) + ".",
 							})
 						}
 
-						unique[lwrKey] = keyRange
+						unique[keyName] = struct{}{}
 					}
 				}
 			}
