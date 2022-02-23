@@ -23,7 +23,7 @@ function getPlatform() {
 	const arch = archMap[os.arch()]
 
 	if (!type || !arch) {
-		throw `Sorry, couper is not available for your platform: ${os.type()}/${os.arch()}`
+		throw `Sorry, ${this.name} is not available for your platform: ${os.type()}/${os.arch()}`
 	}
 	const binary  = type === "windows" ? "couper.exe" : "couper"
 	const archive = type === "linux"   ? "tar.gz" : "zip"
@@ -34,15 +34,16 @@ function getPlatform() {
 class CouperBinary {
 
 	constructor() {
-		// FIXME
-		let { version, name, repository } = require("./package.json")
+		let { version } = require("./package.json")
 		version = "1.7.1"
-		name = "couper"
+
+		this.name = "couper"
 		this.platform = getPlatform()
-		this.url = `${repository.url}/releases/download/v${version}/${name}-v${version}-` +
+		// require from package.json fails for older node versions!
+		this.url = "https://github.com/avenga/couper/releases/download/" +
+				   `v${version}/${this.name}-v${version}-` +
 				   `${this.platform.os}-${this.platform.arch}.${this.platform.archive}`
 
-		this.name = name
 		this.targetDirectory = join(__dirname, "bin")
 		this.binary = join(this.targetDirectory, this.platform.binary)
 	}

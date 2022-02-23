@@ -3,49 +3,50 @@ name: npm-publish
 on:
   workflow_dispatch:
     inputs:
-      package-name:
-        description: Package name
-        type: choice
-        default: "couper"
-        required: true
-        options:
-        - "couper"
-        - "@avenga/couper"
       package-version:
-        description: Package version
-        required: true
-        default: ${{ github.ref_name }}
+        description: Package version (empty = current tag)
+        default: 0.0.0
         type: string
-      token-name:
-        description: secret containing npm publish token
-        type: string
-        default: NPM_TOKEN
 jobs:
   npm:
     name: 'update npm package'
     runs-on: ubuntu-latest
+    env:
+      PACKAGE_NAME: "couper"
+      PACKAGE_VERSION: ${{ github.event.inputs.package-version || github.ref_name }}
+      # https://github.com/JS-DevTools/npm-publish/issues/15
+      INPUT_TOKEN: ''
     steps:
       - name: 'checkout'
         uses: actions/checkout@v2
       - name: 'prepare package'
         run: |
           cp LICENSE .npm
+          cp -r .npm .npm2
           curl -L https://github.com/malud/temgo/releases/download/0.2.1/tg -o tg
           chmod +x tg
-          PACKAGE_VERSION=${PACKAGE_VERSION#v} ./tg -i .npm/package.json
-          cat .npm/package.json
+          PACKAGE_VERSION=${PACKAGE_VERSION#v}
+          ./tg -i .npm/package.json
+          PACKAGE_NAME="@avenga/couper"
+          ./tg -i .npm2/package.json
+          head .npm/package.json .npm2/package.json
       - name: 'setup node'
         uses: actions/setup-node@v1
         with:
           node-version: 10
-      - name: 'publish to npm'
+      - name: 'npm publish couper'
         uses: JS-DevTools/npm-publish@v1
         with:
           package: ".npm/package.json"
           access: "public"
-          token: ${{ secrets[github.event.inputs.token-name] }}
-          dry-run: true
-      - name: 'test published package'
+          token: ${{ secrets.NPM_TOKEN }}
+      - name: 'npm publish @avenga/couper'
+        uses: JS-DevTools/npm-publish@v1
+        with:
+          package: ".npm2/package.json"
+          access: "public"
+          token: ${{ secrets.NPM_TOKEN }}
+      - name: 'test published packages'
         run: |
-          npm install ${{ github.event.inputs.package-name }}
-          $(npm bin)/couper version
+          cd $(mktemp -d) && npm install couper         && $(npm bin)/couper version
+          cd $(mktemp -d) && npm install @avenga/couper && $(npm bin)/couper version
