@@ -29,11 +29,11 @@ jobs:
           chmod +x tg
           PACKAGE_VERSION=${PACKAGE_VERSION#v}
           ./tg -i .npm/package.json
-          head .npm/package.json
+          cat .npm/package.json
       - name: 'setup node'
         uses: actions/setup-node@v1
         with:
-          node-version: 10
+          node-version: 16
       - name: 'publish package'
         uses: JS-DevTools/npm-publish@v1
         with:
