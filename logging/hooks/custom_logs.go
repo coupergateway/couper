@@ -92,7 +92,9 @@ func fireUpstream(entry *logrus.Entry) {
 	case <-entry.Context.Done():
 	}
 
-	if fields := eval.ApplyCustomLogs(evalCtx.HCLContextSync(), bodies, entry); len(fields) > 0 {
+	ctx := syncedUpstreamContext(evalCtx, entry)
+
+	if fields := eval.ApplyCustomLogs(ctx, bodies, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
 }

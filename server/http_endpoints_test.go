@@ -58,11 +58,11 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			continue
 		}
 
-		responseHeaders := entry.Data["response"].(logging.Fields)["headers"].(map[string]string)
+		responseLogs, _ := entry.Data["response"].(logging.Fields)
 		data, _ := entry.Data["custom"].(logrus.Fields)
 
 		if data != nil && entry.Data["url"] == "http://localhost:8081/token" {
-			expected := map[string]string{
+			expected := logrus.Fields{
 				"x-from-request-body": "grant_type=client_credentials",
 				"x-from-request-form-body":  "client_credentials",
 				"x-from-request-header":     "Basic cXBlYjpiZW4=",
@@ -71,6 +71,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 				"x-from-response-json-body": "the_access_token",
 			}
 			expectedHeaders := map[string]string{
+				"content-type": "application/json",
 				"location": "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token",
 			}
 
@@ -78,11 +79,11 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 				t.Error(diff)
 			}
 
-			if diff := cmp.Diff(responseHeaders, expectedHeaders); diff != "" {
+			if diff := cmp.Diff(responseLogs["headers"], expectedHeaders); diff != "" {
 				t.Error(diff)
 			}
 		} else {
-			expected := map[string]interface{}{
+			expected := logrus.Fields{
 				"x-from-request-json-body":   float64(1),
 				"x-from-request-header":      "bar",
 				"x-from-requests-json-body":  float64(1),
