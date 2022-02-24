@@ -11,8 +11,11 @@ jobs:
   npm:
     name: 'update npm package'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package-name: ['couper', '@avenga/couper']
     env:
-      PACKAGE_NAME: "couper"
+      PACKAGE_NAME: ${{ matrix.package-name }}
       PACKAGE_VERSION: ${{ github.event.inputs.package-version || github.ref_name }}
       # https://github.com/JS-DevTools/npm-publish/issues/15
       INPUT_TOKEN: ''
@@ -22,31 +25,21 @@ jobs:
       - name: 'prepare package'
         run: |
           cp LICENSE .npm
-          cp -r .npm .npm2
           curl -L https://github.com/malud/temgo/releases/download/0.2.1/tg -o tg
           chmod +x tg
           PACKAGE_VERSION=${PACKAGE_VERSION#v}
           ./tg -i .npm/package.json
-          PACKAGE_NAME="@avenga/couper"
-          ./tg -i .npm2/package.json
-          head .npm/package.json .npm2/package.json
+          head .npm/package.json
       - name: 'setup node'
         uses: actions/setup-node@v1
         with:
           node-version: 10
-      - name: 'npm publish couper'
+      - name: 'publish package'
         uses: JS-DevTools/npm-publish@v1
         with:
           package: ".npm/package.json"
           access: "public"
           token: ${{ secrets.NPM_TOKEN }}
-      - name: 'npm publish @avenga/couper'
-        uses: JS-DevTools/npm-publish@v1
-        with:
-          package: ".npm2/package.json"
-          access: "public"
-          token: ${{ secrets.NPM_TOKEN }}
-      - name: 'test published packages'
+      - name: 'test published package'
         run: |
-          cd $(mktemp -d) && npm install couper         && $(npm bin)/couper version
-          cd $(mktemp -d) && npm install @avenga/couper && $(npm bin)/couper version
+          cd $(mktemp -d) && npm install $PACKAGE_NAME && $(npm bin)/couper version
