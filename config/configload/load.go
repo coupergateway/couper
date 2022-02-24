@@ -45,11 +45,13 @@ func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
 }
 
-func parseFile(filePath string) (*hcl.File, error) {
-	_, err := os.ReadFile(filePath)
+func parseFile(filePath string, srcBytes *[][]byte) (*hcl.File, error) {
+	src, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
+
+	*srcBytes = append(*srcBytes, src)
 
 	parsed, diags := hclparse.NewParser().ParseHCLFile(filePath)
 	if diags.HasErrors() {
@@ -70,6 +72,7 @@ func SetWorkingDirectory(configFile string) (string, error) {
 
 func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	var (
+		srcBytes     [][]byte
 		parsedBodies []*hclsyntax.Body
 		hasIndexHCL  bool
 	)
@@ -96,7 +99,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 				continue
 			}
 
-			parsed, err := parseFile(dirPath + "/" + file.Name())
+			parsed, err := parseFile(dirPath+"/"+file.Name(), &srcBytes)
 			if err != nil {
 				return nil, err
 			}
@@ -106,7 +109,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	}
 
 	if hasIndexHCL {
-		parsed, err := parseFile(dirPath + "/" + config.DefaultFilename)
+		parsed, err := parseFile(dirPath+"/"+config.DefaultFilename, &srcBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +117,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 	}
 	if filePath != "" {
-		parsed, err := parseFile(filePath)
+		parsed, err := parseFile(filePath, &srcBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -130,6 +133,10 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if len(srcBytes) == 0 {
+		return nil, fmt.Errorf("missing configuration files")
 	}
 
 	settings, err := mergeAttributes("settings", parsedBodies)
@@ -161,7 +168,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	return LoadConfig(configBody, nil, filepath.Base(filePath), dirPath)
+	return LoadConfig(configBody, srcBytes, filepath.Base(filePath), dirPath)
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
@@ -170,10 +177,10 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, src, filename, "")
+	return LoadConfig(hclBody, [][]byte{src}, filename, "")
 }
 
-func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, srcBytes [][]byte, filename, dirPath string) (*config.Couper, error) {
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
@@ -186,11 +193,10 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 	defaults := config.DefaultSettings
 	defaults.AcceptForwarded = &config.AcceptForwarded{}
 
-	evalContext := eval.NewContext(src, defaultsBlock.Defaults)
+	evalContext := eval.NewContext(srcBytes, defaultsBlock.Defaults)
 	envContext = evalContext.HCLContext()
 
 	couperConfig := &config.Couper{
-		Bytes:       src,
 		Context:     evalContext,
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
