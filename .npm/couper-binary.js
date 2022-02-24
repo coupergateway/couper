@@ -1,4 +1,4 @@
-const { existsSync, mkdirSync, unlinkSync, chmodSync } = require("fs");
+const { existsSync, mkdirSync, unlinkSync, chmodSync, copyFileSync } = require("fs")
 const axios = require("axios")
 const tar = require("tar")
 const crypto = require("crypto")
@@ -23,7 +23,7 @@ function getPlatform() {
 	const arch = archMap[os.arch()]
 
 	if (!type || !arch) {
-		throw `Sorry, couper is not available for your platform: ${os.type()}/${os.arch()}`
+		throw `Sorry, ${this.name} is not available for your platform: ${os.type()}/${os.arch()}`
 	}
 	const binary  = type === "windows" ? "couper.exe" : "couper"
 	const archive = type === "linux"   ? "tar.gz" : "zip"
@@ -34,15 +34,14 @@ function getPlatform() {
 class CouperBinary {
 
 	constructor() {
-		// FIXME
-		let { version, name, repository } = require("./package.json")
-		version = "1.7.1"
-		name = "couper"
+		const { version } = require("./package.json")
+		this.name = "couper"
 		this.platform = getPlatform()
-		this.url = `${repository.url}/releases/download/v${version}/${name}-v${version}-` +
+		// require from package.json fails for older node versions!
+		this.url = "https://github.com/avenga/couper/releases/download/" +
+				   `v${version}/${this.name}-v${version}-` +
 				   `${this.platform.os}-${this.platform.arch}.${this.platform.archive}`
 
-		this.name = name
 		this.targetDirectory = join(__dirname, "bin")
 		this.binary = join(this.targetDirectory, this.platform.binary)
 	}
@@ -57,6 +56,12 @@ class CouperBinary {
 			// executable permisson lost due to streaming
 			// https://github.com/EvanOxfeld/node-unzip/issues/123
 			chmodSync(this.binary, 0o755)
+
+			// start via wrapper script on Windows
+			if (this.platform.binary === "couper.exe") {
+				const wrapper = join(__dirname, "bin", "couper")
+				copyFileSync(wrapper + ".js", wrapper)
+			}
 		}).bind(this))
 
 		console.log(`Downloading release from ${this.url}...`)
