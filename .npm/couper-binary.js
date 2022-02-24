@@ -34,9 +34,7 @@ function getPlatform() {
 class CouperBinary {
 
 	constructor() {
-		let { version } = require("./package.json")
-		version = "1.7.1"
-
+		const { version } = require("./package.json")
 		this.name = "couper"
 		this.platform = getPlatform()
 		// require from package.json fails for older node versions!
