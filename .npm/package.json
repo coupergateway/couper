@@ -10,7 +10,7 @@
   "license": "MIT",
   "homepage": "https://couper.io/",
   "bin": {
-    "couper": "couper"
+    "couper": "bin/couper"
   },
   "repository": {
     "type": "git",
@@ -19,9 +19,6 @@
   "scripts": {
     "start": "couper run",
     "couper": "couper",
-    "verify": "couper verify",
-    "help": "couper help",
-    "version": "couper version",
     "postinstall": "node install.js"
   },
   "main": "couper-binary.js",
