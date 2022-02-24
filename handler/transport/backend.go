@@ -281,9 +281,10 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 		return nil
 	}
 
-	// prevent mixing context values - start from scratch
+	// prevent mixing context values - start from scratch but add syncedVars
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(ctx, backendTokenRequest, "tr")
+	ctx = context.WithValue(ctx, request.ContextVariablesSynced, req.Context().Value(request.ContextVariablesSynced))
 
 	// propagate cancels
 	go func(done <-chan struct{}, cancelFn func()) {
