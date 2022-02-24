@@ -14,7 +14,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 ## [1.7.1](https://github.com/avenga/couper/releases/tag/v1.7.1)
 
 * **Fixed**
-  * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
+  * missing upstream log field value for [`request.proto`](./docs/LOGS.md#backend-fields) ([#421](https://github.com/avenga/couper/pull/421))
   * handling of `for` loops in HCL ([#426](https://github.com/avenga/couper/pull/426))
   * handling of conditionals in HCL: only predicates evaluating to boolean are allowed ([#429](https://github.com/avenga/couper/pull/429))
   * broken binary on MacOS Monterey; build with latest go 1.17.6 (ci) ([#439](https://github.com/avenga/couper/pull/439))
