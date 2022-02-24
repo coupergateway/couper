@@ -321,10 +321,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			accessControl := newAC(srvConf, parentAPI)
 
-			var allowedMethods []string
-			if endpointConf.AllowedMethods != nil {
-				allowedMethods = endpointConf.AllowedMethods
-			} else if parentAPI != nil && parentAPI.AllowedMethods != nil {
+			allowedMethods := endpointConf.AllowedMethods
+			if allowedMethods == nil && parentAPI != nil {
+				// if allowed_methods in endpoint {} not defined, try allowed_methods in parent api {}
 				allowedMethods = parentAPI.AllowedMethods
 			}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
