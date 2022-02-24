@@ -73,3 +73,9 @@ server "ServerB" {
 server "ServerD" {
   hosts = ["*:9084"]
 }
+
+definitions {
+  basic_auth "foo" {
+    password = "abc"
+  }
+}
