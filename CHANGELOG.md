@@ -1,6 +1,6 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.7.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.7.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
@@ -9,13 +9,21 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [`backend_request`](./docs/REFERENCE.md#backend_request) and [`backend_response`](./docs/REFERENCE.md#backend_response) variables ([#430](https://github.com/avenga/couper/pull/430))
   * `beta_scope_map` attribute for the [JWT Block](./docs/REFERENCE.md#jwt-block) ([#434](https://github.com/avenga/couper/pull/434))
 
+* **Changed**
+  * Automatically add the `private` directive to the response `Cache-Control` HTTP header field value for all resources protected by [JWT](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))
+
 * **Fixed**
-  * missing upstream log field value for `request.proto` ([#421](https://github.com/avenga/couper/pull/421))
-  * handling of `for` loops in HCL ([#426](https://github.com/avenga/couper/pull/426))
-  * handling of conditionals in HCL: only predicates evaluating to boolean are allowed ([#429](https://github.com/avenga/couper/pull/429))
   * improved protection against sniffing using unauthorized requests with non-standard method to non-existant endpoints in protected API ([#441](https://github.com/avenga/couper/pull/441))
 
 ---
+
+## [1.7.1](https://github.com/avenga/couper/releases/tag/v1.7.1)
+
+* **Fixed**
+  * missing upstream log field value for [`request.proto`](./docs/LOGS.md#backend-fields) ([#421](https://github.com/avenga/couper/pull/421))
+  * handling of `for` loops in HCL ([#426](https://github.com/avenga/couper/pull/426))
+  * handling of conditionals in HCL: only predicates evaluating to boolean are allowed ([#429](https://github.com/avenga/couper/pull/429))
+  * broken binary on MacOS Monterey; build with latest go 1.17.6 (ci) ([#439](https://github.com/avenga/couper/pull/439))
 
 ## [1.7](https://github.com/avenga/couper/releases/tag/v1.7.0)
 
