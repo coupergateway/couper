@@ -63,7 +63,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 
 		if data != nil && entry.Data["url"] == "http://localhost:8081/token" {
 			expected := logrus.Fields{
-				"x-from-request-body": "grant_type=client_credentials",
+				"x-from-request-body":       "grant_type=client_credentials",
 				"x-from-request-form-body":  "client_credentials",
 				"x-from-request-header":     "Basic cXBlYjpiZW4=",
 				"x-from-response-header":    "60s",
@@ -72,7 +72,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			}
 			expectedHeaders := map[string]string{
 				"content-type": "application/json",
-				"location": "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token",
+				"location":     "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token",
 			}
 
 			if diff := cmp.Diff(data, expected); diff != "" {

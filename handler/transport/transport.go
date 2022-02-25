@@ -2,14 +2,12 @@ package transport
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -20,8 +18,6 @@ import (
 	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
-
-var transports sync.Map
 
 // Config represents the transport <Config> object.
 type Config struct {
@@ -44,93 +40,83 @@ type Config struct {
 	Scheme   string
 }
 
-// Get creates a new <*http.Transport> object by the given <*Config>.
-func Get(conf *Config, log *logrus.Entry) *http.Transport {
-	key := conf.hash()
+// NewTransport creates a new <*http.Transport> object by the given <*Config>.
+func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
+	certPool, err := x509.SystemCertPool()
+	if err == nil {
+		certPool.AppendCertsFromPEM(conf.Certificate)
+	}
 
-	transport, ok := transports.Load(key)
-	if !ok {
-		certPool, err := x509.SystemCertPool()
-		if err == nil {
-			certPool.AppendCertsFromPEM(conf.Certificate)
-		}
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: conf.DisableCertValidation,
+		RootCAs:            certPool,
+	}
 
-		tlsConf := &tls.Config{
-			InsecureSkipVerify: conf.DisableCertValidation,
-			RootCAs:            certPool,
-		}
-		if conf.Origin != conf.Hostname {
-			tlsConf.ServerName = conf.Hostname
-		}
+	if conf.Origin != conf.Hostname {
+		tlsConf.ServerName = conf.Hostname
+	}
 
-		d := &net.Dialer{
-			KeepAlive: 60 * time.Second,
-		}
+	d := &net.Dialer{
+		KeepAlive: 60 * time.Second,
+	}
 
-		var proxyFunc func(req *http.Request) (*url.URL, error)
-		if conf.Proxy != "" {
-			proxyFunc = func(req *http.Request) (*url.URL, error) {
-				config := &httpproxy.Config{
-					HTTPProxy:  conf.Proxy,
-					HTTPSProxy: conf.Proxy,
-				}
-
-				return config.ProxyFunc()(req.URL)
+	var proxyFunc func(req *http.Request) (*url.URL, error)
+	if conf.Proxy != "" {
+		proxyFunc = func(req *http.Request) (*url.URL, error) {
+			config := &httpproxy.Config{
+				HTTPProxy:  conf.Proxy,
+				HTTPSProxy: conf.Proxy,
 			}
-		} else if !conf.NoProxyFromEnv {
-			proxyFunc = http.ProxyFromEnvironment
+
+			return config.ProxyFunc()(req.URL)
 		}
-
-		// This is the documented way to disable http2. However, if a custom tls.Config or
-		// DialContext is used h2 will also be disabled. To enable h2 the transport must be
-		// explicitly configured, this can be done with the 'ForceAttemptHTTP2' below.
-		var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
-		if !conf.HTTP2 {
-			nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
-		}
-
-		logEntry := log.WithField("type", "couper_connection")
-
-		transport = &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				address := addr
-				if proxyFunc == nil {
-					address = conf.Origin
-				} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
-
-				stx, span := telemetry.NewSpanFromContext(ctx, "connect", trace.WithAttributes(attribute.String("couper.address", addr)))
-				defer span.End()
-
-				connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
-				if connectTimeout > 0 {
-					dtx, cancel := context.WithDeadline(stx, time.Now().Add(connectTimeout))
-					stx = dtx
-					defer cancel()
-				}
-
-				conn, err := d.DialContext(stx, network, address)
-				if err != nil {
-					return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
-				}
-				return NewOriginConn(stx, conn, conf, logEntry), nil
-			},
-			DisableCompression: true,
-			DisableKeepAlives:  conf.DisableConnectionReuse,
-			ForceAttemptHTTP2:  conf.HTTP2,
-			MaxConnsPerHost:    conf.MaxConnections,
-			Proxy:              proxyFunc,
-			TLSClientConfig:    tlsConf,
-			TLSNextProto:       nextProto,
-		}
-
-		transports.Store(key, transport)
+	} else if !conf.NoProxyFromEnv {
+		proxyFunc = http.ProxyFromEnvironment
 	}
 
-	if t, ok := transport.(*http.Transport); ok {
-		return t
+	// This is the documented way to disable http2. However, if a custom tls.Config or
+	// DialContext is used h2 will also be disabled. To enable h2 the transport must be
+	// explicitly configured, this can be done with the 'ForceAttemptHTTP2' below.
+	var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
+	if !conf.HTTP2 {
+		nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
 	}
 
-	return nil
+	logEntry := log.WithField("type", "couper_connection")
+
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			address := addr
+			if proxyFunc == nil {
+				address = conf.Origin
+			} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
+
+			stx, span := telemetry.NewSpanFromContext(ctx, "connect", trace.WithAttributes(attribute.String("couper.address", addr)))
+			defer span.End()
+
+			connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
+			if connectTimeout > 0 {
+				dtx, cancel := context.WithDeadline(stx, time.Now().Add(connectTimeout))
+				stx = dtx
+				defer cancel()
+			}
+
+			conn, cerr := d.DialContext(stx, network, address)
+			if cerr != nil {
+				return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
+			}
+			return NewOriginConn(stx, conn, conf, logEntry), nil
+		},
+		DisableCompression: true,
+		DisableKeepAlives:  conf.DisableConnectionReuse,
+		ForceAttemptHTTP2:  conf.HTTP2,
+		MaxConnsPerHost:    conf.MaxConnections,
+		Proxy:              proxyFunc,
+		TLSClientConfig:    tlsConf,
+		TLSNextProto:       nextProto,
+	}
+
+	return transport
 }
 
 func (c *Config) WithTarget(scheme, origin, hostname, proxyURL string) *Config {
@@ -181,11 +167,4 @@ func parseDuration(src string, target *time.Duration) {
 		return
 	}
 	*target = d
-}
-
-func (c *Config) hash() string {
-	h := sha256.New()
-	key := fmt.Sprintf("%s|%s|%s|%s", c.BackendName, c.Scheme, c.Hostname, c.Origin)
-	h.Write([]byte(key))
-	return fmt.Sprintf("%x", h.Sum(nil))
 }

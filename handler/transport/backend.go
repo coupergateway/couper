@@ -9,6 +9,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -44,6 +45,8 @@ type Backend struct {
 	name             string
 	openAPIValidator *validation.OpenAPI
 	tokenRequest     TokenRequest
+	transport        *http.Transport
+	transportOnce    sync.Once
 	transportConf    *Config
 	upstreamLog      *logging.UpstreamLog
 }
@@ -75,6 +78,11 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 	return backend.upstreamLog
+}
+
+// initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
+func (b *Backend) initOnce(conf *Config) {
+	b.transport = NewTransport(conf, b.logEntry)
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
@@ -110,6 +118,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	b.transportOnce.Do(func() {
+		b.initOnce(tc)
+	})
 
 	deadlineErr := b.withTimeout(req, tc)
 
@@ -117,7 +128,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.URL.Scheme = tc.Scheme
 	req.Host = tc.Hostname
 
-	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
+	// handler.Proxy marks proxy round-trips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
 
 	if !isProxyReq {
@@ -238,10 +249,9 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		attribute.String("origin", tc.Origin),
 	}
 
-	t := Get(tc, b.logEntry)
 	start := time.Now()
 	span.AddEvent(spanMsg + ".request")
-	beresp, err := t.RoundTrip(req)
+	beresp, err := b.transport.RoundTrip(req)
 	span.AddEvent(spanMsg + ".response")
 	endSeconds := time.Since(start).Seconds()
 

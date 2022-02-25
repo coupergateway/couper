@@ -12,7 +12,6 @@ import (
 )
 
 func TestNewTLSProxy(t *testing.T) {
-	t.Skip()
 	couperFile := []byte(`server "tls-dev" {
   endpoint "/" {
     response {
