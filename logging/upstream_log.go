@@ -74,7 +74,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
-	logCtxCh := make(chan hcl.Body, 1)
+	logCtxCh := make(chan hcl.Body, 10)
 	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, logCtxCh)
 	oCtx, openAPIContext := validation.NewWithContext(outctx)
 	outreq := req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
