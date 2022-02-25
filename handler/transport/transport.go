@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ var transports sync.Map
 // Config represents the transport <Config> object.
 type Config struct {
 	BackendName            string
+	Certificate            []byte
 	DisableCertValidation  bool
 	DisableConnectionReuse bool
 	HTTP2                  bool
@@ -47,8 +49,14 @@ func Get(conf *Config, log *logrus.Entry) *http.Transport {
 
 	transport, ok := transports.Load(key)
 	if !ok {
+		certPool, err := x509.SystemCertPool()
+		if err == nil {
+			certPool.AppendCertsFromPEM(conf.Certificate)
+		}
+
 		tlsConf := &tls.Config{
 			InsecureSkipVerify: conf.DisableCertValidation,
+			RootCAs:            certPool,
 		}
 		if conf.Origin != conf.Hostname {
 			tlsConf.ServerName = conf.Hostname

@@ -2,8 +2,10 @@ package command
 
 import (
 	"context"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -40,6 +42,7 @@ type Run struct {
 func NewRun(ctx context.Context) *Run {
 	settings := config.DefaultSettings
 	set := flag.NewFlagSet("run", flag.ContinueOnError)
+	set.StringVar(&settings.CAFile, "ca-file", settings.CAFile, "-ca-file certificate.pem")
 	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
@@ -121,6 +124,17 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
+
+	// read ca-file bytes
+	if config.Settings.CAFile != "" {
+		config.Settings.Certificate, err = ioutil.ReadFile(config.Settings.CAFile)
+		if err != nil {
+			return fmt.Errorf("error reading certificate: %v", err)
+		}
+		if !x509.NewCertPool().AppendCertsFromPEM(config.Settings.Certificate) {
+			return fmt.Errorf("error parsing pem certificate: %q", config.Settings.CAFile)
+		}
+	}
 
 	telemetry.InitExporter(r.context, &telemetry.Options{
 		MetricsCollectPeriod: time.Second * 2,
