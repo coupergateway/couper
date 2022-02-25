@@ -78,10 +78,12 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	)
 
 	if dirPath != "" {
-		dirPath, err := filepath.Abs(dirPath)
+		dir, err := filepath.Abs(dirPath)
 		if err != nil {
 			return nil, err
 		}
+
+		dirPath = dir
 
 		// ReadDir ... returns a list ... sorted by filename.
 		listing, err := ioutil.ReadDir(dirPath)
@@ -117,6 +119,11 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 	}
 	if filePath != "" {
+		filePath, err := filepath.Abs(filePath)
+		if err != nil {
+			return nil, err
+		}
+
 		parsed, err := parseFile(filePath, &srcBytes)
 		if err != nil {
 			return nil, err
