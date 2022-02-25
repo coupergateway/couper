@@ -161,7 +161,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, conf.Settings.Certificate, log)
 			if err != nil {
 				return nil, err
 			}
@@ -205,7 +205,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, conf.Settings.Certificate, log)
 			if err != nil {
 				return nil, err
 			}
@@ -253,7 +253,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			epOpts, err := newEndpointOptions(
 				confCtx, endpointConf, parentAPI, serverOptions,
-				log, conf.Settings.NoProxyFromEnv, memStore,
+				log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore,
 			)
 			if err != nil {
 				return nil, err
@@ -291,7 +291,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint")
+				}, log, errorHandlerDefinitions, conf.Settings.Certificate, "api", "endpoint")
 				if err != nil {
 					return nil, err
 				}
@@ -311,7 +311,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint")
+				}, log, errorHandlerDefinitions, conf.Settings.Certificate, "api", "endpoint")
 				if err != nil {
 					return nil, err
 				}
@@ -342,7 +342,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, conf.Settings.Certificate, log)
 			if err != nil {
 				return nil, err
 			}
@@ -796,13 +796,13 @@ type protectedOptions struct {
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, certificate []byte, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		eh, err := newErrorHandler(ctx, opts, log, m, certificate, acName)
 		if err != nil {
 			return nil, err
 		}
