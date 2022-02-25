@@ -357,7 +357,7 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 	downstreamTrace := httptrace.ContextClientTrace(ctx) // e.g. log-timings
 
 	ttfbTimeout := make(chan time.Time, 1) // size to always cleanup related go-routine
-	ttfbInTime := make(chan struct{})
+	ttfbTimer := time.NewTimer(conf.TTFBTimeout)
 	ctxTrace := &httptrace.ClientTrace{
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
 			if downstreamTrace != nil && downstreamTrace.WroteRequest != nil {
@@ -368,16 +368,24 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 				return
 			}
 
-			go func() {
-				ttfbTimeout <- <-time.After(conf.TTFBTimeout)
-			}()
+			go func(done <-chan struct{}) {
+				ttfbTimer.Reset(conf.TTFBTimeout)
+				select {
+				case <-done:
+					if !ttfbTimer.Stop() {
+						<-ttfbTimer.C
+					}
+					return
+				case ttfbTimeout <- <-ttfbTimer.C:
+				}
+
+			}(req.Context().Done())
 		},
 		GotFirstResponseByte: func() {
 			if downstreamTrace != nil && downstreamTrace.GotFirstResponseByte != nil {
 				downstreamTrace.GotFirstResponseByte()
 			}
-
-			close(ttfbInTime)
+			ttfbTimer.Stop()
 		},
 	}
 
@@ -393,16 +401,12 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 		case <-deadline:
 			if ws {
 				ec <- errors.BackendTimeout.Label(b.name).Message("websockets: deadline exceeded")
-			} else {
-				ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
+				return
 			}
+			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
 			return
 		case <-ttfbTimeout:
-			select {
-			case <-ttfbInTime: // last 'minute' call
-			default:
-				ec <- errors.BackendTimeout.Label(b.name).Message("timeout awaiting response headers")
-			}
+			ec <- errors.BackendTimeout.Label(b.name).Message("timeout awaiting response headers")
 		case <-c.Done():
 			return
 		}
