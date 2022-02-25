@@ -104,7 +104,7 @@ func TestBackend_BackendVariable(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/integration/backend/01_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/integration/backends/02_couper.hcl", helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
