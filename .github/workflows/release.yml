@@ -51,7 +51,7 @@ jobs:
           goarch: ${{ matrix.goarch }}
           goversion: "1.17"
           binary_name: "couper"
-          ldflags: "-X ${VERSION_PACKAGE}.VersionName=${GITHUB_REF_NAME} -X ${VERSION_PACKAGE}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${VERSION_PACKAGE}.BuildDate=${{ steps.vars.outputs.build_date }}"
+          ldflags: '-X ${{ env.VERSION_PACKAGE }}.VersionName=${{ github.ref_name }} -X ${{ env.VERSION_PACKAGE }}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${{ env.VERSION_PACKAGE }}.BuildDate=${{ steps.vars.outputs.build_date }}'
           sha256sum: true
           md5sum: false
           asset_name: "couper-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}"
