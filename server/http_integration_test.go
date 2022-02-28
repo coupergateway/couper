@@ -135,6 +135,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	ctx, cancelFn := context.WithCancel(context.Background())
 	shutdownFn := func() {
 		if helper.TestFailed() { // log on error
+			time.Sleep(time.Second)
 			for _, entry := range hook.AllEntries() {
 				s, _ := entry.String()
 				helper.Logf(s)

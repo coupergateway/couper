@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/oauth2"
 )
 
@@ -537,17 +539,21 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 	}))
 	defer asOrigin.Close()
 
+	type backendExpectation struct {
+		path, name string
+	}
+
 	type testCase struct {
-		name        string
-		path        string
-		backendName string
+		name string
+		path string
+		exp  backendExpectation
 	}
 
 	for _, tc := range []testCase{
-		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", "token"},
-		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", "anonymous_49_5_token_endpoint"},
-		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", "token"},
-		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", "anonymous_78_20_token_backend"},
+		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", backendExpectation{"/token", "token"}},
+		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", backendExpectation{"/token", "anonymous_49_5_token_endpoint"}},
+		{"OIDC Authorization Code, referenced backend", "/oidc1/redir?code=qeuboub", backendExpectation{"/token", "token"}},
+		{"OIDC Authorization Code, inline backend", "/oidc2/redir?code=qeuboub", backendExpectation{"/token", "anonymous_78_20_token_backend"}},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
@@ -581,9 +587,26 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 				subT.Errorf("expected sub %q, got no", "myself")
 			}
 
-			backendName := getUpstreamLogBackendName(hook)
-			if backendName != tc.backendName {
-				subT.Errorf("expected backend name %q, got: %q", tc.backendName, backendName)
+			var seen bool
+			for _, entry := range hook.AllEntries() {
+				if entry.Data["type"] == "couper_backend" && entry.Data["backend"] != "" {
+					if backend, ok := entry.Data["backend"].(string); ok {
+						if request, ok := entry.Data["request"]; ok {
+							path, _ := request.(logging.Fields)["path"].(string)
+							if reflect.DeepEqual(tc.exp, backendExpectation{
+								path, backend,
+							}) {
+								seen = true
+								break
+							}
+						}
+
+					}
+				}
+			}
+
+			if !seen {
+				subT.Errorf("expected %#v, got %q", tc.exp, getUpstreamLogBackendName(hook))
 			}
 		})
 	}
