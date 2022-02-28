@@ -463,9 +463,9 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 			Messagef("invalid url: %s", originURL.String())
 	}
 
-	// TODO: jwks_uri initialization
-	if backendURL == "" {
-		backendURL, _ = req.Context().Value(request.URLAttribute).(string)
+	backendURLAttr, _ := req.Context().Value(request.URLAttribute).(string)
+	if backendURLAttr != "" { // override attr
+		backendURL = backendURLAttr
 	}
 
 	if backendURL != "" {
