@@ -292,6 +292,10 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 	}
 
 	ctx := context.WithValue(req.Context(), backendTokenRequest, "tr")
+	// Reset for upstream transport; prevent mixing values.
+	// tokenRequest will have their own backend configuration.
+	ctx = context.WithValue(ctx, request.BackendParams, nil)
+	ctx = context.WithValue(ctx, request.URLAttribute, "")
 
 	// WithContext() instead of Clone() due to header-map modification.
 	return b.tokenRequest.WithToken(req.WithContext(ctx))
