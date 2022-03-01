@@ -39,10 +39,26 @@ const (
 )
 
 var regexProxyRequestLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+var defaultsConfig *config.Defaults
+var evalContext *eval.Context
 var envContext *hcl.EvalContext
 
 func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
+}
+
+func initVars(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
+	defaultsBlock := &config.DefaultsBlock{}
+	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
+		return diags
+	}
+
+	// We need the "envContext" to be able to resolve abs pathes in the config.
+	defaultsConfig = defaultsBlock.Defaults
+	evalContext = eval.NewContext(srcBytes, defaultsConfig)
+	envContext = evalContext.HCLContext()
+
+	return nil
 }
 
 func parseFile(filePath string, srcBytes *[][]byte) (*hcl.File, error) {
@@ -146,12 +162,20 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		return nil, fmt.Errorf("missing configuration files")
 	}
 
-	settings, err := mergeAttributes("settings", parsedBodies)
+	defaults, err := mergeAttributes("defaults", parsedBodies)
 	if err != nil {
 		return nil, err
 	}
 
-	defaults, err := mergeAttributes("defaults", parsedBodies)
+	defs := &hclsyntax.Body{
+		Blocks: hclsyntax.Blocks{defaults},
+	}
+
+	if diags := initVars(defs, srcBytes); diags.HasErrors() {
+		return nil, diags
+	}
+
+	settings, err := mergeAttributes("settings", parsedBodies)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +199,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	return LoadConfig(configBody, srcBytes, filepath.Base(filePath), dirPath)
+	return LoadConfig(configBody, filepath.Base(filePath), dirPath)
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
@@ -184,29 +208,25 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, [][]byte{src}, filename, "")
-}
-
-func LoadConfig(body hcl.Body, srcBytes [][]byte, filename, dirPath string) (*config.Couper, error) {
-	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
+	if diags := initVars(hclBody, [][]byte{src}); diags.HasErrors() {
 		return nil, diags
 	}
 
-	defaultsBlock := &config.DefaultsBlock{}
-	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
+	return LoadConfig(hclBody, filename, "")
+}
+
+func LoadConfig(body hcl.Body, filename, dirPath string) (*config.Couper, error) {
+	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
 	defaults := config.DefaultSettings
 	defaults.AcceptForwarded = &config.AcceptForwarded{}
 
-	evalContext := eval.NewContext(srcBytes, defaultsBlock.Defaults)
-	envContext = evalContext.HCLContext()
-
 	couperConfig := &config.Couper{
 		Context:     evalContext,
 		Definitions: &config.Definitions{},
-		Defaults:    defaultsBlock.Defaults,
+		Defaults:    defaultsConfig,
 		Filename:    filename,
 		Dirpath:     dirPath,
 		Settings:    &defaults,

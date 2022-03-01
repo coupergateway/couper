@@ -2,9 +2,12 @@ package configload
 
 import (
 	"fmt"
+	"path"
+	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func errorUniqueLabels(block *hclsyntax.Block) error {
@@ -16,6 +19,35 @@ func errorUniqueLabels(block *hclsyntax.Block) error {
 			Summary:  fmt.Sprintf("All %s blocks must have unique labels.", block.Type),
 			Subject:  &defRange,
 		},
+	}
+}
+
+func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
+	value, diags := attr.Expr.Value(envContext)
+	if diags.HasErrors() {
+		return attr.Expr // Return unchanged in error cases.
+	}
+
+	return &hclsyntax.LiteralValueExpr{
+		Val: cty.StringVal(
+			path.Join(filepath.Dir(attr.SrcRange.Filename), value.AsString()),
+		),
+	}
+}
+
+func absBackendBlock(backend *hclsyntax.Block) {
+	for _, block := range backend.Body.Blocks {
+		if block.Type == "openapi" {
+			if attr, ok := block.Body.Attributes["file"]; ok {
+				block.Body.Attributes["file"].Expr = absPath(attr)
+			}
+		} else if block.Type == "oauth2" {
+			for _, innerBlock := range block.Body.Blocks {
+				if innerBlock.Type == "backend" {
+					absBackendBlock(innerBlock) // Recursive call
+				}
+			}
+		}
 	}
 }
 
@@ -91,8 +123,37 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					results[serverKey].attributes[name] = attr
 				}
 
+				if attr, ok := results[serverKey].attributes["error_file"]; ok {
+					results[serverKey].attributes["error_file"].Expr = absPath(attr)
+				}
+
 				for _, block := range outerBlock.Body.Blocks {
 					uniqueAPILabels := make(map[string]struct{})
+
+					// TODO: Do we need this IF around the FOR?
+					if block.Type == "files" || block.Type == "spa" || block.Type == "api" || block.Type == "endpoint" {
+						for _, name := range []string{"error_file", "document_root"} {
+							if attr, ok := block.Body.Attributes[name]; ok {
+								block.Body.Attributes[name].Expr = absPath(attr)
+							}
+						}
+					}
+
+					if block.Type == "api" || block.Type == "endpoint" {
+						for _, innerBlock := range block.Body.Blocks {
+							if innerBlock.Type == "error_handler" {
+								if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
+									innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
+								}
+							} else if innerBlock.Type == "endpoint" {
+								for _, innerInnerBlock := range innerBlock.Body.Blocks {
+									if innerInnerBlock.Type == "backend" {
+										absBackendBlock(innerInnerBlock) // Backend block inside a endpoint block in an api block
+									}
+								}
+							}
+						}
+					}
 
 					if block.Type == "endpoint" {
 						if len(block.Labels) == 0 {
@@ -100,6 +161,12 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 						}
 
 						results[serverKey].endpoints[block.Labels[0]] = block
+
+						for _, innerBlock := range block.Body.Blocks {
+							if innerBlock.Type == "backend" {
+								absBackendBlock(innerBlock) // Backend block inside a free endpoint block
+							}
+						}
 					} else if block.Type == "api" {
 						var apiKey string
 
@@ -233,6 +300,29 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					definitions[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
+
+					// TODO: Do we need this IF around the FOR?
+					if innerBlock.Type == "basic_auth" || innerBlock.Type == "jwt" || innerBlock.Type == "jwt_signing_profile" || innerBlock.Type == "saml" {
+						for _, name := range []string{"htpasswd_file", "key_file", "signing_key_file", "idp_metadata_file"} {
+							if attr, ok := innerBlock.Body.Attributes[name]; ok {
+								innerBlock.Body.Attributes[name].Expr = absPath(attr)
+							}
+						}
+					}
+
+					for _, block := range innerBlock.Body.Blocks {
+						if block.Type == "error_handler" {
+							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
+								innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
+							}
+						} else if block.Type == "backend" {
+							absBackendBlock(innerBlock) // Backend block inside a AC block
+						}
+					}
+
+					if innerBlock.Type == "backend" {
+						absBackendBlock(innerBlock) // Backend block inside the definitions block
+					}
 				}
 			}
 		}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -27,13 +28,13 @@ func Test_realmain(t *testing.T) {
 		{"verify", []string{"couper", "verify", "-f", base + "/10_couper.hcl"}, nil, `10_couper.hcl:2,3-6: Unsupported block type; Blocks of type \"foo\" are not expected here.`, 1},
 		{"verify w/o server", []string{"couper", "verify", "-f", base + "/11_couper.hcl"}, nil, `configuration error: missing 'server' block"`, 1},
 		{"verify unique map-attr keys", []string{"couper", "verify", "-f", base + "/12_couper.hcl"}, nil, `12_couper.hcl:5,28-8,6: key in an attribute must be unique: 'test-key'; Key must be unique for test-key.`, 1},
-		{"common log format & info log level /wo file", []string{"couper", "run"}, nil, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
-		{"common log format via env /wo file", []string{"couper", "run", "-log-format", "json"}, []string{"COUPER_LOG_FORMAT=common"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
-		{"info log level via env /wo file", []string{"couper", "run", "-log-level", "debug"}, []string{"COUPER_LOG_LEVEL=info"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
-		{"json log format /wo file", []string{"couper", "run", "-log-format", "json"}, nil, `{"build":"dev","level":"error","message":"failed to load configuration: open couper.hcl: no such file or directory"`, 1},
-		{"json log format via env /wo file", []string{"couper", "run"}, []string{"COUPER_LOG_FORMAT=json"}, `{"build":"dev","level":"error","message":"failed to load configuration: open couper.hcl: no such file or directory"`, 1},
-		{"non-existent log level /wo file", []string{"couper", "run", "-log-level", "test"}, nil, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
-		{"non-existent log level via env /wo file", []string{"couper", "run"}, []string{"COUPER_LOG_LEVEL=test"}, `level=error msg="failed to load configuration: open couper.hcl: no such file or directory" build=dev`, 1},
+		{"common log format & info log level /wo file", []string{"couper", "run"}, nil, `level=error msg="failed to load configuration: open .*/couper.hcl: no such file or directory" build=dev`, 1},
+		{"common log format via env /wo file", []string{"couper", "run", "-log-format", "json"}, []string{"COUPER_LOG_FORMAT=common"}, `level=error msg="failed to load configuration: open .*/couper.hcl: no such file or directory" build=dev`, 1},
+		{"info log level via env /wo file", []string{"couper", "run", "-log-level", "debug"}, []string{"COUPER_LOG_LEVEL=info"}, `level=error msg="failed to load configuration: open .*/couper.hcl: no such file or directory" build=dev`, 1},
+		{"json log format /wo file", []string{"couper", "run", "-log-format", "json"}, nil, `{"build":"dev","level":"error","message":"failed to load configuration: open .*/couper.hcl: no such file or directory"`, 1},
+		{"json log format via env /wo file", []string{"couper", "run"}, []string{"COUPER_LOG_FORMAT=json"}, `{"build":"dev","level":"error","message":"failed to load configuration: open .*/couper.hcl: no such file or directory"`, 1},
+		{"non-existent log level /wo file", []string{"couper", "run", "-log-level", "test"}, nil, `level=error msg="failed to load configuration: open .*/couper.hcl: no such file or directory" build=dev`, 1},
+		{"non-existent log level via env /wo file", []string{"couper", "run"}, []string{"COUPER_LOG_LEVEL=test"}, `level=error msg="failed to load configuration: open .*/couper.hcl: no such file or directory" build=dev`, 1},
 		{"common log format & info log level /w file", []string{"couper", "run", "-f", base + "/log_default.hcl"}, nil, `level=error msg="configuration error: missing 'server' block" build=dev`, 1},
 		{"common log format via env /w file", []string{"couper", "run", "-f", base + "/log_altered.hcl"}, []string{"COUPER_LOG_FORMAT=common"}, `level=error msg="configuration error: missing 'server' block" build=dev`, 1},
 		{"info log level via env /w file", []string{"couper", "run", "-f", base + "/log_default.hcl"}, []string{"COUPER_LOG_LEVEL=info"}, `level=error msg="configuration error: missing 'server' block" build=dev`, 1},
@@ -62,7 +63,15 @@ func Test_realmain(t *testing.T) {
 			entry, _ := localHook.LastEntry().String()
 			//println(entry)
 			if tt.wantLog != "" && !strings.Contains(entry, tt.wantLog) {
-				subT.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
+				if strings.Contains(tt.wantLog, `failed to load configuration:`) {
+					re := regexp.MustCompile(tt.wantLog)
+
+					if !re.MatchString(entry) {
+						subT.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
+					}
+				} else {
+					subT.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
+				}
 			}
 
 			err := os.Chdir(wd)
