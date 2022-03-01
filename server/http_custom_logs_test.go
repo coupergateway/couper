@@ -75,7 +75,7 @@ func TestCustomLogs_Upstream(t *testing.T) {
 			helper.Must(err)
 
 			// Wait for logs
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(400 * time.Millisecond)
 
 			// Access log
 			entries := hook.AllEntries()
