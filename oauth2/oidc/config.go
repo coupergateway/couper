@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/avenga/couper/accesscontrol/jwk"
+	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	jsn "github.com/avenga/couper/json"
 )
 
@@ -159,7 +161,12 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		}
 	}
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.backends["jwks_uri_backend"])
+	jwksBackend := backend.NewContext(hclbody.
+		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksUri)),
+		c.backends["jwks_uri_backend"],
+	)
+
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, jwksBackend)
 	if err != nil { // do not replace possible working jwks on err
 		return jsonData, err
 	}

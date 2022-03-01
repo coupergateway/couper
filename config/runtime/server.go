@@ -587,7 +587,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		err error
 	)
 	if jwtConf.JWKsURL != "" {
-		jwks, jerr := configureJWKS(jwtConf, confCtx, log, memStore)
+		jwks, jerr := configureJWKS(jwtConf, confCtx, log, conf, memStore)
 		if jerr != nil {
 			return nil, jerr
 		}
@@ -611,7 +611,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	return jwt, nil
 }
 
-func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
+func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
 	var backend http.RoundTripper
 
 	if jwtConf.Backends != nil {

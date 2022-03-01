@@ -455,7 +455,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 	}
 
 	backendURLAttr, _ := req.Context().Value(request.URLAttribute).(string)
-	if backendURLAttr != "" { // override attr
+	if backendURL == "" && backendURLAttr != "" { // override attr
 		backendURL = backendURLAttr
 	}
 

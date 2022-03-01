@@ -1,4 +1,4 @@
-package transport
+package backend
 
 import (
 	"context"
@@ -8,21 +8,21 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-var _ http.RoundTripper = &BackendContext{}
+var _ http.RoundTripper = &Context{}
 
-type BackendContext struct {
+type Context struct {
 	body hcl.Body
 	rt   http.RoundTripper
 }
 
-func NewBackendContext(body hcl.Body, rt http.RoundTripper) http.RoundTripper {
-	return &BackendContext{
+func NewContext(body hcl.Body, rt http.RoundTripper) http.RoundTripper {
+	return &Context{
 		body: body,
 		rt:   rt,
 	}
 }
 
-func (b *BackendContext) RoundTrip(req *http.Request) (*http.Response, error) {
+func (b *Context) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := context.WithValue(req.Context(), request.BackendParams, b.body)
 	return b.rt.RoundTrip(req.WithContext(ctx))
 }

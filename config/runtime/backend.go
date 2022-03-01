@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
+	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
@@ -27,24 +28,24 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 
 	// Making use of the store here since a global variable leads to extra efforts for integration tests.
 	// The store is newly created per run.
-	backend := store.Get(prefix + name)
-	if backend != nil {
-		return transport.NewBackendContext(body, backend.(http.RoundTripper)), nil
+	b := store.Get(prefix + name)
+	if b != nil {
+		return backend.NewContext(body, b.(http.RoundTripper)), nil
 	}
 
-	backend, err = newBackend(ctx, body, log, settings.NoProxyFromEnv, settings.Certificate, store)
+	b, err = newBackend(ctx, body, log, settings, store)
 	if err != nil {
 		return nil, err
 	}
 
 	// to prevent weird debug sessions; max to set the internal memStore ttl limit.
-	store.Set(prefix+name, backend, math.MaxInt64)
+	store.Set(prefix+name, b, math.MaxInt64)
 
-	return backend.(http.RoundTripper), nil
+	return b.(http.RoundTripper), nil
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (http.RoundTripper, error) {
+	settings *config.Settings, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
 		return nil, diags
@@ -60,11 +61,11 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
-		Certificate:            certificate,
+		Certificate:            settings.Certificate,
 		DisableCertValidation:  beConf.DisableCertValidation,
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,
-		NoProxyFromEnv:         ignoreProxyEnv,
+		NoProxyFromEnv:         settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
 	}
 
@@ -80,20 +81,19 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent != nil {
 		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, certificate, memStore)
+			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, settings, memStore)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	backend := transport.NewBackend(backendCtx, tc, options, log)
-
-	return backend, nil
+	b := transport.NewBackend(backendCtx, tc, options, log)
+	return b, nil
 }
 
 func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
+	settings *config.Settings, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
 
 	beConf.OAuth2 = &config.OAuth2ReqAuth{}
 
@@ -107,7 +107,7 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 	}
 
 	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-	authBackend, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, certificate, memStore)
+	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, settings, memStore)
 	if authErr != nil {
 		return nil, authErr
 	}
