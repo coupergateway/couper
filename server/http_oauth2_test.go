@@ -539,6 +539,9 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 	}))
 	defer asOrigin.Close()
 
+	shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL})
+	defer shutdown()
+
 	type backendExpectation struct {
 		path, name string
 	}
@@ -558,14 +561,12 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL})
-			defer shutdown()
-
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			h.Must(err)
 
 			req.Header.Set("Cookie", "pkcecv=qerbnr")
 
+			hook.Reset()
 			res, err := client.Do(req)
 			h.Must(err)
 
@@ -658,6 +659,9 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	}))
 	defer rsOrigin.Close()
 
+	shutdown, hook := newCouperWithTemplate("testdata/oauth2/12_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+	defer shutdown()
+
 	type testCase struct {
 		name        string
 		path        string
@@ -670,12 +674,11 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/14_couper.hcl", h, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
-			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
 			h.Must(err)
 
+			hook.Reset()
 			res, err := client.Do(req)
 			h.Must(err)
 
