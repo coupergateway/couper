@@ -291,16 +291,7 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 		return nil
 	}
 
-	// prevent mixing context values - start from scratch but add syncedVars
-	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, backendTokenRequest, "tr")
-	ctx = context.WithValue(ctx, request.ContextVariablesSynced, req.Context().Value(request.ContextVariablesSynced))
-
-	// propagate cancels
-	go func(done <-chan struct{}, cancelFn func()) {
-		<-done
-		cancelFn()
-	}(req.Context().Done(), cancel)
+	ctx := context.WithValue(req.Context(), backendTokenRequest, "tr")
 
 	// WithContext() instead of Clone() due to header-map modification.
 	return b.tokenRequest.WithToken(req.WithContext(ctx))
