@@ -66,8 +66,6 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 		return nil, err
 	}
 
-	eval.SetBody(outreq, []byte(post.Encode()))
-
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
@@ -86,6 +84,8 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	if tokenURL != "" {
 		outCtx = context.WithValue(outCtx, request.URLAttribute, tokenURL)
 	}
+
+	eval.SetBody(outreq, []byte(post.Encode()))
 
 	return outreq.WithContext(outCtx), nil
 }
