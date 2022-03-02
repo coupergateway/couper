@@ -552,6 +552,12 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 		exp  backendExpectation
 	}
 
+	time.Sleep(time.Second * 2) // wait for all oidc/jwks inits
+	//for _, entry := range hook.AllEntries() {
+	//	println(entry.String())
+	//}
+	//hook.Reset()
+
 	for _, tc := range []testCase{
 		{"OAuth2 Authorization Code, referenced backend", "/oauth1/redir?code=qeuboub", backendExpectation{"/token", "token"}},
 		{"OAuth2 Authorization Code, inline backend", "/oauth2/redir?code=qeuboub", backendExpectation{"/token", "anonymous_49_5_token_endpoint"}},
