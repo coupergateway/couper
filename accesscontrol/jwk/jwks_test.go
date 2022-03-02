@@ -1,7 +1,12 @@
 package jwk_test
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"sync"
 	"testing"
 
@@ -161,7 +166,16 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	memQuitCh := make(chan struct{})
 	defer close(memQuitCh)
 
-	jwks, err := jwk.NewJWKS("file:testdata/jwks.json", "", nil)
+	jwksOrigin := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		f, err := os.ReadFile("testdata/jwks.json")
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		io.Copy(writer, bytes.NewReader(f))
+	}))
+
+	jwks, err := jwk.NewJWKS(jwksOrigin.URL, "10s", http.DefaultTransport)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}
@@ -169,8 +183,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(idx int) {
 			defer wg.Done()
-
-			_, e := jwks.GetKeys("kid1")
+			_, e := jwks.GetKey("kid1", "", "")
 			helper.Must(e)
 		}(i)
 	}

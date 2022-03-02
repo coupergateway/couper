@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/avenga/couper/config/reader"
@@ -16,6 +15,11 @@ type SyncedJSONUnmarshaller interface {
 	Unmarshal(rawJSON []byte) (interface{}, error)
 }
 
+type dataRequest struct {
+	obj interface{}
+	err error
+}
+
 type SyncedJSON struct {
 	roundTripName string
 	transport     http.RoundTripper
@@ -23,14 +27,14 @@ type SyncedJSON struct {
 	unmarshaller  SyncedJSONUnmarshaller
 	uri           string
 	// used internally
-	data    interface{}
-	dataErr chan error
-	dataMu  sync.RWMutex
+	data        interface{}
+	dataRequest chan chan *dataRequest
+	fileMode    bool
 }
 
 func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
 	sj := &SyncedJSON{
-		dataErr:       make(chan error, 1),
+		dataRequest:   make(chan chan *dataRequest, 10),
 		roundTripName: roundTripName,
 		transport:     transport,
 		ttl:           ttl,
@@ -38,60 +42,62 @@ func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, r
 		uri:           uri,
 	}
 
-	var err error
 	if file != "" {
 		if err := sj.readFile(fileContext, file); err != nil {
 			return nil, err
 		}
+		sj.fileMode = true
 	} else if transport != nil {
-		err = sj.fetch() // initial fetch
-		if err == nil {
-			go sj.sync(context.Background()) // TODO: at least cmd cancel (reload)
-		}
+		go sj.sync(context.Background()) // TODO: at least cmd cancel ctx (reload)
 	} else {
 		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}
 
-	return sj, err
+	return sj, nil
 }
 
 func (s *SyncedJSON) sync(ctx context.Context) {
-	expired := time.After(0) // force initial fetch()
+	var expired <-chan time.Time
+	err := s.fetch() // initial fetch, provide any startup errors for first dataRequest's
+	if err != nil {
+		expired = time.After(0)
+	} else {
+		expired = time.After(s.ttl)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-expired:
-			err := s.fetch()
+			err = s.fetch()
 			if err != nil {
-				select {
-				case s.dataErr <- err:
-				default:
-				}
-				time.Sleep(time.Second * 1)
+				time.Sleep(time.Second * 2)
 				continue
 			}
 			expired = time.After(s.ttl)
+		case r := <-s.dataRequest:
+			r <- &dataRequest{
+				err: err,
+				obj: s.data,
+			}
 		}
 	}
 }
 
-func (s *SyncedJSON) Data(uid string) (interface{}, error) {
-	s.dataMu.RLock()
-	defer s.dataMu.RUnlock()
-	var err error
-	select {
-	case err = <-s.dataErr:
-	default:
+func (s *SyncedJSON) Data(_ string) (interface{}, error) {
+	if s.fileMode {
+		return s.data, nil
 	}
-	return s.data, err
+
+	rCh := make(chan *dataRequest)
+	s.dataRequest <- rCh
+	result := <-rCh
+	return result.obj, result.err
 }
 
 // fetch blocks all data reads until we will have an updated one.
 func (s *SyncedJSON) fetch() error {
-	s.dataMu.Lock()
-	defer s.dataMu.Unlock()
-
 	req, _ := http.NewRequest("GET", s.uri, nil)
 
 	ctx := context.WithValue(context.Background(), request.URLAttribute, s.uri)

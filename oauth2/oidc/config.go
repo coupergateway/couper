@@ -139,19 +139,18 @@ func (c *Config) Data(uid string) (*OpenidConfiguration, error) {
 func (c *Config) JWKS() *jwk.JWKS {
 	c.jmu.RLock()
 	defer c.jmu.RUnlock()
-	j := *c.jwks
-	return &j
+	return c.jwks
 }
 
 func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
+	c.jmu.Lock()
+	defer c.jmu.Unlock()
+
 	jsonData := &OpenidConfiguration{}
 	err := json.Unmarshal(rawJSON, jsonData)
 	if err != nil {
 		return nil, err
 	}
-
-	c.cmu.Lock()
-	defer c.cmu.Unlock()
 
 	if c.OIDC.VerifierMethod == "" {
 		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
@@ -171,9 +170,7 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		return jsonData, err
 	}
 
-	c.jmu.Lock()
 	c.jwks = newJWKS
-	c.jmu.Unlock()
 
 	return jsonData, nil
 }
