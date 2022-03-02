@@ -243,7 +243,7 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		if bOk && (bufferOption&BufferResponse) == BufferResponse {
 			respBody, respJsonBody = parseRespBody(beresp)
 		}
-	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+	} else if name != "default" && bOk && (bufferOption&BufferResponse) != BufferResponse {
 		// beresp body is not referenced and can be closed
 		// prevent resource leak, free connection
 		_ = beresp.Body.Close()
