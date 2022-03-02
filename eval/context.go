@@ -205,7 +205,6 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 
 func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
-
 	name = "default"
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 		name = n
@@ -243,10 +242,13 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		if bOk && (bufferOption&BufferResponse) == BufferResponse {
 			respBody, respJsonBody = parseRespBody(beresp)
 		}
-	} else if name != "default" && bOk && (bufferOption&BufferResponse) != BufferResponse {
-		// beresp body is not referenced and can be closed
-		// prevent resource leak, free connection
-		_ = beresp.Body.Close()
+	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
+		if name != "default" || (name == "default" && hasBlock) {
+			// beresp body is not referenced and can be closed
+			// prevent resource leak, free connection
+			_ = beresp.Body.Close()
+		}
 	}
 
 	berespVal = cty.ObjectVal(ContextMap{
