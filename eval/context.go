@@ -236,13 +236,19 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
+	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+
 	var respBody, respJsonBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
-		bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
-		if ok && (bufferOption&BufferResponse) == BufferResponse {
+		if bOk && (bufferOption&BufferResponse) == BufferResponse {
 			respBody, respJsonBody = parseRespBody(beresp)
 		}
+	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+		// beresp body is not referenced and can be closed
+		// prevent resource leak, free connection
+		_ = beresp.Body.Close()
 	}
+
 	berespVal = cty.ObjectVal(ContextMap{
 		HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
 		JsonBody:   respJsonBody,
