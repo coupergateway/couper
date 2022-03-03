@@ -42,6 +42,8 @@ func Test_realmain(t *testing.T) {
 		{"non-existent log level via env /w file", []string{"couper", "run", "-f", base + "/log_altered.hcl"}, []string{"COUPER_LOG_LEVEL=test"}, `level=error msg="configuration error: missing 'server' block" build=dev`, 1},
 		{"-f w/o file", []string{"couper", "run", "-f"}, nil, `level=error msg="flag needs an argument: -f" build=dev`, 1},
 		{"undefined AC", []string{"couper", "run", "-f", base + "/04_couper.hcl"}, nil, `level=error msg="accessControl is not defined: undefined" build=dev`, 1},
+		{"empty string in allowed_methods", []string{"couper", "run", "-f", base + "/13_couper.hcl"}, nil, `level=error msg="allowed_methods: invalid character in method \"\"" build=dev`, 1},
+		{"invalid method in allowed_methods", []string{"couper", "run", "-f", base + "/14_couper.hcl"}, nil, `level=error msg="allowed_methods: invalid character in method \"IN VALID\"" build=dev`, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
