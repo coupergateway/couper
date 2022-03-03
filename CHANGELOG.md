@@ -1,13 +1,17 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.7.1...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.7.2...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
-* **Fixed**
-  * Free up resources for backend response bodies without variable reference ([#449](https://github.com/avenga/couper/pull/449))
-
 ---
+
+## [1.7.2](https://github.com/avenga/couper/releases/tag/v1.7.2)
+
+* **Fixed**
+  * free up resources for backend response bodies without variable reference ([#449](https://github.com/avenga/couper/pull/449))
+  * linux and windows binary version output (ci) ([#446](https://github.com/avenga/couper/pull/446))
+  * error handling for empty `error_handler` labels ([#432](https://github.com/avenga/couper/pull/432))
 
 ## [1.7.1](https://github.com/avenga/couper/releases/tag/v1.7.1)
 
