@@ -4580,6 +4580,16 @@ func TestAllowedMethods(t *testing.T) {
 		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 
+		{"blocked, GET", http.MethodGet, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, HEAD", http.MethodHead, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, POST", http.MethodPost, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, PUT", http.MethodPut, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, PATCH", http.MethodPatch, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, DELETE", http.MethodDelete, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, OPTIONS", http.MethodOptions, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, TRACE", http.MethodTrace, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, BREW", "BREW", "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
 		{"restricted methods override, GET", http.MethodGet, "/api2/restricted", http.Header{}, http.StatusOK, ""},
 		{"restricted methods override, HEAD", http.MethodHead, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted methods override, POST", http.MethodPost, "/api2/restricted", http.Header{}, http.StatusOK, ""},

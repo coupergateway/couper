@@ -55,6 +55,14 @@ server {
         body = "a"
       }
     }
+
+    endpoint "/blocked" {
+      allowed_methods = []
+
+      response {
+        body = "a"
+      }
+    }
   }
 
   api {
