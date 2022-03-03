@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,6 +39,8 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 		"/",
 		"/named",
 		"/default",
+		"/default2",
+		"/ws",
 	}
 
 	for _, p := range paths {
@@ -51,5 +54,10 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 		if res.StatusCode != http.StatusOK {
 			t.Errorf("want: 200, got %d", res.StatusCode)
 		}
+
+		_, err = io.Copy(io.Discard, res.Body)
+		helper.Must(err)
+
+		helper.Must(res.Body.Close())
 	}
 }

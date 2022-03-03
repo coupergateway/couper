@@ -244,10 +244,13 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		}
 	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
 		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
+		ws, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool)
 		if name != "default" || (name == "default" && hasBlock) {
 			// beresp body is not referenced and can be closed
 			// prevent resource leak, free connection
 			_ = beresp.Body.Close()
+		} else if !ws {
+			parseSetRespBody(beresp)
 		}
 	}
 
@@ -430,13 +433,25 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 
-	if beresp == nil || beresp.Body == nil {
+	b := parseSetRespBody(beresp)
+	if b == nil {
 		return cty.NilVal, jsonBody
+	}
+
+	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
+		jsonBody = parseJSONBytes(b)
+	}
+	return cty.StringVal(string(b)), jsonBody
+}
+
+func parseSetRespBody(beresp *http.Response) []byte {
+	if beresp == nil || beresp.Body == nil {
+		return nil
 	}
 
 	b, err := io.ReadAll(beresp.Body)
 	if err != nil {
-		return cty.NilVal, jsonBody
+		return nil
 	}
 
 	// prevent resource leak
@@ -444,10 +459,7 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 
 	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
 
-	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		jsonBody = parseJSONBytes(b)
-	}
-	return cty.StringVal(string(b)), jsonBody
+	return b
 }
 
 func parseJSONBytes(b []byte) cty.Value {

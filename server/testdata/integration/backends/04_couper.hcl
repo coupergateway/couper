@@ -37,6 +37,25 @@ server {
       backend = "be"
     }
   }
+
+  endpoint "/default2" {
+    request {
+      url = "{{ .origin }}/"
+      backend = "be"
+    }
+    request "a" {
+      url = "{{ .origin }}/"
+      backend = "be"
+    }
+  }
+
+  endpoint "/ws" {
+    proxy {
+      url = "{{ .origin }}/"
+      websockets = true
+      backend = "be"
+    }
+  }
 }
 
 definitions {
