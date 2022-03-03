@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * Free up resources for backend response bodies without variable reference ([#449](https://github.com/avenga/couper/pull/449))
+
 ---
 
 ## [1.7.1](https://github.com/avenga/couper/releases/tag/v1.7.1)
