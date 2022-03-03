@@ -1,11 +1,11 @@
 server {
   endpoint "/" {
-    request "anything" {
-      url = "{{ .origin }}/headers"
+    request "a" {
+      url = "{{ .origin }}/"
       backend = "be"
     }
     request {
-      url = "{{ .origin }}/delay/1"
+      url = "{{ .origin }}/"
       backend = "be"
     }
     response {
@@ -14,12 +14,12 @@ server {
   }
 
   endpoint "/named" {
-    request "anything" {
-      url = "{{ .origin }}/headers"
+    request "a" {
+      url = "{{ .origin }}/"
       backend = "be"
     }
     request "named" {
-      url = "{{ .origin }}/delay/1"
+      url = "{{ .origin }}/"
       backend = "be"
     }
     response {
@@ -28,12 +28,12 @@ server {
   }
 
   endpoint "/default" {
-    request "anything" {
-      url = "{{ .origin }}/headers"
+    request "a" {
+      url = "{{ .origin }}/"
       backend = "be"
     }
     request {
-      url = "{{ .origin }}/delay/1"
+      url = "{{ .origin }}/"
       backend = "be"
     }
   }
