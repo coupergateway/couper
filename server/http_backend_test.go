@@ -39,6 +39,8 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 		"/",
 		"/named",
 		"/default",
+		"/default2",
+		"/ws",
 	}
 
 	for _, p := range paths {
