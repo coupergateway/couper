@@ -4,7 +4,8 @@ definitions {
   }
 
   backend "Added" {
-    origin = "https://added.com"
+    origin = "${env.COUPER_TEST_BACKEND_ADDR}"
+    path = "/small"
   }
 
   basic_auth "BA" {

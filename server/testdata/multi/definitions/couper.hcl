@@ -1,14 +1,15 @@
 server {
   endpoint "/" {
     proxy {
-      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+      backend = "Backend"
     }
   }
 }
 
 definitions {
   backend "Backend" {
-    origin = "https://example.com"
+    origin = "${env.COUPER_TEST_BACKEND_ADDR}"
+    path = "/anything"
   }
 
   basic_auth "BA" {

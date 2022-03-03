@@ -83,8 +83,16 @@ func teardown() {
 	}
 	testBackend.Close()
 }
+
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), "")
+	helper.Must(err)
+
+	return newCouperWithConfig(couperConfig, helper)
+}
+
+func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
+	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), dir)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)

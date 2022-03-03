@@ -351,6 +351,8 @@ func mergeAttributes(blockName string, bodies []*hclsyntax.Body) (*hclsyntax.Blo
 		for _, block := range body.Blocks {
 			if block.Type == blockName {
 				for name, attr := range block.Body.Attributes {
+					// TODO: settings.ca_file
+
 					attrs[name] = attr
 				}
 			}
