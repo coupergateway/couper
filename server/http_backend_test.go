@@ -34,14 +34,22 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 
 	client := test.NewHTTPClient()
 
-	deadline, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	paths := []string{
+		"/",
+		"/named",
+		"/default",
+	}
 
-	req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080/", nil)
-	res, err := client.Do(req.WithContext(deadline))
-	cancel()
-	helper.Must(err)
+	for _, p := range paths {
+		deadline, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
-	if res.StatusCode != http.StatusOK {
-		t.Errorf("want: 200, got %d", res.StatusCode)
+		req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080"+p, nil)
+		res, err := client.Do(req.WithContext(deadline))
+		cancel()
+		helper.Must(err)
+
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("want: 200, got %d", res.StatusCode)
+		}
 	}
 }
