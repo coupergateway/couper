@@ -244,11 +244,12 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		}
 	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
 		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
+		ws, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool)
 		if name != "default" || (name == "default" && hasBlock) {
 			// beresp body is not referenced and can be closed
 			// prevent resource leak, free connection
 			_ = beresp.Body.Close()
-		} else {
+		} else if !ws {
 			parseSetRespBody(beresp)
 		}
 	}
