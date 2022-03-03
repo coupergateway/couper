@@ -2,11 +2,11 @@ server {
   endpoint "/" {
     request "anything" {
       url = "{{ .origin }}/headers"
-      backend = "httpbin"
+      backend = "be"
     }
     request {
       url = "{{ .origin }}/delay/1"
-      backend = "httpbin"
+      backend = "be"
     }
     response {
       body = "a"
@@ -16,11 +16,11 @@ server {
   endpoint "/named" {
     request "anything" {
       url = "{{ .origin }}/headers"
-      backend = "httpbin"
+      backend = "be"
     }
     request "named" {
       url = "{{ .origin }}/delay/1"
-      backend = "httpbin"
+      backend = "be"
     }
     response {
       body = "a"
@@ -30,17 +30,17 @@ server {
   endpoint "/default" {
     request "anything" {
       url = "{{ .origin }}/headers"
-      backend = "httpbin"
+      backend = "be"
     }
     request {
       url = "{{ .origin }}/delay/1"
-      backend = "httpbin"
+      backend = "be"
     }
   }
 }
 
 definitions {
-  backend "httpbin" {
+  backend "be" {
     origin = "{{ .origin }}"
     max_connections = 1
   }
