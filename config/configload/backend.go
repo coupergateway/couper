@@ -106,12 +106,6 @@ func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inl
 		}
 	}
 
-	// configure backend with known endpoint url
-	if attrValue != "" {
-		backendBody = hclbody.MergeBodies(backendBody,
-			hclbody.New(hclbody.NewContentWithAttrName("_backend_url", attrValue)))
-	}
-
 	// watch out for oauth blocks and nested backend definitions
 	oauth2Backend, err := newOAuthBackend(helper, backendBody)
 	if err != nil {

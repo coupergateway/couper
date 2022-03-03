@@ -3,8 +3,6 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-
-	hclbody "github.com/avenga/couper/config/body"
 )
 
 var (
@@ -37,11 +35,6 @@ type OAuth2AC struct {
 
 func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	oa.Backend, err = backendFunc("token_endpoint", oa.TokenEndpoint, oa)
-	if err != nil {
-		return err
-	}
-	oa.Backend = hclbody.MergeBodies(oa.Backend,
-		hclbody.New(hclbody.NewContentWithAttrName("_backend_url", oa.TokenEndpoint)))
 	return err
 }
 

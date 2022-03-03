@@ -53,10 +53,8 @@ func (o *OIDC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 		}
 
 		// exceptions
-		if field == "configuration_backend" && o.ConfigurationURL != "" {
-			o.Backends[field] = hclbody.MergeBodies(o.Backends[field],
-				hclbody.New(hclbody.NewContentWithAttrName("_backend_url", o.ConfigurationURL)))
-		}
+		o.Backends[field] = hclbody.MergeBodies(o.Backends[field],
+			hclbody.New(hclbody.NewContentWithAttrName("_oidc_backend", "true")))
 	}
 	return nil
 }

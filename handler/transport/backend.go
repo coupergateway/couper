@@ -427,7 +427,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
-	var origin, hostname, proxyURL, backendURL string
+	var origin, hostname, proxyURL, oidcBackend string
 	var connectTimeout, ttfbTimeout, timeout string
 	type pair struct {
 		attrName string
@@ -437,7 +437,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		{"origin", &origin},
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
-		{"_backend_url", &backendURL}, // prepared by config-load
+		{"_oidc_backend", &oidcBackend}, // prepared by config-load
 		// dynamic timings
 		{"connect_timeout", &connectTimeout},
 		{"ttfb_timeout", &ttfbTimeout},
@@ -458,18 +458,15 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 			Messagef("invalid url: %s", originURL.String())
 	}
 
-	backendURLAttr, _ := req.Context().Value(request.URLAttribute).(string)
-	if backendURL == "" && backendURLAttr != "" { // override attr
-		backendURL = backendURLAttr
-	}
+	urlAttrValue, _ := req.Context().Value(request.URLAttribute).(string)
 
-	if backendURL != "" {
-		urlAttr, err := url.Parse(backendURL)
+	if urlAttrValue != "" {
+		urlAttr, err := url.Parse(urlAttrValue)
 		if err != nil {
 			return nil, errors.Configuration.Label(b.name).With(err)
 		}
 
-		if origin != "" && urlAttr.Host != originURL.Host {
+		if origin != "" && oidcBackend == "" && urlAttr.Host != originURL.Host {
 			errctx := "url"
 			if tr := req.Context().Value(request.TokenRequest); tr != nil {
 				errctx = "token_endpoint"
