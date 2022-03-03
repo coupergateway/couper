@@ -205,7 +205,6 @@ func (c *Context) WithBeresp(beresp *http.Response) *Context {
 
 func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
-
 	name = "default"
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 		name = n
@@ -236,13 +235,25 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
+	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+
 	var respBody, respJsonBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
-		bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
-		if ok && (bufferOption&BufferResponse) == BufferResponse {
+		if bOk && (bufferOption&BufferResponse) == BufferResponse {
 			respBody, respJsonBody = parseRespBody(beresp)
 		}
+	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
+		ws, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool)
+		if name != "default" || (name == "default" && hasBlock) {
+			// beresp body is not referenced and can be closed
+			// prevent resource leak, free connection
+			_ = beresp.Body.Close()
+		} else if !ws {
+			parseSetRespBody(beresp)
+		}
 	}
+
 	berespVal = cty.ObjectVal(ContextMap{
 		HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
 		JsonBody:   respJsonBody,
@@ -422,13 +433,25 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 
-	if beresp == nil || beresp.Body == nil {
+	b := parseSetRespBody(beresp)
+	if b == nil {
 		return cty.NilVal, jsonBody
+	}
+
+	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
+		jsonBody = parseJSONBytes(b)
+	}
+	return cty.StringVal(string(b)), jsonBody
+}
+
+func parseSetRespBody(beresp *http.Response) []byte {
+	if beresp == nil || beresp.Body == nil {
+		return nil
 	}
 
 	b, err := io.ReadAll(beresp.Body)
 	if err != nil {
-		return cty.NilVal, jsonBody
+		return nil
 	}
 
 	// prevent resource leak
@@ -436,10 +459,7 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 
 	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
 
-	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
-		jsonBody = parseJSONBytes(b)
-	}
-	return cty.StringVal(string(b)), jsonBody
+	return b
 }
 
 func parseJSONBytes(b []byte) cty.Value {

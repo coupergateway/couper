@@ -205,6 +205,8 @@ func (e *Endpoint) newRedirect() *http.Response {
 func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	results := make(producer.ResultMap)
 
+	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
+
 	trips := []producer.Roundtrip{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
 	tripCh := make(chan chan *producer.Result, len(trips))
 	for _, trip := range trips {
@@ -215,7 +217,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 
 		resultCh := make(chan *producer.Result, trip.Len())
 		go func(rt producer.Roundtrip, rc chan *producer.Result) {
-			rt.Produce(req, resultCh)
+			rt.Produce(outreq, resultCh)
 			close(rc)
 		}(trip, resultCh)
 		tripCh <- resultCh
