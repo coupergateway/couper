@@ -29,16 +29,6 @@ type Mux struct {
 	spaRoot      *pathpattern.Node
 }
 
-var allowedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodOptions,
-}
-
 var fileMethods = []string{
 	http.MethodGet,
 	http.MethodHead,
@@ -79,26 +69,6 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	}
 
 	return mux
-}
-
-func (m *Mux) MustAddRoute(method, path string, handler http.Handler) *Mux {
-	methods := allowedMethods[:]
-	if method != "*" {
-		um := strings.ToUpper(method)
-		var allowed bool
-		for _, am := range allowedMethods {
-			if um == am {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			panic(fmt.Errorf("method not allowed: %q, path: %q", um, path))
-		}
-
-		methods = []string{um}
-	}
-	return m.mustAddRoute(m.endpointRoot, methods, path, handler, false)
 }
 
 func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) *Mux {
