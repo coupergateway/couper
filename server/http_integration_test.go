@@ -4518,7 +4518,7 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 func TestAllowedMethods(t *testing.T) {
 	client := newClient()
 
-	confPath := "testdata/settings/13_couper.hcl"
+	confPath := "testdata/integration/config/11_couper.hcl"
 	shutdown, logHook := newCouper(confPath, test.New(t))
 	defer shutdown()
 
@@ -4625,7 +4625,7 @@ func TestAllowedMethods(t *testing.T) {
 func TestAllowedMethodsCORS_Preflight(t *testing.T) {
 	client := newClient()
 
-	confPath := "testdata/settings/13_couper.hcl"
+	confPath := "testdata/integration/config/11_couper.hcl"
 	shutdown, logHook := newCouper(confPath, test.New(t))
 	defer shutdown()
 
