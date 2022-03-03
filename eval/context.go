@@ -205,7 +205,6 @@ func (c *Context) WithBeresps(beresps ...*http.Response) *Context {
 
 func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
-
 	name = "default"
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 		name = n
@@ -236,13 +235,22 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
+	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+
 	var respBody, respJsonBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
-		bufferOption, ok := bereq.Context().Value(request.BufferOptions).(BufferOption)
-		if ok && (bufferOption&BufferResponse) == BufferResponse {
+		if bOk && (bufferOption&BufferResponse) == BufferResponse {
 			respBody, respJsonBody = parseRespBody(beresp)
 		}
+	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
+		if name != "default" || (name == "default" && hasBlock) {
+			// beresp body is not referenced and can be closed
+			// prevent resource leak, free connection
+			_ = beresp.Body.Close()
+		}
 	}
+
 	berespVal = cty.ObjectVal(ContextMap{
 		HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
 		JsonBody:   respJsonBody,
