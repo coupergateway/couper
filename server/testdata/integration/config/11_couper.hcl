@@ -24,7 +24,7 @@ server {
 
     endpoint "/restricted" {
       access_control = ["token"]
-      allowed_methods = ["GET", "Post", "delete", "tRaCe", "BREW"]
+      allowed_methods = ["GET", "Post", "delete", "BREW"]
       beta_scope = {
         get = "foo"
         head = "foo"

@@ -4543,6 +4543,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"unrestricted, authorized, PATCH", http.MethodPatch, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
 		{"unrestricted, authorized, DELETE", http.MethodDelete, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
 		{"unrestricted, authorized, OPTIONS", http.MethodOptions, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, CONNECT", http.MethodConnect, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"unrestricted, authorized, TRACE", http.MethodTrace, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"unrestricted, authorized, BREW", "BREW", "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"unrestricted, unauthorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
@@ -4556,7 +4557,8 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted, authorized, PATCH", http.MethodPatch, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, DELETE", http.MethodDelete, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
 		{"restricted, authorized, OPTIONS", http.MethodOptions, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
-		{"restricted, authorized, TRACE", http.MethodTrace, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"restricted, authorized, CONNECT", http.MethodConnect, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, TRACE", http.MethodTrace, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"}, // BREW not supported by scope AC
 		{"restricted, CORS preflight", http.MethodOptions, "/api1/restricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
 
@@ -4567,6 +4569,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"wildcard, PATCH", http.MethodPatch, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
 		{"wildcard, DELETE", http.MethodDelete, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
 		{"wildcard, OPTIONS", http.MethodOptions, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, CONNECT", http.MethodConnect, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard, TRACE", http.MethodTrace, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard, BREW", "BREW", "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 
@@ -4577,6 +4580,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"wildcard and more, PATCH", http.MethodPatch, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, DELETE", http.MethodDelete, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, OPTIONS", http.MethodOptions, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, CONNECT", http.MethodConnect, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 
@@ -4587,6 +4591,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"blocked, PATCH", http.MethodPatch, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"blocked, DELETE", http.MethodDelete, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"blocked, OPTIONS", http.MethodOptions, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, CONNECT", http.MethodConnect, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"blocked, TRACE", http.MethodTrace, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"blocked, BREW", "BREW", "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 
@@ -4597,6 +4602,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted methods override, PATCH", http.MethodPatch, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted methods override, DELETE", http.MethodDelete, "/api2/restricted", http.Header{}, http.StatusOK, ""},
 		{"restricted methods override, OPTIONS", http.MethodOptions, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, CONNECT", http.MethodConnect, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted methods override, TRACE", http.MethodTrace, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted methods override, BREW", "BREW", "/api2/restricted", http.Header{}, http.StatusOK, ""},
 
@@ -4607,6 +4613,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted by api only, PATCH", http.MethodPatch, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, DELETE", http.MethodDelete, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, OPTIONS", http.MethodOptions, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, CONNECT", http.MethodConnect, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, TRACE", http.MethodTrace, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, BREW", "BREW", "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 	} {
