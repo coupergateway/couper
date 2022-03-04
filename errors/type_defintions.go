@@ -18,6 +18,7 @@ var Definitions = []*Error{
 	AccessControl.Kind("oauth2"),
 
 	AccessControl.Kind("saml2"),
+	AccessControl.Kind("saml2").Kind("saml"),
 
 	AccessControl.Kind("beta_operation_denied"),
 

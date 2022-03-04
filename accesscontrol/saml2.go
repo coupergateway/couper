@@ -79,13 +79,13 @@ func contains(s []string, searchterm string) bool {
 func (s *Saml2) Validate(req *http.Request) error {
 	err := req.ParseForm()
 	if err != nil {
-		return err
+		return errors.Saml.With(err)
 	}
 
 	origin := eval.NewRawOrigin(req.URL)
 	absAcsUrl, err := lib.AbsoluteURL(s.sp.AssertionConsumerServiceURL, origin)
 	if err != nil {
-		return err
+		return errors.Saml.With(err)
 	}
 	s.sp.AssertionConsumerServiceURL = absAcsUrl
 
@@ -94,12 +94,12 @@ func (s *Saml2) Validate(req *http.Request) error {
 
 	assertionInfo, err := s.sp.RetrieveAssertionInfo(encodedResponse)
 	if err != nil {
-		return err
+		return errors.Saml.With(err)
 	}
 
 	err = s.ValidateAssertionInfo(assertionInfo)
 	if err != nil {
-		return err
+		return errors.Saml.With(err)
 	}
 
 	ass := s.GetAssertionData(assertionInfo)
@@ -118,7 +118,7 @@ func (s *Saml2) Validate(req *http.Request) error {
 
 func (s *Saml2) ValidateAssertionInfo(assertionInfo *saml2.AssertionInfo) error {
 	if assertionInfo.WarningInfo.NotInAudience {
-		return errors.Saml2.Message("wrong audience")
+		return fmt.Errorf("wrong audience")
 	}
 
 	return nil
