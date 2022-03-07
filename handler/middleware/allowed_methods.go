@@ -1,9 +1,7 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 )
 
@@ -16,10 +14,6 @@ var defaultAllowedMethods = []string{
 	http.MethodDelete,
 	http.MethodOptions,
 }
-
-// https://datatracker.ietf.org/doc/html/rfc7231#section-4
-// https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
-var methodRegExp = regexp.MustCompile("^[!#$%&'*+\\-.\\^_`|~0-9a-zA-Z]+$")
 
 var _ http.Handler = &AllowedMethodsHandler{}
 
@@ -41,15 +35,11 @@ func NewAllowedMethodsHandler(allowedMethods []string, allowedHandler, notAllowe
 		allowedMethods = defaultAllowedMethods
 	}
 	for _, method := range allowedMethods {
-		method = strings.TrimSpace(method)
 		if method == "*" {
 			for _, m := range defaultAllowedMethods {
 				amh.allowedMethods[m] = struct{}{}
 			}
 		} else {
-			if !methodRegExp.Match([]byte(method)) {
-				return nil, fmt.Errorf("allowed_methods: invalid character in method %q", method)
-			}
 			method = strings.ToUpper(method)
 			amh.allowedMethods[method] = struct{}{}
 		}
