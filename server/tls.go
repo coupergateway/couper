@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -171,12 +170,12 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 
 	tlsConfig, ok := tlsConfigurations[key]
 	if !ok || tlsConfig.Certificates[0].Leaf.NotAfter.Before(time.Now()) {
-		cert, err := newCertificate(time.Hour*24, hosts, nil)
+		selfSigned, err := NewCertificate(time.Hour*24, hosts, nil)
 		if err != nil {
 			return nil, err
 		}
 		tlsConf := &tls.Config{
-			Certificates:       []tls.Certificate{*cert},
+			Certificates:       []tls.Certificate{*selfSigned.Server},
 			GetConfigForClient: getTLSConfig,
 		}
 
@@ -187,10 +186,15 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 	return tlsConfig.Clone(), nil
 }
 
-// newCertificate creates a certificate with given host and duration.
+type SelfSignedCertificate struct {
+	CA     []byte // PEM encoded
+	Server *tls.Certificate
+}
+
+// NewCertificate creates a certificate with given host and duration.
 // If no hosts are provided all localhost variants will be used.
-func newCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*tls.Certificate, error) {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*SelfSignedCertificate, error) {
+	caPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return nil, err
 	}
@@ -205,15 +209,14 @@ func newCertificate(duration time.Duration, hosts []string, notBefore *time.Time
 	}
 	notAfter := notBefore.Add(duration)
 
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	serialNumber, err := newSerialNumber()
 	if err != nil {
 		log.Fatalf("failed to generate serial number: %s", err)
 	}
 
 	template := x509.Certificate{
-		SerialNumber: serialNumber,
 		Subject: pkix.Name{
+			Country:            []string{"DE"},
 			Organization:       []string{"Couper"},
 			OrganizationalUnit: []string{"Development"},
 		},
@@ -225,51 +228,80 @@ func newCertificate(duration time.Duration, hosts []string, notBefore *time.Time
 		BasicConstraintsValid: true,
 	}
 
-	for _, h := range hosts {
-		if ip := net.ParseIP(h); ip != nil {
-			template.IPAddresses = append(template.IPAddresses, ip)
-		} else {
-			template.DNSNames = append(template.DNSNames, h)
-		}
-	}
-
 	// self CA
-	template.IsCA = true
-	template.KeyUsage |= x509.KeyUsageCertSign
+	caTemplate := template
+	caTemplate.SerialNumber = serialNumber
+	caTemplate.IsCA = true
+	caTemplate.KeyUsage |= x509.KeyUsageCertSign
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
+	caDER, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caPrivateKey.PublicKey, caPrivateKey)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
 
-	certOut := &bytes.Buffer{}
-	err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	caCert := &bytes.Buffer{}
+	err = pem.Encode(caCert, &pem.Block{Type: "CERTIFICATE", Bytes: caDER})
 	if err != nil {
 		return nil, err
 	}
 
-	keyOut := &bytes.Buffer{}
-	err = pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+	caKey := &bytes.Buffer{}
+	err = pem.Encode(caKey, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(caPrivateKey)})
 	if err != nil {
 		return nil, err
 	}
-	cert, err := tls.X509KeyPair(certOut.Bytes(), keyOut.Bytes())
+
+	// server certificate
+	srvPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return nil, err
 	}
-	cert.Leaf, err = x509.ParseCertificate(derBytes)
-	return &cert, err
+
+	srvTemplate := template
+	srvTemplate.SerialNumber, err = newSerialNumber()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, h := range hosts {
+		if ip := net.ParseIP(h); ip != nil {
+			srvTemplate.IPAddresses = append(srvTemplate.IPAddresses, ip)
+		} else {
+			srvTemplate.DNSNames = append(srvTemplate.DNSNames, h)
+		}
+	}
+
+	srvDER, err := x509.CreateCertificate(rand.Reader, &srvTemplate, &caTemplate, &srvPrivateKey.PublicKey, caPrivateKey)
+	if err != nil {
+		log.Fatalf("Failed to create certificate: %s", err)
+	}
+
+	srvCert := &bytes.Buffer{}
+	err = pem.Encode(srvCert, &pem.Block{Type: "CERTIFICATE", Bytes: srvDER})
+	if err != nil {
+		return nil, err
+	}
+
+	srvKey := &bytes.Buffer{}
+	err = pem.Encode(srvKey, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(srvPrivateKey)})
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.X509KeyPair(srvCert.Bytes(), srvKey.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	cert.Leaf, err = x509.ParseCertificate(srvDER)
+	return &SelfSignedCertificate{
+		CA:     caCert.Bytes(),
+		Server: &cert,
+	}, err
 }
 
-func publicKey(priv interface{}) interface{} {
-	switch k := priv.(type) {
-	case *rsa.PrivateKey:
-		return &k.PublicKey
-	case *ecdsa.PrivateKey:
-		return &k.PublicKey
-	default:
-		return nil
-	}
+func newSerialNumber() (*big.Int, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
 // ErrorWrapper logs incoming Write bytes with the context filled logrus.FieldLogger.

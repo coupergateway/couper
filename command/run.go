@@ -129,11 +129,13 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	if config.Settings.CAFile != "" {
 		config.Settings.Certificate, err = ioutil.ReadFile(config.Settings.CAFile)
 		if err != nil {
-			return fmt.Errorf("error reading certificate: %v", err)
+			return fmt.Errorf("reading ca-certificate: %v", err)
 		}
-		if !x509.NewCertPool().AppendCertsFromPEM(config.Settings.Certificate) {
-			return fmt.Errorf("error parsing pem certificate: %q", config.Settings.CAFile)
+		certPool := x509.NewCertPool()
+		if !certPool.AppendCertsFromPEM(config.Settings.Certificate) {
+			return fmt.Errorf("parsing pem ca-certificate: %q", config.Settings.CAFile)
 		}
+		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
 
 	telemetry.InitExporter(r.context, &telemetry.Options{
