@@ -609,53 +609,12 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		for _, jwtConf := range conf.Definitions.JWT {
 			confErr := errors.Configuration.Label(jwtConf.Name)
 
-			var jwt *ac.JWT
-			if jwtConf.JWKsURL != "" {
-				noProxy := conf.Settings.NoProxyFromEnv
-				jwks, err := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
-				if err != nil {
-					return nil, confErr.With(err)
-				}
-
-				jwt, err = ac.NewJWTFromJWKS(&ac.JWTOptions{
-					Claims:                jwtConf.Claims,
-					ClaimsRequired:        jwtConf.ClaimsRequired,
-					DisablePrivateCaching: jwtConf.DisablePrivateCaching,
-					Name:                  jwtConf.Name,
-					RolesClaim:            jwtConf.RolesClaim,
-					RolesMap:              jwtConf.RolesMap,
-					ScopeClaim:            jwtConf.ScopeClaim,
-					Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
-					JWKS:                  jwks,
-				})
-				if err != nil {
-					return nil, confErr.With(err)
-				}
-			} else {
-				key, err := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
-				if err != nil {
-					return nil, confErr.With(err)
-				}
-
-				jwt, err = ac.NewJWT(&ac.JWTOptions{
-					Algorithm:             jwtConf.SignatureAlgorithm,
-					Claims:                jwtConf.Claims,
-					ClaimsRequired:        jwtConf.ClaimsRequired,
-					DisablePrivateCaching: jwtConf.DisablePrivateCaching,
-					Key:                   key,
-					Name:                  jwtConf.Name,
-					RolesClaim:            jwtConf.RolesClaim,
-					RolesMap:              jwtConf.RolesMap,
-					ScopeClaim:            jwtConf.ScopeClaim,
-					Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
-				})
-
-				if err != nil {
-					return nil, confErr.With(err)
-				}
+			jwt, err := newJWT(jwtConf, conf, confCtx, log, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
 			}
 
-			if err := accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
+			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
 			}
 		}
@@ -753,6 +712,49 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	}
 
 	return accessControls, nil
+}
+
+func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
+	log *logrus.Entry, memStore *cache.MemoryStore) (*ac.JWT, error) {
+	jwtOptions := &ac.JWTOptions{
+		Claims:                jwtConf.Claims,
+		ClaimsRequired:        jwtConf.ClaimsRequired,
+		DisablePrivateCaching: jwtConf.DisablePrivateCaching,
+		Name:                  jwtConf.Name,
+		RolesClaim:            jwtConf.RolesClaim,
+		RolesMap:              jwtConf.RolesMap,
+		ScopeClaim:            jwtConf.ScopeClaim,
+		ScopeMap:              jwtConf.ScopeMap,
+		Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
+	}
+	var (
+		jwt *ac.JWT
+		err error
+	)
+	if jwtConf.JWKsURL != "" {
+		noProxy := conf.Settings.NoProxyFromEnv
+		jwks, jerr := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
+		if jerr != nil {
+			return nil, jerr
+		}
+
+		jwtOptions.JWKS = jwks
+		jwt, err = ac.NewJWTFromJWKS(jwtOptions)
+	} else {
+		key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
+		if kerr != nil {
+			return nil, kerr
+		}
+
+		jwtOptions.Algorithm = jwtConf.SignatureAlgorithm
+		jwtOptions.Key = key
+		jwt, err = ac.NewJWT(jwtOptions)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return jwt, nil
 }
 
 func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*jwk.JWKS, error) {

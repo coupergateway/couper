@@ -3410,23 +3410,26 @@ func Test_Scope(t *testing.T) {
 		path        string
 		authorize   bool
 		status      int
+		wantGranted string
 		wantErrLog  string
 		wantErrType string
 	}
 
 	for _, tc := range []testCase{
-		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, "access control error: scoped_jwt: token required", "jwt_token_missing"},
-		{"by scope: sufficient scope", http.MethodGet, "/scope/foo", true, http.StatusNoContent, "", ""},
-		{"by scope: additional scope required: insufficient scope", http.MethodPost, "/scope/foo", true, http.StatusForbidden, `access control error: required scope "foo" not granted`, "beta_insufficient_scope"},
-		{"by scope: operation not permitted", http.MethodDelete, "/scope/foo", true, http.StatusForbidden, "access control error: operation DELETE not permitted", "beta_operation_denied"},
-		{"by scope: additional scope required by *: insufficient scope", http.MethodGet, "/scope/bar", true, http.StatusForbidden, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
-		{"by scope: no additional scope required: sufficient scope", http.MethodDelete, "/scope/bar", true, http.StatusNoContent, "", ""},
-		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, "access control error: roled_jwt: token required", "jwt_token_missing"},
-		{"by role: sufficient scope", http.MethodGet, "/role/foo", true, http.StatusNoContent, "", ""},
-		{"by role: additional scope required: insufficient scope", http.MethodPost, "/role/foo", true, http.StatusForbidden, `access control error: required scope "foo" not granted`, "beta_insufficient_scope"},
-		{"by role: operation not permitted", http.MethodDelete, "/role/foo", true, http.StatusForbidden, "access control error: operation DELETE not permitted", "beta_operation_denied"},
-		{"by role: additional scope required by *: insufficient scope", http.MethodGet, "/role/bar", true, http.StatusForbidden, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
-		{"by role: no additional scope required: sufficient scope", http.MethodDelete, "/role/bar", true, http.StatusNoContent, "", ""},
+		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, ``, "access control error: scoped_jwt: token required", "jwt_token_missing"},
+		{"by scope: sufficient scope", http.MethodGet, "/scope/foo", true, http.StatusNoContent, `["a"]`, "", ""},
+		{"by scope: additional scope required: insufficient scope", http.MethodPost, "/scope/foo", true, http.StatusForbidden, ``, `access control error: required scope "foo" not granted`, "beta_insufficient_scope"},
+		{"by scope: operation not permitted", http.MethodDelete, "/scope/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
+		{"by scope: additional scope required by *: insufficient scope", http.MethodGet, "/scope/bar", true, http.StatusForbidden, ``, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
+		{"by scope: no additional scope required: sufficient scope", http.MethodDelete, "/scope/bar", true, http.StatusNoContent, `["a"]`, "", ""},
+		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, "access control error: roled_jwt: token required", "jwt_token_missing"},
+		{"by role: sufficient scope", http.MethodGet, "/role/foo", true, http.StatusNoContent, `["a","b"]`, "", ""},
+		{"by role: additional scope required: insufficient scope", http.MethodPost, "/role/foo", true, http.StatusForbidden, ``, `access control error: required scope "foo" not granted`, "beta_insufficient_scope"},
+		{"by role: operation not permitted", http.MethodDelete, "/role/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
+		{"by role: additional scope required by *: insufficient scope", http.MethodGet, "/role/bar", true, http.StatusForbidden, ``, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
+		{"by role: no additional scope required: sufficient scope", http.MethodDelete, "/role/bar", true, http.StatusNoContent, `["a","b"]`, "", ""},
+		{"by scope/role, mapped from scope", http.MethodGet, "/scope_and_role/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
+		{"by scope/role, mapped scope mapped from role", http.MethodGet, "/scope_and_role/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
 	} {
 		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3444,6 +3447,11 @@ func Test_Scope(t *testing.T) {
 
 			if res.StatusCode != tc.status {
 				subT.Fatalf("expected Status %d, got: %d", tc.status, res.StatusCode)
+			}
+
+			granted := res.Header.Get("x-granted-scope")
+			if granted != tc.wantGranted {
+				subT.Errorf("Expected granted scope:\nWant:\t%q\nGot:\t%q", tc.wantGranted, granted)
 			}
 
 			message := getAccessControlMessages(hook)
@@ -4479,7 +4487,6 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/for", true, ""},
 		{"/conditional/false", true, ""},
 		{"/conditional/true", false, ""},
-		{"/conditional/null", false, ""},
 		{"/conditional/nested", true, ""},
 		{"/conditional/nested/true", true, ""},
 		{"/conditional/nested/false", true, ""},
@@ -4542,6 +4549,62 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 				subT.Errorf("Want: %s, got: %v", tc.expCtyVal, val[0])
 			}
 
+		})
+	}
+}
+
+func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/endpoint_eval/20_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path       string
+		expMessage string
+	}
+
+	for _, tc := range []testCase{
+		{"/conditional/null", "expression evaluation error: 20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
+		{"/conditional/string", "expression evaluation error: 20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number", "expression evaluation error: 20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/tuple", "expression evaluation error: 20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/object", "expression evaluation error: 20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/string/expr", "expression evaluation error: 20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number/expr", "expression evaluation error: 20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			hook.Reset()
+			defer func() {
+				if subT.Failed() {
+					time.Sleep(time.Millisecond * 100)
+					for _, entry := range hook.AllEntries() {
+						s, _ := entry.String()
+						println(s)
+					}
+				}
+			}()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Errorf("Expected Status InternalServerError, got: %d", res.StatusCode)
+				return
+			}
+
+			time.Sleep(time.Millisecond * 100)
+			entry := hook.LastEntry()
+			if entry != nil && entry.Level == logrus.ErrorLevel {
+				if entry.Message != tc.expMessage {
+					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
+				}
+			}
 		})
 	}
 }

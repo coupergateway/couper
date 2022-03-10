@@ -160,7 +160,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
 	// from this result.
 	evalCtx := eval.ContextFromRequest(req)
-	evalCtx = evalCtx.WithBeresps(beresp)
+	evalCtx = evalCtx.WithBeresp(beresp)
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), b.context, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {

@@ -1,9 +1,10 @@
 package eval
 
 import (
-	"github.com/zclconf/go-cty/cty"
 	"net/http"
 	"sync"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 type SyncedVariables struct {

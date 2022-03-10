@@ -1,7 +1,9 @@
 package eval
 
 const (
+	BackendRequest   = "backend_request"
 	BackendRequests  = "backend_requests"
+	BackendResponse  = "backend_response"
 	BackendResponses = "backend_responses"
 	BackendDefault   = "default"
 	Body             = "body"
