@@ -816,7 +816,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end: no such host`,
+			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end`,
 		},
 		{
 			"signature_algorithm + jwks_url",
@@ -888,7 +888,7 @@ func TestJwtConfig(t *testing.T) {
 			  backend "foo" {}
 			}
 			`,
-			`backend error: foo: connecting to foo "no-back.end:80" failed: dial tcp: lookup no-back.end: no such host`,
+			`backend error: foo: connecting to foo "no-back.end:80" failed: dial tcp: lookup no-back.end`,
 		},
 	}
 
@@ -921,7 +921,7 @@ func TestJwtConfig(t *testing.T) {
 
 			expectedError := "configuration error: myac: " + tt.error
 
-			if expectedError != errMsg {
+			if !strings.HasPrefix(errMsg, expectedError) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)
 			}
 		})
