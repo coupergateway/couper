@@ -330,3 +330,40 @@ func TestArgs_CAFile(t *testing.T) {
 		t.Error("unexpected status code")
 	}
 }
+
+func TestReadCAFile(t *testing.T) {
+	helper := test.New(t)
+
+	_, err := readCertificateFile("/does/not/exist.cert")
+	if err == nil {
+		t.Error("expected file error")
+	} else if err.Error() != "error reading ca-certificate: open /does/not/exist.cert: no such file or directory" {
+		t.Error("expected no such file error")
+	}
+
+	tmpFile, err := ioutil.TempFile("", "empty.cert")
+	helper.Must(err)
+	defer os.Remove(tmpFile.Name())
+
+	_, err = readCertificateFile(tmpFile.Name())
+	if err == nil {
+		t.Error("expected empty file error")
+	} else if err.Error() != `error reading ca-certificate: empty file: "`+tmpFile.Name()+`"` {
+		t.Error("expected empty file error with file-name")
+	}
+
+	malformedFile, err := ioutil.TempFile("", "broken.cert")
+	helper.Must(err)
+	defer os.Remove(malformedFile.Name())
+
+	ssc, err := server.NewCertificate(time.Minute, nil, nil)
+	helper.Must(err)
+
+	_, err = malformedFile.Write(ssc.CA[:100]) // incomplete
+	helper.Must(err)
+
+	_, err = readCertificateFile(malformedFile.Name())
+	if err == nil || err.Error() != "error parsing pem ca-certificate: missing pem block" {
+		t.Error("expected: error parsing pem ca-certificate: missing pem block")
+	}
+}

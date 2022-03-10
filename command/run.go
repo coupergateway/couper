@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -125,16 +126,8 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
 
-	// read ca-file bytes
 	if config.Settings.CAFile != "" {
-		config.Settings.Certificate, err = ioutil.ReadFile(config.Settings.CAFile)
-		if err != nil {
-			return fmt.Errorf("reading ca-certificate: %v", err)
-		}
-		certPool := x509.NewCertPool()
-		if !certPool.AppendCertsFromPEM(config.Settings.Certificate) {
-			return fmt.Errorf("parsing pem ca-certificate: %q", config.Settings.CAFile)
-		}
+		config.Settings.Certificate, err = readCertificateFile(config.Settings.CAFile)
 		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
 
@@ -208,6 +201,34 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 
 	return nil
+}
+
+func readCertificateFile(file string) ([]byte, error) {
+	cert, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("error reading ca-certificate: %v", err)
+	} else if len(cert) == 0 {
+		return nil, fmt.Errorf("error reading ca-certificate: empty file: %q", file)
+	}
+
+	pemCerts := cert[:]
+	for len(pemCerts) > 0 {
+		var block *pem.Block
+		block, pemCerts = pem.Decode(pemCerts)
+		if block == nil {
+			return nil, fmt.Errorf("error parsing pem ca-certificate: missing pem block")
+		}
+		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			continue
+		}
+
+		certBytes := block.Bytes
+		if _, err = x509.ParseCertificate(certBytes); err != nil {
+			return nil, fmt.Errorf("error parsing pem ca-certificate: %q: %v", file, err)
+		}
+	}
+
+	return cert, nil
 }
 
 func (r *Run) Usage() {
