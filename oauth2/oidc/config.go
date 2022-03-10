@@ -67,6 +67,19 @@ func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Confi
 	var err error
 	conf.syncedJSON, err = jsn.NewSyncedJSON("", "",
 		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	// verify verifierMethod with locked access
+	conf.jmu.RLock()
+	defer conf.jmu.RUnlock()
+	if conf.VerifierMethod != "" &&
+		conf.VerifierMethod != config.CcmS256 &&
+		conf.VerifierMethod != "nonce" {
+		return nil, fmt.Errorf("verifier_method %s not supported", conf.VerifierMethod)
+	}
+
 	return conf, err
 }
 
@@ -76,12 +89,16 @@ func (c *Config) Backends() map[string]http.RoundTripper {
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
 func (c *Config) GetVerifierMethod(uid string) (string, error) {
+	c.jmu.RLock()
 	if c.VerifierMethod == "" {
+		c.jmu.RUnlock()
 		_, err := c.Data(uid)
 		if err != nil {
 			return "", err
 		}
+		c.jmu.RLock()
 	}
+	defer c.jmu.RUnlock()
 
 	return c.VerifierMethod, nil
 }
