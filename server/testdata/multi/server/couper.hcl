@@ -52,10 +52,26 @@ server "ServerA" {
   cors {
     allowed_origins = ["origin-a"]
   }
+
+  api {
+    endpoint "/" {
+      response {
+        body = "OK"
+      }
+    }
+  }
 }
 
 server "ServerB" {
   hosts = ["*:8082"]
+
+  api {
+    endpoint "/" {
+      response {
+        body = "OK"
+      }
+    }
+  }
 }
 
 server "ServerC" {
