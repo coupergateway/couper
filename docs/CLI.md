@@ -31,7 +31,7 @@ Couper is build as binary called `couper` with the following commands:
 _Note_: `log-format`, `log-level` and `log-pretty` also map to [settings](REFERENCE.md#settings-block).
 
 _Note_: Couper can be started with both, `-f` and `-d` arguments. The path of `-f <file>`
-is the working directory of Couper. If `-d <dir>` argument is given without the `-f <file>`,
+determines the working directory of Couper. If `-d <dir>` argument is given without the `-f <file>`,
 the path of `-d <dir>` is the working directory of Couper. A `couper.hcl` file inside the
 `-d <dir>` is priorized over other files inside the `-d <dir>`, but not over the
 `-f <file>`. Other files in the `-d <dir>` are loaded in alphabetical order. Example:
