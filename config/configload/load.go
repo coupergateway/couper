@@ -162,10 +162,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		return nil, fmt.Errorf("missing configuration files")
 	}
 
-	defaults, err := mergeAttributes("defaults", parsedBodies)
-	if err != nil {
-		return nil, err
-	}
+	defaults := mergeAttributes("defaults", parsedBodies)
 
 	defs := &hclsyntax.Body{
 		Blocks: hclsyntax.Blocks{defaults},
@@ -175,10 +172,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	settings, err := mergeAttributes("settings", parsedBodies)
-	if err != nil {
-		return nil, err
-	}
+	settings := mergeAttributes("settings", parsedBodies)
 
 	definitions, err := mergeDefinitions(parsedBodies)
 	if err != nil {

@@ -344,7 +344,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	}, nil
 }
 
-func mergeAttributes(blockName string, bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
+func mergeAttributes(blockName string, bodies []*hclsyntax.Body) *hclsyntax.Block {
 	attrs := make(hclsyntax.Attributes)
 
 	for _, body := range bodies {
@@ -364,5 +364,5 @@ func mergeAttributes(blockName string, bodies []*hclsyntax.Body) (*hclsyntax.Blo
 		Body: &hclsyntax.Body{
 			Attributes: attrs,
 		},
-	}, nil
+	}
 }
