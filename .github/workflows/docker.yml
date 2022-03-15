@@ -48,6 +48,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
           type=edge,event=branch
+          type=match,pattern=v(.*)-.+
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request'
