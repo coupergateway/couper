@@ -83,9 +83,10 @@ func (value Parameters) Validate(ctx context.Context) error {
 }
 
 // Parameter is specified by OpenAPI/Swagger 3.0 standard.
-// See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.0.md#parameterObject
+// See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#parameterObject
 type Parameter struct {
 	ExtensionProps
+
 	Name            string      `json:"name,omitempty" yaml:"name,omitempty"`
 	In              string      `json:"in,omitempty" yaml:"in,omitempty"`
 	Description     string      `json:"description,omitempty" yaml:"description,omitempty"`
@@ -250,6 +251,10 @@ func (value *Parameter) Validate(ctx context.Context) error {
 		ParameterInCookie:
 	default:
 		return fmt.Errorf("parameter can't have 'in' value %q", value.In)
+	}
+
+	if in == ParameterInPath && !value.Required {
+		return fmt.Errorf("path parameter %q must be required", value.Name)
 	}
 
 	// Validate a parameter's serialization method.

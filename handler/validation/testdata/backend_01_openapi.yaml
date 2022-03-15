@@ -43,7 +43,7 @@ paths:
           name: a
           schema:
             type: string
-          required: false
+          required: true
       responses:
         200:
           description: OK
