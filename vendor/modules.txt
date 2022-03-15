@@ -217,7 +217,6 @@ go.opentelemetry.io/otel/sdk/resource
 go.opentelemetry.io/otel/sdk/trace
 # go.opentelemetry.io/otel/sdk/export/metric v0.27.0
 ## explicit; go 1.16
-go.opentelemetry.io/otel/sdk/export/metric
 # go.opentelemetry.io/otel/sdk/metric v0.27.0
 ## explicit; go 1.16
 go.opentelemetry.io/otel/sdk/metric
