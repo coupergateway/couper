@@ -48,7 +48,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
           type=edge,event=branch
-          type=raw,value=${{ github.event.inputs.tag }}
+          type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},value=${{ github.event.inputs.tag }}
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request'
