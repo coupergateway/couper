@@ -633,7 +633,7 @@ func TestJwtSignDynamic(t *testing.T) {
 
 			evalCtx := cf.Context.Value(request.ContextType).(*eval.Context).
 				WithClientRequest(req).
-				WithBeresp(beresp)
+				WithBeresp(beresp, false)
 
 			now := time.Now().Unix()
 			token, err := evalCtx.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})

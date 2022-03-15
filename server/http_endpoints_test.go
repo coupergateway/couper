@@ -46,8 +46,8 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 		res.Header.Get("X-From-Request-Json-Body") != "1" ||
 		res.Header.Get("X-From-Requests-Header") != "bar" ||
 		res.Header.Get("X-From-Requests-Json-Body") != "1" ||
-		// res.Header.Get("X-From-Response-Json-Body") != "/anything" || // not yet
-		// res.Header.Get("X-From-Responses-Json-Body") != "/anything" || // not yet
+		res.Header.Get("X-From-Response-Json-Body") != "/anything" ||
+		res.Header.Get("X-From-Responses-Json-Body") != "/anything" ||
 		res.Header.Get("X-From-Response-Header") != "application/json" ||
 		res.Header.Get("X-From-Responses-Header") != "application/json" {
 		t.Errorf("Unexpected header given: %#v", res.Header)
@@ -71,8 +71,8 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 				data["x-from-response-json-body"] != "the_access_token" {
 				t.Errorf("Unexpected logs given: %#v", data)
 			}
-			// if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" { // not yet
-			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|" {
+			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" { // not yet
+				//if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|" {
 				t.Errorf("Unexpected responseHeaders given: %#v", responseHeaders)
 			}
 		} else {
