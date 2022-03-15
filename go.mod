@@ -8,7 +8,7 @@ require (
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
-	github.com/getkin/kin-openapi v0.86.0
+	github.com/getkin/kin-openapi v0.92.0
 	github.com/hashicorp/hcl/v2 v2.11.1
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
