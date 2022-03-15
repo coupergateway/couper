@@ -84,10 +84,6 @@ func (oa OAuth2ReqAuth) GetClientSecret() string {
 	return oa.ClientSecret
 }
 
-func (oa OAuth2ReqAuth) GetGrantType() string {
-	return oa.GrantType
-}
-
 func (oa OAuth2ReqAuth) GetScope() string {
 	if oa.Scope == nil {
 		return ""

@@ -16,8 +16,8 @@ type CcClient struct {
 // NewOAuth2CC creates a new OAuth2 Client Credentials client.
 func NewOAuth2CC(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*CcClient, error) {
 	backendErr := errors.Backend.Label(conf.Reference())
-	if grantType := conf.GrantType; grantType != "client_credentials" {
-		return nil, backendErr.Messagef("grant_type %s not supported", grantType)
+	if conf.GrantType != "client_credentials" {
+		return nil, backendErr.Messagef("grant_type %s not supported", conf.GrantType)
 	}
 
 	if teAuthMethod := conf.TokenEndpointAuthMethod; teAuthMethod != nil {
@@ -25,7 +25,7 @@ func NewOAuth2CC(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*CcClie
 			return nil, backendErr.Messagef("token_endpoint_auth_method %s not supported", *teAuthMethod)
 		}
 	}
-	return &CcClient{&Client{backend, conf, conf}}, nil
+	return &CcClient{&Client{backend, conf, conf, conf.GrantType}}, nil
 }
 
 // GetTokenResponse retrieves the response from the token endpoint
