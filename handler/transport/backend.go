@@ -71,6 +71,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 		transportConf:    tc,
 	}
 
+	// TODO: Fix distinct since backendName is always set
 	distinct := false
 	if tc.BackendName != "" {
 		logEntry = log.WithField("backend", tc.BackendName)
@@ -81,8 +82,8 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 
-	if distinct && backend.options.HealthCheck != nil {
-		NewProbe(backend)
+	if distinct && opts.HealthCheck != nil {
+		NewProbe(backend, opts.HealthCheck)
 	}
 
 	return backend.upstreamLog

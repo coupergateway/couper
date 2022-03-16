@@ -1,11 +1,15 @@
 package configload_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
+	logrustest "github.com/sirupsen/logrus/hooks/test"
+
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/runtime"
 )
 
 func TestPrepareBackendRefineAttributes(t *testing.T) {
@@ -130,18 +134,18 @@ func TestHealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+			conf, err := configload.LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
 			if conf != nil {
 				_, err = runtime.NewServerConfiguration(conf, log, nil)
 			}
 
-			var error = ""
+			var errorMsg = ""
 			if err != nil {
-				error = err.Error()
+				errorMsg = err.Error()
 			}
 
-			if tt.error != error {
-				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, error)
+			if tt.error != errorMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
 			}
 		})
 	}

@@ -58,7 +58,7 @@ func (p Probe) String() string {
 	return fmt.Sprintf("check #%d for backend %q: state: %s (%d/%d), HTTP status: %d", p.Counter, p.Name, p.State, p.Failure, p.Opts.FailureThreshold, p.Status)
 }
 
-func NewProbe(b *Backend) {
+func NewProbe(b *Backend, opts *config.HealthCheck) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -68,7 +68,7 @@ func NewProbe(b *Backend) {
 	p := &Probe{
 		Log:    b.upstreamLog,
 		Name:   b.name,
-		Opts:   b.options.HealthCheck,
+		Opts:   opts,
 		State:  StateInvalid,
 		client: client,
 	}
