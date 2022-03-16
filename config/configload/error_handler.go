@@ -15,8 +15,8 @@ import (
 type errorHandlerContent map[string]kindContent
 
 type kindContent struct {
-	body  hcl.Body
-	kind  string
+	body hcl.Body
+	kind string
 }
 
 func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends Backends) error {
@@ -44,7 +44,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 			defaultHandler := handler.DefaultErrorHandler()
 			_, exist := ehc[errors.Wildcard]
 			if !exist {
-					_, exist = ehc[defaultHandler.Kind]
+				_, exist = ehc[defaultHandler.Kind]
 			}
 
 			if !exist {
@@ -92,7 +92,7 @@ func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, erro
 			}
 
 			configuredKinds[k] = kindContent{
-				body:  block.Body,
+				body: block.Body,
 				kind: k,
 			}
 		}
