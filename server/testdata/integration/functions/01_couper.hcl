@@ -73,6 +73,17 @@ server "api" {
         }
       }
     }
+
+    endpoint "/length" {
+      response {
+        headers = {
+          x-length-1 = length([0, 1]) # tuple
+          x-length-2 = length([])
+          x-length-3 = length(split(",", "0,1,2,3,4")) # list
+          x-length-4 = length(request.headers) # map
+        }
+      }
+    }
   }
 }
 

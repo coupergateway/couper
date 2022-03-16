@@ -562,6 +562,7 @@ func newFunctionsMap() map[string]function.Function {
 		"default":       lib.DefaultFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
+		"length":        stdlib.LengthFunc,
 		"merge":         lib.MergeFunc,
 		"relative_url":  lib.RelativeUrlFunc,
 		"split":         stdlib.SplitFunc,

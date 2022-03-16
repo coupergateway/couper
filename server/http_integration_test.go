@@ -3806,6 +3806,12 @@ func TestFunctions(t *testing.T) {
 			"X-Contains-10": "no",
 			"X-Contains-11": "yes",
 		}, http.StatusOK},
+		{"length", "/v1/length", map[string]string{
+			"X-Length-1": "2",
+			"X-Length-2": "0",
+			"X-Length-3": "5",
+			"X-Length-4": "2",
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
