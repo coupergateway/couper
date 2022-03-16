@@ -55,6 +55,24 @@ server "api" {
         }
       }
     }
+
+    endpoint "/contains" {
+      response {
+        headers = {
+          x-contains-1 = contains(["a", "b"], "a") ? "yes" : "no"
+          x-contains-2 = contains(["a", "b"], "c") ? "yes" : "no"
+          x-contains-3 = contains([0, 1], 0) ? "yes" : "no"
+          x-contains-4 = contains([0, 1], 2) ? "yes" : "no"
+          x-contains-5 = contains([0.1, 1.1], 0.1) ? "yes" : "no"
+          x-contains-6 = contains([0.1, 1.1], 0.10000000001) ? "yes" : "no"
+          x-contains-7 = contains([{a = 1, aa = {aaa = 1}}, {b = 2}], {a = 1, aa = {aaa = 1}}) ? "yes" : "no"
+          x-contains-8 = contains([{a = 1}, {b = 2}], {c = 3}) ? "yes" : "no"
+          x-contains-9 = contains([[1,2], [3,4]], [1,2]) ? "yes" : "no"
+          x-contains-10 = contains([[1,2], [3,4]], [5,6]) ? "yes" : "no"
+          x-contains-11 = contains(["3.14159", "42"], env.PI) ? "yes" : "no"
+        }
+      }
+    }
   }
 }
 
