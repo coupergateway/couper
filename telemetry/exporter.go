@@ -17,8 +17,8 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/propagation"
-	export "go.opentelemetry.io/otel/sdk/export/metric"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -165,8 +165,8 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 	}
 
 	pusher := controller.New(
-		processor.New(
-			simple.NewWithExactDistribution(),
+		processor.NewFactory(
+			simple.NewWithInexpensiveDistribution(),
 			metricExp,
 		),
 		controller.WithExporter(metricExp),
@@ -176,7 +176,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		return err
 	}
 
-	provider.SetMeterProvider(pusher.MeterProvider())
+	provider.SetMeterProvider(pusher)
 
 	go pushOnShutdown(ctx, pusher.Stop)
 
@@ -206,9 +206,9 @@ func newPromExporter(opts *Options) (*prometheus.Exporter, error) {
 	)))
 
 	ctlr := controller.New(
-		processor.New(
+		processor.NewFactory(
 			selector.NewWithHistogramDistribution(),
-			export.CumulativeExportKindSelector(),
+			aggregation.CumulativeTemporalitySelector(),
 			processor.WithMemory(true),
 		),
 		controller.WithResource(resource.NewWithAttributes(

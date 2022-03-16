@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package saml2
 
 import (
@@ -57,7 +58,9 @@ func (sp *SAMLServiceProvider) buildAuthnRequest(includeSig bool) (*etree.Docume
 
 	nameIdPolicy := authnRequest.CreateElement("samlp:NameIDPolicy")
 	nameIdPolicy.CreateAttr("AllowCreate", "true")
-	nameIdPolicy.CreateAttr("Format", sp.NameIdFormat)
+	if sp.NameIdFormat != "" {
+		nameIdPolicy.CreateAttr("Format", sp.NameIdFormat)
+	}
 
 	if sp.RequestedAuthnContext != nil {
 		requestedAuthnContext := authnRequest.CreateElement("samlp:RequestedAuthnContext")
