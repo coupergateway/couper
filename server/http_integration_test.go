@@ -3816,6 +3816,34 @@ func TestFunctions(t *testing.T) {
 	}
 }
 
+func TestFunction_to_number(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1/to_number", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
+
+	exp := `{"float-2_34":2.34,"float-_3":0.3,"from-env":3.14159,"int":34,"int-3_":3,"int-3_0":3,"null":null}`
+	if string(resBytes) != exp {
+		t.Fatalf("Unexpected result\nwant: %s\n got:  %s", exp, string(resBytes))
+	}
+}
+
 func TestEndpoint_Response(t *testing.T) {
 	client := newClient()
 	var redirSeen bool

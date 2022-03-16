@@ -566,6 +566,7 @@ func newFunctionsMap() map[string]function.Function {
 		"split":         stdlib.SplitFunc,
 		"substr":        stdlib.SubstrFunc,
 		"to_lower":      stdlib.LowerFunc,
+		"to_number":     stdlib.MakeToFunc(cty.Number),
 		"to_upper":      stdlib.UpperFunc,
 		"unixtime":      lib.UnixtimeFunc,
 		"url_encode":    lib.UrlEncodeFunc,

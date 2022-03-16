@@ -41,5 +41,25 @@ server "api" {
         }
       }
     }
+
+    endpoint "/to_number" {
+      response {
+        json_body = {
+		  float-2_34 = to_number("2.34")
+		  float-_3 = to_number(".3")
+		  int = to_number("34")
+		  int-3_ = to_number("3.")
+		  int-3_0 = to_number("3.0")
+		  null = to_number(null)
+		  from-env = to_number(env.PI)
+        }
+      }
+    }
+  }
+}
+
+defaults {
+  environment_variables = {
+    PI = "3.14159"
   }
 }
