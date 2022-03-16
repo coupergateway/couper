@@ -102,6 +102,7 @@ func (s SchemaRefs) JSONLookup(token string) (interface{}, error) {
 }
 
 // Schema is specified by OpenAPI/Swagger 3.0 standard.
+// See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#schemaObject
 type Schema struct {
 	ExtensionProps
 
@@ -124,12 +125,12 @@ type Schema struct {
 	ExclusiveMin bool `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
 	ExclusiveMax bool `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
 	// Properties
-	Nullable        bool        `json:"nullable,omitempty" yaml:"nullable,omitempty"`
-	ReadOnly        bool        `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
-	WriteOnly       bool        `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"`
-	AllowEmptyValue bool        `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
-	XML             interface{} `json:"xml,omitempty" yaml:"xml,omitempty"`
-	Deprecated      bool        `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Nullable        bool `json:"nullable,omitempty" yaml:"nullable,omitempty"`
+	ReadOnly        bool `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
+	WriteOnly       bool `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"`
+	AllowEmptyValue bool `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Deprecated      bool `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	XML             *XML `json:"xml,omitempty" yaml:"xml,omitempty"`
 
 	// Number
 	Min        *float64 `json:"minimum,omitempty" yaml:"minimum,omitempty"`
@@ -372,7 +373,7 @@ func NewArraySchema() *Schema {
 func NewObjectSchema() *Schema {
 	return &Schema{
 		Type:       TypeObject,
-		Properties: make(map[string]*SchemaRef),
+		Properties: make(Schemas),
 	}
 }
 
@@ -493,7 +494,7 @@ func (schema *Schema) WithProperty(name string, propertySchema *Schema) *Schema 
 func (schema *Schema) WithPropertyRef(name string, ref *SchemaRef) *Schema {
 	properties := schema.Properties
 	if properties == nil {
-		properties = make(map[string]*SchemaRef)
+		properties = make(Schemas)
 		schema.Properties = properties
 	}
 	properties[name] = ref
@@ -501,7 +502,7 @@ func (schema *Schema) WithPropertyRef(name string, ref *SchemaRef) *Schema {
 }
 
 func (schema *Schema) WithProperties(properties map[string]*Schema) *Schema {
-	result := make(map[string]*SchemaRef, len(properties))
+	result := make(Schemas, len(properties))
 	for k, v := range properties {
 		result[k] = &SchemaRef{
 			Value: v,
@@ -726,6 +727,12 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) (err error)
 		}
 		if err = v.validate(ctx, stack); err != nil {
 			return
+		}
+	}
+
+	if v := schema.ExternalDocs; v != nil {
+		if err = v.Validate(ctx); err != nil {
+			return fmt.Errorf("invalid external docs: %w", err)
 		}
 	}
 
@@ -1078,7 +1085,7 @@ func (schema *Schema) visitJSONNumber(settings *schemaValidationSettings, value 
 			Value:       value,
 			Schema:      schema,
 			SchemaField: "maximum",
-			Reason:      fmt.Sprintf("number must be most %g", *v),
+			Reason:      fmt.Sprintf("number must be at most %g", *v),
 		}
 		if !settings.multiError {
 			return err

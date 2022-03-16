@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package trace // import "go.opentelemetry.io/otel/trace"
 
 import (
 	"encoding/json"
@@ -58,7 +58,7 @@ func newMember(key, value string) (member, error) {
 	return member{Key: key, Value: value}, nil
 }
 
-func parseMemeber(m string) (member, error) {
+func parseMember(m string) (member, error) {
 	matches := memberRe.FindStringSubmatch(m)
 	if len(matches) != 5 {
 		return member{}, fmt.Errorf("%w: %s", errInvalidMember, m)
@@ -114,7 +114,7 @@ func ParseTraceState(tracestate string) (TraceState, error) {
 			continue
 		}
 
-		m, err := parseMemeber(memberStr)
+		m, err := parseMember(memberStr)
 		if err != nil {
 			return TraceState{}, wrapErr(err)
 		}
