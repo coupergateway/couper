@@ -94,6 +94,16 @@ server "api" {
         }
       }
     }
+
+    endpoint "/keys" {
+      response {
+        headers = {
+          x-keys-1 = json_encode(keys({a = 1, c = 2, b = {d = 3}}))
+          x-keys-2 = json_encode(keys({}))
+          x-keys-3 = json_encode(keys(request.headers))
+        }
+      }
+    }
   }
 }
 

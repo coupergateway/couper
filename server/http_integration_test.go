@@ -3817,6 +3817,11 @@ func TestFunctions(t *testing.T) {
 			"X-Join-2": "||",
 			"X-Join-3": "0-1-2-3-4",
 		}, http.StatusOK},
+		{"keys", "/v1/keys", map[string]string{
+			"X-Keys-1": `["a","b","c"]`,
+			"X-Keys-2": `[]`,
+			"X-Keys-3": `["couper-request-id","user-agent"]`,
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

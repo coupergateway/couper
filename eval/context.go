@@ -563,6 +563,7 @@ func newFunctionsMap() map[string]function.Function {
 		"join":          stdlib.JoinFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
+		"keys":          stdlib.KeysFunc,
 		"length":        stdlib.LengthFunc,
 		"merge":         lib.MergeFunc,
 		"relative_url":  lib.RelativeUrlFunc,
