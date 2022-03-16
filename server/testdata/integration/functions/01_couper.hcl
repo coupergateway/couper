@@ -126,6 +126,17 @@ server "api" {
         }
       }
     }
+
+    endpoint "/lookup" {
+      response {
+        headers = {
+          x-lookup-1 = lookup({a = "1"}, "a", "default")
+          x-lookup-2 = lookup({a = "1"}, "b", "default")
+          x-lookup-3 = lookup(request.headers, "user-agent", "default")
+          x-lookup-4 = lookup(request.headers, "content-type", "default")
+        }
+      }
+    }
   }
 }
 

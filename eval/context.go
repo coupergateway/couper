@@ -565,6 +565,7 @@ func newFunctionsMap() map[string]function.Function {
 		"json_encode":      stdlib.JSONEncodeFunc,
 		"keys":             stdlib.KeysFunc,
 		"length":           stdlib.LengthFunc,
+		"lookup":           stdlib.LookupFunc,
 		"merge":            lib.MergeFunc,
 		"relative_url":     lib.RelativeUrlFunc,
 		"set_intersection": stdlib.SetIntersectionFunc,

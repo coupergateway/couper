@@ -3839,6 +3839,12 @@ func TestFunctions(t *testing.T) {
 			"X-Set_Intersection-14": `[{"a":1}]`,
 			"X-Set_Intersection-15": `[[1,2]]`,
 		}, http.StatusOK},
+		{"lookup", "/v1/lookup", map[string]string{
+			"X-Lookup-1": "1",
+			"X-Lookup-2": "default",
+			"X-Lookup-3": "Go-http-client/1.1",
+			"X-Lookup-4": "default",
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
