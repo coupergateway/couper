@@ -84,6 +84,16 @@ server "api" {
         }
       }
     }
+
+    endpoint "/join" {
+      response {
+        headers = {
+          x-join-1 = join("-",[0, 1],["a","b"],[3,"c"],[1.234],[true,false])
+          x-join-2 = "|${join("-",[])}|"
+          x-join-3 = join("-", split(",", "0,1,2,3,4"))
+        }
+      }
+    }
   }
 }
 

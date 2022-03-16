@@ -3812,6 +3812,11 @@ func TestFunctions(t *testing.T) {
 			"X-Length-3": "5",
 			"X-Length-4": "2",
 		}, http.StatusOK},
+		{"join", "/v1/join", map[string]string{
+			"X-Join-1": "0-1-a-b-3-c-1.234-true-false",
+			"X-Join-2": "||",
+			"X-Join-3": "0-1-2-3-4",
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

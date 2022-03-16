@@ -560,6 +560,7 @@ func newFunctionsMap() map[string]function.Function {
 		"coalesce":      lib.DefaultFunc,
 		"contains":      stdlib.ContainsFunc,
 		"default":       lib.DefaultFunc,
+		"join":          stdlib.JoinFunc,
 		"json_decode":   stdlib.JSONDecodeFunc,
 		"json_encode":   stdlib.JSONEncodeFunc,
 		"length":        stdlib.LengthFunc,
