@@ -3822,6 +3822,23 @@ func TestFunctions(t *testing.T) {
 			"X-Keys-2": `[]`,
 			"X-Keys-3": `["couper-request-id","user-agent"]`,
 		}, http.StatusOK},
+		{"set_intersection", "/v1/set_intersection", map[string]string{
+			"X-Set_Intersection-1": `[1,3]`,
+			"X-Set_Intersection-2": `[1,3]`,
+			"X-Set_Intersection-3": `[1,3]`,
+			"X-Set_Intersection-4": `[1,3]`,
+			"X-Set_Intersection-5": `[3]`,
+			"X-Set_Intersection-6": `[3]`,
+			"X-Set_Intersection-7": `[]`,
+			"X-Set_Intersection-8": `[]`,
+			"X-Set_Intersection-9": `[]`,
+			"X-Set_Intersection-10": `[]`,
+			"X-Set_Intersection-11": `[2.2]`,
+			"X-Set_Intersection-12": `["b","d"]`,
+			"X-Set_Intersection-13": `[true]`,
+			"X-Set_Intersection-14": `[{"a":1}]`,
+			"X-Set_Intersection-15": `[[1,2]]`,
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)

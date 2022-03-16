@@ -104,6 +104,28 @@ server "api" {
         }
       }
     }
+
+    endpoint "/set_intersection" {
+      response {
+        headers = {
+          x-set_intersection-1 = json_encode((set_intersection([1,3])))
+          x-set_intersection-2 = json_encode(set_intersection([0,1,2,3], [1,3]))
+          x-set_intersection-3 = json_encode(set_intersection([1,3],[0,1,2,3]))
+          x-set_intersection-4 = json_encode(set_intersection([1,3],[1,3]))
+          x-set_intersection-5 = json_encode(set_intersection([0,1,2,3], [1,3], [3,5]))
+          x-set_intersection-6 = json_encode(set_intersection([0,1,2,3], [3,4,5]))
+          x-set_intersection-7 = json_encode(set_intersection([0,1,2,3],[4,5]))
+          x-set_intersection-8 = json_encode(set_intersection([0,1,2,3],[]))
+          x-set_intersection-9 = json_encode(set_intersection([],[1,3]))
+          x-set_intersection-10 = json_encode(set_intersection([0,1,2,3], [1,4], [3,5]))
+          x-set_intersection-11 = json_encode(set_intersection([1.1,2.2,3.3], [2.2,4.4]))
+          x-set_intersection-12 = json_encode(set_intersection(["a","b","c","d"], ["b","d","e"]))
+          x-set_intersection-13 = json_encode(set_intersection([true,false], [true]))
+          x-set_intersection-14 = json_encode(set_intersection([{a=1},{b=2}], [{a=1},{c=3}]))
+          x-set_intersection-15 = json_encode(set_intersection([[1,2],[3,4]], [[1,2],[5,6]]))
+        }
+      }
+    }
   }
 }
 
