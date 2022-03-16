@@ -22,9 +22,8 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			continue
 		}
 		for _, h := range definition.ErrorHandler {
-			k := h.Kind
-			if _, exist := kindsHandler[k]; exist {
-				return nil, fmt.Errorf("error handler type already exists: " + k)
+			if _, exist := kindsHandler[h.Kind]; exist {
+				return nil, fmt.Errorf("error handler type already exists: " + h.Kind)
 			}
 
 			contextBody := h.HCLBody()
@@ -59,9 +58,9 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				epOpts.Response = nil
 			}
 
-			epOpts.LogHandlerKind = "error_" + k
+			epOpts.LogHandlerKind = "error_" + h.Kind
 			epOpts.IsErrorHandler = true
-			kindsHandler[k] = handler.NewEndpoint(epOpts, log, nil)
+			kindsHandler[h.Kind] = handler.NewEndpoint(epOpts, log, nil)
 		}
 	}
 
