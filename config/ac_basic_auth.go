@@ -51,7 +51,7 @@ func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {
 		wwwAuthenticateValue += " realm=" + b.Realm
 	}
 	return &ErrorHandler{
-		Kinds: []string{"basic_auth"},
+		Kind: "basic_auth",
 		Remain: body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
 			"set_response_headers": {Name: "set_response_headers", Expr: hcl.StaticExpr(seetie.MapToValue(map[string]interface{}{
 				"Www-Authenticate": wwwAuthenticateValue,

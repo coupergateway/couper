@@ -16,7 +16,7 @@ type errorHandlerContent map[string]kindContent
 
 type kindContent struct {
 	body  hcl.Body
-	kinds []string
+	kind  string
 }
 
 func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends Backends) error {
@@ -44,12 +44,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 			defaultHandler := handler.DefaultErrorHandler()
 			_, exist := ehc[errors.Wildcard]
 			if !exist {
-				for _, kind := range defaultHandler.Kinds {
-					_, exist = ehc[kind]
-					if exist {
-						break
-					}
-				}
+					_, exist = ehc[defaultHandler.Kind]
 			}
 
 			if !exist {
@@ -98,7 +93,7 @@ func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, erro
 
 			configuredKinds[k] = kindContent{
 				body:  block.Body,
-				kinds: kinds,
+				kind: k,
 			}
 		}
 	}
@@ -130,7 +125,7 @@ func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 }
 
 func newErrorHandlerConfig(content kindContent, definedBackends Backends) (*config.ErrorHandler, error) {
-	errHandlerConf := &config.ErrorHandler{Kinds: content.kinds}
+	errHandlerConf := &config.ErrorHandler{Kind: content.kind}
 	if d := gohcl.DecodeBody(content.body, envContext, errHandlerConf); d.HasErrors() {
 		return nil, d
 	}
