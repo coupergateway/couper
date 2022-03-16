@@ -3896,6 +3896,116 @@ func TestFunction_to_number(t *testing.T) {
 	}
 }
 
+func TestFunction_to_number_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"string", "/v1/to_number/string", `expression evaluation error: 01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", `expression evaluation error: 01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", `expression evaluation error: 01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", `expression evaluation error: 01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
+func TestFunction_length_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"object", "/v1/length/object", `expression evaluation error: 01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"string", "/v1/length/string", `expression evaluation error: 01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"null", "/v1/length/null", `expression evaluation error: 01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
+func TestFunction_lookup_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"null inputMap", "/v1/lookup/inputMap-null", `expression evaluation error: 01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
 func TestEndpoint_Response(t *testing.T) {
 	client := newClient()
 	var redirSeen bool

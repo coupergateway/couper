@@ -56,6 +56,38 @@ server "api" {
       }
     }
 
+    endpoint "/to_number/string" {
+      response {
+        json_body = {
+		  error = to_number("two")
+        }
+      }
+    }
+
+    endpoint "/to_number/bool" {
+      response {
+        json_body = {
+		  error = to_number(true)
+        }
+      }
+    }
+
+    endpoint "/to_number/tuple" {
+      response {
+        json_body = {
+		  error = to_number([1])
+        }
+      }
+    }
+
+    endpoint "/to_number/object" {
+      response {
+        json_body = {
+		  error = to_number({a = 1})
+        }
+      }
+    }
+
     endpoint "/contains" {
       response {
         headers = {
@@ -81,6 +113,30 @@ server "api" {
           x-length-2 = length([])
           x-length-3 = length(split(",", "0,1,2,3,4")) # list
           x-length-4 = length(request.headers) # map
+        }
+      }
+    }
+
+    endpoint "/length/object" {
+      response {
+        headers = {
+          error = length({a = 1})
+        }
+      }
+    }
+
+    endpoint "/length/string" {
+      response {
+        headers = {
+          error = length("abcde")
+        }
+      }
+    }
+
+    endpoint "/length/null" {
+      response {
+        headers = {
+          error = length(null)
         }
       }
     }
@@ -134,6 +190,14 @@ server "api" {
           x-lookup-2 = lookup({a = "1"}, "b", "default")
           x-lookup-3 = lookup(request.headers, "user-agent", "default")
           x-lookup-4 = lookup(request.headers, "content-type", "default")
+        }
+      }
+    }
+
+    endpoint "/lookup/inputMap-null" {
+      response {
+        headers = {
+          error = lookup(null, "a", "default")
         }
       }
     }
