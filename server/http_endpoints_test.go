@@ -71,8 +71,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 				data["x-from-response-json-body"] != "the_access_token" {
 				t.Errorf("Unexpected logs given: %#v", data)
 			}
-			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" { // not yet
-				//if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|" {
+			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" {
 				t.Errorf("Unexpected responseHeaders given: %#v", responseHeaders)
 			}
 		} else {
