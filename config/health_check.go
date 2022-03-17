@@ -25,6 +25,7 @@ type HealthCheck struct {
 	ExpectStatus     map[int]bool
 	ExpectText       string
 	Request          *http.Request
+	RequestUIDFormat string
 }
 
 type Headers map[string]string
@@ -40,8 +41,9 @@ type Health struct {
 	Remain           hcl.Body `hcl:",remain"`
 }
 
-func NewHealthCheck(baseURL string, options *Health) (*HealthCheck, error) {
+func NewHealthCheck(baseURL string, options *Health, settings *Settings) (*HealthCheck, error) {
 	healthCheck := *defaultHealthCheck
+	healthCheck.RequestUIDFormat = settings.RequestIDFormat
 
 	var err error
 	if options != nil {

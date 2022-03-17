@@ -629,13 +629,13 @@ type protectedOptions struct {
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, log *logrus.Entry, settings *config.Settings) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		eh, err := newErrorHandler(ctx, opts, log, m, settings, acName)
 		if err != nil {
 			return nil, err
 		}

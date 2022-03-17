@@ -89,7 +89,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			return nil, fmt.Errorf("missing origin for backend %q", beConf.Name)
 		}
 
-		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health)
+		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health, settings)
 		if err != nil {
 			return nil, err
 		}

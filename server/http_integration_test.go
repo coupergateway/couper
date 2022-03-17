@@ -168,6 +168,15 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 
 	for _, entry := range hook.AllEntries() {
 		if entry.Level < logrus.WarnLevel {
+			// ignore health-check startup errors
+			if req, ok := entry.Data["request"]; ok {
+				if reqFields, ok := req.(logging.Fields); ok {
+					n, _ := reqFields["name"]
+					if hc, ok := n.(string); ok && hc == "health-check" {
+						continue
+					}
+				}
+			}
 			defer os.Exit(1) // ok in loop, next line is the end
 			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
 		}
@@ -2622,7 +2631,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 	}
 }
 
-func TestHTTPServer_backend_probes(t *testing.T) {
+func TestHTTPServer_BackendProbes(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
@@ -2683,47 +2692,47 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 		{
 			"unhealthy backend: timeout",
 			"/unhealthy/timeout",
-			`{"error":"Get \"http://1.2.3.4\": proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":false,"state":"unhealthy"}`,
+			`{"error":"backend error: proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend: unexpected status code",
 			"/unhealthy/bad_status",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ expect_status: unexpected status code",
 			"/unhealthy/bad_expect_status",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected statusCode: 200","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ expect_text: unexpected text",
 			"/unhealthy/bad_expect_text",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected text","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend: unexpected status code",
 			"/unhealthy/bad_status",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ path: unexpected status code",
 			"/unhealthy/bad_path",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ headers: unexpected text",
 			"/unhealthy/headers",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected text","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend: does not follow location",
 			"/unhealthy/no_follow_redirect",
-			`{"error":"Unexpected status or text","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected statusCode: 302","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"failing backend: timeout but threshold not reached",
 			"/failing",
-			`{"error":"Get \"http://1.2.3.4\": proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":true,"state":"failing"}`,
+			`{"error":"backend error: proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":true,"state":"failing"}`,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {

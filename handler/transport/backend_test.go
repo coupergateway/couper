@@ -466,7 +466,7 @@ func TestBackend_health_check(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health, err := config.NewHealthCheck("http://origin:8080/foo", tc.health)
+			health, err := config.NewHealthCheck("http://origin:8080/foo", tc.health, &config.DefaultSettings)
 			h.Must(err)
 
 			if tc.expectation.URL != nil {

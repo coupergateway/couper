@@ -2,18 +2,23 @@ package transport
 
 import (
 	"context"
+	goerror "errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/middleware"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
+	"github.com/avenga/couper/logging"
 )
 
 const (
@@ -50,6 +55,8 @@ type Probe struct {
 	failure uint
 	state   state
 	status  int
+
+	uidFunc middleware.UIDFunc
 }
 
 func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
@@ -57,6 +64,8 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
+		Transport: logging.NewUpstreamLog(log, http.DefaultTransport,
+			false), // always false due to defaultTransport
 	}
 
 	p := &Probe{
@@ -66,6 +75,8 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 
 		client: client,
 		state:  StateInvalid,
+
+		uidFunc: middleware.NewUIDFunc(opts.RequestUIDFormat),
 	}
 
 	go p.probe()
@@ -74,6 +85,9 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 func (p *Probe) probe() {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.opts.Timeout)
+		ctx = context.WithValue(ctx, request.RoundTripName, "health-check")
+		uid := p.uidFunc()
+		ctx = context.WithValue(ctx, request.UID, uid)
 
 		res, err := p.client.Do(p.opts.Request.Clone(ctx))
 		cancel()
@@ -93,10 +107,21 @@ func (p *Probe) probe() {
 				p.state = StateDown
 			}
 			if err == nil {
-				errorMessage = "Unexpected status or text"
-				err = fmt.Errorf(errorMessage)
+				if !p.opts.ExpectStatus[res.StatusCode] {
+					errorMessage = "unexpected statusCode: " + strconv.Itoa(p.status)
+				} else {
+					errorMessage = "unexpected text"
+				}
 			} else {
-				errorMessage = err.Error()
+				unwrapped := goerror.Unwrap(err)
+				if unwrapped != nil {
+					err = unwrapped
+				}
+				if gerr, ok := err.(errors.GoError); ok {
+					errorMessage = gerr.LogError()
+				} else {
+					errorMessage = err.Error()
+				}
 			}
 		} else {
 			p.failure = 0
@@ -114,16 +139,14 @@ func (p *Probe) probe() {
 
 			message := fmt.Sprintf("new health state: %s", newState)
 
+			log := p.log.WithField("uid", uid)
 			switch p.state {
 			case StateOk:
-				p.log.Info(message)
+				log.Info(message)
 			case StateFailing:
-				p.log.Warn(message)
+				log.Warn(message)
 			case StateDown:
-				p.log.WithError(errors.Backend.
-					Label(p.backendName).
-					Message(message).
-					With(err)).Error()
+				log.WithError(fmt.Errorf(errorMessage + ": " + message)).Error()
 			}
 		}
 
