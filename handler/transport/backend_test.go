@@ -357,7 +357,7 @@ func TestBackend_director(t *testing.T) {
 	}
 }
 
-func TestBackend_health_check(t *testing.T) {
+func TestBackend_HealthCheck(t *testing.T) {
 	type expectation struct {
 		FailureThreshold uint
 		Interval         time.Duration
@@ -365,6 +365,7 @@ func TestBackend_health_check(t *testing.T) {
 		ExpectStatus     map[int]bool
 		ExpectText       string
 		URL              *url.URL
+		RequestUIDFormat string
 	}
 
 	type testCase struct {
@@ -385,6 +386,7 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          time.Second,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
+				RequestUIDFormat: "common",
 			},
 		},
 		{
@@ -409,6 +411,7 @@ func TestBackend_health_check(t *testing.T) {
 					Path:     "/gsund",
 					RawQuery: "?",
 				},
+				RequestUIDFormat: "common",
 			},
 		},
 		{
@@ -420,6 +423,7 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          time.Second,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
+				RequestUIDFormat: "common",
 			},
 		},
 		{
@@ -433,6 +437,7 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          10 * time.Second,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
+				RequestUIDFormat: "common",
 			},
 		},
 		{
@@ -447,6 +452,7 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          5 * time.Second,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
+				RequestUIDFormat: "common",
 			},
 		},
 		{
@@ -460,6 +466,7 @@ func TestBackend_health_check(t *testing.T) {
 				Timeout:          time.Second,
 				ExpectStatus:     defaultExpectStatus,
 				ExpectText:       "",
+				RequestUIDFormat: "common",
 			},
 		},
 	} {
