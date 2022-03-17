@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -109,7 +107,6 @@ func (p *Probe) probe() {
 			errorMessage = ""
 		}
 
-		//fmt.Println(p)
 		if prevState != p.State {
 			newState := p.State.String()
 			probe.BackendProbes.Store(p.Name, probe.HealthInfo{
@@ -119,8 +116,7 @@ func (p *Probe) probe() {
 			})
 
 			log := p.Log.LogEntry()
-			log = log.WithFields(logrus.Fields{"backend": p.Name})
-			message := fmt.Sprintf("backend %q: new health state: %s", p.Name, newState)
+			message := fmt.Sprintf("new health state: %s", newState)
 
 			switch p.State {
 			case StateOk:

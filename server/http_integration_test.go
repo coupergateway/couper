@@ -174,12 +174,6 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 		}
 	}
 
-	for _, entry := range hook.AllEntries() {
-		if entry.Level < logrus.InfoLevel {
-			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
-		}
-	}
-
 	hook.Reset() // no startup logs
 	return shutdownFn, hook
 }
@@ -1055,7 +1049,6 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
 	helper.Must(err)
 
-	logHook.Reset()
 	res, err := client.Do(req)
 	helper.Must(err)
 

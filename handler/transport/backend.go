@@ -53,37 +53,32 @@ type Backend struct {
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
 func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
-	var logEntry *logrus.Entry
+	var (
+		healthCheck  *config.HealthCheck
+		openAPI      *validation.OpenAPI
+		tokenRequest TokenRequest
+	)
 
-	var openAPI *validation.OpenAPI
-	var tr TokenRequest
 	if opts != nil {
+		healthCheck = opts.HealthCheck
 		openAPI = validation.NewOpenAPI(opts.OpenAPI)
-		tr = opts.AuthBackend
+		tokenRequest = opts.AuthBackend
 	}
 
 	backend := &Backend{
 		context:          ctx,
-		logEntry:         logEntry,
+		logEntry:         log.WithField("backend", tc.BackendName),
 		name:             tc.BackendName,
 		openAPIValidator: openAPI,
-		tokenRequest:     tr,
+		tokenRequest:     tokenRequest,
 		transportConf:    tc,
 	}
 
-	// TODO: Fix distinct since backendName is always set
-	distinct := false
-	if tc.BackendName != "" {
-		logEntry = log.WithField("backend", tc.BackendName)
-		backend.name = tc.BackendName
-		distinct = true
-	} else {
-		logEntry = log.WithField("backend", "default")
-	}
-	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
+	backend.upstreamLog = logging.NewUpstreamLog(backend.logEntry, backend, tc.NoProxyFromEnv)
 
-	if distinct && opts.HealthCheck != nil {
-		NewProbe(backend, opts.HealthCheck)
+	distinct := !strings.HasPrefix(tc.Hostname, "anonymous_")
+	if distinct && healthCheck != nil {
+		NewProbe(backend, healthCheck)
 	}
 
 	return backend.upstreamLog

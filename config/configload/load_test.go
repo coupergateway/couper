@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	logrustest "github.com/sirupsen/logrus/hooks/test"
-
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/internal/test"
 )
 
 func TestPrepareBackendRefineAttributes(t *testing.T) {
@@ -112,7 +112,7 @@ func TestHealthCheck(t *testing.T) {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
+	logger, _ := test.NewLogger()
 	log := logger.WithContext(context.TODO())
 
 	template := `
@@ -135,8 +135,13 @@ func TestHealthCheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := configload.LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+
+			closeCh := make(chan struct{})
+			defer close(closeCh)
+			memStore := cache.New(log, closeCh)
+
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log, nil)
+				_, err = runtime.NewServerConfiguration(conf, log, memStore)
 			}
 
 			var errorMsg = ""
