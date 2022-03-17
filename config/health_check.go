@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
-	
+
 	"github.com/avenga/couper/utils"
 )
 

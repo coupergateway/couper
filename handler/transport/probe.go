@@ -74,9 +74,9 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 func (p *Probe) probe() {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), p.opts.Timeout)
-		defer cancel()
 
-		res, err := p.client.Do(p.opts.Request.WithContext(ctx))
+		res, err := p.client.Do(p.opts.Request.Clone(ctx))
+		cancel()
 
 		p.counter++
 		prevState := p.state
@@ -136,6 +136,8 @@ func (p Probe) String() string {
 }
 
 func contains(reader io.ReadCloser, text string) bool {
+	defer reader.Close() // free resp body related connection
+
 	if text == "" {
 		return true
 	}
