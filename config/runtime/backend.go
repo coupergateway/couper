@@ -2,12 +2,13 @@ package runtime
 
 import (
 	"fmt"
+	"math"
+	"net/http"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
-	"math"
-	"net/http"
 
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
