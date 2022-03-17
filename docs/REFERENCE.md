@@ -528,7 +528,9 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 
 ### Health Block
 
-Defines a recurring health check request for its backend. Results can be obtained via the [`backends.<label>.health` variables](#backends). Changes in health states will be logged.
+Defines a recurring health check request for its backend. Results can be obtained via the [`backends.<label>.health` variables](#backends).
+Changes in health states and related requests will be logged. Default User-Agent will be `Couper / <version> health-check` if not provided
+via `headers` attribute.
 
 | Block name    | Context                           | Label | Nested block |
 |:--------------|:----------------------------------|:------|:-------------|
@@ -690,9 +692,9 @@ and for OIDC additionally:
 
 `backends.<label>` allows access to backend information.
 
-| Variable           | Type    | Description                                                                                           | Example |
-| :----------------- | :------ | :---------------------------------------------------------------------------------------------------- | :------ |
-| `health`           | object  | current [health state](#health-block)                                                                 | `{"error": "", "healthy": true, "state": "healthy"}` |
+| Variable | Type   | Description                           | Example                                              |
+|:---------|:-------|:--------------------------------------|:-----------------------------------------------------|
+| `health` | object | current [health state](#health-block) | `{"error": "", "healthy": true, "state": "healthy"}` |
 
 ### `backend_request`
 
