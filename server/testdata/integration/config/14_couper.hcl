@@ -29,6 +29,11 @@ server {
       json_body = backends.healthy_headers.health
     }
   }
+  endpoint "/healthy/ua-header" {
+    response {
+      json_body = backends.healthy_ua_header.health
+    }
+  }
   endpoint "/healthy/no_follow_redirect" {
     response {
       json_body = backends.healthy_no_follow_redirect.health
@@ -91,6 +96,9 @@ server {
     request "healthy_headers" {
       backend = "healthy_headers"
     }
+    request "healthy_ua_header" {
+      backend = "healthy_ua_header"
+    }
     request "healthy_no_follow_redirect" {
       backend = "healthy_no_follow_redirect"
     }
@@ -145,6 +153,7 @@ definitions {
       expect_text = "\"RawQuery\":\"foo=bar\""
     }
   }
+
   backend "healthy_headers" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
@@ -153,6 +162,15 @@ definitions {
       expect_text = "\"UserAgent\":\"Couper-Health-Check\""
     }
   }
+
+  backend "healthy_ua_header" {
+    origin = env.COUPER_TEST_BACKEND_ADDR
+    beta_health {
+      path = "/anything"
+      expect_text = "\"UserAgent\":\"Couper / 0 health-check\""
+    }
+  }
+
   backend "healthy_no_follow_redirect" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {

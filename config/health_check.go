@@ -1,10 +1,13 @@
 package config
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/hashicorp/hcl/v2"
+	
+	"github.com/avenga/couper/utils"
 )
 
 var defaultHealthCheck = &HealthCheck{
@@ -79,6 +82,10 @@ func NewHealthCheck(baseURL string, options *Health) (*HealthCheck, error) {
 			for key, value := range options.Headers {
 				request.Header.Add(key, value)
 			}
+		}
+
+		if ua := request.Header.Get("User-Agent"); ua == "" {
+			request.Header.Set("User-Agent", "Couper / "+utils.VersionName+" health-check")
 		}
 
 		healthCheck.Request = request

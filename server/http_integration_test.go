@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -2672,6 +2671,11 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			healthyJSON,
 		},
 		{
+			"healthy backend w/ fallback ua header",
+			"/healthy/ua-header",
+			healthyJSON,
+		},
+		{
 			"healthy backend: check does not follow Location",
 			"/healthy/no_follow_redirect",
 			healthyJSON,
@@ -2731,8 +2735,9 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			res, err := client.Do(req)
 			h.Must(err)
 
-			b, _ := ioutil.ReadAll(res.Body)
+			b, _ := io.ReadAll(res.Body)
 			body := string(b)
+			h.Must(res.Body.Close())
 
 			if body != tc.expect {
 				t.Errorf("%s: Unexpected states:\n\tWant: %s\n\tGot:  %s", tc.name, tc.expect, body)
