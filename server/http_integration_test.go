@@ -2731,8 +2731,8 @@ func TestHTTPServer_backend_probes(t *testing.T) {
 			res, err := client.Do(req)
 			h.Must(err)
 
-			bytes, _ := ioutil.ReadAll(res.Body)
-			body := string(bytes)
+			b, _ := ioutil.ReadAll(res.Body)
+			body := string(b)
 
 			if body != tc.expect {
 				t.Errorf("%s: Unexpected states:\n\tWant: %s\n\tGot:  %s", tc.name, tc.expect, body)

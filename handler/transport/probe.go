@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	
+	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	probe "github.com/avenga/couper/handler/transport/probe_map"
-	"github.com/avenga/couper/logging"
 )
 
 const (
@@ -36,7 +37,7 @@ type state int
 
 type Probe struct {
 	//configurable settings
-	Log  *logging.UpstreamLog
+	log  *logrus.Entry
 	Name string
 	Opts *config.HealthCheck
 
@@ -56,7 +57,7 @@ func (p Probe) String() string {
 	return fmt.Sprintf("check #%d for backend %q: state: %s (%d/%d), HTTP status: %d", p.Counter, p.Name, p.State, p.Failure, p.Opts.FailureThreshold, p.Status)
 }
 
-func NewProbe(b *Backend, opts *config.HealthCheck) {
+func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -64,8 +65,8 @@ func NewProbe(b *Backend, opts *config.HealthCheck) {
 	}
 
 	p := &Probe{
-		Log:    b.upstreamLog,
-		Name:   b.name,
+		log:    log,
+		Name:   backendName,
 		Opts:   opts,
 		State:  StateInvalid,
 		client: client,
@@ -115,17 +116,18 @@ func (p *Probe) probe() {
 				Healthy: p.State != StateDown,
 			})
 
-			log := p.Log.LogEntry()
 			message := fmt.Sprintf("new health state: %s", newState)
 
 			switch p.State {
 			case StateOk:
-				log.Info(message)
+				p.log.Info(message)
 			case StateFailing:
-				log.Warn(message)
+				p.log.Warn(message)
 			case StateDown:
-				log.Error(message)
-				p.Log.LogEntry().WithError(errors.Backend.Label(newState).With(err)).Error()
+				p.log.WithError(errors.Backend.
+					Label(p.Name).
+					Message(message).
+					With(err)).Error()
 			}
 		}
 
