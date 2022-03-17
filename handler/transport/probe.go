@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
-	
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
@@ -35,26 +34,22 @@ var _ context.Context = &eval.Context{}
 
 type state int
 
-type Probe struct {
-	//configurable settings
-	log  *logrus.Entry
-	Name string
-	Opts *config.HealthCheck
-
-	//variables reflecting status of probe
-	Counter uint
-	Failure uint
-	State   state
-	Status  int
-	client  *http.Client
-}
-
 func (s state) String() string {
 	return healthStateLabels[s]
 }
 
-func (p Probe) String() string {
-	return fmt.Sprintf("check #%d for backend %q: state: %s (%d/%d), HTTP status: %d", p.Counter, p.Name, p.State, p.Failure, p.Opts.FailureThreshold, p.Status)
+type Probe struct {
+	//configurable settings
+	backendName string
+	log         *logrus.Entry
+	opts        *config.HealthCheck
+
+	//variables reflecting status of probe
+	client  *http.Client
+	counter uint
+	failure uint
+	state   state
+	status  int
 }
 
 func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
@@ -65,11 +60,12 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 	}
 
 	p := &Probe{
-		log:    log,
-		Name:   backendName,
-		Opts:   opts,
-		State:  StateInvalid,
+		backendName: backendName,
+		log:         log,
+		opts:        opts,
+
 		client: client,
+		state:  StateInvalid,
 	}
 
 	go p.probe()
@@ -77,24 +73,24 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 
 func (p *Probe) probe() {
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), p.Opts.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), p.opts.Timeout)
 		defer cancel()
 
-		res, err := p.client.Do(p.Opts.Request.WithContext(ctx))
+		res, err := p.client.Do(p.opts.Request.WithContext(ctx))
 
-		p.Counter++
-		prevState := p.State
-		p.Status = 0
+		p.counter++
+		prevState := p.state
+		p.status = 0
 		if res != nil {
-			p.Status = res.StatusCode
+			p.status = res.StatusCode
 		}
 
 		var errorMessage string
-		if err != nil || !p.Opts.ExpectStatus[res.StatusCode] || !contains(res.Body, p.Opts.ExpectText) {
-			if p.Failure++; p.Failure < p.Opts.FailureThreshold {
-				p.State = StateFailing
+		if err != nil || !p.opts.ExpectStatus[res.StatusCode] || !contains(res.Body, p.opts.ExpectText) {
+			if p.failure++; p.failure < p.opts.FailureThreshold {
+				p.state = StateFailing
 			} else {
-				p.State = StateDown
+				p.state = StateDown
 			}
 			if err == nil {
 				errorMessage = "Unexpected status or text"
@@ -103,36 +99,40 @@ func (p *Probe) probe() {
 				errorMessage = err.Error()
 			}
 		} else {
-			p.Failure = 0
-			p.State = StateOk
+			p.failure = 0
+			p.state = StateOk
 			errorMessage = ""
 		}
 
-		if prevState != p.State {
-			newState := p.State.String()
-			probe.BackendProbes.Store(p.Name, probe.HealthInfo{
+		if prevState != p.state {
+			newState := p.state.String()
+			probe.BackendProbes.Store(p.backendName, probe.HealthInfo{
 				State:   newState,
 				Error:   errorMessage,
-				Healthy: p.State != StateDown,
+				Healthy: p.state != StateDown,
 			})
 
 			message := fmt.Sprintf("new health state: %s", newState)
 
-			switch p.State {
+			switch p.state {
 			case StateOk:
 				p.log.Info(message)
 			case StateFailing:
 				p.log.Warn(message)
 			case StateDown:
 				p.log.WithError(errors.Backend.
-					Label(p.Name).
+					Label(p.backendName).
 					Message(message).
 					With(err)).Error()
 			}
 		}
 
-		time.Sleep(p.Opts.Interval)
+		time.Sleep(p.opts.Interval)
 	}
+}
+
+func (p Probe) String() string {
+	return fmt.Sprintf("check #%d for backend %q: state: %s (%d/%d), HTTP status: %d", p.counter, p.backendName, p.state, p.failure, p.opts.FailureThreshold, p.status)
 }
 
 func contains(reader io.ReadCloser, text string) bool {
@@ -140,6 +140,6 @@ func contains(reader io.ReadCloser, text string) bool {
 		return true
 	}
 
-	bytes, _ := ioutil.ReadAll(reader)
+	bytes, _ := io.ReadAll(reader)
 	return strings.Contains(string(bytes), text)
 }
