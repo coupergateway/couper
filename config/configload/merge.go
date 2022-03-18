@@ -231,37 +231,37 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 	var mergedServers hclsyntax.Blocks
 
-	for _, server := range results {
+	for _, serverBlock := range results {
 		var serverBlocks hclsyntax.Blocks
 
-		for _, b := range server.blocks {
+		for _, b := range serverBlock.blocks {
 			serverBlocks = append(serverBlocks, b)
 		}
 
-		for _, b := range server.endpoints {
+		for _, b := range serverBlock.endpoints {
 			serverBlocks = append(serverBlocks, b)
 		}
 
-		for _, api := range server.apis {
+		for _, apiBlock := range serverBlock.apis {
 			var apiBlocks hclsyntax.Blocks
 
-			for _, b := range api.blocks {
+			for _, b := range apiBlock.blocks {
 				apiBlocks = append(apiBlocks, b)
 			}
 
-			for _, b := range api.endpoints {
+			for _, b := range apiBlock.endpoints {
 				apiBlocks = append(apiBlocks, b)
 			}
 
-			for _, b := range api.errorHandler {
+			for _, b := range apiBlock.errorHandler {
 				apiBlocks = append(apiBlocks, b)
 			}
 
 			mergedAPI := &hclsyntax.Block{
 				Type:   "api",
-				Labels: api.labels,
+				Labels: apiBlock.labels,
 				Body: &hclsyntax.Body{
-					Attributes: api.attributes,
+					Attributes: apiBlock.attributes,
 					Blocks:     apiBlocks,
 				},
 			}
@@ -271,9 +271,9 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 		mergedServer := &hclsyntax.Block{
 			Type:   "server",
-			Labels: server.labels,
+			Labels: serverBlock.labels,
 			Body: &hclsyntax.Body{
-				Attributes: server.attributes,
+				Attributes: serverBlock.attributes,
 				Blocks:     serverBlocks,
 			},
 		}
