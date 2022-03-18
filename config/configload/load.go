@@ -47,7 +47,7 @@ func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
 }
 
-func initVars(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
+func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return diags
@@ -168,7 +168,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: hclsyntax.Blocks{defaults},
 	}
 
-	if diags := initVars(defs, srcBytes); diags.HasErrors() {
+	if diags := updateContext(defs, srcBytes); diags.HasErrors() {
 		return nil, diags
 	}
 
@@ -202,7 +202,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	if diags := initVars(hclBody, [][]byte{src}); diags.HasErrors() {
+	if diags := updateContext(hclBody, [][]byte{src}); diags.HasErrors() {
 		return nil, diags
 	}
 
