@@ -85,142 +85,145 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 		}
 	*/
+
 	results := make(servers)
 
 	for _, body := range bodies {
 		uniqueServerLabels := make(map[string]struct{})
 
 		for _, outerBlock := range body.Blocks {
-			if outerBlock.Type == "server" {
-				var serverKey string
+			if outerBlock.Type != "server" {
+				continue
+			}
 
-				if len(outerBlock.Labels) > 0 {
-					serverKey = outerBlock.Labels[0]
+			var serverKey string
+
+			if len(outerBlock.Labels) > 0 {
+				serverKey = outerBlock.Labels[0]
+			}
+
+			if len(bodies) > 1 {
+				if _, ok := uniqueServerLabels[serverKey]; ok {
+					return nil, errorUniqueLabels(outerBlock)
 				}
 
-				if len(bodies) > 1 {
-					if _, ok := uniqueServerLabels[serverKey]; ok {
-						return nil, errorUniqueLabels(outerBlock)
+				uniqueServerLabels[serverKey] = struct{}{}
+			} else {
+				// Create unique key for multiple server blocks inside a single config file.
+				serverKey += fmt.Sprintf("|%p", &serverKey)
+			}
+
+			if results[serverKey] == nil {
+				results[serverKey] = &server{
+					labels:     outerBlock.Labels,
+					attributes: make(hclsyntax.Attributes),
+					blocks:     make(namedBlocks),
+					endpoints:  make(namedBlocks),
+					apis:       make(namedAPIs),
+				}
+			}
+
+			for name, attr := range outerBlock.Body.Attributes {
+				results[serverKey].attributes[name] = attr
+			}
+
+			if attr, ok := results[serverKey].attributes["error_file"]; ok {
+				results[serverKey].attributes["error_file"].Expr = absPath(attr)
+			}
+
+			for _, block := range outerBlock.Body.Blocks {
+				uniqueAPILabels := make(map[string]struct{})
+
+				// TODO: Do we need this IF around the FOR?
+				if block.Type == "files" || block.Type == "spa" || block.Type == "api" || block.Type == "endpoint" {
+					for _, name := range []string{"error_file", "document_root"} {
+						if attr, ok := block.Body.Attributes[name]; ok {
+							block.Body.Attributes[name].Expr = absPath(attr)
+						}
 					}
-
-					uniqueServerLabels[serverKey] = struct{}{}
-				} else {
-					// Create unique key for multiple server blocks inside a single config file.
-					serverKey += fmt.Sprintf("|%p", &serverKey)
 				}
 
-				if results[serverKey] == nil {
-					results[serverKey] = &server{
-						labels:     outerBlock.Labels,
-						attributes: make(hclsyntax.Attributes),
-						blocks:     make(namedBlocks),
-						endpoints:  make(namedBlocks),
-						apis:       make(namedAPIs),
-					}
-				}
-
-				for name, attr := range outerBlock.Body.Attributes {
-					results[serverKey].attributes[name] = attr
-				}
-
-				if attr, ok := results[serverKey].attributes["error_file"]; ok {
-					results[serverKey].attributes["error_file"].Expr = absPath(attr)
-				}
-
-				for _, block := range outerBlock.Body.Blocks {
-					uniqueAPILabels := make(map[string]struct{})
-
-					// TODO: Do we need this IF around the FOR?
-					if block.Type == "files" || block.Type == "spa" || block.Type == "api" || block.Type == "endpoint" {
-						for _, name := range []string{"error_file", "document_root"} {
-							if attr, ok := block.Body.Attributes[name]; ok {
-								block.Body.Attributes[name].Expr = absPath(attr)
+				if block.Type == "api" || block.Type == "endpoint" {
+					for _, innerBlock := range block.Body.Blocks {
+						if innerBlock.Type == "error_handler" {
+							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
+								innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
+							}
+						} else if innerBlock.Type == "endpoint" {
+							for _, innerInnerBlock := range innerBlock.Body.Blocks {
+								if innerInnerBlock.Type == "backend" {
+									absBackendBlock(innerInnerBlock) // Backend block inside a endpoint block in an api block
+								}
 							}
 						}
 					}
+				}
 
-					if block.Type == "api" || block.Type == "endpoint" {
-						for _, innerBlock := range block.Body.Blocks {
-							if innerBlock.Type == "error_handler" {
-								if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
-									innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
-								}
-							} else if innerBlock.Type == "endpoint" {
-								for _, innerInnerBlock := range innerBlock.Body.Blocks {
-									if innerInnerBlock.Type == "backend" {
-										absBackendBlock(innerInnerBlock) // Backend block inside a endpoint block in an api block
-									}
-								}
-							}
-						}
+				if block.Type == "endpoint" {
+					if len(block.Labels) == 0 {
+						return nil, errorUniqueLabels(block)
 					}
 
-					if block.Type == "endpoint" {
-						if len(block.Labels) == 0 {
+					results[serverKey].endpoints[block.Labels[0]] = block
+
+					for _, innerBlock := range block.Body.Blocks {
+						if innerBlock.Type == "backend" {
+							absBackendBlock(innerBlock) // Backend block inside a free endpoint block
+						}
+					}
+				} else if block.Type == "api" {
+					var apiKey string
+
+					if len(block.Labels) > 0 {
+						apiKey = block.Labels[0]
+					}
+
+					if len(bodies) > 1 {
+						if _, ok := uniqueAPILabels[apiKey]; ok {
 							return nil, errorUniqueLabels(block)
 						}
 
-						results[serverKey].endpoints[block.Labels[0]] = block
-
-						for _, innerBlock := range block.Body.Blocks {
-							if innerBlock.Type == "backend" {
-								absBackendBlock(innerBlock) // Backend block inside a free endpoint block
-							}
-						}
-					} else if block.Type == "api" {
-						var apiKey string
-
-						if len(block.Labels) > 0 {
-							apiKey = block.Labels[0]
-						}
-
-						if len(bodies) > 1 {
-							if _, ok := uniqueAPILabels[apiKey]; ok {
-								return nil, errorUniqueLabels(block)
-							}
-
-							uniqueAPILabels[apiKey] = struct{}{}
-						} else {
-							// Create unique key for multiple api blocks inside a single config file.
-							apiKey += fmt.Sprintf("|%p", &apiKey)
-						}
-
-						if results[serverKey].apis[apiKey] == nil {
-							results[serverKey].apis[apiKey] = &api{
-								labels:       block.Labels,
-								attributes:   make(hclsyntax.Attributes),
-								blocks:       make(namedBlocks),
-								endpoints:    make(namedBlocks),
-								errorHandler: make(namedBlocks),
-							}
-						}
-
-						for name, attr := range block.Body.Attributes {
-							results[serverKey].apis[apiKey].attributes[name] = attr
-						}
-
-						for _, subBlock := range block.Body.Blocks {
-							if subBlock.Type == "endpoint" {
-								if len(subBlock.Labels) == 0 {
-									return nil, errorUniqueLabels(subBlock)
-								}
-
-								results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
-							} else if subBlock.Type == "error_handler" {
-								var ehKey string
-
-								if len(subBlock.Labels) > 0 {
-									ehKey = subBlock.Labels[0]
-								}
-
-								results[serverKey].apis[apiKey].errorHandler[ehKey] = subBlock
-							} else {
-								results[serverKey].apis[apiKey].blocks[subBlock.Type] = subBlock
-							}
-						}
+						uniqueAPILabels[apiKey] = struct{}{}
 					} else {
-						results[serverKey].blocks[block.Type] = block
+						// Create unique key for multiple api blocks inside a single config file.
+						apiKey += fmt.Sprintf("|%p", &apiKey)
 					}
+
+					if results[serverKey].apis[apiKey] == nil {
+						results[serverKey].apis[apiKey] = &api{
+							labels:       block.Labels,
+							attributes:   make(hclsyntax.Attributes),
+							blocks:       make(namedBlocks),
+							endpoints:    make(namedBlocks),
+							errorHandler: make(namedBlocks),
+						}
+					}
+
+					for name, attr := range block.Body.Attributes {
+						results[serverKey].apis[apiKey].attributes[name] = attr
+					}
+
+					for _, subBlock := range block.Body.Blocks {
+						if subBlock.Type == "endpoint" {
+							if len(subBlock.Labels) == 0 {
+								return nil, errorUniqueLabels(subBlock)
+							}
+
+							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
+						} else if subBlock.Type == "error_handler" {
+							var ehKey string
+
+							if len(subBlock.Labels) > 0 {
+								ehKey = subBlock.Labels[0]
+							}
+
+							results[serverKey].apis[apiKey].errorHandler[ehKey] = subBlock
+						} else {
+							results[serverKey].apis[apiKey].blocks[subBlock.Type] = subBlock
+						}
+					}
+				} else {
+					results[serverKey].blocks[block.Type] = block
 				}
 			}
 		}
