@@ -288,21 +288,21 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	type data map[string]*hclsyntax.Block
 	type list map[string]data
 
-	definitions := make(list)
+	definitionsBlock := make(list)
 
 	for _, body := range bodies {
 		for _, outerBlock := range body.Blocks {
 			if outerBlock.Type == "definitions" {
 				for _, innerBlock := range outerBlock.Body.Blocks {
-					if definitions[innerBlock.Type] == nil {
-						definitions[innerBlock.Type] = make(data)
+					if definitionsBlock[innerBlock.Type] == nil {
+						definitionsBlock[innerBlock.Type] = make(data)
 					}
 
 					if len(innerBlock.Labels) == 0 {
 						return nil, errorUniqueLabels(innerBlock)
 					}
 
-					definitions[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
+					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
 
 					// TODO: Do we need this IF around the FOR?
 					if innerBlock.Type == "basic_auth" || innerBlock.Type == "jwt" || innerBlock.Type == "jwt_signing_profile" || innerBlock.Type == "saml" {
@@ -333,7 +333,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 
 	var blocks []*hclsyntax.Block
 
-	for _, labels := range definitions {
+	for _, labels := range definitionsBlock {
 		for _, block := range labels {
 			blocks = append(blocks, block)
 		}
