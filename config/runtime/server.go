@@ -282,9 +282,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			epOpts.LogHandlerKind = kind.String()
 
-			var epHandler http.Handler
+			var epHandler, protectedHandler http.Handler
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				epHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
+				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
 				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:       epOpts,
@@ -299,32 +299,27 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					epOpts.ErrorHandler = epErrorHandler
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
-			}
 
-			scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
-			if err != nil {
-				return nil, err
-			}
+				scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
+				if err != nil {
+					return nil, err
+				}
 
-			scopeControl := ac.NewScopeControl(scopeMaps)
-			scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-				epOpts:       epOpts,
-				memStore:     memStore,
-				proxyFromEnv: conf.Settings.NoProxyFromEnv,
-				srvOpts:      serverOptions,
-			}, log, errorHandlerDefinitions, "api", "endpoint")
-			if err != nil {
-				return nil, err
-			}
+				scopeControl := ac.NewScopeControl(scopeMaps)
+				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+					epOpts:       epOpts,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				}, log, errorHandlerDefinitions, "api", "endpoint")
+				if err != nil {
+					return nil, err
+				}
 
-			var protectedHandler http.Handler
-			protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+				protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+			}
 
 			accessControl := newAC(srvConf, parentAPI)
-			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
-			}
-
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
