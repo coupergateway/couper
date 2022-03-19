@@ -35,15 +35,15 @@ func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
 	}
 }
 
-func absBackendBlock(backend *hclsyntax.Block) {
-	for _, block := range backend.Body.Blocks {
+func absBackendBlock(backendBlock *hclsyntax.Block) {
+	for _, block := range backendBlock.Body.Blocks {
 		if block.Type == "openapi" {
 			if attr, ok := block.Body.Attributes["file"]; ok {
 				block.Body.Attributes["file"].Expr = absPath(attr)
 			}
-		} else if block.Type == "oauth2" {
+		} else if block.Type == oauth2 {
 			for _, innerBlock := range block.Body.Blocks {
-				if innerBlock.Type == "backend" {
+				if innerBlock.Type == backend {
 					absBackendBlock(innerBlock) // Recursive call
 				}
 			}
@@ -53,27 +53,27 @@ func absBackendBlock(backend *hclsyntax.Block) {
 
 func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	type (
-		namedBlocks map[string]*hclsyntax.Block
-		api         struct {
+		namedBlocks   map[string]*hclsyntax.Block
+		apiDefinition struct {
 			labels       []string
 			attributes   hclsyntax.Attributes
 			blocks       namedBlocks
 			endpoints    namedBlocks
 			errorHandler namedBlocks
 		}
-		namedAPIs map[string]*api
-		server    struct {
+		namedAPIs        map[string]*apiDefinition
+		serverDefinition struct {
 			labels     []string
 			attributes hclsyntax.Attributes
 			blocks     namedBlocks
 			endpoints  namedBlocks
 			apis       namedAPIs
 		}
-		servers map[string]*server
+		servers map[string]*serverDefinition
 	)
 
 	/*
-		server[<key>] = {
+		serverDefinition[<key>] = {
 			attributes       = hclsyntax.Attributes
 			blocks[<name>]   = hclsyntax.Block (cors, files, spa)
 			endpoints[<key>] = hclsyntax.Block
@@ -92,7 +92,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 		uniqueServerLabels := make(map[string]struct{})
 
 		for _, outerBlock := range body.Blocks {
-			if outerBlock.Type != "server" {
+			if outerBlock.Type != server {
 				continue
 			}
 
@@ -114,7 +114,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 
 			if results[serverKey] == nil {
-				results[serverKey] = &server{
+				results[serverKey] = &serverDefinition{
 					labels:     outerBlock.Labels,
 					attributes: make(hclsyntax.Attributes),
 					blocks:     make(namedBlocks),
@@ -135,7 +135,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 				uniqueAPILabels := make(map[string]struct{})
 
 				// TODO: Do we need this IF around the FOR?
-				if block.Type == "files" || block.Type == "spa" || block.Type == "api" || block.Type == "endpoint" {
+				if block.Type == "files" || block.Type == "spa" || block.Type == api || block.Type == "endpoint" {
 					for _, name := range []string{"error_file", "document_root"} {
 						if attr, ok := block.Body.Attributes[name]; ok {
 							block.Body.Attributes[name].Expr = absPath(attr)
@@ -143,7 +143,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 				}
 
-				if block.Type == "api" || block.Type == "endpoint" {
+				if block.Type == api || block.Type == "endpoint" {
 					for _, innerBlock := range block.Body.Blocks {
 						if innerBlock.Type == "error_handler" {
 							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
@@ -151,7 +151,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 							}
 						} else if innerBlock.Type == "endpoint" {
 							for _, innerInnerBlock := range innerBlock.Body.Blocks {
-								if innerInnerBlock.Type == "backend" {
+								if innerInnerBlock.Type == backend {
 									absBackendBlock(innerInnerBlock) // Backend block inside a endpoint block in an api block
 								}
 							}
@@ -167,11 +167,11 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					results[serverKey].endpoints[block.Labels[0]] = block
 
 					for _, innerBlock := range block.Body.Blocks {
-						if innerBlock.Type == "backend" {
+						if innerBlock.Type == backend {
 							absBackendBlock(innerBlock) // Backend block inside a free endpoint block
 						}
 					}
-				} else if block.Type == "api" {
+				} else if block.Type == api {
 					var apiKey string
 
 					if len(block.Labels) > 0 {
@@ -190,7 +190,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 
 					if results[serverKey].apis[apiKey] == nil {
-						results[serverKey].apis[apiKey] = &api{
+						results[serverKey].apis[apiKey] = &apiDefinition{
 							labels:       block.Labels,
 							attributes:   make(hclsyntax.Attributes),
 							blocks:       make(namedBlocks),
@@ -258,7 +258,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 
 			mergedAPI := &hclsyntax.Block{
-				Type:   "api",
+				Type:   api,
 				Labels: apiBlock.labels,
 				Body: &hclsyntax.Body{
 					Attributes: apiBlock.attributes,
@@ -270,7 +270,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 		}
 
 		mergedServer := &hclsyntax.Block{
-			Type:   "server",
+			Type:   server,
 			Labels: serverBlock.labels,
 			Body: &hclsyntax.Body{
 				Attributes: serverBlock.attributes,
@@ -292,7 +292,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 
 	for _, body := range bodies {
 		for _, outerBlock := range body.Blocks {
-			if outerBlock.Type == "definitions" {
+			if outerBlock.Type == definitions {
 				for _, innerBlock := range outerBlock.Body.Blocks {
 					if definitionsBlock[innerBlock.Type] == nil {
 						definitionsBlock[innerBlock.Type] = make(data)
@@ -314,16 +314,16 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					for _, block := range innerBlock.Body.Blocks {
-						if block.Type == "error_handler" {
+						if block.Type == errorHandler {
 							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
 								innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
 							}
-						} else if block.Type == "backend" {
+						} else if block.Type == backend {
 							absBackendBlock(innerBlock) // Backend block inside a AC block
 						}
 					}
 
-					if innerBlock.Type == "backend" {
+					if innerBlock.Type == backend {
 						absBackendBlock(innerBlock) // Backend block inside the definitions block
 					}
 				}
@@ -340,7 +340,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	}
 
 	return &hclsyntax.Block{
-		Type: "definitions",
+		Type: definitions,
 		Body: &hclsyntax.Body{
 			Blocks: blocks,
 		},
