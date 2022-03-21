@@ -3847,6 +3847,58 @@ func TestFunctions(t *testing.T) {
 			"X-Default-11": "0",
 			"X-Default-12": "",
 		}, http.StatusOK},
+		{"contains", "/v1/contains", map[string]string{
+			"X-Contains-1":  "yes",
+			"X-Contains-2":  "no",
+			"X-Contains-3":  "yes",
+			"X-Contains-4":  "no",
+			"X-Contains-5":  "yes",
+			"X-Contains-6":  "no",
+			"X-Contains-7":  "yes",
+			"X-Contains-8":  "no",
+			"X-Contains-9":  "yes",
+			"X-Contains-10": "no",
+			"X-Contains-11": "yes",
+		}, http.StatusOK},
+		{"length", "/v1/length", map[string]string{
+			"X-Length-1": "2",
+			"X-Length-2": "0",
+			"X-Length-3": "5",
+			"X-Length-4": "2",
+		}, http.StatusOK},
+		{"join", "/v1/join", map[string]string{
+			"X-Join-1": "0-1-a-b-3-c-1.234-true-false",
+			"X-Join-2": "||",
+			"X-Join-3": "0-1-2-3-4",
+		}, http.StatusOK},
+		{"keys", "/v1/keys", map[string]string{
+			"X-Keys-1": `["a","b","c"]`,
+			"X-Keys-2": `[]`,
+			"X-Keys-3": `["couper-request-id","user-agent"]`,
+		}, http.StatusOK},
+		{"set_intersection", "/v1/set_intersection", map[string]string{
+			"X-Set_Intersection-1":  `[1,3]`,
+			"X-Set_Intersection-2":  `[1,3]`,
+			"X-Set_Intersection-3":  `[1,3]`,
+			"X-Set_Intersection-4":  `[1,3]`,
+			"X-Set_Intersection-5":  `[3]`,
+			"X-Set_Intersection-6":  `[3]`,
+			"X-Set_Intersection-7":  `[]`,
+			"X-Set_Intersection-8":  `[]`,
+			"X-Set_Intersection-9":  `[]`,
+			"X-Set_Intersection-10": `[]`,
+			"X-Set_Intersection-11": `[2.2]`,
+			"X-Set_Intersection-12": `["b","d"]`,
+			"X-Set_Intersection-13": `[true]`,
+			"X-Set_Intersection-14": `[{"a":1}]`,
+			"X-Set_Intersection-15": `[[1,2]]`,
+		}, http.StatusOK},
+		{"lookup", "/v1/lookup", map[string]string{
+			"X-Lookup-1": "1",
+			"X-Lookup-2": "default",
+			"X-Lookup-3": "Go-http-client/1.1",
+			"X-Lookup-4": "default",
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3865,6 +3917,144 @@ func TestFunctions(t *testing.T) {
 				if v1 := res.Header.Get(k); v1 != v {
 					subT.Fatalf("%q: unexpected header value for %q: got: %q, want: %q", tc.name, k, v1, v)
 				}
+			}
+		})
+	}
+}
+
+func TestFunction_to_number(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1/to_number", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
+
+	exp := `{"float-2_34":2.34,"float-_3":0.3,"from-env":3.14159,"int":34,"int-3_":3,"int-3_0":3,"null":null}`
+	if string(resBytes) != exp {
+		t.Fatalf("Unexpected result\nwant: %s\n got:  %s", exp, string(resBytes))
+	}
+}
+
+func TestFunction_to_number_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"string", "/v1/to_number/string", `expression evaluation error: 01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", `expression evaluation error: 01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", `expression evaluation error: 01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", `expression evaluation error: 01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
+func TestFunction_length_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"object", "/v1/length/object", `expression evaluation error: 01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"string", "/v1/length/string", `expression evaluation error: 01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"null", "/v1/length/null", `expression evaluation error: 01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
+func TestFunction_lookup_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"null inputMap", "/v1/lookup/inputMap-null", `expression evaluation error: 01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
 			}
 		})
 	}
