@@ -33,8 +33,13 @@ func (sv *SyncedVariables) Set(beresp *http.Response) {
 }
 
 func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
-	bereqs := variables[BackendRequests].AsValueMap()
-	beresps := variables[BackendResponses].AsValueMap()
+	var bereqs, beresps map[string]cty.Value
+	if brs, ok := variables[BackendRequests]; ok {
+		bereqs = brs.AsValueMap()
+	}
+	if brps, ok := variables[BackendResponses]; ok {
+		beresps = brps.AsValueMap()
+	}
 
 	sv.items.Range(func(key, value interface{}) bool {
 		p := value.(*syncPair)

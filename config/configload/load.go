@@ -304,6 +304,12 @@ func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, err
 				apiConfig.Name = apiBlock.Labels[0]
 			}
 
+			if apiConfig.AllowedMethods != nil && len(apiConfig.AllowedMethods) > 0 {
+				if err = validMethods(apiConfig.AllowedMethods, &bodyToContent(apiConfig.Remain).Attributes["allowed_methods"].Range); err != nil {
+					return nil, err
+				}
+			}
+
 			err := refineEndpoints(definedBackends, apiConfig.Endpoints, true)
 			if err != nil {
 				return nil, err

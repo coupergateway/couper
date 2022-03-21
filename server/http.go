@@ -72,7 +72,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	muxersList := make(muxers)
 	for host, muxOpts := range hosts {
 		mux := NewMux(muxOpts)
-		mux.MustAddRoute(http.MethodGet, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
+		mux.mustAddRoute(mux.endpointRoot, []string{http.MethodGet}, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh), true)
 
 		muxersList[host] = mux
 	}

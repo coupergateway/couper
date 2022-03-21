@@ -166,7 +166,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -210,7 +210,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -282,9 +282,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			epOpts.LogHandlerKind = kind.String()
 
-			var epHandler http.Handler
+			var epHandler, protectedHandler http.Handler
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				epHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
+				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
 				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:       epOpts,
@@ -299,31 +299,40 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					epOpts.ErrorHandler = epErrorHandler
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
-			}
 
-			scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
-			if err != nil {
-				return nil, err
-			}
+				scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
+				if err != nil {
+					return nil, err
+				}
 
-			scopeControl := ac.NewScopeControl(scopeMaps)
-			scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-				epOpts:       epOpts,
-				memStore:     memStore,
-				proxyFromEnv: conf.Settings.NoProxyFromEnv,
-				srvOpts:      serverOptions,
-			}, log, errorHandlerDefinitions, "api", "endpoint")
-			if err != nil {
-				return nil, err
-			}
+				scopeControl := ac.NewScopeControl(scopeMaps)
+				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+					epOpts:       epOpts,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				}, log, errorHandlerDefinitions, "api", "endpoint")
+				if err != nil {
+					return nil, err
+				}
 
-			var protectedHandler http.Handler
-			protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+				protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+			}
 
 			accessControl := newAC(srvConf, parentAPI)
-			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
+
+			allowedMethods := endpointConf.AllowedMethods
+			if allowedMethods == nil && parentAPI != nil {
+				// if allowed_methods in endpoint {} not defined, try allowed_methods in parent api {}
+				allowedMethods = parentAPI.AllowedMethods
 			}
+			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
+			var allowedMethodsHandler *middleware.AllowedMethodsHandler
+			allowedMethodsHandler, err = middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
+			if err != nil {
+				return nil, err
+			}
+			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
@@ -338,7 +347,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI), allowedMethodsHandler.MethodAllowed)
 			if err != nil {
 				return nil, err
 			}

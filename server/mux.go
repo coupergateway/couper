@@ -29,23 +29,17 @@ type Mux struct {
 	spaRoot      *pathpattern.Node
 }
 
-var allowedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodOptions,
-}
-
 var fileMethods = []string{
 	http.MethodGet,
 	http.MethodHead,
 	http.MethodOptions,
 }
 
-const serverOptionsKey = "serverContextOptions"
+const (
+	serverOptionsKey    = "serverContextOptions"
+	wildcardReplacement = "/{_couper_wildcardMatch*}"
+	wildcardSearch      = "/**"
+)
 
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
@@ -63,72 +57,38 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	for path, h := range opts.EndpointRoutes {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, allowedMethods, path, h)
+		mux.mustAddRoute(mux.endpointRoot, nil, path, h, true)
 	}
 
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, fileMethods, utils.JoinPath(path, "/**"), h)
+		mux.mustAddRoute(mux.fileRoot, fileMethods, utils.JoinPath(path, "/**"), h, false)
 	}
 
 	for path, h := range opts.SPARoutes {
-		mux.mustAddRoute(mux.spaRoot, fileMethods, path, h)
+		mux.mustAddRoute(mux.spaRoot, fileMethods, path, h, false)
 	}
 
 	return mux
 }
 
-func (m *Mux) MustAddRoute(method, path string, handler http.Handler) *Mux {
-	methods := allowedMethods[:]
-	if method != "*" {
-		um := strings.ToUpper(method)
-		var allowed bool
-		for _, am := range allowedMethods {
-			if um == am {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			panic(fmt.Errorf("method not allowed: %q, path: %q", um, path))
-		}
-
-		methods = []string{um}
+func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) *Mux {
+	if forEndpoint && strings.HasSuffix(path, wildcardSearch) {
+		route := mustCreateNode(root, handler, "", path)
+		m.handler[route] = handler
+		return m
 	}
-	return m.mustAddRoute(m.endpointRoot, methods, path, handler)
-}
 
-func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler) *Mux {
-	const wildcardReplacement = "/{_couper_wildcardMatch*}"
-	const wildcardSearch = "/**"
+	if methods == nil {
+		// EndpointRoutes allowed methods are handled by handler
+		route := mustCreateNode(root, handler, "", path)
+		m.handler[route] = handler
 
-	// TODO: Unique Options per method if configurable later on
-	pathOptions := &pathpattern.Options{}
+		return m
+	}
 
 	for _, method := range methods {
-		if strings.HasSuffix(path, wildcardSearch) {
-			pathOptions.SupportWildcard = true
-			path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
-		}
-
-		node, err := root.CreateNode(method+" "+path, pathOptions)
-		if err != nil {
-			panic(fmt.Errorf("create path node failed: %s %q: %v", method, path, err))
-		}
-
-		var serverOpts *server.Options
-		if optsHandler, ok := handler.(server.Context); ok {
-			serverOpts = optsHandler.Options()
-		}
-
-		node.Value = &routers.Route{
-			Method: method,
-			Path:   path,
-			Server: &openapi3.Server{Variables: map[string]*openapi3.ServerVariable{
-				serverOptionsKey: {Default: fmt.Sprintf("%#v", serverOpts)},
-			}},
-		}
-
-		m.handler[node.Value.(*routers.Route)] = handler
+		route := mustCreateNode(root, handler, method, path)
+		m.handler[route] = handler
 	}
 
 	return m
@@ -138,6 +98,9 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	var route *routers.Route
 
 	node, paramValues := m.match(m.endpointRoot, req)
+	if node == nil {
+		node, paramValues = m.matchWithoutMethod(m.endpointRoot, req)
+	}
 	if node == nil {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
@@ -193,6 +156,12 @@ func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Nod
 	return root.Match(req.Method + " " + req.URL.Path)
 }
 
+func (m *Mux) matchWithoutMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
+	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
+
+	return root.Match(req.URL.Path)
+}
+
 func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
 	node, _ := m.match(m.fileRoot, req)
 	if node == nil {
@@ -225,6 +194,40 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 	}
 
 	return nil, nil
+}
+
+func mustCreateNode(root *pathpattern.Node, handler http.Handler, method, path string) *routers.Route {
+	pathOptions := &pathpattern.Options{}
+
+	if strings.HasSuffix(path, wildcardSearch) {
+		pathOptions.SupportWildcard = true
+		path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
+	}
+
+	nodePath := path
+	if method != "" {
+		nodePath = method + " " + path
+	}
+
+	node, err := root.CreateNode(nodePath, pathOptions)
+	if err != nil {
+		panic(fmt.Errorf("create path node failed: %s %q: %v", method, path, err))
+	}
+
+	var serverOpts *server.Options
+	if optsHandler, ok := handler.(server.Context); ok {
+		serverOpts = optsHandler.Options()
+	}
+
+	node.Value = &routers.Route{
+		Method: method,
+		Path:   path,
+		Server: &openapi3.Server{Variables: map[string]*openapi3.ServerVariable{
+			serverOptionsKey: {Default: fmt.Sprintf("%#v", serverOpts)},
+		}},
+	}
+
+	return node.Value.(*routers.Route)
 }
 
 // isAPIError checks the path w/ and w/o the
