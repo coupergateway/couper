@@ -252,7 +252,7 @@ func TestArgs_CAFile(t *testing.T) {
 		return
 	}
 
-	expiresIn := time.Second * 12
+	expiresIn := time.Second * 20
 	selfSigned, err := server.NewCertificate(expiresIn, nil, nil)
 	helper.Must(err)
 
