@@ -15,18 +15,18 @@ import (
 var _ http.Handler = &CORS{}
 
 type CORS struct {
-	options       *CORSOptions
-	methodAllowed methodAllowedFunc
-	nextHandler   http.Handler
+	options     *CORSOptions
+	nextHandler http.Handler
 }
 
 type CORSOptions struct {
 	AllowedOrigins   []string
 	AllowCredentials bool
 	MaxAge           string
+	methodAllowed    methodAllowedFunc
 }
 
-func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
+func NewCORSOptions(cors *config.CORS, methodAllowed methodAllowedFunc) (*CORSOptions, error) {
 	if cors == nil {
 		return nil, nil
 	}
@@ -50,6 +50,7 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: cors.AllowCredentials,
 		MaxAge:           corsMaxAge,
+		methodAllowed:    methodAllowed,
 	}, nil
 }
 
@@ -67,14 +68,13 @@ func (c *CORSOptions) AllowsOrigin(origin string) bool {
 	return false
 }
 
-func NewCORSHandler(opts *CORSOptions, methodAllowed methodAllowedFunc, nextHandler http.Handler) http.Handler {
+func NewCORSHandler(opts *CORSOptions, nextHandler http.Handler) http.Handler {
 	if opts == nil {
 		return nextHandler
 	}
 	return &CORS{
-		options:       opts,
-		methodAllowed: methodAllowed,
-		nextHandler:   nextHandler,
+		options:     opts,
+		nextHandler: nextHandler,
 	}
 }
 
@@ -130,7 +130,7 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		// Reflect request header value
 		acrm := req.Header.Get("Access-Control-Request-Method")
 		if acrm != "" {
-			if c.methodAllowed == nil || c.methodAllowed(acrm) {
+			if c.options.methodAllowed == nil || c.options.methodAllowed(acrm) {
 				headers.Set("Access-Control-Allow-Methods", acrm)
 			}
 			headers.Add("Vary", "Access-Control-Request-Method")

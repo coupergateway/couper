@@ -166,12 +166,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
 
-			spaHandler = middleware.NewCORSHandler(corsOptions, nil, spaHandler)
+			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
 
 			spaBodies := bodiesWithACBodies(conf.Definitions, srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl)
 			spaHandler = middleware.NewCustomLogsHandler(
@@ -210,12 +210,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
 
-			fileHandler = middleware.NewCORSHandler(corsOptions, nil, fileHandler)
+			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
 
 			fileBodies := bodiesWithACBodies(conf.Definitions, srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl)
 			fileHandler = middleware.NewCustomLogsHandler(
@@ -347,12 +347,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI), allowedMethodsHandler.MethodAllowed)
 			if err != nil {
 				return nil, err
 			}
 
-			epHandler = middleware.NewCORSHandler(corsOptions, allowedMethodsHandler.MethodAllowed, epHandler)
+			epHandler = middleware.NewCORSHandler(corsOptions, epHandler)
 
 			bodies := serverBodies
 			if parentAPI != nil {
