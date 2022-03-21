@@ -36,6 +36,8 @@ func NewOAuth2CC(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*CcClie
 	}
 
 	// grant_type password undocumented feature!
+	// WARNING: this implementation is no proper password flow, but a flow with username and password to login _exactly one_ user
+	// the received access token is stored in cache just like with the client credentials flow
 	if conf.GrantType == "password" {
 		if conf.Username == "" {
 			return nil, backendErr.Message("username must not be empty with grant_type=password")
