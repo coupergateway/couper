@@ -166,7 +166,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	return ctx
 }
 
-func (c *Context) WithBeresp(beresp *http.Response) *Context {
+func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 	ctx := &Context{
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
@@ -182,7 +182,7 @@ func (c *Context) WithBeresp(beresp *http.Response) *Context {
 	bereqs := make(ContextMap)
 
 	if beresp != nil {
-		name, bereqVal, berespVal := newBerespValues(ctx, false, beresp)
+		name, bereqVal, berespVal := newBerespValues(ctx, readBody, beresp)
 		bereqs[name] = bereqVal
 		resps[name] = berespVal
 

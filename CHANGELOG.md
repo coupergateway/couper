@@ -13,6 +13,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Changed**
   * Automatically add the `private` directive to the response `Cache-Control` HTTP header field value for all resources protected by [JWT](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))
 
+* **Fixed**
+  * improved protection against sniffing using unauthorized requests with non-standard method to non-existant endpoints in protected API ([#441](https://github.com/avenga/couper/pull/441))
+
 ---
 
 ## [1.7.2](https://github.com/avenga/couper/releases/tag/v1.7.2)

@@ -3045,7 +3045,6 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
-		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
 		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/ba5", http.Header{"Authorization": []string{"Basic VVNSOlBXRA=="}, "X-Ba-User": []string{"USR"}}, http.StatusOK, "application/json", ""},
@@ -3106,6 +3105,61 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 				if !reflect.DeepEqual(p.Headers[k], v) {
 					subT.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
 				}
+			}
+		})
+	}
+}
+
+func TestAPICatchAll(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name       string
+		path       string
+		method     string
+		header     http.Header
+		status     int
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{"exists, authorized", "/v5/exists", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusOK, ""},
+		{"exists, unauthorized", "/v5/exists", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"exists, CORS pre-flight", "/v5/exists", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
+		{"not-exist, authorized", "/v5/not-exist", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, unauthorized", "/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, non-standard method, unauthorized", "/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"not-exist, CORS pre-flight", "/v5/not-exist", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header = tc.header
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			message := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if message != "" {
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			} else {
+				if message != tc.wantErrLog {
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			}
+
+			if res.StatusCode != tc.status {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
 			}
 		})
 	}
