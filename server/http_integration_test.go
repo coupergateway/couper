@@ -3131,7 +3131,7 @@ func TestAPICatchAll(t *testing.T) {
 		{"exists, CORS pre-flight", "/v5/exists", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
 		{"not-exist, authorized", "/v5/not-exist", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
 		{"not-exist, unauthorized", "/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
-		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"not-exist, non-standard method, unauthorized", "/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
 		{"not-exist, CORS pre-flight", "/v5/not-exist", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
 	} {
@@ -4512,6 +4512,179 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}
 	if auq.Get("client_id") != "foo" {
 		t.Errorf("oauth2_authorization_url(): wrong client_id:\nactual:\t\t%s\nexpected:\t%s", auq.Get("client_id"), "foo")
+	}
+}
+
+func TestAllowedMethods(t *testing.T) {
+	client := newClient()
+
+	confPath := "testdata/integration/config/11_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJzY29wZSI6ImZvbyJ9.7zkwmXTmzFTKHC0Qnpw7uQCcacogWUvi_JU56uWJlkw"
+
+	type testCase struct {
+		name           string
+		method         string
+		path           string
+		requestHeaders http.Header
+		status         int
+		couperError    string
+	}
+
+	for _, tc := range []testCase{
+		{"path not found, authorized", http.MethodGet, "/api1/not-found", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusNotFound, "route not found error"},
+
+		{"unrestricted, authorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, HEAD", http.MethodHead, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, POST", http.MethodPost, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, PUT", http.MethodPut, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, PATCH", http.MethodPatch, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, DELETE", http.MethodDelete, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, OPTIONS", http.MethodOptions, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, CONNECT", http.MethodConnect, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, authorized, TRACE", http.MethodTrace, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, authorized, BREW", "BREW", "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, unauthorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
+		{"unrestricted, unauthorized, BREW", "BREW", "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
+		{"unrestricted, CORS preflight", http.MethodOptions, "/api1/unrestricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
+
+		{"restricted, authorized, GET", http.MethodGet, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"restricted, authorized, HEAD", http.MethodHead, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, POST", http.MethodPost, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"restricted, authorized, PUT", http.MethodPut, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, PATCH", http.MethodPatch, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, DELETE", http.MethodDelete, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"restricted, authorized, OPTIONS", http.MethodOptions, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, CONNECT", http.MethodConnect, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, TRACE", http.MethodTrace, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"}, // BREW not supported by scope AC
+		{"restricted, CORS preflight", http.MethodOptions, "/api1/restricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
+
+		{"wildcard, GET", http.MethodGet, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, HEAD", http.MethodHead, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, POST", http.MethodPost, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, PUT", http.MethodPut, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, PATCH", http.MethodPatch, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, DELETE", http.MethodDelete, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, OPTIONS", http.MethodOptions, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, CONNECT", http.MethodConnect, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard, TRACE", http.MethodTrace, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard, BREW", "BREW", "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"wildcard and more, GET", http.MethodGet, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, HEAD", http.MethodHead, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, POST", http.MethodPost, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PUT", http.MethodPut, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PATCH", http.MethodPatch, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, DELETE", http.MethodDelete, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, OPTIONS", http.MethodOptions, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, CONNECT", http.MethodConnect, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+
+		{"blocked, GET", http.MethodGet, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, HEAD", http.MethodHead, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, POST", http.MethodPost, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, PUT", http.MethodPut, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, PATCH", http.MethodPatch, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, DELETE", http.MethodDelete, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, OPTIONS", http.MethodOptions, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, CONNECT", http.MethodConnect, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, TRACE", http.MethodTrace, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, BREW", "BREW", "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"restricted methods override, GET", http.MethodGet, "/api2/restricted", http.Header{}, http.StatusOK, ""},
+		{"restricted methods override, HEAD", http.MethodHead, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, POST", http.MethodPost, "/api2/restricted", http.Header{}, http.StatusOK, ""},
+		{"restricted methods override, PUT", http.MethodPut, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, PATCH", http.MethodPatch, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, DELETE", http.MethodDelete, "/api2/restricted", http.Header{}, http.StatusOK, ""},
+		{"restricted methods override, OPTIONS", http.MethodOptions, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, CONNECT", http.MethodConnect, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, TRACE", http.MethodTrace, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, BREW", "BREW", "/api2/restricted", http.Header{}, http.StatusOK, ""},
+
+		{"restricted by api only, GET", http.MethodGet, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, HEAD", http.MethodHead, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, POST", http.MethodPost, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, PUT", http.MethodPut, "/api2/restrictedByApiOnly", http.Header{}, http.StatusOK, ""},
+		{"restricted by api only, PATCH", http.MethodPatch, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, DELETE", http.MethodDelete, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, OPTIONS", http.MethodOptions, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, CONNECT", http.MethodConnect, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, TRACE", http.MethodTrace, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, BREW", "BREW", "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			logHook.Reset()
+			req, err := http.NewRequest(tc.method, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+			req.Header = tc.requestHeaders
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given; want: %d; got: %d", tc.status, res.StatusCode)
+			}
+
+			couperError := res.Header.Get("Couper-Error")
+			if tc.couperError != couperError {
+				subT.Errorf("Unexpected couper-error given; want: %q; got: %q", tc.couperError, couperError)
+			}
+		})
+	}
+}
+
+func TestAllowedMethodsCORS_Preflight(t *testing.T) {
+	client := newClient()
+
+	confPath := "testdata/integration/config/11_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name          string
+		path          string
+		requestMethod string
+		status        int
+		allowMethods  []string
+		couperError   string
+	}
+
+	for _, tc := range []testCase{
+		{"unrestricted, CORS preflight, POST allowed", "/api1/unrestricted", http.MethodPost, http.StatusNoContent, []string{"POST"}, ""},
+		{"restricted, CORS preflight, POST allowed", "/api1/restricted", http.MethodPost, http.StatusNoContent, []string{"POST"}, ""}, // CORS preflight ok even if OPTIONS is otherwise not allowed
+		{"restricted, CORS preflight, PUT not allowed", "/api1/restricted", http.MethodPut, http.StatusNoContent, nil, ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			logHook.Reset()
+			req, err := http.NewRequest(http.MethodOptions, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+			req.Header.Set("Origin", "https://www.example.com")
+			req.Header.Set("Access-Control-Request-Method", tc.requestMethod)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given; want: %d; got: %d", tc.status, res.StatusCode)
+			}
+
+			allowMethods := res.Header.Values("Access-Control-Allow-Methods")
+			if !cmp.Equal(tc.allowMethods, allowMethods) {
+				subT.Errorf(cmp.Diff(tc.allowMethods, allowMethods))
+			}
+
+			couperError := res.Header.Get("Couper-Error")
+			if tc.couperError != couperError {
+				subT.Errorf("Unexpected couper-error given; want: %q; got: %q", tc.couperError, couperError)
+			}
+		})
 	}
 }
 

@@ -29,16 +29,6 @@ type Mux struct {
 	spaRoot      *pathpattern.Node
 }
 
-var allowedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodOptions,
-}
-
 var fileMethods = []string{
 	http.MethodGet,
 	http.MethodHead,
@@ -67,7 +57,7 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	for path, h := range opts.EndpointRoutes {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, allowedMethods, path, h, true)
+		mux.mustAddRoute(mux.endpointRoot, nil, path, h, true)
 	}
 
 	for path, h := range opts.FileRoutes {
@@ -81,30 +71,18 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	return mux
 }
 
-func (m *Mux) MustAddRoute(method, path string, handler http.Handler) *Mux {
-	methods := allowedMethods[:]
-	if method != "*" {
-		um := strings.ToUpper(method)
-		var allowed bool
-		for _, am := range allowedMethods {
-			if um == am {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			panic(fmt.Errorf("method not allowed: %q, path: %q", um, path))
-		}
-
-		methods = []string{um}
-	}
-	return m.mustAddRoute(m.endpointRoot, methods, path, handler, false)
-}
-
 func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) *Mux {
 	if forEndpoint && strings.HasSuffix(path, wildcardSearch) {
 		route := mustCreateNode(root, handler, "", path)
 		m.handler[route] = handler
+		return m
+	}
+
+	if methods == nil {
+		// EndpointRoutes allowed methods are handled by handler
+		route := mustCreateNode(root, handler, "", path)
+		m.handler[route] = handler
+
 		return m
 	}
 

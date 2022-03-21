@@ -166,7 +166,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -210,7 +210,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -320,6 +320,20 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 
 			accessControl := newAC(srvConf, parentAPI)
+
+			allowedMethods := endpointConf.AllowedMethods
+			if allowedMethods == nil && parentAPI != nil {
+				// if allowed_methods in endpoint {} not defined, try allowed_methods in parent api {}
+				allowedMethods = parentAPI.AllowedMethods
+			}
+			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
+			var allowedMethodsHandler *middleware.AllowedMethodsHandler
+			allowedMethodsHandler, err = middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
+			if err != nil {
+				return nil, err
+			}
+			protectedHandler = allowedMethodsHandler
+
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
@@ -333,7 +347,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI), allowedMethodsHandler.MethodAllowed)
 			if err != nil {
 				return nil, err
 			}
