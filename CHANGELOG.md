@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [`backend_request`](./docs/REFERENCE.md#backend_request) and [`backend_response`](./docs/REFERENCE.md#backend_response) variables ([#430](https://github.com/avenga/couper/pull/430))
   * `beta_scope_map` attribute for the [JWT Block](./docs/REFERENCE.md#jwt-block) ([#434](https://github.com/avenga/couper/pull/434))
   * `saml` [error type](./docs/ERRORS.md#error-types) ([#424](https://github.com/avenga/couper/pull/424))
+  * `allowed_methods` attribute for the [API](./docs/REFERENCE.md#api-block) or [Endpoint Block](./docs/REFERENCE.md#endpoint-block) ([#444](https://github.com/avenga/couper/pull/444))
 
 * **Changed**
   * Automatically add the `private` directive to the response `Cache-Control` HTTP header field value for all resources protected by [JWT](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))

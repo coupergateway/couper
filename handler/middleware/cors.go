@@ -23,9 +23,10 @@ type CORSOptions struct {
 	AllowedOrigins   []string
 	AllowCredentials bool
 	MaxAge           string
+	methodAllowed    methodAllowedFunc
 }
 
-func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
+func NewCORSOptions(cors *config.CORS, methodAllowed methodAllowedFunc) (*CORSOptions, error) {
 	if cors == nil {
 		return nil, nil
 	}
@@ -49,6 +50,7 @@ func NewCORSOptions(cors *config.CORS) (*CORSOptions, error) {
 		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: cors.AllowCredentials,
 		MaxAge:           corsMaxAge,
+		methodAllowed:    methodAllowed,
 	}, nil
 }
 
@@ -128,7 +130,9 @@ func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
 		// Reflect request header value
 		acrm := req.Header.Get("Access-Control-Request-Method")
 		if acrm != "" {
-			headers.Set("Access-Control-Allow-Methods", acrm)
+			if c.options.methodAllowed == nil || c.options.methodAllowed(acrm) {
+				headers.Set("Access-Control-Allow-Methods", acrm)
+			}
 			headers.Add("Vary", "Access-Control-Request-Method")
 		}
 		// Reflect request header value

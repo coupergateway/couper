@@ -54,6 +54,12 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 
 		endpointContent := bodyToContent(endpoint.Remain)
 
+		if check && endpoint.AllowedMethods != nil && len(endpoint.AllowedMethods) > 0 {
+			if err = validMethods(endpoint.AllowedMethods, &endpointContent.Attributes["allowed_methods"].Range); err != nil {
+				return err
+			}
+		}
+
 		proxies := endpointContent.Blocks.OfType(proxy)
 		requests := endpointContent.Blocks.OfType(request)
 

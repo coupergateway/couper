@@ -364,6 +364,11 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		}
 	})
 
+	var methodAllowed methodAllowedFunc
+	methodAllowed = func(method string) bool {
+		return method == http.MethodPost
+	}
+
 	tests := []struct {
 		name                    string
 		corsOptions             *CORSOptions
@@ -373,7 +378,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 	}{
 		{
 			"specific origin, with ACRM",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -388,8 +393,24 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 			[]string{"Origin", "Access-Control-Request-Method"},
 		},
 		{
+			"specific origin, with ACRM, method not allowed",
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, methodAllowed: methodAllowed},
+			map[string]string{
+				"Origin":                        "https://www.example.com",
+				"Access-Control-Request-Method": "PUT",
+			},
+			map[string]string{
+				"Access-Control-Allow-Origin":      "https://www.example.com",
+				"Access-Control-Allow-Methods":     "",
+				"Access-Control-Allow-Headers":     "",
+				"Access-Control-Allow-Credentials": "",
+				"Access-Control-Max-Age":           "",
+			},
+			[]string{"Origin", "Access-Control-Request-Method"},
+		},
+		{
 			"specific origin, with ACRH",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                         "https://www.example.com",
 				"Access-Control-Request-Headers": "X-Foo, X-Bar",
@@ -405,7 +426,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"specific origin, with ACRM, ACRH",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                         "https://www.example.com",
 				"Access-Control-Request-Method":  "POST",
@@ -422,7 +443,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"specific origin, with ACRM, credentials",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -438,7 +459,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"specific origin, with ACRM, max-age",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, MaxAge: "3600"},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, MaxAge: "3600", methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -454,7 +475,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"any origin, with ACRM",
-			&CORSOptions{AllowedOrigins: []string{"*"}},
+			&CORSOptions{AllowedOrigins: []string{"*"}, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -470,7 +491,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"any origin, with ACRM, credentials",
-			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true},
+			&CORSOptions{AllowedOrigins: []string{"*"}, AllowCredentials: true, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.com",
 				"Access-Control-Request-Method": "POST",
@@ -486,7 +507,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"origin mismatch",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.org",
 				"Access-Control-Request-Method": "POST",
@@ -502,7 +523,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		},
 		{
 			"origin mismatch, credentials",
-			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true},
+			&CORSOptions{AllowedOrigins: []string{"https://www.example.com"}, AllowCredentials: true, methodAllowed: methodAllowed},
 			map[string]string{
 				"Origin":                        "https://www.example.org",
 				"Access-Control-Request-Method": "POST",
