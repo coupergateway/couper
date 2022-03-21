@@ -203,6 +203,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	return nil
 }
 
+// readCertificateFile reads given file bytes and PEM decodes the certificates the
+// same way x509.CertPool.AppendCertsFromPEM does.
+// AppendCertsFromPEM method will be used on backend transport creation.
 func readCertificateFile(file string) ([]byte, error) {
 	cert, err := ioutil.ReadFile(file)
 	if err != nil {
