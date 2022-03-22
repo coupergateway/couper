@@ -135,6 +135,8 @@ func TestIntegration_FormParams(t *testing.T) {
 			req, err := http.NewRequest(tc.method, "http://example.com:8080/", nil)
 			helper.Must(err)
 
+			req.Close = true
+
 			if tc.post != "" {
 				req.Body = io.NopCloser(bytes.NewBuffer([]byte(tc.post)))
 			}
