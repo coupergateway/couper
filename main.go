@@ -154,6 +154,9 @@ func realmain(arguments []string) int {
 		debugListenAndServe(logger)
 	}
 
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
 	reloadCh := watchConfigFile(confFile.Filename, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
 	for {
 		select {
@@ -180,6 +183,9 @@ func realmain(arguments []string) int {
 				logger.WithError(err).Error()
 				return 1
 			}
+			return 0
+		case <-sigCh:
+			close(restartSignal)
 			return 0
 		case _, more := <-reloadCh:
 			if !more {
