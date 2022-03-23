@@ -11,6 +11,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `saml` [error type](./docs/ERRORS.md#error-types) ([#424](https://github.com/avenga/couper/pull/424))
   * `allowed_methods` attribute for the [API](./docs/REFERENCE.md#api-block) or [Endpoint Block](./docs/REFERENCE.md#endpoint-block) ([#444](https://github.com/avenga/couper/pull/444))
   * new HCL functions: `contains()`, `join()`, `keys()`, `length()`, `lookup()`, `set_intersection()`, `to_number()` ([#455](https://github.com/avenga/couper/pull/455))
+  * `ca_file` option to `settings` (also as argument and environment option) ([#447](https://github.com/avenga/couper/pull/447))
+    * Option for adding the given PEM encoded ca-certificate to the existing system certificate pool for all outgoing connections.
 
 * **Changed**
   * Automatically add the `private` directive to the response `Cache-Control` HTTP header field value for all resources protected by [JWT](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))

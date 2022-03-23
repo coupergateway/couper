@@ -31,7 +31,7 @@ docker run avenga/couper run -watch -p 8081
 ### Environment options
 
 | Variable                             | Default | Description |
-| :----------------------------------- | :------ | :---------- |
+|:-------------------------------------| :------ | :---------- |
 | COUPER_FILE                          | `couper.hcl` | Path to the configuration file. |
 | COUPER_ACCEPT_FORWARDED_URL          | `""`    | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](https://github.com/avenga/couper/blob/master/docs/REFERENCE.md#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port`. |
 | COUPER_DEFAULT_PORT                  | `8080`  | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
@@ -43,6 +43,7 @@ docker run avenga/couper run -watch -p 8081
 | COUPER_WATCH_RETRIES                 | `5`     | Maximal retry count for configuration reloads which could not bind the configured port. |
 | COUPER_WATCH_RETRY_DELAY             | `500ms` | Delay duration before next attempt if an error occurs. |
 | COUPER_XFH                           | `false` | Global configurations which uses the `Forwarded-Host` header instead of the request host. |
+| COUPER_CA_FILE                       | `""` | Option for adding the given PEM encoded ca-certificate to the existing system certificate pool for all outgoing connections. |
 |                                      | | |
 | COUPER_BETA_METRICS                  | `false`  | Option to enable the prometheus [metrics](https://github.com/avenga/couper/blob/master/docs/METRICS.md) exporter. |
 | COUPER_BETA_METRICS_PORT             | `9090`   | Prometheus exporter listen port. |

@@ -2,8 +2,11 @@ package command
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -40,6 +43,7 @@ type Run struct {
 func NewRun(ctx context.Context) *Run {
 	settings := config.DefaultSettings
 	set := flag.NewFlagSet("run", flag.ContinueOnError)
+	set.StringVar(&settings.CAFile, "ca-file", settings.CAFile, "-ca-file certificate.pem")
 	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
 	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
 	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
@@ -122,6 +126,11 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	timings := runtime.DefaultTimings
 	env.Decode(&timings)
 
+	if config.Settings.CAFile != "" {
+		config.Settings.Certificate, err = readCertificateFile(config.Settings.CAFile)
+		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
+	}
+
 	telemetry.InitExporter(r.context, &telemetry.Options{
 		MetricsCollectPeriod: time.Second * 2,
 		Metrics:              r.settings.TelemetryMetrics,
@@ -192,6 +201,37 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 
 	return nil
+}
+
+// readCertificateFile reads given file bytes and PEM decodes the certificates the
+// same way x509.CertPool.AppendCertsFromPEM does.
+// AppendCertsFromPEM method will be used on backend transport creation.
+func readCertificateFile(file string) ([]byte, error) {
+	cert, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("error reading ca-certificate: %v", err)
+	} else if len(cert) == 0 {
+		return nil, fmt.Errorf("error reading ca-certificate: empty file: %q", file)
+	}
+
+	pemCerts := cert[:]
+	for len(pemCerts) > 0 {
+		var block *pem.Block
+		block, pemCerts = pem.Decode(pemCerts)
+		if block == nil {
+			return nil, fmt.Errorf("error parsing pem ca-certificate: missing pem block")
+		}
+		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			continue
+		}
+
+		certBytes := block.Bytes
+		if _, err = x509.ParseCertificate(certBytes); err != nil {
+			return nil, fmt.Errorf("error parsing pem ca-certificate: %q: %v", file, err)
+		}
+	}
+
+	return cert, nil
 }
 
 func (r *Run) Usage() {
