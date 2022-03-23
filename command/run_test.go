@@ -297,7 +297,7 @@ func TestArgs_CAFile(t *testing.T) {
 
 	port := couperFile.Settings.DefaultPort
 
-	// ensure the previous test aren't listening
+	// ensure the previous tests aren't listening
 	test.WaitForClosedPort(port)
 	go func() {
 		execErr := runCmd.Execute(Args{"-ca-file=" + tmpFile.Name()}, couperFile, log.WithContext(ctx))
