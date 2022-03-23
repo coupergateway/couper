@@ -191,7 +191,7 @@ type SelfSignedCertificate struct {
 	Server *tls.Certificate
 }
 
-// NewCertificate creates a certificate with given host and duration.
+// NewCertificate creates a certificate with given hosts and duration.
 // If no hosts are provided all localhost variants will be used.
 func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*SelfSignedCertificate, error) {
 	caPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
