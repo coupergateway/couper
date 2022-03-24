@@ -181,36 +181,46 @@ func Test_JWT_Validate(t *testing.T) {
 		}
 
 		tests := []struct {
-			name    string
-			fields  fields
-			req     *http.Request
-			wantErr bool
+			name        string
+			fields      fields
+			req         *http.Request
+			wantErrKind string
 		}{
+			{"src: header /w no authorization header", fields{
+				algorithm: algo,
+				source:    ac.NewJWTSource("", "Authorization", nil),
+				pubKey:    pubKeyBytes,
+			}, httptest.NewRequest(http.MethodGet, "/", nil), "jwt_token_missing"},
+			{"src: header /w different auth-scheme", fields{
+				algorithm: algo,
+				source:    ac.NewJWTSource("", "Authorization", nil),
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Basic qbqnb"), "jwt_token_missing"},
 			{"src: header /w empty bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization", nil),
 				pubKey:    pubKeyBytes,
-			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR"), "jwt_token_missing"},
 			{"src: header /w valid bearer", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("", "Authorization", nil),
 				pubKey:    pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), false},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), ""},
 			{"src: header /w no cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", "", nil),
 				pubKey:    pubKeyBytes,
-			}, httptest.NewRequest(http.MethodGet, "/", nil), true},
+			}, httptest.NewRequest(http.MethodGet, "/", nil), "jwt_token_missing"},
 			{"src: header /w empty cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", "", nil),
 				pubKey:    pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), true},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), "jwt_token_missing"},
 			{"src: header /w valid cookie", fields{
 				algorithm: algo,
 				source:    ac.NewJWTSource("token", "", nil),
 				pubKey:    pubKeyBytes,
-			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), false},
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), ""},
 			{"src: header /w valid bearer & claims", fields{
 				algorithm: algo,
 				claims: map[string]string{
@@ -220,7 +230,17 @@ func Test_JWT_Validate(t *testing.T) {
 				claimsRequired: []string{"aud"},
 				source:         ac.NewJWTSource("", "Authorization", nil),
 				pubKey:         pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), false},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), ""},
+			{"src: header /w valid bearer & wrong audience", fields{
+				algorithm: algo,
+				claims: map[string]string{
+					"aud":     "paul",
+					"test123": "value123",
+				},
+				claimsRequired: []string{"aud"},
+				source:         ac.NewJWTSource("", "Authorization", nil),
+				pubKey:         pubKeyBytes,
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
 			{"src: header /w valid bearer & w/o claims", fields{
 				algorithm: algo,
 				claims: map[string]string{
@@ -229,7 +249,7 @@ func Test_JWT_Validate(t *testing.T) {
 				},
 				source: ac.NewJWTSource("", "Authorization", nil),
 				pubKey: pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
 			{"src: header /w valid bearer & w/o required claims", fields{
 				algorithm: algo,
 				claims: map[string]string{
@@ -238,7 +258,7 @@ func Test_JWT_Validate(t *testing.T) {
 				claimsRequired: []string{"exp"},
 				source:         ac.NewJWTSource("", "Authorization", nil),
 				pubKey:         pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), true},
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
 			{
 				"token_value number",
 				fields{
@@ -247,7 +267,7 @@ func Test_JWT_Validate(t *testing.T) {
 					pubKey:    pubKeyBytes,
 				},
 				setContext(httptest.NewRequest(http.MethodGet, "/", nil)),
-				true,
+				"jwt_token_invalid",
 			},
 			{
 				"token_value string",
@@ -259,7 +279,7 @@ func Test_JWT_Validate(t *testing.T) {
 					pubKey:         pubKeyBytes,
 				},
 				setContext(httptest.NewRequest(http.MethodGet, "/", nil)),
-				false,
+				"",
 			},
 		}
 		for _, tt := range tests {
@@ -283,11 +303,17 @@ func Test_JWT_Validate(t *testing.T) {
 
 				tt.req = tt.req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
 
-				if err = j.Validate(tt.req); (err != nil) != tt.wantErr {
-					subT.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				errKind := ""
+				err = j.Validate(tt.req)
+				if err != nil {
+					cErr := err.(*errors.Error)
+					errKind = cErr.Kinds()[0]
+				}
+				if errKind != tt.wantErrKind {
+					subT.Errorf("Validate() error kind does not match; want: %q, got: %q", tt.wantErrKind, errKind)
 				}
 
-				if !tt.wantErr && tt.fields.claims != nil {
+				if tt.wantErrKind == "" && tt.fields.claims != nil {
 					acMap := tt.req.Context().Value(request.AccessControls).(map[string]interface{})
 					if claims, ok := acMap["test_ac"]; !ok {
 						subT.Errorf("Expected a configured access control name within request context")
@@ -379,7 +405,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			true,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: true",
+			"invalid scope claim value type, ignoring claim, value true",
 			noScope,
 		},
 		{
@@ -388,7 +414,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			1.23,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: 1.23",
+			"invalid scope claim value type, ignoring claim, value 1.23",
 			noScope,
 		},
 		{
@@ -397,7 +423,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]bool{true, false},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: []interface {}{true, false}",
+			"invalid scope claim value type, ignoring claim, value []interface {}{true, false}",
 			noScope,
 		},
 		{
@@ -406,7 +432,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]int{1, 2},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value: []interface {}{1, 2}",
+			"invalid scope claim value type, ignoring claim, value []interface {}{1, 2}",
 			noScope,
 		},
 		{
@@ -415,7 +441,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value: []interface {}{"eins", 2}`,
+			`invalid scope claim value type, ignoring claim, value []interface {}{"eins", 2}`,
 			noScope,
 		},
 		{
@@ -424,7 +450,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
+			`invalid scope claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
 			noScope,
 		},
 		{
@@ -496,7 +522,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			true,
-			"invalid roles claim value type, ignoring claim, value: true",
+			"invalid roles claim value type, ignoring claim, value true",
 			[]string{"default"},
 		},
 		{
@@ -505,7 +531,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			1.23,
-			"invalid roles claim value type, ignoring claim, value: 1.23",
+			"invalid roles claim value type, ignoring claim, value 1.23",
 			[]string{"default"},
 		},
 		{
@@ -514,7 +540,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]bool{true, false},
-			"invalid roles claim value type, ignoring claim, value: []interface {}{true, false}",
+			"invalid roles claim value type, ignoring claim, value []interface {}{true, false}",
 			[]string{"default"},
 		},
 		{
@@ -523,7 +549,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]int{1, 2},
-			"invalid roles claim value type, ignoring claim, value: []interface {}{1, 2}",
+			"invalid roles claim value type, ignoring claim, value []interface {}{1, 2}",
 			[]string{"default"},
 		},
 		{
@@ -532,7 +558,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			[]interface{}{"user1", 2},
-			`invalid roles claim value type, ignoring claim, value: []interface {}{"user1", 2}`,
+			`invalid roles claim value type, ignoring claim, value []interface {}{"user1", 2}`,
 			[]string{"default"},
 		},
 		{
@@ -541,7 +567,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			nil,
 			"roles",
 			map[string]interface{}{"foo": 1, "bar": 1},
-			`invalid roles claim value type, ignoring claim, value: map[string]interface {}{"bar":1, "foo":1}`,
+			`invalid roles claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
 			[]string{"default"},
 		},
 		{
