@@ -16,5 +16,7 @@ func init() {
 	// strip out possible semver v
 	if len(VersionName) > 0 && VersionName[0] == 'v' {
 		VersionName = VersionName[1:]
+	} else if VersionName == "master" {
+		VersionName = "edge"
 	}
 }
