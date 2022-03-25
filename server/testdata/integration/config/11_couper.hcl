@@ -1,4 +1,13 @@
 server {
+  files {
+    document_root = "../files/htdocs_a"
+  }
+
+  spa {
+    bootstrap_file = "../files/htdocs_a/index.html"
+    paths = ["/app/**"]
+  }
+
   api {
     base_path = "/api1"
 

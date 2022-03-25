@@ -4806,6 +4806,28 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted by api only, CONNECT", http.MethodConnect, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, TRACE", http.MethodTrace, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, BREW", "BREW", "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"files, GET", http.MethodGet, "/index.html", http.Header{}, http.StatusOK, ""},
+		{"files, HEAD", http.MethodHead, "/index.html", http.Header{}, http.StatusOK, ""},
+		{"files, POST", http.MethodPost, "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"files, PUT", http.MethodPut, "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"files, PATCH", http.MethodPatch, "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"files, DELETE", http.MethodDelete, "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"files, OPTIONS", http.MethodOptions, "/index.html", http.Header{}, http.StatusMethodNotAllowed, ""},
+		{"files, CONNECT", http.MethodConnect, "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"files, TRACE", http.MethodTrace, "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"files, BREW", "BREW", "/index.html", http.Header{}, http.StatusNotFound, "route not found error"},
+
+		{"spa, GET", http.MethodGet, "/app/foo", http.Header{}, http.StatusOK, ""},
+		{"spa, HEAD", http.MethodHead, "/app/foo", http.Header{}, http.StatusOK, ""},
+		{"spa, POST", http.MethodPost, "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"spa, PUT", http.MethodPut, "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"spa, PATCH", http.MethodPatch, "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"spa, DELETE", http.MethodDelete, "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"spa, OPTIONS", http.MethodOptions, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, ""},
+		{"spa, CONNECT", http.MethodConnect, "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"spa, TRACE", http.MethodTrace, "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
+		{"spa, BREW", "BREW", "/app/foo", http.Header{}, http.StatusNotFound, "route not found error"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
