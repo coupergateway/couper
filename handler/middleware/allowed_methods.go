@@ -5,16 +5,6 @@ import (
 	"strings"
 )
 
-var defaultAllowedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodOptions,
-}
-
 var _ http.Handler = &AllowedMethodsHandler{}
 
 type AllowedMethodsHandler struct {
@@ -25,7 +15,7 @@ type AllowedMethodsHandler struct {
 
 type methodAllowedFunc func(string) bool
 
-func NewAllowedMethodsHandler(allowedMethods []string, allowedHandler, notAllowedHandler http.Handler) *AllowedMethodsHandler {
+func NewAllowedMethodsHandler(allowedMethods, defaultAllowedMethods []string, allowedHandler, notAllowedHandler http.Handler) *AllowedMethodsHandler {
 	amh := &AllowedMethodsHandler{
 		allowedMethods:    make(map[string]struct{}),
 		allowedHandler:    allowedHandler,

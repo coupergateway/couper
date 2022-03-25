@@ -88,6 +88,16 @@ func GetHostPort(hostPort string) (string, int, error) {
 	return host, port, nil
 }
 
+var defaultEndpointAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodOptions,
+}
+
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
 func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (ServerConfiguration, error) {
@@ -327,7 +337,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				allowedMethods = parentAPI.AllowedMethods
 			}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, defaultEndpointAllowedMethods, protectedHandler, notAllowedMethodsHandler)
 			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
