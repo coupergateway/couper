@@ -91,7 +91,6 @@ func GetHostPort(hostPort string) (string, int, error) {
 var defaultFileSpaAllowedMethods = []string{
 	http.MethodGet,
 	http.MethodHead,
-	http.MethodOptions,
 }
 
 var defaultEndpointAllowedMethods = []string{
