@@ -1,11 +1,19 @@
 server {
   files {
     document_root = "../files/htdocs_a"
+
+    cors {
+      allowed_origins = ["*"]
+    }
   }
 
   spa {
     bootstrap_file = "../files/htdocs_a/index.html"
     paths = ["/app/**"]
+
+    cors {
+      allowed_origins = ["*"]
+    }
   }
 
   api {
