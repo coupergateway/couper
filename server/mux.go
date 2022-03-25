@@ -61,11 +61,11 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	}
 
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, fileMethods, utils.JoinPath(path, "/**"), h, false)
+		mux.mustAddRoute(mux.fileRoot, nil, utils.JoinPath(path, "/**"), h, false)
 	}
 
 	for path, h := range opts.SPARoutes {
-		mux.mustAddRoute(mux.spaRoot, fileMethods, path, h, false)
+		mux.mustAddRoute(mux.spaRoot, nil, path, h, false)
 	}
 
 	return mux
@@ -114,7 +114,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			return fileHandler
 		}
 
-		node, paramValues = m.match(m.spaRoot, req)
+		node, paramValues = m.matchWithoutMethod(m.spaRoot, req)
 
 		if node == nil {
 			if fileHandler != nil {
@@ -163,7 +163,7 @@ func (m *Mux) matchWithoutMethod(root *pathpattern.Node, req *http.Request) (*pa
 }
 
 func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
-	node, _ := m.match(m.fileRoot, req)
+	node, _ := m.matchWithoutMethod(m.fileRoot, req)
 	if node == nil {
 		return nil, false
 	}
