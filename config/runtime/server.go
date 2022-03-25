@@ -327,11 +327,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				allowedMethods = parentAPI.AllowedMethods
 			}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			var allowedMethodsHandler *middleware.AllowedMethodsHandler
-			allowedMethodsHandler, err = middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
-			if err != nil {
-				return nil, err
-			}
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
 			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
