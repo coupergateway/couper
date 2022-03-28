@@ -21,11 +21,14 @@ func NewAllowedMethodsHandler(allowedMethods, defaultAllowedMethods []string, al
 		allowedHandler:    allowedHandler,
 		notAllowedHandler: notAllowedHandler,
 	}
-	if allowedMethods == nil {
+	if allowedMethods == nil && defaultAllowedMethods != nil {
 		allowedMethods = defaultAllowedMethods
 	}
 	for _, method := range allowedMethods {
 		if method == "*" {
+			if defaultAllowedMethods == nil {
+				continue
+			}
 			for _, m := range defaultAllowedMethods {
 				amh.allowedMethods[m] = struct{}{}
 			}

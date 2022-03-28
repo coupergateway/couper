@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/utils"
 )
 
@@ -69,6 +70,14 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	}
 
 	return mux
+}
+
+var noDefaultMethods []string
+
+func (m *Mux) registerHandler(root *pathpattern.Node, methods []string, path string, handler http.Handler) {
+	notAllowedMethodsHandler := errors.DefaultJSON.WithError(errors.MethodNotAllowed)
+	allowedMethodsHandler := middleware.NewAllowedMethodsHandler(methods, noDefaultMethods, handler, notAllowedMethodsHandler)
+	m.mustAddRoute(root, nil, path, allowedMethodsHandler, true)
 }
 
 func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) {
