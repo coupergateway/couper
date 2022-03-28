@@ -71,27 +71,24 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	return mux
 }
 
-func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) *Mux {
+func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) {
 	if forEndpoint && strings.HasSuffix(path, wildcardSearch) {
 		route := mustCreateNode(root, handler, "", path)
 		m.handler[route] = handler
-		return m
+		return
 	}
 
 	if methods == nil {
 		// EndpointRoutes allowed methods are handled by handler
 		route := mustCreateNode(root, handler, "", path)
 		m.handler[route] = handler
-
-		return m
+		return
 	}
 
 	for _, method := range methods {
 		route := mustCreateNode(root, handler, method, path)
 		m.handler[route] = handler
 	}
-
-	return m
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
