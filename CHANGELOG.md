@@ -4,6 +4,10 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * Couper [reads and merges configuration files](./docs/CLI.md#global-options) from a given directory ([#437](https://github.com/avenga/couper/pull/437))
+    * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
+
 ---
 
 ## [1.8.0](https://github.com/avenga/couper/releases/tag/v1.8.0)

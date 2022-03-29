@@ -20,7 +20,7 @@ func NewVerify() *Verify {
 }
 
 func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error {
-	if len(args) != 1 {
+	if len(args) != 2 {
 		v.Usage()
 
 		err := fmt.Errorf("invalid number of arguments given")
@@ -29,7 +29,7 @@ func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error
 		return err
 	}
 
-	cf, err := configload.LoadFile(args[0])
+	cf, err := configload.LoadFiles(args[0], args[1])
 	if diags, ok := err.(hcl.Diagnostics); ok {
 		for _, diag := range diags {
 			logger.WithError(diag).Error()
@@ -54,5 +54,5 @@ func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error
 }
 
 func (v Verify) Usage() {
-	println("Usage of verify:\n  verify [-f <file>]	Verify the syntax of the given configuration file.")
+	println("Usage of verify:\n  verify [-f <file>]	[-d <dir>]	Verify the syntax of the given configuration file(s).")
 }

@@ -811,7 +811,7 @@ func TestEndpointCyclicSequence(t *testing.T) {
 			defer cleanup(func() {}, test.New(t))
 
 			path := filepath.Join(testdataPath, testcase.file)
-			_, err := configload.LoadFile(path)
+			_, err := configload.LoadFiles(path, "")
 
 			diags, ok := err.(*hcl.Diagnostic)
 			if !ok {
@@ -832,11 +832,6 @@ func TestEndpointErrorHandler(t *testing.T) {
 
 	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
-	defer func() {
-		for _, e := range hook.AllEntries() {
-			t.Logf("%#v", e.Data)
-		}
-	}()
 
 	type testcase struct {
 		name              string
