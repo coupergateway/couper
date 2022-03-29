@@ -1,6 +1,6 @@
 server {
   hosts = ["*:9080"]
-    
+
   cors {
     allowed_origins = ["origin-2"]
   }
@@ -30,7 +30,7 @@ server {
 
     endpoint "/" {
       request "r" {
-        url = "https://example.com"
+        url = "https://couper.io/"
       }
 
       response {
@@ -48,15 +48,20 @@ server {
   api {
     base_path = "/api-3"
 
-    error_handler {
+    endpoint "/" {
       response {
-        status = 415
+        status = 418
       }
     }
   }
 
   api "NewAPI" {
     base_path = "/api-4"
+    endpoint "/ep" {
+      response {
+        status = 204
+      }
+    }
   }
 }
 
