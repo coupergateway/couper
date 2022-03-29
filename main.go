@@ -295,10 +295,9 @@ func getWatchFilesList(filename, dirPath string) (map[string]struct{}, error) {
 	return files, nil
 }
 
-func retryWatching(
-	errorsSeen, maxRetries int, retryDelay time.Duration,
-	logger logrus.FieldLogger, err error, reloadCh chan struct{},
-) bool {
+func retryWatching(errorsSeen, maxRetries int, retryDelay time.Duration,
+	logger logrus.FieldLogger, err error, reloadCh chan struct{}) bool {
+
 	if errorsSeen >= maxRetries {
 		logger.Errorf("giving up after %d retries: %v", errorsSeen, err)
 		close(reloadCh)
@@ -348,7 +347,7 @@ func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRe
 			lastChanges[name] = time.Time{}
 		}
 
-	WATCHING:
+	watchFiles:
 		for {
 			<-ticker.C
 
@@ -361,7 +360,7 @@ func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRe
 					return
 				}
 
-				continue WATCHING
+				continue watchFiles
 			}
 
 			if len(filesList) != len(lastChanges) {
@@ -370,7 +369,7 @@ func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRe
 				errorsSeen = 0
 				reloadCh <- struct{}{}
 
-				continue WATCHING
+				continue watchFiles
 			}
 
 			for f, t := range lastChanges {
@@ -383,12 +382,12 @@ func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRe
 						return
 					}
 
-					continue WATCHING
+					continue watchFiles
 				}
 
 				if t.IsZero() { // first round
 					lastChanges[f] = info.ModTime()
-					continue WATCHING
+					continue watchFiles
 				}
 
 				if info.ModTime().After(t) {
