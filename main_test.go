@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -43,9 +44,9 @@ func Test_realmain(t *testing.T) {
 		{"non-existent log level via env /w file", []string{"couper", "run", "-f", base + "/log_altered.hcl"}, []string{"COUPER_LOG_LEVEL=test"}, `level=error msg="configuration error: missing 'server' block" build=dev`, 1},
 		{"-f w/o file", []string{"couper", "run", "-f"}, nil, `level=error msg="flag needs an argument: -f" build=dev`, 1},
 		{"undefined AC", []string{"couper", "run", "-f", base + "/04_couper.hcl"}, nil, `level=error msg="accessControl is not defined: undefined" build=dev`, 1},
-		{"empty string in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/13_couper.hcl"}, nil, `level=error msg="13_couper.hcl:3,5-27: method contains invalid character(s); " build=dev`, 1},
-		{"invalid method in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/14_couper.hcl"}, nil, `level=error msg="14_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
-		{"invalid method in allowed_methods in api", []string{"couper", "run", "-f", base + "/15_couper.hcl"}, nil, `level=error msg="15_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
+		{"empty string in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/13_couper.hcl"}, nil, `level=error msg="%s/13_couper.hcl:3,5-27: method contains invalid character(s); " build=dev`, 1},
+		{"invalid method in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/14_couper.hcl"}, nil, `level=error msg="%s/14_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
+		{"invalid method in allowed_methods in api", []string{"couper", "run", "-f", base + "/15_couper.hcl"}, nil, `level=error msg="%s/15_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -60,17 +61,25 @@ func Test_realmain(t *testing.T) {
 			}
 			env.OsEnviron = os.Environ
 
+			currWD, _ := os.Getwd()
+
 			entry, _ := localHook.LastEntry().String()
 			//println(entry)
-			if tt.wantLog != "" && !strings.Contains(entry, tt.wantLog) {
-				if strings.Contains(tt.wantLog, `failed to load configuration:`) {
-					re := regexp.MustCompile(tt.wantLog)
+
+			wantLog := tt.wantLog
+			if strings.Contains(wantLog, `msg="%s/`) {
+				wantLog = fmt.Sprintf(wantLog, currWD)
+			}
+
+			if wantLog != "" && !strings.Contains(entry, wantLog) {
+				if strings.Contains(wantLog, `failed to load configuration:`) {
+					re := regexp.MustCompile(wantLog)
 
 					if !re.MatchString(entry) {
-						subT.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
+						subT.Errorf("\nwant:\t%s\ngot:\t%s\n", wantLog, entry)
 					}
 				} else {
-					subT.Errorf("\nwant:\t%s\ngot:\t%s\n", tt.wantLog, entry)
+					subT.Errorf("\nwant:\t%s\ngot:\t%s\n", wantLog, entry)
 				}
 			}
 

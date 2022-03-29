@@ -832,11 +832,6 @@ func TestEndpointErrorHandler(t *testing.T) {
 
 	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
-	defer func() {
-		for _, e := range hook.AllEntries() {
-			t.Logf("%#v", e.Data)
-		}
-	}()
 
 	type testcase struct {
 		name              string
