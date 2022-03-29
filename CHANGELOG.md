@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * missing error handling while loading a given `ca_file` ([#460](https://github.com/avenga/couper/pull/460))
+
 ---
 
 ## [1.8.0](https://github.com/avenga/couper/releases/tag/v1.8.0)
