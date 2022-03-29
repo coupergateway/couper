@@ -64,16 +64,16 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 
 ### Access control error types
 
-| Type (and super types)                          | Description                                                                                      | Default handling                                                            |
-|:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
-| `basic_auth`                                    | All `basic_auth` related errors, e.g. unknown user or wrong password.                            | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
-| `basic_auth_credentials_missing` (`basic_auth`) | Client does not provide any credentials.                                                         | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
-| `jwt`                                           | All `jwt` related errors.                                                                        | Send error template with status `403`.                                      |
-| `jwt_token_missing` (`jwt`)                     | No token provided with configured token source.                                                  | Send error template with status `401`.                                      |
-| `jwt_token_expired` (`jwt`)                     | Given token is valid but expired.                                                                | Send error template with status `403`.                                      |
-| `jwt_token_invalid` (`jwt`)                     | The token is not sufficient, e.g. because required claims are missing or have unexpected values. | Send error template with status `403`.                                      |
-| `saml` (or `saml2`)                             | All `saml` related errors                                                                        | Send error template with status `403`.                                      |
-| `oauth2`                                        | All `beta_oauth2`/`oidc` related errors                                                          | Send error template with status `403`.                                      |
+| Type (and super types)                          | Description                                                                                                                  | Default handling                                                            |
+|:------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
+| `basic_auth`                                    | All `basic_auth` related errors, e.g. unknown user or wrong password.                                                        | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
+| `basic_auth_credentials_missing` (`basic_auth`) | Client does not provide any credentials.                                                                                     | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
+| `jwt`                                           | All `jwt` related errors.                                                                                                    | Send error template with status `403`.                                      |
+| `jwt_token_missing` (`jwt`)                     | No token provided with configured token source.                                                                              | Send error template with status `401`.                                      |
+| `jwt_token_expired` (`jwt`)                     | Given token is valid but expired.                                                                                            | Send error template with status `403`.                                      |
+| `jwt_token_invalid` (`jwt`)                     | The token is syntactically not a JWT, or not sufficient, e.g. because required claims are missing or have unexpected values. | Send error template with status `403`.                                      |
+| `saml` (or `saml2`)                             | All `saml` related errors                                                                                                    | Send error template with status `403`.                                      |
+| `oauth2`                                        | All `beta_oauth2`/`oidc` related errors                                                                                      | Send error template with status `403`.                                      |
 
 ### API and endpoint error types
 

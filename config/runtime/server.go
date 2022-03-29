@@ -161,12 +161,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, conf.Settings.Certificate, log)
 			if err != nil {
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -205,12 +205,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, conf.Settings.Certificate, log)
 			if err != nil {
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files))
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), nil)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -253,7 +253,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			epOpts, err := newEndpointOptions(
 				confCtx, endpointConf, parentAPI, serverOptions,
-				log, conf.Settings.NoProxyFromEnv, memStore,
+				log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore,
 			)
 			if err != nil {
 				return nil, err
@@ -282,16 +282,16 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			epOpts.LogHandlerKind = kind.String()
 
-			var epHandler http.Handler
+			var epHandler, protectedHandler http.Handler
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				epHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
+				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
 				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:       epOpts,
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint")
+				}, log, errorHandlerDefinitions, conf.Settings.Certificate, "api", "endpoint")
 				if err != nil {
 					return nil, err
 				}
@@ -299,31 +299,36 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					epOpts.ErrorHandler = epErrorHandler
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
-			}
 
-			scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
-			if err != nil {
-				return nil, err
-			}
+				scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
+				if err != nil {
+					return nil, err
+				}
 
-			scopeControl := ac.NewScopeControl(scopeMaps)
-			scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-				epOpts:       epOpts,
-				memStore:     memStore,
-				proxyFromEnv: conf.Settings.NoProxyFromEnv,
-				srvOpts:      serverOptions,
-			}, log, errorHandlerDefinitions, "api", "endpoint")
-			if err != nil {
-				return nil, err
-			}
+				scopeControl := ac.NewScopeControl(scopeMaps)
+				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+					epOpts:       epOpts,
+					memStore:     memStore,
+					proxyFromEnv: conf.Settings.NoProxyFromEnv,
+					srvOpts:      serverOptions,
+				}, log, errorHandlerDefinitions, conf.Settings.Certificate, "api", "endpoint")
+				if err != nil {
+					return nil, err
+				}
 
-			var protectedHandler http.Handler
-			protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+				protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+			}
 
 			accessControl := newAC(srvConf, parentAPI)
-			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
-				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
+
+			allowedMethods := endpointConf.AllowedMethods
+			if allowedMethods == nil && parentAPI != nil {
+				// if allowed_methods in endpoint {} not defined, try allowed_methods in parent api {}
+				allowedMethods = parentAPI.AllowedMethods
 			}
+			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
+			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
@@ -333,12 +338,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore:     memStore,
 					proxyFromEnv: conf.Settings.NoProxyFromEnv,
 					srvOpts:      serverOptions,
-				}, log)
+				}, conf.Settings.Certificate, log)
 			if err != nil {
 				return nil, err
 			}
 
-			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI))
+			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI), allowedMethodsHandler.MethodAllowed)
 			if err != nil {
 				return nil, err
 			}
@@ -423,7 +428,7 @@ func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[strin
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	ignoreProxyEnv bool, memStore *cache.MemoryStore) (http.RoundTripper, hcl.Body, error) {
+	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (http.RoundTripper, hcl.Body, error) {
 	beConf := *DefaultBackendConf
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
 		return nil, nil, diags
@@ -439,11 +444,12 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
+		Certificate:            certificate,
 		DisableCertValidation:  beConf.DisableCertValidation,
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,
-		NoProxyFromEnv:         ignoreProxyEnv,
 		MaxConnections:         beConf.MaxConnections,
+		NoProxyFromEnv:         ignoreProxyEnv,
 	}
 
 	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
@@ -474,14 +480,14 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-		return newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, memStore, backend)
+		return newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, certificate, memStore, backend)
 	}
 
 	return backend, backendCtx, nil
 }
 
 func newAuthBackend(evalCtx *hcl.EvalContext, beConf config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	ignoreProxyEnv bool, memStore *cache.MemoryStore, backend http.RoundTripper) (http.RoundTripper, hcl.Body, error) {
+	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore, backend http.RoundTripper) (http.RoundTripper, hcl.Body, error) {
 
 	beConf.OAuth2 = &config.OAuth2ReqAuth{}
 
@@ -495,7 +501,7 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf config.Backend, blocks hcl.
 	}
 
 	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-	authBackend, body, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, memStore)
+	authBackend, body, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, certificate, memStore)
 	if authErr != nil {
 		return nil, nil, authErr
 	}
@@ -556,7 +562,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -571,7 +577,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 		// TODO remove for version 1.8
 		for _, oidcConf := range conf.Definitions.BetaOIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -638,7 +644,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, _, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, memStore)
+			backend, _, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -761,7 +767,7 @@ func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.Ev
 	var backend http.RoundTripper
 
 	if jwtConf.Backend != nil {
-		b, _, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, memStore)
+		b, _, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, conf.Settings.Certificate, memStore)
 		if err != nil {
 			return nil, err
 		}
@@ -786,13 +792,13 @@ type protectedOptions struct {
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, certificate []byte, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		eh, err := newErrorHandler(ctx, opts, log, m, certificate, acName)
 		if err != nil {
 			return nil, err
 		}

@@ -46,18 +46,17 @@ type Context struct {
 	oauth2            []config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
-	src               []byte
 	syncedVariables   *SyncedVariables
 }
 
-func NewContext(src []byte, defaults *config.Defaults) *Context {
+func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
 	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
 	}
 
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(src, defaultEnvVariables)
+	variables[Environment] = newCtyEnvMap(srcBytes, defaultEnvVariables)
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
@@ -66,7 +65,6 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 			Functions: newFunctionsMap(),
 		},
 		inner: context.TODO(), // usually replaced with request context
-		src:   src,
 	}
 }
 
@@ -166,7 +164,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	return ctx
 }
 
-func (c *Context) WithBeresp(beresp *http.Response) *Context {
+func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 	ctx := &Context{
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
@@ -182,7 +180,7 @@ func (c *Context) WithBeresp(beresp *http.Response) *Context {
 	bereqs := make(ContextMap)
 
 	if beresp != nil {
-		name, bereqVal, berespVal := newBerespValues(ctx, false, beresp)
+		name, bereqVal, berespVal := newBerespValues(ctx, readBody, beresp)
 		bereqs[name] = bereqVal
 		resps[name] = berespVal
 
@@ -511,7 +509,7 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(src []byte, defaultValues map[string]string) cty.Value {
+func newCtyEnvMap(srcBytes [][]byte, defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range defaultValues {
 		ctyMap[k] = cty.StringVal(v)
@@ -535,10 +533,13 @@ func newCtyEnvMap(src []byte, defaultValues map[string]string) cty.Value {
 	}
 
 	emptyString := cty.StringVal("")
-	referenced := decodeEnvironmentRefs(src)
-	for _, key := range referenced {
-		if _, exist := ctyMap[key]; !exist {
-			ctyMap[key] = emptyString
+
+	for _, src := range srcBytes {
+		referenced := decodeEnvironmentRefs(src)
+		for _, key := range referenced {
+			if _, exist := ctyMap[key]; !exist {
+				ctyMap[key] = emptyString
+			}
 		}
 	}
 
@@ -555,20 +556,27 @@ func newCtyCouperVariablesMap() cty.Value {
 // Functions
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
-		"base64_decode": lib.Base64DecodeFunc,
-		"base64_encode": lib.Base64EncodeFunc,
-		"coalesce":      lib.DefaultFunc,
-		"default":       lib.DefaultFunc,
-		"json_decode":   stdlib.JSONDecodeFunc,
-		"json_encode":   stdlib.JSONEncodeFunc,
-		"merge":         lib.MergeFunc,
-		"relative_url":  lib.RelativeUrlFunc,
-		"split":         stdlib.SplitFunc,
-		"substr":        stdlib.SubstrFunc,
-		"to_lower":      stdlib.LowerFunc,
-		"to_upper":      stdlib.UpperFunc,
-		"unixtime":      lib.UnixtimeFunc,
-		"url_encode":    lib.UrlEncodeFunc,
+		"base64_decode":    lib.Base64DecodeFunc,
+		"base64_encode":    lib.Base64EncodeFunc,
+		"coalesce":         lib.DefaultFunc,
+		"contains":         stdlib.ContainsFunc,
+		"default":          lib.DefaultFunc,
+		"join":             stdlib.JoinFunc,
+		"json_decode":      stdlib.JSONDecodeFunc,
+		"json_encode":      stdlib.JSONEncodeFunc,
+		"keys":             stdlib.KeysFunc,
+		"length":           stdlib.LengthFunc,
+		"lookup":           stdlib.LookupFunc,
+		"merge":            lib.MergeFunc,
+		"relative_url":     lib.RelativeUrlFunc,
+		"set_intersection": stdlib.SetIntersectionFunc,
+		"split":            stdlib.SplitFunc,
+		"substr":           stdlib.SubstrFunc,
+		"to_lower":         stdlib.LowerFunc,
+		"to_number":        stdlib.MakeToFunc(cty.Number),
+		"to_upper":         stdlib.UpperFunc,
+		"unixtime":         lib.UnixtimeFunc,
+		"url_encode":       lib.UrlEncodeFunc,
 	}
 }
 

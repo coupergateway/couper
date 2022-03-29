@@ -76,7 +76,9 @@ var DefaultSettings = Settings{
 // Settings represents the <Settings> object.
 type Settings struct {
 	AcceptForwarded *AcceptForwarded
+	Certificate     []byte
 
+	CAFile                    string   `hcl:"ca_file,optional"`
 	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
 	DefaultPort               int      `hcl:"default_port,optional"`
 	HealthPath                string   `hcl:"health_path,optional"`

@@ -18,7 +18,7 @@ jobs:
   build:
     name: Test and build container image
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
 
     - name: 'wait for tests'
@@ -48,6 +48,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
           type=edge,event=branch
+          type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},value=${{ github.event.inputs.tag }}
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request'

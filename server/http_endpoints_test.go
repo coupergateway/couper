@@ -46,8 +46,8 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 		res.Header.Get("X-From-Request-Json-Body") != "1" ||
 		res.Header.Get("X-From-Requests-Header") != "bar" ||
 		res.Header.Get("X-From-Requests-Json-Body") != "1" ||
-		// res.Header.Get("X-From-Response-Json-Body") != "/anything" || // not yet
-		// res.Header.Get("X-From-Responses-Json-Body") != "/anything" || // not yet
+		res.Header.Get("X-From-Response-Json-Body") != "/anything" ||
+		res.Header.Get("X-From-Responses-Json-Body") != "/anything" ||
 		res.Header.Get("X-From-Response-Header") != "application/json" ||
 		res.Header.Get("X-From-Responses-Header") != "application/json" {
 		t.Errorf("Unexpected header given: %#v", res.Header)
@@ -71,8 +71,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 				data["x-from-response-json-body"] != "the_access_token" {
 				t.Errorf("Unexpected logs given: %#v", data)
 			}
-			// if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" { // not yet
-			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|" {
+			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" {
 				t.Errorf("Unexpected responseHeaders given: %#v", responseHeaders)
 			}
 		} else {
@@ -812,7 +811,7 @@ func TestEndpointCyclicSequence(t *testing.T) {
 			defer cleanup(func() {}, test.New(t))
 
 			path := filepath.Join(testdataPath, testcase.file)
-			_, err := configload.LoadFile(path)
+			_, err := configload.LoadFiles(path, "")
 
 			diags, ok := err.(*hcl.Diagnostic)
 			if !ok {
@@ -833,11 +832,6 @@ func TestEndpointErrorHandler(t *testing.T) {
 
 	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
-	defer func() {
-		for _, e := range hook.AllEntries() {
-			t.Logf("%#v", e.Data)
-		}
-	}()
 
 	type testcase struct {
 		name              string
@@ -917,13 +911,13 @@ func TestEndpointACBufferOptions(t *testing.T) {
 	}
 
 	for _, tc := range []testcase{
-		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusForbidden, "jwt"},
+		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusForbidden, "jwt_token_invalid"},
 		{"with ac (token in-form_body) and without token", "/in-form_body", "", urlencoded, "application/x-www-form-urlencoded", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-form_body) and valid token", "/in-form_body", validToken, urlencoded, "application/x-www-form-urlencoded", http.StatusOK, ""},
-		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, jsonFn, "application/json", http.StatusForbidden, "jwt"},
+		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, jsonFn, "application/json", http.StatusForbidden, "jwt_token_invalid"},
 		{"with ac (token in-json_body) and without token", "/in-json_body", "", jsonFn, "application/json", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-json_body) and valid token", "/in-json_body", validToken, jsonFn, "application/json", http.StatusOK, ""},
-		{"with ac (token in-body) and wrong token", "/in-body", invalidToken, plain, "text/plain", http.StatusForbidden, "jwt"},
+		{"with ac (token in-body) and wrong token", "/in-body", invalidToken, plain, "text/plain", http.StatusForbidden, "jwt_token_invalid"},
 		{"with ac (token in-body) and without token", "/in-body", "", plain, "text/plain", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-body) and valid token", "/in-body", validToken, plain, "text/plain", http.StatusOK, ""},
 		{"without ac", "/without-ac", "", nil, "text/plain", http.StatusOK, ""},

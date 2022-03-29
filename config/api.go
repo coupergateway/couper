@@ -12,6 +12,7 @@ var _ Inline = &API{}
 type API struct {
 	ErrorHandlerSetter
 	AccessControl        []string  `hcl:"access_control,optional"`
+	AllowedMethods       []string  `hcl:"allowed_methods,optional"`
 	BasePath             string    `hcl:"base_path,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`

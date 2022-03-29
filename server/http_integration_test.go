@@ -83,8 +83,16 @@ func teardown() {
 	}
 	testBackend.Close()
 }
+
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), "")
+	helper.Must(err)
+
+	return newCouperWithConfig(couperConfig, helper)
+}
+
+func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
+	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), dir)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3045,7 +3053,6 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 		{"/v2", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/v3", http.Header{}, http.StatusOK, "application/json", ""},
 		{"/status", http.Header{}, http.StatusOK, "application/json", ""},
-		{"/v5/not-exist", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/superadmin", http.Header{"Authorization": []string{"Basic OmFzZGY="}, "Auth": []string{"ba1", "ba4"}}, http.StatusOK, "application/json", ""},
 		{"/superadmin", http.Header{}, http.StatusUnauthorized, "application/json", "access control error: ba1: credentials required"},
 		{"/ba5", http.Header{"Authorization": []string{"Basic VVNSOlBXRA=="}, "X-Ba-User": []string{"USR"}}, http.StatusOK, "application/json", ""},
@@ -3106,6 +3113,61 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 				if !reflect.DeepEqual(p.Headers[k], v) {
 					subT.Errorf("Expected header %q value: %v, got: %v", k, v, p.Headers[k])
 				}
+			}
+		})
+	}
+}
+
+func TestAPICatchAll(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name       string
+		path       string
+		method     string
+		header     http.Header
+		status     int
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{"exists, authorized", "/v5/exists", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusOK, ""},
+		{"exists, unauthorized", "/v5/exists", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"exists, CORS pre-flight", "/v5/exists", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
+		{"not-exist, authorized", "/v5/not-exist", http.MethodGet, http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusNotFound, "route not found error"},
+		{"not-exist, unauthorized", "/v5/not-exist", http.MethodGet, http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"not-exist, non-standard method, authorized", "/v5/not-exist", "BREW", http.Header{"Authorization": []string{"Basic OmFzZGY="}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"not-exist, non-standard method, unauthorized", "/v5/not-exist", "BREW", http.Header{}, http.StatusUnauthorized, "access control error: ba1: credentials required"},
+		{"not-exist, CORS pre-flight", "/v5/not-exist", http.MethodOptions, http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}}, http.StatusNoContent, ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header = tc.header
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			message := getAccessControlMessages(hook)
+			if tc.wantErrLog == "" {
+				if message != "" {
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			} else {
+				if message != tc.wantErrLog {
+					subT.Errorf("Expected error log message: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			}
+
+			if res.StatusCode != tc.status {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.path, tc.status, res.StatusCode)
 			}
 		})
 	}
@@ -3227,7 +3289,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	couperConfig, err := configload.LoadFiles("testdata/integration/config/05_couper.hcl", "")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -3793,6 +3855,58 @@ func TestFunctions(t *testing.T) {
 			"X-Default-11": "0",
 			"X-Default-12": "",
 		}, http.StatusOK},
+		{"contains", "/v1/contains", map[string]string{
+			"X-Contains-1":  "yes",
+			"X-Contains-2":  "no",
+			"X-Contains-3":  "yes",
+			"X-Contains-4":  "no",
+			"X-Contains-5":  "yes",
+			"X-Contains-6":  "no",
+			"X-Contains-7":  "yes",
+			"X-Contains-8":  "no",
+			"X-Contains-9":  "yes",
+			"X-Contains-10": "no",
+			"X-Contains-11": "yes",
+		}, http.StatusOK},
+		{"length", "/v1/length", map[string]string{
+			"X-Length-1": "2",
+			"X-Length-2": "0",
+			"X-Length-3": "5",
+			"X-Length-4": "2",
+		}, http.StatusOK},
+		{"join", "/v1/join", map[string]string{
+			"X-Join-1": "0-1-a-b-3-c-1.234-true-false",
+			"X-Join-2": "||",
+			"X-Join-3": "0-1-2-3-4",
+		}, http.StatusOK},
+		{"keys", "/v1/keys", map[string]string{
+			"X-Keys-1": `["a","b","c"]`,
+			"X-Keys-2": `[]`,
+			"X-Keys-3": `["couper-request-id","user-agent"]`,
+		}, http.StatusOK},
+		{"set_intersection", "/v1/set_intersection", map[string]string{
+			"X-Set_Intersection-1":  `[1,3]`,
+			"X-Set_Intersection-2":  `[1,3]`,
+			"X-Set_Intersection-3":  `[1,3]`,
+			"X-Set_Intersection-4":  `[1,3]`,
+			"X-Set_Intersection-5":  `[3]`,
+			"X-Set_Intersection-6":  `[3]`,
+			"X-Set_Intersection-7":  `[]`,
+			"X-Set_Intersection-8":  `[]`,
+			"X-Set_Intersection-9":  `[]`,
+			"X-Set_Intersection-10": `[]`,
+			"X-Set_Intersection-11": `[2.2]`,
+			"X-Set_Intersection-12": `["b","d"]`,
+			"X-Set_Intersection-13": `[true]`,
+			"X-Set_Intersection-14": `[{"a":1}]`,
+			"X-Set_Intersection-15": `[[1,2]]`,
+		}, http.StatusOK},
+		{"lookup", "/v1/lookup", map[string]string{
+			"X-Lookup-1": "1",
+			"X-Lookup-2": "default",
+			"X-Lookup-3": "Go-http-client/1.1",
+			"X-Lookup-4": "default",
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3811,6 +3925,159 @@ func TestFunctions(t *testing.T) {
 				if v1 := res.Header.Get(k); v1 != v {
 					subT.Fatalf("%q: unexpected header value for %q: got: %q, want: %q", tc.name, k, v1, v)
 				}
+			}
+		})
+	}
+}
+
+func TestFunction_to_number(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	helper := test.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1/to_number", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected Status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
+
+	exp := `{"float-2_34":2.34,"float-_3":0.3,"from-env":3.14159,"int":34,"int-3_":3,"int-3_0":3,"null":null}`
+	if string(resBytes) != exp {
+		t.Fatalf("Unexpected result\nwant: %s\n got:  %s", exp, string(resBytes))
+	}
+}
+
+func TestFunction_to_number_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	wd, werr := os.Getwd()
+	if werr != nil {
+		t.Fatal(werr)
+	}
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"string", "/v1/to_number/string", `expression evaluation error: ` + wd + `/01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", `expression evaluation error: ` + wd + `/01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", `expression evaluation error: ` + wd + `/01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", `expression evaluation error: ` + wd + `/01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
+func TestFunction_length_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	wd, werr := os.Getwd()
+	if werr != nil {
+		t.Fatal(werr)
+	}
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"object", "/v1/length/object", `expression evaluation error: ` + wd + `/01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"string", "/v1/length/string", `expression evaluation error: ` + wd + `/01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"null", "/v1/length/null", `expression evaluation error: ` + wd + `/01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
+			}
+		})
+	}
+}
+
+func TestFunction_lookup_errors(t *testing.T) {
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	wd, werr := os.Getwd()
+	if werr != nil {
+		t.Fatal(werr)
+	}
+
+	type testCase struct {
+		name   string
+		path   string
+		expMsg string
+	}
+
+	for _, tc := range []testCase{
+		{"null inputMap", "/v1/lookup/inputMap-null", `expression evaluation error: ` + wd + `/01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
+	} {
+		t.Run(tc.path[1:], func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				subT.Fatalf("%q: expected Status %d, got: %d", tc.name, http.StatusInternalServerError, res.StatusCode)
+			}
+			msg := logHook.LastEntry().Message
+			if msg != tc.expMsg {
+				subT.Fatalf("%q: expected log message\nwant: %q\ngot:  %q", tc.name, tc.expMsg, msg)
 			}
 		})
 	}
@@ -4461,6 +4728,179 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}
 }
 
+func TestAllowedMethods(t *testing.T) {
+	client := newClient()
+
+	confPath := "testdata/integration/config/11_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJzY29wZSI6ImZvbyJ9.7zkwmXTmzFTKHC0Qnpw7uQCcacogWUvi_JU56uWJlkw"
+
+	type testCase struct {
+		name           string
+		method         string
+		path           string
+		requestHeaders http.Header
+		status         int
+		couperError    string
+	}
+
+	for _, tc := range []testCase{
+		{"path not found, authorized", http.MethodGet, "/api1/not-found", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusNotFound, "route not found error"},
+
+		{"unrestricted, authorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, HEAD", http.MethodHead, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, POST", http.MethodPost, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, PUT", http.MethodPut, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, PATCH", http.MethodPatch, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"unrestricted, authorized, DELETE", http.MethodDelete, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, OPTIONS", http.MethodOptions, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, CONNECT", http.MethodConnect, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, authorized, TRACE", http.MethodTrace, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, authorized, BREW", "BREW", "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, unauthorized, GET", http.MethodGet, "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
+		{"unrestricted, unauthorized, BREW", "BREW", "/api1/unrestricted", http.Header{}, http.StatusUnauthorized, "access control error"},
+		{"unrestricted, CORS preflight", http.MethodOptions, "/api1/unrestricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
+
+		{"restricted, authorized, GET", http.MethodGet, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"restricted, authorized, HEAD", http.MethodHead, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, POST", http.MethodPost, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
+		{"restricted, authorized, PUT", http.MethodPut, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, PATCH", http.MethodPatch, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, DELETE", http.MethodDelete, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"restricted, authorized, OPTIONS", http.MethodOptions, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, CONNECT", http.MethodConnect, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, TRACE", http.MethodTrace, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"}, // BREW not supported by scope AC
+		{"restricted, CORS preflight", http.MethodOptions, "/api1/restricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
+
+		{"wildcard, GET", http.MethodGet, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, HEAD", http.MethodHead, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, POST", http.MethodPost, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, PUT", http.MethodPut, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, PATCH", http.MethodPatch, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, DELETE", http.MethodDelete, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, OPTIONS", http.MethodOptions, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
+		{"wildcard, CONNECT", http.MethodConnect, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard, TRACE", http.MethodTrace, "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard, BREW", "BREW", "/api1/wildcard", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"wildcard and more, GET", http.MethodGet, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, HEAD", http.MethodHead, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, POST", http.MethodPost, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PUT", http.MethodPut, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PATCH", http.MethodPatch, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, DELETE", http.MethodDelete, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, OPTIONS", http.MethodOptions, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, CONNECT", http.MethodConnect, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+
+		{"blocked, GET", http.MethodGet, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, HEAD", http.MethodHead, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, POST", http.MethodPost, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, PUT", http.MethodPut, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, PATCH", http.MethodPatch, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, DELETE", http.MethodDelete, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, OPTIONS", http.MethodOptions, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, CONNECT", http.MethodConnect, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, TRACE", http.MethodTrace, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"blocked, BREW", "BREW", "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"restricted methods override, GET", http.MethodGet, "/api2/restricted", http.Header{}, http.StatusOK, ""},
+		{"restricted methods override, HEAD", http.MethodHead, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, POST", http.MethodPost, "/api2/restricted", http.Header{}, http.StatusOK, ""},
+		{"restricted methods override, PUT", http.MethodPut, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, PATCH", http.MethodPatch, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, DELETE", http.MethodDelete, "/api2/restricted", http.Header{}, http.StatusOK, ""},
+		{"restricted methods override, OPTIONS", http.MethodOptions, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, CONNECT", http.MethodConnect, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, TRACE", http.MethodTrace, "/api2/restricted", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted methods override, BREW", "BREW", "/api2/restricted", http.Header{}, http.StatusOK, ""},
+
+		{"restricted by api only, GET", http.MethodGet, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, HEAD", http.MethodHead, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, POST", http.MethodPost, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, PUT", http.MethodPut, "/api2/restrictedByApiOnly", http.Header{}, http.StatusOK, ""},
+		{"restricted by api only, PATCH", http.MethodPatch, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, DELETE", http.MethodDelete, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, OPTIONS", http.MethodOptions, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, CONNECT", http.MethodConnect, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, TRACE", http.MethodTrace, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"restricted by api only, BREW", "BREW", "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			logHook.Reset()
+			req, err := http.NewRequest(tc.method, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+			req.Header = tc.requestHeaders
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given; want: %d; got: %d", tc.status, res.StatusCode)
+			}
+
+			couperError := res.Header.Get("Couper-Error")
+			if tc.couperError != couperError {
+				subT.Errorf("Unexpected couper-error given; want: %q; got: %q", tc.couperError, couperError)
+			}
+		})
+	}
+}
+
+func TestAllowedMethodsCORS_Preflight(t *testing.T) {
+	client := newClient()
+
+	confPath := "testdata/integration/config/11_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name          string
+		path          string
+		requestMethod string
+		status        int
+		allowMethods  []string
+		couperError   string
+	}
+
+	for _, tc := range []testCase{
+		{"unrestricted, CORS preflight, POST allowed", "/api1/unrestricted", http.MethodPost, http.StatusNoContent, []string{"POST"}, ""},
+		{"restricted, CORS preflight, POST allowed", "/api1/restricted", http.MethodPost, http.StatusNoContent, []string{"POST"}, ""}, // CORS preflight ok even if OPTIONS is otherwise not allowed
+		{"restricted, CORS preflight, PUT not allowed", "/api1/restricted", http.MethodPut, http.StatusNoContent, nil, ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			logHook.Reset()
+			req, err := http.NewRequest(http.MethodOptions, "http://example.com:8080"+tc.path, nil)
+			helper.Must(err)
+			req.Header.Set("Origin", "https://www.example.com")
+			req.Header.Set("Access-Control-Request-Method", tc.requestMethod)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if tc.status != res.StatusCode {
+				subT.Errorf("Unexpected status code given; want: %d; got: %d", tc.status, res.StatusCode)
+			}
+
+			allowMethods := res.Header.Values("Access-Control-Allow-Methods")
+			if !cmp.Equal(tc.allowMethods, allowMethods) {
+				subT.Errorf(cmp.Diff(tc.allowMethods, allowMethods))
+			}
+
+			couperError := res.Header.Get("Couper-Error")
+			if tc.couperError != couperError {
+				subT.Errorf("Unexpected couper-error given; want: %q; got: %q", tc.couperError, couperError)
+			}
+		})
+	}
+}
+
 func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 	client := newClient()
 
@@ -4565,13 +5005,13 @@ func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"/conditional/null", "expression evaluation error: 20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
-		{"/conditional/string", "expression evaluation error: 20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/number", "expression evaluation error: 20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/tuple", "expression evaluation error: 20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/object", "expression evaluation error: 20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/string/expr", "expression evaluation error: 20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/number/expr", "expression evaluation error: 20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/null", "20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
+		{"/conditional/string", "20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number", "20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/tuple", "20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/object", "20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/string/expr", "20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number/expr", "20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4601,7 +5041,10 @@ func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
 			time.Sleep(time.Millisecond * 100)
 			entry := hook.LastEntry()
 			if entry != nil && entry.Level == logrus.ErrorLevel {
-				if entry.Message != tc.expMessage {
+				if !strings.HasPrefix(entry.Message, "expression evaluation error: ") {
+					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
+				}
+				if !strings.HasSuffix(entry.Message, tc.expMessage) {
 					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
 				}
 			}

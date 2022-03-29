@@ -1,19 +1,34 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.7.2...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.8.0...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+* **Added**
+  * Couper [reads and merges configuration files](./docs/CLI.md#global-options) from a given directory ([#437](https://github.com/avenga/couper/pull/437))
+    * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
+
+---
+
+## [1.8.0](https://github.com/avenga/couper/releases/tag/v1.8.0)
 
 * **Added**
   * `disable_private_caching` attribute for the [JWT Block](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))
   * [`backend_request`](./docs/REFERENCE.md#backend_request) and [`backend_response`](./docs/REFERENCE.md#backend_response) variables ([#430](https://github.com/avenga/couper/pull/430))
   * `beta_scope_map` attribute for the [JWT Block](./docs/REFERENCE.md#jwt-block) ([#434](https://github.com/avenga/couper/pull/434))
   * `saml` [error type](./docs/ERRORS.md#error-types) ([#424](https://github.com/avenga/couper/pull/424))
+  * `allowed_methods` attribute for the [API](./docs/REFERENCE.md#api-block) or [Endpoint Block](./docs/REFERENCE.md#endpoint-block) ([#444](https://github.com/avenga/couper/pull/444))
+  * new HCL [functions](./docs/REFERENCE.md#functions): `contains()`, `join()`, `keys()`, `length()`, `lookup()`, `set_intersection()`, `to_number()` ([#455](https://github.com/avenga/couper/pull/455))
+  * `ca_file` option to `settings` (also as argument and environment option) ([#447](https://github.com/avenga/couper/pull/447))
+    * Option for adding the given PEM encoded ca-certificate to the existing system certificate pool for all outgoing connections.
 
 * **Changed**
   * Automatically add the `private` directive to the response `Cache-Control` HTTP header field value for all resources protected by [JWT](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))
 
----
+* **Fixed**
+  * improved protection against sniffing using unauthorized requests with non-standard method to non-existant endpoints in protected API ([#441](https://github.com/avenga/couper/pull/441))
+  * Couper handles OS-Signal `INT` in all cases in combination with the `-watch` argument ([#456](https://github.com/avenga/couper/pull/456))
+  * some [error types](./docs/ERRORS.md#access-control-error-types) related to [JWT](./docs/REFERENCE.md#jwt-block) ([#438](https://github.com/avenga/couper/pull/438))
 
 ## [1.7.2](https://github.com/avenga/couper/releases/tag/v1.7.2)
 

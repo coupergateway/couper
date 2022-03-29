@@ -135,7 +135,12 @@ func TestIntegration_FormParams(t *testing.T) {
 			req, err := http.NewRequest(tc.method, "http://example.com:8080/", nil)
 			helper.Must(err)
 
-			req.Body = io.NopCloser(bytes.NewBuffer([]byte(tc.post)))
+			req.Close = true
+
+			if tc.post != "" {
+				req.Body = io.NopCloser(bytes.NewBuffer([]byte(tc.post)))
+			}
+
 			if tc.ct != "" {
 				req.Header.Set("Content-Type", tc.ct)
 			}
@@ -144,8 +149,10 @@ func TestIntegration_FormParams(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
+			defer res.Body.Close()
+
 			if res.StatusCode != http.StatusOK {
-				subT.Fatalf("%d: Expected status 200, given %d", i, res.StatusCode)
+				subT.Errorf("%d: Expected status 200, given %d", i, res.StatusCode)
 			}
 
 			entries := hook.AllEntries()
@@ -160,8 +167,6 @@ func TestIntegration_FormParams(t *testing.T) {
 
 			resBytes, err := io.ReadAll(res.Body)
 			helper.Must(err)
-
-			_ = res.Body.Close()
 
 			if !bytes.Contains(resBytes, []byte(tc.expArgs)) {
 				subT.Errorf("%d: \nwant: \n%s\nin: \n%s", i, tc.expArgs, resBytes)

@@ -35,9 +35,6 @@ func TestEndpoints_OAuth2(t *testing.T) {
 				if accept := req.Header.Get("Accept"); accept != "application/json" {
 					t.Errorf("expected Accept %q, got: %q", "application/json", accept)
 				}
-				if cl := req.Header.Get("Content-Length"); cl != "29" {
-					t.Errorf("Unexpected C/L given: %s", cl)
-				}
 
 				rw.Header().Set("Content-Type", "application/json")
 				rw.WriteHeader(http.StatusOK)
@@ -87,7 +84,7 @@ func TestEndpoints_OAuth2(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 		helper.Must(err)
 
-		for _, p := range []string{"/", "/2nd"} {
+		for _, p := range []string{"/", "/2nd", "/password"} {
 			hook.Reset()
 
 			seenCh = make(chan struct{})
@@ -141,6 +138,16 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 			"03_couper.hcl",
 			`grant_type=client_credentials`,
 			"Basic dXNlcjpwYXNz",
+		},
+		{
+			"12_couper.hcl",
+			`grant_type=password&password=pass&scope=scope1+scope2&username=user`,
+			"Basic bXlfY2xpZW50Om15X2NsaWVudF9zZWNyZXQ=",
+		},
+		{
+			"13_couper.hcl",
+			`client_id=my_client&client_secret=my_client_secret&grant_type=password&password=pass&scope=scope1+scope2&username=user`,
+			"",
 		},
 	} {
 		var tokenSeenCh chan struct{}

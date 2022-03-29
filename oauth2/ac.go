@@ -116,7 +116,8 @@ type OAuth2AcClient struct {
 
 // NewOAuth2AC creates a new OAuth2 Authorization Code client.
 func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2AS, backend http.RoundTripper) (*OAuth2AcClient, error) {
-	if grantType := acClientConf.GetGrantType(); grantType != "authorization_code" {
+	grantType := acClientConf.GetGrantType()
+	if grantType != "authorization_code" {
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
 	}
 
@@ -144,6 +145,7 @@ func NewOAuth2AC(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2A
 		Backend:      backend,
 		asConfig:     oauth2AsConf,
 		clientConfig: acClientConf,
+		grantType:    grantType,
 	}
 	o := &OAuth2AcClient{&AbstractAcClient{Client: client, name: acClientConf.GetName()}}
 	o.AcClient = o

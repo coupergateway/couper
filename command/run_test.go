@@ -2,13 +2,17 @@ package command
 
 import (
 	"context"
+	"crypto/tls"
+	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/rs/xid"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -17,6 +21,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/server"
 )
 
 func TestNewRun(t *testing.T) {
@@ -98,7 +103,7 @@ func TestNewRun(t *testing.T) {
 				return
 			}
 
-			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			couperFile, err := configload.LoadFiles(filepath.Join(wd, "testdata/settings", tt.file), "")
 			if err != nil {
 				subT.Error(err)
 			}
@@ -185,7 +190,7 @@ func TestAcceptForwarded(t *testing.T) {
 				return
 			}
 
-			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
+			couperFile, err := configload.LoadFiles(filepath.Join(wd, "testdata/settings", tt.file), "")
 			if err != nil {
 				subT.Error(err)
 			}
@@ -223,5 +228,141 @@ func TestAcceptForwarded(t *testing.T) {
 			}
 			runCmd.settingsMu.Unlock()
 		})
+	}
+}
+
+func TestArgs_CAFile(t *testing.T) {
+	helper := test.New(t)
+
+	log, hook := test.NewLogger()
+	defer func() {
+		if t.Failed() {
+			for _, entry := range hook.AllEntries() {
+				t.Log(entry.String())
+			}
+		}
+	}()
+
+	ctx, shutdown := context.WithCancel(context.Background())
+	defer shutdown()
+
+	runCmd := NewRun(ctx)
+	if runCmd == nil {
+		t.Error("create run cmd failed")
+		return
+	}
+
+	expiresIn := time.Minute
+	//expires := time.After(expiresIn)
+	selfSigned, err := server.NewCertificate(expiresIn, nil, nil)
+	helper.Must(err)
+
+	tmpFile, err := ioutil.TempFile("", "ca.cert")
+	helper.Must(err)
+	_, err = tmpFile.Write(selfSigned.CA)
+	helper.Must(err)
+	helper.Must(tmpFile.Close())
+	defer os.Remove(tmpFile.Name())
+
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusNoContent)
+
+		// force close to trigger a new handshake
+		hj, ok := writer.(http.Hijacker)
+		if !ok {
+			t.Error("expected hijacker")
+		}
+
+		conn, _, herr := hj.Hijack()
+		if herr != nil {
+			t.Error(herr)
+		}
+
+		conn.Close()
+	}))
+
+	srv.TLS.Certificates = []tls.Certificate{*selfSigned.Server}
+
+	couperHCL := `server {
+	endpoint "/" {
+		request {
+			url = "` + srv.URL + `"
+		}
+	}
+}`
+
+	couperFile, err := configload.LoadBytes([]byte(couperHCL), "ca-file-test.hcl")
+	helper.Must(err)
+
+	port := couperFile.Settings.DefaultPort
+
+	// ensure the previous tests aren't listening
+	test.WaitForClosedPort(port)
+	go func() {
+		execErr := runCmd.Execute(Args{"-ca-file=" + tmpFile.Name()}, couperFile, log.WithContext(ctx))
+		if execErr != nil {
+			helper.Must(execErr)
+		}
+	}()
+	test.WaitForOpenPort(port)
+
+	client := test.NewHTTPClient()
+
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+
+	// ca before
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Error("unexpected status code")
+	}
+
+	// ca after
+	//<-expires
+
+	// handshake error
+	//res, err = client.Do(req)
+	//helper.Must(err)
+	//
+	//if res.StatusCode != http.StatusBadGateway {
+	//	t.Error("unexpected status code")
+	//}
+}
+
+func TestReadCAFile(t *testing.T) {
+	helper := test.New(t)
+
+	_, err := readCertificateFile("/does/not/exist.cert")
+	if err == nil {
+		t.Error("expected file error")
+	} else if err.Error() != "error reading ca-certificate: open /does/not/exist.cert: no such file or directory" {
+		t.Error("expected no such file error")
+	}
+
+	tmpFile, err := ioutil.TempFile("", "empty.cert")
+	helper.Must(err)
+	defer os.Remove(tmpFile.Name())
+
+	_, err = readCertificateFile(tmpFile.Name())
+	if err == nil {
+		t.Error("expected empty file error")
+	} else if err.Error() != `error reading ca-certificate: empty file: "`+tmpFile.Name()+`"` {
+		t.Error("expected empty file error with file-name")
+	}
+
+	malformedFile, err := ioutil.TempFile("", "broken.cert")
+	helper.Must(err)
+	defer os.Remove(malformedFile.Name())
+
+	ssc, err := server.NewCertificate(time.Minute, nil, nil)
+	helper.Must(err)
+
+	_, err = malformedFile.Write(ssc.CA[:100]) // incomplete
+	helper.Must(err)
+
+	_, err = readCertificateFile(malformedFile.Name())
+	if err == nil || err.Error() != "error parsing pem ca-certificate: missing pem block" {
+		t.Error("expected: error parsing pem ca-certificate: missing pem block")
 	}
 }

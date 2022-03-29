@@ -19,6 +19,7 @@ type Client struct {
 	Backend      http.RoundTripper
 	asConfig     config.OAuth2AS
 	clientConfig config.OAuth2Client
+	grantType    string
 }
 
 func (c *Client) requestToken(ctx context.Context, requestParams map[string]string) ([]byte, int, error) {
@@ -43,10 +44,9 @@ func (c *Client) requestToken(ctx context.Context, requestParams map[string]stri
 
 func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
 	post := url.Values{}
-	grantType := c.clientConfig.GetGrantType()
-	post.Set("grant_type", grantType)
+	post.Set("grant_type", c.grantType)
 
-	if scope := c.clientConfig.GetScope(); scope != "" && grantType != "authorization_code" {
+	if scope := c.clientConfig.GetScope(); scope != "" && c.grantType != "authorization_code" {
 		post.Set("scope", scope)
 	}
 

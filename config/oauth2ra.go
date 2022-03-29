@@ -26,11 +26,13 @@ type OAuth2ReqAuth struct {
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
 	GrantType               string   `hcl:"grant_type"`
+	Password                string   `hcl:"password,optional"` // password undocumented feature!
 	Remain                  hcl.Body `hcl:",remain"`
 	Retries                 *uint8   `hcl:"retries,optional"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
+	Username                string   `hcl:"username,optional"` // username undocumented feature!
 }
 
 // Reference implements the <BackendReference> interface.
@@ -82,10 +84,6 @@ func (oa OAuth2ReqAuth) GetClientID() string {
 
 func (oa OAuth2ReqAuth) GetClientSecret() string {
 	return oa.ClientSecret
-}
-
-func (oa OAuth2ReqAuth) GetGrantType() string {
-	return oa.GrantType
 }
 
 func (oa OAuth2ReqAuth) GetScope() string {

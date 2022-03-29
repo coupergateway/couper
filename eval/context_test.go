@@ -99,7 +99,7 @@ func TestNewHTTPContext(t *testing.T) {
 
 			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
 
-			ctx := baseCtx.WithClientRequest(req).WithBeresp(beresp).HCLContext()
+			ctx := baseCtx.WithClientRequest(req).WithBeresp(beresp, false).HCLContext()
 			ctx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value

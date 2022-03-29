@@ -863,7 +863,7 @@
         {
           "datasource": null,
           "exemplar": false,
-          "expr": "sum by (backend_name,pod) (couper_backend_request_total{job=\"$job\", service_name=\"$service\", namespace=\"$namespace\", origin=~\"$origin\"})",
+          "expr": "sum by (backend_name,hostname) (couper_backend_request_total{job=\"$job\", service_name=\"$service\", namespace=\"$namespace\", origin=~\"$origin\"})",
           "format": "table",
           "instant": true,
           "interval": "1",
@@ -878,18 +878,18 @@
           "options": {
             "excludeByName": {
               "Time": true,
+              "Value": true,
               "Value #A": true,
               "__name__": true,
               "code": true,
               "criticality": true,
-              "host": true,
-              "hostname": true,
               "instance": true,
               "job": true,
               "kubernetes_cluster_name": true,
               "method": true,
               "namespace": true,
               "origin": true,
+              "pod": true,
               "service_name": true,
               "service_version": true
             },

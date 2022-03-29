@@ -40,6 +40,25 @@ server "api" {
         }
       }
     }
+
+    endpoint "/password" {
+      proxy {
+        backend {
+          origin = "{{.rsOrigin}}"
+          path   = "/resource"
+
+          oauth2 {
+            token_endpoint = "{{.asOrigin}}/oauth2"
+            client_id      = "my_client"
+            client_secret  = "my_client_secret"
+            grant_type     = "password"
+            username       = "user"
+            password       = "pass word"
+            retries        = 0
+          }
+        }
+      }
+    }
   }
 }
 
