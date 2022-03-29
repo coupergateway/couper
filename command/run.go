@@ -128,6 +128,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	if config.Settings.CAFile != "" {
 		config.Settings.Certificate, err = readCertificateFile(config.Settings.CAFile)
+		if err != nil {
+			return err
+		}
 		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
 
