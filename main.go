@@ -8,11 +8,13 @@ import (
 	"context"
 	"flag"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -49,6 +51,7 @@ func realmain(arguments []string) int {
 	type globalFlags struct {
 		DebugEndpoint       bool          `env:"debug"`
 		FilePath            string        `env:"file"`
+		DirPath             string        `env:"file_directory"`
 		FileWatch           bool          `env:"watch"`
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
 		FileWatchRetries    int           `env:"watch_retries"`
@@ -60,7 +63,8 @@ func realmain(arguments []string) int {
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
 	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
-	set.StringVar(&flags.FilePath, "f", config.DefaultFilename, "-f ./my-path/couper.hcl")
+	set.StringVar(&flags.FilePath, "f", "", "-f ./my-path/couper.hcl")
+	set.StringVar(&flags.DirPath, "d", "", "-d ./path/to/couper.d")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
@@ -94,17 +98,21 @@ func realmain(arguments []string) int {
 	}
 	env.Decode(&flags)
 
+	if flags.DirPath == "" && flags.FilePath == "" {
+		flags.FilePath = config.DefaultFilename
+	}
+
 	if cmd == "verify" {
 		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
 
-		err := command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath}, nil, log)
+		err := command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath, flags.DirPath}, nil, log)
 		if err != nil {
 			return 1
 		}
 		return 0
 	}
 
-	confFile, err := configload.LoadFile(flags.FilePath)
+	confFile, err := configload.LoadFiles(flags.FilePath, flags.DirPath)
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
@@ -141,7 +149,7 @@ func realmain(arguments []string) int {
 	logger.WithField("watch", logrus.Fields{
 		"retry-delay": flags.FileWatchRetryDelay.String(),
 		"max-retries": flags.FileWatchRetries,
-	}).Info("watching configuration file")
+	}).Info("watching configuration file(s)")
 	errCh := make(chan error, 1)
 	errRetries := 0
 
@@ -157,7 +165,7 @@ func realmain(arguments []string) int {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	reloadCh := watchConfigFile(confFile.Filename, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
+	reloadCh := watchConfigFiles(confFile.Filename, confFile.Dirpath, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
 	for {
 		select {
 		case err = <-errCh:
@@ -194,7 +202,7 @@ func realmain(arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFile(confFile.Filename) // we are at wd, just filename
+			cf, reloadErr := configload.LoadFiles(confFile.Filename, confFile.Dirpath) // we are at wd, just filename
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -263,42 +271,136 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
 
-func watchConfigFile(name string, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
+func getWatchFilesList(filename, dirPath string) (map[string]struct{}, error) {
+	files := make(map[string]struct{})
+
+	if filename != "" {
+		files[filename] = struct{}{}
+	}
+	if dirPath != "" {
+		listing, err := ioutil.ReadDir(dirPath)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, file := range listing {
+			if file.IsDir() || !strings.HasSuffix(file.Name(), ".hcl") {
+				continue
+			}
+
+			files[dirPath+"/"+file.Name()] = struct{}{}
+		}
+	}
+
+	return files, nil
+}
+
+func retryWatching(errorsSeen, maxRetries int, retryDelay time.Duration,
+	logger logrus.FieldLogger, err error, reloadCh chan struct{}) bool {
+
+	if errorsSeen >= maxRetries {
+		logger.Errorf("giving up after %d retries: %v", errorsSeen, err)
+		close(reloadCh)
+
+		return false
+	}
+
+	logger.WithFields(fields).Error(err)
+
+	time.Sleep(retryDelay)
+
+	return true
+}
+
+func syncWatchFilesList(new map[string]struct{}, old map[string]time.Time) map[string]time.Time {
+	synced := make(map[string]time.Time)
+
+	for name := range new {
+		if t, ok := old[name]; ok {
+			synced[name] = t
+		} else {
+			synced[name] = time.Time{}
+		}
+	}
+
+	return synced
+}
+
+func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
 	reloadCh := make(chan struct{})
+
 	go func() {
 		ticker := time.NewTicker(time.Second / 4)
 		defer ticker.Stop()
-		var lastChange time.Time
 		var errorsSeen int
+
+		lastChanges := make(map[string]time.Time)
+
+		files, err := getWatchFilesList(filename, dirPath)
+		if err != nil {
+			logger.Error(err)
+			close(reloadCh)
+			return
+		}
+
+		for name := range files {
+			lastChanges[name] = time.Time{}
+		}
+
+	watchFiles:
 		for {
 			<-ticker.C
-			fileInfo, fileErr := os.Stat(name)
-			if fileErr != nil {
+
+			// Compare files list
+			filesList, err := getWatchFilesList(filename, dirPath)
+			if err != nil {
 				errorsSeen++
-				if errorsSeen >= maxRetries {
-					logger.Errorf("giving up after %d retries: %v", errorsSeen, fileErr)
-					close(reloadCh)
+
+				if !retryWatching(errorsSeen, maxRetries, retryDelay, logger, err, reloadCh) {
 					return
 				}
 
-				logger.WithFields(fields).Error(fileErr)
-
-				time.Sleep(retryDelay)
-				continue
+				continue watchFiles
 			}
 
-			if lastChange.IsZero() { // first round
-				lastChange = fileInfo.ModTime()
-				continue
-			}
+			if len(filesList) != len(lastChanges) {
+				lastChanges = syncWatchFilesList(filesList, lastChanges)
 
-			if fileInfo.ModTime().After(lastChange) {
+				errorsSeen = 0
 				reloadCh <- struct{}{}
+
+				continue watchFiles
 			}
-			lastChange = fileInfo.ModTime()
-			errorsSeen = 0
+
+			for f, t := range lastChanges {
+				info, err := os.Stat(f)
+
+				if err != nil {
+					errorsSeen++
+
+					if !retryWatching(errorsSeen, maxRetries, retryDelay, logger, err, reloadCh) {
+						return
+					}
+
+					continue watchFiles
+				}
+
+				if t.IsZero() { // first round
+					lastChanges[f] = info.ModTime()
+					continue watchFiles
+				}
+
+				if info.ModTime().After(t) {
+					reloadCh <- struct{}{}
+				}
+
+				lastChanges[f] = info.ModTime()
+
+				errorsSeen = 0
+			}
 		}
 	}()
+
 	return reloadCh
 }
 

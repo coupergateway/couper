@@ -12,7 +12,7 @@ func TestErrorHandler_newKindsFromLabels(t *testing.T) {
 	b := &hcl.Block{
 		Labels: []string{""},
 		LabelRanges: []hcl.Range{
-			hcl.Range{
+			{
 				Start: hcl.Pos{
 					Line:   123,
 					Column: 321,

@@ -83,8 +83,16 @@ func teardown() {
 	}
 	testBackend.Close()
 }
+
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), "")
+	helper.Must(err)
+
+	return newCouperWithConfig(couperConfig, helper)
+}
+
+func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
+	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), dir)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3281,7 +3289,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	couperConfig, err := configload.LoadFiles("testdata/integration/config/05_couper.hcl", "")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -3956,6 +3964,11 @@ func TestFunction_to_number_errors(t *testing.T) {
 	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
 	defer shutdown()
 
+	wd, werr := os.Getwd()
+	if werr != nil {
+		t.Fatal(werr)
+	}
+
 	type testCase struct {
 		name   string
 		path   string
@@ -3963,10 +3976,10 @@ func TestFunction_to_number_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"string", "/v1/to_number/string", `expression evaluation error: 01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
-		{"bool", "/v1/to_number/bool", `expression evaluation error: 01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
-		{"tuple", "/v1/to_number/tuple", `expression evaluation error: 01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
-		{"object", "/v1/to_number/object", `expression evaluation error: 01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+		{"string", "/v1/to_number/string", `expression evaluation error: ` + wd + `/01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", `expression evaluation error: ` + wd + `/01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", `expression evaluation error: ` + wd + `/01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", `expression evaluation error: ` + wd + `/01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -3994,6 +4007,11 @@ func TestFunction_length_errors(t *testing.T) {
 	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
 	defer shutdown()
 
+	wd, werr := os.Getwd()
+	if werr != nil {
+		t.Fatal(werr)
+	}
+
 	type testCase struct {
 		name   string
 		path   string
@@ -4001,9 +4019,9 @@ func TestFunction_length_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"object", "/v1/length/object", `expression evaluation error: 01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
-		{"string", "/v1/length/string", `expression evaluation error: 01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
-		{"null", "/v1/length/null", `expression evaluation error: 01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
+		{"object", "/v1/length/object", `expression evaluation error: ` + wd + `/01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"string", "/v1/length/string", `expression evaluation error: ` + wd + `/01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"null", "/v1/length/null", `expression evaluation error: ` + wd + `/01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4031,6 +4049,11 @@ func TestFunction_lookup_errors(t *testing.T) {
 	shutdown, logHook := newCouper("testdata/integration/functions/01_couper.hcl", test.New(t))
 	defer shutdown()
 
+	wd, werr := os.Getwd()
+	if werr != nil {
+		t.Fatal(werr)
+	}
+
 	type testCase struct {
 		name   string
 		path   string
@@ -4038,7 +4061,7 @@ func TestFunction_lookup_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"null inputMap", "/v1/lookup/inputMap-null", `expression evaluation error: 01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
+		{"null inputMap", "/v1/lookup/inputMap-null", `expression evaluation error: ` + wd + `/01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4982,13 +5005,13 @@ func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"/conditional/null", "expression evaluation error: 20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
-		{"/conditional/string", "expression evaluation error: 20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/number", "expression evaluation error: 20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/tuple", "expression evaluation error: 20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/object", "expression evaluation error: 20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/string/expr", "expression evaluation error: 20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
-		{"/conditional/number/expr", "expression evaluation error: 20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/null", "20_couper.hcl:281,16-20: Null condition; The condition value is null. Conditions must either be true or false."},
+		{"/conditional/string", "20_couper.hcl:287,16-21: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number", "20_couper.hcl:293,16-17: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/tuple", "20_couper.hcl:299,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/object", "20_couper.hcl:305,16-18: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/string/expr", "20_couper.hcl:311,16-30: Incorrect condition type; The condition expression must be of type bool."},
+		{"/conditional/number/expr", "20_couper.hcl:317,16-26: Incorrect condition type; The condition expression must be of type bool."},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -5018,7 +5041,10 @@ func TestEndpoint_ConditionalEvaluationError(t *testing.T) {
 			time.Sleep(time.Millisecond * 100)
 			entry := hook.LastEntry()
 			if entry != nil && entry.Level == logrus.ErrorLevel {
-				if entry.Message != tc.expMessage {
+				if !strings.HasPrefix(entry.Message, "expression evaluation error: ") {
+					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
+				}
+				if !strings.HasSuffix(entry.Message, tc.expMessage) {
 					subT.Errorf("wrong error message,\nexp: %s\ngot: %s", tc.expMessage, entry.Message)
 				}
 			}
