@@ -14,4 +14,5 @@ defaults {
 
 settings {
   health_path = "/abc"
+  ca_file = "../../integration/files/not-there.pem"
 }
