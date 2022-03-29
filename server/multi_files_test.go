@@ -45,7 +45,8 @@ func TestMultiFiles_Server(t *testing.T) {
 		{"http://example.com:9080/api-3", http.StatusTeapot, ""},
 		{"http://example.com:9080/api-4/ep", http.StatusNoContent, ""},
 		{"http://example.com:9081/", http.StatusOK, ""},
-		//{"http://example.com:9083/", http.StatusNotFound, ""},
+		{"http://example.com:8082/", http.StatusOK, ""},
+		{"http://example.com:8083/", http.StatusNotFound, ""},
 		{"http://example.com:9084/", http.StatusNotFound, ""},
 	} {
 		req, err = http.NewRequest(http.MethodGet, tc.url, nil)
