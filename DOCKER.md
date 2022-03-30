@@ -33,6 +33,7 @@ docker run avenga/couper run -watch -p 8081
 | Variable                             | Default | Description |
 |:-------------------------------------| :------ | :---------- |
 | COUPER_FILE                          | `couper.hcl` | Path to the configuration file. |
+| COUPER_FILE_DIRECTORY                | `""`    | Path to the configuration files directory. |
 | COUPER_ACCEPT_FORWARDED_URL          | `""`    | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](https://github.com/avenga/couper/blob/master/docs/REFERENCE.md#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port`. |
 | COUPER_DEFAULT_PORT                  | `8080`  | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
 | COUPER_HEALTH_PATH                   | `/healthz` | Path for health-check requests for all servers and ports. |

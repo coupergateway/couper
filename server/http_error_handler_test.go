@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -115,7 +116,7 @@ func TestAccessControl_ErrorHandler_BasicAuth_Wildcard(t *testing.T) {
 
 func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/error_handler/03_couper.hcl")
+	couperConfig, err := configload.LoadFiles("testdata/integration/error_handler/03_couper.hcl", "")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -126,7 +127,7 @@ func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
 	if err == nil {
 		t.Error("logErr should not be nil")
-	} else if err.Error() != expectedMsg {
+	} else if !strings.HasSuffix(err.Error(), expectedMsg) {
 		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, err.Error())
 	}
 }

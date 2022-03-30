@@ -46,18 +46,17 @@ type Context struct {
 	oauth2            []config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
-	src               []byte
 	syncedVariables   *SyncedVariables
 }
 
-func NewContext(src []byte, defaults *config.Defaults) *Context {
+func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
 	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
 	}
 
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(src, defaultEnvVariables)
+	variables[Environment] = newCtyEnvMap(srcBytes, defaultEnvVariables)
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
@@ -66,7 +65,6 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 			Functions: newFunctionsMap(),
 		},
 		inner: context.TODO(), // usually replaced with request context
-		src:   src,
 	}
 }
 
@@ -511,7 +509,7 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(src []byte, defaultValues map[string]string) cty.Value {
+func newCtyEnvMap(srcBytes [][]byte, defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range defaultValues {
 		ctyMap[k] = cty.StringVal(v)
@@ -535,10 +533,13 @@ func newCtyEnvMap(src []byte, defaultValues map[string]string) cty.Value {
 	}
 
 	emptyString := cty.StringVal("")
-	referenced := decodeEnvironmentRefs(src)
-	for _, key := range referenced {
-		if _, exist := ctyMap[key]; !exist {
-			ctyMap[key] = emptyString
+
+	for _, src := range srcBytes {
+		referenced := decodeEnvironmentRefs(src)
+		for _, key := range referenced {
+			if _, exist := ctyMap[key]; !exist {
+				ctyMap[key] = emptyString
+			}
 		}
 	}
 
