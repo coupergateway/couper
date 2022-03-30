@@ -12,12 +12,7 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-type errorHandlerContent map[string]kindContent
-
-type kindContent struct {
-	body hcl.Body
-	kind string
-}
+type errorHandlerContent map[string]hcl.Body
 
 func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends Backends) error {
 	for _, ehs := range setter {
@@ -31,8 +26,8 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 			return err
 		}
 
-		for _, hc := range ehc {
-			errHandlerConf, confErr := newErrorHandlerConfig(hc, definedBackends)
+		for k, hc := range ehc {
+			errHandlerConf, confErr := newErrorHandlerConfig(k, hc, definedBackends)
 			if confErr != nil {
 				return confErr
 			}
@@ -91,10 +86,7 @@ func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, erro
 				return nil, hcl.Diagnostics{diag}
 			}
 
-			configuredKinds[k] = kindContent{
-				body: block.Body,
-				kind: k,
-			}
+			configuredKinds[k] = block.Body
 		}
 	}
 
@@ -124,16 +116,16 @@ func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	return allKinds, nil
 }
 
-func newErrorHandlerConfig(content kindContent, definedBackends Backends) (*config.ErrorHandler, error) {
-	errHandlerConf := &config.ErrorHandler{Kind: content.kind}
-	if d := gohcl.DecodeBody(content.body, envContext, errHandlerConf); d.HasErrors() {
+func newErrorHandlerConfig(kind string, body hcl.Body, definedBackends Backends) (*config.ErrorHandler, error) {
+	errHandlerConf := &config.ErrorHandler{Kind: kind}
+	if d := gohcl.DecodeBody(body, envContext, errHandlerConf); d.HasErrors() {
 		return nil, d
 	}
 
 	ep := &config.Endpoint{
 		ErrorFile: errHandlerConf.ErrorFile,
 		Response:  errHandlerConf.Response,
-		Remain:    content.body,
+		Remain:    body,
 	}
 
 	if err := refineEndpoints(definedBackends, config.Endpoints{ep}, false); err != nil {
