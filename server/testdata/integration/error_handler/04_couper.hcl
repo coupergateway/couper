@@ -36,7 +36,7 @@ server "scoped" {
       }
     }
 
-    error_handler "beta_scope" {
+    error_handler "beta_insufficient_scope" {
       response {
         status = 418
       }
