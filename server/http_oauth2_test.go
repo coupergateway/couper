@@ -665,7 +665,7 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	}))
 	defer rsOrigin.Close()
 
-	shutdown, hook := newCouperWithTemplate("testdata/oauth2/12_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+	shutdown, hook := newCouperWithTemplate("testdata/oauth2/14_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
 	defer shutdown()
 
 	type testCase struct {

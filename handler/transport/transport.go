@@ -103,7 +103,7 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 
 			conn, cerr := d.DialContext(stx, network, address)
 			if cerr != nil {
-				return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, err)
+				return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, cerr)
 			}
 			return NewOriginConn(stx, conn, conf, logEntry), nil
 		},
