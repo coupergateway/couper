@@ -214,7 +214,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		return nil, diags
 	}
 
-	helper, err := newHelper(body, src, filename)
+	helper, err := newHelper(body, src, filename, dirPath)
 	if err != nil {
 		return nil, err
 	}
