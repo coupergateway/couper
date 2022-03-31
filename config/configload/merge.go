@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -22,9 +23,11 @@ func errorUniqueLabels(block *hclsyntax.Block) error {
 	}
 }
 
+// absPath replaces the given attribute path expression with an absolute path
+// related to its filename if not already an absolute one.
 func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
 	value, diags := attr.Expr.Value(envContext)
-	if diags.HasErrors() {
+	if diags.HasErrors() || strings.Index(value.AsString(), "/") == 0 {
 		return attr.Expr // Return unchanged in error cases.
 	}
 
