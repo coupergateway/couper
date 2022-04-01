@@ -21,7 +21,7 @@
     - [Basic Auth Block](#basic-auth-block)
     - [JWT Block](#jwt-block)
     - [JWT Signing Profile Block](#jwt-signing-profile-block)
-    - [OAuth2 AC Block (Beta)](#oauth2-ac-block-beta)
+    - [OAuth2 AC Block (Beta)](#beta_oauth2-block)
     - [OIDC Block](#oidc-block)
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
@@ -211,7 +211,7 @@ The `backend` block defines the connection to a local/remote backend service.
 
 |Block name|Context|Label|Nested block(s)|
 | :----------| :-----------| :-----------| :-----------|
-|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-cc-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#oauth2-ac-block-beta), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-cc-block)|
+|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-cc-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta_oauth2-block), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-cc-block)|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -327,7 +327,7 @@ Use the `definitions` block to define configurations you want to reuse.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#oauth2-ac-block-beta), [OIDC Block(s)](#oidc-block)|
+|`definitions`|-|no label|[Backend Block(s)](#backend-block), [Basic Auth Block(s)](#basic-auth-block), [JWT Block(s)](#jwt-block), [JWT Signing Profile Block(s)](#jwt-signing-profile-block), [SAML Block(s)](#saml-block), [OAuth2 AC Block(s)](#beta_oauth2-block), [OIDC Block(s)](#oidc-block)|
 
 <!-- TODO: add link to (still missing) example -->
 
@@ -433,6 +433,7 @@ An example can be found
 | `claims` |object|-|Default claims for the JWT payload.| The claim values are evaluated per request. |`claims = { iss = "https://the-issuer.com" }`|
 | `headers` | object | - | Additional header fields for the JWT. | `alg` and `typ` cannot be set. | `headers = { kid = "my-key-id" }` |
 
+<a id="beta_oauth2-block"></a>
 ### OAuth2 AC Block (Beta)
 
 The `beta_oauth2` block lets you configure the `oauth2_authorization_url()` [function](#functions) and an access
@@ -527,7 +528,7 @@ gateway instance.
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
 |:--------------------------------| :----- | :------------------ | :---------- | :---------------- | :------ |
-| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#oauth2-ac-block-beta) & [oidc](#oidc-block). | `["proto","host","port"]` |
+| `accept_forwarded_url`          | list   | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#beta_oauth2-block) & [oidc](#oidc-block). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | list   | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
@@ -644,7 +645,7 @@ For a [SAML Block](#saml-block) the variable contains
 - `exp`: optional expiration date (value of `SessionNotOnOrAfter` of the SAML assertion)
 - `attributes`: a map of attributes from the SAML assertion
 
-For an [OAuth2 AC Block](#oauth2-ac-block-beta), the variable contains the response from the token endpoint, e.g.
+For an [OAuth2 AC Block](#beta_oauth2-block), the variable contains the response from the token endpoint, e.g.
 
 - `access_token`: the access token retrieved from the token endpoint
 - `token_type`: the token type
@@ -723,7 +724,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `length`                       | integer         | Returns the number of elements in the given collection.                                                                                                                                                                                                                                              | `collection` (tuple, list or map; **no object**)   | `length([0,1,2,3])`                                  |
 | `lookup`                       | various         | Performs a dynamic lookup into a map. The default (third argument) is returned if the key (second argument) is not found in the inputMap (first argument).                                                                                                                                           | `inputMap` (object or map), `key` (string), `default` (various) | `lookup({a = 1}, "b", "def")` |
 | `merge`                        | object or tuple | Deep-merges two or more of either objects or tuples. `null` arguments are ignored. A `null` attribute value in an object removes the previous attribute value. An attribute value with a different type than the current value is set as the new value. `merge()` with no parameters returns `null`. | `arg...` (object or tuple)          | `merge(request.headers, { x-additional = "myval" })` |
-| `oauth2_authorization_url`     | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#oauth2-ac-block-beta) or [OIDC Block](#oidc-block).                                                                                                                                                                         | `label` (string)                    | `oauth2_authorization_url("myOAuth2")`               |
+| `oauth2_authorization_url`     | string          | Creates an OAuth2 authorization URL from a referenced [OAuth2 AC Block](#beta_oauth2-block) or [OIDC Block](#oidc-block).                                                                                                                                                                         | `label` (string)                    | `oauth2_authorization_url("myOAuth2")`               |
 | `oauth2_verifier`              | string          | Creates a cryptographically random key as specified in RFC 7636, applicable for all verifier methods; e.g. to be set as a cookie and read into `verifier_value`. Multiple calls of this function in the same client request context return the same value.                                           |                                     | `oauth2_verifier()`                                  |
 | `relative_url`                 | string          | Returns a relative URL by retaining `path`, `query` and `fragment` components.  The input URL `s` must begin with `/<path>`, `//<authority>`, `http://` or `https://`, otherwise an error is thrown. | s (string) | `relative_url("https://httpbin.org/anything?query#fragment") // returns "/anything?query#fragment"` |
 | `saml_sso_url`                 | string          | Creates a SAML SingleSignOn URL (including the `SAMLRequest` parameter) from a referenced [SAML Block](#saml-block).                                                                                                                                                                                 | `label` (string)                    | `saml_sso_url("mySAML")`                             |
