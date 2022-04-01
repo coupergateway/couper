@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	
+
 	"github.com/avenga/couper/server"
 )
 
