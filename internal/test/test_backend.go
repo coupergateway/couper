@@ -1,6 +1,7 @@
 package test
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net"
@@ -12,6 +13,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	
+	"github.com/avenga/couper/server"
 )
 
 type Backend struct {
@@ -26,18 +29,7 @@ func NewBackend() *Backend {
 
 	b.srv = httptest.NewServer(b)
 
-	// test handler
-	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
-	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
-	b.mux.HandleFunc("/ws", echo)
-	b.mux.HandleFunc("/pdf", pdf)
-	b.mux.HandleFunc("/small", small)
-	b.mux.HandleFunc("/jwks.json", jwks)
-	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
-	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	})
-	b.mux.HandleFunc("/reflect", reflect)
+	registerHTTPHandler(b)
 
 	return b
 }
@@ -52,6 +44,43 @@ func (b *Backend) Close() {
 
 func (b *Backend) Addr() string {
 	return b.srv.URL
+}
+
+func NewExpiredBackend() (*Backend, *server.SelfSignedCertificate) {
+	b := &Backend{
+		mux: http.NewServeMux(),
+	}
+
+	b.srv = httptest.NewUnstartedServer(b.mux)
+
+	selfSigned, err := server.NewCertificate(time.Microsecond, nil, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	b.srv.TLS = &tls.Config{
+		Certificates: []tls.Certificate{*selfSigned.Server},
+	}
+
+	registerHTTPHandler(b)
+
+	b.srv.StartTLS()
+	return b, selfSigned
+}
+
+func registerHTTPHandler(b *Backend) {
+	// test handler
+	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
+	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
+	b.mux.HandleFunc("/ws", echo)
+	b.mux.HandleFunc("/pdf", pdf)
+	b.mux.HandleFunc("/small", small)
+	b.mux.HandleFunc("/jwks.json", jwks)
+	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
+	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	b.mux.HandleFunc("/reflect", reflect)
 }
 
 func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Request) {
