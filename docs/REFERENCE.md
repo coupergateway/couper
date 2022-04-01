@@ -15,7 +15,7 @@
       - [Duration](#duration)
     - [OpenAPI Block](#openapi-block)
     - [CORS Block](#cors-block)
-    - [OAuth2 CC Block](#oauth2-cc-block)
+    - [OAuth2 CC Block](#oauth2-block)
     - [Websockets Block](#websockets-block)
     - [Definitions Block](#definitions-block)
     - [Basic Auth Block](#basic-auth-block)
@@ -211,7 +211,7 @@ The `backend` block defines the connection to a local/remote backend service.
 
 |Block name|Context|Label|Nested block(s)|
 | :----------| :-----------| :-----------| :-----------|
-|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-cc-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta-oauth2-block), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-cc-block)|
+|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta-oauth2-block), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-block)|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -285,6 +285,7 @@ The `cors` block configures the CORS (Cross-Origin Resource Sharing) behavior in
 
 **Note:** `Access-Control-Allow-Methods` is only sent in response to a CORS preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method (see the `allowed_method` attribute for [`api`](#api-block) or [`endpoint`](#endpoint-block) blocks).
 
+<a id="oauth2-block"></a>
 ### OAuth2 CC Block
 
 The `oauth2` block in the [Backend Block](#backend-block) context configures the OAuth2 Client Credentials flow to request a bearer token for the backend request.
