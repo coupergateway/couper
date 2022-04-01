@@ -28,7 +28,7 @@ func errorUniqueLabels(block *hclsyntax.Block) error {
 func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
 	value, diags := attr.Expr.Value(envContext)
 	if diags.HasErrors() || strings.Index(value.AsString(), "/") == 0 {
-		return attr.Expr // Return unchanged in error cases.
+		return attr.Expr // Return unchanged in error cases and for absolute path values.
 	}
 
 	return &hclsyntax.LiteralValueExpr{
