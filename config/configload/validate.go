@@ -24,6 +24,10 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 }
 
 func validLabel(name string, subject *hcl.Range) error {
+	if name == "" {
+		return newDiagErr(subject, "label is empty")
+	}
+
 	if !regexLabel.MatchString(name) {
 		return newDiagErr(subject, "label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'")
 	}
