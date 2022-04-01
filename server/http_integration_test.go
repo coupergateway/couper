@@ -2950,7 +2950,22 @@ func TestConfigBodyContent(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	shutdown, _ := newCouper("testdata/integration/config/01_couper.hcl", test.New(t))
+	expiredOrigin, selfSigned := test.NewExpiredBackend()
+	defer expiredOrigin.Close()
+
+	expiredCert, err := os.CreateTemp(os.TempDir(), "expired.pem")
+	helper.Must(err)
+
+	_, err = expiredCert.Write(selfSigned.CA)
+	helper.Must(err)
+	helper.Must(expiredCert.Close())
+
+	defer os.RemoveAll(expiredCert.Name())
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/config/01_couper.hcl", helper, map[string]interface{}{
+		"expiredOrigin": expiredOrigin.Addr(),
+		"caFile":        expiredCert.Name(),
+	})
 	defer shutdown()
 
 	// default port changed in config
