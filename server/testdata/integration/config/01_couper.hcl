@@ -20,9 +20,9 @@ definitions {
   }
 
   backend "b" {
+    origin = "{{ .expiredOrigin }}"
+    path = "/anything"
     disable_certificate_validation = true
-    origin = "https://expired.badssl.com"
-    path = "/"
   }
 
   basic_auth "parse-only" {}
@@ -31,4 +31,5 @@ definitions {
 settings {
   default_port = 8090
   no_proxy_from_env = true
+  ca_file = "{{ .caFile }}"
 }
