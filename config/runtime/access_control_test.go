@@ -1,9 +1,10 @@
-package runtime
+package runtime_test
 
 import (
 	"testing"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 )
 
@@ -92,7 +93,7 @@ func TestACDefinitions_errors(t *testing.T) {
 			if err != nil {
 				subT.Fatal(err)
 			}
-			_, err = NewServerConfiguration(cf, nil, nil)
+			_, err = runtime.NewServerConfiguration(cf, nil, nil)
 			if err == nil {
 				subT.Errorf("Expected error")
 			}

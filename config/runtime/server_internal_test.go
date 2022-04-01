@@ -2,13 +2,15 @@ package runtime
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
+	logrustest "github.com/sirupsen/logrus/hooks/test"
+
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/test"
-	"reflect"
-	"testing"
 )
 
 func TestServer_isUnique(t *testing.T) {
@@ -209,7 +211,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 			tt.args.conf.Context = eval.NewContext(nil, nil)
 			tt.args.conf.Settings = &config.DefaultSettings
 
-			logger, _ := test.NewLogger()
+			logger, _ := logrustest.NewNullLogger()
 			log := logger.WithContext(context.Background())
 
 			quitCh := make(chan struct{})
