@@ -211,7 +211,7 @@ The `backend` block defines the connection to a local/remote backend service.
 
 |Block name|Context|Label|Nested block(s)|
 | :----------| :-----------| :-----------| :-----------|
-|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-cc-block)|
+|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-cc-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#oauth2-ac-block-beta), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-cc-block)|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
