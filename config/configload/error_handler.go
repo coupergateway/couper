@@ -12,8 +12,6 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-type errorHandlerContent map[string]kindContent
-
 type kindContent struct {
 	body  hcl.Body
 	kinds []string
@@ -26,7 +24,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 			continue
 		}
 
-		ehc, err := newErrorHandlerContent(bodyToContent(body.HCLBody()))
+		kinds, ehc, err := newErrorHandlerContent(bodyToContent(body.HCLBody()))
 		if err != nil {
 			return err
 		}
@@ -42,10 +40,10 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 
 		if handler, has := ehs.(config.ErrorHandlerGetter); has {
 			defaultHandler := handler.DefaultErrorHandler()
-			_, exist := ehc[errors.Wildcard]
+			_, exist := kinds[errors.Wildcard]
 			if !exist {
 				for _, kind := range defaultHandler.Kinds {
-					_, exist = ehc[kind]
+					_, exist = kinds[kind]
 					if exist {
 						break
 					}
@@ -62,21 +60,22 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 
 // newErrorHandlerContent reads given error_handler block contents and maps them by unique
 // error kind declaration.
-func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, error) {
-	configuredKinds := make(errorHandlerContent)
-
+func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []kindContent, error) {
 	if content == nil {
-		return configuredKinds, fmt.Errorf("empty hcl content")
+		return nil, nil, fmt.Errorf("empty hcl content")
 	}
+
+	configuredKinds := make(map[string]struct{})
+	var kindContents []kindContent
 
 	for _, block := range content.Blocks.OfType(errorHandler) {
 		kinds, err := newKindsFromLabels(block)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, k := range kinds {
 			if _, exist := configuredKinds[k]; exist {
-				return nil, hcl.Diagnostics{&hcl.Diagnostic{
+				return nil, nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  fmt.Sprintf("duplicate error type registration: %q", k),
 					Subject:  &block.LabelRanges[0],
@@ -93,17 +92,18 @@ func newErrorHandlerContent(content *hcl.BodyContent) (errorHandlerContent, erro
 					Summary:  fmt.Sprintf("error type is unknown: %q", k),
 					Subject:  &subjRange,
 				}
-				return nil, hcl.Diagnostics{diag}
+				return nil, nil, hcl.Diagnostics{diag}
 			}
 
-			configuredKinds[k] = kindContent{
-				body:  block.Body,
-				kinds: kinds,
-			}
+			configuredKinds[k] = struct{}{}
 		}
+		kindContents = append(kindContents, kindContent{
+			body:  block.Body,
+			kinds: kinds,
+		})
 	}
 
-	return configuredKinds, nil
+	return configuredKinds, kindContents, nil
 }
 
 // newKindsFromLabels reads two possible kind formats and returns them per slice entry.
