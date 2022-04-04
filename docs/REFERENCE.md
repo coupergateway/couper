@@ -26,6 +26,7 @@
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
     - [Defaults Block](#defaults-block)
+    - [Error Handler Block](#error-handler-block)
   - [Access Control](#access-control)
   - [Health-Check](#health-check)
   - [Variables](#variables)
@@ -563,6 +564,27 @@ The `defaults` block lets you define default values.
 Examples:
 
 - [`environment_variables`](https://github.com/avenga/couper-examples/blob/master/env-var/README.md).
+
+### Error Handler Block
+
+The `error_handler` block lets you configure the handling of errors thrown in components configured by the parent blocks.
+
+The error handler label specifies which [error type](ERRORS.md#error-types) should be handled. Multiple labels are allowed. The label can be omitted to catch all relevant errors. This has the same behavior as the error type `*`, that catches all errors explicitly.
+
+Concerning child blocks and attributes, the `error_handler` block is similar to an [Endpoint Block](#endpoint-block).
+
+| Block name  |Context|Label|Nested block(s)|
+| :-----------| :-----------| :-----------| :-----------|
+| `error_handler` | [API Block](#api-block), [Endpoint Block](#endpoint-block), [Basic Auth Block](#basic-auth-block), [JWT Block](#jwt-block), [OAuth2 AC Block (Beta)](#oauth2-ac-block-beta), [OIDC Block](#oidc-block), [SAML Block](#saml-block) | optional | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block(s)](#error-handler-block) |
+
+| Attribute(s)            | Type             | Default | Description                                                                                                       | Characteristic(s)                                                                                                                                                                                                                                                                                                                                                                                                                               | Example                                                              |
+|:------------------------|:-----------------|:--------|:------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|
+| `custom_log_fields`     | map              | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging).                                                  | &#9888; Inherited by nested blocks.                                                                                                                                                                                                                                                                                                                                                                                                             | -                                                                    |
+| [Modifiers](#modifiers) | -                | -       | -                                                                                                                 | -                                                                                                                                                                                                                                                                                                                                                                                                                                               | -                                                                    |
+
+Examples:
+
+- [Error Handling for Access Controls](https://github.com/avenga/couper-examples/blob/master/error-handling-ba/README.md).
 
 ## Access Control
 

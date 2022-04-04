@@ -6,7 +6,6 @@
   - [Access control error_handler](#access-control-error_handler)
   - [Scope related error_handler](#scope-related-error_handler)
   - [Endpoint related error_handler](#endpoint-related-error_handler)
-  - [error_handler specification](#error_handler-specification)
   - [Error types](#error-types)
     - [Access control error types](#access-control-error-types)
     - [API/endpoint error types](#api-and-endpoint-error-types)
@@ -37,26 +36,6 @@ an `api` or `endpoint` block.
 
 A [sequence](REFERENCE.md#endpoint-sequence), a simple `request` or `proxy` error can be handled in combination with the `expected_status` attribute for `request`
 and `proxy` block definitions and an `error_handler` definition with the [related](#endpoint-error-types) type label.
-
-## `error_handler` specification
-
-The error handler label specifies which [error type](#error-types)
-should be handled. Multiple labels are allowed. The label can be omitted to catch all errors which are related to this access control definition. This has the same behavior as the error type `*`, that catches all errors explicitly.
-
-This handler behaves like an [endpoint](REFERENCE.md#endpoint-block). It can have the same attributes **except** the following:
-
-- `access_control`
-- `disable_access_control`
-- `request_body_limit`
-
-Example:
-
-```hcl
-error_handler "jwt_token_missing" {
-  error_file = "my_custom_file.html"
-  response {}
-}
-```
 
 ## Error types
 
