@@ -9,7 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
 
 * **Fixed**
-  * Keys in object type attribute values are only handled case-insenstively if reasonable (e.g. the represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
+  * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
 
 ---
 
