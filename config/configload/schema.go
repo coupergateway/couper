@@ -264,18 +264,13 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 							continue
 						}
 
-						keyName := seetie.ValueToString(k)
-						switch name {
-						case "add_request_headers", "add_response_headers", "beta_scope", "headers", "set_request_headers", "set_response_headers":
-							// header field names, method names: handle object keys case-insensitively
-							keyName = strings.ToLower(keyName)
-						}
+						keyName := strings.ToLower(seetie.ValueToString(k))
 						if _, ok := unique[keyName]; ok {
 							errors = errors.Append(&hcl.Diagnostic{
 								Subject:  &expr.SrcRange,
 								Severity: hcl.DiagError,
 								Summary:  fmt.Sprintf("key in an attribute must be unique: '%s'", keyName),
-								Detail:   "Key must be unique for " + keyName + ".",
+								Detail:   "Key must be unique for " + string(keyName) + ".",
 							})
 						}
 
