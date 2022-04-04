@@ -24,18 +24,18 @@ Detailed information is provided via log message. This way, all information can 
 ## Access control `error_handler`
 
 Access control errors in particular require special handling, e.g. sending a specific response for missing login credentials.
-For this purpose every access control definition of `basic_auth`, `jwt` or `saml2` can define one or multiple `error_handler` with one or more defined error type labels listed below.
+For this purpose every access control definition of `basic_auth`, `jwt` or `saml2` can define one or multiple [`error_handler` blocks](REFERENCE.md#error-handler-block) with one or more defined error type labels listed below.
 
 ## Scope related `error_handler`
 
 Since an [AC](#access-control-error_handler) error handler is rather general than scopes handled per endpoint or http-method but are still protected with the
-same access-control. Reacting to those more path specific errors you can define one or more `error_handler` blocks within
+same access-control. Reacting to those more path specific errors you can define one or more [`error_handler` blocks](REFERENCE.md#error-handler-block) within
 an `api` or `endpoint` block.
 
 ## Endpoint related `error_handler`
 
 A [sequence](REFERENCE.md#endpoint-sequence), a simple `request` or `proxy` error can be handled in combination with the `expected_status` attribute for `request`
-and `proxy` block definitions and an `error_handler` definition with the [related](#endpoint-error-types) type label.
+and `proxy` block definitions and an [`error_handler` block](REFERENCE.md#error-handler-block) with the [related](#endpoint-error-types) type label.
 
 ## Error types
 
