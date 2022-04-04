@@ -8,8 +8,8 @@ server "hcl" {
     endpoint "/expired" {
       proxy {
         backend "b" {
-          origin = "https://expired.badssl.com"
-          path = "/"
+          origin = "{{ .expiredOrigin }}"
+          path = "/anything"
         }
       }
     }
@@ -24,6 +24,7 @@ definitions {
 
   backend "b" {
     origin = "http://1.2.3.4"
+    path = "/"
     disable_certificate_validation = true
   }
 
@@ -33,4 +34,5 @@ definitions {
 settings {
   default_port = 8090
   no_proxy_from_env = true
+  ca_file = "{{ .caFile }}"
 }

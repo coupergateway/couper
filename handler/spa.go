@@ -37,11 +37,6 @@ func NewSpa(bootstrapFile string, srvOpts *server.Options, modifier []hcl.Body) 
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet && req.Method != http.MethodHead {
-		rw.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	file, err := os.Open(s.file)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {

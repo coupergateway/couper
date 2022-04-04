@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/utils"
 )
 
@@ -57,41 +58,38 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	for path, h := range opts.EndpointRoutes {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, nil, path, h, true)
+		mux.mustAddRoute(mux.endpointRoot, path, h, true)
 	}
 
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, fileMethods, utils.JoinPath(path, "/**"), h, false)
+		mux.mustAddRoute(mux.fileRoot, utils.JoinPath(path, "/**"), h, false)
 	}
 
 	for path, h := range opts.SPARoutes {
-		mux.mustAddRoute(mux.spaRoot, fileMethods, path, h, false)
+		mux.mustAddRoute(mux.spaRoot, path, h, false)
 	}
 
 	return mux
 }
 
-func (m *Mux) mustAddRoute(root *pathpattern.Node, methods []string, path string, handler http.Handler, forEndpoint bool) *Mux {
+var noDefaultMethods []string
+
+func (m *Mux) registerHandler(root *pathpattern.Node, methods []string, path string, handler http.Handler) {
+	notAllowedMethodsHandler := errors.DefaultJSON.WithError(errors.MethodNotAllowed)
+	allowedMethodsHandler := middleware.NewAllowedMethodsHandler(methods, noDefaultMethods, handler, notAllowedMethodsHandler)
+	m.mustAddRoute(root, path, allowedMethodsHandler, true)
+}
+
+func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Handler, forEndpoint bool) {
 	if forEndpoint && strings.HasSuffix(path, wildcardSearch) {
 		route := mustCreateNode(root, handler, "", path)
 		m.handler[route] = handler
-		return m
+		return
 	}
 
-	if methods == nil {
-		// EndpointRoutes allowed methods are handled by handler
-		route := mustCreateNode(root, handler, "", path)
-		m.handler[route] = handler
-
-		return m
-	}
-
-	for _, method := range methods {
-		route := mustCreateNode(root, handler, method, path)
-		m.handler[route] = handler
-	}
-
-	return m
+	// EndpointRoutes allowed methods are handled by handler
+	route := mustCreateNode(root, handler, "", path)
+	m.handler[route] = handler
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
@@ -114,7 +112,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			return fileHandler
 		}
 
-		node, paramValues = m.match(m.spaRoot, req)
+		node, paramValues = m.matchWithoutMethod(m.spaRoot, req)
 
 		if node == nil {
 			if fileHandler != nil {
@@ -163,7 +161,7 @@ func (m *Mux) matchWithoutMethod(root *pathpattern.Node, req *http.Request) (*pa
 }
 
 func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
-	node, _ := m.match(m.fileRoot, req)
+	node, _ := m.matchWithoutMethod(m.fileRoot, req)
 	if node == nil {
 		return nil, false
 	}
