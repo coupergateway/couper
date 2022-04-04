@@ -106,7 +106,7 @@ as json error with an error body payload. This can be customized via `error_file
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block), [Error Handler Block](#error-handler-block) |
+|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block), [Error Handler Block(s)](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -127,7 +127,7 @@ produce an explicit or implicit client response.
 
 | Block name | Context                                                | Label                                                                  | Nested block(s)                                                                                                                                                      |
 |:-----------|:-------------------------------------------------------|:-----------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `endpoint` | [Server Block](#server-block), [API Block](#api-block) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block](#error-handler-block) |
+| `endpoint` | [Server Block](#server-block), [API Block](#api-block) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block(s)](#error-handler-block) |
 
 <!-- TODO: decide how to place "modifier" in the reference table - same for other block which allow modifiers -->
 
@@ -347,7 +347,7 @@ by `htpasswd_file` otherwise.
 
 | Block name   | Context | Label | Nested block(s) |
 | :----------- | :------ | :---- | :-------------- |
-| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | [Error Handler Block](#error-handler-block) |
+| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | [Error Handler Block(s)](#error-handler-block) |
 
 | Attribute(s)    | Type   | Default | Description | Characteristic(s) | Example |
 | :-------------- | :----- | :------ | :---------- | :---------------- | :------ |
@@ -370,7 +370,7 @@ Since responses from endpoints protected by JWT access controls are not publicly
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-| `jwt`| [Definitions Block](#definitions-block)| &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block](#error-handler-block) |
+| `jwt`| [Definitions Block](#definitions-block)| &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block(s)](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -444,7 +444,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](#error-handler-block) |
+|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -473,7 +473,7 @@ Like all [Access Control](#access-control) types, the `oidc` block is defined in
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](#error-handler-block) |
+|`oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
