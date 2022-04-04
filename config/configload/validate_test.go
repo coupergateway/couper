@@ -403,7 +403,10 @@ defaults {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log, nil)
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
 			}
 
 			var errMsg string
