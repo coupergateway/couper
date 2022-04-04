@@ -10,6 +10,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
 
+* **Fixed**
+  * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
+  * Multiple labels for [`error_handler` blocks](./docs/ERRORS.md#error_handler-specification) ([#462](https://github.com/avenga/couper/pull/462))
+
 ---
 
 ## [1.8.0](https://github.com/avenga/couper/releases/tag/v1.8.0)

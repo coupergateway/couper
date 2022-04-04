@@ -492,9 +492,8 @@ Like all [Access Control](#access-control) types, the `oidc` block is defined in
 | `token_backend`              | string                | -                     | [Backend Block Reference](#backend-block)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
 | `userinfo_backend`           | string                | -                     | [Backend Block Reference](#backend-block)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
 
-A word to the additional optional backend configuration options: `configuration_backend`, `jwks_uri_backend`, `token_backend` and `userinfo_backend`:
-In most cases these backends must not be configured. A given `backend` definition will work as template for all of them. However, define them enables
-a specific behaviour for one of them e.g. timeouts and so on.
+In most cases, referencing one `backend` (backend attribute) for all the backend requests sent by the OIDC client is enough.
+You should only use `configuration_backend`, `jwks_uri_backend`, `token_backend` or `userinfo_backend` if you need to configure a specific behaviour for the respective request (e.g. timeouts).
 
 If the OpenID server supports the `code_challenge_method` `S256` the default value for `verifier_method`is `ccm_s256`, `nonce` otherwise.
 

@@ -77,6 +77,21 @@ func GetHostPort(hostPort string) (string, int, error) {
 	return host, port, nil
 }
 
+var defaultFileSpaAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+}
+
+var defaultEndpointAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodOptions,
+}
+
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
 func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (ServerConfiguration, error) {
@@ -151,11 +166,16 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.ServerErrTpl}
+			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, defaultFileSpaAllowedMethods, spaHandler, notAllowedMethodsHandler)
+			spaHandler = allowedMethodsHandler
+
 			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
 				&protectedOptions{
-					epOpts:   &handler.EndpointOptions{ErrorTemplate: serverOptions.ServerErrTpl},
+					epOpts:   epOpts,
 					handler:  spaHandler,
 					memStore: memStore,
 					settings: conf.Settings,
@@ -165,7 +185,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), nil)
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), allowedMethodsHandler.MethodAllowed)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -195,11 +215,16 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpl}
+			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, defaultFileSpaAllowedMethods, fileHandler, notAllowedMethodsHandler)
+			fileHandler = allowedMethodsHandler
+
 			fileHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
 				&protectedOptions{
-					epOpts:   &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpl},
+					epOpts:   epOpts,
 					handler:  fileHandler,
 					memStore: memStore,
 					settings: conf.Settings,
@@ -209,7 +234,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), nil)
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), allowedMethodsHandler.MethodAllowed)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -324,7 +349,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				allowedMethods = parentAPI.AllowedMethods
 			}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, protectedHandler, notAllowedMethodsHandler)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, defaultEndpointAllowedMethods, protectedHandler, notAllowedMethodsHandler)
 			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,

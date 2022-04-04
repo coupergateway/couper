@@ -232,7 +232,7 @@ definitions {
       jwt_regular = request.method
     }
 
-    error_handler "jwt" {
+    error_handler "jwt_token_missing" "jwt" {
       custom_log_fields = {
         jwt_error = request.method
       }
