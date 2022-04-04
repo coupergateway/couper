@@ -134,8 +134,10 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 
 		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 	}
+
 	if filePath != "" {
-		filePath, err := filepath.Abs(filePath)
+		var err error
+		filePath, err = filepath.Abs(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -172,22 +174,22 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	settings := mergeAttributes("settings", parsedBodies)
+	settingsBlock := mergeAttributes(settings, parsedBodies)
 
-	definitions, err := mergeDefinitions(parsedBodies)
+	definitionsBlock, err := mergeDefinitions(parsedBodies)
 	if err != nil {
 		return nil, err
 	}
 
-	servers, err := mergeServers(parsedBodies)
+	serverBlocks, err := mergeServers(parsedBodies)
 	if err != nil {
 		return nil, err
 	}
 
-	configBlocks := servers
-	configBlocks = append(configBlocks, definitions)
+	configBlocks := serverBlocks
+	configBlocks = append(configBlocks, definitionsBlock)
 	configBlocks = append(configBlocks, defaults)
-	configBlocks = append(configBlocks, settings)
+	configBlocks = append(configBlocks, settingsBlock)
 
 	configBody := &hclsyntax.Body{
 		Blocks: configBlocks,
