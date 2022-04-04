@@ -4963,6 +4963,30 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted by api only, CONNECT", http.MethodConnect, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, TRACE", http.MethodTrace, "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted by api only, BREW", "BREW", "/api2/restrictedByApiOnly", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+
+		{"files, GET", http.MethodGet, "/index.html", http.Header{}, http.StatusOK, ""},
+		{"files, HEAD", http.MethodHead, "/index.html", http.Header{}, http.StatusOK, ""},
+		{"files, POST", http.MethodPost, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, PUT", http.MethodPut, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, PATCH", http.MethodPatch, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, DELETE", http.MethodDelete, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, OPTIONS", http.MethodOptions, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, CONNECT", http.MethodConnect, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, TRACE", http.MethodTrace, "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, BREW", "BREW", "/index.html", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"files, CORS preflight", http.MethodOptions, "/index.html", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
+
+		{"spa, GET", http.MethodGet, "/app/foo", http.Header{}, http.StatusOK, ""},
+		{"spa, HEAD", http.MethodHead, "/app/foo", http.Header{}, http.StatusOK, ""},
+		{"spa, POST", http.MethodPost, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, PUT", http.MethodPut, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, PATCH", http.MethodPatch, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, DELETE", http.MethodDelete, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, OPTIONS", http.MethodOptions, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, CONNECT", http.MethodConnect, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, TRACE", http.MethodTrace, "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, BREW", "BREW", "/app/foo", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"spa, CORS preflight", http.MethodOptions, "/app/foo", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
