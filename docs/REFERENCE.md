@@ -106,7 +106,7 @@ as json error with an error body payload. This can be customized via `error_file
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
+|`api`|[Server Block](#server-block)|Optional| [Endpoint Block(s)](#endpoint-block), [CORS Block](#cors-block), [Error Handler Block](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -127,7 +127,7 @@ produce an explicit or implicit client response.
 
 | Block name | Context                                                | Label                                                                  | Nested block(s)                                                                                                                                                      |
 |:-----------|:-------------------------------------------------------|:-----------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `endpoint` | [Server Block](#server-block), [API Block](#api-block) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
+| `endpoint` | [Server Block](#server-block), [API Block](#api-block) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block](#error-handler-block) |
 
 <!-- TODO: decide how to place "modifier" in the reference table - same for other block which allow modifiers -->
 
@@ -347,7 +347,7 @@ by `htpasswd_file` otherwise.
 
 | Block name   | Context | Label | Nested block(s) |
 | :----------- | :------ | :---- | :-------------- |
-| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
+| `basic_auth` | [Definitions Block](#definitions-block) | &#9888; required | [Error Handler Block](#error-handler-block) |
 
 | Attribute(s)    | Type   | Default | Description | Characteristic(s) | Example |
 | :-------------- | :----- | :------ | :---------- | :---------------- | :------ |
@@ -370,7 +370,7 @@ Since responses from endpoints protected by JWT access controls are not publicly
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-| `jwt`| [Definitions Block](#definitions-block)| &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block](ERRORS.md#error_handler-specification) |
+| `jwt`| [Definitions Block](#definitions-block)| &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :-------- | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -444,7 +444,7 @@ Like all [Access Control](#access-control) types, the `beta_oauth2` block is def
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
+|`beta_oauth2`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -473,7 +473,7 @@ Like all [Access Control](#access-control) types, the `oidc` block is defined in
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](ERRORS.md#error_handler-specification) |
+|`oidc`| [Definitions Block](#definitions-block)| &#9888; required | [Backend Block](#backend-block), [Error Handler Block(s)](#error-handler-block) |
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -503,7 +503,7 @@ required _label_.
 
 |Block name|Context|Label|Nested block(s)|
 | :--------| :-----------| :-----------| :-----------|
-|`saml`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](ERRORS.md#error_handler-specification) |
+|`saml`| [Definitions Block](#definitions-block)| &#9888; required | [Error Handler Block](#error-handler-block) |
 
 | Attribute(s)        | Type | Default | Description | Characteristic(s) | Example |
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -776,9 +776,9 @@ executed ordered as follows:
 
 | Modifier                 | Contexts                                                                                                                                                | Description                                                       |
 | :----------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------- |
-| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of request header to be removed from the upstream request.   |
-| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set request header in the upstream request. |
-| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add request header to the upstream request. |
+| `remove_request_headers` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | list of request header to be removed from the upstream request.   |
+| `set_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to set request header in the upstream request. |
+| `add_request_headers`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to add request header to the upstream request. |
 
 All `*_request_headers` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -790,9 +790,9 @@ executed ordered as follows:
 
 | Modifier                  | Contexts                                                                                                                                                                                                                                                              | Description                                                       |
 | :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
-| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of response header to be removed from the client response.   |
-| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set response header in the client response. |
-| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add response header to the client response. |
+| `remove_response_headers` | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | list of response header to be removed from the client response.   |
+| `set_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to set response header in the client response. |
+| `add_response_headers`    | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block), [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to add response header to the client response. |
 
 All `*_response_headers` are executed from: `server`, `files`, `spa`, `api`, `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -803,7 +803,7 @@ given value.
 
 | Modifier              | Contexts                                                                                            | Description                                        |
 | :-------------------- | :-------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
-| `set_response_status` | [Endpoint Block](#endpoint-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | HTTP status code to be set to the client response. |
+| `set_response_status` | [Endpoint Block](#endpoint-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | HTTP status code to be set to the client response. |
 
 If the HTTP status code ist set to `204`, the response body and the HTTP header
 field `Content-Length` is removed from the client response, and a warning is logged.
@@ -818,9 +818,9 @@ executed ordered as follows:
 
 | Modifier              | Contexts                                                                                                                                                | Description                                                             |
 | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------- |
-| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of query parameters to be removed from the upstream request URL.   |
-| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set query parameters in the upstream request URL. |
-| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add query parameters to the upstream request URL. |
+| `remove_query_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | list of query parameters to be removed from the upstream request URL.   |
+| `set_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to set query parameters in the upstream request URL. |
+| `add_query_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to add query parameters to the upstream request URL. |
 
 All `*_query_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
@@ -864,9 +864,9 @@ executed ordered as follows:
 
 | Modifier             | Contexts                                                                                                                                                | Description                                                             |
 | :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------- |
-| `remove_form_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | list of form parameters to be removed from the upstream request body.   |
-| `set_form_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to set form parameters in the upstream request body. |
-| `add_form_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](ERRORS.md#error_handler-specification) | Key/value(s) pairs to add form parameters to the upstream request body. |
+| `remove_form_params` | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | list of form parameters to be removed from the upstream request body.   |
+| `set_form_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to set form parameters in the upstream request body. |
+| `add_form_params`    | [Endpoint Block](#endpoint-block), [Proxy Block](#proxy-block), [Backend Block](#backend-block), [Error Handler](#error-handler-block) | Key/value(s) pairs to add form parameters to the upstream request body. |
 
 All `*_form_params` are executed from: `endpoint`, `proxy`, `backend` and `error_handler`.
 
