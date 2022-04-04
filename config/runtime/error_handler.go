@@ -14,7 +14,7 @@ import (
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, settings *config.Settings, references ...string) (http.Handler, error) {
+	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
 		definition, ok := defs[ref]

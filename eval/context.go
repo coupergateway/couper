@@ -157,6 +157,9 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
+	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
+	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
+
 	backendsVariable := map[string]interface{}{}
 	probe_map.BackendProbes.Range(func(backendName, value interface{}) bool {
 		health := value.(probe_map.HealthInfo)
