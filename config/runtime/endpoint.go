@@ -35,10 +35,6 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 
 		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
 
-		if _, ok := apiBasePaths[basePath]; ok {
-			return nil, fmt.Errorf("API paths must be unique")
-		}
-
 		apiBasePaths[basePath] = struct{}{}
 
 		for _, epConf := range apiConf.Endpoints {
