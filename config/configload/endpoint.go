@@ -36,7 +36,7 @@ func newCatchAllEndpoint() *config.Endpoint {
 	}
 }
 
-func refineEndpoints(helper *Helper, endpoints config.Endpoints, check bool) error {
+func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) error {
 	var err error
 
 	for _, endpoint := range endpoints {
