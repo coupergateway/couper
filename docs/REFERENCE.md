@@ -110,7 +110,7 @@ as json error with an error body payload. This can be customized via `error_file
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------  | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-|`base_path`|string|-|Configures the path prefix for all requests.|&#9888; Must be unique if multiple `api` blocks are defined.| `base_path = "/v1"`|
+|`base_path`|string|-|Configures the path prefix for all requests.|| `base_path = "/v1"`|
 | `error_file` |string|-|Location of the error file template.|-|`error_file = "./my_error_body.json"`|
 | `access_control` |list|-|Sets predefined [Access Control](#access-control) for `api` block context.|&#9888; Inherited by nested blocks.| `access_control = ["foo"]`|
 | `allowed_methods` | tuple of string | `["*"]` == `["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]` | Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status. | The default value `*` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](#cors-block) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method. | `allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]` |

@@ -6,6 +6,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * missing error handling while loading a given `ca_file` ([#460](https://github.com/avenga/couper/pull/460))
+  * allow [`api` blocks](./docs/REFERENCE.md#api-block) sharing the same `base_path` ([#471](https://github.com/avenga/couper/pull/471))
+
 
 ---
 
