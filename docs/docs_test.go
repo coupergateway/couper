@@ -22,7 +22,7 @@ func TestDocs_Links(t *testing.T) {
 	}
 
 	type entry struct {
-		anchors, links []item
+		anchors, htmlAnchors, links []item
 	}
 
 	entries := map[string]*entry{}
@@ -67,16 +67,24 @@ func TestDocs_Links(t *testing.T) {
 			anchors = append(anchors, item{value: prepareAnchor(match[1])})
 		}
 
+		regexHTMLAnchors := regexp.MustCompile(`(?m)^<a id="([^"]+)"></a>$`)
+		allHTMLAnchors := regexHTMLAnchors.FindAllStringSubmatch(string(raw), -1)
+		var htmlAnchors []item
+		for _, match := range allHTMLAnchors {
+			htmlAnchors = append(htmlAnchors, item{value: match[1]})
+		}
+
 		entries[file.Name()] = &entry{
-			anchors: anchors,
-			links:   links,
+			anchors:     anchors,
+			htmlAnchors: htmlAnchors,
+			links:       links,
 		}
 	}
 
 	for filename, file := range entries {
 		// Search for ghost-anchors
 		for _, link := range file.links {
-			if !existsFn(file.anchors, link) {
+			if !existsFn(file.anchors, link) && !existsFn(file.htmlAnchors, link) {
 				val := link.value
 				if link.reference != "" {
 					val = link.reference + ":" + val
@@ -85,7 +93,7 @@ func TestDocs_Links(t *testing.T) {
 			}
 		}
 
-		// Search for ghost-links
+		// Search for ghost-links - ignore HTML anchors added specifically for VS Code.
 		for _, anchor := range file.anchors {
 			if anchor.value != "table-of-contents" && !existsFn(file.links, anchor) {
 				t.Errorf("%s: link for '%v' not found", filename, anchor)
