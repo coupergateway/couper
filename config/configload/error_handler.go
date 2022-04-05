@@ -106,11 +106,13 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 	return configuredKinds, kindContents, nil
 }
 
+const errorHandlerLabelSep = " "
+
 // newKindsFromLabels reads two possible kind formats and returns them per slice entry.
 func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	var allKinds []string
 	for _, kinds := range block.Labels {
-		all := strings.Split(kinds, " ")
+		all := strings.Split(kinds, errorHandlerLabelSep)
 		for i, a := range all {
 			if a == "" {
 				err := hcl.Diagnostic{

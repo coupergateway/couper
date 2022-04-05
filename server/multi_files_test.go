@@ -34,23 +34,31 @@ func TestMultiFiles_Server(t *testing.T) {
 
 	type testcase struct {
 		url       string
+		header    test.Header
 		expStatus int
 		expBody   string
 	}
 
+	token := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+
 	for _, tc := range []testcase{
-		{"http://example.com:9080/", http.StatusOK, "<body>RIGHT INCLUDE</body>\n"},
-		{"http://example.com:9080/free", http.StatusForbidden, ""},
-		{"http://example.com:9080/api-111", http.StatusUnauthorized, ""},
-		{"http://example.com:9080/api-3", http.StatusTeapot, ""},
-		{"http://example.com:9080/api-4/ep", http.StatusNoContent, ""},
-		{"http://example.com:9081/", http.StatusOK, ""},
-		{"http://example.com:8082/", http.StatusOK, ""},
-		{"http://example.com:8083/", http.StatusNotFound, ""},
-		{"http://example.com:9084/", http.StatusNotFound, ""},
+		{"http://example.com:9080/", nil, http.StatusOK, "<body>RIGHT INCLUDE</body>\n"},
+		{"http://example.com:9080/free", nil, http.StatusForbidden, ""},
+		{"http://example.com:9080/errors/", test.Header{"Authorization": "Bearer " + token}, http.StatusTeapot, ""},
+		{"http://example.com:9080/api-111", nil, http.StatusUnauthorized, ""},
+		{"http://example.com:9080/api-3", nil, http.StatusTeapot, ""},
+		{"http://example.com:9080/api-4/ep", nil, http.StatusNoContent, ""},
+		{"http://example.com:9081/", nil, http.StatusOK, ""},
+		{"http://example.com:8082/", nil, http.StatusOK, ""},
+		{"http://example.com:8083/", nil, http.StatusNotFound, ""},
+		{"http://example.com:9084/", nil, http.StatusNotFound, ""},
 	} {
 		req, err = http.NewRequest(http.MethodGet, tc.url, nil)
 		helper.Must(err)
+
+		for k, v := range tc.header {
+			req.Header.Set(k, v)
+		}
 
 		res, err = client.Do(req)
 		helper.Must(err)
@@ -63,7 +71,8 @@ func TestMultiFiles_Server(t *testing.T) {
 			continue
 		}
 
-		resBytes, err := io.ReadAll(res.Body)
+		var resBytes []byte
+		resBytes, err = io.ReadAll(res.Body)
 		helper.Must(err)
 		_ = res.Body.Close()
 

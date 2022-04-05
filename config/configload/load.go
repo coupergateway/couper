@@ -27,6 +27,7 @@ const (
 	api          = "api"
 	backend      = "backend"
 	definitions  = "definitions"
+	endpoint     = "endpoint"
 	errorHandler = "error_handler"
 	nameLabel    = "name"
 	oauth2       = "oauth2"
@@ -355,7 +356,7 @@ func LoadConfig(body hcl.Body, filename, dirPath string) (*config.Couper, error)
 			var errorMessage string
 			if _, exists := headers["alg"]; exists {
 				errorMessage = `"alg" cannot be set via "headers"`
-			} else if _, exists := headers["typ"]; exists {
+			} else if _, exists = headers["typ"]; exists {
 				errorMessage = `"typ" cannot be set via "headers"`
 			}
 

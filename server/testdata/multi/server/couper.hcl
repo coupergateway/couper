@@ -19,6 +19,23 @@ server {
     }
   }
 
+  api "ERR" {
+    base_path = "/errors"
+
+    endpoint "/" {
+      request {
+        url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+        expected_status = 404
+      }
+    }
+
+    error_handler "unexpected_status * beta_insufficient_scope" {
+      response {
+        status = 405
+      }
+    }
+  }
+
   api "API" {
     base_path = "/api-1"
 
@@ -30,7 +47,7 @@ server {
 
     endpoint "/" {
       proxy {
-        url = "https://example.com"
+        url = "https://couper.io/"
       }
     }
   }
