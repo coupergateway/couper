@@ -10,23 +10,6 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
-func TestIntegration_Backends(t *testing.T) {
-	t.Skip()
-	client := newClient()
-	helper := test.New(t)
-
-	shutdown, _ := newCouper("testdata/integration/backends/01_couper.hcl", helper)
-	defer shutdown()
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
-	helper.Must(err)
-
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	t.Errorf("%#v", res)
-}
-
 func TestIntegration_FormParams(t *testing.T) {
 	client := newClient()
 
