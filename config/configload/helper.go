@@ -28,7 +28,6 @@ func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*Helper, er
 	defSettings := config.DefaultSettings
 
 	couperConfig := &config.Couper{
-		Bytes:       src,
 		Context:     eval.NewContext([][]byte{src}, defaultsBlock.Defaults),
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
