@@ -93,7 +93,7 @@ func TestDocs_Links(t *testing.T) {
 			}
 		}
 
-		// Search for ghost-links - ignore HTML anchors added specifically for VS Code
+		// Search for ghost-links - ignore HTML anchors added specifically for VS Code.
 		for _, anchor := range file.anchors {
 			if anchor.value != "table-of-contents" && !existsFn(file.links, anchor) {
 				t.Errorf("%s: link for '%v' not found", filename, anchor)
