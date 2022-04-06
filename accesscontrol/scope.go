@@ -7,7 +7,7 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-var supportedOperations = []string{
+var supportedMethods = []string{
 	http.MethodGet,
 	http.MethodHead,
 	http.MethodPost,
@@ -29,36 +29,36 @@ func newRequiredPermissions() requiredPermissions {
 
 func (r *requiredPermissions) addPermissionMap(permissionMap map[string]string) {
 	otherPermission, otherMethodExists := permissionMap["*"]
-	for _, op := range supportedOperations {
-		permission, exists := permissionMap[op]
+	for _, method := range supportedMethods {
+		permission, exists := permissionMap[method]
 		if exists {
-			r.addPermissionForOperation(op, permission)
+			r.addPermissionForMethod(method, permission)
 		} else if otherMethodExists {
-			r.addPermissionForOperation(op, otherPermission)
+			r.addPermissionForMethod(method, otherPermission)
 		} else {
-			delete(r.permissions, op)
+			delete(r.permissions, method)
 		}
 	}
 }
 
-func (r *requiredPermissions) addPermissionForOperation(operation, permission string) {
-	permissions, exists := r.permissions[operation]
+func (r *requiredPermissions) addPermissionForMethod(method, permission string) {
+	permissions, exists := r.permissions[method]
 	if !exists {
 		if permission == "" {
 			// method permitted without permission
-			r.permissions[operation] = []string{}
+			r.permissions[method] = []string{}
 			return
 		}
 		// method permitted with required permission
-		r.permissions[operation] = []string{permission}
+		r.permissions[method] = []string{permission}
 		return
 	}
 	// no additional permission required
 	if permission == "" {
 		return
 	}
-	// add permission to required permissions for this operation
-	r.permissions[operation] = append(permissions, permission)
+	// add permission to required permissions for this method
+	r.permissions[method] = append(permissions, permission)
 }
 
 var _ AccessControl = &ScopeControl{}
@@ -84,7 +84,7 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	}
 	requiredPermissions, exists := s.required.permissions[req.Method]
 	if !exists {
-		return errors.BetaOperationDenied.Messagef("operation %s not permitted", req.Method)
+		return errors.BetaOperationDenied.Messagef("method %s not permitted", req.Method)
 	}
 	ctx := req.Context()
 	grantedScope, ok := ctx.Value(request.Scopes).([]string)

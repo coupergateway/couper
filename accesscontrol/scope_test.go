@@ -58,19 +58,19 @@ func Test_requiredPermissions(t *testing.T) {
 				subT.Errorf("unexpected permissions: %#v, want: %#v", rp.permissions, tt.want)
 				return
 			}
-			for op, wantPermissions := range tt.want {
-				permissions, exists := rp.permissions[op]
+			for method, wantPermissions := range tt.want {
+				permissions, exists := rp.permissions[method]
 				if !exists {
-					subT.Errorf("no permissions for operation %q", op)
+					subT.Errorf("no permissions for method %q", method)
 					return
 				}
 				if len(permissions) != len(wantPermissions) {
-					subT.Errorf("unexpected permissions for %q: %#v, want: %#v", op, permissions, wantPermissions)
+					subT.Errorf("unexpected permissions for %q: %#v, want: %#v", method, permissions, wantPermissions)
 					return
 				}
 				for i, p := range wantPermissions {
 					if permissions[i] != p {
-						subT.Errorf("unexpected permissions for %q: %#v, want: %#v", op, permissions, wantPermissions)
+						subT.Errorf("unexpected permissions for %q: %#v, want: %#v", method, permissions, wantPermissions)
 						return
 					}
 				}
@@ -134,7 +134,7 @@ func Test_ScopeControl(t *testing.T) {
 			[]map[string]string{{http.MethodGet: ""}},
 			http.MethodPost,
 			nil,
-			"access control error: operation POST not permitted",
+			"access control error: method POST not permitted",
 		},
 		{
 			"method permitted, permission required, no scope granted",

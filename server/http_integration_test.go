@@ -3694,7 +3694,7 @@ func Test_Scope(t *testing.T) {
 
 	type testCase struct {
 		name        string
-		operation   string
+		method      string
 		path        string
 		authorize   bool
 		status      int
@@ -3707,23 +3707,23 @@ func Test_Scope(t *testing.T) {
 		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, ``, "access control error: scoped_jwt: token required", "jwt_token_missing"},
 		{"by scope: sufficient scope", http.MethodGet, "/scope/foo", true, http.StatusNoContent, `["a"]`, "", ""},
 		{"by scope: additional scope required: insufficient scope", http.MethodPost, "/scope/foo", true, http.StatusForbidden, ``, `access control error: required permission "foo" not granted`, "beta_insufficient_scope"},
-		{"by scope: operation not permitted", http.MethodDelete, "/scope/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
+		{"by scope: method not permitted", http.MethodDelete, "/scope/foo", true, http.StatusForbidden, ``, "access control error: method DELETE not permitted", "beta_operation_denied"},
 		{"by scope: additional scope required by *: insufficient scope", http.MethodGet, "/scope/bar", true, http.StatusForbidden, ``, `access control error: required permission "more" not granted`, "beta_insufficient_scope"},
 		{"by scope: no additional scope required: sufficient scope", http.MethodDelete, "/scope/bar", true, http.StatusNoContent, `["a"]`, "", ""},
 		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, "access control error: roled_jwt: token required", "jwt_token_missing"},
 		{"by role: sufficient scope", http.MethodGet, "/role/foo", true, http.StatusNoContent, `["a","b"]`, "", ""},
 		{"by role: additional scope required: insufficient scope", http.MethodPost, "/role/foo", true, http.StatusForbidden, ``, `access control error: required permission "foo" not granted`, "beta_insufficient_scope"},
-		{"by role: operation not permitted", http.MethodDelete, "/role/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
+		{"by role: method not permitted", http.MethodDelete, "/role/foo", true, http.StatusForbidden, ``, "access control error: method DELETE not permitted", "beta_operation_denied"},
 		{"by role: additional scope required by *: insufficient scope", http.MethodGet, "/role/bar", true, http.StatusForbidden, ``, `access control error: required permission "more" not granted`, "beta_insufficient_scope"},
 		{"by role: no additional scope required: sufficient scope", http.MethodDelete, "/role/bar", true, http.StatusNoContent, `["a","b"]`, "", ""},
 		{"by scope/role, mapped from scope", http.MethodGet, "/scope_and_role/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
 		{"by scope/role, mapped scope mapped from role", http.MethodGet, "/scope_and_role/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
 	} {
-		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(subT *testing.T) {
+		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.method, tc.path), func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
-			req, err := http.NewRequest(tc.operation, "http://back.end:8080"+tc.path, nil)
+			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
 			if tc.authorize {
