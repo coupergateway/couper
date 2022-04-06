@@ -43,7 +43,7 @@ var defaultBackend = hclbody.New(&hcl.BodyContent{
 // This applies to defined, reference, anonymous and endpoint/url related configurations.
 // This method will be called recursively and is used as wrapped injector for
 // access-control backends via config.PrepareBackendFunc.
-func PrepareBackend(helper *Helper, attrName, attrValue string, block config.Inline) (hcl.Body, error) {
+func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inline) (hcl.Body, error) {
 	var reference string // backend definitions
 	var backendBody hcl.Body
 	var err error
@@ -148,7 +148,7 @@ func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
 
 // newOAuthBackend prepares a nested backend within a backend-oauth2 block.
 // TODO: Check a possible circular dependency with given parent backend(s).
-func newOAuthBackend(helper *Helper, parent hcl.Body) (hcl.Body, error) {
+func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
 		return nil, err

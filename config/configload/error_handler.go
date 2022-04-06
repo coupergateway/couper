@@ -17,7 +17,7 @@ type kindContent struct {
 	kinds []string
 }
 
-func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *Helper) error {
+func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) error {
 	for _, ehs := range setter {
 		body, ok := ehs.(config.Body)
 		if !ok {
@@ -129,7 +129,7 @@ func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	return allKinds, nil
 }
 
-func newErrorHandlerConfig(content kindContent, helper *Helper) (*config.ErrorHandler, error) {
+func newErrorHandlerConfig(content kindContent, helper *helper) (*config.ErrorHandler, error) {
 	errHandlerConf := &config.ErrorHandler{Kinds: content.kinds}
 	if d := gohcl.DecodeBody(content.body, helper.context, errHandlerConf); d.HasErrors() {
 		return nil, d

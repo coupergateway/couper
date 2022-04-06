@@ -3068,27 +3068,6 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 	}
 }
 
-func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) {
-	t.Skip() // FIXME: Remove the test after backend-refactoring?
-
-	helper := test.New(t)
-	client := newClient()
-
-	shutdown, _ := newCouper("testdata/integration/endpoint_eval/08_couper.hcl", test.New(t))
-	defer shutdown()
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/"+
-		strings.Replace(testBackend.Addr(), "http://", "", 1), nil)
-	helper.Must(err)
-
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != http.StatusBadRequest {
-		t.Error("Expected a bad request without required query param")
-	}
-}
-
 func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()

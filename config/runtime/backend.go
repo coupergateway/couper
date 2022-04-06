@@ -71,19 +71,17 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		MaxConnections:         beConf.MaxConnections,
 	}
 
-	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	options := &transport.BackendOptions{}
+	var err error
+	options.OpenAPI, err = validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
 		return nil, err
 	}
 
-	options := &transport.BackendOptions{
-		OpenAPI: openAPIopts,
-	}
-
 	if beConf.Health != nil {
-		origin, err := eval.ValueFromBodyAttribute(evalCtx, backendCtx, "origin")
-		if err != nil {
-			return nil, err
+		origin, diags := eval.ValueFromBodyAttribute(evalCtx, backendCtx, "origin")
+		if diags != nil {
+			return nil, diags
 		}
 
 		if origin == cty.NilVal {

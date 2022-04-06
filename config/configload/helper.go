@@ -11,7 +11,7 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
-type Helper struct {
+type helper struct {
 	config       *config.Couper
 	context      *hcl.EvalContext
 	content      *hcl.BodyContent
@@ -19,7 +19,7 @@ type Helper struct {
 }
 
 // newHelper creates a container with some methods to keep things simple here and there.
-func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*Helper, error) {
+func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*helper, error) {
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return nil, diags
@@ -28,7 +28,6 @@ func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*Helper, er
 	defSettings := config.DefaultSettings
 
 	couperConfig := &config.Couper{
-		Bytes:       src,
 		Context:     eval.NewContext([][]byte{src}, defaultsBlock.Defaults),
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
@@ -43,7 +42,7 @@ func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*Helper, er
 		return nil, fmt.Errorf("invalid configuration: %w", diags)
 	}
 
-	return &Helper{
+	return &helper{
 		config:       couperConfig,
 		content:      content,
 		context:      couperConfig.Context.(*eval.Context).HCLContext(),
@@ -51,7 +50,7 @@ func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*Helper, er
 	}, nil
 }
 
-func (h *Helper) addBackend(block *hcl.Block) error {
+func (h *helper) addBackend(block *hcl.Block) error {
 	name := block.Labels[0]
 
 	if _, ok := h.defsBackends[name]; ok {
@@ -71,7 +70,7 @@ func (h *Helper) addBackend(block *hcl.Block) error {
 	return nil
 }
 
-func (h *Helper) configureDefinedBackends() error {
+func (h *helper) configureDefinedBackends() error {
 	for name, b := range h.defsBackends {
 		be, err := PrepareBackend(h, "_init", "", &config.Backend{Name: name, Remain: b})
 		if err != nil {
@@ -87,7 +86,7 @@ func (h *Helper) configureDefinedBackends() error {
 	return nil
 }
 
-func (h *Helper) configureACBackends() error {
+func (h *helper) configureACBackends() error {
 	var acs []config.BackendInitialization
 	for _, ac := range h.config.Definitions.JWT {
 		acs = append(acs, ac)
