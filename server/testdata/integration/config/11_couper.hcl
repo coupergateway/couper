@@ -25,7 +25,7 @@ server {
 
     endpoint "/unrestricted" {
       access_control = ["token"]
-      beta_scope = {
+      beta_required_permission = {
         get = "foo"
         head = "foo"
         post = "foo"
@@ -42,7 +42,7 @@ server {
     endpoint "/restricted" {
       access_control = ["token"]
       allowed_methods = ["GET", "Post", "delete", "BREW"]
-      beta_scope = {
+      beta_required_permission = {
         get = "foo"
         head = "foo"
         post = "foo"

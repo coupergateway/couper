@@ -426,7 +426,7 @@ func bodiesWithACBodies(defs *config.Definitions, ac, dac []string) []hcl.Body {
 func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
 	var scopeMaps []map[string]string
 	if parentAPI != nil {
-		apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
+		apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.RequiredPermission)
 		if err != nil {
 			return nil, err
 		}
@@ -434,7 +434,7 @@ func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[strin
 			scopeMaps = append(scopeMaps, apiScopeMap)
 		}
 	}
-	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.Scope)
+	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.RequiredPermission)
 	if err != nil {
 		return nil, err
 	}
