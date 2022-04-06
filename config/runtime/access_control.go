@@ -21,6 +21,9 @@ func (m ACDefinitions) Add(name string, ac accesscontrol.AccessControl, eh []*co
 	if n == "" {
 		return errors.Configuration.Message("accessControl requires a label")
 	}
+	if n == "beta_required_permission" {
+		return errors.Configuration.Message("accessControl uses reserved name as label")
+	}
 	if n == "scopes" {
 		return errors.Configuration.Message("accessControl uses reserved name as label")
 	}

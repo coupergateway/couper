@@ -8,6 +8,7 @@ const (
 	AccessControls
 	BackendName
 	BackendParams
+	BetaRequiredPermission
 	BufferOptions
 	ConnectTimeout
 	ContextVariablesSynced

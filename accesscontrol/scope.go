@@ -1,10 +1,12 @@
 package accesscontrol
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/middleware"
 )
 
@@ -56,7 +58,14 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	if requiredPermission == "" {
 		return nil
 	}
+
 	ctx := req.Context()
+	ctx = context.WithValue(ctx, request.BetaRequiredPermission, requiredPermission)
+	*req = *req.WithContext(ctx)
+
+	evalCtx := eval.ContextFromRequest(req)
+	*req = *req.WithContext(evalCtx.WithClientRequest(req))
+
 	grantedScope, ok := ctx.Value(request.Scopes).([]string)
 	if !ok {
 		return errors.BetaInsufficientPermissions.Messagef("no scope granted")

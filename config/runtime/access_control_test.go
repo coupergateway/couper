@@ -47,7 +47,7 @@ func TestACDefinitions_errors(t *testing.T) {
 			"configuration error: scopes: accessControl uses reserved name as label",
 		},
 		{
-			"collision: basic_auth reserved label",
+			"collision: basic_auth reserved label 1",
 			`
 			server "test" {
 			}
@@ -57,6 +57,18 @@ func TestACDefinitions_errors(t *testing.T) {
 			}
 			`,
 			"configuration error: scopes: accessControl uses reserved name as label",
+		},
+		{
+			"collision: basic_auth reserved label 2",
+			`
+			server "test" {
+			}
+			definitions {
+				basic_auth "beta_required_permission" {
+				}
+			}
+			`,
+			"configuration error: beta_required_permission: accessControl uses reserved name as label",
 		},
 		{
 			"jwt with empty label",

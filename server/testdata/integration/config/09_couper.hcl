@@ -20,6 +20,14 @@ server "scoped jwt" {
         delete = ""
         "*" = "more"
       }
+      error_handler "beta_insufficient_permissions" {
+        response {
+          status = 403
+          headers = {
+            x-required-permission = request.context.beta_required_permission
+          }
+        }
+      }
       response {
         status = 204
         headers = {
@@ -56,6 +64,14 @@ server "scoped jwt" {
       beta_required_permission = {
         delete = ""
         "*" = "more"
+      }
+      error_handler "beta_insufficient_permissions" {
+        response {
+          status = 403
+          headers = {
+            x-required-permission = request.context.beta_required_permission
+          }
+        }
       }
       response {
         status = 204
