@@ -105,11 +105,11 @@ func Test_ScopeControl(t *testing.T) {
 			"",
 		},
 		{
-			"method not permitted",
+			"method not allowed",
 			map[string]string{http.MethodGet: ""},
 			http.MethodPost,
 			nil,
-			"access control error: method POST not permitted",
+			"method not allowed error: method POST not allowed by beta_required_permission",
 		},
 		{
 			"method permitted, permission required, no scope granted",

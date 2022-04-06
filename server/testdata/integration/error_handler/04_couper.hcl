@@ -27,13 +27,6 @@ server "scoped" {
           body = "Not enough power"
         }
       }
-
-      error_handler "beta_operation_denied" {
-        response {
-          status = 405
-          body = "Not enough power"
-        }
-      }
     }
 
     error_handler "beta_insufficient_scope" {

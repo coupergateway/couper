@@ -62,7 +62,7 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	}
 	requiredPermission, exists := s.required.permissions[req.Method]
 	if !exists {
-		return errors.BetaOperationDenied.Messagef("method %s not permitted", req.Method)
+		return errors.MethodNotAllowed.Messagef("method %s not allowed by beta_required_permission", req.Method)
 	}
 	if requiredPermission == "" {
 		return nil

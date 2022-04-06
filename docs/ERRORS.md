@@ -60,7 +60,6 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 |:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
 | `beta_scope`                                    | All `beta_scope` related errors                                                                  | Send error template with status `403`.                                      |
 | `beta_insufficient_scope` (`beta_scope`)        | The request is not in the scope granted to the requester.                                        | Send error template with status `403`.                                      |
-| `beta_operation_denied`                         | The request method is not permitted.                                                             | Send error template with status `403`.                                      |
 
 ### Endpoint error types
 

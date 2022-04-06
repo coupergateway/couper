@@ -13,8 +13,8 @@ import (
 )
 
 var wildcardMap = map[string][]string{
-	"api":      {"beta_insufficient_scope", "beta_operation_denied"},
-	"endpoint": {"beta_insufficient_scope", "beta_operation_denied", "sequence", "unexpected_status"},
+	"api":      {"beta_insufficient_scope"},
+	"endpoint": {"beta_insufficient_scope", "sequence", "unexpected_status"},
 }
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
