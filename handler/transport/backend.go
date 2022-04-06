@@ -6,8 +6,10 @@ import (
 	"encoding/base64"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -20,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -41,10 +44,11 @@ type Backend struct {
 	logEntry         *logrus.Entry
 	name             string
 	openAPIValidator *validation.OpenAPI
-	options          *BackendOptions
+	tokenRequest     TokenRequest
+	transport        *http.Transport
+	transportOnce    sync.Once
 	transportConf    *Config
 	upstreamLog      *logging.UpstreamLog
-	// TODO: OrderedList for origin AC, middlewares etc.
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
@@ -58,46 +62,73 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 
 	var openAPI *validation.OpenAPI
+	var tr TokenRequest
 	if opts != nil {
 		openAPI = validation.NewOpenAPI(opts.OpenAPI)
+		tr = opts.AuthBackend
 	}
 
 	backend := &Backend{
 		context:          ctx,
 		logEntry:         logEntry,
+		name:             tc.BackendName,
 		openAPIValidator: openAPI,
-		options:          opts,
+		tokenRequest:     tr,
 		transportConf:    tc,
 	}
 	backend.upstreamLog = logging.NewUpstreamLog(logEntry, backend, tc.NoProxyFromEnv)
 	return backend.upstreamLog
 }
 
+// initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
+func (b *Backend) initOnce(conf *Config) {
+	b.transport = NewTransport(conf, b.logEntry)
+}
+
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctx := context.WithValue(req.Context(), request.LogCustomUpstream, []hcl.Body{b.context})
-	*req = *req.WithContext(ctx)
+	// for token-request retry purposes
+	originalReq := req.Clone(req.Context())
+
+	if err := b.withTokenRequest(req); err != nil {
+		return nil, err
+	}
+
+	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
+	if ctxBody == nil {
+		ctxBody = b.context
+	} else {
+		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
+	}
+
+	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
+	if logCh != nil {
+		logCh <- ctxBody
+	}
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(hclCtx, b.context, req); err != nil {
+	if err := eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
 		return nil, err
 	}
 
-	tc, err := b.evalTransport(hclCtx, req)
+	tc, err := b.evalTransport(hclCtx, ctxBody, req)
 	if err != nil {
 		return nil, err
 	}
+	b.transportOnce.Do(func() {
+		b.initOnce(tc)
+	})
 
-	deadlineErr := b.withTimeout(req)
+	deadlineErr := b.withTimeout(req, tc)
 
 	req.URL.Host = tc.Origin
 	req.URL.Scheme = tc.Scheme
 	req.Host = tc.Hostname
 
-	// handler.Proxy marks proxy roundtrips since we should not handle headers twice.
+	// handler.Proxy marks proxy round-trips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
 
 	if !isProxyReq {
@@ -115,8 +146,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	b.withBasicAuth(req)
-	if err = b.withPathPrefix(req); err != nil {
+	b.withBasicAuth(req, ctxBody)
+	if err = b.withPathPrefix(req, ctxBody); err != nil {
 		return nil, err
 	}
 
@@ -145,6 +176,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return berespErr, err
 	}
 
+	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
+		return beresp, rerr
+	} else if retry {
+		return b.RoundTrip(originalReq)
+	}
+
 	if !eval.IsUpgradeResponse(req, beresp) {
 		if err = setGzipReader(beresp); err != nil {
 			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
@@ -163,7 +200,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
 	evalCtx = evalCtx.WithBeresp(beresp, readBody)
-	err = eval.ApplyResponseContext(evalCtx.HCLContext(), b.context, beresp)
+	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
 		varSync.Set(beresp)
@@ -173,7 +210,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
-	requestValidationInput, err := b.openAPIValidator.ValidateRequest(req, tc.hash())
+	requestValidationInput, err := b.openAPIValidator.ValidateRequest(req)
 	if err != nil {
 		return nil, errors.BackendValidation.Label(b.name).Kind("backend_request_validation").With(err)
 	}
@@ -212,10 +249,9 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		attribute.String("origin", tc.Origin),
 	}
 
-	t := Get(tc, b.logEntry)
 	start := time.Now()
 	span.AddEvent(spanMsg + ".request")
-	beresp, err := t.RoundTrip(req)
+	beresp, err := b.transport.RoundTrip(req)
 	span.AddEvent(spanMsg + ".response")
 	endSeconds := time.Since(start).Seconds()
 
@@ -243,13 +279,48 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	return beresp, nil
 }
 
-func (b *Backend) withPathPrefix(req *http.Request) error {
-	if pathPrefix := b.getAttribute(req, "path_prefix"); pathPrefix != "" {
+const backendTokenRequest = "backendTokenRequest"
+
+func (b *Backend) withTokenRequest(req *http.Request) error {
+	if b.tokenRequest == nil {
+		return nil
+	}
+
+	trValue, _ := req.Context().Value(backendTokenRequest).(string)
+	if trValue != "" { // prevent loop
+		return nil
+	}
+
+	ctx := context.WithValue(req.Context(), backendTokenRequest, "tr")
+	// Reset for upstream transport; prevent mixing values.
+	// tokenRequest will have their own backend configuration.
+	ctx = context.WithValue(ctx, request.BackendParams, nil)
+	ctx = context.WithValue(ctx, request.URLAttribute, "")
+
+	// WithContext() instead of Clone() due to header-map modification.
+	return b.tokenRequest.WithToken(req.WithContext(ctx))
+}
+
+func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
+	if b.tokenRequest == nil {
+		return false, nil
+	}
+
+	trValue, _ := req.Context().Value(backendTokenRequest).(string)
+	if trValue != "" { // prevent loop
+		return false, nil
+	}
+
+	return b.tokenRequest.RetryWithToken(req, res)
+}
+
+func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
+	if pathPrefix := b.getAttribute(req, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
-			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in \"%s\"", pathPrefix)
-		} else if i := strings.Index(pathPrefix, "?"); i >= 0 {
-			return errors.Configuration.Messagef("path_prefix attribute: invalid query string found in \"%s\"", pathPrefix)
+			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in %q", pathPrefix)
+		} else if i = strings.Index(pathPrefix, "?"); i >= 0 {
+			return errors.Configuration.Messagef("path_prefix attribute: invalid query string found in %q", pathPrefix)
 		}
 
 		req.URL.Path = utils.JoinPath("/", pathPrefix, req.URL.Path)
@@ -258,23 +329,23 @@ func (b *Backend) withPathPrefix(req *http.Request) error {
 	return nil
 }
 
-func (b *Backend) withBasicAuth(req *http.Request) {
-	if creds := b.getAttribute(req, "basic_auth"); creds != "" {
+func (b *Backend) withBasicAuth(req *http.Request, hclContext hcl.Body) {
+	if creds := b.getAttribute(req, "basic_auth", hclContext); creds != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(creds))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 }
 
-func (b *Backend) getAttribute(req *http.Request, name string) string {
-	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), b.context, name)
+func (b *Backend) getAttribute(req *http.Request, name string, hclContext hcl.Body) string {
+	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), hclContext, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}
 	return seetie.ValueToString(attrVal)
 }
 
-func (b *Backend) withTimeout(req *http.Request) <-chan error {
-	timeout := b.transportConf.Timeout
+func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
+	timeout := conf.Timeout
 	ws := false
 	if to, ok := req.Context().Value(request.WebsocketsTimeout).(time.Duration); ok {
 		timeout = to
@@ -282,23 +353,65 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	}
 
 	errCh := make(chan error, 1)
-	if timeout <= 0 {
+	if timeout+conf.TTFBTimeout <= 0 {
 		return errCh
 	}
 
-	ctx, cancel := context.WithCancel(req.Context())
-	*req = *req.WithContext(ctx)
+	ctx, cancel := context.WithCancel(context.WithValue(req.Context(), request.ConnectTimeout, conf.ConnectTimeout))
+
+	downstreamTrace := httptrace.ContextClientTrace(ctx) // e.g. log-timings
+
+	ttfbTimeout := make(chan time.Time, 1) // size to always cleanup related go-routine
+	ttfbTimer := time.NewTimer(conf.TTFBTimeout)
+	ctxTrace := &httptrace.ClientTrace{
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			if downstreamTrace != nil && downstreamTrace.WroteRequest != nil {
+				downstreamTrace.WroteRequest(info)
+			}
+
+			if conf.TTFBTimeout <= 0 {
+				return
+			}
+
+			go func(done <-chan struct{}) {
+				ttfbTimer.Reset(conf.TTFBTimeout)
+				select {
+				case <-done:
+					if !ttfbTimer.Stop() {
+						<-ttfbTimer.C
+					}
+					return
+				case ttfbTimeout <- <-ttfbTimer.C:
+				}
+
+			}(req.Context().Done())
+		},
+		GotFirstResponseByte: func() {
+			if downstreamTrace != nil && downstreamTrace.GotFirstResponseByte != nil {
+				downstreamTrace.GotFirstResponseByte()
+			}
+			ttfbTimer.Stop()
+		},
+	}
+
+	*req = *req.WithContext(httptrace.WithClientTrace(ctx, ctxTrace))
+
 	go func(cancelFn func(), c context.Context, ec chan error) {
 		defer cancelFn()
-		deadline := time.After(timeout)
+		deadline := make(<-chan time.Time)
+		if timeout > 0 {
+			deadline = time.After(timeout)
+		}
 		select {
 		case <-deadline:
 			if ws {
 				ec <- errors.BackendTimeout.Label(b.name).Message("websockets: deadline exceeded")
-			} else {
-				ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
+				return
 			}
+			ec <- errors.BackendTimeout.Label(b.name).Message("deadline exceeded")
 			return
+		case <-ttfbTimeout:
+			ec <- errors.BackendTimeout.Label(b.name).Message("timeout awaiting response headers")
 		case <-c.Done():
 			return
 		}
@@ -306,15 +419,16 @@ func (b *Backend) withTimeout(req *http.Request) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*Config, error) {
+func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *http.Request) (*Config, error) {
 	log := b.upstreamLog.LogEntry()
 
-	bodyContent, _, diags := b.context.PartialContent(config.BackendInlineSchema)
+	bodyContent, _, diags := params.PartialContent(config.BackendInlineSchema)
 	if diags.HasErrors() {
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
-	var origin, hostname, proxyURL string
+	var origin, hostname, proxyURL, oidcBackend string
+	var connectTimeout, ttfbTimeout, timeout string
 	type pair struct {
 		attrName string
 		target   *string
@@ -323,6 +437,11 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 		{"origin", &origin},
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
+		{"_oidc_backend", &oidcBackend}, // prepared by config-load
+		// dynamic timings
+		{"connect_timeout", &connectTimeout},
+		{"ttfb_timeout", &ttfbTimeout},
+		{"timeout", &timeout},
 	} {
 		if v, err := eval.ValueFromAttribute(httpCtx, bodyContent, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
@@ -339,20 +458,22 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 			Messagef("invalid url: %s", originURL.String())
 	}
 
-	if rawURL, ok := req.Context().Value(request.URLAttribute).(string); ok {
-		urlAttr, err := url.Parse(rawURL)
+	urlAttrValue, _ := req.Context().Value(request.URLAttribute).(string)
+
+	if urlAttrValue != "" {
+		urlAttr, err := url.Parse(urlAttrValue)
 		if err != nil {
 			return nil, errors.Configuration.Label(b.name).With(err)
 		}
 
-		if origin != "" && urlAttr.Host != originURL.Host {
+		if origin != "" && oidcBackend == "" && urlAttr.Host != originURL.Host {
 			errctx := "url"
 			if tr := req.Context().Value(request.TokenRequest); tr != nil {
 				errctx = "token_endpoint"
 			}
 			return nil, errors.Configuration.Label(b.name).Kind(errctx).
-				Messagef("backend: the host '%s' must be equal to 'backend.origin': %q",
-					urlAttr.Host, origin)
+				Messagef("backend: the host '%s' must be equal to 'backend.origin' host: '%s'",
+					urlAttr.Host, originURL.Host)
 		}
 
 		originURL.Host = urlAttr.Host
@@ -377,7 +498,9 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, req *http.Request) (*C
 			Messagef("the origin attribute has to contain an absolute URL with a valid hostname: %q", origin)
 	}
 
-	return b.transportConf.With(originURL.Scheme, originURL.Host, hostname, proxyURL), nil
+	return b.transportConf.
+		WithTarget(originURL.Scheme, originURL.Host, hostname, proxyURL).
+		WithTimings(connectTimeout, ttfbTimeout, timeout), nil
 }
 
 // setUserAgent sets an empty one if none is present or empty

@@ -3,7 +3,6 @@
 package runtime
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,11 +10,9 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -30,8 +27,6 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
@@ -44,12 +39,6 @@ const (
 	files
 	spa
 )
-
-var DefaultBackendConf = &config.Backend{
-	ConnectTimeout: "10s",
-	TTFBTimeout:    "60s",
-	Timeout:        "300s",
-}
 
 type (
 	Port                int
@@ -113,7 +102,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	if ocErr != nil {
 		return nil, ocErr
 	}
-	evalContext.WithOidcConfig(oidcConfigs)
+	conf.Context = evalContext.WithOidcConfig(oidcConfigs)
 
 	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
@@ -126,6 +115,16 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		endpointHandlers    = make(endpointHandler)
 		isHostsMandatory    = len(conf.Servers) > 1
 	)
+
+	// Populate defined backends first...
+	if conf.Definitions != nil {
+		for _, backend := range conf.Definitions.Backend {
+			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf.Settings, memStore)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	for _, srvConf := range conf.Servers {
 		serverOptions, err := server.NewServerOptions(srvConf, log)
@@ -176,12 +175,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
 				&protectedOptions{
-					epOpts:       epOpts,
-					handler:      spaHandler,
-					memStore:     memStore,
-					proxyFromEnv: conf.Settings.NoProxyFromEnv,
-					srvOpts:      serverOptions,
-				}, conf.Settings.Certificate, log)
+					epOpts:   epOpts,
+					handler:  spaHandler,
+					memStore: memStore,
+					settings: conf.Settings,
+					srvOpts:  serverOptions,
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -225,12 +224,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
 				&protectedOptions{
-					epOpts:       epOpts,
-					handler:      fileHandler,
-					memStore:     memStore,
-					proxyFromEnv: conf.Settings.NoProxyFromEnv,
-					srvOpts:      serverOptions,
-				}, conf.Settings.Certificate, log)
+					epOpts:   epOpts,
+					handler:  fileHandler,
+					memStore: memStore,
+					settings: conf.Settings,
+					srvOpts:  serverOptions,
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -276,10 +275,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 			endpointPatterns[cleanPattern] = true
 
-			epOpts, err := newEndpointOptions(
-				confCtx, endpointConf, parentAPI, serverOptions,
-				log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore,
-			)
+			epOpts, err := newEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
+				log, conf.Settings, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -312,11 +309,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
 				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-					epOpts:       epOpts,
-					memStore:     memStore,
-					proxyFromEnv: conf.Settings.NoProxyFromEnv,
-					srvOpts:      serverOptions,
-				}, log, errorHandlerDefinitions, conf.Settings.Certificate, "api", "endpoint")
+					epOpts:   epOpts,
+					memStore: memStore,
+					settings: conf.Settings,
+					srvOpts:  serverOptions,
+				}, log, errorHandlerDefinitions, "api", "endpoint")
 				if err != nil {
 					return nil, err
 				}
@@ -332,11 +329,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 				scopeControl := ac.NewScopeControl(scopeMaps)
 				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-					epOpts:       epOpts,
-					memStore:     memStore,
-					proxyFromEnv: conf.Settings.NoProxyFromEnv,
-					srvOpts:      serverOptions,
-				}, log, errorHandlerDefinitions, conf.Settings.Certificate, "api", "endpoint")
+					epOpts:   epOpts,
+					memStore: memStore,
+					settings: conf.Settings,
+					srvOpts:  serverOptions,
+				}, log, errorHandlerDefinitions, "api", "endpoint")
 				if err != nil {
 					return nil, err
 				}
@@ -358,12 +355,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
-					epOpts:       epOpts,
-					handler:      protectedHandler,
-					memStore:     memStore,
-					proxyFromEnv: conf.Settings.NoProxyFromEnv,
-					srvOpts:      serverOptions,
-				}, conf.Settings.Certificate, log)
+					epOpts:   epOpts,
+					handler:  protectedHandler,
+					memStore: memStore,
+					settings: conf.Settings,
+					srvOpts:  serverOptions,
+				}, log)
 			if err != nil {
 				return nil, err
 			}
@@ -452,117 +449,6 @@ func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[strin
 	return scopeMaps, nil
 }
 
-func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (http.RoundTripper, hcl.Body, error) {
-	beConf := *DefaultBackendConf
-	if diags := gohcl.DecodeBody(backendCtx, evalCtx, &beConf); diags.HasErrors() {
-		return nil, nil, diags
-	}
-
-	if beConf.Name == "" {
-		name, err := getBackendName(evalCtx, backendCtx)
-		if err != nil {
-			return nil, nil, err
-		}
-		beConf.Name = name
-	}
-
-	tc := &transport.Config{
-		BackendName:            beConf.Name,
-		Certificate:            certificate,
-		DisableCertValidation:  beConf.DisableCertValidation,
-		DisableConnectionReuse: beConf.DisableConnectionReuse,
-		HTTP2:                  beConf.HTTP2,
-		MaxConnections:         beConf.MaxConnections,
-		NoProxyFromEnv:         ignoreProxyEnv,
-	}
-
-	if err := parseDuration(beConf.ConnectTimeout, &tc.ConnectTimeout); err != nil {
-		return nil, nil, err
-	}
-
-	if err := parseDuration(beConf.TTFBTimeout, &tc.TTFBTimeout); err != nil {
-		return nil, nil, err
-	}
-
-	if err := parseDuration(beConf.Timeout, &tc.Timeout); err != nil {
-		return nil, nil, err
-	}
-
-	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	options := &transport.BackendOptions{
-		OpenAPI: openAPIopts,
-	}
-	backend := transport.NewBackend(backendCtx, tc, options, log)
-
-	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
-	if oauthContent == nil {
-		return backend, backendCtx, nil
-	}
-
-	if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-		return newAuthBackend(evalCtx, beConf, blocks, log, ignoreProxyEnv, certificate, memStore, backend)
-	}
-
-	return backend, backendCtx, nil
-}
-
-func newAuthBackend(evalCtx *hcl.EvalContext, beConf config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	ignoreProxyEnv bool, certificate []byte, memStore *cache.MemoryStore, backend http.RoundTripper) (http.RoundTripper, hcl.Body, error) {
-
-	beConf.OAuth2 = &config.OAuth2ReqAuth{}
-
-	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
-		return nil, nil, diags
-	}
-
-	innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
-	if diags.HasErrors() {
-		return nil, nil, diags
-	}
-
-	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-	authBackend, body, authErr := newBackend(evalCtx, innerBackend.Body, log, ignoreProxyEnv, certificate, memStore)
-	if authErr != nil {
-		return nil, nil, authErr
-	}
-
-	// Set default value
-	if beConf.OAuth2.Retries == nil {
-		var one uint8 = 1
-		beConf.OAuth2.Retries = &one
-	}
-
-	oauth2Client, err := oauth2.NewOAuth2CC(beConf.OAuth2, authBackend)
-	if err != nil {
-		return nil, body, err
-	}
-
-	rt, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client, backend)
-	return rt, body, err
-}
-
-func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {
-	content, _, _ := backendCtx.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
-		{Name: "name"}},
-	})
-	if content != nil && len(content.Attributes) > 0 {
-
-		if n, exist := content.Attributes["name"]; exist {
-			v, err := eval.Value(evalCtx, n.Expr)
-			if err != nil {
-				return "", err
-			}
-			return v.AsString(), nil
-		}
-	}
-	return "", nil
-}
-
 func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	val := reflect.ValueOf(this)
 	if val.IsZero() {
@@ -587,27 +473,16 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore)
-			if err != nil {
-				return nil, confErr.With(err)
+			backends := map[string]http.RoundTripper{}
+			for k, backendBody := range oidcConf.Backends {
+				var err error
+				backends[k], err = NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+				if err != nil {
+					return nil, confErr.With(err)
+				}
 			}
 
-			oidcConfig, err := oidc.NewConfig(oidcConf, backend)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			oidcConfigs[oidcConf.Name] = oidcConfig
-		}
-		// TODO remove for version 1.8
-		for _, oidcConf := range conf.Definitions.BetaOIDC {
-			confErr := errors.Configuration.Label(oidcConf.Name)
-			backend, _, err := newBackend(confCtx, oidcConf.Backend, log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			oidcConfig, err := oidc.NewConfig(oidcConf, backend)
+			oidcConfig, err := oidc.NewConfig(oidcConf, backends)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -669,12 +544,12 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, _, err := newBackend(confCtx, oauth2Conf.Backend, log, conf.Settings.NoProxyFromEnv, conf.Settings.Certificate, memStore)
+			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf.Settings, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
-			oauth2Client, err := oauth2.NewOAuth2AC(oauth2Conf, oauth2Conf, backend)
+			oauth2Client, err := oauth2.NewAuthCodeClient(oauth2Conf, oauth2Conf, backend)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -692,43 +567,9 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
 			oidcConfig := oidcConfigs[oidcConf.Name]
-			oidcClient, err := oauth2.NewOidc(oidcConfig)
+			oidcClient, err := oauth2.NewOidcClient(oidcConfig)
 			if err != nil {
 				return nil, confErr.With(err)
-			}
-
-			if oidcConfig.VerifierMethod != "" &&
-				oidcConfig.VerifierMethod != config.CcmS256 &&
-				oidcConfig.VerifierMethod != "nonce" {
-				return nil, errors.Configuration.
-					Label(oidcConf.Name).
-					Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
-			}
-
-			oa, err := ac.NewOAuth2Callback(oidcClient)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
-		}
-		// TODO remove for version 1.8
-		for _, oidcConf := range conf.Definitions.BetaOIDC {
-			confErr := errors.Configuration.Label(oidcConf.Name)
-			oidcConfig := oidcConfigs[oidcConf.Name]
-			oidcClient, err := oauth2.NewOidc(oidcConfig)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			if oidcConfig.VerifierMethod != "" &&
-				oidcConfig.VerifierMethod != config.CcmS256 &&
-				oidcConfig.VerifierMethod != "nonce" {
-				return nil, errors.Configuration.
-					Label(oidcConf.Name).
-					Messagef("verifier_method %s not supported", oidcConfig.VerifierMethod)
 			}
 
 			oa, err := ac.NewOAuth2Callback(oidcClient)
@@ -763,8 +604,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		err error
 	)
 	if jwtConf.JWKsURL != "" {
-		noProxy := conf.Settings.NoProxyFromEnv
-		jwks, jerr := configureJWKS(jwtConf, conf, confCtx, log, noProxy, memStore)
+		jwks, jerr := configureJWKS(jwtConf, confCtx, log, conf, memStore)
 		if jerr != nil {
 			return nil, jerr
 		}
@@ -788,42 +628,39 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	return jwt, nil
 }
 
-func configureJWKS(jwtConf *config.JWT, conf *config.Couper, confContext *hcl.EvalContext, log *logrus.Entry, ignoreProxyEnv bool, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
+func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
 	var backend http.RoundTripper
 
-	if jwtConf.Backend != nil {
-		b, _, err := newBackend(confContext, jwtConf.Backend, log, ignoreProxyEnv, conf.Settings.Certificate, memStore)
-		if err != nil {
-			return nil, err
+	if jwtConf.Backends != nil {
+		backendBody, ok := jwtConf.Backends["backend"]
+		if ok {
+			b, err := NewBackend(confContext, backendBody, log, conf.Settings, memStore)
+			if err != nil {
+				return nil, err
+			}
+			backend = b
 		}
-		backend = b
 	}
 
-	evalContext := conf.Context.Value(request.ContextType).(context.Context)
-	jwks, err := jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend, evalContext)
-	if err != nil {
-		return nil, err
-	}
-
-	return jwks, nil
+	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend)
 }
 
 type protectedOptions struct {
-	epOpts       *handler.EndpointOptions
-	handler      http.Handler
-	proxyFromEnv bool
-	memStore     *cache.MemoryStore
-	srvOpts      *server.Options
+	epOpts   *handler.EndpointOptions
+	handler  http.Handler
+	memStore *cache.MemoryStore
+	settings *config.Settings
+	srvOpts  *server.Options
 }
 
 func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
-	opts *protectedOptions, certificate []byte, log *logrus.Entry) (http.Handler, error) {
+	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		eh, err := newErrorHandler(ctx, opts, log, m, certificate, acName)
+		eh, err := newErrorHandler(ctx, opts, log, m, acName)
 		if err != nil {
 			return nil, err
 		}
@@ -904,16 +741,6 @@ func getPortsHostsList(hosts []string, defaultPort int) (Ports, error) {
 	}
 
 	return portsHosts, nil
-}
-
-// parseDuration sets the target value if the given duration string is not empty.
-func parseDuration(src string, target *time.Duration) error {
-	d, err := time.ParseDuration(src)
-	if src != "" && err != nil {
-		return err
-	}
-	*target = d
-	return nil
 }
 
 func parseBodyLimit(limit string) (int64, error) {

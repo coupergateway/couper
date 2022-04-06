@@ -135,6 +135,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	ctx, cancelFn := context.WithCancel(context.Background())
 	shutdownFn := func() {
 		if helper.TestFailed() { // log on error
+			time.Sleep(time.Second)
 			for _, entry := range hook.AllEntries() {
 				s, _ := entry.String()
 				helper.Logf(s)
@@ -156,14 +157,18 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
 			command.RunCmdTestCallback()
 			shutdownFn()
-			panic(err)
+			if lerr, ok := err.(*errors.Error); ok {
+				panic(lerr.LogError())
+			} else {
+				panic(err)
+			}
 		}
 	}()
 	<-waitForCh
 
 	for _, entry := range hook.AllEntries() {
 		if entry.Level < logrus.WarnLevel {
-			defer cleanup(cancelFn, helper) // ok in loop, next line is the end
+			defer os.Exit(1) // ok in loop, next line is the end
 			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
 		}
 	}
@@ -1162,6 +1167,94 @@ func TestHTTPServer_Backends_Reference(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_Backends_Reference_BasicAuth(t *testing.T) {
+	client := newClient()
+
+	configPath := "testdata/integration/config/13_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, _ := newCouper(configPath, helper)
+	defer shutdown()
+
+	type testcase struct {
+		path     string
+		wantAuth bool
+	}
+
+	for _, tc := range []testcase{
+		{"/", false},
+		{"/granted", true},
+	} {
+		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+		helper.Must(err)
+
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		b, err := io.ReadAll(res.Body)
+		helper.Must(err)
+
+		helper.Must(res.Body.Close())
+
+		type result struct {
+			Headers http.Header
+		}
+		r := result{}
+		helper.Must(json.Unmarshal(b, &r))
+
+		if tc.wantAuth && !strings.HasPrefix(r.Headers.Get("Authorization"), "Basic ") {
+			t.Error("expected Authorization header value")
+		}
+	}
+}
+
+func TestHTTPServer_Backends_Reference_PathPrefix(t *testing.T) {
+	client := newClient()
+
+	configPath := "testdata/integration/config/12_couper.hcl"
+
+	helper := test.New(t)
+	shutdown, _ := newCouper(configPath, helper)
+	defer shutdown()
+
+	type testcase struct {
+		path       string
+		wantPath   string
+		wantStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"/", "/anything", http.StatusOK},
+		{"/prefixed", "/my-prefix/anything", http.StatusNotFound},
+	} {
+		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+		helper.Must(err)
+
+		res, err := client.Do(req)
+		helper.Must(err)
+
+		type result struct {
+			Path string
+		}
+
+		b, err := io.ReadAll(res.Body)
+		helper.Must(err)
+
+		helper.Must(res.Body.Close())
+
+		r := result{}
+		helper.Must(json.Unmarshal(b, &r))
+
+		if res.StatusCode != tc.wantStatus {
+			t.Errorf("expected status: %d, got %d", tc.wantStatus, res.StatusCode)
+		}
+
+		if r.Path != tc.wantPath {
+			t.Errorf("expected path: %q, got: %q", tc.wantPath, r.Path)
+		}
+	}
+}
+
 func TestHTTPServer_OriginVsURL(t *testing.T) {
 	client := newClient()
 
@@ -1816,7 +1909,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			jsonResult.Origin = res.Header.Get("X-Origin")
 
 			if !reflect.DeepEqual(jsonResult, tc.exp) {
-				subT.Errorf("want: %#v, got: %#v, payload:\n%s", tc.exp, jsonResult, string(resBytes))
+				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", tc.exp, jsonResult, string(resBytes))
 			}
 		})
 	}
@@ -2843,25 +2936,6 @@ func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
 	}
 }
 
-func TestHTTPServer_Endpoint_Evaluation_Inheritance_Backend_Block(t *testing.T) {
-	helper := test.New(t)
-	client := newClient()
-
-	shutdown, _ := newCouper("testdata/integration/endpoint_eval/08_couper.hcl", test.New(t))
-	defer shutdown()
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/"+
-		strings.Replace(testBackend.Addr(), "http://", "", 1), nil)
-	helper.Must(err)
-
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	if res.StatusCode != http.StatusBadRequest {
-		t.Error("Expected a bad request without required query param")
-	}
-}
-
 func TestOpenAPIValidateConcurrentRequests(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
@@ -3190,7 +3264,13 @@ func TestAPICatchAll(t *testing.T) {
 
 func Test_LoadAccessControl(t *testing.T) {
 	// Tests the config load with ACs and "error_handler" blocks...
-	shutdown, _ := newCouper("testdata/integration/config/07_couper.hcl", test.New(t))
+	backend := test.NewBackend()
+	defer backend.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/config/07_couper.hcl", test.New(t), map[string]interface{}{
+		"asOrigin": backend.Addr(),
+	})
+
 	test.WaitForOpenPort(8080)
 	shutdown()
 }
@@ -3240,7 +3320,6 @@ func TestJWTAccessControl(t *testing.T) {
 		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", `access control error: JWKS: token is unverifiable: Keyfunc returned an error`},
 		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", "access control error: JWKS: token is unverifiable: Keyfunc returned an error"},
 		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", "access control error: JWKS: token is unverifiable: Keyfunc returned an error"},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: JWKS_not_found: token is unverifiable: Keyfunc returned an error"},
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -4482,6 +4561,7 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 
 	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/.well-known/openid-configuration" {
+			rw.Header().Set("Content-Type", "Application/json")
 			body := []byte(`{
 			"issuer": "https://authorization.server",
 			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
@@ -4491,7 +4571,11 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
-
+			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
@@ -4564,6 +4648,11 @@ func TestOIDCNonceFunctions(t *testing.T) {
 			helper.Must(werr)
 
 			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
+			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
@@ -4628,9 +4717,14 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
-
+			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
 			return
 		}
+
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
 	defer oauthOrigin.Close()
@@ -4693,7 +4787,11 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
-
+			return
+		} else if req.URL.Path == "/jwks" {
+			rw.Header().Set("Content-Type", "Application/json")
+			_, werr := rw.Write([]byte(`{}`))
+			helper.Must(werr)
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)

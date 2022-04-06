@@ -59,7 +59,7 @@ definitions {
   }
 
   saml "SAML" {
-    idp_metadata_file = "metadata.xml"
+    idp_metadata_file = "../accesscontrol/testdata/idp-metadata.xml"
     sp_acs_url = "http://www.examle.org/saml/acs"
     sp_entity_id = "my-sp-entity-id"
 

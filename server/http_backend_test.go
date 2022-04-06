@@ -6,11 +6,71 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/avenga/couper/internal/test"
 )
+
+func TestBackend_MaxConnections(t *testing.T) {
+	helper := test.New(t)
+
+	const reqCount = 3
+	lastSeen := map[string]string{}
+	lastSeenMu := sync.Mutex{}
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		lastSeenMu.Lock()
+		defer lastSeenMu.Unlock()
+
+		if lastSeen[r.URL.Path] != "" && lastSeen[r.URL.Path] != r.RemoteAddr {
+			t.Errorf("expected same remote addr for path: %q", r.URL.Path)
+			rw.WriteHeader(http.StatusInternalServerError)
+		} else {
+			rw.WriteHeader(http.StatusNoContent)
+		}
+		lastSeen[r.URL.Path] = r.RemoteAddr
+	}))
+
+	defer origin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/03_couper.hcl", helper, map[string]interface{}{
+		"origin": origin.URL,
+	})
+	defer shutdown()
+
+	paths := []string{
+		"/",
+		"/be",
+		"/fake-sequence",
+	}
+
+	originWait := sync.WaitGroup{}
+	originWait.Add(len(paths) * reqCount)
+	waitForCh := make(chan struct{})
+
+	client := test.NewHTTPClient()
+
+	for _, clientPath := range paths {
+		for i := 0; i < reqCount; i++ {
+			go func(path string) {
+				req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080"+path, nil)
+				<-waitForCh
+				res, err := client.Do(req)
+				helper.Must(err)
+
+				if res.StatusCode != http.StatusNoContent {
+					t.Errorf("want: 204, got %d", res.StatusCode)
+				}
+
+				originWait.Done()
+			}(clientPath)
+		}
+	}
+
+	close(waitForCh)
+	originWait.Wait()
+}
 
 func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 	helper := test.New(t)

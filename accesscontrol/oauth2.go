@@ -13,11 +13,11 @@ var _ AccessControl = &OAuth2Callback{}
 
 // OAuth2Callback represents the access control for the OAuth2 authorization code flow callback.
 type OAuth2Callback struct {
-	oauth2Client oauth2.AcClient
+	oauth2Client oauth2.AuthCodeFlowClient
 }
 
 // NewOAuth2Callback creates a new access control for the OAuth2 authorization code flow callback.
-func NewOAuth2Callback(oauth2Client oauth2.AcClient) (*OAuth2Callback, error) {
+func NewOAuth2Callback(oauth2Client oauth2.AuthCodeFlowClient) (*OAuth2Callback, error) {
 	return &OAuth2Callback{
 		oauth2Client: oauth2Client,
 	}, nil

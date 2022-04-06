@@ -32,7 +32,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/integration/backend/01_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/integration/backends/02_couper.hcl", helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/request", nil)
@@ -58,32 +58,43 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			continue
 		}
 
-		responseHeaders := entry.Data["response"].(logging.Fields)["headers"].(map[string]string)
-		data := entry.Data["custom"].(logrus.Fields)
+		responseLogs, _ := entry.Data["response"].(logging.Fields)
+		data, _ := entry.Data["custom"].(logrus.Fields)
 
-		url := entry.Data["url"]
-		if url == "http://localhost:8081/token" {
-			if data["x-from-request-body"] != "grant_type=client_credentials" ||
-				data["x-from-request-form-body"] != "client_credentials" ||
-				data["x-from-request-header"] != "Basic cXBlYjpiZW4=" ||
-				data["x-from-response-header"] != "60s" ||
-				data["x-from-response-body"] != `{"access_token":"the_access_token","expires_in":60}` ||
-				data["x-from-response-json-body"] != "the_access_token" {
-				t.Errorf("Unexpected logs given: %#v", data)
+		if data != nil && entry.Data["url"] == "http://localhost:8081/token" {
+			expected := logrus.Fields{
+				"x-from-request-body":       "grant_type=client_credentials",
+				"x-from-request-form-body":  "client_credentials",
+				"x-from-request-header":     "Basic cXBlYjpiZW4=",
+				"x-from-response-header":    "60s",
+				"x-from-response-body":      `{"access_token":"the_access_token","expires_in":60}`,
+				"x-from-response-json-body": "the_access_token",
 			}
-			if responseHeaders["location"] != "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token" {
-				t.Errorf("Unexpected responseHeaders given: %#v", responseHeaders)
+			expectedHeaders := map[string]string{
+				"content-type": "application/json",
+				"location":     "Basic cXBlYjpiZW4=|client_credentials|60s|the_access_token",
+			}
+
+			if diff := cmp.Diff(data, expected); diff != "" {
+				t.Error(diff)
+			}
+
+			if diff := cmp.Diff(responseLogs["headers"], expectedHeaders); diff != "" {
+				t.Error(diff)
 			}
 		} else {
-			if data["x-from-request-json-body"] != float64(1) ||
-				data["x-from-request-header"] != "bar" ||
-				data["x-from-requests-json-body"] != float64(1) ||
-				data["x-from-requests-header"] != "bar" ||
-				data["x-from-response-header"] != "application/json" ||
-				data["x-from-response-json-body"] != "/anything" ||
-				data["x-from-responses-header"] != "application/json" ||
-				data["x-from-responses-json-body"] != "/anything" {
-				t.Errorf("Unexpected logs given: %#v", data)
+			expected := logrus.Fields{
+				"x-from-request-json-body":   float64(1),
+				"x-from-request-header":      "bar",
+				"x-from-requests-json-body":  float64(1),
+				"x-from-requests-header":     "bar",
+				"x-from-response-header":     "application/json",
+				"x-from-response-json-body":  "/anything",
+				"x-from-responses-header":    "application/json",
+				"x-from-responses-json-body": "/anything",
+			}
+			if diff := cmp.Diff(data, expected); diff != "" {
+				t.Error(diff)
 			}
 		}
 	}
@@ -93,7 +104,7 @@ func TestBackend_BackendVariable(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/integration/backend/01_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/integration/backends/02_couper.hcl", helper)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
@@ -779,8 +790,7 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 		}
 
 		path := entry.Data["request"].(logging.Fields)["path"]
-
-		if entry.Message == "backend timeout error: deadline exceeded" {
+		if entry.Message == "backend timeout error: anonymous_3_23: deadline exceeded" {
 			ctxDeadlineSeen = true
 			if path != "/" {
 				t.Errorf("expected '/' to fail")
@@ -832,6 +842,14 @@ func TestEndpointErrorHandler(t *testing.T) {
 
 	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
 	defer shutdown()
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range hook.AllEntries() {
+			t.Logf("%#v", e.Data)
+		}
+	}()
 
 	type testcase struct {
 		name              string

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/avenga/couper/config/reader"
@@ -13,108 +12,123 @@ import (
 )
 
 type SyncedJSONUnmarshaller interface {
-	Unmarshal(rawJSON []byte, uid string) (interface{}, error)
+	Unmarshal(rawJSON []byte) (interface{}, error)
+}
+
+type dataRequest struct {
+	obj interface{}
+	err error
 }
 
 type SyncedJSON struct {
-	context       context.Context
-	file          string
-	fileContext   string
-	uri           string
-	transport     http.RoundTripper
 	roundTripName string
+	transport     http.RoundTripper
 	ttl           time.Duration
 	unmarshaller  SyncedJSONUnmarshaller
+	uri           string
 	// used internally
-	data   interface{}
-	expiry int64
-	mtx    sync.RWMutex
+	data        interface{}
+	dataRequest chan chan *dataRequest
+	fileMode    bool
 }
 
-func NewSyncedJSON(context context.Context, file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) *SyncedJSON {
-	return &SyncedJSON{
-		context:       context,
-		file:          file,
-		fileContext:   fileContext,
-		uri:           uri,
-		transport:     transport,
+func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
+	sj := &SyncedJSON{
+		dataRequest:   make(chan chan *dataRequest, 10),
 		roundTripName: roundTripName,
+		transport:     transport,
 		ttl:           ttl,
 		unmarshaller:  unmarshaller,
-	}
-}
-
-func (s *SyncedJSON) Data(uid string) (interface{}, error) {
-	var err error
-
-	s.mtx.RLock()
-	data := s.data
-	expired := s.hasExpired()
-	s.mtx.RUnlock()
-
-	if data == nil || expired {
-		data, err = s.Load(uid)
-		if err != nil {
-			return nil, fmt.Errorf("error loading synced JSON: %v", err)
-		}
+		uri:           uri,
 	}
 
-	return data, nil
-}
-
-func (s *SyncedJSON) Load(uid string) (interface{}, error) {
-	var rawJSON []byte
-
-	if s.file != "" {
-		j, err := reader.ReadFromFile(s.fileContext, s.file)
-		if err != nil {
+	if file != "" {
+		if err := sj.readFile(fileContext, file); err != nil {
 			return nil, err
 		}
-		rawJSON = j
-	} else if s.transport != nil {
-		req, err := http.NewRequest("GET", "", nil)
-		if err != nil {
-			return nil, err
-		}
-		ctx := context.WithValue(s.context, request.URLAttribute, s.uri)
-		ctx = context.WithValue(ctx, request.RoundTripName, s.roundTripName)
-		if uid != "" {
-			ctx = context.WithValue(ctx, request.UID, uid)
-		}
-		req = req.WithContext(ctx)
-		response, err := s.transport.RoundTrip(req)
-		if err != nil {
-			return nil, err
-		}
-		if response.StatusCode != 200 {
-			return nil, fmt.Errorf("status code %d", response.StatusCode)
-		}
-
-		defer response.Body.Close()
-
-		body, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return nil, fmt.Errorf("error reading response for %q: %v", s.uri, err)
-		}
-		rawJSON = body
+		sj.fileMode = true
+	} else if transport != nil {
+		go sj.sync(context.Background()) // TODO: at least cmd cancel ctx (reload)
 	} else {
 		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}
 
-	jsonData, err := s.unmarshaller.Unmarshal(rawJSON, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	s.data = jsonData
-	s.expiry = time.Now().Unix() + int64(s.ttl.Seconds())
-
-	return jsonData, nil
+	return sj, nil
 }
 
-func (s *SyncedJSON) hasExpired() bool {
-	return time.Now().Unix() > s.expiry
+func (s *SyncedJSON) sync(ctx context.Context) {
+	var expired <-chan time.Time
+	err := s.fetch() // initial fetch, provide any startup errors for first dataRequest's
+	if err != nil {
+		expired = time.After(0)
+	} else {
+		expired = time.After(s.ttl)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-expired:
+			err = s.fetch()
+			if err != nil {
+				time.Sleep(time.Second * 2)
+				continue
+			}
+			expired = time.After(s.ttl)
+		case r := <-s.dataRequest:
+			r <- &dataRequest{
+				err: err,
+				obj: s.data,
+			}
+		}
+	}
+}
+
+func (s *SyncedJSON) Data(_ string) (interface{}, error) {
+	if s.fileMode {
+		return s.data, nil
+	}
+
+	rCh := make(chan *dataRequest)
+	s.dataRequest <- rCh
+	result := <-rCh
+	return result.obj, result.err
+}
+
+// fetch blocks all data reads until we will have an updated one.
+func (s *SyncedJSON) fetch() error {
+	req, _ := http.NewRequest("GET", s.uri, nil)
+
+	ctx := context.WithValue(context.Background(), request.URLAttribute, s.uri)
+	ctx = context.WithValue(ctx, request.RoundTripName, s.roundTripName)
+
+	req = req.WithContext(ctx)
+
+	response, err := s.transport.RoundTrip(req)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("status code %d", response.StatusCode)
+	}
+
+	defer response.Body.Close()
+
+	raw, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response for %q: %v", s.uri, err)
+	}
+
+	s.data, err = s.unmarshaller.Unmarshal(raw)
+	return err
+}
+
+func (s *SyncedJSON) readFile(context, path string) error {
+	raw, err := reader.ReadFromFile(context, path)
+	if err != nil {
+		return err
+	}
+	s.data, err = s.unmarshaller.Unmarshal(raw)
+	return err
 }

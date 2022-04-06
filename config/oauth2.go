@@ -1,9 +1,5 @@
 package config
 
-import (
-	"github.com/hashicorp/hcl/v2"
-)
-
 const (
 	CcmS256 = "ccm_s256"
 )
@@ -43,7 +39,6 @@ type OAuth2AcClient interface {
 	GetName() string
 	// GetVerifierMethod retrieves the verifier method (ccm_s256, nonce or state)
 	GetVerifierMethod(uid string) (string, error)
-	GetBodyContent() *hcl.BodyContent
 }
 
 // OAuth2Authorization represents the configuration for the OAuth2 authorization URL function

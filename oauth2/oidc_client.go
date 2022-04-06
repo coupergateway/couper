@@ -16,27 +16,30 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
-// OidcClient represents an OIDC client using the authorization code flow.
+// OidcClient represents an OpenID Connect client using the authorization code flow.
 type OidcClient struct {
-	*OAuth2AcClient
+	*AuthCodeClient
 	config    *oidc.Config
+	backends  map[string]http.RoundTripper
 	issLock   sync.RWMutex
 	issuer    string
 	jwtParser *jwt.Parser
 }
 
-// NewOidc creates a new OIDC client.
-func NewOidc(oidcConfig *oidc.Config) (*OidcClient, error) {
-	acClient, err := NewOAuth2AC(oidcConfig, oidcConfig, oidcConfig.Backend)
+// NewOidcClient creates a new OIDC client.
+func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
+	o := &OidcClient{
+		config:   oidcConfig,
+		backends: oidcConfig.Backends(),
+	}
+
+	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, o.backends["token_backend"])
 	if err != nil {
 		return nil, err
 	}
 
-	o := &OidcClient{
-		OAuth2AcClient: acClient,
-		config:         oidcConfig,
-	}
-	o.AcClient = o
+	o.AuthCodeClient = acClient
+	o.AuthCodeFlowClient = o
 	return o, nil
 }
 
@@ -95,7 +98,8 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	o.issLock.RUnlock()
 
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
-		idToken, err := jwtParser.Parse(idTokenString, o.config.JWKS.GetSigKeyForToken)
+
+		idToken, err := jwtParser.Parse(idTokenString, o.Keyfunc)
 		if err != nil {
 			return err
 		}
@@ -129,6 +133,11 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	}
 
 	return errors.Oauth2.Message("missing id_token in token response")
+}
+
+func (o *OidcClient) Keyfunc(token *jwt.Token) (interface{}, error) {
+	return o.config.JWKS().
+		GetSigKeyForToken(token)
 }
 
 func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, hashedVerifierValue, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
@@ -241,7 +250,7 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 		return nil, err
 	}
 
-	userinfoRes, err := o.Backend.RoundTrip(userinfoReq)
+	userinfoRes, err := o.backends["userinfo_backend"].RoundTrip(userinfoReq)
 	if err != nil {
 		return nil, err
 	}

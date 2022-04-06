@@ -12,10 +12,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -34,17 +37,25 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	}))
 	defer origin.Close()
 
+	withTimingsFn := func(base hcl.Body, connect, ttfb, timeout string) hcl.Body {
+		content := &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+			"connect_timeout": {Name: "connect_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(connect)}},
+			"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(ttfb)}},
+			"timeout":         {Name: "timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(timeout)}},
+		}}
+		return hclbody.MergeBodies(base, hclbody.New(content))
+	}
+
 	tests := []struct {
 		name        string
 		context     hcl.Body
-		tconf       *transport.Config
 		req         *http.Request
 		expectedErr string
 	}{
-		{"with zero timings", test.NewRemainContext("origin", origin.URL), &transport.Config{}, httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
-		{"with overall timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{Timeout: time.Second / 2, ConnectTimeout: time.Minute}, httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
-		{"with connect timeout", test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), &transport.Config{ConnectTimeout: time.Second / 2}, httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
-		{"with ttfb timeout", test.NewRemainContext("origin", origin.URL), &transport.Config{TTFBTimeout: time.Second}, httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
+		{"with zero timings", test.NewRemainContext("origin", origin.URL), httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
+		{"with overall timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "1m", "30s", "500ms"), httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
+		{"with connect timeout", withTimingsFn(test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), "750ms", "500ms", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
+		{"with ttfb timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "10s", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
 
 	logger, hook := logrustest.NewNullLogger()
@@ -54,8 +65,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hook.Reset()
 
-			tt.tconf.NoProxyFromEnv = true // use origin addr from transport.Config
-			backend := transport.NewBackend(tt.context, tt.tconf, nil, log)
+			backend := transport.NewBackend(tt.context, &transport.Config{NoProxyFromEnv: true}, nil, log)
 
 			_, err := backend.RoundTrip(tt.req)
 			if err != nil && tt.expectedErr == "" {
@@ -67,7 +77,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 			if tt.expectedErr != "" &&
 				(err == nil || !isErr || !strings.HasSuffix(gerr.LogError(), tt.expectedErr)) {
-				subT.Errorf("Expected err %s, got: %v", tt.expectedErr, err)
+				subT.Errorf("Expected err %s, got: %#v", tt.expectedErr, err)
 			}
 		})
 	}
@@ -314,9 +324,9 @@ func TestBackend_director(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
-			backend := transport.NewBackend(hclContext, &transport.Config{
-				Timeout: time.Second,
-			}, nil, nullLog)
+			backend := transport.NewBackend(hclbody.MergeBodies(hclContext,
+				hclbody.New(hclbody.NewContentWithAttrName("timeout", "1s")),
+			), &transport.Config{}, nil, nullLog)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)
 			*req = *req.WithContext(tt.ctx)
