@@ -27,10 +27,10 @@ func newRequiredScope() requiredScope {
 	return requiredScope{scopes: make(map[string][]string)}
 }
 
-func (r *requiredScope) addScopeMap(scopeMap map[string]string) {
-	otherScope, otherMethodExists := scopeMap["*"]
+func (r *requiredScope) addScopeMap(permissionMap map[string]string) {
+	otherScope, otherMethodExists := permissionMap["*"]
 	for _, op := range supportedOperations {
-		scope, exists := scopeMap[op]
+		scope, exists := permissionMap[op]
 		if exists {
 			r.addScopeForOperation(op, scope)
 		} else if otherMethodExists {
@@ -67,11 +67,11 @@ type ScopeControl struct {
 	required requiredScope
 }
 
-func NewScopeControl(scopeMaps []map[string]string) *ScopeControl {
+func NewScopeControl(permissionMaps []map[string]string) *ScopeControl {
 	rs := newRequiredScope()
-	for _, scopeMap := range scopeMaps {
-		if scopeMap != nil {
-			rs.addScopeMap(scopeMap)
+	for _, permissionMap := range permissionMaps {
+		if permissionMap != nil {
+			rs.addScopeMap(permissionMap)
 		}
 	}
 	return &ScopeControl{required: rs}

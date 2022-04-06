@@ -82,7 +82,7 @@ func Test_requiredScope(t *testing.T) {
 func Test_ScopeControl(t *testing.T) {
 	tests := []struct {
 		name            string
-		scopeMaps       []map[string]string
+		permissionMaps  []map[string]string
 		method          string
 		grantedScope    []string
 		wantErrorString string
@@ -168,7 +168,7 @@ func Test_ScopeControl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			sc := NewScopeControl(tt.scopeMaps)
+			sc := NewScopeControl(tt.permissionMaps)
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedScope != nil {
 				ctx := req.Context()

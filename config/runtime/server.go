@@ -319,12 +319,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
-				scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
+				permissionMaps, err := newPermissionMaps(parentAPI, endpointConf)
 				if err != nil {
 					return nil, err
 				}
 
-				scopeControl := ac.NewScopeControl(scopeMaps)
+				scopeControl := ac.NewScopeControl(permissionMaps)
 				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:   epOpts,
 					memStore: memStore,
@@ -423,27 +423,27 @@ func bodiesWithACBodies(defs *config.Definitions, ac, dac []string) []hcl.Body {
 	return bodies
 }
 
-func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
-	var scopeMaps []map[string]string
+func newPermissionMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
+	var permissionMaps []map[string]string
 	if parentAPI != nil {
-		apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.RequiredPermission)
+		apiRequiredPermissionMap, err := seetie.ValueToPermissionMap(parentAPI.RequiredPermission)
 		if err != nil {
 			return nil, err
 		}
-		if apiScopeMap != nil {
-			scopeMaps = append(scopeMaps, apiScopeMap)
+		if apiRequiredPermissionMap != nil {
+			permissionMaps = append(permissionMaps, apiRequiredPermissionMap)
 		}
 	}
-	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.RequiredPermission)
+	endpointRequiredPermissionMap, err := seetie.ValueToPermissionMap(endpoint.RequiredPermission)
 	if err != nil {
 		return nil, err
 	}
 
-	if endpointScopeMap != nil {
-		scopeMaps = append(scopeMaps, endpointScopeMap)
+	if endpointRequiredPermissionMap != nil {
+		permissionMaps = append(permissionMaps, endpointRequiredPermissionMap)
 	}
 
-	return scopeMaps, nil
+	return permissionMaps, nil
 }
 
 func whichCORS(parent *config.Server, this interface{}) *config.CORS {
