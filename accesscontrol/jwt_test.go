@@ -347,16 +347,16 @@ func Test_JWT_yields_scopes(t *testing.T) {
 	var noScope []string
 
 	tests := []struct {
-		name       string
-		scopeClaim string
-		scope      interface{}
-		rolesClaim string
-		roles      interface{}
-		expWarning string
-		expScopes  []string
+		name             string
+		permissionsClaim string
+		scope            interface{}
+		rolesClaim       string
+		roles            interface{}
+		expWarning       string
+		expScopes        []string
 	}{
 		{
-			"no scope, no roles",
+			"no permissions, no roles",
 			"scp",
 			nil,
 			"roles",
@@ -365,7 +365,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			noScope,
 		},
 		{
-			"scope: space-separated list",
+			"permissions: space-separated list",
 			"scp",
 			"foo bar",
 			"",
@@ -374,7 +374,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: space-separated list, multiple",
+			"permissions: space-separated list, multiple",
 			"scp",
 			"foo bar foo",
 			"",
@@ -383,7 +383,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: list of string",
+			"permissions: list of string",
 			"scoop",
 			[]string{"foo", "bar"},
 			"",
@@ -392,7 +392,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: list of string, multiple",
+			"permissions: list of string, multiple",
 			"scoop",
 			[]string{"foo", "bar", "bar"},
 			"",
@@ -401,57 +401,57 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: warn: boolean",
+			"permissions: warn: boolean",
 			"scope",
 			true,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value true",
+			"invalid permissions claim value type, ignoring claim, value true",
 			noScope,
 		},
 		{
-			"scope: warn: number",
+			"permissions: warn: number",
 			"scope",
 			1.23,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value 1.23",
+			"invalid permissions claim value type, ignoring claim, value 1.23",
 			noScope,
 		},
 		{
-			"scope: warn: list of bool",
+			"permissions: warn: list of bool",
 			"scope",
 			[]bool{true, false},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value []interface {}{true, false}",
+			"invalid permissions claim value type, ignoring claim, value []interface {}{true, false}",
 			noScope,
 		},
 		{
-			"scope: warn: list of number",
+			"permissions: warn: list of number",
 			"scope",
 			[]int{1, 2},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value []interface {}{1, 2}",
+			"invalid permissions claim value type, ignoring claim, value []interface {}{1, 2}",
 			noScope,
 		},
 		{
-			"scope: warn: mixed list",
+			"permissions: warn: mixed list",
 			"scope",
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value []interface {}{"eins", 2}`,
+			`invalid permissions claim value type, ignoring claim, value []interface {}{"eins", 2}`,
 			noScope,
 		},
 		{
-			"scope: warn: object",
+			"permissions: warn: object",
 			"scope",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
+			`invalid permissions claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
 			noScope,
 		},
 		{
@@ -594,8 +594,8 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hook.Reset()
 			claims := jwt.MapClaims{}
-			if tt.scopeClaim != "" && tt.scope != nil {
-				claims[tt.scopeClaim] = tt.scope
+			if tt.permissionsClaim != "" && tt.scope != nil {
+				claims[tt.permissionsClaim] = tt.scope
 			}
 			if tt.rolesClaim != "" && tt.roles != nil {
 				claims[tt.rolesClaim] = tt.roles
@@ -609,13 +609,13 @@ func Test_JWT_yields_scopes(t *testing.T) {
 
 			source := ac.NewJWTSource("", "Authorization", nil)
 			j, err := ac.NewJWT(&ac.JWTOptions{
-				Algorithm:  algo.String(),
-				Name:       "test_ac",
-				ScopeClaim: tt.scopeClaim,
-				RolesClaim: tt.rolesClaim,
-				RolesMap:   rolesMap,
-				Source:     source,
-				Key:        pubKeyBytes,
+				Algorithm:        algo.String(),
+				Name:             "test_ac",
+				PermissionsClaim: tt.permissionsClaim,
+				RolesClaim:       tt.rolesClaim,
+				RolesMap:         rolesMap,
+				Source:           source,
+				Key:              pubKeyBytes,
 			})
 			if err != nil {
 				subT.Fatal(err)

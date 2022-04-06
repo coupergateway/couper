@@ -384,8 +384,8 @@ Since responses from endpoints protected by JWT access controls are not publicly
 | `signature_algorithm`           |string|-|-|Valid values: `RS256` `RS384` `RS512` `HS256` `HS384` `HS512` `ES256` `ES384` `ES512`|-|
 | `claims`               |object|-|Object with claims that must be given for a valid token (equals comparison with JWT payload).| The claim values are evaluated per request. | `claims = { pid = request.path_params.pid }` |
 | `required_claims`      |string|-|List of claim names that must be given for a valid token |-|`required_claims = ["roles"]`|
-| `beta_scope_claim` |string|-|name of claim specifying the scope of token|The claim value must either be a string containing a space-separated list of scope values or a list of string scope values|`beta_scope_claim = "scope"`|
-| `beta_scope_map` |map|-| mapping of scope values to additional scope values | Maps values from `beta_scope_claim` and those created from `beta_roles_map`. The map is called recursively. |`beta_scope_map = { sc1 = ["sc3", "sc4"], sc2 = ["sc5"] }`|
+| `beta_permissions_claim` |string|-|name of claim containing the granted permissions|The claim value must either be a string containing a space-separated list of permissions or a list of string permissions|`beta_permissions_claim = "scope"`|
+| `beta_scope_map` |map|-| mapping of scope values to additional scope values | Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. |`beta_scope_map = { sc1 = ["sc3", "sc4"], sc2 = ["sc5"] }`|
 | `beta_roles_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_roles_claim = "roles"`|
 | `beta_roles_map` |map|-| mapping of roles to scope values | Non-mapped roles can be assigned with `*` to specific claims. |`beta_roles_map = { role1 = ["scope1", "scope2"], role2 = ["scope3"], "*" = ["public"] }`|
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
@@ -399,9 +399,9 @@ If all three attributes are missing, `header = "Authorization"` will be implied,
 If the key to verify the signatures of tokens does not change over time, it should be specified via either `key` or `key_file` (together with `signature_algorithm`).
 Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.
 
-A JWT access control configured by this block can extract scope values from
+A JWT access control configured by this block can extract permissions from
 
-- the value of the claim specified by `beta_scope_claim` and
+- the value of the claim specified by `beta_permissions_claim` and
 - the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.

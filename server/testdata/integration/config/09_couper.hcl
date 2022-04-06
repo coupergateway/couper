@@ -109,7 +109,7 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_scope_claim = "scp"
+    beta_permissions_claim = "scp"
   }
   jwt "roled_jwt" {
     header = "authorization"
@@ -124,7 +124,7 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_scope_claim = "scp"
+    beta_permissions_claim = "scp"
     beta_roles_claim = "rl"
     beta_roles_map = {
       "r1" = ["b"]

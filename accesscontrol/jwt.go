@@ -55,7 +55,7 @@ type JWT struct {
 	pubKey                interface{}
 	rolesClaim            string
 	rolesMap              map[string][]string
-	scopeClaim            string
+	permissionsClaim      string
 	scopeMap              map[string][]string
 	jwks                  *jwk.JWKS
 }
@@ -68,7 +68,7 @@ type JWTOptions struct {
 	Name                  string // TODO: more generic (validate)
 	RolesClaim            string
 	RolesMap              map[string][]string
-	ScopeClaim            string
+	PermissionsClaim      string
 	ScopeMap              map[string][]string
 	Source                JWTSource
 	Key                   []byte
@@ -173,7 +173,7 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 		name:                  options.Name,
 		rolesClaim:            options.RolesClaim,
 		rolesMap:              options.RolesMap,
-		scopeClaim:            options.ScopeClaim,
+		permissionsClaim:      options.PermissionsClaim,
 		scopeMap:              options.ScopeMap,
 		source:                options.Source,
 	}
@@ -366,11 +366,11 @@ func (j *JWT) getScopeValues(tokenClaims map[string]interface{}, log *logrus.Ent
 const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value %#v"
 
 func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) []string {
-	if j.scopeClaim == "" {
+	if j.permissionsClaim == "" {
 		return scopeValues
 	}
 
-	scopesFromClaim, exists := tokenClaims[j.scopeClaim]
+	scopesFromClaim, exists := tokenClaims[j.permissionsClaim]
 	if !exists {
 		return scopeValues
 	}
@@ -382,7 +382,7 @@ func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeVa
 		for _, v := range scopesArray {
 			s, ok := v.(string)
 			if !ok {
-				log.Warn(fmt.Sprintf(warnInvalidValueMsg, "scope", scopesFromClaim))
+				log.Warn(fmt.Sprintf(warnInvalidValueMsg, "permissions", scopesFromClaim))
 				return scopeValues
 			}
 			vals = append(vals, s)
@@ -393,7 +393,7 @@ func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeVa
 	} else {
 		scopesString, ok := scopesFromClaim.(string)
 		if !ok {
-			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "scope", scopesFromClaim))
+			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "permissions", scopesFromClaim))
 			return scopeValues
 		}
 		for _, s := range strings.Split(scopesString, " ") {

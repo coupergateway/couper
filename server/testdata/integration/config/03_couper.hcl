@@ -291,7 +291,7 @@ definitions {
   jwt "JWTToken" {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-    beta_scope_claim = "scope"
+    beta_permissions_claim = "scope"
   }
   jwt "RSAToken" {
     signature_algorithm = "RS256"
@@ -353,7 +353,7 @@ definitions {
   }
   jwt "JWKS_scope" {
     jwks_url = "file:../files/jwks.json"
-    beta_scope_claim = "scope"
+    beta_permissions_claim = "scope"
   }
   jwt "JWKSRemote" {
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
@@ -373,13 +373,13 @@ definitions {
     token_value = request.query.token[0]
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-    beta_scope_claim = "scope"
+    beta_permissions_claim = "scope"
   }
   jwt "JWT_token_value_body" {
     token_value = request.json_body.token
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-    beta_scope_claim = "scope"
+    beta_permissions_claim = "scope"
   }
   backend "jwks" {
     origin = env.COUPER_TEST_BACKEND_ADDR
