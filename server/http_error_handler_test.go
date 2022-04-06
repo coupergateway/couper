@@ -144,7 +144,7 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 		{"api: w/ scope", http.MethodGet, "/api/", []string{"read"}, http.StatusNoContent, ""},
 		{"api: w/ wrong scope; handle scope", http.MethodGet, "/api/", []string{"another"}, http.StatusTeapot, ""},
 		{"api pow: w/ scope; op granted", http.MethodPost, "/api/pow/", []string{"read", "power"}, http.StatusNoContent, ""},
-		{"api pow: w/ wrong scope; handle insufficient_scope", http.MethodPost, "/api/pow/", []string{"read", "another"}, http.StatusBadRequest, ""},
+		{"api pow: w/ wrong scope; handle insufficient_permission", http.MethodPost, "/api/pow/", []string{"read", "another"}, http.StatusBadRequest, ""},
 		{"api pow: w/ scope method; handle operation_denied", http.MethodGet, "/api/pow/", []string{"read", "another"}, http.StatusMethodNotAllowed, ""},
 		{"endpoint: w/ scope", http.MethodGet, "/", []string{"write"}, http.StatusOK, ""},
 		{"endpoint: w/ wrong scope; handle scope", http.MethodGet, "/", []string{"another"}, http.StatusTeapot, ""},

@@ -160,7 +160,7 @@ server "logs" {
         status = 204
       }
 
-      error_handler "beta_insufficient_scope" {
+      error_handler "beta_insufficient_permissions" {
         custom_log_fields = {
           error_handler = request.method
         }

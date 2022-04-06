@@ -59,10 +59,10 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	ctx := req.Context()
 	grantedScope, ok := ctx.Value(request.Scopes).([]string)
 	if !ok {
-		return errors.BetaInsufficientScope.Messagef("no scope granted")
+		return errors.BetaInsufficientPermissions.Messagef("no scope granted")
 	}
 	if !hasGrantedScope(grantedScope, requiredPermission) {
-		return errors.BetaInsufficientScope.Messagef("required permission %q not granted", requiredPermission)
+		return errors.BetaInsufficientPermissions.Messagef("required permission %q not granted", requiredPermission)
 	}
 	return nil
 }

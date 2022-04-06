@@ -23,7 +23,7 @@ server {
     beta_required_permission = {
       GET = "gimme"
     }
-    error_handler "beta_insufficient_scope" "unexpected_status" "*" {
+    error_handler "beta_insufficient_permissions" "unexpected_status" "*" {
       response {
         status = 418
       }
@@ -34,7 +34,7 @@ server {
     base_path      = "/api-111"
     access_control = ["foo"]
 
-    error_handler "beta_insufficient_scope" {
+    error_handler "beta_insufficient_permissions" {
       response {
         status = 415
       }

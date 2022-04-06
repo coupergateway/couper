@@ -4,7 +4,7 @@
   - [Introduction](#introduction)
   - [Error messages](#error-messages)
   - [Access control error_handler](#access-control-error_handler)
-  - [Scope related error_handler](#scope-related-error_handler)
+  - [Permissions related error_handler](#permissions-related-error_handler)
   - [Endpoint related error_handler](#endpoint-related-error_handler)
   - [Error types](#error-types)
     - [Access control error types](#access-control-error-types)
@@ -24,13 +24,11 @@ Detailed information is provided via log message. This way, all information can 
 ## Access control `error_handler`
 
 Access control errors in particular require special handling, e.g. sending a specific response for missing login credentials.
-For this purpose every access control definition of `basic_auth`, `jwt` or `saml2` can define one or multiple [`error_handler` blocks](REFERENCE.md#error-handler-block) with one or more defined error type labels listed below.
+For this purpose every access control definition of `basic_auth`, `jwt`, `oidc` or `saml2` can define one or multiple [`error_handler` blocks](REFERENCE.md#error-handler-block) with one or more defined error type labels listed below.
 
-## Scope related `error_handler`
+## Permissions related `error_handler`
 
-Since an [AC](#access-control-error_handler) error handler is rather general than scopes handled per endpoint or http-method but are still protected with the
-same access-control. Reacting to those more path specific errors you can define one or more [`error_handler` blocks](REFERENCE.md#error-handler-block) within
-an `api` or `endpoint` block.
+Required permissions are configured for `api` or `endpoint` blocks. So errors caused by insufficient permissions can be handled at API or endpoint levels.
 
 ## Endpoint related `error_handler`
 
@@ -56,10 +54,9 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 
 ### API and endpoint error types
 
-| Type (and super types)                          | Description                                                                                      | Default handling                                                            |
-|:------------------------------------------------|:-------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
-| `beta_scope`                                    | All `beta_scope` related errors                                                                  | Send error template with status `403`.                                      |
-| `beta_insufficient_scope` (`beta_scope`)        | The request is not in the scope granted to the requester.                                        | Send error template with status `403`.                                      |
+| Type (and super types)                          | Description                                                                                             | Default handling                                                            |
+|:------------------------------------------------|:--------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
+| `beta_insufficient_permissions`                 | The permission required for the requested operation is not in the permissions granted to the requester. | Send error template with status `403`.                                      |
 
 ### Endpoint error types
 
