@@ -19,89 +19,89 @@ var supportedOperations = []string{
 	http.MethodTrace,
 }
 
-type requiredScope struct {
-	scopes map[string][]string
+type requiredPermissions struct {
+	permissions map[string][]string
 }
 
-func newRequiredScope() requiredScope {
-	return requiredScope{scopes: make(map[string][]string)}
+func newRequiredPermissions() requiredPermissions {
+	return requiredPermissions{permissions: make(map[string][]string)}
 }
 
-func (r *requiredScope) addScopeMap(permissionMap map[string]string) {
-	otherScope, otherMethodExists := permissionMap["*"]
+func (r *requiredPermissions) addPermissionMap(permissionMap map[string]string) {
+	otherPermission, otherMethodExists := permissionMap["*"]
 	for _, op := range supportedOperations {
-		scope, exists := permissionMap[op]
+		permission, exists := permissionMap[op]
 		if exists {
-			r.addScopeForOperation(op, scope)
+			r.addPermissionForOperation(op, permission)
 		} else if otherMethodExists {
-			r.addScopeForOperation(op, otherScope)
+			r.addPermissionForOperation(op, otherPermission)
 		} else {
-			delete(r.scopes, op)
+			delete(r.permissions, op)
 		}
 	}
 }
 
-func (r *requiredScope) addScopeForOperation(operation, scope string) {
-	scopes, exists := r.scopes[operation]
+func (r *requiredPermissions) addPermissionForOperation(operation, permission string) {
+	permissions, exists := r.permissions[operation]
 	if !exists {
-		if scope == "" {
-			// method permitted without scope
-			r.scopes[operation] = []string{}
+		if permission == "" {
+			// method permitted without permission
+			r.permissions[operation] = []string{}
 			return
 		}
-		// method permitted with required scope
-		r.scopes[operation] = []string{scope}
+		// method permitted with required permission
+		r.permissions[operation] = []string{permission}
 		return
 	}
-	// no additional scope required
-	if scope == "" {
+	// no additional permission required
+	if permission == "" {
 		return
 	}
-	// add scope to required scopes for this operation
-	r.scopes[operation] = append(scopes, scope)
+	// add permission to required permissions for this operation
+	r.permissions[operation] = append(permissions, permission)
 }
 
 var _ AccessControl = &ScopeControl{}
 
 type ScopeControl struct {
-	required requiredScope
+	required requiredPermissions
 }
 
 func NewScopeControl(permissionMaps []map[string]string) *ScopeControl {
-	rs := newRequiredScope()
+	rp := newRequiredPermissions()
 	for _, permissionMap := range permissionMaps {
 		if permissionMap != nil {
-			rs.addScopeMap(permissionMap)
+			rp.addPermissionMap(permissionMap)
 		}
 	}
-	return &ScopeControl{required: rs}
+	return &ScopeControl{required: rp}
 }
 
-// Validate validates the scope values provided by access controls against the required scope values.
+// Validate validates the scope values provided by access controls against the required permission.
 func (s *ScopeControl) Validate(req *http.Request) error {
-	if len(s.required.scopes) == 0 {
+	if len(s.required.permissions) == 0 {
 		return nil
 	}
-	requiredScopes, exists := s.required.scopes[req.Method]
+	requiredPermissions, exists := s.required.permissions[req.Method]
 	if !exists {
 		return errors.BetaOperationDenied.Messagef("operation %s not permitted", req.Method)
 	}
 	ctx := req.Context()
 	grantedScope, ok := ctx.Value(request.Scopes).([]string)
-	if !ok && len(requiredScopes) > 0 {
+	if !ok && len(requiredPermissions) > 0 {
 		return errors.BetaInsufficientScope.Messagef("no scope granted")
 	}
-	for _, rs := range requiredScopes {
-		if !hasGrantedScope(grantedScope, rs) {
-			return errors.BetaInsufficientScope.Messagef("required scope %q not granted", rs)
+	for _, rp := range requiredPermissions {
+		if !hasGrantedScope(grantedScope, rp) {
+			return errors.BetaInsufficientScope.Messagef("required permission %q not granted", rp)
 		}
 	}
 	return nil
 }
 
-func hasGrantedScope(grantedScope []string, scope string) bool {
+func hasGrantedScope(grantedScope []string, permission string) bool {
 	for _, gs := range grantedScope {
-		if gs == scope {
+		if gs == permission {
 			return true
 		}
 	}

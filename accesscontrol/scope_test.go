@@ -10,15 +10,15 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-func Test_requiredScope(t *testing.T) {
+func Test_requiredPermissions(t *testing.T) {
 	tests := []struct {
 		name string
 		base map[string]string
-		sm   map[string]string
+		rpm  map[string]string
 		want map[string][]string
 	}{
 		{
-			"only default no scope",
+			"only default no permission",
 			map[string]string{},
 			map[string]string{"*": ""},
 			map[string][]string{"CONNECT": {}, "DELETE": {}, "GET": {}, "HEAD": {}, "OPTIONS": {}, "PATCH": {}, "POST": {}, "PUT": {}, "TRACE": {}},
@@ -30,19 +30,19 @@ func Test_requiredScope(t *testing.T) {
 			map[string][]string{"CONNECT": {"read"}, "DELETE": {"read"}, "GET": {"read"}, "HEAD": {"read"}, "OPTIONS": {"read"}, "PATCH": {"read"}, "POST": {"read"}, "PUT": {"read"}, "TRACE": {"read"}},
 		},
 		{
-			"simple scope, simple no scope",
+			"simple permission, simple no permission",
 			map[string]string{},
 			map[string]string{"POST": "write", "PUT": ""},
 			map[string][]string{"POST": {"write"}, "PUT": {}},
 		},
 		{
-			"simple scope, simple no scope, with default",
+			"simple permission, simple no permission, with default",
 			map[string]string{},
 			map[string]string{"POST": "write", "PUT": "", "*": "read"},
 			map[string][]string{"CONNECT": {"read"}, "DELETE": {"read"}, "GET": {"read"}, "HEAD": {"read"}, "OPTIONS": {"read"}, "PATCH": {"read"}, "POST": {"write"}, "PUT": {}, "TRACE": {"read"}},
 		},
 		{
-			"default / simple scope, simple no scope",
+			"default / simple permission, simple no permission",
 			map[string]string{"*": "read"},
 			map[string]string{"POST": "write", "PUT": ""},
 			map[string][]string{"POST": {"read", "write"}, "PUT": {"read"}},
@@ -51,26 +51,26 @@ func Test_requiredScope(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			rs := newRequiredScope()
-			rs.addScopeMap(tt.base)
-			rs.addScopeMap(tt.sm)
-			if len(rs.scopes) != len(tt.want) {
-				subT.Errorf("unexpected scopes: %#v, want: %#v", rs.scopes, tt.want)
+			rp := newRequiredPermissions()
+			rp.addPermissionMap(tt.base)
+			rp.addPermissionMap(tt.rpm)
+			if len(rp.permissions) != len(tt.want) {
+				subT.Errorf("unexpected permissions: %#v, want: %#v", rp.permissions, tt.want)
 				return
 			}
-			for op, wantScopes := range tt.want {
-				scopes, exists := rs.scopes[op]
+			for op, wantPermissions := range tt.want {
+				permissions, exists := rp.permissions[op]
 				if !exists {
-					subT.Errorf("no scopes for operation %q", op)
+					subT.Errorf("no permissions for operation %q", op)
 					return
 				}
-				if len(scopes) != len(wantScopes) {
-					subT.Errorf("unexpected scopes for %q: %#v, want: %#v", op, scopes, wantScopes)
+				if len(permissions) != len(wantPermissions) {
+					subT.Errorf("unexpected permissions for %q: %#v, want: %#v", op, permissions, wantPermissions)
 					return
 				}
-				for i, s := range wantScopes {
-					if scopes[i] != s {
-						subT.Errorf("unexpected scopes for %q: %#v, want: %#v", op, scopes, wantScopes)
+				for i, p := range wantPermissions {
+					if permissions[i] != p {
+						subT.Errorf("unexpected permissions for %q: %#v, want: %#v", op, permissions, wantPermissions)
 						return
 					}
 				}
@@ -88,42 +88,42 @@ func Test_ScopeControl(t *testing.T) {
 		wantErrorString string
 	}{
 		{
-			"no method restrictions, no scope required, no scope granted",
+			"no method restrictions, no permission required, no scope granted",
 			[]map[string]string{},
 			http.MethodGet,
 			nil,
 			"",
 		},
 		{
-			"method permitted, no scope required, no scope granted",
+			"method permitted, no permission required, no scope granted",
 			[]map[string]string{{http.MethodGet: ""}},
 			http.MethodGet,
 			nil,
 			"",
 		},
 		{
-			"method permitted, scope required, scope granted",
+			"method permitted, permission required, scope granted",
 			[]map[string]string{{http.MethodGet: "read"}},
 			http.MethodGet,
 			[]string{"read"},
 			"",
 		},
 		{
-			"method permitted, scope required, scopes granted",
+			"method permitted, permission required, scopes granted",
 			[]map[string]string{{http.MethodPost: "write"}},
 			http.MethodPost,
 			[]string{"read", "write"},
 			"",
 		},
 		{
-			"method permitted, scopes required, scopes granted",
+			"method permitted, permission required, scopes granted",
 			[]map[string]string{{"*": "read"}, {http.MethodPost: "write"}},
 			http.MethodPost,
 			[]string{"read", "write"},
 			"",
 		},
 		{
-			"all methods permitted, scope required, scope granted",
+			"all methods permitted, permission required, scope granted",
 			[]map[string]string{{"*": "read"}},
 			http.MethodPost,
 			[]string{"read"},
@@ -137,32 +137,32 @@ func Test_ScopeControl(t *testing.T) {
 			"access control error: operation POST not permitted",
 		},
 		{
-			"method permitted, scope required, no scope granted",
+			"method permitted, permission required, no scope granted",
 			[]map[string]string{{http.MethodGet: "read"}},
 			http.MethodGet,
 			nil,
 			"access control error: no scope granted",
 		},
 		{
-			"method permitted, scope required, wrong scope granted",
+			"method permitted, permission required, wrong scope granted",
 			[]map[string]string{{http.MethodPost: "write"}},
 			http.MethodPost,
 			[]string{"read"},
-			`access control error: required scope "write" not granted`,
+			`access control error: required permission "write" not granted`,
 		},
 		{
-			"method permitted, scopes required, missing granted scope",
+			"method permitted, permission required, missing granted scope",
 			[]map[string]string{{"*": "read"}, {http.MethodPost: "write"}},
 			http.MethodPost,
 			[]string{"read"},
-			`access control error: required scope "write" not granted`,
+			`access control error: required permission "write" not granted`,
 		},
 		{
-			"method permitted, scopes required, missing granted scopes",
+			"method permitted, permission required, missing granted scopes",
 			[]map[string]string{{"*": "read"}, {http.MethodPost: "write"}},
 			http.MethodPost,
 			[]string{"foo"},
-			`access control error: required scope "read" not granted`,
+			`access control error: required permission "read" not granted`,
 		},
 	}
 
