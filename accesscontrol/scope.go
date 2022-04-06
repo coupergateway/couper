@@ -17,16 +17,16 @@ func newRequiredPermissions() requiredPermissions {
 }
 
 func (r *requiredPermissions) setPermissionMap(permissionMap map[string]string) {
-	otherPermission, otherMethodExists := permissionMap["*"]
-	for _, method := range middleware.DefaultEndpointAllowedMethods {
-		permission, exists := permissionMap[method]
-		if exists {
-			r.permissions[method] = permission
-		} else if otherMethodExists {
+	if otherPermission, otherMethodExists := permissionMap["*"]; otherMethodExists {
+		for _, method := range middleware.DefaultEndpointAllowedMethods {
 			r.permissions[method] = otherPermission
-		} else {
-			delete(r.permissions, method)
 		}
+	}
+	for method, permission := range permissionMap {
+		if method == "*" {
+			continue
+		}
+		r.permissions[method] = permission
 	}
 }
 

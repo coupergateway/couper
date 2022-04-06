@@ -5018,7 +5018,7 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted, authorized, OPTIONS", http.MethodOptions, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, CONNECT", http.MethodConnect, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, TRACE", http.MethodTrace, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
-		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"}, // BREW not supported by scope AC
+		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
 		{"restricted, CORS preflight", http.MethodOptions, "/api1/restricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
 
 		{"wildcard, GET", http.MethodGet, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
