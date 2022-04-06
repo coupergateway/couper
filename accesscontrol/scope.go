@@ -20,45 +20,25 @@ var supportedMethods = []string{
 }
 
 type requiredPermissions struct {
-	permissions map[string][]string
+	permissions map[string]string
 }
 
 func newRequiredPermissions() requiredPermissions {
-	return requiredPermissions{permissions: make(map[string][]string)}
+	return requiredPermissions{permissions: make(map[string]string)}
 }
 
-func (r *requiredPermissions) addPermissionMap(permissionMap map[string]string) {
+func (r *requiredPermissions) setPermissionMap(permissionMap map[string]string) {
 	otherPermission, otherMethodExists := permissionMap["*"]
 	for _, method := range supportedMethods {
 		permission, exists := permissionMap[method]
 		if exists {
-			r.addPermissionForMethod(method, permission)
+			r.permissions[method] = permission
 		} else if otherMethodExists {
-			r.addPermissionForMethod(method, otherPermission)
+			r.permissions[method] = otherPermission
 		} else {
 			delete(r.permissions, method)
 		}
 	}
-}
-
-func (r *requiredPermissions) addPermissionForMethod(method, permission string) {
-	permissions, exists := r.permissions[method]
-	if !exists {
-		if permission == "" {
-			// method permitted without permission
-			r.permissions[method] = []string{}
-			return
-		}
-		// method permitted with required permission
-		r.permissions[method] = []string{permission}
-		return
-	}
-	// no additional permission required
-	if permission == "" {
-		return
-	}
-	// add permission to required permissions for this method
-	r.permissions[method] = append(permissions, permission)
 }
 
 var _ AccessControl = &ScopeControl{}
@@ -67,12 +47,10 @@ type ScopeControl struct {
 	required requiredPermissions
 }
 
-func NewScopeControl(permissionMaps []map[string]string) *ScopeControl {
+func NewScopeControl(permissionMap map[string]string) *ScopeControl {
 	rp := newRequiredPermissions()
-	for _, permissionMap := range permissionMaps {
-		if permissionMap != nil {
-			rp.addPermissionMap(permissionMap)
-		}
+	if permissionMap != nil {
+		rp.setPermissionMap(permissionMap)
 	}
 	return &ScopeControl{required: rp}
 }
@@ -82,19 +60,20 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	if len(s.required.permissions) == 0 {
 		return nil
 	}
-	requiredPermissions, exists := s.required.permissions[req.Method]
+	requiredPermission, exists := s.required.permissions[req.Method]
 	if !exists {
 		return errors.BetaOperationDenied.Messagef("method %s not permitted", req.Method)
 	}
+	if requiredPermission == "" {
+		return nil
+	}
 	ctx := req.Context()
 	grantedScope, ok := ctx.Value(request.Scopes).([]string)
-	if !ok && len(requiredPermissions) > 0 {
+	if !ok {
 		return errors.BetaInsufficientScope.Messagef("no scope granted")
 	}
-	for _, rp := range requiredPermissions {
-		if !hasGrantedScope(grantedScope, rp) {
-			return errors.BetaInsufficientScope.Messagef("required permission %q not granted", rp)
-		}
+	if !hasGrantedScope(grantedScope, requiredPermission) {
+		return errors.BetaInsufficientScope.Messagef("required permission %q not granted", requiredPermission)
 	}
 	return nil
 }

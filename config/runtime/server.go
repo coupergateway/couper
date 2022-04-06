@@ -319,12 +319,20 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
-				permissionMaps, err := newPermissionMaps(parentAPI, endpointConf)
+				var requiredPermissionMap map[string]string
+				requiredPermissionMap, err = seetie.ValueToPermissionMap(endpointConf.RequiredPermission)
 				if err != nil {
 					return nil, err
 				}
+				if requiredPermissionMap == nil && parentAPI != nil {
+					// if required permission in endpoint {} not defined, try required permission in parent api {}
+					requiredPermissionMap, err = seetie.ValueToPermissionMap(parentAPI.RequiredPermission)
+					if err != nil {
+						return nil, err
+					}
+				}
 
-				scopeControl := ac.NewScopeControl(permissionMaps)
+				scopeControl := ac.NewScopeControl(requiredPermissionMap)
 				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:   epOpts,
 					memStore: memStore,

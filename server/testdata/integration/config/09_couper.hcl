@@ -2,7 +2,7 @@ server "scoped jwt" {
   api {
     base_path = "/scope"
     access_control = ["scoped_jwt"]
-    beta_required_permission = "a"
+    beta_required_permission = "z"
     endpoint "/foo" {
       beta_required_permission = {
         get = ""
@@ -20,6 +20,14 @@ server "scoped jwt" {
         delete = ""
         "*" = "more"
       }
+      response {
+        status = 204
+        headers = {
+          x-granted-scope = json_encode(request.context.scopes)
+        }
+      }
+    }
+    endpoint "/permission-from-api" {
       response {
         status = 204
         headers = {

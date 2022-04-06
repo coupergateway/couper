@@ -13,66 +13,48 @@ import (
 func Test_requiredPermissions(t *testing.T) {
 	tests := []struct {
 		name string
-		base map[string]string
 		rpm  map[string]string
-		want map[string][]string
+		want map[string]string
 	}{
 		{
 			"only default no permission",
-			map[string]string{},
 			map[string]string{"*": ""},
-			map[string][]string{"CONNECT": {}, "DELETE": {}, "GET": {}, "HEAD": {}, "OPTIONS": {}, "PATCH": {}, "POST": {}, "PUT": {}, "TRACE": {}},
+			map[string]string{"CONNECT": "", "DELETE": "", "GET": "", "HEAD": "", "OPTIONS": "", "PATCH": "", "POST": "", "PUT": "", "TRACE": ""},
 		},
 		{
 			"only default read",
-			map[string]string{},
 			map[string]string{"*": "read"},
-			map[string][]string{"CONNECT": {"read"}, "DELETE": {"read"}, "GET": {"read"}, "HEAD": {"read"}, "OPTIONS": {"read"}, "PATCH": {"read"}, "POST": {"read"}, "PUT": {"read"}, "TRACE": {"read"}},
+			map[string]string{"CONNECT": "read", "DELETE": "read", "GET": "read", "HEAD": "read", "OPTIONS": "read", "PATCH": "read", "POST": "read", "PUT": "read", "TRACE": "read"},
 		},
 		{
 			"simple permission, simple no permission",
-			map[string]string{},
 			map[string]string{"POST": "write", "PUT": ""},
-			map[string][]string{"POST": {"write"}, "PUT": {}},
+			map[string]string{"POST": "write", "PUT": ""},
 		},
 		{
 			"simple permission, simple no permission, with default",
-			map[string]string{},
 			map[string]string{"POST": "write", "PUT": "", "*": "read"},
-			map[string][]string{"CONNECT": {"read"}, "DELETE": {"read"}, "GET": {"read"}, "HEAD": {"read"}, "OPTIONS": {"read"}, "PATCH": {"read"}, "POST": {"write"}, "PUT": {}, "TRACE": {"read"}},
-		},
-		{
-			"default / simple permission, simple no permission",
-			map[string]string{"*": "read"},
-			map[string]string{"POST": "write", "PUT": ""},
-			map[string][]string{"POST": {"read", "write"}, "PUT": {"read"}},
+			map[string]string{"CONNECT": "read", "DELETE": "read", "GET": "read", "HEAD": "read", "OPTIONS": "read", "PATCH": "read", "POST": "write", "PUT": "", "TRACE": "read"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			rp := newRequiredPermissions()
-			rp.addPermissionMap(tt.base)
-			rp.addPermissionMap(tt.rpm)
+			rp.setPermissionMap(tt.rpm)
 			if len(rp.permissions) != len(tt.want) {
-				subT.Errorf("unexpected permissions: %#v, want: %#v", rp.permissions, tt.want)
+				subT.Errorf("unexpected permission: %#v, want: %#v", rp.permissions, tt.want)
 				return
 			}
-			for method, wantPermissions := range tt.want {
-				permissions, exists := rp.permissions[method]
+			for method, wantPermission := range tt.want {
+				permission, exists := rp.permissions[method]
 				if !exists {
-					subT.Errorf("no permissions for method %q", method)
+					subT.Errorf("no permission for method %q", method)
 					return
 				}
-				if len(permissions) != len(wantPermissions) {
-					subT.Errorf("unexpected permissions for %q: %#v, want: %#v", method, permissions, wantPermissions)
+				if permission != wantPermission {
+					subT.Errorf("unexpected permission for %q: %#v, want: %#v", method, permission, wantPermission)
 					return
-				}
-				for i, p := range wantPermissions {
-					if permissions[i] != p {
-						subT.Errorf("unexpected permissions for %q: %#v, want: %#v", method, permissions, wantPermissions)
-						return
-					}
 				}
 			}
 		})
@@ -82,93 +64,72 @@ func Test_requiredPermissions(t *testing.T) {
 func Test_ScopeControl(t *testing.T) {
 	tests := []struct {
 		name            string
-		permissionMaps  []map[string]string
+		permissionMap   map[string]string
 		method          string
 		grantedScope    []string
 		wantErrorString string
 	}{
 		{
 			"no method restrictions, no permission required, no scope granted",
-			[]map[string]string{},
+			map[string]string{},
 			http.MethodGet,
 			nil,
 			"",
 		},
 		{
 			"method permitted, no permission required, no scope granted",
-			[]map[string]string{{http.MethodGet: ""}},
+			map[string]string{http.MethodGet: ""},
 			http.MethodGet,
 			nil,
 			"",
 		},
 		{
 			"method permitted, permission required, scope granted",
-			[]map[string]string{{http.MethodGet: "read"}},
+			map[string]string{http.MethodGet: "read"},
 			http.MethodGet,
 			[]string{"read"},
 			"",
 		},
 		{
 			"method permitted, permission required, scopes granted",
-			[]map[string]string{{http.MethodPost: "write"}},
-			http.MethodPost,
-			[]string{"read", "write"},
-			"",
-		},
-		{
-			"method permitted, permission required, scopes granted",
-			[]map[string]string{{"*": "read"}, {http.MethodPost: "write"}},
+			map[string]string{http.MethodPost: "write"},
 			http.MethodPost,
 			[]string{"read", "write"},
 			"",
 		},
 		{
 			"all methods permitted, permission required, scope granted",
-			[]map[string]string{{"*": "read"}},
+			map[string]string{"*": "read"},
 			http.MethodPost,
 			[]string{"read"},
 			"",
 		},
 		{
 			"method not permitted",
-			[]map[string]string{{http.MethodGet: ""}},
+			map[string]string{http.MethodGet: ""},
 			http.MethodPost,
 			nil,
 			"access control error: method POST not permitted",
 		},
 		{
 			"method permitted, permission required, no scope granted",
-			[]map[string]string{{http.MethodGet: "read"}},
+			map[string]string{http.MethodGet: "read"},
 			http.MethodGet,
 			nil,
 			"access control error: no scope granted",
 		},
 		{
 			"method permitted, permission required, wrong scope granted",
-			[]map[string]string{{http.MethodPost: "write"}},
+			map[string]string{http.MethodPost: "write"},
 			http.MethodPost,
 			[]string{"read"},
 			`access control error: required permission "write" not granted`,
-		},
-		{
-			"method permitted, permission required, missing granted scope",
-			[]map[string]string{{"*": "read"}, {http.MethodPost: "write"}},
-			http.MethodPost,
-			[]string{"read"},
-			`access control error: required permission "write" not granted`,
-		},
-		{
-			"method permitted, permission required, missing granted scopes",
-			[]map[string]string{{"*": "read"}, {http.MethodPost: "write"}},
-			http.MethodPost,
-			[]string{"foo"},
-			`access control error: required permission "read" not granted`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			sc := NewScopeControl(tt.permissionMaps)
+			sc := NewScopeControl(tt.permissionMap)
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedScope != nil {
 				ctx := req.Context()
