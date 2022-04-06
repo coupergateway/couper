@@ -19,12 +19,12 @@ func Test_requiredPermissions(t *testing.T) {
 		{
 			"only default no permission",
 			map[string]string{"*": ""},
-			map[string]string{"CONNECT": "", "DELETE": "", "GET": "", "HEAD": "", "OPTIONS": "", "PATCH": "", "POST": "", "PUT": "", "TRACE": ""},
+			map[string]string{"DELETE": "", "GET": "", "HEAD": "", "OPTIONS": "", "PATCH": "", "POST": "", "PUT": ""},
 		},
 		{
 			"only default read",
 			map[string]string{"*": "read"},
-			map[string]string{"CONNECT": "read", "DELETE": "read", "GET": "read", "HEAD": "read", "OPTIONS": "read", "PATCH": "read", "POST": "read", "PUT": "read", "TRACE": "read"},
+			map[string]string{"DELETE": "read", "GET": "read", "HEAD": "read", "OPTIONS": "read", "PATCH": "read", "POST": "read", "PUT": "read"},
 		},
 		{
 			"simple permission, simple no permission",
@@ -34,7 +34,7 @@ func Test_requiredPermissions(t *testing.T) {
 		{
 			"simple permission, simple no permission, with default",
 			map[string]string{"POST": "write", "PUT": "", "*": "read"},
-			map[string]string{"CONNECT": "read", "DELETE": "read", "GET": "read", "HEAD": "read", "OPTIONS": "read", "PATCH": "read", "POST": "write", "PUT": "", "TRACE": "read"},
+			map[string]string{"DELETE": "read", "GET": "read", "HEAD": "read", "OPTIONS": "read", "PATCH": "read", "POST": "write", "PUT": ""},
 		},
 	}
 

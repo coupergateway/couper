@@ -5,19 +5,8 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/handler/middleware"
 )
-
-var supportedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodConnect,
-	http.MethodOptions,
-	http.MethodTrace,
-}
 
 type requiredPermissions struct {
 	permissions map[string]string
@@ -29,7 +18,7 @@ func newRequiredPermissions() requiredPermissions {
 
 func (r *requiredPermissions) setPermissionMap(permissionMap map[string]string) {
 	otherPermission, otherMethodExists := permissionMap["*"]
-	for _, method := range supportedMethods {
+	for _, method := range middleware.DefaultEndpointAllowedMethods {
 		permission, exists := permissionMap[method]
 		if exists {
 			r.permissions[method] = permission
