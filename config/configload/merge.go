@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -138,7 +139,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 				uniqueAPILabels := make(map[string]struct{})
 
 				// TODO: Do we need this IF around the FOR?
-				if block.Type == "files" || block.Type == "spa" || block.Type == api || block.Type == "endpoint" {
+				if block.Type == "files" || block.Type == "spa" || block.Type == api || block.Type == endpoint {
 					for _, name := range []string{"error_file", "document_root"} {
 						if attr, ok := block.Body.Attributes[name]; ok {
 							block.Body.Attributes[name].Expr = absPath(attr)
@@ -146,13 +147,13 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 				}
 
-				if block.Type == api || block.Type == "endpoint" {
+				if block.Type == api || block.Type == endpoint {
 					for _, innerBlock := range block.Body.Blocks {
-						if innerBlock.Type == "error_handler" {
+						if innerBlock.Type == errorHandler {
 							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
 								innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
 							}
-						} else if innerBlock.Type == "endpoint" {
+						} else if innerBlock.Type == endpoint {
 							for _, innerInnerBlock := range innerBlock.Body.Blocks {
 								if innerInnerBlock.Type == backend {
 									absBackendBlock(innerInnerBlock) // Backend block inside a endpoint block in an api block
@@ -162,7 +163,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 				}
 
-				if block.Type == "endpoint" {
+				if block.Type == endpoint {
 					if len(block.Labels) == 0 {
 						return nil, errorUniqueLabels(block)
 					}
@@ -207,19 +208,13 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 
 					for _, subBlock := range block.Body.Blocks {
-						if subBlock.Type == "endpoint" {
+						if subBlock.Type == endpoint {
 							if len(subBlock.Labels) == 0 {
 								return nil, errorUniqueLabels(subBlock)
 							}
-
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
-						} else if subBlock.Type == "error_handler" {
-							var ehKey string
-
-							if len(subBlock.Labels) > 0 {
-								ehKey = subBlock.Labels[0]
-							}
-
+						} else if subBlock.Type == errorHandler {
+							ehKey := newErrorHandlerKey(subBlock)
 							results[serverKey].apis[apiKey].errorHandler[ehKey] = subBlock
 						} else {
 							results[serverKey].apis[apiKey].blocks[subBlock.Type] = subBlock
@@ -348,6 +343,22 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 			Blocks: blocks,
 		},
 	}, nil
+}
+
+// newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
+// "label1" and/or "label2 label3" results in "label1 label2 label3".
+func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
+	if len(block.Labels) == 0 {
+		return key
+	}
+
+	var sorted []string
+	for _, l := range block.Labels {
+		sorted = append(sorted, strings.Split(l, errorHandlerLabelSep)...)
+	}
+	sort.Strings(sorted)
+	key = strings.Join(sorted, errorHandlerLabelSep)
+	return key
 }
 
 func mergeAttributes(blockName string, bodies []*hclsyntax.Body) *hclsyntax.Block {

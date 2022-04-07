@@ -26,6 +26,7 @@ const (
 	api          = "api"
 	backend      = "backend"
 	definitions  = "definitions"
+	endpoint     = "endpoint"
 	errorHandler = "error_handler"
 	nameLabel    = "name"
 	oauth2       = "oauth2"
