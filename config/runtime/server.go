@@ -586,7 +586,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		RolesClaim:            jwtConf.RolesClaim,
 		RolesMap:              jwtConf.RolesMap,
 		PermissionsClaim:      jwtConf.PermissionsClaim,
-		ScopeMap:              jwtConf.ScopeMap,
+		PermissionsMap:        jwtConf.PermissionsMap,
 		Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 	}
 	var (

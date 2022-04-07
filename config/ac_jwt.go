@@ -32,7 +32,7 @@ type JWT struct {
 	RolesClaim            string              `hcl:"beta_roles_claim,optional"`
 	RolesMap              map[string][]string `hcl:"beta_roles_map,optional"`
 	PermissionsClaim      string              `hcl:"beta_permissions_claim,optional"`
-	ScopeMap              map[string][]string `hcl:"beta_scope_map,optional"`
+	PermissionsMap        map[string][]string `hcl:"beta_permissions_map,optional"`
 	SignatureAlgorithm    string              `hcl:"signature_algorithm,optional"`
 	SigningKey            string              `hcl:"signing_key,optional"`
 	SigningKeyFile        string              `hcl:"signing_key_file,optional"`

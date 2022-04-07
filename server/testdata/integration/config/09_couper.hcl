@@ -129,9 +129,9 @@ definitions {
     beta_roles_map = {
       "r1" = ["b"]
     }
-    beta_scope_map = {
+    beta_permissions_map = {
       a = ["c"]
-      b = ["e"] # from role-mapped scope
+      b = ["e"] # from role-mapped permission
       c = ["d"]
       d = ["a"] # cycle is ignored
     }

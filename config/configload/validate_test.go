@@ -360,13 +360,13 @@ definitions {
 			"",
 		},
 		{
-			"beta_scope_map",
+			"beta_permissions_map",
 			`server {}
 definitions {
   jwt "a" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_scope_map = {
+    beta_permissions_map = {
       a = []
       A = []
 	}

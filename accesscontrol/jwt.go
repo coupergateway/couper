@@ -56,7 +56,7 @@ type JWT struct {
 	rolesClaim            string
 	rolesMap              map[string][]string
 	permissionsClaim      string
-	scopeMap              map[string][]string
+	permissionsMap        map[string][]string
 	jwks                  *jwk.JWKS
 }
 
@@ -69,7 +69,7 @@ type JWTOptions struct {
 	RolesClaim            string
 	RolesMap              map[string][]string
 	PermissionsClaim      string
-	ScopeMap              map[string][]string
+	PermissionsMap        map[string][]string
 	Source                JWTSource
 	Key                   []byte
 	JWKS                  *jwk.JWKS
@@ -174,7 +174,7 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 		rolesClaim:            options.RolesClaim,
 		rolesMap:              options.RolesMap,
 		permissionsClaim:      options.PermissionsClaim,
-		scopeMap:              options.ScopeMap,
+		permissionsMap:        options.PermissionsMap,
 		source:                options.Source,
 	}
 	return jwtAC, nil
@@ -456,12 +456,12 @@ func (j *JWT) addScopeValueFromRoles(tokenClaims map[string]interface{}, scopeVa
 }
 
 func (j *JWT) addMappedScopeValues(source, target []string) []string {
-	if j.scopeMap == nil {
+	if j.permissionsMap == nil {
 		return target
 	}
 
 	for _, val := range source {
-		mappedValues, exist := j.scopeMap[val]
+		mappedValues, exist := j.permissionsMap[val]
 		if !exist {
 			// no mapping for value
 			continue
