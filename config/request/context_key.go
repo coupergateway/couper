@@ -8,6 +8,7 @@ const (
 	AccessControls
 	BackendName
 	BackendParams
+	BetaGrantedPermissions
 	BetaRequiredPermission
 	BufferOptions
 	ConnectTimeout
@@ -28,7 +29,6 @@ const (
 	ResponseWriter
 	RoundTripName
 	RoundTripProxy
-	Scopes
 	ServerName
 	StartTime
 	TokenRequest

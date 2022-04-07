@@ -46,7 +46,7 @@ func NewScopeControl(permissionMap map[string]string) *ScopeControl {
 	return &ScopeControl{required: rp}
 }
 
-// Validate validates the scope values provided by access controls against the required permission.
+// Validate validates the granted permissions provided by access controls against the required permission.
 func (s *ScopeControl) Validate(req *http.Request) error {
 	if len(s.required.permissions) == 0 {
 		return nil
@@ -66,19 +66,20 @@ func (s *ScopeControl) Validate(req *http.Request) error {
 	evalCtx := eval.ContextFromRequest(req)
 	*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
-	grantedScope, ok := ctx.Value(request.Scopes).([]string)
+	grantedPermission, ok := ctx.Value(request.BetaGrantedPermissions).([]string)
 	if !ok {
-		return errors.BetaInsufficientPermissions.Messagef("no scope granted")
+		return errors.BetaInsufficientPermissions.Messagef("no permissions granted")
 	}
-	if !hasGrantedScope(grantedScope, requiredPermission) {
+	if !hasGrantedPermission(grantedPermission, requiredPermission) {
 		return errors.BetaInsufficientPermissions.Messagef("required permission %q not granted", requiredPermission)
 	}
 	return nil
 }
 
-func hasGrantedScope(grantedScope []string, permission string) bool {
-	for _, gs := range grantedScope {
-		if gs == permission {
+// hasGrantedPermission checks whether a given permission is in the granted permissions
+func hasGrantedPermission(grantedPermissions []string, permission string) bool {
+	for _, gp := range grantedPermissions {
+		if gp == permission {
 			return true
 		}
 	}

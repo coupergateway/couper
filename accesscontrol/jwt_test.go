@@ -629,7 +629,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				return
 			}
 
-			scopesList, ok := req.Context().Value(request.Scopes).([]string)
+			scopesList, ok := req.Context().Value(request.BetaGrantedPermissions).([]string)
 			if !ok {
 				subT.Errorf("Expected scopes within request context")
 			} else {

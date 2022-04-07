@@ -63,42 +63,42 @@ func Test_requiredPermissions(t *testing.T) {
 
 func Test_ScopeControl(t *testing.T) {
 	tests := []struct {
-		name            string
-		permissionMap   map[string]string
-		method          string
-		grantedScope    []string
-		wantErrorString string
+		name               string
+		permissionMap      map[string]string
+		method             string
+		grantedPermissions []string
+		wantErrorString    string
 	}{
 		{
-			"no method restrictions, no permission required, no scope granted",
+			"no method restrictions, no permission required, no permission granted",
 			map[string]string{},
 			http.MethodGet,
 			nil,
 			"",
 		},
 		{
-			"method permitted, no permission required, no scope granted",
+			"method permitted, no permission required, no permission granted",
 			map[string]string{http.MethodGet: ""},
 			http.MethodGet,
 			nil,
 			"",
 		},
 		{
-			"method permitted, permission required, scope granted",
+			"method permitted, permission required, permission granted",
 			map[string]string{http.MethodGet: "read"},
 			http.MethodGet,
 			[]string{"read"},
 			"",
 		},
 		{
-			"method permitted, permission required, scopes granted",
+			"method permitted, permission required, permission granted",
 			map[string]string{http.MethodPost: "write"},
 			http.MethodPost,
 			[]string{"read", "write"},
 			"",
 		},
 		{
-			"all methods permitted, permission required, scope granted",
+			"all methods permitted, permission required, permission granted",
 			map[string]string{"*": "read"},
 			http.MethodPost,
 			[]string{"read"},
@@ -112,14 +112,14 @@ func Test_ScopeControl(t *testing.T) {
 			"method not allowed error: method POST not allowed by beta_required_permission",
 		},
 		{
-			"method permitted, permission required, no scope granted",
+			"method permitted, permission required, no permissions granted",
 			map[string]string{http.MethodGet: "read"},
 			http.MethodGet,
 			nil,
-			"access control error: no scope granted",
+			"access control error: no permissions granted",
 		},
 		{
-			"method permitted, permission required, wrong scope granted",
+			"method permitted, permission required, missing required permission",
 			map[string]string{http.MethodPost: "write"},
 			http.MethodPost,
 			[]string{"read"},
@@ -131,9 +131,9 @@ func Test_ScopeControl(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			sc := NewScopeControl(tt.permissionMap)
 			req := httptest.NewRequest(tt.method, "/", nil)
-			if tt.grantedScope != nil {
+			if tt.grantedPermissions != nil {
 				ctx := req.Context()
-				ctx = context.WithValue(ctx, request.Scopes, tt.grantedScope)
+				ctx = context.WithValue(ctx, request.BetaGrantedPermissions, tt.grantedPermissions)
 				*req = *req.WithContext(ctx)
 			}
 			err := sc.Validate(req)

@@ -259,11 +259,11 @@ func (j *JWT) Validate(req *http.Request) error {
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
 	scopesValues := j.getScopeValues(tokenClaims, log)
 
-	scopes, _ := ctx.Value(request.Scopes).([]string)
+	scopes, _ := ctx.Value(request.BetaGrantedPermissions).([]string)
 
 	scopes = append(scopes, scopesValues...)
 
-	ctx = context.WithValue(ctx, request.Scopes, scopes)
+	ctx = context.WithValue(ctx, request.BetaGrantedPermissions, scopes)
 
 	*req = *req.WithContext(ctx)
 

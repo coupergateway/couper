@@ -3419,7 +3419,7 @@ func TestJWTAccessControl(t *testing.T) {
 		header     http.Header
 		body       string
 		status     int
-		expScope   string
+		expPerm    string
 		wantErrLog string
 	}
 
@@ -3505,8 +3505,8 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 
-			if scopes := res.Header.Get("X-Scopes"); scopes != tc.expScope {
-				subT.Errorf("expected scope: %q, actual: %q", tc.expScope, scopes)
+			if grantedPermissions := res.Header.Get("X-Granted-Permissions"); grantedPermissions != tc.expPerm {
+				subT.Errorf("expected granted permissions: %q, actual: %q", tc.expPerm, grantedPermissions)
 				return
 			}
 		})
@@ -3739,9 +3739,9 @@ func Test_Scope(t *testing.T) {
 				subT.Fatalf("expected Status %d, got: %d", tc.status, res.StatusCode)
 			}
 
-			granted := res.Header.Get("x-granted-scope")
+			granted := res.Header.Get("x-granted-permissions")
 			if granted != tc.wantGranted {
-				subT.Errorf("Expected granted scope:\nWant:\t%q\nGot:\t%q", tc.wantGranted, granted)
+				subT.Errorf("Expected granted permissions:\nWant:\t%q\nGot:\t%q", tc.wantGranted, granted)
 			}
 
 			required := res.Header.Get("x-required-permission")

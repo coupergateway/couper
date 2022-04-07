@@ -132,12 +132,12 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 	defer shutdown()
 
 	type testcase struct {
-		Name      string
-		Method    string
-		Path      string
-		Scopes    []string
-		ExpStatus int
-		ExpBody   string
+		Name               string
+		Method             string
+		Path               string
+		GrantedPermissions []string
+		ExpStatus          int
+		ExpBody            string
 	}
 
 	for _, tc := range []testcase{
@@ -173,7 +173,7 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 			tokenVal, err := ctx.HCLContext().Functions[lib.FnJWTSign].
 				Call([]cty.Value{cty.StringVal("test"), seetie.MapToValue(
 					map[string]interface{}{
-						"scopes": tc.Scopes,
+						"scope": tc.GrantedPermissions,
 					})})
 			h.Must(err)
 

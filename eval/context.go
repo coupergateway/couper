@@ -494,6 +494,20 @@ func NewRawOrigin(u *url.URL) *url.URL {
 	return &rawOrigin
 }
 
+const (
+	betaGrantedPermissions = "beta_granted_permissions"
+	betaRequiredPermission = "beta_required_permission"
+)
+
+func IsReservedContextName(name string) bool {
+	switch name {
+	case betaGrantedPermissions, betaRequiredPermission:
+		return true
+	}
+
+	return false
+}
+
 func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Header) ContextMap {
 	acData, _ := ctx.Value(request.AccessControls).(map[string]interface{})
 	ctxAcMap := make(map[string]cty.Value)
@@ -504,12 +518,12 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 		}
 		ctxAcMap[name] = seetie.MapToValue(dataMap)
 	}
-	scopeData, _ := ctx.Value(request.Scopes).([]string)
-	if len(scopeData) > 0 {
-		ctxAcMap["scopes"] = seetie.GoToValue(scopeData)
+	grantedPermissions, _ := ctx.Value(request.BetaGrantedPermissions).([]string)
+	if len(grantedPermissions) > 0 {
+		ctxAcMap[betaGrantedPermissions] = seetie.GoToValue(grantedPermissions)
 	}
 	if requiredPermission, permissionSet := ctx.Value(request.BetaRequiredPermission).(string); permissionSet {
-		ctxAcMap["beta_required_permission"] = seetie.GoToValue(requiredPermission)
+		ctxAcMap[betaRequiredPermission] = seetie.GoToValue(requiredPermission)
 	}
 	var ctxAcMapValue cty.Value
 	if len(ctxAcMap) > 0 {

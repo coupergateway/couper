@@ -108,7 +108,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWTToken.sub
-        x-scopes = json_encode(request.context.scopes)
+        x-granted-permissions = json_encode(request.context.beta_granted_permissions)
       }
     }
   }
@@ -119,7 +119,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWT_token_value_query.sub
-        x-scopes = json_encode(request.context.scopes)
+        x-granted-permissions = json_encode(request.context.beta_granted_permissions)
       }
     }
   }
@@ -130,7 +130,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWT_token_value_body.sub
-        x-scopes = json_encode(request.context.scopes)
+        x-granted-permissions = json_encode(request.context.beta_granted_permissions)
       }
     }
   }
@@ -231,7 +231,7 @@ server "acs" {
     response {
       headers = {
         x-jwt-sub = request.context.JWKS_scope.sub
-        x-scopes = json_encode(request.context.scopes)
+        x-granted-permissions = json_encode(request.context.beta_granted_permissions)
       }
     }
   }
