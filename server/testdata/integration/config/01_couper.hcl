@@ -7,10 +7,7 @@ server "hcl" {
     }
     endpoint "/expired" {
       proxy {
-        backend "b" {
-          origin = "{{ .expiredOrigin }}"
-          path = "/anything"
-        }
+        backend = "b"
       }
     }
   }
@@ -23,8 +20,8 @@ definitions {
   }
 
   backend "b" {
-    origin = "http://1.2.3.4"
-    path = "/"
+    origin = "{{ .expiredOrigin }}"
+    path = "/anything"
     disable_certificate_validation = true
   }
 

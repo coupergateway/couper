@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"net/http/httptrace"
@@ -14,6 +15,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/hashicorp/hcl/v2"
 )
 
 var _ http.RoundTripper = &UpstreamLog{}
@@ -72,12 +74,16 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
-	oCtx, openAPIContext := validation.NewWithContext(req.Context())
+	logCtxCh := make(chan hcl.Body, 10)
+	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, logCtxCh)
+	oCtx, openAPIContext := validation.NewWithContext(outctx)
 	outreq := req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
 
 	rtStart := time.Now()
 	beresp, err := u.next.RoundTrip(outreq)
 	rtDone := time.Now()
+
+	close(logCtxCh)
 
 	if outreq.Host != "" {
 		requestFields["origin"] = outreq.Host

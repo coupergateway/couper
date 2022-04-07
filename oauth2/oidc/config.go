@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/avenga/couper/accesscontrol/jwk"
+	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	jsn "github.com/avenga/couper/json"
 )
 
@@ -36,15 +38,16 @@ var (
 // Config represents the configuration for an OIDC client
 type Config struct {
 	*config.OIDC
-	Backend    http.RoundTripper
+	backends   map[string]http.RoundTripper
 	context    context.Context
 	syncedJSON *jsn.SyncedJSON
-	JWKS       *jwk.JWKS
-	mtx        sync.RWMutex
+	jwks       *jwk.JWKS
+	cmu        sync.RWMutex // conf
+	jmu        sync.RWMutex // jkws
 }
 
 // NewConfig creates a new configuration for an OIDC client
-func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
+func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
 	ttl := defaultTTL
 	if oidc.ConfigurationTTL != "" {
 		t, err := time.ParseDuration(oidc.ConfigurationTTL)
@@ -55,20 +58,47 @@ func NewConfig(oidc *config.OIDC, backend http.RoundTripper) (*Config, error) {
 	}
 
 	ctx := context.Background()
-	config := &Config{OIDC: oidc, context: ctx, Backend: backend}
-	sj := jsn.NewSyncedJSON(ctx, "", "", oidc.ConfigurationURL, backend, oidc.Name, ttl, config)
-	config.syncedJSON = sj
-	return config, nil
+	conf := &Config{
+		OIDC:     oidc,
+		backends: backends,
+		context:  ctx,
+	}
+
+	var err error
+	conf.syncedJSON, err = jsn.NewSyncedJSON("", "",
+		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	// verify verifierMethod with locked access
+	conf.jmu.RLock()
+	defer conf.jmu.RUnlock()
+	if conf.VerifierMethod != "" &&
+		conf.VerifierMethod != config.CcmS256 &&
+		conf.VerifierMethod != "nonce" {
+		return nil, fmt.Errorf("verifier_method %s not supported", conf.VerifierMethod)
+	}
+
+	return conf, err
+}
+
+func (c *Config) Backends() map[string]http.RoundTripper {
+	return c.backends
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
 func (c *Config) GetVerifierMethod(uid string) (string, error) {
+	c.jmu.RLock()
 	if c.VerifierMethod == "" {
+		c.jmu.RUnlock()
 		_, err := c.Data(uid)
 		if err != nil {
 			return "", err
 		}
+		c.jmu.RLock()
 	}
+	defer c.jmu.RUnlock()
 
 	return c.VerifierMethod, nil
 }
@@ -115,42 +145,49 @@ func (c *Config) Data(uid string) (*OpenidConfiguration, error) {
 		return nil, err
 	}
 
-	openidConfigurationData, ok := data.(OpenidConfiguration)
+	openidConfigurationData, ok := data.(*OpenidConfiguration)
 	if !ok {
 		return nil, fmt.Errorf("data not OpenID configuration data: %#v", data)
 	}
 
-	return &openidConfigurationData, nil
+	return openidConfigurationData, nil
 }
 
-func (c *Config) Unmarshal(rawJSON []byte, uid string) (interface{}, error) {
-	var jsonData OpenidConfiguration
-	err := json.Unmarshal(rawJSON, &jsonData)
+func (c *Config) JWKS() *jwk.JWKS {
+	c.jmu.RLock()
+	defer c.jmu.RUnlock()
+	return c.jwks
+}
+
+func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
+	c.jmu.Lock()
+	defer c.jmu.Unlock()
+
+	jsonData := &OpenidConfiguration{}
+	err := json.Unmarshal(rawJSON, jsonData)
 	if err != nil {
 		return nil, err
 	}
 
-	c.mtx.RLock()
-	oldVM := c.OIDC.VerifierMethod
-	c.mtx.RUnlock()
-	newVM := oldVM
-	if oldVM == "" {
+	if c.OIDC.VerifierMethod == "" {
 		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
-			newVM = config.CcmS256
+			c.OIDC.VerifierMethod = config.CcmS256
 		} else {
-			newVM = "nonce"
+			c.OIDC.VerifierMethod = "nonce"
 		}
 	}
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, c.Backend, c.context)
-	if err != nil {
-		return nil, err
+	jwksBackend := backend.NewContext(hclbody.
+		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksUri)),
+		c.backends["jwks_uri_backend"],
+	)
+
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, jwksBackend)
+	if err != nil { // do not replace possible working jwks on err
+		return jsonData, err
 	}
-	newJWKS.Data(uid)
-	c.mtx.Lock()
-	c.OIDC.VerifierMethod = newVM
-	c.JWKS = newJWKS
-	c.mtx.Unlock()
+
+	c.jwks = newJWKS
 
 	return jsonData, nil
 }

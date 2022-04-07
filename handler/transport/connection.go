@@ -40,11 +40,6 @@ type OriginConn struct {
 
 // NewOriginConn creates a new wrapper with logging context.
 func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logrus.Entry) *OriginConn {
-	backendName := "default"
-	if conf.BackendName != "" {
-		backendName = conf.BackendName
-	}
-
 	var reqID string
 	if uid, ok := ctx.Value(request.UID).(string); ok {
 		reqID = uid
@@ -58,7 +53,7 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 		labels: []attribute.KeyValue{
 			attribute.String("origin", conf.Origin),
 			attribute.String("host", conf.Hostname),
-			attribute.String("backend", backendName),
+			attribute.String("backend", conf.BackendName),
 		},
 		log:      entry,
 		tlsState: nil,

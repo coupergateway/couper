@@ -1,7 +1,6 @@
 package jwk
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,14 +22,14 @@ var alg2kty = map[string]string{
 }
 
 type JWKSData struct {
-	Keys []JWK `json:"keys"`
+	Keys []*JWK `json:"keys"`
 }
 
 type JWKS struct {
 	syncedJSON *jsn.SyncedJSON
 }
 
-func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext context.Context) (*JWKS, error) {
+func NewJWKS(uri string, ttl string, transport http.RoundTripper) (*JWKS, error) {
 	if ttl == "" {
 		ttl = "1h"
 	}
@@ -47,9 +46,14 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper, confContext co
 	}
 
 	jwks := &JWKS{}
-	sj := jsn.NewSyncedJSON(confContext, file, "jwks_url", uri, transport, "jwks" /* TODO which roundtrip name? */, timetolive, jwks)
-	jwks.syncedJSON = sj
-	return jwks, nil
+	jwks.syncedJSON, err = jsn.NewSyncedJSON(file, "jwks_url", uri, transport, "jwks", timetolive, jwks)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = jwks.Data("") // obtain any initial fetch errors
+
+	return jwks, err
 }
 
 func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
@@ -73,16 +77,39 @@ func (j *JWKS) GetSigKeyForToken(token *jwt.Token) (interface{}, error) {
 	return jwk.Key, nil
 }
 
-func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
-	var keys []JWK
+func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
+	keys, err := j.getKeys(kid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, key := range keys {
+		if key.Use == use {
+			if key.Algorithm == alg {
+				return key, nil
+			} else if key.Algorithm == "" {
+				if kty, exists := alg2kty[alg]; exists && key.KeyType == kty {
+					return key, nil
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (j *JWKS) getKeys(kid string) ([]*JWK, error) {
+	var keys []*JWK
 
 	jwksData, err := j.Data("")
 	if err != nil {
 		return nil, err
 	}
 
-	allKeys := jwksData.Keys
-	for _, key := range allKeys {
+	if len(jwksData.Keys) == 0 {
+		return nil, fmt.Errorf("missing jwks key-data")
+	}
+
+	for _, key := range jwksData.Keys {
 		if key.KeyID == kid {
 			keys = append(keys, key)
 		}
@@ -91,44 +118,22 @@ func (j *JWKS) GetKeys(kid string) ([]JWK, error) {
 	return keys, nil
 }
 
-func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
-	keys, err := j.GetKeys(kid)
-	if err != nil {
-		return nil, err
-	}
-	for _, key := range keys {
-		if key.Use == use {
-			if key.Algorithm == alg {
-				return &key, nil
-			} else if key.Algorithm == "" {
-				if kty, exists := alg2kty[alg]; exists && key.KeyType == kty {
-					return &key, nil
-				}
-			}
-		}
-	}
-	return nil, nil
-}
-
 func (j *JWKS) Data(uid string) (*JWKSData, error) {
 	data, err := j.syncedJSON.Data(uid)
 	if err != nil {
 		return nil, err
 	}
 
-	jwksData, ok := data.(JWKSData)
+	jwksData, ok := data.(*JWKSData)
 	if !ok {
 		return nil, fmt.Errorf("data not JWKS data: %#v", data)
 	}
 
-	return &jwksData, nil
+	return jwksData, nil
 }
 
-func (j *JWKS) Unmarshal(rawJSON []byte, _ string) (interface{}, error) {
-	var jsonData JWKSData
-	err := json.Unmarshal(rawJSON, &jsonData)
-	if err != nil {
-		return nil, err
-	}
-	return jsonData, nil
+func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
+	jsonData := &JWKSData{}
+	err := json.Unmarshal(rawJSON, jsonData)
+	return jsonData, err
 }

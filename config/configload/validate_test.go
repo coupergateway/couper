@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/runtime"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
@@ -180,7 +181,10 @@ func TestLabels(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log, nil)
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
 			}
 
 			var errMsg string
@@ -399,7 +403,10 @@ defaults {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log, nil)
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
 			}
 
 			var errMsg string

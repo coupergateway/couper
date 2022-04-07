@@ -20,7 +20,7 @@ var (
 	_ OAuth2AS         = &OAuth2ReqAuth{}
 )
 
-// OAuth2ReqAuth represents the the oauth2 block in a backend block.
+// OAuth2ReqAuth represents the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
 	BackendName             string   `hcl:"backend,optional"`
 	ClientID                string   `hcl:"client_id"`

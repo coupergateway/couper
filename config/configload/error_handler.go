@@ -17,7 +17,7 @@ type kindContent struct {
 	kinds []string
 }
 
-func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends Backends) error {
+func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) error {
 	for _, ehs := range setter {
 		body, ok := ehs.(config.Body)
 		if !ok {
@@ -30,7 +30,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, definedBackends 
 		}
 
 		for _, hc := range ehc {
-			errHandlerConf, confErr := newErrorHandlerConfig(hc, definedBackends)
+			errHandlerConf, confErr := newErrorHandlerConfig(hc, helper)
 			if confErr != nil {
 				return confErr
 			}
@@ -131,9 +131,9 @@ func newKindsFromLabels(block *hcl.Block) ([]string, error) {
 	return allKinds, nil
 }
 
-func newErrorHandlerConfig(content kindContent, definedBackends Backends) (*config.ErrorHandler, error) {
+func newErrorHandlerConfig(content kindContent, helper *helper) (*config.ErrorHandler, error) {
 	errHandlerConf := &config.ErrorHandler{Kinds: content.kinds}
-	if d := gohcl.DecodeBody(content.body, envContext, errHandlerConf); d.HasErrors() {
+	if d := gohcl.DecodeBody(content.body, helper.context, errHandlerConf); d.HasErrors() {
 		return nil, d
 	}
 
@@ -143,7 +143,7 @@ func newErrorHandlerConfig(content kindContent, definedBackends Backends) (*conf
 		Remain:    content.body,
 	}
 
-	if err := refineEndpoints(definedBackends, config.Endpoints{ep}, false); err != nil {
+	if err := refineEndpoints(helper, config.Endpoints{ep}, false); err != nil {
 		return nil, err
 	}
 

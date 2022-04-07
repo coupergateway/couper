@@ -20,7 +20,7 @@ server {
     request "request" {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/small"
 
-      backend { 
+      backend {
         custom_log_fields = {
           request-res = backend_response.headers.content-type
           request-req = backend_request.headers.cookie
@@ -54,7 +54,7 @@ server {
       backend {
         set_response_headers = {
           x-from-request-header = backend_request.headers.x-foo
-          x-from-requests-header = backend_requests.default.headers.x-foo 
+          x-from-requests-header = backend_requests.default.headers.x-foo
           x-from-request-json-body = backend_request.json_body.a
           x-from-requests-json-body = backend_requests.default.json_body.a
           x-from-response-header = backend_response.headers.content-type
@@ -72,6 +72,7 @@ server {
           x-from-response-json-body = backend_response.json_body.Url
           x-from-responses-json-body = backend_responses.default.json_body.Url
         }
+
         oauth2 {
           grant_type = "client_credentials"
           token_endpoint = "http://localhost:8081/token"

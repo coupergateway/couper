@@ -9,9 +9,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/oauth2/oidc"
@@ -46,8 +50,25 @@ func TestConfig_Synced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	be := transport.NewBackend(hcl.EmptyBody(), &transport.Config{}, nil, logger)
-	o, err := oidc.NewConfig(&config.OIDC{ConfigurationURL: origin.URL + "/.well-known/openid-configuration"}, be)
+	oconf := &config.OIDC{
+		ConfigurationURL: origin.URL + "/.well-known/openid-configuration",
+		Remain: hclbody.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+			"redirect_uri":   {Name: "redirect_uri", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("")}},
+			"verifier_value": {Name: "verifier_value", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("")}},
+		}}),
+	}
+	// configload internals here... TODO: integration test?
+	err := oconf.Prepare(func(attr string, val string, body config.Inline) (hcl.Body, error) {
+		return configload.PrepareBackend(nil, attr, val, body)
+	})
+	helper.Must(err)
+
+	backends := make(map[string]http.RoundTripper)
+	for k, b := range oconf.Backends {
+		backends[k] = transport.NewBackend(b, &transport.Config{}, nil, logger)
+	}
+
+	o, err := oidc.NewConfig(oconf, backends)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

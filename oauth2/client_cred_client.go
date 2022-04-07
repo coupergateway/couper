@@ -8,16 +8,16 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-// CcClient represents an OAuth2 client using the client credentials flow.
-type CcClient struct {
+// ClientCredentialsClient represents an OAuth2 client using the client credentials flow.
+type ClientCredentialsClient struct {
 	*Client
 	// password and username undocumented feature!
 	password string
 	username string
 }
 
-// NewOAuth2CC creates a new OAuth2 Client Credentials client.
-func NewOAuth2CC(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*CcClient, error) {
+// NewClientCredentialsClient creates a new OAuth2 Client Credentials client.
+func NewClientCredentialsClient(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*ClientCredentialsClient, error) {
 	backendErr := errors.Backend.Label(conf.Reference())
 	// grant_type password undocumented feature!
 	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
@@ -53,11 +53,11 @@ func NewOAuth2CC(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*CcClie
 		}
 	}
 	// conf.Password and conf.Username undocumented feature!
-	return &CcClient{&Client{backend, conf, conf, conf.GrantType}, conf.Password, conf.Username}, nil
+	return &ClientCredentialsClient{&Client{backend, conf, conf, conf.GrantType}, conf.Password, conf.Username}, nil
 }
 
 // GetTokenResponse retrieves the response from the token endpoint
-func (c *CcClient) GetTokenResponse(ctx context.Context) ([]byte, map[string]interface{}, string, error) {
+func (c *ClientCredentialsClient) GetTokenResponse(ctx context.Context) ([]byte, map[string]interface{}, string, error) {
 	var requestParams map[string]string
 	// password and username undocumented feature!
 	if c.password != "" || c.username != "" {

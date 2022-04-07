@@ -10,7 +10,7 @@ import (
 type Sequences []*Sequence
 
 type Sequence struct {
-	BodyRange hcl.Range
+	BodyRange *hcl.Range
 	Name      string
 	deps      Sequences
 	parent    *Sequence
@@ -41,7 +41,7 @@ func (s *Sequence) Add(ref *Sequence) {
 			Detail: fmt.Sprintf("circular sequence reference: %s",
 				strings.Join(append(refs, refs[0]), ",")),
 			Severity: hcl.DiagError,
-			Subject:  &s.BodyRange,
+			Subject:  s.BodyRange,
 			Summary:  "configuration error",
 		}
 		panic(err)
