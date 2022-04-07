@@ -44,6 +44,58 @@ server "scoped" {
 
   }
 
+  api {
+    base_path = "/wildcard1"
+
+    error_handler "beta_insufficient_scope" {
+      response {
+        status = 418
+        body = "Not enough power"
+      }
+    }
+
+    endpoint "/" {
+      beta_scope = "power"
+
+      response {
+        status = 204
+      }
+
+      error_handler "*" {
+        response {
+          status = 400
+          body = "Not enough power"
+        }
+      }
+    }
+  }
+
+  api {
+    base_path = "/wildcard2"
+
+    error_handler {
+      response {
+        status = 418
+        body = "Not enough power"
+      }
+    }
+
+    endpoint "/" {
+      beta_scope = "power"
+
+      response {
+        status = 204
+      }
+
+      error_handler "beta_insufficient_scope" {
+        response {
+          status = 400
+          body = "Not enough power"
+        }
+      }
+    }
+  }
+
   endpoint "/" {
     beta_scope = "write"
 
