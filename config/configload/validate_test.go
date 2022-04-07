@@ -115,7 +115,7 @@ func TestLabels(t *testing.T) {
 			"",
 		},
 		{
-			"multiple anonymous api blocks",
+			"multiple anonymous api blocks, different base_path",
 			`server "test" {
 			   api {
 			     base_path = "/foo"
@@ -126,6 +126,27 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"",
 		},
+		{
+			"multiple anonymous api blocks (sharing base_path)",
+			`server "test" {
+			   api {}
+			   api {}
+			 }`,
+			"",
+		},
+		{
+			"api blocks sharing base_path",
+			`server "test" {
+			   api {
+			     base_path = "/foo"
+			   }
+			   api {
+			     base_path = "/foo"
+			   }
+			 }`,
+			"",
+		},
+
 		{
 			"mixed labelled api blocks",
 			`server "test" {
