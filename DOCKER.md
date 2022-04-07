@@ -21,7 +21,11 @@ docker run --rm -p 8080:8080 -v `pwd`:/htdocs avenga/couper
 
 The entrypoint of the image is the `/couper` binary. The command is `run`.
 
-Therefore `docker run avenga/couper` runs `/couper run`. You could also use other commands directly:
+Therefore `docker run avenga/couper` runs `/couper run -d /conf`.
+
+The [directory argument](https://github.com/avenga/couper/blob/master/docs/CLI.md#global-options) allows you to mount multiple configuration files to the `/conf` directory.
+
+You could also use other commands directly:
 
 ```sh
 docker run avenga/couper version

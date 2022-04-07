@@ -18,6 +18,18 @@ server {
     }
   }
 
+  api "ERR" {
+    access_control = ["scoped"]
+    beta_scope = {
+      GET = "gimme"
+    }
+    error_handler "beta_insufficient_scope" "unexpected_status" "*" {
+      response {
+        status = 418
+      }
+    }
+  }
+
   api "API" {
     base_path      = "/api-111"
     access_control = ["foo"]
@@ -82,5 +94,9 @@ server "ServerD" {
 definitions {
   basic_auth "foo" {
     password = "abc"
+  }
+
+  jwt "scoped" {
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
   }
 }
