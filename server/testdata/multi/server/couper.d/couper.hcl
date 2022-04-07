@@ -23,7 +23,7 @@ server {
     beta_scope = {
       GET = "gimme"
     }
-    error_handler "unexpected_status" "*" "beta_insufficient_scope" {
+    error_handler "beta_insufficient_scope" "unexpected_status" "*" {
       response {
         status = 418
       }
