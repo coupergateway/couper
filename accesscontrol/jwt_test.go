@@ -333,7 +333,7 @@ func Test_JWT_Validate(t *testing.T) {
 	}
 }
 
-func Test_JWT_yields_scopes(t *testing.T) {
+func Test_JWT_yields_permissions(t *testing.T) {
 	log, hook := test.NewLogger()
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
@@ -344,16 +344,16 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		"user2": {"bar"},
 		"*":     {"default"},
 	}
-	var noScope []string
+	var noGrantedPermissions []string
 
 	tests := []struct {
 		name             string
 		permissionsClaim string
-		scope            interface{}
+		permissionsValue interface{}
 		rolesClaim       string
-		roles            interface{}
+		rolesValue       interface{}
 		expWarning       string
-		expScopes        []string
+		expGrantedPerms  []string
 	}{
 		{
 			"no permissions, no roles",
@@ -362,7 +362,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"roles",
 			nil,
 			"",
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"permissions: space-separated list",
@@ -407,7 +407,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid permissions claim value type, ignoring claim, value true",
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"permissions: warn: number",
@@ -416,7 +416,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid permissions claim value type, ignoring claim, value 1.23",
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"permissions: warn: list of bool",
@@ -425,7 +425,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid permissions claim value type, ignoring claim, value []interface {}{true, false}",
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"permissions: warn: list of number",
@@ -434,7 +434,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			"invalid permissions claim value type, ignoring claim, value []interface {}{1, 2}",
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"permissions: warn: mixed list",
@@ -443,7 +443,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			`invalid permissions claim value type, ignoring claim, value []interface {}{"eins", 2}`,
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"permissions: warn: object",
@@ -452,7 +452,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			"",
 			nil,
 			`invalid permissions claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
-			noScope,
+			noGrantedPermissions,
 		},
 		{
 			"roles: single string",
@@ -594,11 +594,11 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hook.Reset()
 			claims := jwt.MapClaims{}
-			if tt.permissionsClaim != "" && tt.scope != nil {
-				claims[tt.permissionsClaim] = tt.scope
+			if tt.permissionsClaim != "" && tt.permissionsValue != nil {
+				claims[tt.permissionsClaim] = tt.permissionsValue
 			}
-			if tt.rolesClaim != "" && tt.roles != nil {
-				claims[tt.rolesClaim] = tt.roles
+			if tt.rolesClaim != "" && tt.rolesValue != nil {
+				claims[tt.rolesClaim] = tt.rolesValue
 			}
 			tok := jwt.NewWithClaims(signingMethod, claims)
 			pubKeyBytes := []byte("mySecretK3y")
@@ -629,12 +629,12 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				return
 			}
 
-			scopesList, ok := req.Context().Value(request.BetaGrantedPermissions).([]string)
+			grantedPermissionsList, ok := req.Context().Value(request.BetaGrantedPermissions).([]string)
 			if !ok {
-				subT.Errorf("Expected scopes within request context")
+				subT.Errorf("Expected granted permissions within request context")
 			} else {
-				if !reflect.DeepEqual(tt.expScopes, scopesList) {
-					subT.Errorf("Scopes do not match, want: %#v, got: %#v", tt.expScopes, scopesList)
+				if !reflect.DeepEqual(tt.expGrantedPerms, grantedPermissionsList) {
+					subT.Errorf("Granted permissions do not match, want: %#v, got: %#v", tt.expGrantedPerms, grantedPermissionsList)
 				}
 			}
 

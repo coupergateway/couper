@@ -3678,7 +3678,7 @@ func getAccessControlMessages(hook *logrustest.Hook) string {
 	return ""
 }
 
-func Test_Scope(t *testing.T) {
+func Test_Permissions(t *testing.T) {
 	h := test.New(t)
 	client := newClient()
 
