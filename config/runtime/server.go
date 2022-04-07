@@ -206,10 +206,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		}
 
 		if srvConf.Files != nil {
-			var (
-				fileHandler http.Handler
-				err         error
-			)
+			var fileHandler http.Handler
 			fileHandler, err = handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
