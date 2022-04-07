@@ -4,11 +4,13 @@ type ContextKey uint8
 
 const (
 	ContextType ContextKey = iota
-	ContextVariablesSynced
 	APIName
 	AccessControls
 	BackendName
+	BackendParams
 	BufferOptions
+	ConnectTimeout
+	ContextVariablesSynced
 	Endpoint
 	EndpointExpectedStatus
 	EndpointKind

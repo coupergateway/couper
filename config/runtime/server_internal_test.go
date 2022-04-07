@@ -1,10 +1,13 @@
 package runtime
 
 import (
+	"context"
 	"reflect"
 	"testing"
-	"time"
 
+	logrustest "github.com/sirupsen/logrus/hooks/test"
+
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
@@ -208,7 +211,15 @@ func TestServer_validatePortHosts(t *testing.T) {
 			tt.args.conf.Context = eval.NewContext(nil, nil)
 			tt.args.conf.Settings = &config.DefaultSettings
 
-			if _, err := NewServerConfiguration(tt.args.conf, nil, nil); (err != nil) != tt.wantErr {
+			logger, _ := logrustest.NewNullLogger()
+			log := logger.WithContext(context.Background())
+
+			quitCh := make(chan struct{})
+			defer close(quitCh)
+
+			memStore := cache.New(log, quitCh)
+
+			if _, err := NewServerConfiguration(tt.args.conf, log, memStore); (err != nil) != tt.wantErr {
 				subT.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -237,24 +248,6 @@ func TestServer_GetCORS(t *testing.T) {
 
 	if got := whichCORS(parent, curr); got != nil {
 		t.Errorf("Unexpected CORS given: %#v", got)
-	}
-}
-
-func TestServer_ParseDuration(t *testing.T) {
-	var target time.Duration
-
-	if err := parseDuration("non-duration", &target); err == nil {
-		t.Error("Unexpected NIL-error given")
-	}
-	if target != 0 {
-		t.Errorf("Unexpected duration given: %#v", target)
-	}
-
-	if err := parseDuration("1ms", &target); err != nil {
-		t.Errorf("Unexpected error given: %#v", err)
-	}
-	if target != 1000000 {
-		t.Errorf("Unexpected duration given: %#v", target)
 	}
 }
 

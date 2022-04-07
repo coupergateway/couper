@@ -1,16 +1,33 @@
 package jwk_test
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"sync"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/accesscontrol/jwk"
+	"github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
 )
 
 func Test_JWKS(t *testing.T) {
+
+	origin := test.NewBackend()
+	defer origin.Close()
+
+	log, _ := test.NewLogger()
+
+	backend := transport.NewBackend(body.New(body.NewContentWithAttrName("origin", origin.Addr())),
+		&transport.Config{}, nil, log.WithContext(context.Background()))
+
 	tests := []struct {
 		name  string
 		url   string
@@ -19,18 +36,17 @@ func Test_JWKS(t *testing.T) {
 		{"missing_scheme", "no-scheme", `unsupported JWKS URI scheme: "no-scheme"`},
 		{"short url", "file", `unsupported JWKS URI scheme: "file"`},
 		{"short url", "https", `unsupported JWKS URI scheme: "https"`},
-		{"ok file", "file:jwks.json", ""},
-		{"ok http", "http://jwks.json", ""},
-		{"ok https", "https://jwks.json", ""},
+		{"ok file", "file:testdata/jwks.json", ""},
+		{"ok http", origin.Addr() + "/jwks.json", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := jwk.NewJWKS(tt.url, "", nil, nil)
+			_, err := jwk.NewJWKS(tt.url, "", backend)
 			if err == nil && tt.error != "" {
 				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
 			}
 			if err != nil && err.Error() != tt.error {
-				subT.Errorf("Unexpected error:\n\tWant: %v\n\tGot:  %v", tt.error, err)
+				subT.Errorf("Unexpected error:\n\tWant: %v\n\tGot:  %#v", tt.error, err)
 			}
 		})
 	}
@@ -48,7 +64,7 @@ func Test_JWKS_Load(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
 			_, err = jwks.Data("")
 			if err != nil && tt.expParsed {
@@ -77,7 +93,7 @@ func Test_JWKS_GetSigKeyForToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
 			_, err = jwks.Data("")
 			helper.Must(err)
@@ -129,7 +145,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil, nil)
+			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
 			_, err = jwks.Data("")
 			helper.Must(err)
@@ -150,7 +166,16 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	memQuitCh := make(chan struct{})
 	defer close(memQuitCh)
 
-	jwks, err := jwk.NewJWKS("file:testdata/jwks.json", "", nil, nil)
+	jwksOrigin := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		f, err := os.ReadFile("testdata/jwks.json")
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		io.Copy(writer, bytes.NewReader(f))
+	}))
+
+	jwks, err := jwk.NewJWKS(jwksOrigin.URL, "10s", http.DefaultTransport)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}
@@ -158,8 +183,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(idx int) {
 			defer wg.Done()
-
-			_, e := jwks.GetKeys("kid1")
+			_, e := jwks.GetKey("kid1", "", "")
 			helper.Must(e)
 		}(i)
 	}

@@ -236,16 +236,6 @@ server "acs" {
     }
   }
 
-  endpoint "/jwks/rsa/not_found" {
-    disable_access_control = ["ba1"]
-    access_control = ["JWKS_not_found"]
-    response {
-      headers = {
-        x-jwt-sub = request.context.JWKS_not_found.sub
-      }
-    }
-  }
-
   endpoint "/jwks/rsa/remote" {
     disable_access_control = ["ba1"]
     access_control = ["JWKSRemote"]
@@ -368,10 +358,7 @@ definitions {
   jwt "JWKSRemote" {
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
   }
-  jwt "JWKS_not_found" {
-    header = "Authorization"
-    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
-  }
+
   jwt "JWKSBackend" {
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend {

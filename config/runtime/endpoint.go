@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/cache"
@@ -62,7 +61,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 }
 
 func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
-	serverOptions *server.Options, log *logrus.Entry, proxyEnv bool, certificate []byte, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
+	serverOptions *server.Options, log *logrus.Entry, settings *config.Settings, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
 	var errTpl *errors.Template
 
 	if endpointConf.ErrorFile != "" {
@@ -92,7 +91,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, innerBody, berr := newBackend(confCtx, proxyConf.Backend, log, proxyEnv, certificate, memStore)
+		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, settings, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -103,12 +102,12 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allProxies[proxyConf.Name] = p
-		blockBodies = append(blockBodies, proxyConf.Backend, innerBody, proxyConf.HCLBody())
+		blockBodies = append(blockBodies, proxyConf.Backend, proxyConf.HCLBody())
 	}
 
 	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
-		backend, innerBody, berr := newBackend(confCtx, requestConf.Backend, log, proxyEnv, certificate, memStore)
+		backend, berr := NewBackend(confCtx, requestConf.Backend, log, settings, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -120,15 +119,11 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allRequests[requestConf.Name] = pr
-		blockBodies = append(blockBodies, requestConf.Backend, innerBody, requestConf.HCLBody())
+		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
 	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)
 
-	backendConf := *DefaultBackendConf
-	if diags := gohcl.DecodeBody(endpointConf.Remain, confCtx, &backendConf); diags.HasErrors() {
-		return nil, diags
-	}
 	// TODO: redirect
 	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
 		r := endpointConf.Remain.MissingItemRange()

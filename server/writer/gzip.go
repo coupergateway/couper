@@ -140,7 +140,7 @@ func (g *Gzip) writeHeader() {
 		g.rw.Header().Set(ContentEncodingHeader, GzipName)
 	}
 
-	if !g.hijacked {
+	if !g.hijacked && g.statusCode > 0 {
 		g.rw.WriteHeader(g.statusCode)
 	}
 }

@@ -209,7 +209,7 @@ definitions {
     path   = "/anything"
 
     custom_log_fields = {
-      backend = backend_responses.default.headers.server
+      backend = backend_response.headers.server
     }
   }
 

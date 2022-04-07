@@ -22,6 +22,7 @@ import (
 
 	ac "github.com/avenga/couper/accesscontrol"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
@@ -675,7 +676,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm or jwks_url required",
+			"signature_algorithm or jwks_url attribute required",
 		},
 		{
 			"signature_algorithm, missing key/key_file",
@@ -810,12 +811,12 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
 			`,
-			"",
+			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end`,
 		},
 		{
 			"signature_algorithm + jwks_url",
@@ -824,7 +825,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
@@ -838,7 +839,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    key = "..."
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
@@ -852,7 +853,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    key_file = "..."
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			    header = "..."
 			  }
 			}
@@ -867,11 +868,12 @@ func TestJwtConfig(t *testing.T) {
 			  jwt "myac" {
 			    backend = "foo"
 			    header = "..."
+				signature_algorithm = "asdf"
 			  }
 			  backend "foo" {}
 			}
 			`,
-			"backend not needed without jwks_url",
+			"backend is obsolete without jwks_url attribute",
 		},
 		{
 			"ok: jwks_url + backend reference",
@@ -881,12 +883,12 @@ func TestJwtConfig(t *testing.T) {
 			  jwt "myac" {
 			    backend = "foo"
 			    header = "..."
-			    jwks_url = "http://..."
+			    jwks_url = "http://no-back.end"
 			  }
 			  backend "foo" {}
 			}
 			`,
-			"",
+			`backend error: foo: connecting to foo "no-back.end:80" failed: dial tcp: lookup no-back.end`,
 		},
 	}
 
@@ -896,26 +898,31 @@ func TestJwtConfig(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				_, err = runtime.NewServerConfiguration(conf, log.WithContext(context.TODO()), nil)
+				logger := log.WithContext(context.TODO())
+
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
 
-			var error = ""
+			var errMsg = ""
 			if err != nil {
 				if _, ok := err.(errors.GoError); ok {
-					error = err.(errors.GoError).LogError()
+					errMsg = err.(errors.GoError).LogError()
 				} else {
-					error = err.Error()
+					errMsg = err.Error()
 				}
 			}
 
-			if tt.error == "" && error == "" {
+			if tt.error == "" && errMsg == "" {
 				return
 			}
 
 			expectedError := "configuration error: myac: " + tt.error
 
-			if expectedError != error {
-				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, error)
+			if !strings.HasPrefix(errMsg, expectedError) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)
 			}
 		})
 	}

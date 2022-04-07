@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 func TestCustomLogs_Upstream(t *testing.T) {
@@ -19,9 +20,9 @@ func TestCustomLogs_Upstream(t *testing.T) {
 	defer shutdown()
 
 	type testCase struct {
-		path  string
-		expAL logrus.Fields
-		expUL logrus.Fields
+		path        string
+		expAccess   logrus.Fields
+		expUpstream logrus.Fields
 	}
 
 	hmacToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
@@ -55,12 +56,12 @@ func TestCustomLogs_Upstream(t *testing.T) {
 		{
 			"/backend",
 			logrus.Fields{"api": "couper test-backend", "server": "couper test-backend"},
-			logrus.Fields{"backend": string("couper test-backend")},
+			logrus.Fields{"backend": "couper test-backend"},
 		},
 		{
 			"/jwt-valid",
 			logrus.Fields{"jwt_regular": "GET", "server": "couper test-backend"},
-			logrus.Fields{"backend": string("couper test-backend")},
+			logrus.Fields{"backend": "couper test-backend"},
 		},
 	} {
 		t.Run(tc.path, func(st *testing.T) {
@@ -75,29 +76,40 @@ func TestCustomLogs_Upstream(t *testing.T) {
 			helper.Must(err)
 
 			// Wait for logs
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
-			// Access log
 			entries := hook.AllEntries()
-			if len(entries) < 2 {
-				st.Fatal("Expected logs, got nothing")
+			var accessLog, upstreamLog logrus.Fields
+			for _, entry := range entries {
+				request := entry.Data["request"].(logging.Fields)
+				path, _ := request["path"].(string)
+				if entry.Data["type"] == "couper_access" {
+					accessLog = entry.Data
+				} else if entry.Data["type"] == "couper_backend" && path != "/jwks.json" {
+					upstreamLog = entry.Data
+				}
 			}
 
-			got, ok := entries[1].Data["custom"].(logrus.Fields)
-			if !ok {
-				st.Fatalf("expected\n%#v\ngot\n%#v", tc.expAL, got)
-			}
-			if !reflect.DeepEqual(tc.expAL, got) {
-				st.Errorf("expected\n%#v\ngot\n%#v", tc.expAL, got)
+			if accessLog == nil || upstreamLog == nil {
+				st.Fatalf("expected logs, got access: %p, got upstream: %p", accessLog, upstreamLog)
 			}
 
-			// Upstream log
-			got, ok = entries[0].Data["custom"].(logrus.Fields)
+			customAccess, ok := accessLog["custom"].(logrus.Fields)
 			if !ok {
-				st.Fatalf("expected\n%#v\ngot\n%#v", tc.expUL, got)
+				st.Fatal("expected access log custom field")
 			}
-			if !cmp.Equal(tc.expUL, got) {
-				st.Error(cmp.Diff(tc.expUL, got))
+
+			customUpstream, ok := upstreamLog["custom"].(logrus.Fields)
+			if !ok {
+				st.Fatal("expected upstream log custom field")
+			}
+
+			if !cmp.Equal(tc.expAccess, customAccess) {
+				st.Error(cmp.Diff(tc.expAccess, customAccess))
+			}
+
+			if !cmp.Equal(tc.expUpstream, customUpstream) {
+				st.Error(cmp.Diff(tc.expUpstream, customUpstream))
 			}
 		})
 	}

@@ -14,7 +14,7 @@ import (
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, certificate []byte, references ...string) (http.Handler, error) {
+	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
 		definition, ok := defs[ref]
@@ -42,7 +42,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 					epConf.Response = &config.Response{Remain: emptyBody}
 				}
 
-				epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.proxyFromEnv, certificate, opts.memStore)
+				epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.settings, opts.memStore)
 				if err != nil {
 					return nil, err
 				}

@@ -316,7 +316,7 @@ func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
 
 func bodyToContent(body hcl.Body) *hcl.BodyContent {
 	content := &hcl.BodyContent{
-		MissingItemRange: body.MissingItemRange(),
+		MissingItemRange: *getRange(body),
 	}
 	b, ok := body.(*hclsyntax.Body)
 	if !ok {
@@ -368,4 +368,17 @@ func contentByType(blockType string, body hcl.Body) (*hcl.BodyContent, error) {
 		return nil, diags
 	}
 	return content, nil
+}
+
+func getRange(body hcl.Body) *hcl.Range {
+	if body == nil {
+		return &hcl.Range{}
+	}
+
+	if b, ok := body.(*hclsyntax.Body); ok {
+		return &b.SrcRange
+	}
+
+	r := body.MissingItemRange()
+	return &r
 }

@@ -33,10 +33,11 @@ func (c *Client) requestToken(ctx context.Context, requestParams map[string]stri
 	if err != nil {
 		return nil, 0, err
 	}
+	defer tokenRes.Body.Close()
 
 	tokenResBytes, err := io.ReadAll(tokenRes.Body)
 	if err != nil {
-		return nil, 0, err
+		return nil, tokenRes.StatusCode, err
 	}
 
 	return tokenResBytes, tokenRes.StatusCode, nil

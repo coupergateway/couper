@@ -36,20 +36,16 @@ func newCatchAllEndpoint() *config.Endpoint {
 	}
 }
 
-func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check bool) error {
+func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) error {
 	var err error
 
 	for _, endpoint := range endpoints {
 		if check && endpoint.Pattern == "" {
-			var r hcl.Range
+			var r *hcl.Range
 			if endpoint.Remain != nil {
-				r = endpoint.Remain.MissingItemRange()
+				r = getRange(endpoint.Remain)
 			}
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "endpoint: missing path pattern",
-				Subject:  &r,
-			}}
+			return newDiagErr(r, "endpoint: missing path pattern")
 		}
 
 		endpointContent := bodyToContent(endpoint.Remain)
@@ -64,18 +60,16 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 		requests := endpointContent.Blocks.OfType(request)
 
 		if check && len(proxies)+len(requests) == 0 && endpoint.Response == nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "missing 'default' proxy or request block, or a response definition",
-				Subject:  &endpointContent.MissingItemRange,
-			}}
+			return newDiagErr(&endpointContent.MissingItemRange,
+				"missing 'default' proxy or request block, or a response definition",
+			)
 		}
 
 		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
 
 		for _, proxyBlock := range proxies {
 			proxyConfig := &config.Proxy{}
-			if diags := gohcl.DecodeBody(proxyBlock.Body, envContext, proxyConfig); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(proxyBlock.Body, helper.context, proxyConfig); diags.HasErrors() {
 				return diags
 			}
 			if len(proxyBlock.Labels) > 0 {
@@ -105,7 +99,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 
 			proxyConfig.Remain = proxyBlock.Body
 
-			proxyConfig.Backend, err = newBackend(definedBackends, proxyConfig)
+			proxyConfig.Backend, err = PrepareBackend(helper, "", "", proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -115,7 +109,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 
 		for _, reqBlock := range requests {
 			reqConfig := &config.Request{}
-			if diags := gohcl.DecodeBody(reqBlock.Body, envContext, reqConfig); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(reqBlock.Body, helper.context, reqConfig); diags.HasErrors() {
 				return diags
 			}
 
@@ -141,7 +135,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 
 			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
 
-			reqConfig.Backend, err = newBackend(definedBackends, reqConfig)
+			reqConfig.Backend, err = PrepareBackend(helper, "", "", reqConfig)
 			if err != nil {
 				return err
 			}
@@ -150,30 +144,23 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 		}
 
 		if endpoint.Response != nil {
-			content, _, _ := endpoint.Response.HCLBody().PartialContent(config.ResponseInlineSchema)
-			_, existsBody := content.Attributes["body"]
-			_, existsJsonBody := content.Attributes["json_body"]
-			if existsBody && existsJsonBody {
-				return hcl.Diagnostics{&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "response can only have one of body or json_body attributes",
-					Subject:  &content.Attributes["body"].Range,
-				}}
+			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody()); err != nil {
+				return err
 			}
 		}
 
 		names := map[string]hcl.Body{}
 		unique := map[string]struct{}{}
-		itemRange := endpoint.Remain.MissingItemRange()
+		subject := endpoint.Remain.MissingItemRange()
 		for _, p := range endpoint.Proxies {
 			names[p.Name] = p.Remain
 
-			if err := validLabelName(p.Name, &itemRange); err != nil {
+			if err = validLabel(p.Name, &subject); err != nil {
 				return err
 			}
 
 			if proxyRequestLabelRequired {
-				if err := uniqueLabelName(unique, p.Name, &itemRange); err != nil {
+				if err = uniqueLabelName(unique, p.Name, &subject); err != nil {
 					return err
 				}
 			}
@@ -182,23 +169,19 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 		for _, r := range endpoint.Requests {
 			names[r.Name] = r.Remain
 
-			if err = validLabelName(r.Name, &itemRange); err != nil {
+			if err = validLabel(r.Name, &subject); err != nil {
 				return err
 			}
 
 			if proxyRequestLabelRequired {
-				if err = uniqueLabelName(unique, r.Name, &itemRange); err != nil {
+				if err = uniqueLabelName(unique, r.Name, &subject); err != nil {
 					return err
 				}
 			}
 		}
 
 		if _, ok := names[defaultNameLabel]; check && !ok && endpoint.Response == nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Missing a 'default' proxy or request definition, or a response block",
-				Subject:  &itemRange,
-			}}
+			return newDiagErr(&subject, "Missing a 'default' proxy or request definition, or a response block")
 		}
 
 		if err = buildSequences(names, endpoint); err != nil {
@@ -206,7 +189,7 @@ func refineEndpoints(definedBackends Backends, endpoints config.Endpoints, check
 		}
 
 		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
-		if err = configureErrorHandler(epErrorHandler, definedBackends); err != nil {
+		if err = configureErrorHandler(epErrorHandler, helper); err != nil {
 			return err
 		}
 	}
