@@ -61,7 +61,7 @@ func Test_requiredPermissions(t *testing.T) {
 	}
 }
 
-func Test_ScopeControl(t *testing.T) {
+func Test_PermissionsControl(t *testing.T) {
 	tests := []struct {
 		name               string
 		permissionMap      map[string]string
@@ -129,14 +129,14 @@ func Test_ScopeControl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			sc := NewScopeControl(tt.permissionMap)
+			pc := NewPermissionsControl(tt.permissionMap)
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedPermissions != nil {
 				ctx := req.Context()
 				ctx = context.WithValue(ctx, request.BetaGrantedPermissions, tt.grantedPermissions)
 				*req = *req.WithContext(ctx)
 			}
-			err := sc.Validate(req)
+			err := pc.Validate(req)
 			if tt.wantErrorString == "" && err == nil {
 				return
 			}

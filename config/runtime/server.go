@@ -317,8 +317,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					}
 				}
 
-				scopeControl := ac.NewScopeControl(requiredPermissionMap)
-				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+				permissionsControl := ac.NewPermissionsControl(requiredPermissionMap)
+				permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 					epOpts:   epOpts,
 					memStore: memStore,
 					settings: conf.Settings,
@@ -328,7 +328,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					return nil, err
 				}
 
-				protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
+				protectedHandler = middleware.NewErrorHandler(permissionsControl.Validate, permissionsErrorHandler)(epHandler)
 			}
 
 			accessControl := newAC(srvConf, parentAPI)

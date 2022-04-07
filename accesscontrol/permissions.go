@@ -32,26 +32,26 @@ func (r *requiredPermissions) setPermissionMap(permissionMap map[string]string) 
 	}
 }
 
-var _ AccessControl = &ScopeControl{}
+var _ AccessControl = &PermissionsControl{}
 
-type ScopeControl struct {
+type PermissionsControl struct {
 	required requiredPermissions
 }
 
-func NewScopeControl(permissionMap map[string]string) *ScopeControl {
+func NewPermissionsControl(permissionMap map[string]string) *PermissionsControl {
 	rp := newRequiredPermissions()
 	if permissionMap != nil {
 		rp.setPermissionMap(permissionMap)
 	}
-	return &ScopeControl{required: rp}
+	return &PermissionsControl{required: rp}
 }
 
 // Validate validates the granted permissions provided by access controls against the required permission.
-func (s *ScopeControl) Validate(req *http.Request) error {
-	if len(s.required.permissions) == 0 {
+func (p *PermissionsControl) Validate(req *http.Request) error {
+	if len(p.required.permissions) == 0 {
 		return nil
 	}
-	requiredPermission, exists := s.required.permissions[req.Method]
+	requiredPermission, exists := p.required.permissions[req.Method]
 	if !exists {
 		return errors.MethodNotAllowed.Messagef("method %s not allowed by beta_required_permission", req.Method)
 	}
