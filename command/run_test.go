@@ -330,6 +330,45 @@ func TestArgs_CAFile(t *testing.T) {
 	//}
 }
 
+func TestCAFile_Run(t *testing.T) {
+	helper := test.New(t)
+
+	couperHCL := `server {}
+settings {
+  ca_file = "/tmp/not-there.pem"
+}
+`
+
+	couperFile, err := configload.LoadBytes([]byte(couperHCL), "ca-file-test.hcl")
+	helper.Must(err)
+
+	port := couperFile.Settings.DefaultPort
+
+	ctx, shutdown := context.WithDeadline(context.Background(), time.Now().Add(time.Second))
+	defer shutdown()
+
+	runCmd := NewRun(ctx)
+	if runCmd == nil {
+		t.Error("create run cmd failed")
+		return
+	}
+
+	log, _ := test.NewLogger()
+
+	// ensure the previous tests aren't listening
+	test.WaitForClosedPort(port)
+
+	execErr := runCmd.Execute(Args{}, couperFile, log.WithContext(ctx))
+	if execErr == nil {
+		t.Error("expected a ca read error")
+	} else {
+		want := "error reading ca-certificate: open /tmp/not-there.pem: no such file or directory"
+		if execErr.Error() != want {
+			t.Errorf("want: %q, got: %q", want, execErr.Error())
+		}
+	}
+}
+
 func TestReadCAFile(t *testing.T) {
 	helper := test.New(t)
 
