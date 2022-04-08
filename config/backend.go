@@ -18,6 +18,7 @@ var (
 type Backend struct {
 	DisableCertValidation  bool     `hcl:"disable_certificate_validation,optional"`
 	DisableConnectionReuse bool     `hcl:"disable_connection_reuse,optional"`
+	Health                 *Health  `hcl:"beta_health,block"`
 	HTTP2                  bool     `hcl:"http2,optional"`
 	MaxConnections         int      `hcl:"max_connections,optional"`
 	Name                   string   `hcl:"name,label"`

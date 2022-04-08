@@ -73,8 +73,10 @@ func registerHTTPHandler(b *Backend) {
 	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
 	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
 	b.mux.HandleFunc("/ws", echo)
+	b.mux.HandleFunc("/redirect", redirect)
 	b.mux.HandleFunc("/pdf", pdf)
 	b.mux.HandleFunc("/small", small)
+	b.mux.HandleFunc("/health", health)
 	b.mux.HandleFunc("/jwks.json", jwks)
 	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
 	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
@@ -188,6 +190,22 @@ func echo(rw http.ResponseWriter, req *http.Request) {
 	wg.Wait()
 }
 
+func redirect(rw http.ResponseWriter, req *http.Request) {
+	queryParams := req.URL.Query()
+	if queryParams.Get("url") == "" {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Allow relative redirects only
+	uri, _ := url.ParseRequestURI(queryParams.Get("url"))
+	uri.Scheme = ""
+	uri.Host = ""
+
+	rw.Header().Set("Location", uri.String())
+	rw.WriteHeader(http.StatusFound)
+}
+
 func pdf(rw http.ResponseWriter, req *http.Request) {
 	_, currFile, _, _ := runtime.Caller(0)
 	rootDir := http.Dir(path.Join(path.Dir(currFile), "testdata"))
@@ -208,6 +226,10 @@ func pdf(rw http.ResponseWriter, req *http.Request) {
 
 func small(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("1234567890"))
+}
+
+func health(rw http.ResponseWriter, req *http.Request) {
+	rw.Write([]byte(" 👍 "))
 }
 
 func jwks(rw http.ResponseWriter, req *http.Request) {

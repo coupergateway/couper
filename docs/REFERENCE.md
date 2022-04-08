@@ -26,6 +26,7 @@
     - [SAML Block](#saml-block)
     - [Settings Block](#settings-block)
     - [Defaults Block](#defaults-block)
+    - [Health Block (Beta)](#health-block)
     - [Error Handler Block](#error-handler-block)
   - [Access Control](#access-control)
   - [Health-Check](#health-check)
@@ -37,6 +38,7 @@
     - [backend_requests](#backend_requests)
     - [backend_response](#backend_response)
     - [backend_responses](#backend_responses)
+    - [backends](#backends)
   - [Functions](#functions)
   - [Modifiers](#modifiers)
     - [Request Header](#request-header)
@@ -173,8 +175,7 @@ The `request` block creates and executes a request to a backend service.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                                                      | Nested block(s)                                                                                                             |
 |:-----------|:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
-| `request`  | [Endpoint Block](#endpoint-block) | &#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed. | [Backend Block](#backend-block) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
-
+| `request`  | [Endpoint Block](#endpoint-block)  |&#9888; A [Proxy Block](#proxy-block) or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](#proxy-block) or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed.|[Backend Block](#backend-block) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set.|
 <!-- TODO: add available http methods -->
 
 | Attribute(s)      | Type                                  | Default | Description                                                                                                                                                                                                                                                                                      | Characteristic(s)                                                                                                                                                                      | Example           |
@@ -212,7 +213,7 @@ The `backend` block defines the connection to a local/remote backend service.
 
 |Block name|Context|Label|Nested block(s)|
 | :----------| :-----------| :-----------| :-----------|
-|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta-oauth2-block), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-block)|
+|`backend`| [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta-oauth2-block), [OIDC Block](#oidc-block)| &#9888; required, when defined in [Definitions Block](#definitions-block)| [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-block), [Health Block](#health-block)|
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -527,13 +528,33 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 - the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
 - the attributes (`request.context.<label>.attributes.<name>`)
 
+### Health Block
+
+Defines a recurring health check request for its backend. Results can be obtained via the [`backends.<label>.health` variables](#backends).
+Changes in health states and related requests will be logged. Default User-Agent will be `Couper / <version> health-check` if not provided
+via `headers` attribute.
+
+| Block name    | Context                           | Label | Nested block |
+|:--------------|:----------------------------------|:------|:-------------|
+| `beta_health` | [`backend` block](#backend-block) | –     |              |
+
+| Attributes          | Type                  | Default             | Description                                        | Characteristics       | Example                            |
+|:--------------------|:----------------------|:--------------------|:---------------------------------------------------|:----------------------|:-----------------------------------|
+| `expect_status`     | number                | `200`, `204`, `301` | wanted response status code                        |                       | `expect_status =  418`             |
+| `expect_text`       | string                | –                   | text response body must contain                    |                       | `expect_text = alive`              |
+| `failure_threshold` | number                | `2`                 | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`            |
+| `headers`           | map                   | –                   | request headers                                    |                       | `headers = {User-Agent: "health"}` |
+| `interval`          | [duration](#duration) | `"2s"`              | time interval for recheck                          |                       | `timeout = "5s"`                   |
+| `path`              | string                | –                   | URL path/query on backend host                     |                       | `path = "/health"`                 |
+| `timeout`           | [duration](#duration) | `"2s"`              | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`                   |
+
 ### Settings Block
 
 The `settings` block lets you configure the more basic and global behavior of your
 gateway instance.
 
 | Context | Label    | Nested block(s) |
-| :------ | :------- | :-------------- |
+|:--------|:---------|:----------------|
 | -       | no label | -               |
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
@@ -688,6 +709,15 @@ and for OIDC additionally:
 - `id_token`: the ID token
 - `id_token_claims`: a map of claims from the ID token
 - `userinfo`: a map of claims retrieved from the userinfo endpoint
+
+
+### `backends`
+
+`backends.<label>` allows access to backend information.
+
+| Variable | Type   | Description                           | Example                                              |
+|:---------|:-------|:--------------------------------------|:-----------------------------------------------------|
+| `health` | object | current [health state](#health-block) | `{"error": "", "healthy": true, "state": "healthy"}` |
 
 ### `backend_request`
 
