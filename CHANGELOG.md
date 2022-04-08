@@ -15,6 +15,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Multiple labels for [`error_handler` blocks](./docs/ERRORS.md#error_handler-specification) ([#462](https://github.com/avenga/couper/pull/462))
   * [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) for an error type defined in both `endpoint` and `api` ([#469](https://github.com/avenga/couper/pull/469))
 
+* **Removed**
+  * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
+  * support for `beta_oauth_authorization_url` and `beta_oauth_verifier` functions (use `oauth2_authorization_url` and `oauth2_verifier` [functions](./docs/REFERENCE.md#functions) instead) ([#475](https://github.com/avenga/couper/pull/475))
+
 ---
 
 ## [1.8.1](https://github.com/avenga/couper/releases/tag/v1.8.1)
