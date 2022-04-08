@@ -310,7 +310,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore: memStore,
 					settings: conf.Settings,
 					srvOpts:  serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint")
+				}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
 				if err != nil {
 					return nil, err
 				}
@@ -330,7 +330,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					memStore: memStore,
 					settings: conf.Settings,
 					srvOpts:  serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint")
+				}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
 				if err != nil {
 					return nil, err
 				}
