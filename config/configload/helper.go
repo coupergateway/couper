@@ -95,9 +95,6 @@ func (h *helper) configureACBackends() error {
 		acs = append(acs, ac)
 	}
 
-	// TODO: remove with 1.8
-	h.config.Definitions.OIDC = append(h.config.Definitions.OIDC, h.config.Definitions.BetaOIDC...)
-
 	for _, ac := range append(h.config.Definitions.OIDC) {
 		acs = append(acs, ac)
 	}
