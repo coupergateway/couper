@@ -1,6 +1,6 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.8.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.8.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
@@ -14,6 +14,12 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) for an error type defined in both `endpoint` and `api` ([#469](https://github.com/avenga/couper/pull/469))
 
 ---
+
+## [1.8.1](https://github.com/avenga/couper/releases/tag/v1.8.1)
+
+* **Fixed**
+  * missing error handling while loading a given `ca_file` ([#460](https://github.com/avenga/couper/pull/460))
+  * allow [`api` blocks](./docs/REFERENCE.md#api-block) sharing the same `base_path` ([#471](https://github.com/avenga/couper/pull/471))
 
 ## [1.8.0](https://github.com/avenga/couper/releases/tag/v1.8.0)
 
