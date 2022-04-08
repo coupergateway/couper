@@ -12,6 +12,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
   * Multiple labels for [`error_handler` blocks](./docs/ERRORS.md#error_handler-specification) ([#462](https://github.com/avenga/couper/pull/462))
 
+* **Removed**
+  * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
+  * support for `beta_oauth_authorization_url` and `beta_oauth_verifier` functions (use `oauth2_authorization_url` and `oauth2_verifier` [functions](./docs/REFERENCE.md#functions) instead) ([#475](https://github.com/avenga/couper/pull/475))
+
 ---
 
 ## [1.8.1](https://github.com/avenga/couper/releases/tag/v1.8.1)
