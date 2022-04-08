@@ -6,7 +6,7 @@ server "oauth-functions" {
         x-v-2 = beta_oauth_verifier() # TODO change to oauth2_verifier() for version 1.8
         x-hv = internal_oauth_hashed_verifier()
         x-au-pkce = oauth2_authorization_url("ac-pkce")
-        x-au-pkce-rel = beta_oauth_authorization_url("ac-pkce-relative") # TODO change to oauth2_authorization_url() for version 1.8
+        x-au-pkce-rel = oauth2_authorization_url("ac-pkce-relative")
       }
     }
   }
