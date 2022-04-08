@@ -148,6 +148,8 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 		{"api pow: w/ scope method; handle operation_denied", http.MethodGet, "/api/pow/", []string{"read", "another"}, http.StatusMethodNotAllowed, ""},
 		{"endpoint: w/ scope", http.MethodGet, "/", []string{"write"}, http.StatusOK, ""},
 		{"endpoint: w/ wrong scope; handle scope", http.MethodGet, "/", []string{"another"}, http.StatusTeapot, ""},
+		{"api specific, endpoint *: w/ wrong scope; handle scope", http.MethodGet, "/wildcard1/", []string{"another"}, http.StatusBadRequest, ""},
+		{"api *, endpoint specific: w/ wrong scope; handle scope", http.MethodGet, "/wildcard2/", []string{"another"}, http.StatusBadRequest, ""},
 	} {
 		t.Run(tc.Name, func(st *testing.T) {
 			h := test.New(st)

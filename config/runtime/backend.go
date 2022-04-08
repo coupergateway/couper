@@ -1,12 +1,14 @@
 package runtime
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
@@ -69,13 +71,27 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		MaxConnections:         beConf.MaxConnections,
 	}
 
-	openAPIopts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	options := &transport.BackendOptions{}
+	var err error
+	options.OpenAPI, err = validation.NewOpenAPIOptions(beConf.OpenAPI)
 	if err != nil {
 		return nil, err
 	}
 
-	options := &transport.BackendOptions{
-		OpenAPI: openAPIopts,
+	if beConf.Health != nil {
+		origin, diags := eval.ValueFromBodyAttribute(evalCtx, backendCtx, "origin")
+		if diags != nil {
+			return nil, diags
+		}
+
+		if origin == cty.NilVal {
+			return nil, fmt.Errorf("missing origin for backend %q", beConf.Name)
+		}
+
+		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health, settings)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
