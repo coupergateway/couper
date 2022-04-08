@@ -3,7 +3,7 @@ server "oauth-functions" {
     response {
       headers = {
         x-v-1 = oauth2_verifier()
-        x-v-2 = beta_oauth_verifier() # TODO change to oauth2_verifier() for version 1.8
+        x-v-2 = oauth2_verifier()
         x-hv = internal_oauth_hashed_verifier()
         x-au-pkce = oauth2_authorization_url("ac-pkce")
         x-au-pkce-rel = oauth2_authorization_url("ac-pkce-relative")

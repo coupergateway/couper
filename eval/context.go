@@ -359,8 +359,6 @@ func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
-	// TODO remove for version 1.8
-	c.eval.Functions["beta_oauth_verifier"] = c.eval.Functions[lib.FnOAuthVerifier]
 
 	if c.saml != nil {
 		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)
