@@ -168,6 +168,15 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 
 	for _, entry := range hook.AllEntries() {
 		if entry.Level < logrus.WarnLevel {
+			// ignore health-check startup errors
+			if req, ok := entry.Data["request"]; ok {
+				if reqFields, ok := req.(logging.Fields); ok {
+					n, _ := reqFields["name"]
+					if hc, ok := n.(string); ok && hc == "health-check" {
+						continue
+					}
+				}
+			}
 			defer os.Exit(1) // ok in loop, next line is the end
 			helper.Must(fmt.Errorf("error: %#v: %s", entry.Data, entry.Message))
 		}
@@ -1048,7 +1057,6 @@ func TestHTTPServer_LogFields(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
 	helper.Must(err)
 
-	logHook.Reset()
 	res, err := client.Do(req)
 	helper.Must(err)
 
@@ -2618,6 +2626,130 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 			logUrl := getAccessLogUrl(hook)
 			if logUrl != tc.wantAccessLogUrl {
 				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
+			}
+		})
+	}
+}
+
+func TestHTTPServer_BackendProbes(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	confPath := path.Join("testdata/integration/config/14_couper.hcl")
+	shutdown, _ := newCouper(confPath, helper)
+	defer shutdown()
+
+	type testCase struct {
+		name   string
+		path   string
+		expect string
+	}
+
+	time.Sleep(2 * time.Second)
+	healthyJSON := `{"error":"","healthy":true,"state":"healthy"}`
+
+	for _, tc := range []testCase{
+		{
+			"unknown backend",
+			"/unknown",
+			`null`,
+		},
+		{
+			"healthy backend",
+			"/healthy/default",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ expect_status",
+			"/healthy/expect_status",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ expect_text",
+			"/healthy/expect_text",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ path",
+			"/healthy/path",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ headers",
+			"/healthy/headers",
+			healthyJSON,
+		},
+		{
+			"healthy backend w/ fallback ua header",
+			"/healthy/ua-header",
+			healthyJSON,
+		},
+		{
+			"healthy backend: check does not follow Location",
+			"/healthy/no_follow_redirect",
+			healthyJSON,
+		},
+		{
+			"unhealthy backend: timeout",
+			"/unhealthy/timeout",
+			`{"error":"backend error: proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend: unexpected status code",
+			"/unhealthy/bad_status",
+			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ expect_status: unexpected status code",
+			"/unhealthy/bad_expect_status",
+			`{"error":"unexpected statusCode: 200","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ expect_text: unexpected text",
+			"/unhealthy/bad_expect_text",
+			`{"error":"unexpected text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend: unexpected status code",
+			"/unhealthy/bad_status",
+			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ path: unexpected status code",
+			"/unhealthy/bad_path",
+			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend w/ headers: unexpected text",
+			"/unhealthy/headers",
+			`{"error":"unexpected text","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"unhealthy backend: does not follow location",
+			"/unhealthy/no_follow_redirect",
+			`{"error":"unexpected statusCode: 302","healthy":false,"state":"unhealthy"}`,
+		},
+		{
+			"failing backend: timeout but threshold not reached",
+			"/failing",
+			`{"error":"backend error: proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":true,"state":"failing"}`,
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			h.Must(err)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			b, _ := io.ReadAll(res.Body)
+			body := string(b)
+			h.Must(res.Body.Close())
+
+			if body != tc.expect {
+				t.Errorf("%s: Unexpected states:\n\tWant: %s\n\tGot:  %s", tc.name, tc.expect, body)
 			}
 		})
 	}

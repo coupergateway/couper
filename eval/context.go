@@ -3,6 +3,7 @@ package eval
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -23,6 +24,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -157,6 +159,21 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
+
+	backendsVariable := map[string]interface{}{}
+	probe_map.BackendProbes.Range(func(backendName, value interface{}) bool {
+		health := value.(probe_map.HealthInfo)
+		backendsVariable[fmt.Sprint(backendName)] = map[string]interface{}{
+			Health: map[string]interface{}{
+				"healthy": health.Healthy,
+				"error":   health.Error,
+				"state":   health.State,
+			},
+		}
+		return true
+	})
+
+	ctx.eval.Variables[Backends] = seetie.MapToValue(backendsVariable)
 
 	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
