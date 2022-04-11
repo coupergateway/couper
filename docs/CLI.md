@@ -9,7 +9,7 @@ Couper is build as binary called `couper` with the following commands:
 | Command   | Description                                                                                                                                   |
 |:----------|:----------------------------------------------------------------------------------------------------------------------------------------------|
 | `run`     | Start the server with given configuration file.                                                                                               |
-|           | _Note_: `run` options can also be configured with [settings](REFERENCE.md#settings-block) or related [environment variables](./../DOCKER.md). |
+|           | **Note:** `run` options can also be configured with [settings](REFERENCE.md#settings-block) or related [environment variables](./../DOCKER.md). |
 | `help`    | Print the usage for the given command: `help run`                                                                                             |
 | `verify`  | Verify the syntax of the given configuration file.                                                                                            |
 | `version` | Print the current version and build information.                                                                                              |
@@ -28,9 +28,9 @@ Couper is build as binary called `couper` with the following commands:
 | `-log-pretty`        | `false`      | `COUPER_LOG_PRETTY`        | Option for `json` log format which pretty prints with basic key coloring.                                                    |
 | `-ca-file`           | `""`         | `COUPER_CA_FILE`           | Option for adding the given PEM encoded ca-certificate to the existing system certificate pool for all outgoing connections. |
 
-_Note_: `log-format`, `log-level` and `log-pretty` also map to [settings](REFERENCE.md#settings-block).
+**Note:** `log-format`, `log-level` and `log-pretty` also map to [settings](REFERENCE.md#settings-block).
 
-_Note_: Couper can be started with both, `-f` and `-d` arguments. The path of `-f <file>`
+**Note:** Couper can be started with both, `-f` and `-d` arguments. The path of `-f <file>`
 determines the working directory of Couper. If `-d <dir>` argument is given without the `-f <file>`,
 the path of `-d <dir>` is the working directory of Couper. A `couper.hcl` file inside the
 `-d <dir>` is priorized over other files inside the `-d <dir>`, but not over the
@@ -44,7 +44,7 @@ the path of `-d <dir>` is the working directory of Couper. A `couper.hcl` file i
 |  |- z.hcl      # step 1: merge configuration into the couper.d/a.hcl
 ```
 
-_Note_: When merging configuration files, only one unlabeled `server` or `api` block
+**Note:** When merging configuration files, only one unlabeled `server` or `api` block
 is allowed in each context.
 
 ## Run Options
