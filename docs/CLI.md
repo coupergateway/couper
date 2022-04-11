@@ -37,12 +37,15 @@ the path of `-d <dir>` is the working directory of Couper. A `couper.hcl` file i
 `-f <file>`. Other files in the `-d <dir>` are loaded in alphabetical order. Example:
 
 ```sh
-|- couper.hcl    # defined via `-f`                       <|
-|- couper.d/     # defined via `-d`                        |
-|  |- couper.hcl # patches the couper.hcl              <|  |
-|  |- a.hcl      # patches the couper.d/couper.hcl  <|  |
-|  |- z.hcl      # patches the couper.d/a.hcl        |
+|- couper.hcl    # defined via `-f`
+|- couper.d/     # defined via `-d`
+|  |- couper.hcl # step 3: merge configuration into the couper.hcl defined via `-f`
+|  |- a.hcl      # step 2: merge configuration into the couper.d/couper.hcl
+|  |- z.hcl      # step 1: merge configuration into the couper.d/a.hcl
 ```
+
+_Note_: When merging configuration files, only one unlabeled `server` or `api` block
+is allowed in each context.
 
 ## Run Options
 
