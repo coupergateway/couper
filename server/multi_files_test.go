@@ -111,6 +111,14 @@ func TestMultiFiles_SettingsAndDefaults(t *testing.T) {
 		t.Errorf("Missing 'Req-Id-Cl-Hdr' header")
 	}
 
+	if res.Header.Get("X") != "X" {
+		t.Errorf("Invalid 'X' header given")
+	}
+
+	if res.Header.Get("Y") != "Y" {
+		t.Errorf("Invalid 'Y' header given")
+	}
+
 	// Call health route
 	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/xyz", nil)
 	helper.Must(err)
