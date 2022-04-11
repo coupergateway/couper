@@ -3,11 +3,12 @@
 Couper supports merging of blocks and attributes from multiple configuration files
 (see [Global Options of Command Line Interface](CLI.md#global-options)).
 
-* [General Rules of Merging](#general-rules-of-merging)
-* [Merging of `server` Blocks](#merging-of-server-blocks)
-* [Merging of `definitions` Blocks](#merging-of-definitions-blocks)
-* [Merging of `defaults` Blocks](#merging-of-defaults-blocks)
-* [Merging of `settings` Blocks](#merging-of-settings-blocks)
+* [Merging](#merging)
+  * [General Rules of Merging](#general-rules-of-merging)
+  * [Merging of `server` Blocks](#merging-of-server-blocks)
+  * [Merging of `definitions` Blocks](#merging-of-definitions-blocks)
+  * [Merging of `defaults` Blocks](#merging-of-defaults-blocks)
+  * [Merging of `settings` Blocks](#merging-of-settings-blocks)
 
 ## General Rules of Merging
 
