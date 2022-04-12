@@ -33,7 +33,7 @@ func NewURLFromAttribute(hclCtx *hcl.EvalContext, content hcl.Body, attrName str
 		return req.URL, nil
 	}
 
-	u, err := url.ParseRequestURI(urlStr)
+	u, err := url.ParseRequestURI(urlStr) // method forces abs path
 	if err != nil {
 		return nil, err
 	}
