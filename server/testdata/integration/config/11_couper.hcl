@@ -67,6 +67,7 @@ server {
 
     endpoint "/wildcardAndMore" {
       allowed_methods = ["get", "*", "PuT", "brew"]
+      beta_required_permission = ""
 
       response {
         body = "a"
