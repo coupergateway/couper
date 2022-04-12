@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/avenga/couper/eval"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
@@ -36,6 +37,7 @@ func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
 		Val: cty.StringVal(
 			path.Join(filepath.Dir(attr.SrcRange.Filename), value.AsString()),
 		),
+		SrcRange: attr.SrcRange,
 	}
 }
 
@@ -361,14 +363,60 @@ func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
 	return key
 }
 
-func mergeAttributes(blockName string, bodies []*hclsyntax.Body) *hclsyntax.Block {
+func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
+	attrs := make(hclsyntax.Attributes)
+	envVars := make(map[string]cty.Value)
+
+	for _, body := range bodies {
+		for _, block := range body.Blocks {
+			if block.Type == defaults {
+				for name, attr := range block.Body.Attributes {
+					if name == "environment_variables" {
+						v, err := eval.Value(nil, attr.Expr)
+						if err != nil {
+							return nil, err
+						}
+
+						for name, value := range v.AsValueMap() {
+							if value.Type() != cty.String {
+								return nil, fmt.Errorf("value in 'environment_variables' is not a string")
+							}
+
+							envVars[name] = value
+						}
+					} else {
+						attrs[name] = attr // Currently not used
+					}
+				}
+			}
+		}
+	}
+
+	if len(envVars) > 0 {
+		attrs["environment_variables"] = &hclsyntax.Attribute{
+			Name: "environment_variables",
+			Expr: &hclsyntax.LiteralValueExpr{
+				Val: cty.MapVal(envVars),
+			},
+		}
+	}
+
+	return &hclsyntax.Block{
+		Type: defaults,
+		Body: &hclsyntax.Body{
+			Attributes: attrs,
+		},
+	}, nil
+}
+
+func mergeSettings(bodies []*hclsyntax.Body) *hclsyntax.Block {
 	attrs := make(hclsyntax.Attributes)
 
 	for _, body := range bodies {
 		for _, block := range body.Blocks {
-			if block.Type == blockName {
+			if block.Type == settings {
 				for name, attr := range block.Body.Attributes {
-					if blockName == settings && name == "ca_file" {
+					if name == "ca_file" {
 						block.Body.Attributes[name].Expr = absPath(attr)
 					}
 
@@ -379,7 +427,7 @@ func mergeAttributes(blockName string, bodies []*hclsyntax.Body) *hclsyntax.Bloc
 	}
 
 	return &hclsyntax.Block{
-		Type: blockName,
+		Type: settings,
 		Body: &hclsyntax.Body{
 			Attributes: attrs,
 		},
