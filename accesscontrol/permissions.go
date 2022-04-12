@@ -11,14 +11,23 @@ import (
 )
 
 type requiredPermissions struct {
-	permissions map[string]string
+	permission  string
+	permissions map[string]string // permission per method
 }
 
-func newRequiredPermissions() requiredPermissions {
-	return requiredPermissions{permissions: make(map[string]string)}
+func newRequiredPermissions(permission string, permissionMap map[string]string) requiredPermissions {
+	rp := requiredPermissions{}
+	if permissionMap == nil {
+		rp.permission = permission
+		return rp
+	}
+
+	rp.setPermissionMap(permissionMap)
+	return rp
 }
 
 func (r *requiredPermissions) setPermissionMap(permissionMap map[string]string) {
+	r.permissions = make(map[string]string)
 	if otherPermission, otherMethodExists := permissionMap["*"]; otherMethodExists {
 		for _, method := range middleware.DefaultEndpointAllowedMethods {
 			r.permissions[method] = otherPermission
@@ -32,29 +41,36 @@ func (r *requiredPermissions) setPermissionMap(permissionMap map[string]string) 
 	}
 }
 
+func (r *requiredPermissions) getPermission(method string) (string, error) {
+	if r.permissions == nil {
+		return r.permission, nil
+	}
+
+	permission, exists := r.permissions[method]
+	if !exists {
+		return "", errors.MethodNotAllowed.Messagef("method %s not allowed by beta_required_permission", method)
+	}
+	return permission, nil
+}
+
 var _ AccessControl = &PermissionsControl{}
 
 type PermissionsControl struct {
 	required requiredPermissions
 }
 
-func NewPermissionsControl(permissionMap map[string]string) *PermissionsControl {
-	rp := newRequiredPermissions()
-	if permissionMap != nil {
-		rp.setPermissionMap(permissionMap)
-	}
+func NewPermissionsControl(permission string, permissionMap map[string]string) *PermissionsControl {
+	rp := newRequiredPermissions(permission, permissionMap)
 	return &PermissionsControl{required: rp}
 }
 
 // Validate validates the granted permissions provided by access controls against the required permission.
 func (p *PermissionsControl) Validate(req *http.Request) error {
-	if len(p.required.permissions) == 0 {
-		return nil
+	requiredPermission, err := p.required.getPermission(req.Method)
+	if err != nil {
+		return err
 	}
-	requiredPermission, exists := p.required.permissions[req.Method]
-	if !exists {
-		return errors.MethodNotAllowed.Messagef("method %s not allowed by beta_required_permission", req.Method)
-	}
+
 	if requiredPermission == "" {
 		return nil
 	}

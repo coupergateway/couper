@@ -313,11 +313,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				if requiredPermissionVal == cty.NilVal {
 					protectedHandler = epHandler
 				} else {
-					requiredPermissionMap, err := seetie.ValueToPermissionMap(requiredPermissionVal)
+					requiredPermission, requiredPermissionMap, err := seetie.ValueToPermission(requiredPermissionVal)
 					if err != nil {
 						return nil, err
 					}
-					permissionsControl := ac.NewPermissionsControl(requiredPermissionMap)
+					permissionsControl := ac.NewPermissionsControl(requiredPermission, requiredPermissionMap)
 					permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
