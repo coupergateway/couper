@@ -57,6 +57,18 @@ func absBackendBlock(backendBlock *hclsyntax.Block) {
 	}
 }
 
+func absInBackends(block *hclsyntax.Block) {
+	for _, subBlock := range block.Body.Blocks {
+		if subBlock.Type == proxy || subBlock.Type == request || subBlock.Type == errorHandler {
+			for _, subSubBlock := range subBlock.Body.Blocks {
+				if subSubBlock.Type == backend {
+					absBackendBlock(subSubBlock) // Backend block inside a proxy or request block
+				}
+			}
+		}
+	}
+}
+
 func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	type (
 		namedBlocks   map[string]*hclsyntax.Block
@@ -172,11 +184,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					results[serverKey].endpoints[block.Labels[0]] = block
 
-					for _, innerBlock := range block.Body.Blocks {
-						if innerBlock.Type == backend {
-							absBackendBlock(innerBlock) // Backend block inside a free endpoint block
-						}
-					}
+					absInBackends(block) // Backend block inside a free endpoint block
 				} else if block.Type == api {
 					var apiKey string
 
@@ -215,8 +223,12 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 								return nil, errorUniqueLabels(subBlock)
 							}
 
+							absInBackends(subBlock)
+
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
 						} else if subBlock.Type == errorHandler {
+							absInBackends(subBlock)
+
 							ehKey := newErrorHandlerKey(subBlock)
 
 							results[serverKey].apis[apiKey].errorHandler[ehKey] = subBlock
@@ -321,15 +333,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 								block.Body.Attributes["error_file"].Expr = absPath(attr)
 							}
 
-							for _, subBlock := range block.Body.Blocks {
-								if subBlock.Type == proxy || subBlock.Type == request {
-									for _, subSubBlock := range subBlock.Body.Blocks {
-										if subSubBlock.Type == backend {
-											absBackendBlock(subSubBlock) // Backend block inside an EH/proxy or EH/request block of an AC block
-										}
-									}
-								}
-							}
+							absInBackends(block)
 						} else if block.Type == backend {
 							absBackendBlock(block) // Backend block inside an AC block
 						}
