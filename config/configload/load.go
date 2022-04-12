@@ -25,6 +25,7 @@ import (
 const (
 	api          = "api"
 	backend      = "backend"
+	defaults     = "defaults"
 	definitions  = "definitions"
 	endpoint     = "endpoint"
 	errorHandler = "error_handler"
@@ -163,17 +164,20 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		return nil, fmt.Errorf("missing configuration files")
 	}
 
-	defaults := mergeAttributes("defaults", parsedBodies)
+	defaultsBlock, err := mergeDefaults(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
 
 	defs := &hclsyntax.Body{
-		Blocks: hclsyntax.Blocks{defaults},
+		Blocks: hclsyntax.Blocks{defaultsBlock},
 	}
 
 	if diags := updateContext(defs, srcBytes); diags.HasErrors() {
 		return nil, diags
 	}
 
-	settingsBlock := mergeAttributes(settings, parsedBodies)
+	settingsBlock := mergeSettings(parsedBodies)
 
 	definitionsBlock, err := mergeDefinitions(parsedBodies)
 	if err != nil {
@@ -187,7 +191,7 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 
 	configBlocks := serverBlocks
 	configBlocks = append(configBlocks, definitionsBlock)
-	configBlocks = append(configBlocks, defaults)
+	configBlocks = append(configBlocks, defaultsBlock)
 	configBlocks = append(configBlocks, settingsBlock)
 
 	configBody := &hclsyntax.Body{
