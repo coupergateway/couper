@@ -320,8 +320,18 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 							if attr, ok := block.Body.Attributes["error_file"]; ok {
 								block.Body.Attributes["error_file"].Expr = absPath(attr)
 							}
+
+							for _, subBlock := range block.Body.Blocks {
+								if subBlock.Type == proxy || subBlock.Type == request {
+									for _, subSubBlock := range subBlock.Body.Blocks {
+										if subSubBlock.Type == backend {
+											absBackendBlock(subSubBlock) // Backend block inside an EH/proxy or EH/request block of an AC block
+										}
+									}
+								}
+							}
 						} else if block.Type == backend {
-							absBackendBlock(block) // Backend block inside a AC block
+							absBackendBlock(block) // Backend block inside an AC block
 						}
 					}
 
