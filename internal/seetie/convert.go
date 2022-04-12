@@ -66,7 +66,7 @@ func ValueToPermission(val cty.Value) (string, map[string]string, error) {
 			permissionMap := make(map[string]string)
 			for k, v := range val.AsValueMap() {
 				if v.Type() != cty.String {
-					return "", nil, fmt.Errorf("unsupported value for operation %q in beta_required_permission", k)
+					return "", nil, fmt.Errorf("unsupported value for method %q in beta_required_permission", k)
 				}
 				permissionMap[strings.ToUpper(k)] = v.AsString()
 			}
