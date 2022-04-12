@@ -14,6 +14,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/accesscontrol/jwk"
@@ -304,31 +305,31 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
-				var requiredPermissionMap map[string]string
-				requiredPermissionMap, err = seetie.ValueToPermissionMap(endpointConf.RequiredPermission)
-				if err != nil {
-					return nil, err
-				}
-				if requiredPermissionMap == nil && parentAPI != nil {
+				requiredPermissionVal := endpointConf.RequiredPermission
+				if requiredPermissionVal == cty.NilVal && parentAPI != nil {
 					// if required permission in endpoint {} not defined, try required permission in parent api {}
-					requiredPermissionMap, err = seetie.ValueToPermissionMap(parentAPI.RequiredPermission)
+					requiredPermissionVal = parentAPI.RequiredPermission
+				}
+				if requiredPermissionVal == cty.NilVal {
+					protectedHandler = epHandler
+				} else {
+					requiredPermissionMap, err := seetie.ValueToPermissionMap(requiredPermissionVal)
 					if err != nil {
 						return nil, err
 					}
-				}
+					permissionsControl := ac.NewPermissionsControl(requiredPermissionMap)
+					permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+						epOpts:   epOpts,
+						memStore: memStore,
+						settings: conf.Settings,
+						srvOpts:  serverOptions,
+					}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
+					if err != nil {
+						return nil, err
+					}
 
-				permissionsControl := ac.NewPermissionsControl(requiredPermissionMap)
-				permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-					epOpts:   epOpts,
-					memStore: memStore,
-					settings: conf.Settings,
-					srvOpts:  serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
-				if err != nil {
-					return nil, err
+					protectedHandler = middleware.NewErrorHandler(permissionsControl.Validate, permissionsErrorHandler)(epHandler)
 				}
-
-				protectedHandler = middleware.NewErrorHandler(permissionsControl.Validate, permissionsErrorHandler)(epHandler)
 			}
 
 			accessControl := newAC(srvConf, parentAPI)
