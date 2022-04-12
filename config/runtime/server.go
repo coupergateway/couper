@@ -417,29 +417,6 @@ func bodiesWithACBodies(defs *config.Definitions, ac, dac []string) []hcl.Body {
 	return bodies
 }
 
-func newPermissionMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
-	var permissionMaps []map[string]string
-	if parentAPI != nil {
-		apiRequiredPermissionMap, err := seetie.ValueToPermissionMap(parentAPI.RequiredPermission)
-		if err != nil {
-			return nil, err
-		}
-		if apiRequiredPermissionMap != nil {
-			permissionMaps = append(permissionMaps, apiRequiredPermissionMap)
-		}
-	}
-	endpointRequiredPermissionMap, err := seetie.ValueToPermissionMap(endpoint.RequiredPermission)
-	if err != nil {
-		return nil, err
-	}
-
-	if endpointRequiredPermissionMap != nil {
-		permissionMaps = append(permissionMaps, endpointRequiredPermissionMap)
-	}
-
-	return permissionMaps, nil
-}
-
 func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	val := reflect.ValueOf(this)
 	if val.IsZero() {
