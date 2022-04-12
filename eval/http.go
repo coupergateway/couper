@@ -112,7 +112,7 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body hcl.Body, req *http.Requ
 		return err
 	}
 
-	if err = evalURLPath(req, attrs, httpCtx); err != nil {
+	if err = evalPathAttr(req, attrs, httpCtx); err != nil {
 		return err
 	}
 
@@ -264,34 +264,36 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	return nil
 }
 
-func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) error {
+func evalPathAttr(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) error {
+	pathAttr, ok := attrs[attrPath]
+	if !ok {
+		return nil
+	}
 	path := req.URL.Path
-	if pathAttr, ok := attrs[attrPath]; ok {
-		pathValue, err := Value(httpCtx, pathAttr.Expr)
-		if err != nil {
-			return err
+	pathValue, err := Value(httpCtx, pathAttr.Expr)
+	if err != nil {
+		return err
+	}
+	if str := seetie.ValueToString(pathValue); str != "" {
+		// TODO: Check for a valid absolute path
+		if i := strings.Index(str, "#"); i >= 0 {
+			return errors.Configuration.Label("path attribute").Messagef("invalid fragment found in %q", str)
+		} else if i = strings.Index(str, "?"); i >= 0 {
+			return errors.Configuration.Label("path attribute").Messagef("invalid query string found in %q", str)
 		}
-		if str := seetie.ValueToString(pathValue); str != "" {
-			// TODO: Check for a valid absolute path
-			if i := strings.Index(str, "#"); i >= 0 {
-				return errors.Configuration.Label("path attribute").Messagef("invalid fragment found in %q", str)
-			} else if i = strings.Index(str, "?"); i >= 0 {
-				return errors.Configuration.Label("path attribute").Messagef("invalid query string found in %q", str)
+
+		path = str
+
+		if pathMatch, isWildcard := req.Context().
+			Value(request.Wildcard).(string); isWildcard && strings.HasSuffix(path, "/**") {
+			if strings.HasSuffix(req.URL.Path, "/") && !strings.HasSuffix(pathMatch, "/") {
+				pathMatch += "/"
 			}
 
-			path = str
+			req.URL.Path = utils.JoinPath("/", strings.ReplaceAll(path, "/**", "/"), pathMatch)
+		} else if path != "" {
+			req.URL.Path = utils.JoinPath("/", path)
 		}
-	}
-
-	if pathMatch, ok := req.Context().
-		Value(request.Wildcard).(string); ok && strings.HasSuffix(path, "/**") {
-		if strings.HasSuffix(req.URL.Path, "/") && !strings.HasSuffix(pathMatch, "/") {
-			pathMatch += "/"
-		}
-
-		req.URL.Path = utils.JoinPath("/", strings.ReplaceAll(path, "/**", "/"), pathMatch)
-	} else if path != "" {
-		req.URL.Path = utils.JoinPath("/", path)
 	}
 
 	return nil

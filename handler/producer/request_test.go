@@ -92,6 +92,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 		}}
 
 		proxies := producer.Proxies{&producer.Proxy{
+			Content:   hclbody.New(content),
 			Name:      "proxy",
 			RoundTrip: handler.NewProxy(backend, hclbody.New(content), logEntry),
 		}}

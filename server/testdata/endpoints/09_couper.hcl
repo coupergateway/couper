@@ -3,12 +3,10 @@ server "api" {
 
   endpoint "/" {
     proxy {
-      # should fail
-      url = "https://foo.com"
-
+      url = "/?delay=5s"
       backend {
-        origin = "https://bar.com"
-
+        origin = "${env.COUPER_TEST_BACKEND_ADDR}"
+        timeout = "1s"
         # should not run
         set_response_headers = {
           x-backend = 1

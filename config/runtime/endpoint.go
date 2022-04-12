@@ -93,6 +93,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 		proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), log)
 		p := &producer.Proxy{
+			Content:   proxyConf.HCLBody(),
 			Name:      proxyConf.Name,
 			RoundTrip: proxyHandler,
 		}
@@ -246,6 +247,7 @@ func newSequenceItem(name, previous string,
 	if p, ok := proxies[name]; ok {
 		return producer.Proxies{
 			&producer.Proxy{
+				Content:          p.Content,
 				Name:             p.Name,
 				RoundTrip:        p.RoundTrip,
 				PreviousSequence: previous,

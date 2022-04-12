@@ -66,30 +66,23 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			continue
 		}
 
-		var method, url string
-
 		methodVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "method")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
 		}
-		method = seetie.ValueToString(methodVal)
+		method := seetie.ValueToString(methodVal)
 
-		urlVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "url")
+		url, err := NewURLFromAttribute(hclCtx, or.Context, "url", req)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
 		}
-		url = seetie.ValueToString(urlVal)
 
 		body, defaultContentType, err := eval.GetBody(hclCtx, bodyContent)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
-		}
-
-		if url != "" {
-			outCtx = context.WithValue(outCtx, request.URLAttribute, url)
 		}
 
 		if method == "" {
@@ -100,9 +93,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			}
 		}
 
-		// The real URL is configured later in the backend,
-		// see <go roundtrip()> at the end of current for-loop.
-		outreq, err := http.NewRequest(strings.ToUpper(method), "", nil)
+		outreq, err := http.NewRequest(strings.ToUpper(method), url.String(), nil)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -122,7 +113,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 
 		eval.SetBody(outreq, []byte(body))
 
-		*outreq = *outreq.WithContext(outCtx)
+		outreq = outreq.WithContext(outCtx)
 		err = eval.ApplyRequestContext(hclCtx, or.Context, outreq)
 		if err != nil {
 			results <- &Result{Err: err}

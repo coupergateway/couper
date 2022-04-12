@@ -71,6 +71,7 @@ func NewExpiredBackend() (*Backend, *server.SelfSignedCertificate) {
 func registerHTTPHandler(b *Backend) {
 	// test handler
 	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
+	b.mux.HandleFunc("/anything/", createAnythingHandler(http.StatusOK))
 	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
 	b.mux.HandleFunc("/ws", echo)
 	b.mux.HandleFunc("/redirect", redirect)

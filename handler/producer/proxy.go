@@ -7,13 +7,16 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/telemetry"
 )
 
 type Proxy struct {
+	Content          hcl.Body
 	Name             string // label
 	PreviousSequence string
 	RoundTrip        http.RoundTripper
@@ -55,6 +58,20 @@ func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
 
 		// since proxy and backend may work on the "same" outReq this must be cloned.
 		outReq := clientReq.Clone(outCtx)
+
+		hclCtx := eval.ContextFromRequest(clientReq).HCLContext()
+		url, err := NewURLFromAttribute(hclCtx, proxy.Content, "url", clientReq)
+		if err != nil {
+			results <- &Result{Err: err}
+			continue
+		}
+
+		// proxy should pass query if not redefined with url attribute
+		if outReq.URL.RawQuery != "" && url.RawQuery == "" {
+			url.RawQuery = outReq.URL.RawQuery
+		}
+
+		outReq.URL = url
 
 		wg.Add(1)
 		go roundtrip(proxy.RoundTrip, outReq, results, wg)

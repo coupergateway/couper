@@ -11,7 +11,6 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/oauth2/oidc"
 )
@@ -272,16 +271,13 @@ func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string)
 	if err != nil {
 		return nil, err
 	}
-
-	// url will be configured via backend roundtrip
-	outreq, err := http.NewRequest(http.MethodGet, "", nil)
+	
+	outreq, err := http.NewRequest(http.MethodGet, userinfoEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	outreq.Header.Set("Authorization", "Bearer "+accessToken)
 
-	outCtx := context.WithValue(ctx, request.URLAttribute, userinfoEndpoint)
-
-	return outreq.WithContext(outCtx), nil
+	return outreq.WithContext(ctx), nil
 }

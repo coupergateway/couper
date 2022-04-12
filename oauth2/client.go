@@ -61,8 +61,12 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 		post.Set("client_secret", c.clientConfig.GetClientSecret())
 	}
 
-	// url will be configured via backend roundtrip
-	outreq, err := http.NewRequest(http.MethodPost, "", nil)
+	tokenURL, err := c.asConfig.GetTokenEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	outreq, err := http.NewRequest(http.MethodPost, tokenURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,15 +80,6 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
-
-	tokenURL, err := c.asConfig.GetTokenEndpoint()
-	if err != nil {
-		return nil, err
-	}
-
-	if tokenURL != "" {
-		outCtx = context.WithValue(outCtx, request.URLAttribute, tokenURL)
-	}
 
 	eval.SetBody(outreq, []byte(post.Encode()))
 

@@ -100,9 +100,7 @@ func (s *SyncedJSON) Data(_ string) (interface{}, error) {
 func (s *SyncedJSON) fetch() error {
 	req, _ := http.NewRequest("GET", s.uri, nil)
 
-	ctx := context.WithValue(context.Background(), request.URLAttribute, s.uri)
-	ctx = context.WithValue(ctx, request.RoundTripName, s.roundTripName)
-
+	ctx := context.WithValue(context.Background(), request.RoundTripName, s.roundTripName)
 	req = req.WithContext(ctx)
 
 	response, err := s.transport.RoundTrip(req)
