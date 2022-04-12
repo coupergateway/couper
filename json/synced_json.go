@@ -65,6 +65,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 		expired = time.After(s.ttl)
 	}
 
+	backoff := time.Second
 	for {
 		select {
 		case <-ctx.Done():
@@ -72,10 +73,14 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 		case <-expired:
 			err = s.fetch()
 			if err != nil {
-				time.Sleep(time.Second * 2)
+				time.Sleep(backoff)
+				if backoff < time.Minute {
+					backoff *= 2
+				}
 				continue
 			}
 			expired = time.After(s.ttl)
+			backoff = time.Second
 		case r := <-s.dataRequest:
 			r <- &dataRequest{
 				err: err,
