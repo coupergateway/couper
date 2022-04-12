@@ -69,6 +69,22 @@ func absInBackends(block *hclsyntax.Block) {
 	}
 }
 
+// newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
+// "label1" and/or "label2 label3" results in "label1 label2 label3".
+func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
+	if len(block.Labels) == 0 {
+		return key
+	}
+
+	var sorted []string
+	for _, l := range block.Labels {
+		sorted = append(sorted, strings.Split(l, errorHandlerLabelSep)...)
+	}
+	sort.Strings(sorted)
+
+	return strings.Join(sorted, errorHandlerLabelSep)
+}
+
 func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	type (
 		namedBlocks   map[string]*hclsyntax.Block
@@ -361,22 +377,6 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 			Blocks: blocks,
 		},
 	}, nil
-}
-
-// newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
-// "label1" and/or "label2 label3" results in "label1 label2 label3".
-func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
-	if len(block.Labels) == 0 {
-		return key
-	}
-
-	var sorted []string
-	for _, l := range block.Labels {
-		sorted = append(sorted, strings.Split(l, errorHandlerLabelSep)...)
-	}
-	sort.Strings(sorted)
-
-	return strings.Join(sorted, errorHandlerLabelSep)
 }
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
