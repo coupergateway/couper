@@ -214,9 +214,11 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 							if len(subBlock.Labels) == 0 {
 								return nil, errorUniqueLabels(subBlock)
 							}
+
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
 						} else if subBlock.Type == errorHandler {
 							ehKey := newErrorHandlerKey(subBlock)
+
 							results[serverKey].apis[apiKey].errorHandler[ehKey] = subBlock
 						} else {
 							results[serverKey].apis[apiKey].blocks[subBlock.Type] = subBlock
@@ -315,11 +317,11 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 
 					for _, block := range innerBlock.Body.Blocks {
 						if block.Type == errorHandler {
-							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
-								innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
+							if attr, ok := block.Body.Attributes["error_file"]; ok {
+								block.Body.Attributes["error_file"].Expr = absPath(attr)
 							}
 						} else if block.Type == backend {
-							absBackendBlock(innerBlock) // Backend block inside a AC block
+							absBackendBlock(block) // Backend block inside a AC block
 						}
 					}
 
@@ -359,8 +361,8 @@ func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
 		sorted = append(sorted, strings.Split(l, errorHandlerLabelSep)...)
 	}
 	sort.Strings(sorted)
-	key = strings.Join(sorted, errorHandlerLabelSep)
-	return key
+
+	return strings.Join(sorted, errorHandlerLabelSep)
 }
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
