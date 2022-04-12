@@ -271,7 +271,7 @@ func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	outreq, err := http.NewRequest(http.MethodGet, userinfoEndpoint, nil)
 	if err != nil {
 		return nil, err
