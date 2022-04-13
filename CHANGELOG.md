@@ -10,10 +10,19 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
 
+* **Changed**
+  * Permission handling: ([#477](https://github.com/avenga/couper/pull/477))
+    * renamed `beta_scope` attribute for [`api`](./docs/REFERENCE.md#api-block) and [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks to `beta_required_permission`; `beta_required_permission` in `endpoint` now *overriding* `beta_required_permission` in containing `api` block
+    * renamed `beta_scope_claim` and `beta_scope_map` attributes for [`jwt` block](./docs/REFERENCE.md#jwt-block) to `beta_permissions_claim` and `beta_permissions_map`
+    * removed `beta_operation_denied` and `beta_scope` [error types](./docs/ERRORS.md#api-and-endpoint-error-types)
+    * renamed `beta_insufficient_scope` [error type](./docs/ERRORS.md#api-and-endpoint-error-types) to `beta_insufficient_permissions`
+    * added `request.context.beta_required_permission` and `request.context.beta_granted_permissions` [request variables](./docs/REFERENCE.md#request)
+
 * **Fixed**
   * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
   * Multiple labels for [`error_handler` blocks](./docs/ERRORS.md#error_handler-specification) ([#462](https://github.com/avenga/couper/pull/462))
   * [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) for an error type defined in both `endpoint` and `api` ([#469](https://github.com/avenga/couper/pull/469))
+  * Request methods are treated case-insensitively when comparing them to methods in the `allowed_methods` attribute of [`api`](./docs/REFERENCE.md#api-block) or [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks ([#478](https://github.com/avenga/couper/pull/478))
 
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))

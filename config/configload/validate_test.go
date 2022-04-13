@@ -255,18 +255,18 @@ func TestAttributeObjectKeys(t *testing.T) {
 			"couper.hcl:4,30-7,8: key in an attribute must be unique: 'a'; Key must be unique for a.",
 		},
 		{
-			"beta_scope",
+			"beta_required_permission",
 			`server {
   api {
     endpoint "/a" {
-      beta_scope = {
+      beta_required_permission = {
         get = "a"
         GeT = "A"
       }
     }
   }
 }`,
-			"couper.hcl:4,20-7,8: key in an attribute must be unique: 'get'; Key must be unique for get.",
+			"couper.hcl:4,34-7,8: key in an attribute must be unique: 'get'; Key must be unique for get.",
 		},
 		{
 			"headers",
@@ -360,13 +360,13 @@ definitions {
 			"",
 		},
 		{
-			"beta_scope_map",
+			"beta_permissions_map",
 			`server {}
 definitions {
   jwt "a" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_scope_map = {
+    beta_permissions_map = {
       a = []
       A = []
 	}

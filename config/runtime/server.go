@@ -14,6 +14,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/accesscontrol/jwk"
@@ -75,21 +76,6 @@ func GetHostPort(hostPort string) (string, int, error) {
 	}
 
 	return host, port, nil
-}
-
-var defaultFileSpaAllowedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-}
-
-var defaultEndpointAllowedMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodOptions,
 }
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
@@ -168,7 +154,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.ServerErrTpl}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, defaultFileSpaAllowedMethods, spaHandler, notAllowedMethodsHandler)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, spaHandler, notAllowedMethodsHandler)
 			spaHandler = allowedMethodsHandler
 
 			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
@@ -214,7 +200,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpl}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, defaultFileSpaAllowedMethods, fileHandler, notAllowedMethodsHandler)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, fileHandler, notAllowedMethodsHandler)
 			fileHandler = allowedMethodsHandler
 
 			fileHandler, err = configureProtectedHandler(accessControls, confCtx,
@@ -319,23 +305,31 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
-				scopeMaps, err := newScopeMaps(parentAPI, endpointConf)
-				if err != nil {
-					return nil, err
+				requiredPermissionVal := endpointConf.RequiredPermission
+				if requiredPermissionVal == cty.NilVal && parentAPI != nil {
+					// if required permission in endpoint {} not defined, try required permission in parent api {}
+					requiredPermissionVal = parentAPI.RequiredPermission
 				}
+				if requiredPermissionVal == cty.NilVal {
+					protectedHandler = epHandler
+				} else {
+					requiredPermission, requiredPermissionMap, err := seetie.ValueToPermission(requiredPermissionVal)
+					if err != nil {
+						return nil, err
+					}
+					permissionsControl := ac.NewPermissionsControl(requiredPermission, requiredPermissionMap)
+					permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+						epOpts:   epOpts,
+						memStore: memStore,
+						settings: conf.Settings,
+						srvOpts:  serverOptions,
+					}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
+					if err != nil {
+						return nil, err
+					}
 
-				scopeControl := ac.NewScopeControl(scopeMaps)
-				scopeErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
-					epOpts:   epOpts,
-					memStore: memStore,
-					settings: conf.Settings,
-					srvOpts:  serverOptions,
-				}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
-				if err != nil {
-					return nil, err
+					protectedHandler = middleware.NewErrorHandler(permissionsControl.Validate, permissionsErrorHandler)(epHandler)
 				}
-
-				protectedHandler = middleware.NewErrorHandler(scopeControl.Validate, scopeErrorHandler)(epHandler)
 			}
 
 			accessControl := newAC(srvConf, parentAPI)
@@ -346,7 +340,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				allowedMethods = parentAPI.AllowedMethods
 			}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
-			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, defaultEndpointAllowedMethods, protectedHandler, notAllowedMethodsHandler)
+			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, middleware.DefaultEndpointAllowedMethods, protectedHandler, notAllowedMethodsHandler)
 			protectedHandler = allowedMethodsHandler
 
 			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
@@ -421,29 +415,6 @@ func bodiesWithACBodies(defs *config.Definitions, ac, dac []string) []hcl.Body {
 	}
 
 	return bodies
-}
-
-func newScopeMaps(parentAPI *config.API, endpoint *config.Endpoint) ([]map[string]string, error) {
-	var scopeMaps []map[string]string
-	if parentAPI != nil {
-		apiScopeMap, err := seetie.ValueToScopeMap(parentAPI.Scope)
-		if err != nil {
-			return nil, err
-		}
-		if apiScopeMap != nil {
-			scopeMaps = append(scopeMaps, apiScopeMap)
-		}
-	}
-	endpointScopeMap, err := seetie.ValueToScopeMap(endpoint.Scope)
-	if err != nil {
-		return nil, err
-	}
-
-	if endpointScopeMap != nil {
-		scopeMaps = append(scopeMaps, endpointScopeMap)
-	}
-
-	return scopeMaps, nil
 }
 
 func whichCORS(parent *config.Server, this interface{}) *config.CORS {
@@ -592,8 +563,8 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		Name:                  jwtConf.Name,
 		RolesClaim:            jwtConf.RolesClaim,
 		RolesMap:              jwtConf.RolesMap,
-		ScopeClaim:            jwtConf.ScopeClaim,
-		ScopeMap:              jwtConf.ScopeMap,
+		PermissionsClaim:      jwtConf.PermissionsClaim,
+		PermissionsMap:        jwtConf.PermissionsMap,
 		Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 	}
 	var (

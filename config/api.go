@@ -20,7 +20,7 @@ type API struct {
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Name                 string    `hcl:"name,label"`
 	Remain               hcl.Body  `hcl:",remain"`
-	Scope                cty.Value `hcl:"beta_scope,optional"`
+	RequiredPermission   cty.Value `hcl:"beta_required_permission,optional"`
 
 	// internally used
 	CatchAllEndpoint *Endpoint

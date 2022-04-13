@@ -55,8 +55,8 @@ type JWT struct {
 	pubKey                interface{}
 	rolesClaim            string
 	rolesMap              map[string][]string
-	scopeClaim            string
-	scopeMap              map[string][]string
+	permissionsClaim      string
+	permissionsMap        map[string][]string
 	jwks                  *jwk.JWKS
 }
 
@@ -68,8 +68,8 @@ type JWTOptions struct {
 	Name                  string // TODO: more generic (validate)
 	RolesClaim            string
 	RolesMap              map[string][]string
-	ScopeClaim            string
-	ScopeMap              map[string][]string
+	PermissionsClaim      string
+	PermissionsMap        map[string][]string
 	Source                JWTSource
 	Key                   []byte
 	JWKS                  *jwk.JWKS
@@ -173,8 +173,8 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 		name:                  options.Name,
 		rolesClaim:            options.RolesClaim,
 		rolesMap:              options.RolesMap,
-		scopeClaim:            options.ScopeClaim,
-		scopeMap:              options.ScopeMap,
+		permissionsClaim:      options.PermissionsClaim,
+		permissionsMap:        options.PermissionsMap,
 		source:                options.Source,
 	}
 	return jwtAC, nil
@@ -257,13 +257,13 @@ func (j *JWT) Validate(req *http.Request) error {
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
-	scopesValues := j.getScopeValues(tokenClaims, log)
+	jwtGrantedPermissions := j.getGrantedPermissions(tokenClaims, log)
 
-	scopes, _ := ctx.Value(request.Scopes).([]string)
+	grantedPermissions, _ := ctx.Value(request.BetaGrantedPermissions).([]string)
 
-	scopes = append(scopes, scopesValues...)
+	grantedPermissions = append(grantedPermissions, jwtGrantedPermissions...)
 
-	ctx = context.WithValue(ctx, request.Scopes, scopes)
+	ctx = context.WithValue(ctx, request.BetaGrantedPermissions, grantedPermissions)
 
 	*req = *req.WithContext(ctx)
 
@@ -351,56 +351,56 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	return tokenClaims, nil
 }
 
-func (j *JWT) getScopeValues(tokenClaims map[string]interface{}, log *logrus.Entry) []string {
-	var scopeValues []string
+func (j *JWT) getGrantedPermissions(tokenClaims map[string]interface{}, log *logrus.Entry) []string {
+	var grantedPermissions []string
 
-	scopeValues = j.addScopeValueFromScope(tokenClaims, scopeValues, log)
+	grantedPermissions = j.addPermissionsFromPermissionsClaim(tokenClaims, grantedPermissions, log)
 
-	scopeValues = j.addScopeValueFromRoles(tokenClaims, scopeValues, log)
+	grantedPermissions = j.addPermissionsFromRoles(tokenClaims, grantedPermissions, log)
 
-	scopeValues = j.addMappedScopeValues(scopeValues, scopeValues)
+	grantedPermissions = j.addMappedPermissions(grantedPermissions, grantedPermissions)
 
-	return scopeValues
+	return grantedPermissions
 }
 
 const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value %#v"
 
-func (j *JWT) addScopeValueFromScope(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) []string {
-	if j.scopeClaim == "" {
-		return scopeValues
+func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {
+	if j.permissionsClaim == "" {
+		return permissions
 	}
 
-	scopesFromClaim, exists := tokenClaims[j.scopeClaim]
+	permissionsFromClaim, exists := tokenClaims[j.permissionsClaim]
 	if !exists {
-		return scopeValues
+		return permissions
 	}
 
 	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
-	scopesArray, ok := scopesFromClaim.([]interface{})
+	permissionsArray, ok := permissionsFromClaim.([]interface{})
 	if ok {
 		var vals []string
-		for _, v := range scopesArray {
-			s, ok := v.(string)
+		for _, v := range permissionsArray {
+			p, ok := v.(string)
 			if !ok {
-				log.Warn(fmt.Sprintf(warnInvalidValueMsg, "scope", scopesFromClaim))
-				return scopeValues
+				log.Warn(fmt.Sprintf(warnInvalidValueMsg, "permissions", permissionsFromClaim))
+				return permissions
 			}
-			vals = append(vals, s)
+			vals = append(vals, p)
 		}
 		for _, val := range vals {
-			scopeValues, _ = addScopeValue(scopeValues, val)
+			permissions, _ = addPermission(permissions, val)
 		}
 	} else {
-		scopesString, ok := scopesFromClaim.(string)
+		permissionsString, ok := permissionsFromClaim.(string)
 		if !ok {
-			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "scope", scopesFromClaim))
-			return scopeValues
+			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "permissions", permissionsFromClaim))
+			return permissions
 		}
-		for _, s := range strings.Split(scopesString, " ") {
-			scopeValues, _ = addScopeValue(scopeValues, s)
+		for _, p := range strings.Split(permissionsString, " ") {
+			permissions, _ = addPermission(permissions, p)
 		}
 	}
-	return scopeValues
+	return permissions
 }
 
 func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []string {
@@ -428,40 +428,40 @@ func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []st
 	}
 }
 
-func (j *JWT) addScopeValueFromRoles(tokenClaims map[string]interface{}, scopeValues []string, log *logrus.Entry) []string {
+func (j *JWT) addPermissionsFromRoles(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {
 	if j.rolesClaim == "" || j.rolesMap == nil {
-		return scopeValues
+		return permissions
 	}
 
 	rolesClaimValue, exists := tokenClaims[j.rolesClaim]
 	if !exists {
-		return scopeValues
+		return permissions
 	}
 
 	roleValues := j.getRoleValues(rolesClaimValue, log)
 	for _, r := range roleValues {
-		if scopes, exist := j.rolesMap[r]; exist {
-			for _, s := range scopes {
-				scopeValues, _ = addScopeValue(scopeValues, s)
+		if perms, exist := j.rolesMap[r]; exist {
+			for _, p := range perms {
+				permissions, _ = addPermission(permissions, p)
 			}
 		}
 	}
 
-	if scopes, exist := j.rolesMap["*"]; exist {
-		for _, s := range scopes {
-			scopeValues, _ = addScopeValue(scopeValues, s)
+	if perms, exist := j.rolesMap["*"]; exist {
+		for _, p := range perms {
+			permissions, _ = addPermission(permissions, p)
 		}
 	}
-	return scopeValues
+	return permissions
 }
 
-func (j *JWT) addMappedScopeValues(source, target []string) []string {
-	if j.scopeMap == nil {
+func (j *JWT) addMappedPermissions(source, target []string) []string {
+	if j.permissionsMap == nil {
 		return target
 	}
 
 	for _, val := range source {
-		mappedValues, exist := j.scopeMap[val]
+		mappedValues, exist := j.permissionsMap[val]
 		if !exist {
 			// no mapping for value
 			continue
@@ -471,29 +471,29 @@ func (j *JWT) addMappedScopeValues(source, target []string) []string {
 		for _, mv := range mappedValues {
 			var added bool
 			// add value from mapping?
-			target, added = addScopeValue(target, mv)
+			target, added = addPermission(target, mv)
 			if !added {
 				continue
 			}
 			l = append(l, mv)
 		}
 		// recursion: call only with values not already in target
-		target = j.addMappedScopeValues(l, target)
+		target = j.addMappedPermissions(l, target)
 	}
 	return target
 }
 
-func addScopeValue(scopeValues []string, scope string) ([]string, bool) {
-	scope = strings.TrimSpace(scope)
-	if scope == "" {
-		return scopeValues, false
+func addPermission(permissions []string, permission string) ([]string, bool) {
+	permission = strings.TrimSpace(permission)
+	if permission == "" {
+		return permissions, false
 	}
-	for _, s := range scopeValues {
-		if s == scope {
-			return scopeValues, false
+	for _, p := range permissions {
+		if p == permission {
+			return permissions, false
 		}
 	}
-	return append(scopeValues, scope), true
+	return append(permissions, permission), true
 }
 
 func getBearer(val string) (string, error) {
