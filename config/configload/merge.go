@@ -72,7 +72,6 @@ func absInBackends(block *hclsyntax.Block) error {
 			var backends int
 
 			for _, subSubBlock := range subBlock.Body.Blocks {
-				fmt.Printf(">>> %#v\n", subSubBlock.Type)
 				if subSubBlock.Type == backend {
 					absBackendBlock(subSubBlock) // Backend block inside a proxy or request block
 
