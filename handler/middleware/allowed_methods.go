@@ -5,6 +5,21 @@ import (
 	"strings"
 )
 
+var DefaultFileSpaAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+}
+
+var DefaultEndpointAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodOptions,
+}
+
 var _ http.Handler = &AllowedMethodsHandler{}
 
 type AllowedMethodsHandler struct {

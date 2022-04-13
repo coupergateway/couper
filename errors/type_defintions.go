@@ -20,10 +20,7 @@ var Definitions = []*Error{
 	AccessControl.Kind("saml2"),
 	AccessControl.Kind("saml2").Kind("saml"),
 
-	AccessControl.Kind("beta_operation_denied"),
-
-	AccessControl.Kind("beta_scope"),
-	AccessControl.Kind("beta_scope").Kind("beta_insufficient_scope"),
+	AccessControl.Kind("beta_insufficient_permissions"),
 
 	BackendValidation,
 

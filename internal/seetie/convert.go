@@ -55,26 +55,25 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 	return result
 }
 
-func ValueToScopeMap(val cty.Value) (map[string]string, error) {
-	scopeMap := make(map[string]string)
+func ValueToPermission(val cty.Value) (string, map[string]string, error) {
 	switch val.Type() {
 	case cty.NilType:
-		return nil, nil
+		return "", nil, nil
 	case cty.String:
-		scopeMap["*"] = val.AsString()
-		return scopeMap, nil
+		return val.AsString(), nil, nil
 	default:
 		if val.Type().IsObjectType() {
+			permissionMap := make(map[string]string)
 			for k, v := range val.AsValueMap() {
 				if v.Type() != cty.String {
-					return nil, fmt.Errorf("unsupported value for operation %q in beta_scope", k)
+					return "", nil, fmt.Errorf("unsupported value for method %q in beta_required_permission", k)
 				}
-				scopeMap[strings.ToUpper(k)] = v.AsString()
+				permissionMap[strings.ToUpper(k)] = v.AsString()
 			}
-			return scopeMap, nil
+			return "", permissionMap, nil
 		}
 	}
-	return nil, fmt.Errorf("unsupported value for beta_scope")
+	return "", nil, fmt.Errorf("unsupported value for beta_required_permission")
 }
 
 func ValuesMapToValue(m url.Values) cty.Value {

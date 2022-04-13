@@ -12,11 +12,9 @@ var (
 	Oauth2                      = Definitions[7]
 	Saml2                       = Definitions[8]
 	Saml                        = Definitions[9]
-	BetaOperationDenied         = Definitions[10]
-	BetaScope                   = Definitions[11]
-	BetaInsufficientScope       = Definitions[12]
-	Sequence                    = Definitions[14]
-	UnexpectedStatus            = Definitions[15]
+	BetaInsufficientPermissions = Definitions[10]
+	Sequence                    = Definitions[12]
+	UnexpectedStatus            = Definitions[13]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -36,9 +34,7 @@ var types = typeDefinitions{
 	"oauth2":                         Oauth2,
 	"saml2":                          Saml2,
 	"saml":                           Saml,
-	"beta_operation_denied":          BetaOperationDenied,
-	"beta_scope":                     BetaScope,
-	"beta_insufficient_scope":        BetaInsufficientScope,
+	"beta_insufficient_permissions":  BetaInsufficientPermissions,
 	"backend_validation":             BackendValidation,
 	"sequence":                       Sequence,
 	"unexpected_status":              UnexpectedStatus,
