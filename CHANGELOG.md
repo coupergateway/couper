@@ -22,6 +22,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
   * Multiple labels for [`error_handler` blocks](./docs/ERRORS.md#error_handler-specification) ([#462](https://github.com/avenga/couper/pull/462))
   * [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) for an error type defined in both `endpoint` and `api` ([#469](https://github.com/avenga/couper/pull/469))
+  * Request methods are treated case-insensitively when comparing them to methods in the `allowed_methods` attribute of [`api`](./docs/REFERENCE.md#api-block) or [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks ([#478](https://github.com/avenga/couper/pull/478))
 
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))

@@ -5040,14 +5040,14 @@ func TestAllowedMethods(t *testing.T) {
 
 		{"wildcard and more, GET", http.MethodGet, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, HEAD", http.MethodHead, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
-		{"wildcard and more, POST", http.MethodPost, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PoSt", "PoSt", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, PUT", http.MethodPut, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, PATCH", http.MethodPatch, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, DELETE", http.MethodDelete, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, OPTIONS", http.MethodOptions, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, CONNECT", http.MethodConnect, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
-		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, bReW", "bReW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 
 		{"blocked, GET", http.MethodGet, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"blocked, HEAD", http.MethodHead, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
