@@ -3,9 +3,11 @@ package server_test
 import (
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -173,5 +175,26 @@ func TestMultiFiles_Definitions(t *testing.T) {
 
 	if s := string(resBytes); !strings.Contains(s, "401 access control error") {
 		t.Errorf("Unexpected body given: %s", s)
+	}
+}
+
+func TestMultiFiles_MultipleBackends(t *testing.T) {
+	type testCase struct {
+		config string
+	}
+
+	for _, tc := range []testCase{
+		{"testdata/multi/backends/errors/ac.hcl"},
+		{"testdata/multi/backends/errors/ac_eh.hcl"},
+		{"testdata/multi/backends/errors/ep.hcl"},
+		{"testdata/multi/backends/errors/api_ep.hcl"},
+	} {
+		t.Run(tc.config, func(st *testing.T) {
+			_, err := configload.LoadFiles(filepath.Join(testWorkingDir, tc.config), "")
+
+			if !strings.Contains(err.Error(), "Multiple definitions of backend are not allowed.") {
+				st.Errorf("Unexpected error: %s", err.Error())
+			}
+		})
 	}
 }
