@@ -123,7 +123,7 @@ func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	}
 }
 
-func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
+func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 	client := test.NewHTTPClient()
 
 	helper := test.New(t)
@@ -132,24 +132,24 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 	defer shutdown()
 
 	type testcase struct {
-		Name      string
-		Method    string
-		Path      string
-		Scopes    []string
-		ExpStatus int
-		ExpBody   string
+		Name               string
+		Method             string
+		Path               string
+		GrantedPermissions []string
+		ExpStatus          int
+		ExpBody            string
 	}
 
 	for _, tc := range []testcase{
-		{"api: w/ scope", http.MethodGet, "/api/", []string{"read"}, http.StatusNoContent, ""},
-		{"api: w/ wrong scope; handle scope", http.MethodGet, "/api/", []string{"another"}, http.StatusTeapot, ""},
-		{"api pow: w/ scope; op granted", http.MethodPost, "/api/pow/", []string{"read", "power"}, http.StatusNoContent, ""},
-		{"api pow: w/ wrong scope; handle insufficient_scope", http.MethodPost, "/api/pow/", []string{"read", "another"}, http.StatusBadRequest, ""},
-		{"api pow: w/ scope method; handle operation_denied", http.MethodGet, "/api/pow/", []string{"read", "another"}, http.StatusMethodNotAllowed, ""},
-		{"endpoint: w/ scope", http.MethodGet, "/", []string{"write"}, http.StatusOK, ""},
-		{"endpoint: w/ wrong scope; handle scope", http.MethodGet, "/", []string{"another"}, http.StatusTeapot, ""},
-		{"api specific, endpoint *: w/ wrong scope; handle scope", http.MethodGet, "/wildcard1/", []string{"another"}, http.StatusBadRequest, ""},
-		{"api *, endpoint specific: w/ wrong scope; handle scope", http.MethodGet, "/wildcard2/", []string{"another"}, http.StatusBadRequest, ""},
+		{"api: sufficient permissions", http.MethodGet, "/api/", []string{"read"}, http.StatusNoContent, ""},
+		{"api: insufficient permissions; handle insufficient_permission", http.MethodGet, "/api/", []string{"another"}, http.StatusTeapot, ""},
+		{"api pow: sufficient permissions for method", http.MethodPost, "/api/pow/", []string{"read", "power"}, http.StatusNoContent, ""},
+		{"api pow: insufficient permissions; handle insufficient_permission", http.MethodPost, "/api/pow/", []string{"read", "another"}, http.StatusBadRequest, ""},
+		{"api pow: method not allowed", http.MethodGet, "/api/pow/", []string{"read", "another"}, http.StatusMethodNotAllowed, ""},
+		{"endpoint: sufficient permissions", http.MethodGet, "/", []string{"write"}, http.StatusOK, ""},
+		{"endpoint: insufficient permissions; handle insufficient_permission", http.MethodGet, "/", []string{"another"}, http.StatusTeapot, ""},
+		{"api specific, endpoint *: insufficient permissions; handle insufficient_permission", http.MethodGet, "/wildcard1/", []string{"another"}, http.StatusBadRequest, ""},
+		{"api *, endpoint specific: insufficient permissions; handle insufficient_permission", http.MethodGet, "/wildcard2/", []string{"another"}, http.StatusBadRequest, ""},
 	} {
 		t.Run(tc.Name, func(st *testing.T) {
 			h := test.New(st)
@@ -173,7 +173,7 @@ func TestAccessControl_ErrorHandler_Scopes(t *testing.T) {
 			tokenVal, err := ctx.HCLContext().Functions[lib.FnJWTSign].
 				Call([]cty.Value{cty.StringVal("test"), seetie.MapToValue(
 					map[string]interface{}{
-						"scopes": tc.Scopes,
+						"scope": tc.GrantedPermissions,
 					})})
 			h.Must(err)
 
