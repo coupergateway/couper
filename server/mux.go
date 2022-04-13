@@ -30,12 +30,6 @@ type Mux struct {
 	spaRoot      *pathpattern.Node
 }
 
-var fileMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodOptions,
-}
-
 const (
 	serverOptionsKey    = "serverContextOptions"
 	wildcardReplacement = "/{_couper_wildcardMatch*}"
