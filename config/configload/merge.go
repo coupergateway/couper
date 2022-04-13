@@ -57,16 +57,43 @@ func absBackendBlock(backendBlock *hclsyntax.Block) {
 	}
 }
 
-func absInBackends(block *hclsyntax.Block) {
+func absInBackends(block *hclsyntax.Block) error {
 	for _, subBlock := range block.Body.Blocks {
-		if subBlock.Type == proxy || subBlock.Type == request || subBlock.Type == errorHandler {
+		if subBlock.Type == errorHandler {
+			return absInBackends(subBlock)
+		}
+
+		if subBlock.Type == proxy || subBlock.Type == request {
+			var backends int
+
 			for _, subSubBlock := range subBlock.Body.Blocks {
+				fmt.Printf(">>> %#v\n", subSubBlock.Type)
 				if subSubBlock.Type == backend {
 					absBackendBlock(subSubBlock) // Backend block inside a proxy or request block
+
+					backends++
+				}
+			}
+
+			if _, ok := subBlock.Body.Attributes[backend]; ok {
+				backends++
+			}
+
+			if backends > 1 {
+				defRange := block.DefRange()
+
+				return hcl.Diagnostics{
+					&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "Multiple definitions of backend are not allowed.",
+						Subject:  &defRange,
+					},
 				}
 			}
 		}
 	}
+
+	return nil
 }
 
 // newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
@@ -194,13 +221,15 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 				}
 
 				if block.Type == endpoint {
+					if err := absInBackends(block); err != nil { // Backend block inside a free endpoint block
+						return nil, err
+					}
+
 					if len(block.Labels) == 0 {
 						return nil, errorUniqueLabels(block)
 					}
 
 					results[serverKey].endpoints[block.Labels[0]] = block
-
-					absInBackends(block) // Backend block inside a free endpoint block
 				} else if block.Type == api {
 					var apiKey string
 
@@ -235,15 +264,19 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					for _, subBlock := range block.Body.Blocks {
 						if subBlock.Type == endpoint {
+							if err := absInBackends(subBlock); err != nil {
+								return nil, err
+							}
+
 							if len(subBlock.Labels) == 0 {
 								return nil, errorUniqueLabels(subBlock)
 							}
 
-							absInBackends(subBlock)
-
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
 						} else if subBlock.Type == errorHandler {
-							absInBackends(subBlock)
+							if err := absInBackends(subBlock); err != nil {
+								return nil, err
+							}
 
 							ehKey := newErrorHandlerKey(subBlock)
 
@@ -343,15 +376,37 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 						}
 					}
 
+					var backends int
+
 					for _, block := range innerBlock.Body.Blocks {
 						if block.Type == errorHandler {
 							if attr, ok := block.Body.Attributes["error_file"]; ok {
 								block.Body.Attributes["error_file"].Expr = absPath(attr)
 							}
 
-							absInBackends(block)
+							if err := absInBackends(block); err != nil {
+								return nil, err
+							}
 						} else if block.Type == backend {
 							absBackendBlock(block) // Backend block inside an AC block
+
+							backends++
+						}
+					}
+
+					if _, ok := innerBlock.Body.Attributes[backend]; ok {
+						backends++
+					}
+
+					if backends > 1 {
+						defRange := innerBlock.DefRange()
+
+						return nil, hcl.Diagnostics{
+							&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Multiple definitions of backend are not allowed.",
+								Subject:  &defRange,
+							},
 						}
 					}
 
