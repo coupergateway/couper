@@ -29,7 +29,7 @@ func TestMultiFiles_Server(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/", nil)
 	helper.Must(err)
 
-	res, err := client.Do(req)
+	_, err = client.Do(req)
 	if err == nil || err.Error() != `Get "http://example.com:8080/": dial tcp4 127.0.0.1:8080: connect: connection refused` {
 		t.Error("Expected hosts port override to 9080")
 	}
@@ -62,7 +62,7 @@ func TestMultiFiles_Server(t *testing.T) {
 			req.Header.Set(k, v)
 		}
 
-		res, err = client.Do(req)
+		res, err := client.Do(req)
 		helper.Must(err)
 
 		if res.StatusCode != tc.expStatus {
