@@ -2730,7 +2730,7 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 			`{"error":"unexpected statusCode: 302","healthy":false,"state":"unhealthy"}`,
 		},
 		{
-			"failing backend: timeout but threshold not reached",
+			"backend error: timeout but threshold not reached",
 			"/failing",
 			`{"error":"backend error: proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":true,"state":"failing"}`,
 		},
