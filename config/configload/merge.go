@@ -13,13 +13,18 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func errorUniqueLabels(block *hclsyntax.Block) error {
+const (
+	errMultipleBackends = "Multiple definitions of backend are not allowed."
+	errUniqueLabels     = "All %s blocks must have unique labels."
+)
+
+func createError(msg string, block *hclsyntax.Block) error {
 	defRange := block.DefRange()
 
 	return hcl.Diagnostics{
 		&hcl.Diagnostic{
 			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("All %s blocks must have unique labels.", block.Type),
+			Summary:  fmt.Sprintf(msg, block.Type),
 			Subject:  &defRange,
 		},
 	}
@@ -80,15 +85,7 @@ func absInBackends(block *hclsyntax.Block) error {
 			}
 
 			if backends > 1 {
-				defRange := block.DefRange()
-
-				return hcl.Diagnostics{
-					&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Multiple definitions of backend are not allowed.",
-						Subject:  &defRange,
-					},
-				}
+				return createError(errMultipleBackends, block)
 			}
 		}
 	}
@@ -165,7 +162,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 			if len(bodies) > 1 {
 				if _, ok := uniqueServerLabels[serverKey]; ok {
-					return nil, errorUniqueLabels(outerBlock)
+					return nil, createError(errUniqueLabels, outerBlock)
 				}
 
 				uniqueServerLabels[serverKey] = struct{}{}
@@ -226,7 +223,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 
 					if len(block.Labels) == 0 {
-						return nil, errorUniqueLabels(block)
+						return nil, createError(errUniqueLabels, block)
 					}
 
 					results[serverKey].endpoints[block.Labels[0]] = block
@@ -239,7 +236,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					if len(bodies) > 1 {
 						if _, ok := uniqueAPILabels[apiKey]; ok {
-							return nil, errorUniqueLabels(block)
+							return nil, createError(errUniqueLabels, block)
 						}
 
 						uniqueAPILabels[apiKey] = struct{}{}
@@ -269,7 +266,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 							}
 
 							if len(subBlock.Labels) == 0 {
-								return nil, errorUniqueLabels(subBlock)
+								return nil, createError(errUniqueLabels, subBlock)
 							}
 
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
@@ -362,7 +359,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if len(innerBlock.Labels) == 0 {
-						return nil, errorUniqueLabels(innerBlock)
+						return nil, createError(errUniqueLabels, innerBlock)
 					}
 
 					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
@@ -399,15 +396,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if backends > 1 {
-						defRange := innerBlock.DefRange()
-
-						return nil, hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Multiple definitions of backend are not allowed.",
-								Subject:  &defRange,
-							},
-						}
+						return nil, createError(errMultipleBackends, innerBlock)
 					}
 
 					if innerBlock.Type == backend {
