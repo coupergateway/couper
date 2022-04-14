@@ -85,6 +85,10 @@ func ValuesMapToValue(m url.Values) cty.Value {
 }
 
 func stringListToValue(l []string) cty.Value {
+	if l == nil || len(l) == 0 {
+		return cty.ListValEmpty(cty.String)
+	}
+
 	var list []cty.Value
 	for _, s := range l {
 		list = append(list, cty.StringVal(s))
