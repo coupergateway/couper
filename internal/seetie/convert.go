@@ -103,7 +103,7 @@ func listToValue(l []interface{}) cty.Value {
 func GoToValue(v interface{}) cty.Value {
 	switch v := v.(type) {
 	case string:
-		return cty.StringVal(ToString(v))
+		return cty.StringVal(v)
 	case bool:
 		return cty.BoolVal(v)
 	case int64:
