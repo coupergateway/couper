@@ -594,7 +594,7 @@ The `defaults` block lets you define default values.
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `environment_variables` | map | – | One or more environment variable assigments|-|`environment_variables = {ORIGIN = "https://httpbin.org" ...}`|
+| `environment_variables` | object (string) | – | One or more environment variable assigments|-|`environment_variables = {ORIGIN = "https://httpbin.org" ...}`|
 
 Examples:
 
