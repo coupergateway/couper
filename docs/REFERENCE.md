@@ -393,7 +393,7 @@ Since responses from endpoints protected by JWT access controls are not publicly
 | `beta_permissions_claim` |string|-|name of claim containing the granted permissions|The claim value must either be a string containing a space-separated list of permissions or a list of string permissions|`beta_permissions_claim = "scope"`|
 | `beta_permissions_map` |object (string)|-| mapping of granted permissions to additional granted permissions | Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. |`beta_permissions_map = { p1 = ["p3", "p4"], p2 = ["p5"] }`|
 | `beta_roles_claim` |string|-|name of claim specifying the roles of the user represented by the token|The claim value must either be a string containing a space-separated list of role values or a list of string role values|`beta_roles_claim = "roles"`|
-| `beta_roles_map` |map|-| mapping of roles to granted permissions | Non-mapped roles can be assigned with `*` to specific permissions. |`beta_roles_map = { role1 = ["p1", "p2"], role2 = ["p3"], "*" = ["public"] }`|
+| `beta_roles_map` |object (string)|-| mapping of roles to granted permissions | Non-mapped roles can be assigned with `*` to specific permissions. |`beta_roles_map = { role1 = ["p1", "p2"], role2 = ["p3"], "*" = ["public"] }`|
 | `jwks_url` | string | - | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517) | - | `jwks_url = "http://identityprovider:8080/jwks.json"` |
 | `jwks_ttl` | [duration](#duration) | `"1h"` | Time period the JWK set stays valid and may be cached. | - | `jwks_ttl = "1800s"` |
 | `backend`  | string| - | [backend reference](#backend-block) for enhancing JWKS requests| - | `backend = "jwks_backend"` |
