@@ -57,7 +57,8 @@ func NewAllowedMethodsHandler(allowedMethods, defaultAllowedMethods []string, al
 }
 
 func (a *AllowedMethodsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if _, ok := a.allowedMethods[req.Method]; !ok {
+	method := strings.ToUpper(req.Method)
+	if _, ok := a.allowedMethods[method]; !ok {
 		a.notAllowedHandler.ServeHTTP(rw, req)
 		return
 	}
