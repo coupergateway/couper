@@ -92,7 +92,7 @@ func stringListToValue(l []string) cty.Value {
 	return cty.ListVal(list)
 }
 
-func ListToValue(l []interface{}) cty.Value {
+func listToValue(l []interface{}) cty.Value {
 	var list []cty.Value
 	for _, v := range l {
 		list = append(list, GoToValue(v))
@@ -113,7 +113,7 @@ func GoToValue(v interface{}) cty.Value {
 	case []string:
 		return stringListToValue(v)
 	case []interface{}:
-		return ListToValue(v)
+		return listToValue(v)
 	case map[string]interface{}:
 		return MapToValue(v)
 	default:
@@ -136,7 +136,7 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		case []string:
 			ctyMap[k] = stringListToValue(v)
 		case []interface{}:
-			ctyMap[k] = ListToValue(v)
+			ctyMap[k] = listToValue(v)
 		case map[string]interface{}:
 			ctyMap[k] = MapToValue(v)
 		default:
