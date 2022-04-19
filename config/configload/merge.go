@@ -18,7 +18,7 @@ const (
 	errUniqueLabels     = "All %s blocks must have unique labels."
 )
 
-func createError(msg string, block *hclsyntax.Block) error {
+func newMergeError(msg string, block *hclsyntax.Block) error {
 	defRange := block.DefRange()
 
 	return hcl.Diagnostics{
@@ -84,7 +84,7 @@ func absInBackends(block *hclsyntax.Block) error {
 			}
 
 			if backends > 1 {
-				return createError(errMultipleBackends, block)
+				return newMergeError(errMultipleBackends, block)
 			}
 		}
 	}
@@ -161,7 +161,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 			if len(bodies) > 1 {
 				if _, ok := uniqueServerLabels[serverKey]; ok {
-					return nil, createError(errUniqueLabels, outerBlock)
+					return nil, newMergeError(errUniqueLabels, outerBlock)
 				}
 
 				uniqueServerLabels[serverKey] = struct{}{}
@@ -222,7 +222,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					}
 
 					if len(block.Labels) == 0 {
-						return nil, createError(errUniqueLabels, block)
+						return nil, newMergeError(errUniqueLabels, block)
 					}
 
 					results[serverKey].endpoints[block.Labels[0]] = block
@@ -235,7 +235,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					if len(bodies) > 1 {
 						if _, ok := uniqueAPILabels[apiKey]; ok {
-							return nil, createError(errUniqueLabels, block)
+							return nil, newMergeError(errUniqueLabels, block)
 						}
 
 						uniqueAPILabels[apiKey] = struct{}{}
@@ -265,7 +265,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 							}
 
 							if len(subBlock.Labels) == 0 {
-								return nil, createError(errUniqueLabels, subBlock)
+								return nil, newMergeError(errUniqueLabels, subBlock)
 							}
 
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
@@ -358,7 +358,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if len(innerBlock.Labels) == 0 {
-						return nil, createError(errUniqueLabels, innerBlock)
+						return nil, newMergeError(errUniqueLabels, innerBlock)
 					}
 
 					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
@@ -395,7 +395,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if backends > 1 {
-						return nil, createError(errMultipleBackends, innerBlock)
+						return nil, newMergeError(errMultipleBackends, innerBlock)
 					}
 
 					if innerBlock.Type == backend {
