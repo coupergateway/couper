@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
   * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
+  * Log parse-duration errors of timing settings, if accured ([#487](https://github.com/avenga/couper/pull/487))
 
 * **Changed**
   * Permission handling: ([#477](https://github.com/avenga/couper/pull/477))
