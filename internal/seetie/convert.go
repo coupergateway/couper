@@ -84,7 +84,19 @@ func ValuesMapToValue(m url.Values) cty.Value {
 	return MapToValue(result)
 }
 
-func ListToValue(l []interface{}) cty.Value {
+func stringListToValue(l []string) cty.Value {
+	if l == nil || len(l) == 0 {
+		return cty.ListValEmpty(cty.String)
+	}
+
+	var list []cty.Value
+	for _, s := range l {
+		list = append(list, cty.StringVal(s))
+	}
+	return cty.ListVal(list)
+}
+
+func listToValue(l []interface{}) cty.Value {
 	var list []cty.Value
 	for _, v := range l {
 		list = append(list, GoToValue(v))
@@ -95,7 +107,7 @@ func ListToValue(l []interface{}) cty.Value {
 func GoToValue(v interface{}) cty.Value {
 	switch v := v.(type) {
 	case string:
-		return cty.StringVal(ToString(v))
+		return cty.StringVal(v)
 	case bool:
 		return cty.BoolVal(v)
 	case int64:
@@ -103,13 +115,9 @@ func GoToValue(v interface{}) cty.Value {
 	case float64:
 		return cty.NumberFloatVal(v)
 	case []string:
-		var list []interface{}
-		for _, s := range v {
-			list = append(list, s)
-		}
-		return ListToValue(list)
+		return stringListToValue(v)
 	case []interface{}:
-		return ListToValue(v)
+		return listToValue(v)
 	case map[string]interface{}:
 		return MapToValue(v)
 	default:
@@ -130,13 +138,9 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		}
 		switch v := v.(type) {
 		case []string:
-			var list []interface{}
-			for _, s := range v {
-				list = append(list, s)
-			}
-			ctyMap[k] = ListToValue(list)
+			ctyMap[k] = stringListToValue(v)
 		case []interface{}:
-			ctyMap[k] = ListToValue(v)
+			ctyMap[k] = listToValue(v)
 		case map[string]interface{}:
 			ctyMap[k] = MapToValue(v)
 		default:
