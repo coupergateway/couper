@@ -2730,7 +2730,7 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 			`{"error":"unexpected statusCode: 302","healthy":false,"state":"unhealthy"}`,
 		},
 		{
-			"failing backend: timeout but threshold not reached",
+			"backend error: timeout but threshold not reached",
 			"/failing",
 			`{"error":"backend error: proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused","healthy":true,"state":"failing"}`,
 		},
@@ -3419,7 +3419,7 @@ func TestJWTAccessControl(t *testing.T) {
 		header     http.Header
 		body       string
 		status     int
-		expScope   string
+		expPerm    string
 		wantErrLog string
 	}
 
@@ -3506,8 +3506,8 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 
-			if scopes := res.Header.Get("X-Scopes"); scopes != tc.expScope {
-				subT.Errorf("expected scope: %q, actual: %q", tc.expScope, scopes)
+			if grantedPermissions := res.Header.Get("X-Granted-Permissions"); grantedPermissions != tc.expPerm {
+				subT.Errorf("expected granted permissions: %q, actual: %q", tc.expPerm, grantedPermissions)
 				return
 			}
 		})
@@ -3679,7 +3679,7 @@ func getAccessControlMessages(hook *logrustest.Hook) string {
 	return ""
 }
 
-func Test_Scope(t *testing.T) {
+func Test_Permissions(t *testing.T) {
 	h := test.New(t)
 	client := newClient()
 
@@ -3694,37 +3694,39 @@ func Test_Scope(t *testing.T) {
 	h.Must(tokenErr)
 
 	type testCase struct {
-		name        string
-		operation   string
-		path        string
-		authorize   bool
-		status      int
-		wantGranted string
-		wantErrLog  string
-		wantErrType string
+		name         string
+		method       string
+		path         string
+		authorize    bool
+		status       int
+		wantGranted  string
+		wantRequired string
+		wantErrLog   string
+		wantErrType  string
 	}
 
 	for _, tc := range []testCase{
-		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, ``, "access control error: scoped_jwt: token required", "jwt_token_missing"},
-		{"by scope: sufficient scope", http.MethodGet, "/scope/foo", true, http.StatusNoContent, `["a"]`, "", ""},
-		{"by scope: additional scope required: insufficient scope", http.MethodPost, "/scope/foo", true, http.StatusForbidden, ``, `access control error: required scope "foo" not granted`, "beta_insufficient_scope"},
-		{"by scope: operation not permitted", http.MethodDelete, "/scope/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
-		{"by scope: additional scope required by *: insufficient scope", http.MethodGet, "/scope/bar", true, http.StatusForbidden, ``, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
-		{"by scope: no additional scope required: sufficient scope", http.MethodDelete, "/scope/bar", true, http.StatusNoContent, `["a"]`, "", ""},
-		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, "access control error: roled_jwt: token required", "jwt_token_missing"},
-		{"by role: sufficient scope", http.MethodGet, "/role/foo", true, http.StatusNoContent, `["a","b"]`, "", ""},
-		{"by role: additional scope required: insufficient scope", http.MethodPost, "/role/foo", true, http.StatusForbidden, ``, `access control error: required scope "foo" not granted`, "beta_insufficient_scope"},
-		{"by role: operation not permitted", http.MethodDelete, "/role/foo", true, http.StatusForbidden, ``, "access control error: operation DELETE not permitted", "beta_operation_denied"},
-		{"by role: additional scope required by *: insufficient scope", http.MethodGet, "/role/bar", true, http.StatusForbidden, ``, `access control error: required scope "more" not granted`, "beta_insufficient_scope"},
-		{"by role: no additional scope required: sufficient scope", http.MethodDelete, "/role/bar", true, http.StatusNoContent, `["a","b"]`, "", ""},
-		{"by scope/role, mapped from scope", http.MethodGet, "/scope_and_role/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
-		{"by scope/role, mapped scope mapped from role", http.MethodGet, "/scope_and_role/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, "", ""},
+		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, ``, ``, "access control error: scoped_jwt: token required", "jwt_token_missing"},
+		{"by scope: no permission required by endpoint", http.MethodGet, "/scope/foo", true, http.StatusNoContent, `["a"]`, ``, "", ""},
+		{"by scope: permission required by endpoint: insufficient permissions", http.MethodPost, "/scope/foo", true, http.StatusForbidden, ``, ``, `access control error: required permission "foo" not granted`, "beta_insufficient_permissions"},
+		{"by scope: method not permitted", http.MethodDelete, "/scope/foo", true, http.StatusMethodNotAllowed, ``, ``, "method not allowed error: method DELETE not allowed by beta_required_permission", ""},
+		{"by scope: permission required by endpoint via *: insufficient permissions", http.MethodGet, "/scope/bar", true, http.StatusForbidden, ``, `more`, `access control error: required permission "more" not granted`, "beta_insufficient_permissions"},
+		{"by scope: no permission required by endpoint", http.MethodDelete, "/scope/bar", true, http.StatusNoContent, `["a"]`, ``, "", ""},
+		{"by scope: required permission by api only: insufficient permissions", http.MethodGet, "/scope/permission-from-api", true, http.StatusForbidden, ``, ``, `access control error: required permission "z" not granted`, "beta_insufficient_permissions"},
+		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, ``, "access control error: roled_jwt: token required", "jwt_token_missing"},
+		{"by role: sufficient permission", http.MethodGet, "/role/foo", true, http.StatusNoContent, `["a","b"]`, ``, "", ""},
+		{"by role: permission required by endpoint: insufficient permissions", http.MethodPost, "/role/foo", true, http.StatusForbidden, ``, ``, `access control error: required permission "foo" not granted`, "beta_insufficient_permissions"},
+		{"by role: method not permitted", http.MethodDelete, "/role/foo", true, http.StatusMethodNotAllowed, ``, ``, "method not allowed error: method DELETE not allowed by beta_required_permission", ""},
+		{"by role: permission required by endpoint via *: insufficient permissions", http.MethodGet, "/role/bar", true, http.StatusForbidden, ``, `more`, `access control error: required permission "more" not granted`, "beta_insufficient_permissions"},
+		{"by role: no permission required by endpoint", http.MethodDelete, "/role/bar", true, http.StatusNoContent, `["a","b"]`, ``, "", ""},
+		{"by scope/role, mapped from scope", http.MethodGet, "/scope_and_role/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, ``, "", ""},
+		{"by scope/role, mapped scope mapped from role", http.MethodGet, "/scope_and_role/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, ``, "", ""},
 	} {
-		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.operation, tc.path), func(subT *testing.T) {
+		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.method, tc.path), func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
-			req, err := http.NewRequest(tc.operation, "http://back.end:8080"+tc.path, nil)
+			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
 			helper.Must(err)
 
 			if tc.authorize {
@@ -3738,9 +3740,14 @@ func Test_Scope(t *testing.T) {
 				subT.Fatalf("expected Status %d, got: %d", tc.status, res.StatusCode)
 			}
 
-			granted := res.Header.Get("x-granted-scope")
+			granted := res.Header.Get("x-granted-permissions")
 			if granted != tc.wantGranted {
-				subT.Errorf("Expected granted scope:\nWant:\t%q\nGot:\t%q", tc.wantGranted, granted)
+				subT.Errorf("Expected granted permissions:\nWant:\t%q\nGot:\t%q", tc.wantGranted, granted)
+			}
+
+			required := res.Header.Get("x-required-permission")
+			if required != tc.wantRequired {
+				subT.Errorf("Expected required permission:\nWant:\t%q\nGot:\t%q", tc.wantRequired, required)
 			}
 
 			message := getAccessControlMessages(hook)
@@ -5000,8 +5007,8 @@ func TestAllowedMethods(t *testing.T) {
 		{"unrestricted, authorized, POST", http.MethodPost, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
 		{"unrestricted, authorized, PUT", http.MethodPut, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
 		{"unrestricted, authorized, PATCH", http.MethodPatch, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
-		{"unrestricted, authorized, DELETE", http.MethodDelete, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
-		{"unrestricted, authorized, OPTIONS", http.MethodOptions, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"unrestricted, authorized, DELETE", http.MethodDelete, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
+		{"unrestricted, authorized, OPTIONS", http.MethodOptions, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"unrestricted, authorized, CONNECT", http.MethodConnect, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"unrestricted, authorized, TRACE", http.MethodTrace, "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"unrestricted, authorized, BREW", "BREW", "/api1/unrestricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
@@ -5014,11 +5021,11 @@ func TestAllowedMethods(t *testing.T) {
 		{"restricted, authorized, POST", http.MethodPost, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
 		{"restricted, authorized, PUT", http.MethodPut, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, PATCH", http.MethodPatch, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
-		{"restricted, authorized, DELETE", http.MethodDelete, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"},
+		{"restricted, authorized, DELETE", http.MethodDelete, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, OPTIONS", http.MethodOptions, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, CONNECT", http.MethodConnect, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"restricted, authorized, TRACE", http.MethodTrace, "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusMethodNotAllowed, "method not allowed error"},
-		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusForbidden, "access control error"}, // BREW not supported by scope AC
+		{"restricted, authorized, BREW", "BREW", "/api1/restricted", http.Header{"Authorization": []string{"Bearer " + token}}, http.StatusOK, ""},
 		{"restricted, CORS preflight", http.MethodOptions, "/api1/restricted", http.Header{"Origin": []string{"https://www.example.com"}, "Access-Control-Request-Method": []string{"POST"}, "Access-Control-Request-Headers": []string{"Authorization"}}, http.StatusNoContent, ""},
 
 		{"wildcard, GET", http.MethodGet, "/api1/wildcard", http.Header{}, http.StatusOK, ""},
@@ -5034,14 +5041,14 @@ func TestAllowedMethods(t *testing.T) {
 
 		{"wildcard and more, GET", http.MethodGet, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, HEAD", http.MethodHead, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
-		{"wildcard and more, POST", http.MethodPost, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, PoSt", "PoSt", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, PUT", http.MethodPut, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, PATCH", http.MethodPatch, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, DELETE", http.MethodDelete, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, OPTIONS", http.MethodOptions, "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 		{"wildcard and more, CONNECT", http.MethodConnect, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"wildcard and more, TRACE", http.MethodTrace, "/api1/wildcardAndMore", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
-		{"wildcard and more, BREW", "BREW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
+		{"wildcard and more, bReW", "bReW", "/api1/wildcardAndMore", http.Header{}, http.StatusOK, ""},
 
 		{"blocked, GET", http.MethodGet, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},
 		{"blocked, HEAD", http.MethodHead, "/api1/blocked", http.Header{}, http.StatusMethodNotAllowed, "method not allowed error"},

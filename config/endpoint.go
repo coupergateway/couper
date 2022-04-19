@@ -21,7 +21,7 @@ type Endpoint struct {
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
 	Response             *Response `hcl:"response,block"`
-	Scope                cty.Value `hcl:"beta_scope,optional"`
+	RequiredPermission   cty.Value `hcl:"beta_required_permission,optional"`
 
 	// internally configured due to multi-label options
 	Proxies   Proxies

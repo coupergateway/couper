@@ -5,6 +5,21 @@ import (
 	"strings"
 )
 
+var DefaultFileSpaAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+}
+
+var DefaultEndpointAllowedMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodOptions,
+}
+
 var _ http.Handler = &AllowedMethodsHandler{}
 
 type AllowedMethodsHandler struct {
@@ -42,7 +57,8 @@ func NewAllowedMethodsHandler(allowedMethods, defaultAllowedMethods []string, al
 }
 
 func (a *AllowedMethodsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if _, ok := a.allowedMethods[req.Method]; !ok {
+	method := strings.ToUpper(req.Method)
+	if _, ok := a.allowedMethods[method]; !ok {
 		a.notAllowedHandler.ServeHTTP(rw, req)
 		return
 	}

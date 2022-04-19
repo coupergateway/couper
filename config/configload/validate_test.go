@@ -8,6 +8,7 @@ import (
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
@@ -255,18 +256,18 @@ func TestAttributeObjectKeys(t *testing.T) {
 			"couper.hcl:4,30-7,8: key in an attribute must be unique: 'a'; Key must be unique for a.",
 		},
 		{
-			"beta_scope",
+			"beta_required_permission",
 			`server {
   api {
     endpoint "/a" {
-      beta_scope = {
+      beta_required_permission = {
         get = "a"
         GeT = "A"
       }
     }
   }
 }`,
-			"couper.hcl:4,20-7,8: key in an attribute must be unique: 'get'; Key must be unique for get.",
+			"couper.hcl:4,34-7,8: key in an attribute must be unique: 'get'; Key must be unique for get.",
 		},
 		{
 			"headers",
@@ -360,13 +361,13 @@ definitions {
 			"",
 		},
 		{
-			"beta_scope_map",
+			"beta_permissions_map",
 			`server {}
 definitions {
   jwt "a" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_scope_map = {
+    beta_permissions_map = {
       a = []
       A = []
 	}
@@ -433,6 +434,120 @@ defaults {
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()
+			}
+
+			if tt.error != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errMsg)
+			}
+		})
+	}
+}
+
+func TestPermissionMixed(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"mixed config: error",
+			`server {
+  api "foo" {
+    endpoint "/a" {
+      beta_required_permission = "a"
+      response {}
+    }
+    endpoint "/b" {
+      response {}
+    }
+  }
+}`,
+			"configuration error: api with label \"foo\" has endpoint without required permission",
+		},
+		{
+			"no mix: all endpoints with permission set",
+			`server {
+  api "foo" {
+    endpoint "/a" {
+      beta_required_permission = "a"
+      response {}
+    }
+    endpoint "/b" {
+      beta_required_permission = ""
+      response {}
+    }
+  }
+}`,
+			"",
+		},
+		{
+			"no mix: permission set by api",
+			`server {
+  api "foo" {
+    beta_required_permission = "api"
+    endpoint "/a" {
+      beta_required_permission = "a"
+      response {}
+    }
+    endpoint "/b" {
+      response {}
+    }
+  }
+}`,
+			"",
+		},
+		{
+			"no mix: disable_access_control",
+			`server {
+  api "foo" {
+    endpoint "/a" {
+      beta_required_permission = "a"
+      response {}
+    }
+    endpoint "/b" {
+      disable_access_control = ["foo"]
+      response {}
+    }
+  }
+}`,
+			"",
+		},
+		{
+			"no mix: separate apis",
+			`server {
+  api "foo" {
+    endpoint "/a" {
+      beta_required_permission = "a"
+      response {}
+    }
+  }
+  api "bar" {
+    endpoint "/b" {
+      response {}
+    }
+  }
+}`,
+			"",
+		},
+	}
+
+	logger, _ := logrustest.NewNullLogger()
+	log := logger.WithContext(context.TODO())
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if conf != nil {
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
+			}
+
+			var errMsg string
+			if err != nil {
+				gErr, _ := err.(errors.GoError)
+				errMsg = gErr.LogError()
 			}
 
 			if tt.error != errMsg {

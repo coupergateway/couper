@@ -45,7 +45,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 			},
 		},
 		{
-			path:       "/fail",
+			path:       "/not-found",
 			expHeaders: http.Header{},
 		},
 	} {

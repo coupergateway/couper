@@ -92,7 +92,7 @@ func TestHealthCheck(t *testing.T) {
 			`time: missing unit in duration "1"`,
 		},
 		{
-			"Bad failure_threshold",
+			"Bad threshold",
 			`failure_threshold = -1`,
 			"couper.hcl:13,29-30: Unsuitable value type; Unsuitable value: value must be a whole number, between 0 and 18446744073709551615 inclusive",
 		},
