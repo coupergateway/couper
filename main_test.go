@@ -26,6 +26,7 @@ func Test_realmain(t *testing.T) {
 		wantLog string
 		want    int
 	}{
+		{"multi EH", []string{"couper", "run", "-f", base + "/16_couper.hcl"}, nil, `duplicate error type registration: \"*\";`, 1},
 		{"verify", []string{"couper", "verify", "-f", base + "/10_couper.hcl"}, nil, `10_couper.hcl:2,3-6: Unsupported block type; Blocks of type \"foo\" are not expected here.`, 1},
 		{"verify w/o server", []string{"couper", "verify", "-f", base + "/11_couper.hcl"}, nil, `configuration error: missing 'server' block"`, 1},
 		{"verify unique map-attr keys", []string{"couper", "verify", "-f", base + "/12_couper.hcl"}, nil, `12_couper.hcl:5,28-8,6: key in an attribute must be unique: 'test-key'; Key must be unique for test-key.`, 1},
