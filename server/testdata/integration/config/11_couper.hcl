@@ -59,6 +59,7 @@ server {
 
     endpoint "/wildcard" {
       allowed_methods = ["*"]
+      beta_required_permission = ""
 
       response {
         body = "a"
@@ -76,6 +77,7 @@ server {
 
     endpoint "/blocked" {
       allowed_methods = []
+      disable_access_control = ["token"]
 
       response {
         body = "a"

@@ -150,7 +150,9 @@ server "logs" {
         status = 204
       }
     }
+  }
 
+  api {
     endpoint "/error-handler/endpoint" {
       access_control = ["JWT"]
 
