@@ -286,7 +286,7 @@ The `cors` block configures the CORS (Cross-Origin Resource Sharing) behavior in
 
 | Attribute(s) | Type |Default|Description|Characteristic(s)| Example|
 | :------------------------------ | :--------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `allowed_origins`   | string or tuple (string) |-|A list of allowed origin(s).|Can be either of: a string with a single specific origin, `"*"` (all origins are allowed) or an array of specific origins | `allowed_origins = ["https://www.example.com", "https://www.another.host.org"]`|
+| `allowed_origins`   | string or tuple (string) |-| An allowed origin or a list of allowed origins.|Can be either of: a string with a single specific origin, `"*"` (all origins are allowed) or an array of specific origins | `allowed_origins = ["https://www.example.com", "https://www.another.host.org"]`|
 | `allow_credentials` |bool|`false`| Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields).|-|-|
 | `disable`           | bool|`false`|Set to `true` to disable the inheritance of CORS from the [Server Block](#server-block) in [Files Block](#files-block), [SPA Block](#spa-block) and [API Block](#api-block) contexts.|-|-|
 | `max_age`           |[duration](#duration)|-|Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields.|&#9888; Can be cached|`max_age = "1h"`|
@@ -311,7 +311,7 @@ The `oauth2` block in the [Backend Block](#backend-block) context configures the
 | `client_secret` |string|-|The client password.|&#9888; required.|-|
 | `retries` |integer|`1` | The number of retries to get the token and resource, if the resource-request responds with `401 Unauthorized` HTTP status code.|-|-|
 | `token_endpoint_auth_method` |string|`client_secret_basic`|Defines the method to authenticate the client at the token endpoint.|If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.|-|
-| `scope`                      |string|-|  A space separated list of requested scope values for the access token.|-| `scope = "read write"` |
+| `scope`                      |string|-| A space separated list of requested scope values for the access token.|-| `scope = "read write"` |
 
 The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](#request-header) in a [backend block](#backend-block).
 
@@ -775,7 +775,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `headers.<name>`   | string  | HTTP response header value for requested lower-case key                                               | |
 | `cookies.<name>`   | string  | Value from `Set-Cookie` response header for requested key (&#9888; last wins!)                        | |
 | `body`             | string  | The response message body                                                                             | |
-| `json_body.<name>` | various | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. | |
+| `json_body`        | various | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. | |
 
 ## Functions
 
