@@ -62,10 +62,13 @@ func absBackendBlock(backendBlock *hclsyntax.Block) {
 	}
 }
 
+// absInBackends searches for "backend" blocks inside a proxy or request block to
+// be able to rewrite relative pathes. Additionally, the function counts the "backend"
+// blocks and "backend" attributes to forbid multiple backend definitions.
 func absInBackends(block *hclsyntax.Block) error {
 	for _, subBlock := range block.Body.Blocks {
 		if subBlock.Type == errorHandler {
-			return absInBackends(subBlock)
+			return absInBackends(subBlock) // Recursive call
 		}
 
 		if subBlock.Type == proxy || subBlock.Type == request {
@@ -371,6 +374,9 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 							}
 						}
 					}
+
+					// Count the "backend" blocks and "backend" attributes to
+					// forbid multiple backend definitions.
 
 					var backends int
 
