@@ -24,7 +24,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Multiple labels for [`error_handler` blocks](./docs/ERRORS.md#error_handler-specification) ([#462](https://github.com/avenga/couper/pull/462))
   * [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) for an error type defined in both `endpoint` and `api` ([#469](https://github.com/avenga/couper/pull/469))
   * Request methods are treated case-insensitively when comparing them to methods in the `allowed_methods` attribute of [`api`](./docs/REFERENCE.md#api-block) or [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks ([#478](https://github.com/avenga/couper/pull/478))
-  * Rewriting of relative pathes when [merging](./docs/MERGE.md) configuration files ([#483](https://github.com/avenga/couper/pull/483))
   * Do not allow multiple `backend` blocks in `proxy` and `request` blocks ([#483](https://github.com/avenga/couper/pull/483))
 
 * **Removed**
