@@ -117,7 +117,7 @@ func invalidOriginRefinement(reference, params hcl.Body) error {
 
 	if paramOrigin != nil && refOrigin != nil {
 		if paramOrigin.Expr != refOrigin.Expr {
-			return newDiagErr(&paramOrigin.Range, fmt.Sprintf("backend reference: origin must be equal"))
+			return newDiagErr(&paramOrigin.Range, "backend reference: origin must be equal")
 		}
 	}
 	return nil

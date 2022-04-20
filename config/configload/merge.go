@@ -459,24 +459,26 @@ func absInBackends(block *hclsyntax.Block) error {
 			return absInBackends(subBlock) // Recursive call
 		}
 
-		if subBlock.Type == proxy || subBlock.Type == request {
-			var backends int
+		if subBlock.Type != proxy && subBlock.Type != request {
+			continue
+		}
 
-			for _, subSubBlock := range subBlock.Body.Blocks {
-				if subSubBlock.Type == backend {
-					absBackendBlock(subSubBlock) // Backend block inside a proxy or request block
+		var backends int
 
-					backends++
-				}
-			}
+		for _, subSubBlock := range subBlock.Body.Blocks {
+			if subSubBlock.Type == backend {
+				absBackendBlock(subSubBlock) // Backend block inside a proxy or request block
 
-			if _, ok := subBlock.Body.Attributes[backend]; ok {
 				backends++
 			}
+		}
 
-			if backends > 1 {
-				return newMergeError(errMultipleBackends, block)
-			}
+		if _, ok := subBlock.Body.Attributes[backend]; ok {
+			backends++
+		}
+
+		if backends > 1 {
+			return newMergeError(errMultipleBackends, block)
 		}
 	}
 
