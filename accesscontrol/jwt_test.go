@@ -12,12 +12,12 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/sirupsen/logrus"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -816,7 +816,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end`,
+			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end: no such host`,
 		},
 		{
 			"signature_algorithm + jwks_url",
@@ -892,10 +892,12 @@ func TestJwtConfig(t *testing.T) {
 		},
 	}
 
-	log, _ := logrustest.NewNullLogger()
+	log, hook := test.NewLogger()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			hook.Reset()
+
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
 				logger := log.WithContext(context.TODO())
@@ -906,20 +908,33 @@ func TestJwtConfig(t *testing.T) {
 				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
 
-			var errMsg = ""
+			var errMsg, expectedError string
 			if err != nil {
 				if _, ok := err.(errors.GoError); ok {
 					errMsg = err.(errors.GoError).LogError()
 				} else {
 					errMsg = err.Error()
 				}
+				if tt.error != "" {
+					expectedError = "configuration error: myac: " + tt.error
+				}
+			} else {
+				expectedError = tt.error
 			}
 
 			if tt.error == "" && errMsg == "" {
 				return
 			}
 
-			expectedError := "configuration error: myac: " + tt.error
+			time.Sleep(time.Second / 2) // sync routine start
+
+			for _, e := range hook.AllEntries() {
+				if e.Level != logrus.ErrorLevel {
+					continue
+				}
+				errMsg = e.Message
+				break
+			}
 
 			if !strings.HasPrefix(errMsg, expectedError) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)

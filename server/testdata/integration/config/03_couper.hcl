@@ -236,6 +236,16 @@ server "acs" {
     }
   }
 
+  endpoint "/jwks/rsa/not_found" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWKS_not_found"]
+    response {
+      headers = {
+        x-jwt-sub = request.context.JWKS_not_found.sub
+      }
+    }
+  }
+
   endpoint "/jwks/rsa/remote" {
     disable_access_control = ["ba1"]
     access_control = ["JWKSRemote"]
@@ -344,19 +354,28 @@ definitions {
         -----END PUBLIC KEY-----
     EOF
   }
+
   jwt "ECDSATokenWrongAlgorithm" {
     signature_algorithm = "ES384"
     key_file = "../files/certificate-ecdsa.pem"
   }
+
   jwt "JWKS" {
     jwks_url = "file:../files/jwks.json"
   }
+
   jwt "JWKS_scope" {
     jwks_url = "file:../files/jwks.json"
     beta_permissions_claim = "scope"
   }
+
   jwt "JWKSRemote" {
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+  }
+
+  jwt "JWKS_not_found" {
+    header = "Authorization"
+    jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
   }
 
   jwt "JWKSBackend" {
@@ -365,25 +384,30 @@ definitions {
       origin = env.COUPER_TEST_BACKEND_ADDR
     }
   }
+
   jwt "JWKSBackendRef" {
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
     backend = "jwks"
   }
+
   jwt "JWT_token_value_query" {
     token_value = request.query.token[0]
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     beta_permissions_claim = "scope"
   }
+
   jwt "JWT_token_value_body" {
     token_value = request.json_body.token
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     beta_permissions_claim = "scope"
   }
+
   backend "jwks" {
     origin = env.COUPER_TEST_BACKEND_ADDR
   }
+
   backend "test" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     path = "/anything"

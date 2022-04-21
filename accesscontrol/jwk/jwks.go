@@ -47,12 +47,6 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper) (*JWKS, error)
 
 	jwks := &JWKS{}
 	jwks.syncedJSON, err = jsn.NewSyncedJSON(file, "jwks_url", uri, transport, "jwks", timetolive, jwks)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = jwks.Data("") // obtain any initial fetch errors
-
 	return jwks, err
 }
 
