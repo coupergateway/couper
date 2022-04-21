@@ -100,14 +100,14 @@ func (p *Probe) probe() {
 		}
 
 		var errorMessage string
-		if err != nil || !p.opts.ExpectStatus[res.StatusCode] || !contains(res.Body, p.opts.ExpectText) {
+		if err != nil || !p.opts.ExpectedStatus[res.StatusCode] || !contains(res.Body, p.opts.ExpectedText) {
 			if p.failure++; p.failure < p.opts.FailureThreshold {
 				p.state = StateFailing
 			} else {
 				p.state = StateDown
 			}
 			if err == nil {
-				if !p.opts.ExpectStatus[res.StatusCode] {
+				if !p.opts.ExpectedStatus[res.StatusCode] {
 					errorMessage = "unexpected statusCode: " + strconv.Itoa(p.status)
 				} else {
 					errorMessage = "unexpected text"
