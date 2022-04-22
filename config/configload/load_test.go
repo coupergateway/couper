@@ -98,16 +98,16 @@ func TestHealthCheck(t *testing.T) {
 		},
 		{
 			"Bad expect status",
-			`expect_status = [200, 204]`,
-			"couper.hcl:13,25-26: Unsuitable value type; Unsuitable value: number required",
+			`expected_status = [200, 204]`,
+			"couper.hcl:13,27-28: Unsuitable value type; Unsuitable value: number required",
 		},
 		{
 			"OK",
 			`failure_threshold = 3
 			 timeout = "3s"
 			 interval = "5s"
-			 expect_text = 123
-			 expect_status = 200`,
+			 expected_text = 123
+			 expected_status = 200`,
 			"",
 		},
 	}

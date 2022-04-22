@@ -2660,13 +2660,13 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 			healthyJSON,
 		},
 		{
-			"healthy backend w/ expect_status",
-			"/healthy/expect_status",
+			"healthy backend w/ expected_status",
+			"/healthy/expected_status",
 			healthyJSON,
 		},
 		{
-			"healthy backend w/ expect_text",
-			"/healthy/expect_text",
+			"healthy backend w/ expected_text",
+			"/healthy/expected_text",
 			healthyJSON,
 		},
 		{
@@ -2700,13 +2700,13 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
-			"unhealthy backend w/ expect_status: unexpected status code",
-			"/unhealthy/bad_expect_status",
+			"unhealthy backend w/ expected_status: unexpected status code",
+			"/unhealthy/bad_expected_status",
 			`{"error":"unexpected statusCode: 200","healthy":false,"state":"unhealthy"}`,
 		},
 		{
-			"unhealthy backend w/ expect_text: unexpected text",
-			"/unhealthy/bad_expect_text",
+			"unhealthy backend w/ expected_text: unexpected text",
+			"/unhealthy/bad_expected_text",
 			`{"error":"unexpected text","healthy":false,"state":"unhealthy"}`,
 		},
 		{
