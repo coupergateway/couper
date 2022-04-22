@@ -546,8 +546,8 @@ via `headers` attribute.
 
 | Attributes          | Type                  | Default             | Description                                        | Characteristics       | Example                            |
 |:--------------------|:----------------------|:--------------------|:---------------------------------------------------|:----------------------|:-----------------------------------|
-| `expect_status`     | number                | `200`, `204`, `301` | wanted response status code                        |                       | `expect_status =  418`             |
-| `expect_text`       | string                | –                   | text response body must contain                    |                       | `expect_text = alive`              |
+| `expected_status`     | number                | `200`, `204`, `301` | wanted response status code                        |                       | `expected_status =  418`             |
+| `expected_text`       | string                | –                   | text response body must contain                    |                       | `expected_text = alive`              |
 | `failure_threshold` | number                | `2`                 | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`            |
 | `headers`           | object                | –                   | request headers                                    |                       | `headers = {User-Agent: "health"}` |
 | `interval`          | [duration](#duration) | `"2s"`              | time interval for recheck                          |                       | `timeout = "5s"`                   |
