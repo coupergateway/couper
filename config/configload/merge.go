@@ -13,49 +13,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func errorUniqueLabels(block *hclsyntax.Block) error {
-	defRange := block.DefRange()
-
-	return hcl.Diagnostics{
-		&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("All %s blocks must have unique labels.", block.Type),
-			Subject:  &defRange,
-		},
-	}
-}
-
-// absPath replaces the given attribute path expression with an absolute path
-// related to its filename if not already an absolute one.
-func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
-	value, diags := attr.Expr.Value(envContext)
-	if diags.HasErrors() || strings.Index(value.AsString(), "/") == 0 {
-		return attr.Expr // Return unchanged in error cases and for absolute path values.
-	}
-
-	return &hclsyntax.LiteralValueExpr{
-		Val: cty.StringVal(
-			path.Join(filepath.Dir(attr.SrcRange.Filename), value.AsString()),
-		),
-		SrcRange: attr.SrcRange,
-	}
-}
-
-func absBackendBlock(backendBlock *hclsyntax.Block) {
-	for _, block := range backendBlock.Body.Blocks {
-		if block.Type == "openapi" {
-			if attr, ok := block.Body.Attributes["file"]; ok {
-				block.Body.Attributes["file"].Expr = absPath(attr)
-			}
-		} else if block.Type == oauth2 {
-			for _, innerBlock := range block.Body.Blocks {
-				if innerBlock.Type == backend {
-					absBackendBlock(innerBlock) // Recursive call
-				}
-			}
-		}
-	}
-}
+const (
+	errMultipleBackends = "Multiple definitions of backend are not allowed."
+	errUniqueLabels     = "All %s blocks must have unique labels."
+)
 
 func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	type (
@@ -110,7 +71,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 			if len(bodies) > 1 {
 				if _, ok := uniqueServerLabels[serverKey]; ok {
-					return nil, errorUniqueLabels(outerBlock)
+					return nil, newMergeError(errUniqueLabels, outerBlock)
 				}
 
 				uniqueServerLabels[serverKey] = struct{}{}
@@ -166,17 +127,15 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 				}
 
 				if block.Type == endpoint {
+					if err := absInBackends(block); err != nil { // Backend block inside a free endpoint block
+						return nil, err
+					}
+
 					if len(block.Labels) == 0 {
-						return nil, errorUniqueLabels(block)
+						return nil, newMergeError(errUniqueLabels, block)
 					}
 
 					results[serverKey].endpoints[block.Labels[0]] = block
-
-					for _, innerBlock := range block.Body.Blocks {
-						if innerBlock.Type == backend {
-							absBackendBlock(innerBlock) // Backend block inside a free endpoint block
-						}
-					}
 				} else if block.Type == api {
 					var apiKey string
 
@@ -186,7 +145,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					if len(bodies) > 1 {
 						if _, ok := uniqueAPILabels[apiKey]; ok {
-							return nil, errorUniqueLabels(block)
+							return nil, newMergeError(errUniqueLabels, block)
 						}
 
 						uniqueAPILabels[apiKey] = struct{}{}
@@ -211,12 +170,22 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					for _, subBlock := range block.Body.Blocks {
 						if subBlock.Type == endpoint {
-							if len(subBlock.Labels) == 0 {
-								return nil, errorUniqueLabels(subBlock)
+							if err := absInBackends(subBlock); err != nil {
+								return nil, err
 							}
+
+							if len(subBlock.Labels) == 0 {
+								return nil, newMergeError(errUniqueLabels, subBlock)
+							}
+
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
 						} else if subBlock.Type == errorHandler {
+							if err := absInBackends(subBlock); err != nil {
+								return nil, err
+							}
+
 							ehKey := newErrorHandlerKey(subBlock)
+
 							results[serverKey].apis[apiKey].errorHandler[ehKey] = subBlock
 						} else {
 							results[serverKey].apis[apiKey].blocks[subBlock.Type] = subBlock
@@ -299,7 +268,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if len(innerBlock.Labels) == 0 {
-						return nil, errorUniqueLabels(innerBlock)
+						return nil, newMergeError(errUniqueLabels, innerBlock)
 					}
 
 					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
@@ -313,14 +282,33 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 						}
 					}
 
+					// Count the "backend" blocks and "backend" attributes to
+					// forbid multiple backend definitions.
+
+					var backends int
+
 					for _, block := range innerBlock.Body.Blocks {
 						if block.Type == errorHandler {
-							if attr, ok := innerBlock.Body.Attributes["error_file"]; ok {
-								innerBlock.Body.Attributes["error_file"].Expr = absPath(attr)
+							if attr, ok := block.Body.Attributes["error_file"]; ok {
+								block.Body.Attributes["error_file"].Expr = absPath(attr)
+							}
+
+							if err := absInBackends(block); err != nil {
+								return nil, err
 							}
 						} else if block.Type == backend {
-							absBackendBlock(innerBlock) // Backend block inside a AC block
+							absBackendBlock(block) // Backend block inside an AC block
+
+							backends++
 						}
+					}
+
+					if _, ok := innerBlock.Body.Attributes[backend]; ok {
+						backends++
+					}
+
+					if backends > 1 {
+						return nil, newMergeError(errMultipleBackends, innerBlock)
 					}
 
 					if innerBlock.Type == backend {
@@ -345,22 +333,6 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 			Blocks: blocks,
 		},
 	}, nil
-}
-
-// newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
-// "label1" and/or "label2 label3" results in "label1 label2 label3".
-func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
-	if len(block.Labels) == 0 {
-		return key
-	}
-
-	var sorted []string
-	for _, l := range block.Labels {
-		sorted = append(sorted, strings.Split(l, errorHandlerLabelSep)...)
-	}
-	sort.Strings(sorted)
-	key = strings.Join(sorted, errorHandlerLabelSep)
-	return key
 }
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
@@ -432,4 +404,99 @@ func mergeSettings(bodies []*hclsyntax.Body) *hclsyntax.Block {
 			Attributes: attrs,
 		},
 	}
+}
+
+func newMergeError(msg string, block *hclsyntax.Block) error {
+	defRange := block.DefRange()
+
+	return hcl.Diagnostics{
+		&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf(msg, block.Type),
+			Subject:  &defRange,
+		},
+	}
+}
+
+// absPath replaces the given attribute path expression with an absolute path
+// related to its filename if not already an absolute one.
+func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
+	value, diags := attr.Expr.Value(envContext)
+	if diags.HasErrors() || strings.Index(value.AsString(), "/") == 0 {
+		return attr.Expr // Return unchanged in error cases and for absolute path values.
+	}
+
+	return &hclsyntax.LiteralValueExpr{
+		Val: cty.StringVal(
+			path.Join(filepath.Dir(attr.SrcRange.Filename), value.AsString()),
+		),
+		SrcRange: attr.SrcRange,
+	}
+}
+
+func absBackendBlock(backendBlock *hclsyntax.Block) {
+	for _, block := range backendBlock.Body.Blocks {
+		if block.Type == "openapi" {
+			if attr, ok := block.Body.Attributes["file"]; ok {
+				block.Body.Attributes["file"].Expr = absPath(attr)
+			}
+		} else if block.Type == oauth2 {
+			for _, innerBlock := range block.Body.Blocks {
+				if innerBlock.Type == backend {
+					absBackendBlock(innerBlock) // Recursive call
+				}
+			}
+		}
+	}
+}
+
+// absInBackends searches for "backend" blocks inside a proxy or request block to
+// be able to rewrite relative pathes. Additionally, the function counts the "backend"
+// blocks and "backend" attributes to forbid multiple backend definitions.
+func absInBackends(block *hclsyntax.Block) error {
+	for _, subBlock := range block.Body.Blocks {
+		if subBlock.Type == errorHandler {
+			return absInBackends(subBlock) // Recursive call
+		}
+
+		if subBlock.Type != proxy && subBlock.Type != request {
+			continue
+		}
+
+		var backends int
+
+		for _, subSubBlock := range subBlock.Body.Blocks {
+			if subSubBlock.Type == backend {
+				absBackendBlock(subSubBlock) // Backend block inside a proxy or request block
+
+				backends++
+			}
+		}
+
+		if _, ok := subBlock.Body.Attributes[backend]; ok {
+			backends++
+		}
+
+		if backends > 1 {
+			return newMergeError(errMultipleBackends, block)
+		}
+	}
+
+	return nil
+}
+
+// newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
+// "label1" and/or "label2 label3" results in "label1 label2 label3".
+func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
+	if len(block.Labels) == 0 {
+		return key
+	}
+
+	var sorted []string
+	for _, l := range block.Labels {
+		sorted = append(sorted, strings.Split(l, errorHandlerLabelSep)...)
+	}
+	sort.Strings(sorted)
+
+	return strings.Join(sorted, errorHandlerLabelSep)
 }
