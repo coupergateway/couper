@@ -73,7 +73,10 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 		}
 		method := seetie.ValueToString(methodVal)
 
-		url, err := NewURLFromAttribute(hclCtx, or.Context, "url", req)
+		outreq := req.Clone(req.Context())
+		removeHost(outreq)
+
+		url, err := NewURLFromAttribute(hclCtx, or.Context, "url", outreq)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -93,7 +96,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			}
 		}
 
-		outreq, err := http.NewRequest(strings.ToUpper(method), url.String(), nil)
+		outreq, err = http.NewRequest(strings.ToUpper(method), url.String(), nil)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue

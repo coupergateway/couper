@@ -58,9 +58,10 @@ func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
 
 		// since proxy and backend may work on the "same" outReq this must be cloned.
 		outReq := clientReq.Clone(outCtx)
+		removeHost(outReq)
 
 		hclCtx := eval.ContextFromRequest(clientReq).HCLContext()
-		url, err := NewURLFromAttribute(hclCtx, proxy.Content, "url", clientReq)
+		url, err := NewURLFromAttribute(hclCtx, proxy.Content, "url", outReq)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue

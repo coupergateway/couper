@@ -59,3 +59,9 @@ func NewURLFromAttribute(hclCtx *hcl.EvalContext, content hcl.Body, attrName str
 	u.Path = path
 	return u, nil
 }
+
+// removeHost prevents client-request host to leak into backend structure.
+func removeHost(outreq *http.Request) {
+	outreq.Host = ""
+	outreq.URL.Host = ""
+}
