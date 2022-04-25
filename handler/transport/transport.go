@@ -164,7 +164,7 @@ func (c *Config) WithTimings(connect, ttfb, timeout string, logger *logrus.Entry
 func parseDuration(src string, target *time.Duration, logger *logrus.Entry) {
 	d, err := time.ParseDuration(src)
 	if err != nil {
-		logger.WithError(err).Warning("use default timing of ", target, " because an error is accured")
+		logger.WithError(err).Warning("using default timing of ", target, " because an error occured")
 	}
 	if src != "" && err != nil {
 		return

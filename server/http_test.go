@@ -706,7 +706,7 @@ func TestHTTPServer_parseDuration(t *testing.T) {
 
 	logs := logHook.AllEntries()
 
-	if logs[0].Message != `use default timing of 0s because an error is accured: time: invalid duration "xxx"` {
+	if logs[0].Message != `using default timing of 0s because an error occured: time: invalid duration "xxx"` {
 		t.Errorf("%#v", logs[0].Message)
 	}
 }
