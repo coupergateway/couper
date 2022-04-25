@@ -282,19 +282,17 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	return beresp, nil
 }
 
-const backendTokenRequest = "backendTokenRequest"
-
 func (b *Backend) withTokenRequest(req *http.Request) error {
 	if b.tokenRequest == nil {
 		return nil
 	}
 
-	trValue, _ := req.Context().Value(backendTokenRequest).(string)
+	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
 		return nil
 	}
 
-	ctx := context.WithValue(req.Context(), backendTokenRequest, "tr")
+	ctx := context.WithValue(req.Context(), request.BackendTokenRequest, "tr")
 	// Reset for upstream transport; prevent mixing values.
 	// tokenRequest will have their own backend configuration.
 	ctx = context.WithValue(ctx, request.BackendParams, nil)
@@ -309,7 +307,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 		return false, nil
 	}
 
-	trValue, _ := req.Context().Value(backendTokenRequest).(string)
+	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
 		return false, nil
 	}
