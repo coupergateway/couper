@@ -483,7 +483,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 
 	return b.transportConf.
 		WithTarget(originURL.Scheme, originURL.Host, hostname, proxyURL).
-		WithTimings(connectTimeout, ttfbTimeout, timeout), nil
+		WithTimings(connectTimeout, ttfbTimeout, timeout, log), nil
 }
 
 // setUserAgent sets an empty one if none is present or empty

@@ -152,17 +152,20 @@ func (c *Config) WithTarget(scheme, origin, hostname, proxyURL string) *Config {
 	return &conf
 }
 
-func (c *Config) WithTimings(connect, ttfb, timeout string) *Config {
+func (c *Config) WithTimings(connect, ttfb, timeout string, logger *logrus.Entry) *Config {
 	conf := *c
-	parseDuration(connect, &conf.ConnectTimeout)
-	parseDuration(ttfb, &conf.TTFBTimeout)
-	parseDuration(timeout, &conf.Timeout)
+	parseDuration(connect, &conf.ConnectTimeout, logger)
+	parseDuration(ttfb, &conf.TTFBTimeout, logger)
+	parseDuration(timeout, &conf.Timeout, logger)
 	return &conf
 }
 
 // parseDuration sets the target value if the given duration string is not empty.
-func parseDuration(src string, target *time.Duration) {
+func parseDuration(src string, target *time.Duration, logger *logrus.Entry) {
 	d, err := time.ParseDuration(src)
+	if err != nil {
+		logger.WithError(err).Warning("using default timing of ", target, " because an error occured")
+	}
 	if src != "" && err != nil {
 		return
 	}
