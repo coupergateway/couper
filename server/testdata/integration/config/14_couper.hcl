@@ -9,14 +9,14 @@ server {
       json_body = backends.healthy.health
     }
   }
-  endpoint "/healthy/expect_status" {
+  endpoint "/healthy/expected_status" {
     response {
-      json_body = backends.healthy_expect_status.health
+      json_body = backends.healthy_expected_status.health
     }
   }
-  endpoint "/healthy/expect_text" {
+  endpoint "/healthy/expected_text" {
     response {
-      json_body = backends.healthy_expect_text.health
+      json_body = backends.healthy_expected_text.health
     }
   }
   endpoint "/healthy/path" {
@@ -49,14 +49,14 @@ server {
       json_body = backends.unhealthy_bad_status.health
     }
   }
-  endpoint "/unhealthy/bad_expect_status" {
+  endpoint "/unhealthy/bad_expected_status" {
     response {
-      json_body = backends.unhealthy_bad_expect_status.health
+      json_body = backends.unhealthy_bad_expected_status.health
     }
   }
-  endpoint "/unhealthy/bad_expect_text" {
+  endpoint "/unhealthy/bad_expected_text" {
     response {
-      json_body = backends.unhealthy_bad_expect_text.health
+      json_body = backends.unhealthy_bad_expected_text.health
     }
   }
   endpoint "/unhealthy/bad_path" {
@@ -84,11 +84,11 @@ server {
     request "default" {
       backend = "healthy"
     }
-    request "healthy_expect_status" {
-      backend = "healthy_expect_status"
+    request "healthy_expected_status" {
+      backend = "healthy_expected_status"
     }
-    request "healthy_expect_text" {
-      backend = "healthy_expect_text"
+    request "healthy_expected_text" {
+      backend = "healthy_expected_text"
     }
     request "healthy_path" {
       backend = "healthy_path"
@@ -108,11 +108,11 @@ server {
     request "unhealthy_bad_status" {
       backend = "unhealthy_bad_status"
     }
-    request "unhealthy_bad_expect_status" {
-      backend = "unhealthy_bad_expect_status"
+    request "unhealthy_bad_expected_status" {
+      backend = "unhealthy_bad_expected_status"
     }
-    request "unhealthy_bad_expect_text" {
-      backend = "unhealthy_bad_expect_text"
+    request "unhealthy_bad_expected_text" {
+      backend = "unhealthy_bad_expected_text"
     }
     request "unhealthy_bad_path" {
       backend = "unhealthy_bad_path"
@@ -134,23 +134,23 @@ definitions {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {}
   }
-  backend "healthy_expect_status" {
+  backend "healthy_expected_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/not-there"
     beta_health {
-      expect_status = 404
+      expected_status = 404
     }
   }
-  backend "healthy_expect_text" {
+  backend "healthy_expected_text" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
-      expect_text = "👍"
+      expected_text = "👍"
     }
   }
   backend "healthy_path" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
       path = "/anything?foo=bar"
-      expect_text = "\"RawQuery\":\"foo=bar\""
+      expected_text = "\"RawQuery\":\"foo=bar\""
     }
   }
 
@@ -159,7 +159,7 @@ definitions {
     beta_health {
       path = "/anything"
       headers = {User-Agent: "Couper-Health-Check"}
-      expect_text = "\"UserAgent\":\"Couper-Health-Check\""
+      expected_text = "\"UserAgent\":\"Couper-Health-Check\""
     }
   }
 
@@ -167,7 +167,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
       path = "/anything"
-      expect_text = "\"UserAgent\":\"Couper / 0 health-check\""
+      expected_text = "\"UserAgent\":\"Couper / 0 health-check\""
     }
   }
 
@@ -175,7 +175,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
       path = "/redirect?url=/health?redirected"
-      expect_status = 302
+      expected_status = 302
     }
   }
   backend "unhealthy_timeout" {
@@ -186,16 +186,16 @@ definitions {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}"
     beta_health {}
   }
-  backend "unhealthy_bad_expect_status" {
+  backend "unhealthy_bad_expected_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
-      expect_status = 500
+      expected_status = 500
     }
   }
-  backend "unhealthy_bad_expect_text" {
+  backend "unhealthy_bad_expected_text" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
-      expect_text = "down?"
+      expected_text = "down?"
     }
   }
   backend "unhealthy_bad_path" {
@@ -208,14 +208,14 @@ definitions {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
     beta_health {
       headers = {User-Agent = "FAIL"}
-      expect_text = "Go-http-client"
+      expected_text = "Go-http-client"
     }
   }
   backend "unhealthy_no_follow_redirect" {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
       path = "/redirect?url=/health?redirected"
-      expect_text = "👍"
+      expected_text = "👍"
     }
   }
   backend "failing" {
