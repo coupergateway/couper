@@ -216,7 +216,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
 	requestValidationInput, err := b.openAPIValidator.ValidateRequest(req)
 	if err != nil {
-		return nil, errors.BackendValidation.Label(b.name).Kind("backend_request_validation").With(err)
+		return nil, errors.BackendOpenapiValidation.Label(b.name).With(err)
 	}
 
 	beresp, err := b.innerRoundTrip(req, tc, deadlineErr)
@@ -225,8 +225,7 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 	}
 
 	if err = b.openAPIValidator.ValidateResponse(beresp, requestValidationInput); err != nil {
-		return nil, errors.BackendValidation.Label(b.name).Kind("backend_response_validation").
-			With(err).Status(http.StatusBadGateway)
+		return nil, errors.BackendOpenapiValidation.Label(b.name).With(err)
 	}
 
 	return beresp, nil
