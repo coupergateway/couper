@@ -225,7 +225,7 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 	}
 
 	if err = b.openAPIValidator.ValidateResponse(beresp, requestValidationInput); err != nil {
-		return nil, errors.BackendOpenapiValidation.Label(b.name).With(err)
+		return nil, errors.BackendOpenapiValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
 	}
 
 	return beresp, nil
