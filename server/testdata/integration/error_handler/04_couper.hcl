@@ -5,7 +5,7 @@ server "scoped" {
   api {
     base_path = "/api"
 
-    beta_scope = "read"
+    beta_required_permission = "read"
     endpoint "/" {
       response {
         status = 204
@@ -13,7 +13,7 @@ server "scoped" {
     }
 
     endpoint "/pow/" {
-      beta_scope = {
+      beta_required_permission = {
         post = "power"
       }
 
@@ -21,22 +21,15 @@ server "scoped" {
         status = 204
       }
 
-      error_handler "beta_insufficient_scope" {
+      error_handler "beta_insufficient_permissions" {
         response {
           status = 400
           body = "Not enough power"
         }
       }
-
-      error_handler "beta_operation_denied" {
-        response {
-          status = 405
-          body = "Not enough power"
-        }
-      }
     }
 
-    error_handler "beta_insufficient_scope" {
+    error_handler "beta_insufficient_permissions" {
       response {
         status = 418
       }
@@ -47,7 +40,7 @@ server "scoped" {
   api {
     base_path = "/wildcard1"
 
-    error_handler "beta_insufficient_scope" {
+    error_handler "beta_insufficient_permissions" {
       response {
         status = 418
         body = "Not enough power"
@@ -55,7 +48,7 @@ server "scoped" {
     }
 
     endpoint "/" {
-      beta_scope = "power"
+      beta_required_permission = "power"
 
       response {
         status = 204
@@ -81,13 +74,13 @@ server "scoped" {
     }
 
     endpoint "/" {
-      beta_scope = "power"
+      beta_required_permission = "power"
 
       response {
         status = 204
       }
 
-      error_handler "beta_insufficient_scope" {
+      error_handler "beta_insufficient_permissions" {
         response {
           status = 400
           body = "Not enough power"
@@ -97,13 +90,13 @@ server "scoped" {
   }
 
   endpoint "/" {
-    beta_scope = "write"
+    beta_required_permission = "write"
 
     response {
       body = "OK"
     }
 
-    error_handler "beta_scope" {
+    error_handler "beta_insufficient_permissions" {
       response {
         status = 418
       }
@@ -117,6 +110,6 @@ definitions {
     header = "Authorization"
     signature_algorithm = "HS256"
     key = "s3cr3t"
-    beta_scope_claim = "scopes"
+    beta_permissions_claim = "scope"
   }
 }

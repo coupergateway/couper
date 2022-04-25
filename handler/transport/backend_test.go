@@ -362,8 +362,8 @@ func TestBackend_HealthCheck(t *testing.T) {
 		FailureThreshold uint
 		Interval         time.Duration
 		Timeout          time.Duration
-		ExpectStatus     map[int]bool
-		ExpectText       string
+		ExpectedStatus   map[int]bool
+		ExpectedText     string
 		URL              *url.URL
 		RequestUIDFormat string
 	}
@@ -374,7 +374,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 		expectation expectation
 	}
 
-	defaultExpectStatus := map[int]bool{200: true, 204: true, 301: true}
+	defaultExpectedStatus := map[int]bool{200: true, 204: true, 301: true}
 
 	for _, tc := range []testCase{
 		{
@@ -384,8 +384,8 @@ func TestBackend_HealthCheck(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
-				ExpectStatus:     defaultExpectStatus,
-				ExpectText:       "",
+				ExpectedStatus:   defaultExpectedStatus,
+				ExpectedText:     "",
 				RequestUIDFormat: "common",
 			},
 		},
@@ -396,15 +396,15 @@ func TestBackend_HealthCheck(t *testing.T) {
 				Interval:         "1h",
 				Timeout:          "9m",
 				Path:             "/gsund??",
-				ExpectStatus:     418,
-				ExpectText:       "roger roger",
+				ExpectedStatus:   418,
+				ExpectedText:     "roger roger",
 			},
 			expectation: expectation{
 				FailureThreshold: 42,
 				Interval:         time.Hour,
 				Timeout:          9 * time.Minute,
-				ExpectStatus:     map[int]bool{418: true},
-				ExpectText:       "roger roger",
+				ExpectedStatus:   map[int]bool{418: true},
+				ExpectedText:     "roger roger",
 				URL: &url.URL{
 					Scheme:   "http",
 					Host:     "origin:8080",
@@ -421,8 +421,8 @@ func TestBackend_HealthCheck(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
-				ExpectStatus:     defaultExpectStatus,
-				ExpectText:       "",
+				ExpectedStatus:   defaultExpectedStatus,
+				ExpectedText:     "",
 				RequestUIDFormat: "common",
 			},
 		},
@@ -435,8 +435,8 @@ func TestBackend_HealthCheck(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
-				ExpectStatus:     defaultExpectStatus,
-				ExpectText:       "",
+				ExpectedStatus:   defaultExpectedStatus,
+				ExpectedText:     "",
 				RequestUIDFormat: "common",
 			},
 		},
@@ -450,8 +450,8 @@ func TestBackend_HealthCheck(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
-				ExpectStatus:     defaultExpectStatus,
-				ExpectText:       "",
+				ExpectedStatus:   defaultExpectedStatus,
+				ExpectedText:     "",
 				RequestUIDFormat: "common",
 			},
 		},
@@ -464,8 +464,8 @@ func TestBackend_HealthCheck(t *testing.T) {
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
-				ExpectStatus:     defaultExpectStatus,
-				ExpectText:       "",
+				ExpectedStatus:   defaultExpectedStatus,
+				ExpectedText:     "",
 				RequestUIDFormat: "common",
 			},
 		},

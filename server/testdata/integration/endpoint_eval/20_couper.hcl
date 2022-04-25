@@ -181,7 +181,7 @@ server "cty.NilVal" {
       headers = {
         X-Value = json_encode(merge({ "obj": {"key": "val"} }, {
           foo = "bar"
-          xxxx = request.context.scopes
+          xxxx = request.context.beta_granted_permissions
         }))
         Z-Value = "y"
       }

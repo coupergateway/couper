@@ -55,26 +55,25 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 	return result
 }
 
-func ValueToScopeMap(val cty.Value) (map[string]string, error) {
-	scopeMap := make(map[string]string)
+func ValueToPermission(val cty.Value) (string, map[string]string, error) {
 	switch val.Type() {
 	case cty.NilType:
-		return nil, nil
+		return "", nil, nil
 	case cty.String:
-		scopeMap["*"] = val.AsString()
-		return scopeMap, nil
+		return val.AsString(), nil, nil
 	default:
 		if val.Type().IsObjectType() {
+			permissionMap := make(map[string]string)
 			for k, v := range val.AsValueMap() {
 				if v.Type() != cty.String {
-					return nil, fmt.Errorf("unsupported value for operation %q in beta_scope", k)
+					return "", nil, fmt.Errorf("unsupported value for method %q in beta_required_permission", k)
 				}
-				scopeMap[strings.ToUpper(k)] = v.AsString()
+				permissionMap[strings.ToUpper(k)] = v.AsString()
 			}
-			return scopeMap, nil
+			return "", permissionMap, nil
 		}
 	}
-	return nil, fmt.Errorf("unsupported value for beta_scope")
+	return "", nil, fmt.Errorf("unsupported value for beta_required_permission")
 }
 
 func ValuesMapToValue(m url.Values) cty.Value {
@@ -85,7 +84,19 @@ func ValuesMapToValue(m url.Values) cty.Value {
 	return MapToValue(result)
 }
 
-func ListToValue(l []interface{}) cty.Value {
+func stringListToValue(l []string) cty.Value {
+	if l == nil || len(l) == 0 {
+		return cty.ListValEmpty(cty.String)
+	}
+
+	var list []cty.Value
+	for _, s := range l {
+		list = append(list, cty.StringVal(s))
+	}
+	return cty.ListVal(list)
+}
+
+func listToValue(l []interface{}) cty.Value {
 	var list []cty.Value
 	for _, v := range l {
 		list = append(list, GoToValue(v))
@@ -96,7 +107,7 @@ func ListToValue(l []interface{}) cty.Value {
 func GoToValue(v interface{}) cty.Value {
 	switch v := v.(type) {
 	case string:
-		return cty.StringVal(ToString(v))
+		return cty.StringVal(v)
 	case bool:
 		return cty.BoolVal(v)
 	case int64:
@@ -104,13 +115,9 @@ func GoToValue(v interface{}) cty.Value {
 	case float64:
 		return cty.NumberFloatVal(v)
 	case []string:
-		var list []interface{}
-		for _, s := range v {
-			list = append(list, s)
-		}
-		return ListToValue(list)
+		return stringListToValue(v)
 	case []interface{}:
-		return ListToValue(v)
+		return listToValue(v)
 	case map[string]interface{}:
 		return MapToValue(v)
 	default:
@@ -131,13 +138,9 @@ func MapToValue(m map[string]interface{}) cty.Value {
 		}
 		switch v := v.(type) {
 		case []string:
-			var list []interface{}
-			for _, s := range v {
-				list = append(list, s)
-			}
-			ctyMap[k] = ListToValue(list)
+			ctyMap[k] = stringListToValue(v)
 		case []interface{}:
-			ctyMap[k] = ListToValue(v)
+			ctyMap[k] = listToValue(v)
 		case map[string]interface{}:
 			ctyMap[k] = MapToValue(v)
 		default:

@@ -14,16 +14,16 @@ var defaultHealthCheck = &HealthCheck{
 	FailureThreshold: 2,
 	Interval:         time.Second,
 	Timeout:          time.Second,
-	ExpectStatus:     map[int]bool{200: true, 204: true, 301: true},
-	ExpectText:       "",
+	ExpectedStatus:   map[int]bool{200: true, 204: true, 301: true},
+	ExpectedText:     "",
 }
 
 type HealthCheck struct {
 	FailureThreshold uint
 	Interval         time.Duration
 	Timeout          time.Duration
-	ExpectStatus     map[int]bool
-	ExpectText       string
+	ExpectedStatus   map[int]bool
+	ExpectedText     string
 	Request          *http.Request
 	RequestUIDFormat string
 }
@@ -35,8 +35,8 @@ type Health struct {
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
 	Path             string   `hcl:"path,optional"`
-	ExpectStatus     int      `hcl:"expect_status,optional"`
-	ExpectText       string   `hcl:"expect_text,optional"`
+	ExpectedStatus   int      `hcl:"expected_status,optional"`
+	ExpectedText     string   `hcl:"expected_text,optional"`
 	Headers          Headers  `hcl:"headers,optional"`
 	Remain           hcl.Body `hcl:",remain"`
 }
@@ -66,10 +66,10 @@ func NewHealthCheck(baseURL string, options *Health, settings *Settings) (*Healt
 		if options.FailureThreshold != 0 {
 			healthCheck.FailureThreshold = options.FailureThreshold
 		}
-		if options.ExpectStatus != 0 {
-			healthCheck.ExpectStatus = map[int]bool{options.ExpectStatus: true}
+		if options.ExpectedStatus != 0 {
+			healthCheck.ExpectedStatus = map[int]bool{options.ExpectedStatus: true}
 		}
-		healthCheck.ExpectText = options.ExpectText
+		healthCheck.ExpectedText = options.ExpectedText
 
 		request, err := http.NewRequest(http.MethodGet, baseURL, nil)
 		if err != nil {

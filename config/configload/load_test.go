@@ -92,22 +92,22 @@ func TestHealthCheck(t *testing.T) {
 			`time: missing unit in duration "1"`,
 		},
 		{
-			"Bad failure_threshold",
+			"Bad threshold",
 			`failure_threshold = -1`,
 			"couper.hcl:13,29-30: Unsuitable value type; Unsuitable value: value must be a whole number, between 0 and 18446744073709551615 inclusive",
 		},
 		{
 			"Bad expect status",
-			`expect_status = [200, 204]`,
-			"couper.hcl:13,25-26: Unsuitable value type; Unsuitable value: number required",
+			`expected_status = [200, 204]`,
+			"couper.hcl:13,27-28: Unsuitable value type; Unsuitable value: number required",
 		},
 		{
 			"OK",
 			`failure_threshold = 3
 			 timeout = "3s"
 			 interval = "5s"
-			 expect_text = 123
-			 expect_status = 200`,
+			 expected_text = 123
+			 expected_status = 200`,
 			"",
 		},
 	}

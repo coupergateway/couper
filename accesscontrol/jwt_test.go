@@ -12,12 +12,12 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/sirupsen/logrus"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -333,7 +333,7 @@ func Test_JWT_Validate(t *testing.T) {
 	}
 }
 
-func Test_JWT_yields_scopes(t *testing.T) {
+func Test_JWT_yields_permissions(t *testing.T) {
 	log, hook := test.NewLogger()
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
@@ -344,28 +344,28 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		"user2": {"bar"},
 		"*":     {"default"},
 	}
-	var noScope []string
+	var noGrantedPermissions []string
 
 	tests := []struct {
-		name       string
-		scopeClaim string
-		scope      interface{}
-		rolesClaim string
-		roles      interface{}
-		expWarning string
-		expScopes  []string
+		name             string
+		permissionsClaim string
+		permissionsValue interface{}
+		rolesClaim       string
+		rolesValue       interface{}
+		expWarning       string
+		expGrantedPerms  []string
 	}{
 		{
-			"no scope, no roles",
+			"no permissions, no roles",
 			"scp",
 			nil,
 			"roles",
 			nil,
 			"",
-			noScope,
+			noGrantedPermissions,
 		},
 		{
-			"scope: space-separated list",
+			"permissions: space-separated list",
 			"scp",
 			"foo bar",
 			"",
@@ -374,7 +374,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: space-separated list, multiple",
+			"permissions: space-separated list, multiple",
 			"scp",
 			"foo bar foo",
 			"",
@@ -383,7 +383,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: list of string",
+			"permissions: list of string",
 			"scoop",
 			[]string{"foo", "bar"},
 			"",
@@ -392,7 +392,7 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: list of string, multiple",
+			"permissions: list of string, multiple",
 			"scoop",
 			[]string{"foo", "bar", "bar"},
 			"",
@@ -401,58 +401,58 @@ func Test_JWT_yields_scopes(t *testing.T) {
 			[]string{"foo", "bar"},
 		},
 		{
-			"scope: warn: boolean",
+			"permissions: warn: boolean",
 			"scope",
 			true,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value true",
-			noScope,
+			"invalid permissions claim value type, ignoring claim, value true",
+			noGrantedPermissions,
 		},
 		{
-			"scope: warn: number",
+			"permissions: warn: number",
 			"scope",
 			1.23,
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value 1.23",
-			noScope,
+			"invalid permissions claim value type, ignoring claim, value 1.23",
+			noGrantedPermissions,
 		},
 		{
-			"scope: warn: list of bool",
+			"permissions: warn: list of bool",
 			"scope",
 			[]bool{true, false},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value []interface {}{true, false}",
-			noScope,
+			"invalid permissions claim value type, ignoring claim, value []interface {}{true, false}",
+			noGrantedPermissions,
 		},
 		{
-			"scope: warn: list of number",
+			"permissions: warn: list of number",
 			"scope",
 			[]int{1, 2},
 			"",
 			nil,
-			"invalid scope claim value type, ignoring claim, value []interface {}{1, 2}",
-			noScope,
+			"invalid permissions claim value type, ignoring claim, value []interface {}{1, 2}",
+			noGrantedPermissions,
 		},
 		{
-			"scope: warn: mixed list",
+			"permissions: warn: mixed list",
 			"scope",
 			[]interface{}{"eins", 2},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value []interface {}{"eins", 2}`,
-			noScope,
+			`invalid permissions claim value type, ignoring claim, value []interface {}{"eins", 2}`,
+			noGrantedPermissions,
 		},
 		{
-			"scope: warn: object",
+			"permissions: warn: object",
 			"scope",
 			map[string]interface{}{"foo": 1, "bar": 1},
 			"",
 			nil,
-			`invalid scope claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
-			noScope,
+			`invalid permissions claim value type, ignoring claim, value map[string]interface {}{"bar":1, "foo":1}`,
+			noGrantedPermissions,
 		},
 		{
 			"roles: single string",
@@ -594,11 +594,11 @@ func Test_JWT_yields_scopes(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hook.Reset()
 			claims := jwt.MapClaims{}
-			if tt.scopeClaim != "" && tt.scope != nil {
-				claims[tt.scopeClaim] = tt.scope
+			if tt.permissionsClaim != "" && tt.permissionsValue != nil {
+				claims[tt.permissionsClaim] = tt.permissionsValue
 			}
-			if tt.rolesClaim != "" && tt.roles != nil {
-				claims[tt.rolesClaim] = tt.roles
+			if tt.rolesClaim != "" && tt.rolesValue != nil {
+				claims[tt.rolesClaim] = tt.rolesValue
 			}
 			tok := jwt.NewWithClaims(signingMethod, claims)
 			pubKeyBytes := []byte("mySecretK3y")
@@ -609,13 +609,13 @@ func Test_JWT_yields_scopes(t *testing.T) {
 
 			source := ac.NewJWTSource("", "Authorization", nil)
 			j, err := ac.NewJWT(&ac.JWTOptions{
-				Algorithm:  algo.String(),
-				Name:       "test_ac",
-				ScopeClaim: tt.scopeClaim,
-				RolesClaim: tt.rolesClaim,
-				RolesMap:   rolesMap,
-				Source:     source,
-				Key:        pubKeyBytes,
+				Algorithm:        algo.String(),
+				Name:             "test_ac",
+				PermissionsClaim: tt.permissionsClaim,
+				RolesClaim:       tt.rolesClaim,
+				RolesMap:         rolesMap,
+				Source:           source,
+				Key:              pubKeyBytes,
 			})
 			if err != nil {
 				subT.Fatal(err)
@@ -629,12 +629,12 @@ func Test_JWT_yields_scopes(t *testing.T) {
 				return
 			}
 
-			scopesList, ok := req.Context().Value(request.Scopes).([]string)
+			grantedPermissionsList, ok := req.Context().Value(request.BetaGrantedPermissions).([]string)
 			if !ok {
-				subT.Errorf("Expected scopes within request context")
+				subT.Errorf("Expected granted permissions within request context")
 			} else {
-				if !reflect.DeepEqual(tt.expScopes, scopesList) {
-					subT.Errorf("Scopes do not match, want: %#v, got: %#v", tt.expScopes, scopesList)
+				if !reflect.DeepEqual(tt.expGrantedPerms, grantedPermissionsList) {
+					subT.Errorf("Granted permissions do not match, want: %#v, got: %#v", tt.expGrantedPerms, grantedPermissionsList)
 				}
 			}
 
@@ -816,7 +816,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end`,
+			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end: no such host`,
 		},
 		{
 			"signature_algorithm + jwks_url",
@@ -892,10 +892,12 @@ func TestJwtConfig(t *testing.T) {
 		},
 	}
 
-	log, _ := logrustest.NewNullLogger()
+	log, hook := test.NewLogger()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			hook.Reset()
+
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
 				logger := log.WithContext(context.TODO())
@@ -906,20 +908,33 @@ func TestJwtConfig(t *testing.T) {
 				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
 
-			var errMsg = ""
+			var errMsg, expectedError string
 			if err != nil {
 				if _, ok := err.(errors.GoError); ok {
 					errMsg = err.(errors.GoError).LogError()
 				} else {
 					errMsg = err.Error()
 				}
+				if tt.error != "" {
+					expectedError = "configuration error: myac: " + tt.error
+				}
+			} else {
+				expectedError = tt.error
 			}
 
 			if tt.error == "" && errMsg == "" {
 				return
 			}
 
-			expectedError := "configuration error: myac: " + tt.error
+			time.Sleep(time.Second / 2) // sync routine start
+
+			for _, e := range hook.AllEntries() {
+				if e.Level != logrus.ErrorLevel {
+					continue
+				}
+				errMsg = e.Message
+				break
+			}
 
 			if !strings.HasPrefix(errMsg, expectedError) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)
