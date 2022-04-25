@@ -22,7 +22,9 @@ var Definitions = []*Error{
 
 	AccessControl.Kind("beta_insufficient_permissions"),
 
-	BackendValidation,
+	Backend,
+	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
+	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
 
 	Endpoint.Kind("sequence"),
 	Endpoint.Kind("unexpected_status"),

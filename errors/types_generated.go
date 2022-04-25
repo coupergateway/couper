@@ -13,8 +13,10 @@ var (
 	Saml2                       = Definitions[8]
 	Saml                        = Definitions[9]
 	BetaInsufficientPermissions = Definitions[10]
-	Sequence                    = Definitions[12]
-	UnexpectedStatus            = Definitions[13]
+	BackendOpenapiValidation    = Definitions[12]
+	BackendTimeout              = Definitions[13]
+	Sequence                    = Definitions[14]
+	UnexpectedStatus            = Definitions[15]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -35,7 +37,9 @@ var types = typeDefinitions{
 	"saml2":                          Saml2,
 	"saml":                           Saml,
 	"beta_insufficient_permissions":  BetaInsufficientPermissions,
-	"backend_validation":             BackendValidation,
+	"backend":                        Backend,
+	"backend_openapi_validation":     BackendOpenapiValidation,
+	"backend_timeout":                BackendTimeout,
 	"sequence":                       Sequence,
 	"unexpected_status":              UnexpectedStatus,
 }
