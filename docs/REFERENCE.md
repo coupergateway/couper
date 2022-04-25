@@ -108,7 +108,7 @@ The `spa` block configures the Web serving for SPA assets.
 The `api` block bundles endpoints under a certain `base_path`.
 
 &#9888; If an error occurred for api endpoints the response gets processed
-as json error with an error body payload. This can be customized via `error_file`.
+as JSON error with an error body payload. This can be customized via `error_file`.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
@@ -569,7 +569,7 @@ gateway instance.
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | tuple (string)   | `[]`      | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
-| `log_format`                    | string | `common`            | Switch for tab/field based colored view or json log lines. |-|-|
+| `log_format`                    | string | `common`            | Switch for tab/field based colored view or JSON log lines. |-|-|
 | `log_level`                     | string | `info`              | Set the log-level to one of: `info`, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`. |-|-|
 | `log_pretty`                    | bool   | `false`             | Global option for `json` log format which pretty prints with basic key coloring. |-|-|
 | `no_proxy_from_env`             | bool   | `false`             | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |-|-|
@@ -682,7 +682,7 @@ defaults {
 | `path_params.<name>`             | string          | Value from a named path parameter defined within an endpoint path label                                                                                                                                                                                                             |                                             |
 | `body`                           | string          | Request message body                                                                                                                                                                                                                                                                |                                             |
 | `form_body.<name>`               | list (string)   | Parameter in a `application/x-www-form-urlencoded` body                                                                                                                                                                                                                             |                                             |
-| `json_body`                      | various         | Access json decoded message body. Media type must be `application/json` or `application/*+json`.                                                                                                                                                                               |                                             |
+| `json_body`                      | various         | Access JSON decoded message body. Media type must be `application/json` or `application/*+json`.                                                                                                                                                                               |                                             |
 | `context.beta_granted_permissions` | list (string) | Permissions granted to the requester as yielded by access controls (see e.g. `beta_permissions_claim`, `beta_roles_claim` in the [`jwt` block](#jwt-block)).                                                                                                                      | `["perm1", "perm2"]`                        |
 | `context.beta_required_permission` | string        | Permission required to perform the requested operation (value of the `beta_required_permission` attribute of [`endpoint`](#endpoint-block) (or [`api`](#api-block)) block).                                                                                                         |                                             |
 | `context.<name>.<property_name>` | various         | Request context containing information from the [Access Control](#access-control).                                                                                                                                                                                                  |                                             |
@@ -748,7 +748,7 @@ To access the HTTP method of the `default` request use `backend_requests.default
 | `query.<name>`                   | list (string)   | Query parameter values                                                                                                                                                                                                                                                               |                                             |
 | `body`                           | string          | Backend request message body                                                                                                                                                                                                                                                         |                                             |
 | `form_body.<name>`               | list (string)   | Parameter in a `application/x-www-form-urlencoded` body                                                                                                                                                                                                                              |                                             |
-| `json_body`                      | various         | Access json decoded message body. Media type must be `application/json` or `application/*+json`.                                                                                                                                                                                |                                             |
+| `json_body`                      | various         | Access JSON decoded message body. Media type must be `application/json` or `application/*+json`.                                                                                                                                                                                |                                             |
 | `context.<name>.<property_name>` | various         | Request context containing claims from JWT used for [Access Control](#access-control) or information from a SAML assertion, `<name>` being the [JWT Block's](#jwt-block) or [SAML Block's](#saml-block) label and `property_name` being the claim's or assertion information's name  |                                             |
 | `url`                            | string          | Backend request URL                                                                                                                                                                                                                                                                  | `https://www.example.com/path/to?q=val&a=1` |
 | `origin`                         | string          | Origin of the backend request URL                                                                                                                                                                                                                                                    | `https://www.example.com`                   |
@@ -775,7 +775,7 @@ To access the HTTP status code of the `default` response use `backend_responses.
 | `headers.<name>`   | string  | HTTP response header value for requested lower-case key                                               | |
 | `cookies.<name>`   | string  | Value from `Set-Cookie` response header for requested key (&#9888; last wins!)                        | |
 | `body`             | string  | The response message body                                                                             | |
-| `json_body`        | various | Access json decoded object properties. Media type must be `application/json` or `application/*+json`. | |
+| `json_body`        | various | Access JSON decoded message body. Media type must be `application/json` or `application/*+json`.      | |
 
 ## Functions
 
