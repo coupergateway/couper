@@ -1,6 +1,8 @@
 package server_test
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -120,6 +122,50 @@ func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 		t.Error("config error should not be nil")
 	} else if !strings.HasSuffix(err.Error(), expectedMsg) {
 		t.Errorf("\nwant:\t%s\ngot:\t%v", expectedMsg, err.Error())
+	}
+}
+
+func TestErrorHandler_Backend(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/05_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testcase struct {
+		path      string
+		expBody   string
+		expStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"/api-backend", `{"api":"backend"}`, 405},
+		{"/api-backend-timeout", `{"api":"backend-timeout"}`, 405},
+		{"/api-backend-validation", `{"api":"backend-validation"}`, 405},
+		{"/backend", `{"endpoint":"backend"}`, 405},
+		{"/backend-timeout", `{"endpoint":"backend-timeout"}`, 405},
+		{"/backend-validation", `{"endpoint":"backend-validation"}`, 405},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			helper := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Fatalf("want: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			resBytes, err := io.ReadAll(res.Body)
+			defer res.Body.Close()
+			helper.Must(err)
+
+			if !bytes.Contains(resBytes, []byte(tc.expBody)) {
+				st.Fatalf("want: %s, got: %s", tc.expBody, resBytes)
+			}
+		})
 	}
 }
 
