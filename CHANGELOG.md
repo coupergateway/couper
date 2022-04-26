@@ -26,6 +26,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) for an error type defined in both `endpoint` and `api` ([#469](https://github.com/avenga/couper/pull/469))
   * Request methods are treated case-insensitively when comparing them to methods in the `allowed_methods` attribute of [`api`](./docs/REFERENCE.md#api-block) or [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks ([#478](https://github.com/avenga/couper/pull/478))
   * Do not allow multiple `backend` blocks in `proxy` and `request` blocks ([#483](https://github.com/avenga/couper/pull/483))
+  * Panic if one of at least two [`error_handler` blocks](./docs/REFERENCE.md#error-handler-block) has no labels ([#486](https://github.com/avenga/couper/pull/486))
 
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))

@@ -75,6 +75,10 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 		}
 		for _, k := range kinds {
 			if _, exist := configuredKinds[k]; exist {
+				if len(block.LabelRanges) == 0 {
+					block.LabelRanges = append(block.LabelRanges, block.DefRange)
+				}
+
 				return nil, nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  fmt.Sprintf("duplicate error type registration: %q", k),
