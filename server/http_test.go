@@ -689,3 +689,24 @@ func TestHTTPServer_RequestID(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPServer_parseDuration(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, logHook := newCouper("testdata/integration/config/16_couper.hcl", test.New(t))
+	defer shutdown()
+
+	logHook.Reset()
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	logs := logHook.AllEntries()
+
+	if logs[0].Message != `using default timing of 0s because an error occured: time: invalid duration "xxx"` {
+		t.Errorf("%#v", logs[0].Message)
+	}
+}
