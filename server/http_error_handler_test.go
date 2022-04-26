@@ -235,3 +235,15 @@ func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 	}
 
 }
+
+func Test_Panic_Multi_EH(t *testing.T) {
+	_, err := configload.LoadFiles("testdata/settings/16_couper.hcl", "")
+
+	expectedMsg := `: duplicate error type registration: "*"; `
+
+	if err == nil {
+		t.Error("config error should not be nil")
+	} else if !strings.HasSuffix(err.Error(), expectedMsg) {
+		t.Errorf("\nwant:\t'%s'\nin:\t\t'%s'", expectedMsg, err.Error())
+	}
+}
