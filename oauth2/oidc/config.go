@@ -92,7 +92,7 @@ func (c *Config) GetVerifierMethod(uid string) (string, error) {
 	c.jmu.RLock()
 	if c.VerifierMethod == "" {
 		c.jmu.RUnlock()
-		_, err := c.Data(uid)
+		_, err := c.Data()
 		if err != nil {
 			return "", err
 		}
@@ -104,7 +104,7 @@ func (c *Config) GetVerifierMethod(uid string) (string, error) {
 }
 
 func (c *Config) GetAuthorizationEndpoint(uid string) (string, error) {
-	openidConfigurationData, err := c.Data(uid)
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +113,7 @@ func (c *Config) GetAuthorizationEndpoint(uid string) (string, error) {
 }
 
 func (c *Config) GetIssuer() (string, error) {
-	openidConfigurationData, err := c.Data("")
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -122,7 +122,7 @@ func (c *Config) GetIssuer() (string, error) {
 }
 
 func (c *Config) GetTokenEndpoint() (string, error) {
-	openidConfigurationData, err := c.Data("")
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +131,7 @@ func (c *Config) GetTokenEndpoint() (string, error) {
 }
 
 func (c *Config) GetUserinfoEndpoint() (string, error) {
-	openidConfigurationData, err := c.Data("")
+	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err
 	}
@@ -139,8 +139,8 @@ func (c *Config) GetUserinfoEndpoint() (string, error) {
 	return openidConfigurationData.UserinfoEndpoint, nil
 }
 
-func (c *Config) Data(uid string) (*OpenidConfiguration, error) {
-	data, err := c.syncedJSON.Data(uid)
+func (c *Config) Data() (*OpenidConfiguration, error) {
+	data, err := c.syncedJSON.Data()
 	if err != nil {
 		return nil, err
 	}
