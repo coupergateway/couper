@@ -13,8 +13,8 @@ import (
 )
 
 var wildcardMap = map[string][]string{
-	"api":      {"backend", "backend_openapi_validation", "backend_timeout", "beta_insufficient_permissions"},
-	"endpoint": {"backend", "backend_openapi_validation", "backend_timeout", "beta_insufficient_permissions", "sequence", "unexpected_status"},
+	"api":      {"backend_openapi_validation", "backend_timeout", "beta_insufficient_permissions"},
+	"endpoint": {"backend_openapi_validation", "backend_timeout", "beta_insufficient_permissions", "sequence", "unexpected_status"},
 }
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
