@@ -1,0 +1,10 @@
+openapi: '3'
+info:
+  title: 'Test'
+  version: 'v1.2.3'
+paths:
+  /anything:
+    get:
+      responses:
+        405:
+          description: OK

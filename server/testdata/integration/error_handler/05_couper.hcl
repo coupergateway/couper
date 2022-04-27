@@ -62,6 +62,29 @@ server {
     }
   }
 
+  api {
+    endpoint "/api-anything" {
+      proxy {
+        backend {
+          origin = "${env.COUPER_TEST_BACKEND_ADDR}"
+
+          openapi {
+            file = "02_schema.yaml"
+          }
+        }
+      }
+    }
+
+    error_handler "backend_openapi_validation" {
+      response {
+        status = 405
+        json_body = {
+          "api": "backend-backend-validation"
+        }
+      }
+    }
+  }
+
   endpoint "/backend" {
     proxy {
       backend {
@@ -114,6 +137,27 @@ server {
         status = 405
         json_body = {
           "endpoint": "backend-validation"
+        }
+      }
+    }
+  }
+
+  endpoint "/anything" {
+    proxy {
+      backend {
+        origin = "${env.COUPER_TEST_BACKEND_ADDR}"
+
+        openapi {
+          file = "02_schema.yaml"
+        }
+      }
+    }
+
+    error_handler "backend_openapi_validation" {
+      response {
+        status = 405
+        json_body = {
+          "endpoint": "backend-backend-validation"
         }
       }
     }
