@@ -57,8 +57,8 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | Type (and super types)                          | Description                                                                                             | Default handling                                                            |
 |:------------------------------------------------|:--------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
 | `backend`                                       | All catchable `backend` related errors | Send error template with status `502`. |
-| `backend_openapi_validation`                    | Client request or backend response is invalid | Send error template with status code `400` for invalid client request or `502` for invalid backend response. |
-| `backend_timeout`                               | A backend request timed out | Send error template with status `504`. |
+| `backend_openapi_validation` (`backend`)        | Client request or backend response is invalid | Send error template with status code `400` for invalid client request or `502` for invalid backend response. |
+| `backend_timeout` (`backend`)                   | A backend request timed out | Send error template with status `504`. |
 | `beta_insufficient_permissions`                 | The permission required for the requested operation is not in the permissions granted to the requester. | Send error template with status `403`.                                      |
 
 ### Endpoint error types
