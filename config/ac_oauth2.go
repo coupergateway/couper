@@ -100,7 +100,7 @@ func (oa *OAuth2AC) GetScope() string {
 	return *oa.Scope
 }
 
-func (oa *OAuth2AC) GetAuthorizationEndpoint(_ string) (string, error) {
+func (oa *OAuth2AC) GetAuthorizationEndpoint() (string, error) {
 	return oa.AuthorizationEndpoint, nil
 }
 

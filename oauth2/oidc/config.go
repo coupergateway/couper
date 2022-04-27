@@ -103,7 +103,7 @@ func (c *Config) GetVerifierMethod() (string, error) {
 	return c.VerifierMethod, nil
 }
 
-func (c *Config) GetAuthorizationEndpoint(uid string) (string, error) {
+func (c *Config) GetAuthorizationEndpoint() (string, error) {
 	openidConfigurationData, err := c.Data()
 	if err != nil {
 		return "", err

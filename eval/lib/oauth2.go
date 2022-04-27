@@ -46,8 +46,7 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []conf
 				return emptyStringVal, fmt.Errorf("undefined reference: %s", label)
 			}
 
-			uid := seetie.ToString(seetie.ValueToMap(ctx.Variables["request"])["id"])
-			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint(uid)
+			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()
 			if err != nil {
 				return emptyStringVal, err
 			}
