@@ -199,7 +199,14 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	return LoadConfig(configBody, srcBytes[0], filepath.Base(filePath), dirPath)
+	// Do not make "." from an empty filePath via filepath.Base().
+	// This generates an error when reloading config, if Couper
+	// was started w/o "-f", but w/ "-d" and "-watch" parameters.
+	if filePath != "" {
+		filePath = filepath.Base(filePath)
+	}
+
+	return LoadConfig(configBody, srcBytes[0], filePath, dirPath)
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
