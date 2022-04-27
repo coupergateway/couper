@@ -113,6 +113,6 @@ func (oa *OAuth2AC) GetTokenEndpointAuthMethod() *string {
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or state)
-func (oa *OAuth2AC) GetVerifierMethod(_ string) (string, error) {
+func (oa *OAuth2AC) GetVerifierMethod() (string, error) {
 	return oa.VerifierMethod, nil
 }

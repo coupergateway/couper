@@ -88,7 +88,7 @@ func (c *Config) Backends() map[string]http.RoundTripper {
 }
 
 // GetVerifierMethod retrieves the verifier method (ccm_s256 or nonce)
-func (c *Config) GetVerifierMethod(uid string) (string, error) {
+func (c *Config) GetVerifierMethod() (string, error) {
 	c.jmu.RLock()
 	if c.VerifierMethod == "" {
 		c.jmu.RUnlock()

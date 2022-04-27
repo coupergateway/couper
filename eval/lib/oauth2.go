@@ -89,7 +89,7 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []conf
 				query.Set("scope", scope)
 			}
 
-			verifierMethod, err := oauth2.GetVerifierMethod(uid)
+			verifierMethod, err := oauth2.GetVerifierMethod()
 			if err != nil {
 				return cty.StringVal(""), err
 			}

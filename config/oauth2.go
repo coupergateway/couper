@@ -38,7 +38,7 @@ type OAuth2AcClient interface {
 	GetGrantType() string
 	GetName() string
 	// GetVerifierMethod retrieves the verifier method (ccm_s256, nonce or state)
-	GetVerifierMethod(uid string) (string, error)
+	GetVerifierMethod() (string, error)
 }
 
 // OAuth2Authorization represents the configuration for the OAuth2 authorization URL function
@@ -48,5 +48,5 @@ type OAuth2Authorization interface {
 	GetClientID() string
 	GetName() string
 	GetScope() string
-	GetVerifierMethod(uid string) (string, error)
+	GetVerifierMethod() (string, error)
 }
