@@ -12,9 +12,33 @@ import (
 	"github.com/avenga/couper/handler"
 )
 
-var wildcardMap = map[string][]string{
-	"api":      {"backend_openapi_validation", "backend_timeout", "beta_insufficient_permissions"},
-	"endpoint": {"backend_openapi_validation", "backend_timeout", "beta_insufficient_permissions", "sequence", "unexpected_status"},
+type wildcardValues map[string][]string
+
+var wildcardMap = map[string]wildcardValues{
+	"api": {
+		"backend": {
+			"backend_openapi_validation",
+			"backend_timeout",
+		},
+		"*": {
+			"backend_openapi_validation",
+			"backend_timeout",
+			"beta_insufficient_permissions",
+		},
+	},
+	"endpoint": {
+		"backend": {
+			"backend_openapi_validation",
+			"backend_timeout",
+		},
+		"*": {
+			"backend_openapi_validation",
+			"backend_timeout",
+			"beta_insufficient_permissions",
+			"sequence",
+			"unexpected_status",
+		},
+	},
 }
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
@@ -33,19 +57,21 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 
-		// this works if wildcard is the only "super kind"
-		if mappedKinds, mkExists := wildcardMap[ref]; mkExists {
-			// expand wildcard:
-			// * set wildcard error handler for mapped kinds, no error handler for this kind is already set
+		if mappedValues, mkExists := wildcardMap[ref]; mkExists {
+			// expand wildcards:
+			// * set wildcard error handler for mapped kinds, if no error handler for this kind is already set
 			// * remove wildcard error handler for wildcard
-			if wcHandler, wcExists := handlersPerKind["*"]; wcExists {
-				for _, mk := range mappedKinds {
-					if _, exists := handlersPerKind[mk]; !exists {
-						handlersPerKind[mk] = wcHandler
+			for key, values := range mappedValues {
+				if wcHandler, wcExists := handlersPerKind[key]; wcExists {
+					for _, mk := range values {
+						if _, exists := handlersPerKind[mk]; !exists {
+							handlersPerKind[mk] = wcHandler
+						}
 					}
+
+					delete(handlersPerKind, key)
 				}
 			}
-			delete(handlersPerKind, "*")
 		}
 
 		for k, h := range handlersPerKind {
