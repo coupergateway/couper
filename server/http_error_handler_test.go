@@ -146,6 +146,12 @@ func TestErrorHandler_Backend(t *testing.T) {
 		{"/backend-timeout", `{"endpoint":"backend-timeout"}`, 405},
 		{"/backend-validation", `{"endpoint":"backend-validation"}`, 405},
 		{"/anything", `{"endpoint":"backend-backend-validation"}`, 405},
+		{"/c", `endpoint:backend_openapi_validation`, 405},
+		{"/d", `endpoint:backend`, 405},
+		{"/e", `endpoint:backend_openapi_validation`, 405},
+		{"/f", `endpoint:*`, 405},
+		{"/g", `endpoint:backend`, 405},
+		{"/h", `endpoint:*`, 405},
 	} {
 		t.Run(tc.path, func(st *testing.T) {
 			helper := test.New(st)
