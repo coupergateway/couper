@@ -790,7 +790,7 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 		}
 
 		path := entry.Data["request"].(logging.Fields)["path"]
-		if entry.Message == "backend timeout error: anonymous_3_23: deadline exceeded" {
+		if entry.Message == "backend error: anonymous_3_23: deadline exceeded" {
 			ctxDeadlineSeen = true
 			if path != "/" {
 				t.Errorf("expected '/' to fail")

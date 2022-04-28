@@ -203,7 +203,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodPost,
 			"/get",
-			"backend validation error",
+			"backend error",
 			"'POST /get': method not allowed",
 		},
 		{
@@ -219,7 +219,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/get?404",
-			"backend validation error",
+			"backend error",
 			"status is not supported",
 		},
 		{
