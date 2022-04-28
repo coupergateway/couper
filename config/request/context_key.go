@@ -6,6 +6,7 @@ const (
 	ContextType ContextKey = iota
 	APIName
 	AccessControls
+	BackendBytes
 	BackendName
 	BackendParams
 	BackendTokenRequest
@@ -24,6 +25,7 @@ const (
 	LogCustomUpstream
 	LogDebugLevel
 	LogEntry
+	LogUpstreamFn
 	OpenAPI
 	PathParams
 	ResponseBlock

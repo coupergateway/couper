@@ -74,8 +74,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
+	berespBytes := int64(0)
 	logCtxCh := make(chan hcl.Body, 10)
 	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, logCtxCh)
+	outctx = context.WithValue(outctx, request.BackendBytes, &berespBytes)
 	oCtx, openAPIContext := validation.NewWithContext(outctx)
 	outreq := req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
 
@@ -116,7 +118,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	if tr, ok := outreq.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
 
-		if retries, ok := outreq.Context().Value(request.TokenRequestRetries).(uint8); ok && retries > 0 {
+		if retries, exist := outreq.Context().Value(request.TokenRequestRetries).(uint8); exist && retries > 0 {
 			fields["token_request_retry"] = retries
 		}
 	}
@@ -146,16 +148,29 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["timings"] = timingResults
 	//timings["ttlb"] = roundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 
-	entry := u.log.WithFields(logrus.Fields(fields)).WithContext(outreq.Context())
-	entry.Time = startTime
+	entry := u.log.
+		WithFields(logrus.Fields(fields)).
+		WithContext(outreq.Context()).
+		WithTime(startTime)
+
+	stack, stacked := FromContext(outreq.Context())
 
 	if err != nil {
 		if _, ok := err.(errors.GoError); !ok {
 			err = errors.Backend.With(err)
 		}
-		entry.WithError(err).Error()
+		entry = entry.WithError(err)
+		if stacked {
+			stack.Push(entry).Level(logrus.ErrorLevel)
+		} else {
+			entry.Error()
+		}
 	} else {
-		entry.Info()
+		if stacked {
+			stack.Push(entry).Level(logrus.InfoLevel)
+		} else {
+			entry.Info()
+		}
 	}
 
 	return beresp, err

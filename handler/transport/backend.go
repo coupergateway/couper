@@ -187,6 +187,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !eval.IsUpgradeResponse(req, beresp) {
+		beresp.Body = logging.NewBytesCountReader(beresp)
 		if err = setGzipReader(beresp); err != nil {
 			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
 		}

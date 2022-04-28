@@ -1,9 +1,12 @@
 package hooks
 
 import (
+	"sync/atomic"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/logging"
 )
 
 var _ logrus.Hook = &Context{}
@@ -21,5 +24,15 @@ func (c *Context) Fire(entry *logrus.Entry) error {
 			entry.Data["uid"] = uid
 		}
 	}
+
+	if field, ok := entry.Data["type"]; ok && field == beTypeField {
+		if bytes, i := entry.Context.Value(request.BackendBytes).(*int64); i {
+			response, r := entry.Data["response"].(logging.Fields)
+			if r {
+				response["bytes"] = atomic.LoadInt64(bytes)
+			}
+		}
+	}
+
 	return nil
 }
