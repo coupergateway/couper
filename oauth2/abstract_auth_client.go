@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
@@ -113,5 +112,5 @@ func getVerifierMethod(ctx context.Context, conf interface{}) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("could not obtain verifier method configuration")
 	}
-	return clientConf.GetVerifierMethod(ctx.Value(request.UID).(string))
+	return clientConf.GetVerifierMethod()
 }
