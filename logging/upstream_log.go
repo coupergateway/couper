@@ -126,7 +126,12 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["status"] = 0
 	if beresp != nil {
 		fields["status"] = beresp.StatusCode
+		cl := int64(0)
+		if beresp.ContentLength > 0 {
+			cl = beresp.ContentLength
+		}
 		responseFields := Fields{
+			"bytes":   cl,
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
 			"status":  beresp.StatusCode,
 		}

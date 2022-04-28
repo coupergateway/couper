@@ -28,8 +28,9 @@ func (c *Context) Fire(entry *logrus.Entry) error {
 	if field, ok := entry.Data["type"]; ok && field == beTypeField {
 		if bytes, i := entry.Context.Value(request.BackendBytes).(*int64); i {
 			response, r := entry.Data["response"].(logging.Fields)
-			if r {
-				response["bytes"] = atomic.LoadInt64(bytes)
+			b := atomic.LoadInt64(bytes)
+			if r && b > 0 {
+				response["bytes"] = b
 			}
 		}
 	}
