@@ -12,9 +12,9 @@ import (
 	"github.com/avenga/couper/handler"
 )
 
-type wildcardValues map[string][]string
+type superTypeMap map[string][]string
 
-var wildcardMap = map[string]wildcardValues{
+var superTypesMapsByContext = map[string]superTypeMap{
 	"api": {
 		"backend": {
 			"backend_openapi_validation",
@@ -57,19 +57,19 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 
-		if mappedValues, mkExists := wildcardMap[ref]; mkExists {
-			// expand wildcards:
-			// * set wildcard error handler for mapped kinds, if no error handler for this kind is already set
-			// * remove wildcard error handler for wildcard
-			for key, values := range mappedValues {
-				if wcHandler, wcExists := handlersPerKind[key]; wcExists {
-					for _, mk := range values {
-						if _, exists := handlersPerKind[mk]; !exists {
-							handlersPerKind[mk] = wcHandler
+		if superKindMap, mapExists := superTypesMapsByContext[ref]; mapExists {
+			// expand super-kinds:
+			// * set super-kind error handler for mapped sub-kinds, if no error handler for this sub-kind is already set
+			// * remove super-kind error handler for super-kind
+			for superKind, subKinds := range superKindMap {
+				if skHandler, skExists := handlersPerKind[superKind]; skExists {
+					for _, subKind := range subKinds {
+						if _, exists := handlersPerKind[subKind]; !exists {
+							handlersPerKind[subKind] = skHandler
 						}
 					}
 
-					delete(handlersPerKind, key)
+					delete(handlersPerKind, superKind)
 				}
 			}
 		}
