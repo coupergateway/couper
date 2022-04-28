@@ -91,9 +91,36 @@ func IsKnown(errorType string) bool {
 }
 
 `))
-
 	must(err)
 
+	var superKindsMapsByContext = make(map[string]map[string][]string)
+
+	for blockType, kinds := range errors.ErrorTypesByBlockType {
+		superKindsMap := map[string][]string{
+			"*": kinds,
+		}
+		superKindsMapsByContext[blockType] = superKindsMap
+		for _, k := range kinds {
+			e, err := errorForKind(k)
+			must(err)
+
+			allKinds := e.Kinds()
+			for i, kind := range allKinds {
+				if i == 0 {
+					continue
+				}
+				superKindsMap[kind] = append(superKindsMap[kind], k)
+			}
+		}
+	}
+
+	_, err = io.WriteString(generated, fmt.Sprintf(`
+// SuperTypesMapsByContext holds maps for error super-types to sub-types
+// by a given context block type (e.g. api or endpoint).
+var SuperTypesMapsByContext = `))
+	must(err)
+	_, err = io.WriteString(generated, fmt.Sprintf("%#v\n", superKindsMapsByContext))
+	must(err)
 }
 
 // isDefined checks if the given typeName is defined and must be skipped for declaration with true result.
@@ -104,6 +131,19 @@ func isDefined(typeName string) bool {
 		}
 	}
 	return false
+}
+
+func errorForKind(kind string) (*errors.Error, error) {
+	for _, e := range errors.Definitions {
+		kinds := e.Kinds()
+		if len(kinds) == 0 {
+			continue
+		}
+		if kinds[0] == kind {
+			return e, nil
+		}
+	}
+	return nil, fmt.Errorf("no error found for kind %q", kind)
 }
 
 func must(err error) {

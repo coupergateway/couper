@@ -29,3 +29,19 @@ var Definitions = []*Error{
 	Endpoint.Kind("sequence"),
 	Endpoint.Kind("unexpected_status"),
 }
+
+// ErrorTypesByBlockType holds specific error types available in a given context block type.
+var ErrorTypesByBlockType = map[string][]string{
+	"api": {
+		"backend_openapi_validation",
+		"backend_timeout",
+		"beta_insufficient_permissions",
+	},
+	"endpoint": {
+		"backend_openapi_validation",
+		"backend_timeout",
+		"beta_insufficient_permissions",
+		"sequence",
+		"unexpected_status",
+	},
+}
