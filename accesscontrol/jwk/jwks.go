@@ -94,7 +94,7 @@ func (j *JWKS) GetKey(kid string, alg string, use string) (*JWK, error) {
 func (j *JWKS) getKeys(kid string) ([]*JWK, error) {
 	var keys []*JWK
 
-	jwksData, err := j.Data("")
+	jwksData, err := j.Data()
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +112,8 @@ func (j *JWKS) getKeys(kid string) ([]*JWK, error) {
 	return keys, nil
 }
 
-func (j *JWKS) Data(uid string) (*JWKSData, error) {
-	data, err := j.syncedJSON.Data(uid)
+func (j *JWKS) Data() (*JWKSData, error) {
+	data, err := j.syncedJSON.Data()
 	if err != nil {
 		return nil, err
 	}

@@ -36,7 +36,7 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 
 	switch acClientConf.(type) {
 	case *config.OAuth2AC:
-		verifierMethod, err := acClientConf.GetVerifierMethod("")
+		verifierMethod, err := acClientConf.GetVerifierMethod()
 		if err != nil {
 			return nil, err
 		}
