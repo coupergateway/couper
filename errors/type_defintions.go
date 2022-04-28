@@ -20,28 +20,12 @@ var Definitions = []*Error{
 	AccessControl.Kind("saml2"),
 	AccessControl.Kind("saml2").Kind("saml"),
 
-	AccessControl.Kind("beta_insufficient_permissions"),
+	AccessControl.Kind("beta_insufficient_permissions").Context("api").Context("endpoint"),
 
 	Backend,
-	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
-	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
+	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest).Context("api").Context("endpoint"),
+	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout).Context("api").Context("endpoint"),
 
-	Endpoint.Kind("sequence"),
-	Endpoint.Kind("unexpected_status"),
-}
-
-// ErrorTypesByBlockType holds specific error types available in a given context block type.
-var ErrorTypesByBlockType = map[string][]string{
-	"api": {
-		"backend_openapi_validation",
-		"backend_timeout",
-		"beta_insufficient_permissions",
-	},
-	"endpoint": {
-		"backend_openapi_validation",
-		"backend_timeout",
-		"beta_insufficient_permissions",
-		"sequence",
-		"unexpected_status",
-	},
+	Endpoint.Kind("sequence").Context("endpoint"),
+	Endpoint.Kind("unexpected_status").Context("endpoint"),
 }

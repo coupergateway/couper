@@ -15,6 +15,7 @@ type Error struct {
 	label      string   // mostly the user configured label for e.g. access_control or backend
 	message    string   // additional custom message
 	synopsis   string   // seen by client
+	Contexts   []string // context block types (e.g. api or endpoint)
 }
 
 type GoError interface {
@@ -74,6 +75,13 @@ func (e *Error) Kinds() []string {
 	return reversed
 }
 
+// Context appends the given context block type to the existing ones.
+func (e *Error) Context(name string) *Error {
+	err := e.clone()
+	err.Contexts = append(err.Contexts, name)
+	return err
+}
+
 func (e *Error) Label(name string) *Error {
 	err := e.clone()
 	err.label = name
@@ -102,6 +110,7 @@ func (e *Error) With(inner error) *Error {
 func (e *Error) clone() *Error {
 	err := *e
 	err.kinds = e.kinds[:]
+	err.Contexts = e.Contexts[:]
 	return &err
 }
 

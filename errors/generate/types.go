@@ -95,21 +95,21 @@ func IsKnown(errorType string) bool {
 
 	var superKindsMapsByContext = make(map[string]map[string][]string)
 
-	for blockType, kinds := range errors.ErrorTypesByBlockType {
-		superKindsMap := map[string][]string{
-			"*": kinds,
+	for _, def := range errors.Definitions {
+		if def.Contexts == nil {
+			continue
 		}
-		superKindsMapsByContext[blockType] = superKindsMap
-		for _, k := range kinds {
-			e, err := errorForKind(k)
-			must(err)
-
-			allKinds := e.Kinds()
-			for i, kind := range allKinds {
-				if i == 0 {
-					continue
-				}
-				superKindsMap[kind] = append(superKindsMap[kind], k)
+		for _, context := range def.Contexts {
+			superKindsMaps, exists := superKindsMapsByContext[context]
+			if !exists {
+				superKindsMaps = make(map[string][]string)
+				superKindsMapsByContext[context] = superKindsMaps
+			}
+			kinds := append(def.Kinds(), "*")
+			kind := kinds[0]
+			kinds = kinds[1:]
+			for _, k := range kinds {
+				superKindsMaps[k] = append(superKindsMaps[k], kind)
 			}
 		}
 	}
@@ -131,19 +131,6 @@ func isDefined(typeName string) bool {
 		}
 	}
 	return false
-}
-
-func errorForKind(kind string) (*errors.Error, error) {
-	for _, e := range errors.Definitions {
-		kinds := e.Kinds()
-		if len(kinds) == 0 {
-			continue
-		}
-		if kinds[0] == kind {
-			return e, nil
-		}
-	}
-	return nil, fmt.Errorf("no error found for kind %q", kind)
 }
 
 func must(err error) {
