@@ -11,9 +11,9 @@ const Wildcard = "*"
 
 var (
 	AccessControl    = &Error{synopsis: "access control error", kinds: []string{"access_control"}, httpStatus: http.StatusForbidden}
-	Backend          = &Error{synopsis: "backend error", kinds: []string{"backend"}, httpStatus: http.StatusBadGateway}
+	Backend          = &Error{synopsis: "backend error", Contexts: []string{"api", "endpoint"}, kinds: []string{"backend"}, httpStatus: http.StatusBadGateway}
 	ClientRequest    = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
-	Endpoint         = &Error{synopsis: "endpoint error", kinds: []string{"endpoint"}, httpStatus: http.StatusBadGateway}
+	Endpoint         = &Error{synopsis: "endpoint error", Contexts: []string{"endpoint"}, kinds: []string{"endpoint"}, httpStatus: http.StatusBadGateway}
 	Evaluation       = &Error{synopsis: "expression evaluation error", kinds: []string{"evaluation"}, httpStatus: http.StatusInternalServerError}
 	Configuration    = &Error{synopsis: "configuration error", kinds: []string{"configuration"}, httpStatus: http.StatusInternalServerError}
 	MethodNotAllowed = &Error{synopsis: "method not allowed error", httpStatus: http.StatusMethodNotAllowed}

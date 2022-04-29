@@ -23,9 +23,9 @@ var Definitions = []*Error{
 	AccessControl.Kind("beta_insufficient_permissions").Context("api").Context("endpoint"),
 
 	Backend,
-	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest).Context("api").Context("endpoint"),
-	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout).Context("api").Context("endpoint"),
+	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
+	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
 
-	Endpoint.Kind("sequence").Context("endpoint"),
-	Endpoint.Kind("unexpected_status").Context("endpoint"),
+	Endpoint.Kind("sequence"),
+	Endpoint.Kind("unexpected_status"),
 }

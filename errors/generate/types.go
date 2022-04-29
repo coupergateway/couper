@@ -96,9 +96,10 @@ func IsKnown(errorType string) bool {
 	var superKindsMapsByContext = make(map[string]map[string][]string)
 
 	for _, def := range errors.Definitions {
-		if def.Contexts == nil {
+		if def.IsParent() || def.Contexts == nil || len(def.Contexts) == 0 {
 			continue
 		}
+		// use only leaf types with context(s)
 		for _, context := range def.Contexts {
 			superKindsMaps, exists := superKindsMapsByContext[context]
 			if !exists {
