@@ -8,7 +8,7 @@
   - [Endpoint related error_handler](#endpoint-related-error_handler)
   - [Error types](#error-types)
     - [Access control error types](#access-control-error-types)
-    - [API/endpoint error types](#api-and-endpoint-error-types)
+    - [API error types](#api-error-types)
     - [Endpoint error types](#endpoint-error-types)
 
 ## Introduction
@@ -52,7 +52,7 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | `saml` (or `saml2`)                             | All `saml` related errors                                                                                                    | Send error template with status `403`.                                      |
 | `oauth2`                                        | All `beta_oauth2`/`oidc` related errors                                                                                      | Send error template with status `403`.                                      |
 
-### API and endpoint error types
+### API error types
 
 | Type (and super types)                          | Description                                                                                             | Default handling                                                            |
 |:------------------------------------------------|:--------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
@@ -68,5 +68,6 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | `backend`                                       | All catchable `backend` related errors | Send error template with status `502`. |
 | `backend_openapi_validation` (`backend`)        | Client request or backend response is invalid | Send error template with status code `400` for invalid client request or `502` for invalid backend response. |
 | `backend_timeout` (`backend`)                   | A backend request timed out | Send error template with status `504`. |
+| `beta_insufficient_permissions`                 | The permission required for the requested operation is not in the permissions granted to the requester. | Send error template with status `403`.                               |
 | `sequence`                                      | A `request` or `proxy` block request has been failed while depending on another one              | Send error template with status `502`.                                      |
 | `unexpected_status`                             | A `request` or `proxy` block response status code does not match the to `expected_status` list   | Send error template with status `502`.                                      |
