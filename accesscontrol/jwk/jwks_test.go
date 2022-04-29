@@ -66,7 +66,7 @@ func Test_JWKS_Load(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
-			_, err = jwks.Data("")
+			_, err = jwks.Data()
 			if err != nil && tt.expParsed {
 				subT.Error("no jwks parsed")
 			}
@@ -95,7 +95,7 @@ func Test_JWKS_GetSigKeyForToken(t *testing.T) {
 			helper := test.New(subT)
 			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
-			_, err = jwks.Data("")
+			_, err = jwks.Data()
 			helper.Must(err)
 			token := &jwt.Token{Header: map[string]interface{}{"kid": tt.kid, "alg": tt.alg}}
 			jwk, err := jwks.GetSigKeyForToken(token)
@@ -147,7 +147,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 			helper := test.New(subT)
 			jwks, err := jwk.NewJWKS("file:"+tt.file, "", nil)
 			helper.Must(err)
-			_, err = jwks.Data("")
+			_, err = jwks.Data()
 			helper.Must(err)
 			jwk, err := jwks.GetKey(tt.kid, tt.alg, tt.use)
 			if jwk == nil && tt.expFound {
