@@ -91,9 +91,37 @@ func IsKnown(errorType string) bool {
 }
 
 `))
-
 	must(err)
 
+	var superKindsMapsByContext = make(map[string]map[string][]string)
+
+	for _, def := range errors.Definitions {
+		if def.IsParent() || def.Contexts == nil || len(def.Contexts) == 0 {
+			continue
+		}
+		// use only leaf types with context(s)
+		for _, context := range def.Contexts {
+			superKindsMaps, exists := superKindsMapsByContext[context]
+			if !exists {
+				superKindsMaps = make(map[string][]string)
+				superKindsMapsByContext[context] = superKindsMaps
+			}
+			kinds := append(def.Kinds(), "*")
+			kind := kinds[0]
+			kinds = kinds[1:]
+			for _, k := range kinds {
+				superKindsMaps[k] = append(superKindsMaps[k], kind)
+			}
+		}
+	}
+
+	_, err = io.WriteString(generated, fmt.Sprintf(`
+// SuperTypesMapsByContext holds maps for error super-types to sub-types
+// by a given context block type (e.g. api or endpoint).
+var SuperTypesMapsByContext = `))
+	must(err)
+	_, err = io.WriteString(generated, fmt.Sprintf("%#v\n", superKindsMapsByContext))
+	must(err)
 }
 
 // isDefined checks if the given typeName is defined and must be skipped for declaration with true result.

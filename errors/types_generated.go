@@ -50,3 +50,7 @@ func IsKnown(errorType string) bool {
 	_, known := types[errorType]
 	return known
 }
+
+// SuperTypesMapsByContext holds maps for error super-types to sub-types
+// by a given context block type (e.g. api or endpoint).
+var SuperTypesMapsByContext = map[string]map[string][]string{"api": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "backend_timeout"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "backend_timeout"}}, "endpoint": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "backend_timeout", "sequence", "unexpected_status"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "backend_timeout"}, "endpoint": []string{"sequence", "unexpected_status"}}}

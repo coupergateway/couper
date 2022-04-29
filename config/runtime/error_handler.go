@@ -8,38 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 )
-
-type superTypeMap map[string][]string
-
-var superTypesMapsByContext = map[string]superTypeMap{
-	"api": {
-		"backend": {
-			"backend_openapi_validation",
-			"backend_timeout",
-		},
-		"*": {
-			"backend_openapi_validation",
-			"backend_timeout",
-			"beta_insufficient_permissions",
-		},
-	},
-	"endpoint": {
-		"backend": {
-			"backend_openapi_validation",
-			"backend_timeout",
-		},
-		"*": {
-			"backend_openapi_validation",
-			"backend_timeout",
-			"beta_insufficient_permissions",
-			"sequence",
-			"unexpected_status",
-		},
-	},
-}
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
 	defs ACDefinitions, references ...string) (http.Handler, error) {
@@ -57,7 +29,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 
-		if superKindMap, mapExists := superTypesMapsByContext[ref]; mapExists {
+		if superKindMap, mapExists := errors.SuperTypesMapsByContext[ref]; mapExists {
 			// expand super-kinds:
 			// * set super-kind error handler for mapped sub-kinds, if no error handler for this sub-kind is already set
 			// * remove super-kind error handler for super-kind
