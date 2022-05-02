@@ -224,15 +224,6 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 	shutdown, logHook := newCouper(filepath.Join(testdataPath, "01_couper.hcl"), helper)
 	defer shutdown()
 
-	defer func() {
-		if !t.Failed() {
-			return
-		}
-		for _, e := range logHook.AllEntries() {
-			println(e.String())
-		}
-	}()
-
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1", nil)
 	helper.Must(err)
 
@@ -246,16 +237,16 @@ func TestEndpoints_ProxyReqRes(t *testing.T) {
 		t.Fatalf("Expected 5 log entries, given %d", l)
 	}
 
-	if res.StatusCode != http.StatusNotFound {
-		t.Errorf("Expected status 404, given %d", res.StatusCode)
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, given %d", res.StatusCode)
 	}
 
 	resBytes, err := io.ReadAll(res.Body)
 	helper.Must(err)
-	res.Body.Close()
+	helper.Must(res.Body.Close())
 
-	if string(resBytes) != "1616" {
-		t.Errorf("Expected body 1616, given %s", resBytes)
+	if string(resBytes) != "800" {
+		t.Errorf("Expected body bytes: 800, given %s", resBytes)
 	}
 }
 
@@ -352,17 +343,6 @@ func TestEndpoints_ProxyReqResCancel(t *testing.T) {
 
 	shutdown, logHook := newCouper(filepath.Join(testdataPath, "01_couper.hcl"), helper)
 	defer shutdown()
-
-	defer func() {
-		if t.Failed() {
-			for _, e := range logHook.Entries {
-				println(e.String())
-				if d, ok := e.Data["panic"]; ok {
-					println(d)
-				}
-			}
-		}
-	}()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/v1?delay=5s", nil)
 	helper.Must(err)
@@ -523,12 +503,12 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 	helper.Must(err)
 	res.Body.Close()
 
-	if !bytes.Contains(resBytes, []byte("<html>configuration error</html>")) {
-		t.Errorf("Expected body '<html>configuration error</html>', given '%s'", resBytes)
+	if !bytes.Contains(resBytes, []byte("<html>backend error</html>")) {
+		t.Errorf("Expected body '<html>backend error</html>', given '%s'", resBytes)
 	}
 
 	// header from error handling is set
-	if v := res.Header.Get("couper-error"); v != "configuration error" {
+	if v := res.Header.Get("couper-error"); v != "backend error" {
 		t.Errorf("want couper-error 'configuration error', got %q", v)
 	}
 

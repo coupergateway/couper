@@ -71,14 +71,6 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	outCtx := context.WithValue(req.Context(), request.EndpointExpectedStatus, seetie.ValueToIntSlice(expStatusVal))
 
-	urlVal, err := eval.ValueFromBodyAttribute(hclCtx, p.context, "url")
-	if err != nil {
-		return nil, err
-	}
-
-	if url := seetie.ValueToString(urlVal); url != "" {
-		outCtx = context.WithValue(outCtx, request.URLAttribute, url)
-	}
 	*req = *req.WithContext(outCtx)
 
 	if err = p.registerWebsocketsResponse(req); err != nil {

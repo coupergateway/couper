@@ -1294,24 +1294,28 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 		{"03_couper.hcl", expectation{
 			Path: "/anything",
 			Query: url.Values{
+				"a": []string{"A"},
 				"x": []string{"y"},
 			},
 		}},
 		{"04_couper.hcl", expectation{
 			Path: "/anything",
 			Query: url.Values{
+				"a": []string{"A"},
 				"x": []string{"y"},
 			},
 		}},
 		{"05_couper.hcl", expectation{
 			Path: "/anything",
 			Query: url.Values{
+				"a": []string{"A"},
 				"x": []string{"y"},
 			},
 		}},
 		{"06_couper.hcl", expectation{
 			Path: "/anything",
 			Query: url.Values{
+				"a": []string{"A"},
 				"x": []string{"y"},
 			},
 		}},
@@ -1417,7 +1421,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 		{expectation{
 			Body:   "body",
 			Method: "PUT",
-			Path:   "/anything",
+			Path:   "/anything/",
 			Query: url.Values{
 				"q": []string{"query"},
 			},
@@ -5374,6 +5378,61 @@ func TestEndpoint_ForLoop(t *testing.T) {
 			result := string(resBytes)
 			if result != tc.expResult {
 				subT.Errorf("Want: %s, got: %v", tc.expResult, result)
+			}
+		})
+	}
+}
+
+func TestWildcardURLAttribute(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/url/07_couper.hcl", test.New(t))
+	defer shutdown()
+
+	for _, testcase := range []struct{ path, expectedPath, expectedQuery string }{
+		{"/req/anything", "/anything", ""},
+		{"/req/anything/", "/anything/", ""},
+		{"/req-query/anything/?a=b", "/anything/", "a=c"},
+		{"/req-backend/anything/?a=b", "/anything/", "a=c"},
+		{"/proxy/anything", "/anything", ""},
+		{"/proxy/anything/", "/anything/", ""},
+		{"/proxy-query/anything/?a=b", "/anything/", "a=c"},
+		{"/proxy-backend/anything", "/anything", ""},
+		{"/proxy-backend-rel/anything?a=b", "/anything", "a=c"},
+		{"/proxy-backend-path/other-wildcard?a=b", "/anything", "a=c"},
+	} {
+		t.Run(testcase.path[1:], func(st *testing.T) {
+			helper := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+testcase.path, nil)
+			helper.Must(err)
+
+			hook.Reset()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				st.Error("expected status OK")
+			}
+
+			b, err := io.ReadAll(res.Body)
+			helper.Must(res.Body.Close())
+			helper.Must(err)
+
+			type result struct {
+				Path     string
+				RawQuery string
+			}
+			r := result{}
+			helper.Must(json.Unmarshal(b, &r))
+			//st.Logf("%v", r)
+
+			if testcase.expectedPath != r.Path {
+				st.Errorf("Expected path: %q, got: %q", testcase.expectedPath, r.Path)
+			}
+
+			if testcase.expectedQuery != r.RawQuery {
+				st.Errorf("Expected query: %q, got: %q", testcase.expectedQuery, r.RawQuery)
 			}
 		})
 	}

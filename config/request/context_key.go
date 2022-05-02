@@ -35,7 +35,6 @@ const (
 	TokenRequest
 	TokenRequestRetries
 	UID
-	URLAttribute
 	WebsocketsAllowed
 	WebsocketsTimeout
 	Wildcard

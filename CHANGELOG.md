@@ -10,6 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
+  * `url` attribute could make use of our wildcard pattern `/**` and relative urls in combination with a backend reference ([#480](https://github.com/avenga/couper/pull/480))
   * Error handling for `backend`, `backend_openapi_validation` and `backend_timeout` error types ([#490](https://github.com/avenga/couper/pull/490))
 
 * **Changed**
