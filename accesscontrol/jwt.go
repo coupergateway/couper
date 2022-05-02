@@ -224,10 +224,9 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	ctx := req.Context()
 	if j.jwks != nil {
-		// load JWKS if needed and associate with request uid
-		j.jwks.Data(ctx.Value(request.UID).(string))
+		// load JWKS if needed
+		j.jwks.Data()
 	}
 
 	parser := newParser(j.algorithms, iss, aud)
@@ -249,6 +248,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenInvalid.With(err)
 	}
 
+	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})

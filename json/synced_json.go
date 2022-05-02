@@ -90,7 +90,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 	}
 }
 
-func (s *SyncedJSON) Data(_ string) (interface{}, error) {
+func (s *SyncedJSON) Data() (interface{}, error) {
 	if s.fileMode {
 		return s.data, nil
 	}

@@ -1,6 +1,8 @@
 package server_test
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -123,6 +125,58 @@ func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	}
 }
 
+func TestErrorHandler_Backend(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/05_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testcase struct {
+		path      string
+		expBody   string
+		expStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"/api-backend", `{"api":"backend"}`, 405},
+		{"/api-backend-timeout", `{"api":"backend-timeout"}`, 405},
+		{"/api-backend-validation", `{"api":"backend-validation"}`, 405},
+		{"/api-anything", `{"api":"backend-backend-validation"}`, 405},
+		{"/backend", `{"endpoint":"backend"}`, 405},
+		{"/backend-timeout", `{"endpoint":"backend-timeout"}`, 405},
+		{"/backend-validation", `{"endpoint":"backend-validation"}`, 405},
+		{"/anything", `{"endpoint":"backend-backend-validation"}`, 405},
+		{"/c", `endpoint:backend_openapi_validation`, 405},
+		{"/d", `endpoint:backend`, 405},
+		{"/e", `endpoint:backend_openapi_validation`, 405},
+		{"/f", `endpoint:*`, 405},
+		{"/g", `endpoint:backend`, 405},
+		{"/h", `endpoint:*`, 405},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			helper := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Fatalf("want: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			resBytes, err := io.ReadAll(res.Body)
+			defer res.Body.Close()
+			helper.Must(err)
+
+			if !bytes.Contains(resBytes, []byte(tc.expBody)) {
+				st.Fatalf("want: %s, got: %s", tc.expBody, resBytes)
+			}
+		})
+	}
+}
+
 func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 	client := test.NewHTTPClient()
 
@@ -188,4 +242,16 @@ func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 		})
 	}
 
+}
+
+func Test_Panic_Multi_EH(t *testing.T) {
+	_, err := configload.LoadFiles("testdata/settings/16_couper.hcl", "")
+
+	expectedMsg := `: duplicate error type registration: "*"; `
+
+	if err == nil {
+		t.Error("config error should not be nil")
+	} else if !strings.HasSuffix(err.Error(), expectedMsg) {
+		t.Errorf("\nwant:\t'%s'\nin:\t\t'%s'", expectedMsg, err.Error())
+	}
 }

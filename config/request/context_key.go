@@ -8,6 +8,7 @@ const (
 	AccessControls
 	BackendName
 	BackendParams
+	BackendTokenRequest
 	BetaGrantedPermissions
 	BetaRequiredPermission
 	BufferOptions

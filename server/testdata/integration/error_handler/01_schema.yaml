@@ -1,0 +1,13 @@
+openapi: '3'
+info:
+  title: 'Test'
+  version: 'v1.2.3'
+paths:
+  /api-backend-validation:
+    get:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true

@@ -11,10 +11,12 @@ type Error struct {
 	// log: synopsis label message inner(Error())
 	httpStatus int
 	inner      error    // wrapped error
+	isParent   bool     // is a parent (no leaf) node in the error type hierarchy
 	kinds      []string // error_handler "event" names and relation
 	label      string   // mostly the user configured label for e.g. access_control or backend
 	message    string   // additional custom message
 	synopsis   string   // seen by client
+	Contexts   []string // context block types (e.g. api or endpoint)
 }
 
 type GoError interface {
@@ -52,6 +54,8 @@ func (e *Error) Status(s int) *Error {
 // Latest added should be the more specific ones.
 func (e *Error) Kind(name string) *Error {
 	err := e.clone()
+	e.isParent = true
+	err.isParent = false
 	err.kinds = append(err.kinds, name)
 	return err
 }
@@ -72,6 +76,17 @@ func (e *Error) Kinds() []string {
 	}
 
 	return reversed
+}
+
+// Context appends the given context block type to the existing ones.
+func (e *Error) Context(name string) *Error {
+	err := e.clone()
+	err.Contexts = append(err.Contexts, name)
+	return err
+}
+
+func (e *Error) IsParent() bool {
+	return e.isParent
 }
 
 func (e *Error) Label(name string) *Error {
@@ -102,6 +117,8 @@ func (e *Error) With(inner error) *Error {
 func (e *Error) clone() *Error {
 	err := *e
 	err.kinds = e.kinds[:]
+	err.Contexts = e.Contexts[:]
+	err.isParent = e.isParent
 	return &err
 }
 

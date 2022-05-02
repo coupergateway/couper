@@ -20,9 +20,11 @@ var Definitions = []*Error{
 	AccessControl.Kind("saml2"),
 	AccessControl.Kind("saml2").Kind("saml"),
 
-	AccessControl.Kind("beta_insufficient_permissions"),
+	AccessControl.Kind("beta_insufficient_permissions").Context("api").Context("endpoint"),
 
-	BackendValidation,
+	Backend,
+	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
+	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
 
 	Endpoint.Kind("sequence"),
 	Endpoint.Kind("unexpected_status"),

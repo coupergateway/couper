@@ -10,20 +10,18 @@ import (
 const Wildcard = "*"
 
 var (
-	AccessControl     = &Error{synopsis: "access control error", kinds: []string{"access_control"}, httpStatus: http.StatusForbidden}
-	Backend           = &Error{synopsis: "backend error", httpStatus: http.StatusBadGateway}
-	BackendTimeout    = &Error{synopsis: "backend timeout error", httpStatus: http.StatusGatewayTimeout}
-	BackendValidation = &Error{synopsis: "backend validation error", kinds: []string{"backend_validation"}, httpStatus: http.StatusBadRequest}
-	ClientRequest     = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
-	Endpoint          = &Error{synopsis: "endpoint error", kinds: []string{"endpoint"}, httpStatus: http.StatusBadGateway}
-	Evaluation        = &Error{synopsis: "expression evaluation error", kinds: []string{"evaluation"}, httpStatus: http.StatusInternalServerError}
-	Configuration     = &Error{synopsis: "configuration error", kinds: []string{"configuration"}, httpStatus: http.StatusInternalServerError}
-	MethodNotAllowed  = &Error{synopsis: "method not allowed error", httpStatus: http.StatusMethodNotAllowed}
-	Proxy             = &Error{synopsis: "proxy error", httpStatus: http.StatusBadGateway}
-	Request           = &Error{synopsis: "request error", httpStatus: http.StatusBadGateway}
-	RouteNotFound     = &Error{synopsis: "route not found error", httpStatus: http.StatusNotFound}
-	Server            = &Error{synopsis: "internal server error", httpStatus: http.StatusInternalServerError}
-	ServerShutdown    = &Error{synopsis: "server shutdown error", httpStatus: http.StatusInternalServerError}
+	AccessControl    = &Error{synopsis: "access control error", kinds: []string{"access_control"}, httpStatus: http.StatusForbidden}
+	Backend          = &Error{synopsis: "backend error", Contexts: []string{"api", "endpoint"}, kinds: []string{"backend"}, httpStatus: http.StatusBadGateway}
+	ClientRequest    = &Error{synopsis: "client request error", httpStatus: http.StatusBadRequest}
+	Endpoint         = &Error{synopsis: "endpoint error", Contexts: []string{"endpoint"}, kinds: []string{"endpoint"}, httpStatus: http.StatusBadGateway}
+	Evaluation       = &Error{synopsis: "expression evaluation error", kinds: []string{"evaluation"}, httpStatus: http.StatusInternalServerError}
+	Configuration    = &Error{synopsis: "configuration error", kinds: []string{"configuration"}, httpStatus: http.StatusInternalServerError}
+	MethodNotAllowed = &Error{synopsis: "method not allowed error", httpStatus: http.StatusMethodNotAllowed}
+	Proxy            = &Error{synopsis: "proxy error", httpStatus: http.StatusBadGateway}
+	Request          = &Error{synopsis: "request error", httpStatus: http.StatusBadGateway}
+	RouteNotFound    = &Error{synopsis: "route not found error", httpStatus: http.StatusNotFound}
+	Server           = &Error{synopsis: "internal server error", httpStatus: http.StatusInternalServerError}
+	ServerShutdown   = &Error{synopsis: "server shutdown error", httpStatus: http.StatusInternalServerError}
 )
 
 func TypeToSnake(t interface{}) string {

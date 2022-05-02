@@ -8,14 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 )
-
-var wildcardMap = map[string][]string{
-	"api":      {"beta_insufficient_permissions"},
-	"endpoint": {"beta_insufficient_permissions", "sequence", "unexpected_status"},
-}
 
 func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
 	defs ACDefinitions, references ...string) (http.Handler, error) {
@@ -33,19 +29,21 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 			}
 		}
 
-		// this works if wildcard is the only "super kind"
-		if mappedKinds, mkExists := wildcardMap[ref]; mkExists {
-			// expand wildcard:
-			// * set wildcard error handler for mapped kinds, no error handler for this kind is already set
-			// * remove wildcard error handler for wildcard
-			if wcHandler, wcExists := handlersPerKind["*"]; wcExists {
-				for _, mk := range mappedKinds {
-					if _, exists := handlersPerKind[mk]; !exists {
-						handlersPerKind[mk] = wcHandler
+		if superKindMap, mapExists := errors.SuperTypesMapsByContext[ref]; mapExists {
+			// expand super-kinds:
+			// * set super-kind error handler for mapped sub-kinds, if no error handler for this sub-kind is already set
+			// * remove super-kind error handler for super-kind
+			for superKind, subKinds := range superKindMap {
+				if skHandler, skExists := handlersPerKind[superKind]; skExists {
+					for _, subKind := range subKinds {
+						if _, exists := handlersPerKind[subKind]; !exists {
+							handlersPerKind[subKind] = skHandler
+						}
 					}
+
+					delete(handlersPerKind, superKind)
 				}
 			}
-			delete(handlersPerKind, "*")
 		}
 
 		for k, h := range handlersPerKind {
