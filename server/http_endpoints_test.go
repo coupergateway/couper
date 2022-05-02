@@ -503,12 +503,12 @@ func TestEndpoints_DoNotExecuteResponseOnErrors(t *testing.T) {
 	helper.Must(err)
 	res.Body.Close()
 
-	if !bytes.Contains(resBytes, []byte("<html>backend timeout error</html>")) {
-		t.Errorf("Expected body '<html>backend timeout error</html>', given '%s'", resBytes)
+	if !bytes.Contains(resBytes, []byte("<html>backend error</html>")) {
+		t.Errorf("Expected body '<html>backend error</html>', given '%s'", resBytes)
 	}
 
 	// header from error handling is set
-	if v := res.Header.Get("couper-error"); v != "backend timeout error" {
+	if v := res.Header.Get("couper-error"); v != "backend error" {
 		t.Errorf("want couper-error 'configuration error', got %q", v)
 	}
 
