@@ -73,7 +73,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 		case <-expired:
 			err = s.fetch()
 			if err != nil {
-				time.Sleep(backoff)
+				expired = time.After(backoff)
 				if backoff < time.Minute {
 					backoff *= 2
 				}
