@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -119,5 +121,51 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 		helper.Must(err)
 
 		helper.Must(res.Body.Close())
+	}
+}
+
+// TestBackend_WithoutOrigin expects the listed errors to ensure no host from the client-request
+// leaks into the backend structure for connecting to the origin.
+func TestBackend_WithoutOrigin(t *testing.T) {
+	helper := test.New(t)
+	shutdown, hook := newCouper("testdata/integration/backends/01_couper.hcl", helper)
+	defer shutdown()
+
+	client := test.NewHTTPClient()
+
+	for _, tc := range []struct {
+		path    string
+		message string
+	}{
+		{"/proxy/path", `configuration error: anonymous_6_13: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
+		{"/proxy/backend-path", `configuration error: anonymous_15_13: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
+		{"/proxy/url", `configuration error: anonymous_24_13: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
+		{"/request/backend-path", `configuration error: anonymous_37_15: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
+		{"/request/url", `configuration error: anonymous_46_13: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			hook.Reset()
+
+			h := test.New(st)
+			req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080"+tc.path, nil)
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusInternalServerError {
+				st.Errorf("want: 500, got %d", res.StatusCode)
+			}
+
+			for _, e := range hook.AllEntries() {
+				if e.Level != logrus.ErrorLevel {
+					continue
+				}
+
+				if e.Message != tc.message {
+					st.Errorf("\nwant: %q\ngot:  %q\n", tc.message, e.Message)
+				}
+			}
+
+		})
+
 	}
 }

@@ -49,14 +49,14 @@ server "api" {
 definitions {
   # backend origin within a definition block gets replaced with the integration test "anything" server.
   backend "proxy" {
-    path = "/override/me"
+    path = "/anything"
     origin = env.COUPER_TEST_BACKEND_ADDR
     set_request_headers = {
       x-data = "proxy-test"
     }
   }
   backend "request" {
-    path = "/override/me"
+    path = "/anything"
     origin = env.COUPER_TEST_BACKEND_ADDR
     set_request_headers = {
       x-data = "request-test"

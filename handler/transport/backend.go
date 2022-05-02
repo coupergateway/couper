@@ -296,7 +296,6 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 	// Reset for upstream transport; prevent mixing values.
 	// tokenRequest will have their own backend configuration.
 	ctx = context.WithValue(ctx, request.BackendParams, nil)
-	ctx = context.WithValue(ctx, request.URLAttribute, "")
 
 	// WithContext() instead of Clone() due to header-map modification.
 	return b.tokenRequest.WithToken(req.WithContext(ctx))
@@ -457,38 +456,18 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 	} else if strings.HasPrefix(originURL.Host, originURL.Scheme+":") {
 		return nil, errors.Configuration.Label(b.name).
 			Messagef("invalid url: %s", originURL.String())
-	}
-
-	urlAttrValue, _ := req.Context().Value(request.URLAttribute).(string)
-
-	if urlAttrValue != "" {
-		urlAttr, err := url.Parse(urlAttrValue)
-		if err != nil {
-			return nil, errors.Configuration.Label(b.name).With(err)
-		}
-
-		if origin != "" && oidcBackend == "" && urlAttr.Host != originURL.Host {
-			errctx := "url"
-			if tr := req.Context().Value(request.TokenRequest); tr != nil {
-				errctx = "token_endpoint"
-			}
-			return nil, errors.Configuration.Label(b.name).Kind(errctx).
-				Messagef("backend: the host '%s' must be equal to 'backend.origin' host: '%s'",
-					urlAttr.Host, originURL.Host)
-		}
-
-		originURL.Host = urlAttr.Host
-		originURL.Scheme = urlAttr.Scheme
-		req.URL.Scheme = urlAttr.Scheme
-
-		if urlAttr.Path != "" {
-			req.URL.Path = urlAttr.Path
-		}
-
-		if urlAttr.RawQuery != "" {
-			req.URL.RawQuery = urlAttr.RawQuery
-		}
-	}
+	} else if origin == "" {
+		originURL = req.URL
+	} // TODO: still required???
+	//} else if origin != "" && req.URL.Host != originURL.Host {
+	//	errctx := "url"
+	//	if tr := req.Context().Value(request.TokenRequest); tr != nil {
+	//		errctx = "token_endpoint"
+	//	}
+	//	return nil, errors.Configuration.Label(b.name).Kind(errctx).
+	//		Messagef("backend: the host '%s' must be equal to 'backend.origin' host: '%s'",
+	//			req.URL.Host, originURL.Host)
+	//}
 
 	if hostname == "" {
 		hostname = originURL.Host
