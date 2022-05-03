@@ -87,16 +87,15 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 			}
 
 			if k != errors.Wildcard && !errors.IsKnown(k) {
-				subjRange := block.DefRange
-				if len(block.LabelRanges) > 0 {
-					subjRange = block.LabelRanges[0]
+				if len(block.LabelRanges) == 0 {
+					block.LabelRanges = append(block.LabelRanges, block.DefRange)
 				}
-				diag := &hcl.Diagnostic{
+
+				return nil, nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  fmt.Sprintf("error type is unknown: %q", k),
-					Subject:  &subjRange,
-				}
-				return nil, nil, hcl.Diagnostics{diag}
+					Subject:  &block.LabelRanges[0],
+				}}
 			}
 
 			configuredKinds[k] = struct{}{}
