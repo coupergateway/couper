@@ -43,7 +43,7 @@ func (s *Stack) Push(e *logrus.Entry) Level {
 func (s *Stack) Fire() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	for _, item := range s.entries {
 		item.logEntry.Log(item.logEntry.Level)
 	}
