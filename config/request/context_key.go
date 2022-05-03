@@ -25,7 +25,6 @@ const (
 	LogCustomUpstream
 	LogDebugLevel
 	LogEntry
-	LogUpstreamFn
 	OpenAPI
 	PathParams
 	ResponseBlock
