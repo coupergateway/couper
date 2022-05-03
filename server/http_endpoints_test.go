@@ -125,7 +125,11 @@ func TestBackend_BackendVariable(t *testing.T) {
 		}
 
 		name := entry.Data["request"].(logging.Fields)["name"]
-		data := entry.Data["custom"].(logrus.Fields)
+		data, exist := entry.Data["custom"].(logrus.Fields)
+		if !exist {
+			t.Error("missing custom log field")
+			continue
+		}
 		// The Cookie request header is not proxied, so *-req is not set in log.
 
 		if name == "default" {
@@ -685,8 +689,6 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	hook.Reset()
-
 	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
 	helper.Must(err)
 
@@ -700,6 +702,10 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	time.Sleep(time.Second / 2)
 
 	logs := hook.AllEntries()
+
+	if len(logs) == 0 {
+		t.Fatal("missing logs")
+	}
 
 	var ctxCanceledSeen, statusOKseen bool
 	for _, entry := range logs {
