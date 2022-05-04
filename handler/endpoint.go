@@ -17,7 +17,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
-	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
 )
@@ -94,10 +93,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// subCtx is handled by this endpoint handler and should not be attached to req
 	subCtx, cancel := context.WithCancel(reqCtx)
 	defer cancel()
-
-	var logStack *logging.Stack
-	subCtx, logStack = logging.NewStack(subCtx)
-	defer logStack.Fire()
 
 	beresps, err := e.produce(req.WithContext(subCtx))
 
