@@ -32,6 +32,12 @@ server { # error_handler
       expected_status = [418]
     }
 
+    error_handler "endpoint" {
+      response {
+        status = 417
+      }
+    }
+
     error_handler "unexpected_status" {
       response {
         headers = {
