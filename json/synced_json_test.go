@@ -43,7 +43,7 @@ func Test_LoadSynced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	syncedJSON, err := jsn.NewSyncedJSON("", "", origin.URL, http.DefaultTransport, "test", time.Second*2, &unmarshaller{})
+	syncedJSON, err := jsn.NewSyncedJSON("", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{})
 	helper.Must(err)
 
 	expectJSONValue := func(expectedValue int, shouldFail bool) {
@@ -51,7 +51,11 @@ func Test_LoadSynced(t *testing.T) {
 		if err == nil && shouldFail {
 			t.Fatalf("expected sync to fail - backoff too small!?")
 		} else if err != nil && !shouldFail {
-			t.Fatalf("unexpected sync failure - backoff too large?")
+			t.Fatalf("unexpected sync failure - backoff too large? %v", err)
+		}
+
+		if o == nil {
+			t.Fatalf("expected JSON response, got: nil")
 		}
 
 		object := o.(*data)

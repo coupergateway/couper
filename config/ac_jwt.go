@@ -25,6 +25,7 @@ type JWT struct {
 	Header                string              `hcl:"header,optional"`
 	JWKsURL               string              `hcl:"jwks_url,optional"`
 	JWKsTTL               string              `hcl:"jwks_ttl,optional"`
+	JWKsMaxStale          string              `hcl:"jwks_max_stale,optional"`
 	Key                   string              `hcl:"key,optional"`
 	KeyFile               string              `hcl:"key_file,optional"`
 	Name                  string              `hcl:"name,label"`
