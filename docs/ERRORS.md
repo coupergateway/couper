@@ -41,6 +41,8 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 
 ### Access control error types
 
+The following table documents error types that can be handled in the respective access control blocks (`basic_auth`, `jwt`, `saml`, `beta_oauth2`, `oidc`):
+
 | Type (and super types)                          | Description                                                                                                                  | Default handling                                                            |
 |:------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
 | `access_control`                                | Access control related errors                                                                                                | Send error template with status `403`.                                      |
@@ -55,6 +57,8 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 
 ### API error types
 
+The following table documents error types that can be handled in `api` blocks:
+
 | Type (and super types)                             | Description                                                                                             | Default handling                                                                                              |
 |:---------------------------------------------------|:--------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------|
 | `backend`                                          | All catchable backend related errors                                                                    | Send error template with status `502`.                                                                        |
@@ -64,6 +68,8 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 | `beta_insufficient_permissions` (`access_control`) | The permission required for the requested operation is not in the permissions granted to the requester. | Send error template with status `403`.                                                                        |
 
 ### Endpoint error types
+
+The following table documents error types that can be handled in `endpoint` blocks:
 
 | Type (and super types)                             | Description                                                                                             | Default handling                                                                                              |
 |:---------------------------------------------------|:--------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------|
