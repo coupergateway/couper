@@ -15,8 +15,8 @@ var (
 	BetaInsufficientPermissions = Definitions[10]
 	BackendOpenapiValidation    = Definitions[12]
 	BackendTimeout              = Definitions[13]
-	Sequence                    = Definitions[14]
-	UnexpectedStatus            = Definitions[15]
+	Sequence                    = Definitions[15]
+	UnexpectedStatus            = Definitions[16]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -40,6 +40,7 @@ var types = typeDefinitions{
 	"backend":                        Backend,
 	"backend_openapi_validation":     BackendOpenapiValidation,
 	"backend_timeout":                BackendTimeout,
+	"endpoint":                       Endpoint,
 	"sequence":                       Sequence,
 	"unexpected_status":              UnexpectedStatus,
 }
