@@ -378,8 +378,10 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 				ttfbTimer.Reset(conf.TTFBTimeout)
 				select {
 				case <-c.Done():
-					if !ttfbTimer.Stop() {
-						<-ttfbTimer.C
+					ttfbTimer.Stop()
+					select {
+					case <-ttfbTimer.C:
+					default:
 					}
 				case t := <-ttfbTimer.C:
 					// buffered, no select done required

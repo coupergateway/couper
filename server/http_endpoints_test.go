@@ -61,7 +61,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 		responseLogs, _ := entry.Data["response"].(logging.Fields)
 		data, _ := entry.Data["custom"].(logrus.Fields)
 
-		if data != nil && entry.Data["url"] == "http://localhost:8081/token" {
+		if data != nil && entry.Data["backend"] == "anonymous_76_16" {
 			expected := logrus.Fields{
 				"x-from-request-body":       "grant_type=client_credentials",
 				"x-from-request-form-body":  "client_credentials",
@@ -699,7 +699,7 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 		helper.Must(err)
 	}
 
-	time.Sleep(time.Second / 2)
+	time.Sleep(time.Second * 2)
 
 	logs := hook.AllEntries()
 
@@ -733,7 +733,6 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	if !ctxCanceledSeen || !statusOKseen {
 		t.Errorf("Expected one sucessful and one failed backend request")
 	}
-
 }
 
 func TestEndpointSequenceBackendTimeout(t *testing.T) {
