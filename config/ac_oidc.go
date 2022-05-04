@@ -22,11 +22,14 @@ type OIDC struct {
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
 	ConfigurationURL        string   `hcl:"configuration_url"`
+	JWKsTTL                 string   `hcl:"jwks_ttl,optional"`
+	JWKsMaxStale            string   `hcl:"jwks_max_stale,optional"`
 	Name                    string   `hcl:"name,label"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	ConfigurationTTL        string   `hcl:"configuration_ttl,optional"`
+	ConfigurationMaxStale   string   `hcl:"configuration_max_stale,optional"`
 	VerifierMethod          string   `hcl:"verifier_method,optional"`
 
 	// configuration related backends
