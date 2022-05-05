@@ -63,7 +63,7 @@ var (
 		must(err)
 	}
 
-	_, err = io.WriteString(generated, fmt.Sprintf(`)
+	_, err = io.WriteString(generated, `)
 
 // typeDefinitions holds all related error definitions which are
 // catchable with an error_handler definition.
@@ -72,7 +72,7 @@ type typeDefinitions map[string]*Error
 // types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var types = typeDefinitions{
-`))
+`)
 
 	must(err)
 
@@ -81,7 +81,7 @@ var types = typeDefinitions{
 		must(err)
 	}
 
-	_, err = io.WriteString(generated, fmt.Sprintf(`}
+	_, err = io.WriteString(generated, `}
 
 // IsKnown tells the configuration callee if Couper
 // has a defined error type with the given name.
@@ -90,7 +90,7 @@ func IsKnown(errorType string) bool {
 	return known
 }
 
-`))
+`)
 	must(err)
 
 	var superKindsMapsByContext = make(map[string]map[string][]string)
@@ -115,10 +115,10 @@ func IsKnown(errorType string) bool {
 		}
 	}
 
-	_, err = io.WriteString(generated, fmt.Sprintf(`
+	_, err = io.WriteString(generated, `
 // SuperTypesMapsByContext holds maps for error super-types to sub-types
 // by a given context block type (e.g. api or endpoint).
-var SuperTypesMapsByContext = `))
+var SuperTypesMapsByContext = `)
 	must(err)
 	_, err = io.WriteString(generated, fmt.Sprintf("%#v\n", superKindsMapsByContext))
 	must(err)
