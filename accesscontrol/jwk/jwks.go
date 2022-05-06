@@ -114,13 +114,10 @@ func (j *JWKS) getKeys(kid string) ([]*JWK, error) {
 
 func (j *JWKS) Data() (*JWKSData, error) {
 	data, err := j.syncedJSON.Data()
-	if err != nil {
-		return nil, err
-	}
-
+	// Ignore backend errors as long as we still get cached (stale) data.
 	jwksData, ok := data.(*JWKSData)
 	if !ok {
-		return nil, fmt.Errorf("data not JWKS data: %#v", data)
+		return nil, fmt.Errorf("received no valid JWKs data: %#v, %w", data, err)
 	}
 
 	return jwksData, nil

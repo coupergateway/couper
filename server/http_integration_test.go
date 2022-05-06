@@ -3518,6 +3518,78 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 }
 
+func TestJWKsMaxStale(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	config := `
+	  server {
+	    endpoint "/" {
+	    access_control = ["stale"]
+	      response {
+	        body = "hi"
+	      }
+	    }
+	  }
+	  definitions {
+	    jwt "stale" {
+	      jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+	      jwks_ttl = "3s"
+	      jwks_max_stale = "2s"
+	      backend {
+	        origin = env.COUPER_TEST_BACKEND_ADDR
+	        set_request_headers = {
+	          Self-Destruct: ` + fmt.Sprint(time.Now().Add(2*time.Second).Unix()) + `
+	        }
+	      }
+	    }
+	  }
+	`
+
+	shutdown, hook := newCouperWithBytes([]byte(config), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
+	helper.Must(err)
+
+	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+
+	req.Header = http.Header{"Authorization": []string{"Bearer " + rsaToken}}
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != 200 {
+		message := getAccessControlMessages(hook)
+		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
+	}
+
+	time.Sleep(3 * time.Second)
+	// TTL 3s, backend is already failing, responds with stale JWKS
+
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != 200 {
+		message := getAccessControlMessages(hook)
+		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
+	}
+
+	time.Sleep(3 * time.Second)
+	// stale time (2s) exhausted -> 403
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	time.Sleep(time.Second)
+	message := getAccessControlMessages(hook)
+	if res.StatusCode != 403 {
+		t.Fatalf("expected status %d, got: %d (%s)", 403, res.StatusCode, message)
+	}
+
+	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"
+	if message != expectedMessage {
+		t.Fatalf("expected message %q, got: %q", expectedMessage, message)
+	}
+}
+
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
 	couperConfig, err := configload.LoadFiles("testdata/integration/config/05_couper.hcl", "")
