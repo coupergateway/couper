@@ -20,6 +20,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * removed `beta_operation_denied` and `beta_scope` [error types](./docs/ERRORS.md#api-and-endpoint-error-types)
     * renamed `beta_insufficient_scope` [error type](./docs/ERRORS.md#api-and-endpoint-error-types) to `beta_insufficient_permissions`
     * added `request.context.beta_required_permission` and `request.context.beta_granted_permissions` [request variables](./docs/REFERENCE.md#request)
+  * `expected_status` of [`beta_health`](./docs/REFERENCE.md#beta_health-block) now accepts a tuple of statuses ([#503](https://github.com/avenga/couper/pull/503))
   * Clarified the type of various [attributes/variables](./docs/REFERENCE.md) ([#485](https://github.com/avenga/couper/pull/485))
 
 * **Fixed**
