@@ -17,7 +17,7 @@ type unmarshaller struct {
 }
 
 type data struct {
-	Foo int `json:foo`
+	Foo int `json:"foo"`
 }
 
 func (u *unmarshaller) Unmarshal(rawJSON []byte) (interface{}, error) {
