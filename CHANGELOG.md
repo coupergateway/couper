@@ -12,6 +12,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
   * `url` attribute could make use of our wildcard pattern `/**` and relative urls in combination with a backend reference ([#480](https://github.com/avenga/couper/pull/480))
   * Error handling for `backend`, `backend_openapi_validation` and `backend_timeout` error types ([#490](https://github.com/avenga/couper/pull/490))
+  * `response.bytes` log-field to backend logs if read from body, fallback is the `Content-Length` header ([#494](https://github.com/avenga/couper/pull/494))
 
 * **Changed**
   * Permission handling: ([#477](https://github.com/avenga/couper/pull/477))

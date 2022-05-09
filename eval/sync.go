@@ -5,7 +5,11 @@ import (
 	"sync"
 
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config/request"
 )
+
+const TokenRequestPrefix = "_tr_"
 
 type SyncedVariables struct {
 	items sync.Map
@@ -20,11 +24,18 @@ func NewSyncedVariables() *SyncedVariables {
 type syncPair struct {
 	name          string
 	bereq, beresp cty.Value
+	tokenRequest  bool
 }
 
 // Set finalized cty req/resp pair.
 func (sv *SyncedVariables) Set(beresp *http.Response) {
-	name, bereqV, berespV := newBerespValues(beresp.Request.Context(), true, beresp)
+	ctx := beresp.Request.Context()
+	name, bereqV, berespV := newBerespValues(ctx, true, beresp)
+
+	if tr, ok := ctx.Value(request.TokenRequest).(string); ok && tr != "" {
+		name = TokenRequestPrefix + name
+	}
+
 	sv.items.Store(name, &syncPair{
 		name:   name,
 		bereq:  bereqV,
@@ -46,12 +57,13 @@ func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
 		if bereqs == nil {
 			bereqs = make(map[string]cty.Value)
 		}
-		bereqs[p.name] = p.bereq
+		name := key.(string)
+		bereqs[name] = p.bereq
 
 		if beresps == nil {
 			beresps = make(map[string]cty.Value)
 		}
-		beresps[p.name] = p.beresp
+		beresps[name] = p.beresp
 
 		return true
 	})

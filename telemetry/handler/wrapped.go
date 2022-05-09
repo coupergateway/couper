@@ -20,9 +20,12 @@ func NewWrappedHandler(log *logrus.Entry, handler http.Handler) http.Handler {
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := context.WithValue(req.Context(), request.LogDebugLevel, true)
 		ctx = context.WithValue(ctx, request.StartTime, time.Now())
+		var logStack *logging.Stack
+		ctx, logStack = logging.NewStack(ctx)
 		r := req.WithContext(ctx)
 		uidHandler.ServeHTTP(rw, r)
 		accessLog.Do(rw, r)
+		logStack.Fire()
 	})
 	return logHandler
 }
