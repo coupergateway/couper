@@ -847,6 +847,7 @@ func TestEndpointErrorHandler(t *testing.T) {
 	for _, tc := range []testcase{
 		{"error_handler not triggered", "/ok", test.Header{"x": "application/json"}, http.StatusOK, ""},
 		{"error_handler triggered with beresp body", "/not-ok", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot, "unexpected_status"},
+		{"error_handler triggered with beresp body handled by endpoint", "/not-ok-endpoint", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot, "unexpected_status"},
 		{"error_handler triggered with beresp body - sequence", "/not-ok-sequence", test.Header{"x": "application/json"}, http.StatusTeapot, "unexpected_status"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
