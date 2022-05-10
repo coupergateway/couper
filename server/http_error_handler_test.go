@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/accesscontrol/jwt"
@@ -175,6 +176,66 @@ func TestErrorHandler_Backend(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_StoreInvalidBackendResponse(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	shutdown, hook := newCouper("testdata/integration/error_handler/06_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testcase struct {
+		path             string
+		expBody          string
+		expStatus        int
+		expBackendStatus int
+		expValidation    string
+	}
+
+	for _, tc := range []testcase{
+		{"/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			helper := test.New(st)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("status code want: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			resBytes, err := io.ReadAll(res.Body)
+			defer res.Body.Close()
+			helper.Must(err)
+
+			if !bytes.Contains(resBytes, []byte(tc.expBody)) {
+				st.Errorf("body\nwant: %s,\ngot:  %s", tc.expBody, resBytes)
+			}
+
+			backendStatus, validation := getBackendLogStatusAndValidation(hook)
+			if backendStatus != tc.expBackendStatus {
+				st.Errorf("backend status want: %d, got: %d", tc.expBackendStatus, backendStatus)
+			}
+			if validation != tc.expValidation {
+				st.Errorf("validation want: %s, got: %s", tc.expValidation, validation)
+			}
+		})
+	}
+}
+
+func getBackendLogStatusAndValidation(hook *logrustest.Hook) (int, string) {
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] == "couper_backend" {
+			return entry.Data["status"].(int), entry.Data["validation"].([]string)[0]
+		}
+	}
+
+	return -1, ""
 }
 
 func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {

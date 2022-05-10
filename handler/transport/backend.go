@@ -171,13 +171,15 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		berespErr := &http.Response{
-			Request: req,
-		} // provide outreq (variable) on error cases
-		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
-			varSync.Set(berespErr)
+		if beresp == nil {
+			beresp = &http.Response{
+				Request: req,
+			} // provide outreq (variable) on error cases
 		}
-		return berespErr, err
+		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+			varSync.Set(beresp)
+		}
+		return beresp, err
 	}
 
 	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
@@ -226,7 +228,7 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 	}
 
 	if err = b.openAPIValidator.ValidateResponse(beresp, requestValidationInput); err != nil {
-		return nil, errors.BackendOpenapiValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
+		return beresp, errors.BackendOpenapiValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
 	}
 
 	return beresp, nil
