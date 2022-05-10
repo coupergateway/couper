@@ -35,7 +35,7 @@ type Health struct {
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
 	Path             string   `hcl:"path,optional"`
-	ExpectedStatus   int      `hcl:"expected_status,optional"`
+	ExpectedStatus   []int    `hcl:"expected_status,optional"`
 	ExpectedText     string   `hcl:"expected_text,optional"`
 	Headers          Headers  `hcl:"headers,optional"`
 	Remain           hcl.Body `hcl:",remain"`
@@ -66,8 +66,12 @@ func NewHealthCheck(baseURL string, options *Health, settings *Settings) (*Healt
 		if options.FailureThreshold != 0 {
 			healthCheck.FailureThreshold = options.FailureThreshold
 		}
-		if options.ExpectedStatus != 0 {
-			healthCheck.ExpectedStatus = map[int]bool{options.ExpectedStatus: true}
+		if len(options.ExpectedStatus) > 0 {
+			statusList := map[int]bool{}
+			for _, status := range options.ExpectedStatus {
+				statusList[status] = true
+			}
+			healthCheck.ExpectedStatus = statusList
 		}
 		healthCheck.ExpectedText = options.ExpectedText
 

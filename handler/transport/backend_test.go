@@ -396,7 +396,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 				Interval:         "1h",
 				Timeout:          "9m",
 				Path:             "/gsund??",
-				ExpectedStatus:   418,
+				ExpectedStatus:   []int{418},
 				ExpectedText:     "roger roger",
 			},
 			expectation: expectation{
