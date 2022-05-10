@@ -102,9 +102,21 @@ func fireUpstream(entry *logrus.Entry) {
 // syncedUpstreamContext prepares the local backend variable.
 func syncedUpstreamContext(evalCtx *eval.Context, entry *logrus.Entry) *hcl.EvalContext {
 	ctx := evalCtx.HCLContextSync()
+
+	tr, _ := entry.Context.Value(request.TokenRequest).(string)
+	rtName, _ := entry.Context.Value(request.RoundTripName).(string)
+	isTr := tr != ""
+
+	if rtName == "" {
+		return ctx
+	}
+
 	if _, ok := ctx.Variables[eval.BackendRequests]; ok {
 		for k, v := range ctx.Variables[eval.BackendRequests].AsValueMap() {
-			if k == entry.Context.Value(request.RoundTripName) {
+			if isTr && k == eval.TokenRequestPrefix+rtName {
+				ctx.Variables[eval.BackendRequest] = v
+				break
+			} else if k == rtName {
 				ctx.Variables[eval.BackendRequest] = v
 				break
 			}
@@ -113,7 +125,10 @@ func syncedUpstreamContext(evalCtx *eval.Context, entry *logrus.Entry) *hcl.Eval
 
 	if _, ok := ctx.Variables[eval.BackendResponses]; ok {
 		for k, v := range ctx.Variables[eval.BackendResponses].AsValueMap() {
-			if k == entry.Context.Value(request.RoundTripName) {
+			if isTr && k == eval.TokenRequestPrefix+rtName {
+				ctx.Variables[eval.BackendResponse] = v
+				break
+			} else if k == rtName {
 				ctx.Variables[eval.BackendResponse] = v
 				break
 			}
