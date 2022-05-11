@@ -19,10 +19,26 @@ import (
 func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endpointMap, error) {
 	endpoints := make(endpointMap)
 
-	apiBasePaths := make(map[string]struct{})
+	catchAllEndpoints := map[string]bool{}
+	for _, apiConf := range srvConf.APIs {
+		basePath := serverOptions.APIBasePaths[apiConf]
+		for _, epConf := range apiConf.Endpoints {
+			endpoints[epConf] = apiConf
+			if epConf.Pattern == "/**" {
+				catchAllEndpoints[basePath] = true
+			}
+		}
+	}
 
 	for _, apiConf := range srvConf.APIs {
 		basePath := serverOptions.APIBasePaths[apiConf]
+		if catchAllEndpoints[basePath] {
+			continue
+		}
+
+		if len(newAC(srvConf, apiConf).List()) == 0 {
+			continue
+		}
 
 		var filesBasePath, spaBasePath string
 		if serverOptions.FilesBasePath != "" {
@@ -34,18 +50,9 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 
 		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
 
-		apiBasePaths[basePath] = struct{}{}
-
-		for _, epConf := range apiConf.Endpoints {
-			endpoints[epConf] = apiConf
-
-			if epConf.Pattern == "/**" {
-				isAPIBasePathUniqueToFilesAndSPA = false
-			}
-		}
-
-		if isAPIBasePathUniqueToFilesAndSPA && len(newAC(srvConf, apiConf).List()) > 0 {
+		if isAPIBasePathUniqueToFilesAndSPA {
 			endpoints[apiConf.CatchAllEndpoint] = apiConf
+			catchAllEndpoints[basePath] = true
 		}
 	}
 
