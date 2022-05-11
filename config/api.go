@@ -21,7 +21,7 @@ type API struct {
 	Remain               hcl.Body  `hcl:",remain"`
 
 	// internally used
-	CatchAllEndpoint *Endpoint
+	CatchAllEndpoint   *Endpoint
 	RequiredPermission hcl.Expression
 }
 

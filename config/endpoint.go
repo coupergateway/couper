@@ -22,10 +22,10 @@ type Endpoint struct {
 	Response             *Response `hcl:"response,block"`
 
 	// internally configured due to multi-label options
-	Proxies   Proxies
-	Requests  Requests
+	Proxies            Proxies
+	Requests           Requests
 	RequiredPermission hcl.Expression
-	Sequences Sequences
+	Sequences          Sequences
 }
 
 // Endpoints represents a list of <Endpoint> objects.
@@ -40,11 +40,11 @@ func (e Endpoint) HCLBody() hcl.Body {
 func (e Endpoint) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		Proxies        Proxies                   `hcl:"proxy,block"`
-		Requests       Requests                  `hcl:"request,block"`
-		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
-		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
-		RequiredPermission hcl.Expression        `hcl:"beta_required_permission,optional"`
+		Proxies            Proxies                   `hcl:"proxy,block"`
+		Requests           Requests                  `hcl:"request,block"`
+		ResponseStatus     *uint8                    `hcl:"set_response_status,optional"`
+		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional"`
 	}
 
 	return &Inline{}
