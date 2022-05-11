@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
@@ -365,18 +364,25 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 				apiConfig.Name = apiBlock.Labels[0]
 			}
 
+			apiContent := bodyToContent(apiConfig.Remain)
+
 			if apiConfig.AllowedMethods != nil && len(apiConfig.AllowedMethods) > 0 {
-				if err = validMethods(apiConfig.AllowedMethods, &bodyToContent(apiConfig.Remain).Attributes["allowed_methods"].Range); err != nil {
+				if err = validMethods(apiConfig.AllowedMethods, &apiContent.Attributes["allowed_methods"].Range); err != nil {
 					return nil, err
 				}
 			}
 
-			err = checkPermissionMixedConfig(apiConfig)
+			rp := apiContent.Attributes["beta_required_permission"]
+			if rp != nil {
+				apiConfig.RequiredPermission = rp.Expr
+			}
+
+			err = refineEndpoints(helper, apiConfig.Endpoints, true)
 			if err != nil {
 				return nil, err
 			}
 
-			err = refineEndpoints(helper, apiConfig.Endpoints, true)
+			err = checkPermissionMixedConfig(apiConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -411,7 +417,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 // a) no required permission set or
 // b) required permission or disable_access_control set
 func checkPermissionMixedConfig(apiConfig *config.API) error {
-	if apiConfig.RequiredPermission != cty.NilVal {
+	if apiConfig.RequiredPermission != nil {
 		// default for required permission: no mixed config
 		return nil
 	}
@@ -425,7 +431,7 @@ func checkPermissionMixedConfig(apiConfig *config.API) error {
 	countEpsWithPermission := 0
 	countEpsWithPermissionOrDisableAC := 0
 	for _, e := range apiConfig.Endpoints {
-		if e.RequiredPermission != cty.NilVal {
+		if e.RequiredPermission != nil {
 			// endpoint has required permission attribute set
 			countEpsWithPermission++
 			countEpsWithPermissionOrDisableAC++

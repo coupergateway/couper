@@ -6,6 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
@@ -170,7 +174,46 @@ func Test_PermissionsControl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			pc := NewPermissionsControl(tt.permission, tt.permissionMap)
+			var expr hcl.Expression
+			if tt.permission != "" {
+				expr = &hclsyntax.TemplateExpr{
+					Parts: []hclsyntax.Expression{
+						&hclsyntax.LiteralValueExpr{
+							Val: cty.StringVal(tt.permission),
+						},
+					},
+				}
+			} else if tt.permissionMap != nil {
+				var items []hclsyntax.ObjectConsItem
+				for k, v := range tt.permissionMap {
+					item := hclsyntax.ObjectConsItem{
+						KeyExpr: &hclsyntax.ObjectConsKeyExpr{
+							Wrapped: &hclsyntax.TemplateExpr{
+								Parts: []hclsyntax.Expression{
+									&hclsyntax.LiteralValueExpr{
+										Val: cty.StringVal(k),
+									},
+								},
+							},
+						},
+						ValueExpr: &hclsyntax.TemplateExpr{
+							Parts: []hclsyntax.Expression{
+								&hclsyntax.LiteralValueExpr{
+									Val: cty.StringVal(v),
+								},
+							},
+						},
+					}
+					items = append(items, item)
+				}
+				expr = &hclsyntax.ObjectConsExpr{
+					Items: items,
+				}
+
+			} else {
+				return
+			}
+			pc := NewPermissionsControl(expr)
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedPermissions != nil {
 				ctx := req.Context()

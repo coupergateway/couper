@@ -4,10 +4,13 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/middleware"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 type requiredPermissions struct {
@@ -56,17 +59,26 @@ func (r *requiredPermissions) getPermission(method string) (string, error) {
 var _ AccessControl = &PermissionsControl{}
 
 type PermissionsControl struct {
-	required requiredPermissions
+	permissionExpr hcl.Expression
 }
 
-func NewPermissionsControl(permission string, permissionMap map[string]string) *PermissionsControl {
-	rp := newRequiredPermissions(permission, permissionMap)
-	return &PermissionsControl{required: rp}
+func NewPermissionsControl(permissionExpr hcl.Expression) *PermissionsControl {
+	return &PermissionsControl{permissionExpr: permissionExpr}
 }
 
 // Validate validates the granted permissions provided by access controls against the required permission.
 func (p *PermissionsControl) Validate(req *http.Request) error {
-	requiredPermission, err := p.required.getPermission(req.Method)
+	if p.permissionExpr == nil {
+		return nil
+	}
+	permissionVal, err := eval.Value(eval.ContextFromRequest(req).HCLContext(), p.permissionExpr)
+	permission, permissionMap, err := seetie.ValueToPermission(permissionVal)
+	if err != nil {
+		return errors.Evaluation.With(err)
+	}
+
+	rp := newRequiredPermissions(permission, permissionMap)
+	requiredPermission, err := rp.getPermission(req.Method)
 	if err != nil {
 		return err
 	}
