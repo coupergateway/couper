@@ -1,18 +1,22 @@
 package server_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 )
 
 func TestBackend_MaxConnections(t *testing.T) {
@@ -167,5 +171,104 @@ func TestBackend_WithoutOrigin(t *testing.T) {
 
 		})
 
+	}
+}
+
+func TestBackend_LogResponseBytes(t *testing.T) {
+	helper := test.New(t)
+
+	var writtenBytes int64
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		b, err := json.Marshal(r.URL)
+		helper.Must(err)
+
+		if r.Header.Get("Accept-Encoding") == "gzip" {
+			buf := &bytes.Buffer{}
+			gw := gzip.NewWriter(buf)
+			_, zerr := gw.Write(b)
+			helper.Must(zerr)
+			helper.Must(gw.Close())
+
+			atomic.StoreInt64(&writtenBytes, int64(buf.Len()))
+
+			_, err = io.Copy(rw, buf)
+			helper.Must(err)
+		} else {
+			n, werr := rw.Write(b)
+			helper.Must(werr)
+			atomic.StoreInt64(&writtenBytes, int64(n))
+		}
+	}))
+
+	defer origin.Close()
+
+	shutdown, hook := newCouperWithTemplate("testdata/integration/backends/05_couper.hcl", helper,
+		map[string]interface{}{
+			"origin": origin.URL,
+		})
+	defer shutdown()
+
+	client := test.NewHTTPClient()
+
+	cases := []struct {
+		accept string
+		path   string
+	}{
+		{path: "/"},
+		{accept: "gzip", path: "/zipped"},
+	}
+
+	for _, tc := range cases {
+		hook.Reset()
+
+		deadline, cancel := context.WithTimeout(context.Background(), time.Second*10)
+
+		req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080"+tc.path, nil)
+
+		if tc.accept != "" {
+			req.Header.Set("Accept-Encoding", tc.accept)
+		}
+
+		res, err := client.Do(req.WithContext(deadline))
+		cancel()
+		helper.Must(err)
+
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("want: 200, got %d", res.StatusCode)
+		}
+
+		_, err = io.Copy(io.Discard, res.Body)
+		helper.Must(err)
+
+		helper.Must(res.Body.Close())
+
+		var seen bool
+		for _, e := range hook.AllEntries() {
+			if e.Data["type"] != "couper_backend" {
+				continue
+			}
+
+			seen = true
+
+			response, ok := e.Data["response"]
+			if !ok {
+				t.Error("expected response log field")
+			}
+
+			bytesValue, bok := response.(logging.Fields)["bytes"]
+			if !bok {
+				t.Error("expected response.bytes log field")
+			}
+
+			expectedBytes := atomic.LoadInt64(&writtenBytes)
+			if bytesValue.(int64) != expectedBytes {
+				t.Errorf("bytes differs: want: %d, got: %d", expectedBytes, bytesValue)
+			}
+		}
+
+		if !seen {
+			t.Error("expected upstream log")
+		}
 	}
 }

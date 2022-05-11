@@ -137,7 +137,7 @@ definitions {
   backend "healthy_expected_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/not-there"
     beta_health {
-      expected_status = 404
+      expected_status = [404]
     }
   }
   backend "healthy_expected_text" {
@@ -175,7 +175,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
     beta_health {
       path = "/redirect?url=/health?redirected"
-      expected_status = 302
+      expected_status = [302]
     }
   }
   backend "unhealthy_timeout" {
@@ -189,7 +189,7 @@ definitions {
   backend "unhealthy_bad_expected_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}/health"
     beta_health {
-      expected_status = 500
+      expected_status = [500]
     }
   }
   backend "unhealthy_bad_expected_text" {
