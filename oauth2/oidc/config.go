@@ -48,11 +48,11 @@ type Config struct {
 
 // NewConfig creates a new configuration for an OIDC client
 func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
-	ttl, err := parseDuration("configuration_ttl", oidc.ConfigurationTTL, defaultTTL)
+	ttl, err := config.ParseDuration("configuration_ttl", oidc.ConfigurationTTL, defaultTTL)
 	if err != nil {
 		return nil, err
 	}
-	maxStale, err := parseDuration("configuration_max_stale", oidc.ConfigurationMaxStale, defaultTTL)
+	maxStale, err := config.ParseDuration("configuration_max_stale", oidc.ConfigurationMaxStale, defaultTTL)
 	if err != nil {
 		return nil, err
 	}
@@ -201,20 +201,4 @@ func supportsS256(codeChallengeMethodsSupported []string) bool {
 		}
 	}
 	return false
-}
-
-func parseDuration(attribute string, value string, _default time.Duration) (time.Duration, error) {
-	if value == "" {
-		return _default, nil
-	}
-
-	duration, err := time.ParseDuration(value)
-	if err != nil {
-		return 0, err
-	}
-	if duration < 0 {
-		return 0, fmt.Errorf("%s cannot be negative: %q", attribute, value)
-	}
-
-	return duration, nil
 }

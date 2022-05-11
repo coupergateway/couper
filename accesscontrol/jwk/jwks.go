@@ -9,6 +9,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
+	"github.com/avenga/couper/config"
 	jsn "github.com/avenga/couper/json"
 )
 
@@ -30,11 +31,11 @@ type JWKS struct {
 }
 
 func NewJWKS(uri string, ttl string, maxStale string, transport http.RoundTripper) (*JWKS, error) {
-	timetolive, err := parseDuration("jwks_ttl", ttl, time.Hour)
+	timetolive, err := config.ParseDuration("jwks_ttl", ttl, time.Hour)
 	if err != nil {
 		return nil, err
 	}
-	maxStaleTime, err := parseDuration("jwks_max_stale", maxStale, time.Hour)
+	maxStaleTime, err := config.ParseDuration("jwks_max_stale", maxStale, time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -127,20 +128,4 @@ func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
 	jsonData := &JWKSData{}
 	err := json.Unmarshal(rawJSON, jsonData)
 	return jsonData, err
-}
-
-func parseDuration(attribute string, value string, _default time.Duration) (time.Duration, error) {
-	if value == "" {
-		return _default, nil
-	}
-
-	duration, err := time.ParseDuration(value)
-	if err != nil {
-		return 0, err
-	}
-	if duration < 0 {
-		return 0, fmt.Errorf("%s cannot be negative: %q", attribute, value)
-	}
-
-	return duration, nil
 }
