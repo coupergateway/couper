@@ -126,6 +126,34 @@ func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
 	}
 }
 
+func TestErrorHandler_ExpStatusVersusOpenAPI(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/07_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != 418 {
+		t.Fatalf("want: %d, got: %d", 418, res.StatusCode)
+	}
+
+	resBytes, err := io.ReadAll(res.Body)
+	defer res.Body.Close()
+	helper.Must(err)
+
+	expBody := `{"handled_by":"backend_openapi_validation"}`
+
+	if !bytes.Contains(resBytes, []byte(expBody)) {
+		t.Fatalf("want: %s, got: %s", expBody, resBytes)
+	}
+}
+
 func TestErrorHandler_Backend(t *testing.T) {
 	client := test.NewHTTPClient()
 
