@@ -99,6 +99,30 @@ func Test_PermissionsControl(t *testing.T) {
 			"",
 		},
 		{
+			"no method restrictions, no permission required, permission granted",
+			"",
+			nil,
+			http.MethodGet,
+			[]string{"read"},
+			"",
+		},
+		{
+			"no method permitted, no permission granted",
+			"",
+			map[string]string{},
+			http.MethodGet,
+			nil,
+			"method not allowed error: method GET not allowed by beta_required_permission",
+		},
+		{
+			"no method permitted, permission granted",
+			"",
+			map[string]string{},
+			http.MethodPost,
+			[]string{"read"},
+			"method not allowed error: method POST not allowed by beta_required_permission",
+		},
+		{
 			"method permitted, no permission required, no permission granted",
 			"",
 			map[string]string{http.MethodGet: ""},
@@ -129,6 +153,22 @@ func Test_PermissionsControl(t *testing.T) {
 			"BREW",
 			[]string{"read"},
 			"",
+		},
+		{
+			"method permitted, permission required, permission granted",
+			"",
+			map[string]string{"Brew": "tea"},
+			"BREW",
+			[]string{"tea"},
+			"",
+		},
+		{
+			"method permitted, permission required, missing required permission",
+			"",
+			map[string]string{"Brew": "tea"},
+			"BREW",
+			[]string{"coffee"},
+			`access control error: required permission "tea" not granted`,
 		},
 		{
 			"default methods permitted, permission required, permission granted",
@@ -209,9 +249,8 @@ func Test_PermissionsControl(t *testing.T) {
 				expr = &hclsyntax.ObjectConsExpr{
 					Items: items,
 				}
-
 			} else {
-				return
+				expr = nil
 			}
 			pc := NewPermissionsControl(expr)
 			req := httptest.NewRequest(tt.method, "/", nil)
