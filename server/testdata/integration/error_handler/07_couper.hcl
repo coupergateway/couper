@@ -4,10 +4,6 @@ server {
       request {
         url = "http://localhost:8080/i"
         backend = "be"
-        form_body = {
-          a = request.query.a[0]
-          b = 2
-        }
         expected_status = [200]
       }
 

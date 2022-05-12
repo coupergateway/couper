@@ -7,18 +7,6 @@ servers:
 paths:
   /i:
     post:
-      requestBody:
-        content:
-          "application/x-www-form-urlencoded":
-            schema:
-              type: object
-              required:
-                - a
-              properties:
-                a:
-                  type: string
-                b:
-                  type: number
       responses:
         200:
           description: OK
