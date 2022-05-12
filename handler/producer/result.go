@@ -89,7 +89,7 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 		if !seen {
 			results <- &Result{
 				Beresp:        beresp,
-				Err:           errors.UnexpectedStatus.With(err),
+				Err:           errors.UnexpectedStatus.With(err).Status(http.StatusBadGateway),
 				RoundTripName: rtn,
 			}
 			return
