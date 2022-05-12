@@ -9,6 +9,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
+	"github.com/avenga/couper/config"
 	jsn "github.com/avenga/couper/json"
 )
 
@@ -29,12 +30,12 @@ type JWKS struct {
 	syncedJSON *jsn.SyncedJSON
 }
 
-func NewJWKS(uri string, ttl string, transport http.RoundTripper) (*JWKS, error) {
-	if ttl == "" {
-		ttl = "1h"
+func NewJWKS(uri string, ttl string, maxStale string, transport http.RoundTripper) (*JWKS, error) {
+	timetolive, err := config.ParseDuration("jwks_ttl", ttl, time.Hour)
+	if err != nil {
+		return nil, err
 	}
-
-	timetolive, err := time.ParseDuration(ttl)
+	maxStaleTime, err := config.ParseDuration("jwks_max_stale", maxStale, time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +47,7 @@ func NewJWKS(uri string, ttl string, transport http.RoundTripper) (*JWKS, error)
 	}
 
 	jwks := &JWKS{}
-	jwks.syncedJSON, err = jsn.NewSyncedJSON(file, "jwks_url", uri, transport, "jwks", timetolive, jwks)
+	jwks.syncedJSON, err = jsn.NewSyncedJSON(file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks)
 	return jwks, err
 }
 
@@ -114,13 +115,10 @@ func (j *JWKS) getKeys(kid string) ([]*JWK, error) {
 
 func (j *JWKS) Data() (*JWKSData, error) {
 	data, err := j.syncedJSON.Data()
-	if err != nil {
-		return nil, err
-	}
-
+	// Ignore backend errors as long as we still get cached (stale) data.
 	jwksData, ok := data.(*JWKSData)
 	if !ok {
-		return nil, fmt.Errorf("data not JWKS data: %#v", data)
+		return nil, fmt.Errorf("received no valid JWKs data: %#v, %w", data, err)
 	}
 
 	return jwksData, nil

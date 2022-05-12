@@ -11,6 +11,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
   * `url` attribute could make use of our wildcard pattern `/**` and relative urls in combination with a backend reference ([#480](https://github.com/avenga/couper/pull/480))
+  * `jwks_max_stale` in [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#502](https://github.com/avenga/couper/pull/502))
+  * `jwks_ttl`, `jwks_max_stale` and `configuration_max_stale` in [`oidc` block](./docs/REFERENCE.md#oidc-block) ([#502](https://github.com/avenga/couper/pull/502))
   * Error handling for `backend`, `backend_openapi_validation` and `backend_timeout` [error types](./docs/ERRORS.md) ([#490](https://github.com/avenga/couper/pull/490))
   * `response.bytes` log-field to backend logs if read from body, fallback is the `Content-Length` header ([#494](https://github.com/avenga/couper/pull/494))
   * [Error types](./docs/ERRORS.md) `endpoint` and `access_control` ([#500](https://github.com/avenga/couper/pull/500))

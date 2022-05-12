@@ -48,13 +48,13 @@ type Config struct {
 
 // NewConfig creates a new configuration for an OIDC client
 func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
-	ttl := defaultTTL
-	if oidc.ConfigurationTTL != "" {
-		t, err := time.ParseDuration(oidc.ConfigurationTTL)
-		if err != nil {
-			return nil, err
-		}
-		ttl = t
+	ttl, err := config.ParseDuration("configuration_ttl", oidc.ConfigurationTTL, defaultTTL)
+	if err != nil {
+		return nil, err
+	}
+	maxStale, err := config.ParseDuration("configuration_max_stale", oidc.ConfigurationMaxStale, defaultTTL)
+	if err != nil {
+		return nil, err
 	}
 
 	ctx := context.Background()
@@ -64,9 +64,8 @@ func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Confi
 		context:  ctx,
 	}
 
-	var err error
 	conf.syncedJSON, err = jsn.NewSyncedJSON("", "",
-		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, conf)
+		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, maxStale, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +181,7 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		c.backends["jwks_uri_backend"],
 	)
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.ConfigurationTTL, jwksBackend)
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
 	if err != nil { // do not replace possible working jwks on err
 		return jsonData, err
 	}
