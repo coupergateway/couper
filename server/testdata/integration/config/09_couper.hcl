@@ -44,6 +44,17 @@ server "scoped jwt" {
         }
       }
     }
+    endpoint "/object/{method}" {
+      beta_required_permission = {
+        (request.path_params.method) = contains(["get", "post"], request.path_params.method) ? "a" : "z"
+      }
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
     endpoint "/bad/expression" {
       beta_required_permission = request
       response {
@@ -73,6 +84,15 @@ server "scoped jwt" {
     }
     endpoint "/bad/type/tuple" {
       beta_required_permission = ["p1", "p2"]
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bad/type/null" {
+      beta_required_permission = null
       response {
         status = 204
         headers = {
