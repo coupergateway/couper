@@ -811,12 +811,12 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-			    jwks_url = "http://no-back.end"
+			    jwks_url = "file://...",
 			    header = "..."
 			  }
 			}
 			`,
-			`backend error: anonymous_5_8_jwks_url: connecting to anonymous_5_8_jwks_url "no-back.end:80" failed: dial tcp: lookup no-back.end`,
+			"",
 		},
 		{
 			"signature_algorithm + jwks_url",

@@ -604,7 +604,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 		}
 	}
 
-	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend)
+	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
 }
 
 type protectedOptions struct {
