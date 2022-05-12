@@ -18,8 +18,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [Error types](./docs/ERRORS.md) `endpoint` and `access_control` ([#500](https://github.com/avenga/couper/pull/500))
 
 * **Changed**
-  * Permission handling: ([#477](https://github.com/avenga/couper/pull/477))
-    * renamed `beta_scope` attribute for [`api`](./docs/REFERENCE.md#api-block) and [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks to `beta_required_permission`; `beta_required_permission` in `endpoint` now *overriding* `beta_required_permission` in containing `api` block
+  * Permission handling: ([#477](https://github.com/avenga/couper/pull/477), [#504](https://github.com/avenga/couper/pull/504))
+    * renamed `beta_scope` attribute for [`api`](./docs/REFERENCE.md#api-block) and [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks to `beta_required_permission`; `beta_required_permission` in `endpoint` now *overriding* `beta_required_permission` in containing `api` block; allowing an expression as attribute value
     * renamed `beta_scope_claim` and `beta_scope_map` attributes for [`jwt` block](./docs/REFERENCE.md#jwt-block) to `beta_permissions_claim` and `beta_permissions_map`
     * removed `beta_operation_denied` and `beta_scope` [error types](./docs/ERRORS.md#api-and-endpoint-error-types)
     * renamed `beta_insufficient_scope` [error type](./docs/ERRORS.md#api-and-endpoint-error-types) to `beta_insufficient_permissions`

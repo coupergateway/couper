@@ -3,7 +3,6 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/zclconf/go-cty/cty"
 )
 
 var _ Inline = &API{}
@@ -20,10 +19,10 @@ type API struct {
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Name                 string    `hcl:"name,label"`
 	Remain               hcl.Body  `hcl:",remain"`
-	RequiredPermission   cty.Value `hcl:"beta_required_permission,optional"`
 
 	// internally used
-	CatchAllEndpoint *Endpoint
+	CatchAllEndpoint   *Endpoint
+	RequiredPermission hcl.Expression
 }
 
 // APIs represents a list of <API> objects.
@@ -41,6 +40,7 @@ func (a API) Inline() interface{} {
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
 		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`
 		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional"`
 	}
 
 	return &Inline{}

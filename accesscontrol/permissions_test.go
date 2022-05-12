@@ -6,6 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 )
@@ -95,6 +99,30 @@ func Test_PermissionsControl(t *testing.T) {
 			"",
 		},
 		{
+			"no method restrictions, no permission required, permission granted",
+			"",
+			nil,
+			http.MethodGet,
+			[]string{"read"},
+			"",
+		},
+		{
+			"no method permitted, no permission granted",
+			"",
+			map[string]string{},
+			http.MethodGet,
+			nil,
+			"method not allowed error: method GET not allowed by beta_required_permission",
+		},
+		{
+			"no method permitted, permission granted",
+			"",
+			map[string]string{},
+			http.MethodPost,
+			[]string{"read"},
+			"method not allowed error: method POST not allowed by beta_required_permission",
+		},
+		{
 			"method permitted, no permission required, no permission granted",
 			"",
 			map[string]string{http.MethodGet: ""},
@@ -125,6 +153,22 @@ func Test_PermissionsControl(t *testing.T) {
 			"BREW",
 			[]string{"read"},
 			"",
+		},
+		{
+			"method permitted, permission required, permission granted",
+			"",
+			map[string]string{"Brew": "tea"},
+			"BREW",
+			[]string{"tea"},
+			"",
+		},
+		{
+			"method permitted, permission required, missing required permission",
+			"",
+			map[string]string{"Brew": "tea"},
+			"BREW",
+			[]string{"coffee"},
+			`access control error: required permission "tea" not granted`,
 		},
 		{
 			"default methods permitted, permission required, permission granted",
@@ -170,7 +214,45 @@ func Test_PermissionsControl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			pc := NewPermissionsControl(tt.permission, tt.permissionMap)
+			var expr hcl.Expression
+			if tt.permission != "" {
+				expr = &hclsyntax.TemplateExpr{
+					Parts: []hclsyntax.Expression{
+						&hclsyntax.LiteralValueExpr{
+							Val: cty.StringVal(tt.permission),
+						},
+					},
+				}
+			} else if tt.permissionMap != nil {
+				var items []hclsyntax.ObjectConsItem
+				for k, v := range tt.permissionMap {
+					item := hclsyntax.ObjectConsItem{
+						KeyExpr: &hclsyntax.ObjectConsKeyExpr{
+							Wrapped: &hclsyntax.TemplateExpr{
+								Parts: []hclsyntax.Expression{
+									&hclsyntax.LiteralValueExpr{
+										Val: cty.StringVal(k),
+									},
+								},
+							},
+						},
+						ValueExpr: &hclsyntax.TemplateExpr{
+							Parts: []hclsyntax.Expression{
+								&hclsyntax.LiteralValueExpr{
+									Val: cty.StringVal(v),
+								},
+							},
+						},
+					}
+					items = append(items, item)
+				}
+				expr = &hclsyntax.ObjectConsExpr{
+					Items: items,
+				}
+			} else {
+				expr = nil
+			}
+			pc := NewPermissionsControl(expr)
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedPermissions != nil {
 				ctx := req.Context()
