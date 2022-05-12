@@ -50,6 +50,11 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 
 		endpointContent := bodyToContent(endpoint.Remain)
 
+		rp := endpointContent.Attributes["beta_required_permission"]
+		if rp != nil {
+			endpoint.RequiredPermission = rp.Expr
+		}
+
 		if check && endpoint.AllowedMethods != nil && len(endpoint.AllowedMethods) > 0 {
 			if err = validMethods(endpoint.AllowedMethods, &endpointContent.Attributes["allowed_methods"].Range); err != nil {
 				return err
