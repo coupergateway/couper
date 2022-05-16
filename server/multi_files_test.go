@@ -198,3 +198,32 @@ func TestMultiFiles_MultipleBackends(t *testing.T) {
 		})
 	}
 }
+
+func Test_MultipleLabels(t *testing.T) {
+	type testCase struct {
+		name       string
+		configPath string
+		expError   string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"server with multiple labels",
+			"testdata/multi/errors/couper_01.hcl",
+			"testdata/multi/errors/couper_01.hcl:1,12-15: cannot match argument name from: Only 1 labels (name) are expected for server blocks.",
+		},
+		// {
+		// "api with multiple labels",
+		// "testdata/multi/errors/couper_02.hcl",
+		// "testdata/multi/errors/couper_02.hcl:2,20-23: cannot match argument name from: Only 1 labels (name) are expected for api blocks.",
+		// },
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			_, err := configload.LoadFiles(filepath.Join(testWorkingDir, tc.configPath), "")
+
+			if !strings.Contains(err.Error(), tc.expError) {
+				st.Errorf("Unexpected error: %s", err.Error())
+			}
+		})
+	}
+}
