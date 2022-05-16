@@ -22,27 +22,27 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	type (
 		namedBlocks   map[string]*hclsyntax.Block
 		apiDefinition struct {
-			labels       []string
+			labels          []string
 			typeRange       hcl.Range
 			labelRanges     []hcl.Range
 			openBraceRange  hcl.Range
 			closeBraceRange hcl.Range
-			attributes   hclsyntax.Attributes
-			blocks       namedBlocks
-			endpoints    namedBlocks
-			errorHandler namedBlocks
+			attributes      hclsyntax.Attributes
+			blocks          namedBlocks
+			endpoints       namedBlocks
+			errorHandler    namedBlocks
 		}
 		namedAPIs        map[string]*apiDefinition
 		serverDefinition struct {
-			labels     []string
+			labels          []string
 			typeRange       hcl.Range
 			labelRanges     []hcl.Range
 			openBraceRange  hcl.Range
 			closeBraceRange hcl.Range
-			attributes hclsyntax.Attributes
-			blocks     namedBlocks
-			endpoints  namedBlocks
-			apis       namedAPIs
+			attributes      hclsyntax.Attributes
+			blocks          namedBlocks
+			endpoints       namedBlocks
+			apis            namedAPIs
 		}
 		servers map[string]*serverDefinition
 	)
@@ -90,15 +90,15 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 			if results[serverKey] == nil {
 				results[serverKey] = &serverDefinition{
-					labels:     outerBlock.Labels,
+					labels:          outerBlock.Labels,
 					typeRange:       outerBlock.TypeRange,
 					labelRanges:     outerBlock.LabelRanges,
 					openBraceRange:  outerBlock.OpenBraceRange,
 					closeBraceRange: outerBlock.CloseBraceRange,
-					attributes: make(hclsyntax.Attributes),
-					blocks:     make(namedBlocks),
-					endpoints:  make(namedBlocks),
-					apis:       make(namedAPIs),
+					attributes:      make(hclsyntax.Attributes),
+					blocks:          make(namedBlocks),
+					endpoints:       make(namedBlocks),
+					apis:            make(namedAPIs),
 				}
 			}
 
@@ -168,15 +168,15 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					if results[serverKey].apis[apiKey] == nil {
 						results[serverKey].apis[apiKey] = &apiDefinition{
-							labels:       block.Labels,
+							labels:          block.Labels,
 							typeRange:       block.TypeRange,
 							labelRanges:     block.LabelRanges,
 							openBraceRange:  block.OpenBraceRange,
 							closeBraceRange: block.CloseBraceRange,
-							attributes:   make(hclsyntax.Attributes),
-							blocks:       make(namedBlocks),
-							endpoints:    make(namedBlocks),
-							errorHandler: make(namedBlocks),
+							attributes:      make(hclsyntax.Attributes),
+							blocks:          make(namedBlocks),
+							endpoints:       make(namedBlocks),
+							errorHandler:    make(namedBlocks),
 						}
 					}
 
