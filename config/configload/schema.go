@@ -207,11 +207,13 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 		schema = config.WithErrorHandlerSchema(schema)
 	}
 
-	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
-
 	if i, ok := obj.(config.Inline); ok {
-		attrs, blocks, errors = completeSchemaComponents(body, i.Schema(true), attrs, blocks, errors)
+		inlineSchema := i.Schema(true)
+		schema.Attributes = append(schema.Attributes, inlineSchema.Attributes...)
+		schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
 	}
+
+	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
 
 	return attrs, blocks, errors
 }

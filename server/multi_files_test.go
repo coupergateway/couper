@@ -212,11 +212,11 @@ func Test_MultipleLabels(t *testing.T) {
 			"testdata/multi/errors/couper_01.hcl",
 			"testdata/multi/errors/couper_01.hcl:1,12-15: cannot match argument name from: Only 1 labels (name) are expected for server blocks.",
 		},
-		// {
-		// "api with multiple labels",
-		// "testdata/multi/errors/couper_02.hcl",
-		// "testdata/multi/errors/couper_02.hcl:2,20-23: cannot match argument name from: Only 1 labels (name) are expected for api blocks.",
-		// },
+		{
+			"api with multiple labels",
+			"testdata/multi/errors/couper_02.hcl",
+			"testdata/multi/errors/couper_02.hcl:2,11-14: cannot match argument name from: Only 1 labels (name) are expected for api blocks.",
+		},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			_, err := configload.LoadFiles(filepath.Join(testWorkingDir, tc.configPath), "")
