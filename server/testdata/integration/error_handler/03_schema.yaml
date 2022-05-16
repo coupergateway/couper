@@ -1,0 +1,12 @@
+openapi: '3'
+info:
+  title: 'internal'
+  version: '1.0'
+servers:
+  - url: "http://localhost:8080"
+paths:
+  /i:
+    post:
+      responses:
+        200:
+          description: OK
