@@ -75,14 +75,15 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 		}
 		for _, k := range kinds {
 			if _, exist := configuredKinds[k]; exist {
-				if len(block.LabelRanges) == 0 {
-					block.LabelRanges = append(block.LabelRanges, block.DefRange)
+				subjRange := block.DefRange
+				if len(block.LabelRanges) > 0 {
+					subjRange = block.LabelRanges[0]
 				}
 
 				return nil, nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  fmt.Sprintf("duplicate error type registration: %q", k),
-					Subject:  &block.LabelRanges[0],
+					Subject:  &subjRange,
 				}}
 			}
 
@@ -91,12 +92,12 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 				if len(block.LabelRanges) > 0 {
 					subjRange = block.LabelRanges[0]
 				}
-				diag := &hcl.Diagnostic{
+
+				return nil, nil, hcl.Diagnostics{&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  fmt.Sprintf("error type is unknown: %q", k),
 					Subject:  &subjRange,
-				}
-				return nil, nil, hcl.Diagnostics{diag}
+				}}
 			}
 
 			configuredKinds[k] = struct{}{}
