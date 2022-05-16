@@ -34,7 +34,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Do not allow multiple `backend` blocks in `proxy` and `request` blocks ([#483](https://github.com/avenga/couper/pull/483))
   * Panic if an [`error_handler` block](./docs/REFERENCE.md#error-handler-block) following another `error_handler` block has no label ([#486](https://github.com/avenga/couper/pull/486))
   * Invalid (by [OpenAPI validation](./docs/REFERENCE.md#openapi-block)) backend response missing in [`backend_responses`](./docs/REFERENCE.md#backend_responses) ([#501](https://github.com/avenga/couper/pull/501))
-  * Ignore [`unexpected_status`](./docs/ERRORS.md) error, if another backend error is accured before ([#505](https://github.com/avenga/couper/pull/505))
+  * Ignore the `expected_status` check for a request configured via a [`proxy`](./docs/REFERENCE.md#proxy-block) or [`request`](./docs/REFERENCE.md#request-block) block if a [`backend` error](./docs/ERRORS.md#endpoint-error-types) occured ([#505](https://github.com/avenga/couper/pull/505))
 
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
