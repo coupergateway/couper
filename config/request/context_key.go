@@ -6,6 +6,7 @@ const (
 	ContextType ContextKey = iota
 	APIName
 	AccessControls
+	BackendBytes
 	BackendName
 	BackendParams
 	BackendTokenRequest

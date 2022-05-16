@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
@@ -154,15 +155,15 @@ func (c *Config) WithTarget(scheme, origin, hostname, proxyURL string) *Config {
 
 func (c *Config) WithTimings(connect, ttfb, timeout string, logger *logrus.Entry) *Config {
 	conf := *c
-	parseDuration(connect, &conf.ConnectTimeout, logger)
-	parseDuration(ttfb, &conf.TTFBTimeout, logger)
-	parseDuration(timeout, &conf.Timeout, logger)
+	parseDuration(connect, &conf.ConnectTimeout, "connect_timeout", logger)
+	parseDuration(ttfb, &conf.TTFBTimeout, "ttfb_timeout", logger)
+	parseDuration(timeout, &conf.Timeout, "timeout", logger)
 	return &conf
 }
 
 // parseDuration sets the target value if the given duration string is not empty.
-func parseDuration(src string, target *time.Duration, logger *logrus.Entry) {
-	d, err := time.ParseDuration(src)
+func parseDuration(src string, target *time.Duration, attributeName string, logger *logrus.Entry) {
+	d, err := config.ParseDuration(attributeName, src, *target)
 	if err != nil {
 		logger.WithError(err).Warning("using default timing of ", target, " because an error occured")
 	}

@@ -225,7 +225,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	close(tripCh)
 
 	for resultCh := range tripCh {
-		e.readResults(resultCh, results)
+		e.readResults(req.Context(), resultCh, results)
 	}
 
 	var err error // TODO: prefer default resp err
@@ -240,10 +240,12 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	return results, err
 }
 
-func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
+func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
 	i := 0
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case r, more := <-requestResults:
 			if !more {
 				return

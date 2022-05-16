@@ -21,6 +21,7 @@ type dataRequest struct {
 }
 
 type SyncedJSON struct {
+	maxStale      time.Duration
 	roundTripName string
 	transport     http.RoundTripper
 	ttl           time.Duration
@@ -32,9 +33,10 @@ type SyncedJSON struct {
 	fileMode    bool
 }
 
-func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
+func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, maxStale time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
 	sj := &SyncedJSON{
 		dataRequest:   make(chan chan *dataRequest, 10),
+		maxStale:      maxStale,
 		roundTripName: roundTripName,
 		transport:     transport,
 		ttl:           ttl,
@@ -58,14 +60,21 @@ func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, r
 
 func (s *SyncedJSON) sync(ctx context.Context) {
 	var expired <-chan time.Time
+	var invalidated <-chan time.Time
+	var backoff time.Duration
+
+	init := func() {
+		expired = time.After(s.ttl)
+		backoff = time.Second
+	}
+
+	init()
+
 	err := s.fetch() // initial fetch, provide any startup errors for first dataRequest's
 	if err != nil {
 		expired = time.After(0)
-	} else {
-		expired = time.After(s.ttl)
 	}
 
-	backoff := time.Second
 	for {
 		select {
 		case <-ctx.Done():
@@ -73,19 +82,21 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 		case <-expired:
 			err = s.fetch()
 			if err != nil {
-				time.Sleep(backoff)
+				invalidated = time.After(s.maxStale)
+				expired = time.After(backoff)
 				if backoff < time.Minute {
 					backoff *= 2
 				}
 				continue
 			}
-			expired = time.After(s.ttl)
-			backoff = time.Second
+			init()
 		case r := <-s.dataRequest:
 			r <- &dataRequest{
 				err: err,
 				obj: s.data,
 			}
+		case <-invalidated:
+			s.data = nil
 		}
 	}
 }

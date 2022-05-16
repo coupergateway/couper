@@ -3453,10 +3453,10 @@ func TestJWTAccessControl(t *testing.T) {
 		{"RSA JWT PKCS1", "/jwt/rsa/pkcs1", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS8", "/jwt/rsa/pkcs8", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: RSATokenWrongAlgorithm: token is unverifiable: signing method RS256 is invalid"},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", `access control error: JWKS: token is unverifiable: Keyfunc returned an error`},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", "access control error: JWKS: token is unverifiable: Keyfunc returned an error"},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", "access control error: JWKS: token is unverifiable: Keyfunc returned an error"},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: JWKS_not_found: token is unverifiable: Keyfunc returned an error"},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", `access control error: JWKS: no matching RS256 JWK for kid ""`},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-unsupported"`},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-wrong-cert"`},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", `access control error: JWKS_not_found: received no valid JWKs data: <nil>, status code 404`},
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -3515,6 +3515,78 @@ func TestJWTAccessControl(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestJWKsMaxStale(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	config := `
+	  server {
+	    endpoint "/" {
+	    access_control = ["stale"]
+	      response {
+	        body = "hi"
+	      }
+	    }
+	  }
+	  definitions {
+	    jwt "stale" {
+	      jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+	      jwks_ttl = "3s"
+	      jwks_max_stale = "2s"
+	      backend {
+	        origin = env.COUPER_TEST_BACKEND_ADDR
+	        set_request_headers = {
+	          Self-Destruct: ` + fmt.Sprint(time.Now().Add(2*time.Second).Unix()) + `
+	        }
+	      }
+	    }
+	  }
+	`
+
+	shutdown, hook := newCouperWithBytes([]byte(config), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
+	helper.Must(err)
+
+	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+
+	req.Header = http.Header{"Authorization": []string{"Bearer " + rsaToken}}
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != 200 {
+		message := getAccessControlMessages(hook)
+		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
+	}
+
+	time.Sleep(3 * time.Second)
+	// TTL 3s, backend is already failing, responds with stale JWKS
+
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != 200 {
+		message := getAccessControlMessages(hook)
+		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
+	}
+
+	time.Sleep(3 * time.Second)
+	// stale time (2s) exhausted -> 403
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	time.Sleep(time.Second)
+	message := getAccessControlMessages(hook)
+	if res.StatusCode != 403 {
+		t.Fatalf("expected status %d, got: %d (%s)", 403, res.StatusCode, message)
+	}
+
+	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"
+	if message != expectedMessage {
+		t.Fatalf("expected message %q, got: %q", expectedMessage, message)
 	}
 }
 
@@ -3716,6 +3788,14 @@ func Test_Permissions(t *testing.T) {
 		{"by scope: method not permitted", http.MethodDelete, "/scope/foo", true, http.StatusMethodNotAllowed, ``, ``, "method not allowed error: method DELETE not allowed by beta_required_permission", ""},
 		{"by scope: permission required by endpoint via *: insufficient permissions", http.MethodGet, "/scope/bar", true, http.StatusForbidden, ``, `more`, `access control error: required permission "more" not granted`, "beta_insufficient_permissions"},
 		{"by scope: no permission required by endpoint", http.MethodDelete, "/scope/bar", true, http.StatusNoContent, `["a"]`, ``, "", ""},
+		{"by scope: required permission expression", http.MethodGet, "/scope/path/a/path", true, http.StatusNoContent, `["a"]`, ``, "", ""},
+		{"by scope: required permission object expression (GET)", http.MethodGet, "/scope/object/get", true, http.StatusNoContent, `["a"]`, ``, "", ""},
+		{"by scope: required permission object expression (DELETE)", http.MethodDelete, "/scope/object/delete", true, http.StatusForbidden, ``, ``, `access control error: required permission "z" not granted`, "beta_insufficient_permissions"},
+		{"by scope: required permission bad expression", http.MethodGet, "/scope/bad/expression", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
+		{"by scope: required permission bad type number", http.MethodGet, "/scope/bad/type/number", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
+		{"by scope: required permission bad type boolean", http.MethodGet, "/scope/bad/type/boolean", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
+		{"by scope: required permission bad type tuple", http.MethodGet, "/scope/bad/type/tuple", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
+		{"by scope: required permission bad type null", http.MethodGet, "/scope/bad/type/null", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
 		{"by scope: required permission by api only: insufficient permissions", http.MethodGet, "/scope/permission-from-api", true, http.StatusForbidden, ``, ``, `access control error: required permission "z" not granted`, "beta_insufficient_permissions"},
 		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, ``, "access control error: roled_jwt: token required", "jwt_token_missing"},
 		{"by role: sufficient permission", http.MethodGet, "/role/foo", true, http.StatusNoContent, `["a","b"]`, ``, "", ""},

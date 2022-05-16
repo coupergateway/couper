@@ -14,7 +14,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/zclconf/go-cty/cty"
 
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/accesscontrol/jwk"
@@ -28,7 +27,6 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -305,19 +303,15 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
-				requiredPermissionVal := endpointConf.RequiredPermission
-				if requiredPermissionVal == cty.NilVal && parentAPI != nil {
+				requiredPermissionExpr := endpointConf.RequiredPermission
+				if requiredPermissionExpr == nil && parentAPI != nil {
 					// if required permission in endpoint {} not defined, try required permission in parent api {}
-					requiredPermissionVal = parentAPI.RequiredPermission
+					requiredPermissionExpr = parentAPI.RequiredPermission
 				}
-				if requiredPermissionVal == cty.NilVal {
+				if requiredPermissionExpr == nil {
 					protectedHandler = epHandler
 				} else {
-					requiredPermission, requiredPermissionMap, err := seetie.ValueToPermission(requiredPermissionVal)
-					if err != nil {
-						return nil, err
-					}
-					permissionsControl := ac.NewPermissionsControl(requiredPermission, requiredPermissionMap)
+					permissionsControl := ac.NewPermissionsControl(requiredPermissionExpr)
 					permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
@@ -610,7 +604,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 		}
 	}
 
-	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, backend)
+	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
 }
 
 type protectedOptions struct {

@@ -171,13 +171,15 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		berespErr := &http.Response{
-			Request: req,
-		} // provide outreq (variable) on error cases
-		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
-			varSync.Set(berespErr)
+		if beresp == nil {
+			beresp = &http.Response{
+				Request: req,
+			} // provide outreq (variable) on error cases
 		}
-		return berespErr, err
+		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+			varSync.Set(beresp)
+		}
+		return beresp, err
 	}
 
 	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
@@ -187,6 +189,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !eval.IsUpgradeResponse(req, beresp) {
+		beresp.Body = logging.NewBytesCountReader(beresp)
 		if err = setGzipReader(beresp); err != nil {
 			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
 		}
@@ -225,7 +228,7 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 	}
 
 	if err = b.openAPIValidator.ValidateResponse(beresp, requestValidationInput); err != nil {
-		return nil, errors.BackendOpenapiValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
+		return beresp, errors.BackendOpenapiValidation.Label(b.name).With(err).Status(http.StatusBadGateway)
 	}
 
 	return beresp, nil
@@ -373,18 +376,20 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 				return
 			}
 
-			go func(done <-chan struct{}) {
+			go func(c context.Context, timeoutCh chan time.Time) {
 				ttfbTimer.Reset(conf.TTFBTimeout)
 				select {
-				case <-done:
-					if !ttfbTimer.Stop() {
-						<-ttfbTimer.C
+				case <-c.Done():
+					ttfbTimer.Stop()
+					select {
+					case <-ttfbTimer.C:
+					default:
 					}
-					return
-				case ttfbTimeout <- <-ttfbTimer.C:
+				case t := <-ttfbTimer.C:
+					// buffered, no select done required
+					timeoutCh <- t
 				}
-
-			}(req.Context().Done())
+			}(ctx, ttfbTimeout)
 		},
 		GotFirstResponseByte: func() {
 			if downstreamTrace != nil && downstreamTrace.GotFirstResponseByte != nil {
@@ -396,7 +401,7 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 
 	*req = *req.WithContext(httptrace.WithClientTrace(ctx, ctxTrace))
 
-	go func(cancelFn func(), c context.Context, ec chan error) {
+	go func(c context.Context, cancelFn func(), ec chan error) {
 		defer cancelFn()
 		deadline := make(<-chan time.Time)
 		if timeout > 0 {
@@ -415,7 +420,7 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 		case <-c.Done():
 			return
 		}
-	}(cancel, ctx, errCh)
+	}(ctx, cancel, errCh)
 	return errCh
 }
 

@@ -35,6 +35,71 @@ server "scoped jwt" {
         }
       }
     }
+    endpoint "/path/{p}/path" {
+      beta_required_permission = request.path_params.p
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/object/{method}" {
+      beta_required_permission = {
+        (request.path_params.method) = contains(["get", "post"], request.path_params.method) ? "a" : "z"
+      }
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bad/expression" {
+      beta_required_permission = request
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bad/type/number" {
+      beta_required_permission = 123
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bad/type/boolean" {
+      beta_required_permission = true
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bad/type/tuple" {
+      beta_required_permission = ["p1", "p2"]
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bad/type/null" {
+      beta_required_permission = null
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
     endpoint "/permission-from-api" {
       response {
         status = 204

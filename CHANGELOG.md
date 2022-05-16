@@ -11,11 +11,15 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
   * `url` attribute could make use of our wildcard pattern `/**` and relative urls in combination with a backend reference ([#480](https://github.com/avenga/couper/pull/480))
-  * Error handling for `backend`, `backend_openapi_validation` and `backend_timeout` error types ([#490](https://github.com/avenga/couper/pull/490))
+  * `jwks_max_stale` in [`jwt` block](./docs/REFERENCE.md#jwt-block) ([#502](https://github.com/avenga/couper/pull/502))
+  * `jwks_ttl`, `jwks_max_stale` and `configuration_max_stale` in [`oidc` block](./docs/REFERENCE.md#oidc-block) ([#502](https://github.com/avenga/couper/pull/502))
+  * Error handling for `backend`, `backend_openapi_validation` and `backend_timeout` [error types](./docs/ERRORS.md) ([#490](https://github.com/avenga/couper/pull/490))
+  * `response.bytes` log-field to backend logs if read from body, fallback is the `Content-Length` header ([#494](https://github.com/avenga/couper/pull/494))
+  * [Error types](./docs/ERRORS.md) `endpoint` and `access_control` ([#500](https://github.com/avenga/couper/pull/500))
 
 * **Changed**
-  * Permission handling: ([#477](https://github.com/avenga/couper/pull/477))
-    * renamed `beta_scope` attribute for [`api`](./docs/REFERENCE.md#api-block) and [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks to `beta_required_permission`; `beta_required_permission` in `endpoint` now *overriding* `beta_required_permission` in containing `api` block
+  * Permission handling: ([#477](https://github.com/avenga/couper/pull/477), [#504](https://github.com/avenga/couper/pull/504))
+    * renamed `beta_scope` attribute for [`api`](./docs/REFERENCE.md#api-block) and [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks to `beta_required_permission`; `beta_required_permission` in `endpoint` now *overriding* `beta_required_permission` in containing `api` block; allowing an expression as attribute value
     * renamed `beta_scope_claim` and `beta_scope_map` attributes for [`jwt` block](./docs/REFERENCE.md#jwt-block) to `beta_permissions_claim` and `beta_permissions_map`
     * removed `beta_operation_denied` and `beta_scope` [error types](./docs/ERRORS.md#api-and-endpoint-error-types)
     * renamed `beta_insufficient_scope` [error type](./docs/ERRORS.md#api-and-endpoint-error-types) to `beta_insufficient_permissions`
@@ -29,6 +33,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Request methods are treated case-insensitively when comparing them to methods in the `allowed_methods` attribute of [`api`](./docs/REFERENCE.md#api-block) or [`endpoint`](./docs/REFERENCE.md#endpoint-block) blocks ([#478](https://github.com/avenga/couper/pull/478))
   * Do not allow multiple `backend` blocks in `proxy` and `request` blocks ([#483](https://github.com/avenga/couper/pull/483))
   * Panic if an [`error_handler` block](./docs/REFERENCE.md#error-handler-block) following another `error_handler` block has no label ([#486](https://github.com/avenga/couper/pull/486))
+  * Invalid (by [OpenAPI validation](./docs/REFERENCE.md#openapi-block)) backend response missing in [`backend_responses`](./docs/REFERENCE.md#backend_responses) ([#501](https://github.com/avenga/couper/pull/501))
 
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
