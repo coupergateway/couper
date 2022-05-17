@@ -217,12 +217,18 @@ func Test_MultipleLabels(t *testing.T) {
 			"testdata/multi/errors/couper_02.hcl",
 			"testdata/multi/errors/couper_02.hcl:2,11-14: cannot match argument name from: Only 1 labels (name) are expected for api blocks.",
 		},
+		{
+			"api and server without labels",
+			"testdata/multi/errors/couper_03.hcl",
+			"",
+		},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			_, err := configload.LoadFiles(filepath.Join(testWorkingDir, tc.configPath), "")
 
-			if !strings.Contains(err.Error(), tc.expError) {
-				st.Errorf("Unexpected error: %s", err.Error())
+			if (err != nil && tc.expError == "") ||
+				(tc.expError != "" && (err == nil || !strings.Contains(err.Error(), tc.expError))) {
+				st.Errorf("Unexpected error: %v", err)
 			}
 		})
 	}

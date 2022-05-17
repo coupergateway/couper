@@ -24,7 +24,6 @@ const (
 var (
 	reFetchUnsupportedName = regexp.MustCompile(`\"([^"]+)\"`)
 	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\)\.`)
-	reFetchUnlabeledName   = regexp.MustCompile(`No labels are expected for (.*) blocks\.`)
 	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
 	reFetchUniqueKey       = regexp.MustCompile(`Key must be unique for (.*)\.`)
 )
@@ -40,6 +39,9 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	return uniqueErrors(diags)
 }
 
+// filterValidErrors ignores certain schema related errors due to their specific non hcl conform implementation.
+// Related attributes and blocks will be logic checked with LoadConfig.
+// TODO: Improve checkObjectFields to remove this filter requirement. E.g. optional label struct tag
 func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagnostics) hcl.Diagnostics {
 	var errors hcl.Diagnostics
 
@@ -51,10 +53,6 @@ func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagno
 		matches := reFetchUnsupportedName.FindStringSubmatch(err.Detail)
 		if len(matches) != 2 {
 			if match := reFetchLabeledName.MatchString(err.Detail); match {
-				errors = errors.Append(err)
-				continue
-			}
-			if match := reFetchUnlabeledName.MatchString(err.Detail); match {
 				errors = errors.Append(err)
 				continue
 			}
