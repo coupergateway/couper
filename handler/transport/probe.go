@@ -56,10 +56,16 @@ type Probe struct {
 	state   state
 	status  int
 
+	listener ProbeStateChange
+
 	uidFunc middleware.UIDFunc
 }
 
-func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
+type ProbeStateChange interface {
+	OnProbeChange(info *probe.HealthInfo)
+}
+
+func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck, listener ProbeStateChange) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -75,6 +81,8 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
 
 		client: client,
 		state:  StateInvalid,
+
+		listener: listener,
 
 		uidFunc: middleware.NewUIDFunc(opts.RequestUIDFormat),
 	}
@@ -131,11 +139,17 @@ func (p *Probe) probe() {
 
 		if prevState != p.state {
 			newState := p.state.String()
-			probe.BackendProbes.Store(p.backendName, probe.HealthInfo{
+			info := &probe.HealthInfo{
 				State:   newState,
 				Error:   errorMessage,
 				Healthy: p.state != StateDown,
-			})
+			}
+
+			probe.BackendProbes.Store(p.backendName, info)
+
+			if p.listener != nil {
+				p.listener.OnProbeChange(info)
+			}
 
 			message := fmt.Sprintf("new health state: %s", newState)
 

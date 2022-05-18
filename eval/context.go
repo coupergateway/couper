@@ -162,7 +162,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 
 	backendsVariable := map[string]interface{}{}
 	probe_map.BackendProbes.Range(func(backendName, value interface{}) bool {
-		health := value.(probe_map.HealthInfo)
+		health := value.(*probe_map.HealthInfo)
 		backendsVariable[fmt.Sprint(backendName)] = map[string]interface{}{
 			Health: map[string]interface{}{
 				"healthy": health.Healthy,

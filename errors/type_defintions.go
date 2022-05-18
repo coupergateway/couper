@@ -25,6 +25,7 @@ var Definitions = []*Error{
 	Backend,
 	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
 	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
+	Backend.Kind("backend_unhealthy"),
 
 	Endpoint,
 	Endpoint.Kind("sequence"),

@@ -26,6 +26,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
@@ -36,18 +37,23 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-var _ http.RoundTripper = &Backend{}
+var (
+	_ http.RoundTripper = &Backend{}
+	_ ProbeStateChange  = &Backend{}
+)
 
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
+	healthy          *bool
+	healthyMu        sync.RWMutex
 	logEntry         *logrus.Entry
 	name             string
 	openAPIValidator *validation.OpenAPI
 	tokenRequest     TokenRequest
 	transport        *http.Transport
-	transportOnce    sync.Once
 	transportConf    *Config
+	transportOnce    sync.Once
 	upstreamLog      *logging.UpstreamLog
 }
 
@@ -55,6 +61,7 @@ type Backend struct {
 func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var (
 		healthCheck  *config.HealthCheck
+		healthy      = true
 		openAPI      *validation.OpenAPI
 		tokenRequest TokenRequest
 	)
@@ -67,6 +74,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend := &Backend{
 		context:          ctx,
+		healthy:          &healthy,
 		logEntry:         log.WithField("backend", tc.BackendName),
 		name:             tc.BackendName,
 		openAPIValidator: openAPI,
@@ -78,7 +86,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	distinct := !strings.HasPrefix(tc.Hostname, "anonymous_")
 	if distinct && healthCheck != nil {
-		NewProbe(backend.logEntry, tc.BackendName, healthCheck)
+		NewProbe(backend.logEntry, tc.BackendName, healthCheck, backend)
 	}
 
 	return backend.upstreamLog
@@ -91,13 +99,6 @@ func (b *Backend) initOnce(conf *Config) {
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	// for token-request retry purposes
-	originalReq := req.Clone(req.Context())
-
-	if err := b.withTokenRequest(req); err != nil {
-		return nil, err
-	}
-
 	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
 	if ctxBody == nil {
 		ctxBody = b.context
@@ -105,12 +106,25 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
 	}
 
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+
+	if err := b.isUnhealthy(hclCtx, ctxBody); err != nil {
+		return &http.Response{
+			Request: req, // provide outreq (variable) on error cases
+		}, err
+	}
+
+	// for token-request retry purposes
+	originalReq := req.Clone(req.Context())
+
+	if err := b.withTokenRequest(req); err != nil {
+		return nil, err
+	}
+
 	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
 	if logCh != nil {
 		logCh <- ctxBody
 	}
-
-	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
@@ -486,6 +500,37 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 	return b.transportConf.
 		WithTarget(originURL.Scheme, originURL.Host, hostname, proxyURL).
 		WithTimings(connectTimeout, ttfbTimeout, timeout, log), nil
+}
+
+func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
+	paramsContent, _, diags := params.PartialContent(config.BackendInlineSchema)
+	if diags.HasErrors() {
+		return diags
+	}
+	val, err := eval.ValueFromAttribute(ctx, paramsContent, "use_when_unhealthy")
+	if err != nil {
+		return err
+	}
+
+	var useUnhealthy bool
+	if val.Type() == cty.Bool {
+		useUnhealthy = val.True()
+	} // else not set
+
+	b.healthyMu.RLock()
+	defer b.healthyMu.RUnlock()
+
+	if *b.healthy || useUnhealthy {
+		return nil
+	}
+
+	return errors.BackendUnhealthy
+}
+
+func (b *Backend) OnProbeChange(info *probe_map.HealthInfo) {
+	b.healthyMu.Lock()
+	*b.healthy = info.Healthy
+	b.healthyMu.Unlock()
 }
 
 // setUserAgent sets an empty one if none is present or empty
