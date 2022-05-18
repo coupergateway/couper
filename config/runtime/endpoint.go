@@ -19,20 +19,20 @@ import (
 func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endpointMap, error) {
 	endpoints := make(endpointMap)
 
-	catchAllEndpoints := map[string]bool{}
+	catchAllEndpoints := make(map[string]struct{})
 	for _, apiConf := range srvConf.APIs {
 		basePath := serverOptions.APIBasePaths[apiConf]
 		for _, epConf := range apiConf.Endpoints {
 			endpoints[epConf] = apiConf
 			if epConf.Pattern == "/**" {
-				catchAllEndpoints[basePath] = true
+				catchAllEndpoints[basePath] = struct{}{}
 			}
 		}
 	}
 
 	for _, apiConf := range srvConf.APIs {
 		basePath := serverOptions.APIBasePaths[apiConf]
-		if catchAllEndpoints[basePath] {
+		if _, exists := catchAllEndpoints[basePath]; exists {
 			continue
 		}
 
@@ -52,7 +52,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 
 		if isAPIBasePathUniqueToFilesAndSPA {
 			endpoints[apiConf.CatchAllEndpoint] = apiConf
-			catchAllEndpoints[basePath] = true
+			catchAllEndpoints[basePath] = struct{}{}
 		}
 	}
 
