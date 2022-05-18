@@ -22,19 +22,27 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	type (
 		namedBlocks   map[string]*hclsyntax.Block
 		apiDefinition struct {
-			labels       []string
-			attributes   hclsyntax.Attributes
-			blocks       namedBlocks
-			endpoints    namedBlocks
-			errorHandler namedBlocks
+			labels          []string
+			typeRange       hcl.Range
+			labelRanges     []hcl.Range
+			openBraceRange  hcl.Range
+			closeBraceRange hcl.Range
+			attributes      hclsyntax.Attributes
+			blocks          namedBlocks
+			endpoints       namedBlocks
+			errorHandler    namedBlocks
 		}
 		namedAPIs        map[string]*apiDefinition
 		serverDefinition struct {
-			labels     []string
-			attributes hclsyntax.Attributes
-			blocks     namedBlocks
-			endpoints  namedBlocks
-			apis       namedAPIs
+			labels          []string
+			typeRange       hcl.Range
+			labelRanges     []hcl.Range
+			openBraceRange  hcl.Range
+			closeBraceRange hcl.Range
+			attributes      hclsyntax.Attributes
+			blocks          namedBlocks
+			endpoints       namedBlocks
+			apis            namedAPIs
 		}
 		servers map[string]*serverDefinition
 	)
@@ -82,11 +90,15 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 			if results[serverKey] == nil {
 				results[serverKey] = &serverDefinition{
-					labels:     outerBlock.Labels,
-					attributes: make(hclsyntax.Attributes),
-					blocks:     make(namedBlocks),
-					endpoints:  make(namedBlocks),
-					apis:       make(namedAPIs),
+					labels:          outerBlock.Labels,
+					typeRange:       outerBlock.TypeRange,
+					labelRanges:     outerBlock.LabelRanges,
+					openBraceRange:  outerBlock.OpenBraceRange,
+					closeBraceRange: outerBlock.CloseBraceRange,
+					attributes:      make(hclsyntax.Attributes),
+					blocks:          make(namedBlocks),
+					endpoints:       make(namedBlocks),
+					apis:            make(namedAPIs),
 				}
 			}
 
@@ -156,11 +168,15 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					if results[serverKey].apis[apiKey] == nil {
 						results[serverKey].apis[apiKey] = &apiDefinition{
-							labels:       block.Labels,
-							attributes:   make(hclsyntax.Attributes),
-							blocks:       make(namedBlocks),
-							endpoints:    make(namedBlocks),
-							errorHandler: make(namedBlocks),
+							labels:          block.Labels,
+							typeRange:       block.TypeRange,
+							labelRanges:     block.LabelRanges,
+							openBraceRange:  block.OpenBraceRange,
+							closeBraceRange: block.CloseBraceRange,
+							attributes:      make(hclsyntax.Attributes),
+							blocks:          make(namedBlocks),
+							endpoints:       make(namedBlocks),
+							errorHandler:    make(namedBlocks),
 						}
 					}
 
@@ -233,6 +249,10 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					Attributes: apiBlock.attributes,
 					Blocks:     apiBlocks,
 				},
+				TypeRange:       apiBlock.typeRange,
+				LabelRanges:     apiBlock.labelRanges,
+				OpenBraceRange:  apiBlock.openBraceRange,
+				CloseBraceRange: apiBlock.closeBraceRange,
 			}
 
 			serverBlocks = append(serverBlocks, mergedAPI)
@@ -245,6 +265,10 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 				Attributes: serverBlock.attributes,
 				Blocks:     serverBlocks,
 			},
+			TypeRange:       serverBlock.typeRange,
+			LabelRanges:     serverBlock.labelRanges,
+			OpenBraceRange:  serverBlock.openBraceRange,
+			CloseBraceRange: serverBlock.closeBraceRange,
 		}
 
 		mergedServers = append(mergedServers, mergedServer)

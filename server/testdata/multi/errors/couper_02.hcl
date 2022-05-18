@@ -1,0 +1,4 @@
+server {
+  api "a" "b" {
+  }
+}
