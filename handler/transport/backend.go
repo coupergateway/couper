@@ -44,17 +44,18 @@ var (
 
 // Backend represents the transport configuration.
 type Backend struct {
-	context          hcl.Body
-	healthInfo       *HealthInfo
-	healthyMu        sync.RWMutex
-	logEntry         *logrus.Entry
-	name             string
-	openAPIValidator *validation.OpenAPI
-	tokenRequest     TokenRequest
-	transport        *http.Transport
-	transportConf    *Config
-	transportOnce    sync.Once
-	upstreamLog      *logging.UpstreamLog
+	context             hcl.Body
+	healthInfo          *HealthInfo
+	healthyMu           sync.RWMutex
+	logEntry            *logrus.Entry
+	name                string
+	openAPIValidator    *validation.OpenAPI
+	tokenRequest        TokenRequest
+	transport           *http.Transport
+	transportConf       *Config
+	transportConfResult Config
+	transportOnce       sync.Once
+	upstreamLog         *logging.UpstreamLog
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
@@ -94,7 +95,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	b.transport = NewTransport(conf, b.logEntry)
-	b.transportConf = conf
+	b.transportConfResult = *conf
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.

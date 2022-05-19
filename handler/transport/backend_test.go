@@ -473,7 +473,10 @@ func TestBackend_HealthCheck(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health, err := config.NewHealthCheck("http://origin:8080/foo", tc.health, &config.DefaultSettings)
+			health, err := config.
+				NewHealthCheck("http://origin:8080/foo", tc.health, &config.Couper{
+					Settings: &config.DefaultSettings,
+				})
 			h.Must(err)
 
 			if tc.expectation.URL != nil {
