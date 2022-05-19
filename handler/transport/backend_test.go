@@ -359,6 +359,7 @@ func TestBackend_director(t *testing.T) {
 
 func TestBackend_HealthCheck(t *testing.T) {
 	type expectation struct {
+		context          context.Context
 		FailureThreshold uint
 		Interval         time.Duration
 		Timeout          time.Duration
