@@ -92,11 +92,19 @@ func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck, l
 		uidFunc: middleware.NewUIDFunc(opts.RequestUIDFormat),
 	}
 
-	go p.probe()
+	go p.probe(opts.Context)
 }
 
-func (p *Probe) probe() {
+func (p *Probe) probe(c context.Context) {
 	for {
+		select {
+		case <-c.Done():
+			p.log.
+				WithField("url", p.opts.Request.URL.String()).
+				Warn("shutdown health probe")
+			return
+		default:
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), p.opts.Timeout)
 		ctx = context.WithValue(ctx, request.RoundTripName, "health-check")
 		uid := p.uidFunc()

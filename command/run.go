@@ -20,6 +20,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/server"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
@@ -97,6 +98,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	r.settingsMu.Lock()
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
+
+	// apply command context
+	config.Context = config.Context.(*eval.Context).WithContext(r.context)
 
 	if f := r.flagSet.Lookup("accept-forwarded-url"); f != nil {
 		if afv, ok := f.Value.(*AcceptForwardedValue); ok {

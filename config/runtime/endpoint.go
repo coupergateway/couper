@@ -71,7 +71,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 }
 
 func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
-	serverOptions *server.Options, log *logrus.Entry, settings *config.Settings, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
+	serverOptions *server.Options, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
 	var errTpl *errors.Template
 
 	if endpointConf.ErrorFile != "" {
@@ -101,7 +101,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, settings, memStore)
+		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, conf, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -118,7 +118,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
-		backend, berr := NewBackend(confCtx, requestConf.Backend, log, settings, memStore)
+		backend, berr := NewBackend(confCtx, requestConf.Backend, log, conf, memStore)
 		if berr != nil {
 			return nil, berr
 		}

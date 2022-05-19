@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"time"
@@ -19,6 +20,7 @@ var defaultHealthCheck = &HealthCheck{
 }
 
 type HealthCheck struct {
+	Context          context.Context
 	FailureThreshold uint
 	Interval         time.Duration
 	Timeout          time.Duration
@@ -41,9 +43,11 @@ type Health struct {
 	Remain           hcl.Body `hcl:",remain"`
 }
 
-func NewHealthCheck(baseURL string, options *Health, settings *Settings) (*HealthCheck, error) {
+func NewHealthCheck(baseURL string, options *Health, conf *Couper) (*HealthCheck, error) {
 	healthCheck := *defaultHealthCheck
-	healthCheck.RequestUIDFormat = settings.RequestIDFormat
+
+	healthCheck.Context = conf.Context
+	healthCheck.RequestUIDFormat = conf.Settings.RequestIDFormat
 
 	var err error
 	if options != nil {

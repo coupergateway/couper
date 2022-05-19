@@ -82,6 +82,11 @@ func ContextFromRequest(req *http.Request) *Context {
 	return NewContext(nil, nil)
 }
 
+func (c *Context) WithContext(ctx context.Context) context.Context {
+	c.inner = ctx
+	return c
+}
+
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
 	return c.inner.Deadline()
 }
