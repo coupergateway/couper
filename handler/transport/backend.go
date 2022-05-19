@@ -83,7 +83,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend.upstreamLog = logging.NewUpstreamLog(backend.logEntry, backend, tc.NoProxyFromEnv)
 
-	distinct := !strings.HasPrefix(tc.Hostname, "anonymous_")
+	distinct := !strings.HasPrefix(tc.BackendName, "anonymous_")
 	if distinct && healthCheck != nil {
 		NewProbe(backend.logEntry, tc.BackendName, healthCheck, backend)
 	}
