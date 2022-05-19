@@ -108,6 +108,10 @@ func (c *Context) Value(key interface{}) interface{} {
 
 func (c *Context) WithClientRequest(req *http.Request) *Context {
 	c.backendsFn.Do(func() {
+		if c.memStore == nil {
+			return
+		}
+
 		const prefix = "backend_"
 		for _, b := range c.memStore.GetAllWithPrefix(prefix) {
 			if rt, ok := b.(http.RoundTripper); ok {
@@ -120,6 +124,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		backends:          c.backends,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
+		memStore:          c.memStore,
 		memorize:          make(map[string]interface{}),
 		oauth2:            c.oauth2[:],
 		jwtSigningConfigs: c.jwtSigningConfigs,
@@ -201,6 +206,7 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 		backends:          c.backends,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
+		memStore:          c.memStore,
 		memorize:          c.memorize,
 		oauth2:            c.oauth2[:],
 		jwtSigningConfigs: c.jwtSigningConfigs,
