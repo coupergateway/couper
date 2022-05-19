@@ -26,7 +26,6 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
@@ -40,12 +39,13 @@ import (
 var (
 	_ http.RoundTripper = &Backend{}
 	_ ProbeStateChange  = &Backend{}
+	_ seetie.Object     = &Backend{}
 )
 
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
-	healthy          *bool
+	healthInfo       *HealthInfo
 	healthyMu        sync.RWMutex
 	logEntry         *logrus.Entry
 	name             string
@@ -61,7 +61,6 @@ type Backend struct {
 func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var (
 		healthCheck  *config.HealthCheck
-		healthy      = true
 		openAPI      *validation.OpenAPI
 		tokenRequest TokenRequest
 	)
@@ -74,7 +73,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend := &Backend{
 		context:          ctx,
-		healthy:          &healthy,
+		healthInfo:       &HealthInfo{Healthy: true, State: StateOk.String()},
 		logEntry:         log.WithField("backend", tc.BackendName),
 		name:             tc.BackendName,
 		openAPIValidator: openAPI,
@@ -95,6 +94,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	b.transport = NewTransport(conf, b.logEntry)
+	b.transportConf = conf
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
@@ -520,17 +520,36 @@ func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
 	b.healthyMu.RLock()
 	defer b.healthyMu.RUnlock()
 
-	if *b.healthy || useUnhealthy {
+	if b.healthInfo.Healthy || useUnhealthy {
 		return nil
 	}
 
 	return errors.BackendUnhealthy
 }
 
-func (b *Backend) OnProbeChange(info *probe_map.HealthInfo) {
+func (b *Backend) OnProbeChange(info *HealthInfo) {
 	b.healthyMu.Lock()
-	*b.healthy = info.Healthy
+	b.healthInfo = info
 	b.healthyMu.Unlock()
+}
+
+func (b *Backend) Value() cty.Value {
+	b.healthyMu.RLock()
+	defer b.healthyMu.RUnlock()
+
+	return seetie.GoToValue(map[string]interface{}{
+		"health": map[string]interface{}{
+			"healthy": b.healthInfo.Healthy,
+			"error":   b.healthInfo.Error,
+			"state":   b.healthInfo.State,
+		},
+		"hostname":        b.transportConf.Hostname,
+		"name":            b.name, // mandatory
+		"origin":          b.transportConf.Origin,
+		"connect_timeout": b.transportConf.ConnectTimeout.String(),
+		"ttfb_timeout":    b.transportConf.TTFBTimeout.String(),
+		"timeout":         b.transportConf.Timeout.String(),
+	})
 }
 
 // setUserAgent sets an empty one if none is present or empty

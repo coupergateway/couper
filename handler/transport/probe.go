@@ -17,7 +17,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/middleware"
-	probe "github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/logging"
 )
 
@@ -43,6 +42,12 @@ func (s state) String() string {
 	return healthStateLabels[s]
 }
 
+type HealthInfo struct {
+	State   string
+	Healthy bool
+	Error   string
+}
+
 type Probe struct {
 	//configurable settings
 	backendName string
@@ -62,7 +67,7 @@ type Probe struct {
 }
 
 type ProbeStateChange interface {
-	OnProbeChange(info *probe.HealthInfo)
+	OnProbeChange(info *HealthInfo)
 }
 
 func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck, listener ProbeStateChange) {
@@ -139,13 +144,11 @@ func (p *Probe) probe() {
 
 		if prevState != p.state {
 			newState := p.state.String()
-			info := &probe.HealthInfo{
+			info := &HealthInfo{
 				State:   newState,
 				Error:   errorMessage,
 				Healthy: p.state != StateDown,
 			}
-
-			probe.BackendProbes.Store(p.backendName, info)
 
 			if p.listener != nil {
 				p.listener.OnProbeChange(info)

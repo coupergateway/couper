@@ -2,6 +2,7 @@ package cache
 
 import (
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,6 +59,23 @@ func (ms *MemoryStore) Get(k string) interface{} {
 	}
 
 	return nil
+}
+
+func (ms *MemoryStore) GetAllWithPrefix(prefix string) []interface{} {
+	var list []interface{}
+
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	for k, v := range ms.db {
+		if time.Now().Unix() >= v.expAt || !strings.HasPrefix(k, prefix) {
+			continue
+		}
+
+		list = append(list, v.value)
+	}
+
+	return list
 }
 
 // Set stores a key/value pair for <ttl> second(s) into the <MemoryStore>.

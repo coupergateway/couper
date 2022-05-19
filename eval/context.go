@@ -3,13 +3,13 @@ package eval
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -20,11 +20,11 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -42,8 +42,11 @@ func (m ContextMap) Merge(other ContextMap) ContextMap {
 }
 
 type Context struct {
+	backends          []http.RoundTripper
+	backendsFn        sync.Once
 	eval              *hcl.EvalContext
 	inner             context.Context
+	memStore          *cache.MemoryStore
 	memorize          map[string]interface{}
 	oauth2            []config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
@@ -99,7 +102,17 @@ func (c *Context) Value(key interface{}) interface{} {
 }
 
 func (c *Context) WithClientRequest(req *http.Request) *Context {
+	c.backendsFn.Do(func() {
+		const prefix = "backend_"
+		for _, b := range c.memStore.GetAllWithPrefix(prefix) {
+			if rt, ok := b.(http.RoundTripper); ok {
+				c.backends = append(c.backends, rt)
+			}
+		}
+	})
+
 	ctx := &Context{
+		backends:          c.backends,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
 		memorize:          make(map[string]interface{}),
@@ -160,20 +173,17 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
-	backendsVariable := map[string]interface{}{}
-	probe_map.BackendProbes.Range(func(backendName, value interface{}) bool {
-		health := value.(*probe_map.HealthInfo)
-		backendsVariable[fmt.Sprint(backendName)] = map[string]interface{}{
-			Health: map[string]interface{}{
-				"healthy": health.Healthy,
-				"error":   health.Error,
-				"state":   health.State,
-			},
+	backendsVariable := map[string]cty.Value{}
+	for _, backend := range ctx.backends {
+		b, ok := backend.(seetie.Object)
+		if !ok {
+			continue
 		}
-		return true
-	})
-
-	ctx.eval.Variables[Backends] = seetie.MapToValue(backendsVariable)
+		v := b.Value()
+		vm := v.AsValueMap()
+		backendsVariable[vm["name"].AsString()] = v
+	}
+	ctx.eval.Variables[Backends] = cty.ObjectVal(backendsVariable)
 
 	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
@@ -183,6 +193,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 
 func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 	ctx := &Context{
+		backends:          c.backends,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
 		memorize:          c.memorize,
@@ -318,6 +329,11 @@ func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
 	if c.oauth2 == nil {
 		c.oauth2 = make([]config.OAuth2Authorization, 0)
 	}
+	return c
+}
+
+func (c *Context) WithMemStore(store *cache.MemoryStore) *Context {
+	c.memStore = store
 	return c
 }
 
