@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -270,5 +271,63 @@ func TestBackend_LogResponseBytes(t *testing.T) {
 		if !seen {
 			t.Error("expected upstream log")
 		}
+	}
+}
+
+func TestBackend_Unhealthy(t *testing.T) {
+	helper := test.New(t)
+
+	var unhealthy bool
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if counter := r.Header.Get("Counter"); counter != "" {
+			c, _ := strconv.Atoi(counter)
+			if c > 2 {
+				unhealthy = true
+			}
+		}
+		if unhealthy {
+			rw.WriteHeader(http.StatusConflict)
+		} else {
+			rw.WriteHeader(http.StatusNoContent)
+			time.Sleep(time.Second / 3)
+		}
+	}))
+
+	defer origin.Close()
+
+	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/06_couper.hcl", helper,
+		map[string]interface{}{
+			"origin": origin.URL,
+		})
+	defer shutdown()
+
+	client := test.NewHTTPClient()
+
+	type testcase struct {
+		path      string
+		expStatus int
+	}
+
+	for i, tc := range []testcase{
+		{"/anon", http.StatusNoContent},
+		{"/ref", http.StatusNoContent},
+		{"/catch", http.StatusNoContent},
+		// server switched resp status-code -> unhealthy
+		{"/anon", http.StatusConflict}, // always healthy
+		{"/ref", http.StatusBadGateway},
+		{"/catch", http.StatusTeapot},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			h := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://couper.dev:8080"+tc.path, nil)
+			h.Must(err)
+			req.Header.Set("Counter", strconv.Itoa(i))
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("want status %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+		})
 	}
 }
