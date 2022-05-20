@@ -277,15 +277,15 @@ func TestBackend_LogResponseBytes(t *testing.T) {
 func TestBackend_Unhealthy(t *testing.T) {
 	helper := test.New(t)
 
-	var unhealthy bool
+	var unhealthy int64
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if counter := r.Header.Get("Counter"); counter != "" {
 			c, _ := strconv.Atoi(counter)
 			if c > 2 {
-				unhealthy = true
+				atomic.StoreInt64(&unhealthy, 1)
 			}
 		}
-		if unhealthy {
+		if atomic.LoadInt64(&unhealthy) == 1 {
 			rw.WriteHeader(http.StatusConflict)
 		} else {
 			rw.WriteHeader(http.StatusNoContent)
