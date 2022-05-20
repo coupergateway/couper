@@ -237,6 +237,7 @@ The `backend` block defines the connection to a local/remote backend service.
 | `proxy`                          | string                | -               | A proxy URL for the related origin request.                                                   | -                                                                                                                                          | `"http://SERVER-IP_OR_NAME:PORT"` |
 | `timeout`                        | [duration](#duration) | `"300s"`        | The total deadline duration a backend request has for write and read/pipe.                    | -                                                                                                                                          | -                                 |
 | `ttfb_timeout`                   | [duration](#duration) | `"60s"`         | The duration from writing the full request to the origin and receiving the answer.            | -                                                                                                                                          | -                                 |
+| `use_when_unhealthy`             | bool                  | `false`         | Ignores the [health](#health-block) state and continues with the outgoing request             | -                                                                                                                                          | -                                 |
 | [Modifiers](#modifiers)          | -                     | -               | All [Modifiers](#modifiers)                                                                   | -                                                                                                                                          | -                                 |
 
 #### Duration
@@ -543,21 +544,21 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 
 Defines a recurring health check request for its backend. Results can be obtained via the [`backends.<label>.health` variables](#backends).
 Changes in health states and related requests will be logged. Default User-Agent will be `Couper / <version> health-check` if not provided
-via `headers` attribute.
+via `headers` attribute. An unhealthy backend will return with a [`backend_unhealthy`](ERRORS.md#api-error-types) error.
 
 | Block name    | Context                           | Label | Nested block |
 |:--------------|:----------------------------------|:------|:-------------|
 | `beta_health` | [`backend` block](#backend-block) | –     |              |
 
-| Attributes          | Type                  | Default             | Description                                        | Characteristics       | Example                            |
-|:--------------------|:----------------------|:--------------------|:---------------------------------------------------|:----------------------|:-----------------------------------|
-| `expected_status`   | tuple (number)        | `[200, 204, 301]`   | wanted response status code                        |                       | `expected_status = [418]`          |
-| `expected_text`     | string                | –                   | text response body must contain                    |                       | `expected_text = "alive"`          |
-| `failure_threshold` | number                | `2`                 | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`            |
-| `headers`           | object                | –                   | request headers                                    |                       | `headers = {User-Agent = "health"}`|
-| `interval`          | [duration](#duration) | `"2s"`              | time interval for recheck                          |                       | `timeout = "5s"`                   |
-| `path`              | string                | –                   | URL path/query on backend host                     |                       | `path = "/health"`                 |
-| `timeout`           | [duration](#duration) | `"2s"`              | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`                   |
+| Attributes          | Type                  | Default           | Description                                        | Characteristics       | Example                             |
+|:--------------------|:----------------------|:------------------|:---------------------------------------------------|:----------------------|:------------------------------------|
+| `expected_status`   | tuple (number)        | `[200, 204, 301]` | wanted response status code                        |                       | `expected_status = [418]`           |
+| `expected_text`     | string                | –                 | text response body must contain                    |                       | `expected_text = "alive"`           |
+| `failure_threshold` | number                | `2`               | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`             |
+| `headers`           | object                | –                 | request headers                                    |                       | `headers = {User-Agent = "health"}` |
+| `interval`          | [duration](#duration) | `"2s"`            | time interval for recheck                          |                       | `timeout = "5s"`                    |
+| `path`              | string                | –                 | URL path/query on backend host                     |                       | `path = "/health"`                  |
+| `timeout`           | [duration](#duration) | `"2s"`            | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`                    |
 
 ### Settings Block
 
