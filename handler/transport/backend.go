@@ -95,7 +95,9 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	b.transport = NewTransport(conf, b.logEntry)
+	b.healthyMu.Lock()
 	b.transportConfResult = *conf
+	b.healthyMu.Unlock()
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
@@ -544,12 +546,12 @@ func (b *Backend) Value() cty.Value {
 			"error":   b.healthInfo.Error,
 			"state":   b.healthInfo.State,
 		},
-		"hostname":        b.transportConf.Hostname,
+		"hostname":        b.transportConfResult.Hostname,
 		"name":            b.name, // mandatory
-		"origin":          b.transportConf.Origin,
-		"connect_timeout": b.transportConf.ConnectTimeout.String(),
-		"ttfb_timeout":    b.transportConf.TTFBTimeout.String(),
-		"timeout":         b.transportConf.Timeout.String(),
+		"origin":          b.transportConfResult.Origin,
+		"connect_timeout": b.transportConfResult.ConnectTimeout.String(),
+		"ttfb_timeout":    b.transportConfResult.TTFBTimeout.String(),
+		"timeout":         b.transportConfResult.Timeout.String(),
 	})
 }
 
