@@ -36,6 +36,8 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
+const backendInstrumentationName = "couper/backend"
+
 var (
 	_ http.RoundTripper = &Backend{}
 	_ ProbeStateChange  = &Backend{}
@@ -95,9 +97,14 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	b.transport = NewTransport(conf, b.logEntry)
+	var healthy bool
 	b.healthyMu.Lock()
 	b.transportConfResult = *conf
+	healthy = b.healthInfo.Healthy
 	b.healthyMu.Unlock()
+
+	// race condition, update possible healthy backend with current origin and hostname
+	b.OnProbeChange(&HealthInfo{Healthy: healthy})
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
@@ -261,7 +268,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		spanMsg += "." + b.name
 	}
 
-	meter := provider.Meter("couper/backend")
+	meter := provider.Meter(backendInstrumentationName)
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
 		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
@@ -533,7 +540,21 @@ func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
 func (b *Backend) OnProbeChange(info *HealthInfo) {
 	b.healthyMu.Lock()
 	b.healthInfo = info
+
+	attrs := []attribute.KeyValue{
+		attribute.String("backend_name", b.name),
+		attribute.String("hostname", b.transportConfResult.Hostname),
+		attribute.String("origin", b.transportConfResult.Origin),
+	}
 	b.healthyMu.Unlock()
+
+	meter := provider.Meter(backendInstrumentationName)
+	counter := metric.Must(meter).NewInt64UpDownCounter(instrumentation.BackendHealthState, metric.WithDescription(string(unit.Dimensionless)))
+	value := int64(1)
+	if !b.healthInfo.Healthy {
+		value = -1
+	}
+	meter.RecordBatch(context.Background(), attrs, counter.Measurement(value))
 }
 
 func (b *Backend) Value() cty.Value {
