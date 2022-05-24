@@ -56,9 +56,9 @@
 
 The `server` block is one of the root configuration blocks of Couper's configuration file.
 
-| Block name | Context | Label            | Nested block(s) |
-| :--------- | :------ | :--------------- | :-------------- |
-| `server`   | -       | optional | [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
+| Block name | Context | Label    | Nested block(s)                                                                                                                                       |
+|:-----------|:--------|:---------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `server`   | -       | optional | [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block(s)](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
 
 | Attribute(s)     | Type   | Default      | Description | Characteristic(s) | Example |
 | :--------------- | :----- | :----------- | :---------- | :---------------- | :------ |
@@ -88,7 +88,7 @@ The `files` block configures the file serving.
 
 ### SPA Block
 
-The `spa` blocks configures the Web serving for SPA assets. Can be defined multiple times as long as the `base_path` is unique.
+The `spa` blocks configures the Web serving for SPA assets. Can be defined multiple times as long as the `base_path`+`paths` is unique.
 
 | Block name | Context                       | Label    | Nested block(s)           |
 |:-----------|:------------------------------|:---------|:--------------------------|
