@@ -1,13 +1,51 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.8.1...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.9.0...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.9.0](https://github.com/avenga/couper/releases/tag/v1.9.0)
+
+Couper 1.9 is a feature release bringing more comfort and enhanced stability to
+the Couper configuration. It also improves the permission handling and provides a
+couple of bug fixes. For a complete list of changes see below.
+
+As of release 1.9 it is possible to split a Couper configuration into multiple
+`.hcl`-files. You can now, for example, use different configuration files for
+your `api`, `files` and `definitions` blocks, or keep your development, testing
+and production setups separated. All the configuration files given at
+[startup](docs/CLI.md) will be [merged together](docs/MERGE.md).
+
+The new block [`beta_health`](docs/REFERENCE.md#health-block) ([beta](docs/BETA.md))
+allows you to configure recurring health check requests for a backend.
+By default, Couper won't request backends considered unhealthy which might help
+them recover due to the reduced amount of requests.
+The current health state of a backend can be accessed by variable.
+Changes in healthiness will be [logged](docs/LOGS.md) and exported as [metrics](docs/METRICS.md).
+Refer to the [health check example](#) for details.
+
+To make permission handling easier to grasp we've dropped the term `scope` and
+accordingly changed the names of the `beta_scope`, `beta_scope_claim` and `beta_scope_map`
+attributes to `beta_required_permission`, `beta_permissions_claim` and `beta_permissions_map`,
+respectively. Furthermore, `beta_required_permission` (formerly `beta_scope`) can now
+be an HCL expression. If `beta_required_permission` is specified in both an `endpoint`
+and its parent `api` block, the former *overrides* the latter.
+Our permission handling examples illustrate some common use cases:
+[basic example](https://github.com/avenga/couper-examples/tree/master/permissions),
+[roles example](https://github.com/avenga/couper-examples/tree/master/permissions-rbac),
+[map example](https://github.com/avenga/couper-examples/tree/master/permissions-map)
+
+Along with this release goes the latest [extension for VSCode](https://marketplace.visualstudio.com/items?itemName=AvengaGermanyGmbH.couper)
+which now indicates misplaced blocks and attributes, missing block labels and so on.
+We've also updated the completion suggestions and fixed a couple of syntax highlighting
+issues.
 
 * **Added**
   * Couper [reads and merges configuration files](./docs/CLI.md#global-options) from a given directory ([#437](https://github.com/avenga/couper/pull/437))
     * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
-  * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
+  * `beta_health` block to `backend` block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
   * `url` attribute could make use of our wildcard pattern `/**` and relative urls in combination with a backend reference ([#480](https://github.com/avenga/couper/pull/480))
@@ -65,7 +103,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Automatically add the `private` directive to the response `Cache-Control` HTTP header field value for all resources protected by [JWT](./docs/REFERENCE.md#jwt-block) ([#418](https://github.com/avenga/couper/pull/418))
 
 * **Fixed**
-  * improved protection against sniffing using unauthorized requests with non-standard method to non-existant endpoints in protected API ([#441](https://github.com/avenga/couper/pull/441))
+  * improved protection against sniffing using unauthorized requests with non-standard method to non-existent endpoints in protected API ([#441](https://github.com/avenga/couper/pull/441))
   * Couper handles OS-Signal `INT` in all cases in combination with the `-watch` argument ([#456](https://github.com/avenga/couper/pull/456))
   * some [error types](./docs/ERRORS.md#access-control-error-types) related to [JWT](./docs/REFERENCE.md#jwt-block) ([#438](https://github.com/avenga/couper/pull/438))
 
@@ -73,7 +111,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * free up resources for backend response bodies without variable reference ([#449](https://github.com/avenga/couper/pull/449))
-  * linux and windows binary version output (ci) ([#446](https://github.com/avenga/couper/pull/446))
+  * Linux and Windows binary version output (CI) ([#446](https://github.com/avenga/couper/pull/446))
   * error handling for empty `error_handler` labels ([#432](https://github.com/avenga/couper/pull/432))
 
 ## [1.7.1](https://github.com/avenga/couper/releases/tag/v1.7.1)
@@ -82,7 +120,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * missing upstream log field value for [`request.proto`](./docs/LOGS.md#backend-fields) ([#421](https://github.com/avenga/couper/pull/421))
   * handling of `for` loops in HCL ([#426](https://github.com/avenga/couper/pull/426))
   * handling of conditionals in HCL: only predicates evaluating to boolean are allowed ([#429](https://github.com/avenga/couper/pull/429))
-  * broken binary on MacOS Monterey; build with latest go 1.17.6 (ci) ([#439](https://github.com/avenga/couper/pull/439))
+  * broken binary on macOS Monterey; build with latest go 1.17.6 (ci) ([#439](https://github.com/avenga/couper/pull/439))
 
 ## [1.7](https://github.com/avenga/couper/releases/tag/v1.7.0)
 
