@@ -231,7 +231,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 						uniqueSPALabels[spaKey] = struct{}{}
 					} else {
-						// Create unique key for multiple api blocks inside a single config file.
+						// Create unique key for multiple spa blocks inside a single config file.
 						spaKey += fmt.Sprintf("|%p", &spaKey)
 					}
 
