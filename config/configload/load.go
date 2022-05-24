@@ -91,7 +91,6 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 	var (
 		srcBytes     [][]byte
 		parsedBodies []*hclsyntax.Body
-		hasIndexHCL  bool
 	)
 
 	if dirPath != "" {
@@ -113,11 +112,6 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 				continue
 			}
 
-			if file.Name() == config.DefaultFilename {
-				hasIndexHCL = true
-				continue
-			}
-
 			parsed, err := parseFile(dirPath+"/"+file.Name(), &srcBytes)
 			if err != nil {
 				return nil, err
@@ -125,15 +119,6 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 
 			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
 		}
-	}
-
-	if hasIndexHCL {
-		parsed, err := parseFile(dirPath+"/"+config.DefaultFilename, &srcBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
 	}
 
 	if filePath != "" {

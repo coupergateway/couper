@@ -5,7 +5,7 @@ defaults {
 }
 
 settings {
-  health_path = env.ZZZ
+  health_path = "/def"
 
   request_id_client_header  = "Req-Id-Cl-Hdr"
   request_id_backend_header = "Req-Id-Be-Hdr"
