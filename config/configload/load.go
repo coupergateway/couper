@@ -354,16 +354,7 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 		}
 
 		// Read api blocks and merge backends with server and definitions backends.
-		for _, apiBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(api) {
-			apiConfig := &config.API{}
-			if diags := gohcl.DecodeBody(apiBlock.Body, helper.context, apiConfig); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if len(apiBlock.Labels) > 0 {
-				apiConfig.Name = apiBlock.Labels[0]
-			}
-
+		for _, apiConfig := range serverConfig.APIs {
 			apiContent := bodyToContent(apiConfig.Remain)
 
 			if apiConfig.AllowedMethods != nil && len(apiConfig.AllowedMethods) > 0 {
@@ -388,7 +379,6 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			}
 
 			apiConfig.CatchAllEndpoint = newCatchAllEndpoint()
-			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 
 			apiErrorHandler := collect.ErrorHandlerSetters(apiConfig)
 			if err = configureErrorHandler(apiErrorHandler, helper); err != nil {

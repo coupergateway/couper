@@ -10,6 +10,7 @@ var _ Inline = &Server{}
 // Server represents the <Server> object.
 type Server struct {
 	AccessControl        []string  `hcl:"access_control,optional"`
+	APIs                 APIs      `hcl:"api,block"`
 	BasePath             string    `hcl:"base_path,optional"`
 	CORS                 *CORS     `hcl:"cors,block"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
@@ -17,10 +18,9 @@ type Server struct {
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Files                *Files    `hcl:"files,block"`
 	Hosts                []string  `hcl:"hosts,optional"`
-	Name                 string    `hcl:"name,label"`
+	Name                 string    `hcl:"name,label,optional"`
 	Remain               hcl.Body  `hcl:",remain"`
 	Spa                  *Spa      `hcl:"spa,block"`
-	APIs                 APIs
 }
 
 // Servers represents a list of <Server> objects.
@@ -34,7 +34,6 @@ func (s Server) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (s Server) Inline() interface{} {
 	type Inline struct {
-		APIs               APIs                      `hcl:"api,block"`
 		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
 		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`

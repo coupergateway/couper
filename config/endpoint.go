@@ -17,13 +17,13 @@ type Endpoint struct {
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	ErrorFile            string    `hcl:"error_file,optional"`
 	Pattern              string    `hcl:"pattern,label"`
+	Proxies              Proxies   `hcl:"proxy,block"`
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
+	Requests             Requests  `hcl:"request,block"`
 	Response             *Response `hcl:"response,block"`
 
 	// internally configured due to multi-label options
-	Proxies            Proxies
-	Requests           Requests
 	RequiredPermission hcl.Expression
 	Sequences          Sequences
 }
@@ -40,8 +40,6 @@ func (e Endpoint) HCLBody() hcl.Body {
 func (e Endpoint) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		Proxies            Proxies                   `hcl:"proxy,block"`
-		Requests           Requests                  `hcl:"request,block"`
 		ResponseStatus     *uint8                    `hcl:"set_response_status,optional"`
 		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional"`

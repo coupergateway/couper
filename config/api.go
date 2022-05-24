@@ -17,7 +17,7 @@ type API struct {
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	Endpoints            Endpoints `hcl:"endpoint,block"`
 	ErrorFile            string    `hcl:"error_file,optional"`
-	Name                 string    `hcl:"name,label"`
+	Name                 string    `hcl:"name,label,optional"`
 	Remain               hcl.Body  `hcl:",remain"`
 
 	// internally used

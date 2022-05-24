@@ -74,7 +74,7 @@ func (oa *OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return newBackendSchema(schema, oa.HCLBody())
+	return schema
 }
 
 func (oa *OAuth2AC) GetName() string {

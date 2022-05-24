@@ -106,7 +106,7 @@ func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return newBackendSchema(schema, o.HCLBody())
+	return schema
 }
 
 func (o *OIDC) GetName() string {

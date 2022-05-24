@@ -15,7 +15,7 @@ var (
 // Proxy represents the <Proxy> object.
 type Proxy struct {
 	BackendName string   `hcl:"backend,optional"`
-	Name        string   `hcl:"name,label"`
+	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 	Websockets  *bool    `hcl:"websockets,optional"`
 
@@ -70,8 +70,6 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 		}
 
 		schema.Blocks = blocks
-
-		schema = newBackendSchema(schema, p.HCLBody())
 	}
 
 	if p.Websockets == nil {
