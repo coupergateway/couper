@@ -238,3 +238,46 @@ func Test_MultipleLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestMultiFiles_SPAs(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouperMultiFiles("", "testdata/multi/server/spa.d", helper)
+	defer shutdown()
+
+	type testcase struct {
+		path        string
+		expStatus   int
+		expContains string
+	}
+
+	for _, tc := range []testcase{
+		{"/", http.StatusNotFound, ""},
+		{"/app", http.StatusOK, "02_spa.hcl"},
+		{"/another", http.StatusOK, "03_spa.hcl"},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			h := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://couper.local:8080"+tc.path, nil)
+			h.Must(err)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("want status: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			b, err := io.ReadAll(res.Body)
+			h.Must(err)
+
+			h.Must(res.Body.Close())
+
+			if tc.expContains != "" && !strings.Contains(string(b), tc.expContains) {
+				st.Errorf("want %q, got:\n%q", tc.expContains, string(b))
+			}
+		})
+	}
+
+}

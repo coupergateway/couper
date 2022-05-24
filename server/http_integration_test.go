@@ -92,7 +92,14 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 }
 
 func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), dir)
+	filePath, dirPath := file, dir
+	if filePath != "" {
+		filePath = filepath.Join(testWorkingDir, file)
+	}
+	if dirPath != "" {
+		dirPath = filepath.Join(testWorkingDir, dir)
+	}
+	couperConfig, err := configload.LoadFiles(filePath, dirPath)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -154,7 +161,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	defer func() { command.RunCmdTestCallback = nil }()
 
 	go func() {
-		if err := command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx)); err != nil {
+		if err := command.NewRun(ctx).Execute(nil, couperConfig, log.WithContext(ctx)); err != nil {
 			command.RunCmdTestCallback()
 			shutdownFn()
 			if lerr, ok := err.(*errors.Error); ok {

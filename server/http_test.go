@@ -643,7 +643,7 @@ func TestHTTPServer_RequestID(t *testing.T) {
 			}
 
 			if tc.status == http.StatusOK {
-				if lastLog.Message != "" {
+				if lastLog != nil && lastLog.Message != "" {
 					subT.Errorf("Unexpected log message given: %s", lastLog.Message)
 				}
 
