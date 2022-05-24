@@ -4,6 +4,7 @@ package runtime
 
 import (
 	"fmt"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"net"
 	"net/http"
 	"path"
@@ -144,8 +145,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		serverBodies = append(serverBodies, srvConf.Remain)
 
 		var spaHandler http.Handler
-		if srvConf.Spa != nil {
-			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions, []hcl.Body{srvConf.Spa.Remain, srvConf.Remain})
+		for _, spaConf := range srvConf.SPAs {
+			spaHandler, err = handler.NewSpa(spaConf.BootstrapFile, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
 			}
@@ -157,7 +158,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
+				config.NewAccessControl(spaConf.AccessControl, spaConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  spaHandler,
@@ -169,22 +170,27 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), allowedMethodsHandler.MethodAllowed)
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, spaConf), allowedMethodsHandler.MethodAllowed)
 			if cerr != nil {
 				return nil, cerr
 			}
 
 			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
 
-			spaBodies := bodiesWithACBodies(conf.Definitions, srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl)
+			spaBodies := bodiesWithACBodies(conf.Definitions, spaConf.AccessControl, spaConf.DisableAccessControl)
 			spaHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, append(spaBodies, srvConf.Spa.Remain)...), spaHandler, "",
+				append(serverBodies, append(spaBodies, spaConf.Remain)...), spaHandler, "",
 			)
 
-			for _, spaPath := range srvConf.Spa.Paths {
-				err = setRoutesFromHosts(serverConfiguration, portsHosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
+			for _, spaPath := range spaConf.Paths {
+				err = setRoutesFromHosts(serverConfiguration, portsHosts,
+					path.Join(serverOptions.SrvBasePath, spaConf.BasePath, spaPath), spaHandler, spa)
 				if err != nil {
-					return nil, err
+					sbody, _ := spaConf.HCLBody().(*hclsyntax.Body)
+					return nil, hcl.Diagnostics{&hcl.Diagnostic{
+						Subject: &sbody.Attributes["paths"].SrcRange,
+						Summary: err.Error(),
+					}}
 				}
 			}
 		}
@@ -645,8 +651,6 @@ func setRoutesFromHosts(
 	path = utils.JoinPath("/", path)
 
 	for port, hosts := range portsHosts {
-		check := make(map[string]struct{})
-
 		for host := range hosts {
 			var routes map[string]http.Handler
 
@@ -663,13 +667,11 @@ func setRoutesFromHosts(
 				return fmt.Errorf("unknown route kind")
 			}
 
-			key := fmt.Sprintf("%d:%s:%s\n", port, host, path)
-			if _, exist := check[key]; exist {
-				return fmt.Errorf("duplicate route found on port %q: %q", port, path)
+			if _, exist := routes[path]; exist {
+				return fmt.Errorf("duplicate route found on port %d: %s", port, path)
 			}
 
 			routes[path] = handler
-			check[key] = struct{}{}
 		}
 	}
 

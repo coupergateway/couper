@@ -19,8 +19,9 @@ type Server struct {
 	Hosts                []string  `hcl:"hosts,optional"`
 	Name                 string    `hcl:"name,label"`
 	Remain               hcl.Body  `hcl:",remain"`
-	Spa                  *Spa      `hcl:"spa,block"`
-	APIs                 APIs
+
+	APIs APIs
+	SPAs SPAs
 }
 
 // Servers represents a list of <Server> objects.
@@ -35,6 +36,7 @@ func (s Server) HCLBody() hcl.Body {
 func (s Server) Inline() interface{} {
 	type Inline struct {
 		APIs               APIs                      `hcl:"api,block"`
+		SPAs               SPAs                      `hcl:"spa,block"`
 		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
 		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`

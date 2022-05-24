@@ -218,7 +218,12 @@ func Test_MultipleLabels(t *testing.T) {
 			"testdata/multi/errors/couper_02.hcl:2,11-14: cannot match argument name from: Only 1 labels (name) are expected for api blocks.",
 		},
 		{
-			"api and server without labels",
+			"spa with multiple labels",
+			"testdata/multi/errors/couper_04.hcl",
+			"testdata/multi/errors/couper_04.hcl:2,11-14: cannot match argument name from: Only 1 labels (name) are expected for spa blocks.",
+		},
+		{
+			"api, spa and server without labels",
 			"testdata/multi/errors/couper_03.hcl",
 			"",
 		},

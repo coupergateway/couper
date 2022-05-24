@@ -35,6 +35,7 @@ const (
 	request      = "request"
 	server       = "server"
 	settings     = "settings"
+	spa          = "spa"
 	// defaultNameLabel maps the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )
@@ -394,6 +395,18 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			if err = configureErrorHandler(apiErrorHandler, helper); err != nil {
 				return nil, err
 			}
+		}
+
+		for _, spaBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(spa) {
+			spaConfig := &config.Spa{}
+			if diags := gohcl.DecodeBody(spaBlock.Body, helper.context, spaConfig); diags.HasErrors() {
+				return nil, diags
+			}
+
+			if len(spaBlock.Labels) > 0 {
+				spaConfig.Name = spaBlock.Labels[0]
+			}
+			serverConfig.SPAs = append(serverConfig.SPAs, spaConfig)
 		}
 
 		// standalone endpoints
