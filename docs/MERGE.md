@@ -18,7 +18,7 @@ replace existing attributes with the same name, if any, otherwise they are added
 Blocks that cannot have labels (eg. `cors`, `files` etc.) replace existing blocks
 with the same name, if any, otherwise they are added.
 
-Blocks with optional labels (eg. `server`, `api` etc.) are merged recursively with
+Blocks with optional labels (eg. `server`, `api`, `spa` etc.) are merged recursively with
 blocks with the same label (blocks without a label are merged with blocks with the
 same name and no label in each context), if any, otherwise they are added. Only one
 unlabeled block of the same type is allowed in each context (eg. `api` blocks in
@@ -30,17 +30,23 @@ name and label in each context, if any, otherwise they are added.
 Blocks with (optional) multiple labels (eg. `error_handler`) replace existing blocks
 with identical labels, if any, otherwise they are added.
 
-Currently here is no way to remove an attribute or a block from the configuration.
+Currently, here is no way to remove an attribute or a block from the configuration.
 
 ## Merging of `server` Blocks
 
 * When `server` blocks are merged:
   * All attributes replace existing attributes with the same name, if any, otherwise
     they are added.
-  * The `cors`, `files` and `spa` blocks replace existing blocks with the same 
+  * The `cors`, `files` blocks replace existing blocks with the same 
     name, if any, otherwise they are added.
   * All `endpoint` blocks replace existing blocks with the same label, if any, otherwise
     they are added.
+  * When `spa` blocks are merged:
+    * All attributes replace existing attributes with the same name, if any, otherwise
+      they are added.
+    * selected by optional label, if any
+    * The `cors` block replaces existing `cors` block, if any, otherwise a new `cors`
+      block is added.
   * When `api` blocks are merged:
     * All attributes replace existing attributes with the same name, if any, otherwise
 	  they are added.
