@@ -37,25 +37,24 @@ Currently, here is no way to remove an attribute or a block from the configurati
 * When `server` blocks are merged:
   * All attributes replace existing attributes with the same name, if any, otherwise
     they are added.
-  * The `cors`, `files` blocks replace existing blocks with the same 
-    name, if any, otherwise they are added.
+  * The `cors` and `files` blocks replace existing blocks with the same name, if any,
+    otherwise they are added.
   * All `endpoint` blocks replace existing blocks with the same label, if any, otherwise
     they are added.
   * When `spa` blocks are merged:
     * All attributes replace existing attributes with the same name, if any, otherwise
       they are added.
-    * selected by optional label, if any
     * The `cors` block replaces existing `cors` block, if any, otherwise a new `cors`
       block is added.
   * When `api` blocks are merged:
     * All attributes replace existing attributes with the same name, if any, otherwise
-	  they are added.
+      they are added.
     * The `cors` block replaces existing `cors` block, if any, otherwise a new `cors`
-	  block is added.
+      block is added.
     * All `endpoint` blocks replace existing blocks with the same label, if any,
-	  otherwise they are added.
+      otherwise they are added.
     * All `error_handler` blocks replace existing blocks with identical labels,
-	  if any, otherwise they are added.
+      if any, otherwise they are added.
 
 **Note:** An `error_handler` block cannot be replaced in or added to an `endpoint`
 block. Therefore, the `endpoint` block must be completely replaced.
