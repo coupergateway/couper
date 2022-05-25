@@ -40,15 +40,22 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 			continue
 		}
 
-		var filesBasePath, spaBasePath string
+		var filesBasePath string
 		if serverOptions.FilesBasePath != "" {
 			filesBasePath = serverOptions.FilesBasePath
 		}
-		if serverOptions.SPABasePath != "" {
-			spaBasePath = serverOptions.SPABasePath
-		}
 
-		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
+		var isAPIBasePathUniqueToFilesAndSPA bool
+		if len(serverOptions.SPABasePaths) > 0 {
+			for _, s := range serverOptions.SPABasePaths {
+				isAPIBasePathUniqueToFilesAndSPA = basePath != filesBasePath && basePath != s
+				if !isAPIBasePathUniqueToFilesAndSPA {
+					break
+				}
+			}
+		} else {
+			isAPIBasePathUniqueToFilesAndSPA = basePath != filesBasePath
+		}
 
 		if isAPIBasePathUniqueToFilesAndSPA {
 			endpoints[apiConf.CatchAllEndpoint] = apiConf

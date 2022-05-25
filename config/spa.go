@@ -7,6 +7,8 @@ import (
 
 var _ Inline = &Spa{}
 
+type SPAs []*Spa
+
 // Spa represents the <Spa> object.
 type Spa struct {
 	AccessControl        []string `hcl:"access_control,optional"`
@@ -14,6 +16,7 @@ type Spa struct {
 	BootstrapFile        string   `hcl:"bootstrap_file"`
 	CORS                 *CORS    `hcl:"cors,block"`
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
+	Name                 string   `hcl:"name,label"`
 	Paths                []string `hcl:"paths"`
 	Remain               hcl.Body `hcl:",remain"`
 }
