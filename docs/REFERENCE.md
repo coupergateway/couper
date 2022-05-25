@@ -570,19 +570,19 @@ gateway instance.
 
 | Attribute(s)                    | Type   | Default             | Description | Characteristic(s) | Example |
 |:--------------------------------| :----- | :------------------ | :---------- | :---------------- | :------ |
-| `accept_forwarded_url`          | tuple (string) | `[]`        | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `proto`, `host`, `port`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#beta-oauth2-block) & [oidc](#oidc-block). | `["proto","host","port"]` |
+| `accept_forwarded_url`          | tuple (string) | `[]`        | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values are `"proto"`, `"host"` and `"port"`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](#saml-block) attribute and `redirect_uri` attribute within [beta_oauth2](#beta-oauth2-block) & [oidc](#oidc-block). | `["proto","host","port"]` |
 | `default_port`                  | number | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](#server-block) list. |-|-|
 | `health_path`                   | string | `/healthz`          | Health path which is available for all configured server and ports. |-|-|
 | `https_dev_proxy`               | tuple (string)   | `[]`      | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. | Certificates will be hold in memory and are generated once. | `["443:8080", "8443:8080"]` |
-| `log_format`                    | string | `common`            | Switch for tab/field based colored view or JSON log lines. |-|-|
+| `log_format`                    | string | `"common"`          | Switch for tab/field based colored view or JSON log lines. Valid values are `"common"` and `"json"`. |-|-|
 | `log_level`                     | string | `info`              | Set the log-level to one of: `info`, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`. |-|-|
 | `log_pretty`                    | bool   | `false`             | Global option for `json` log format which pretty prints with basic key coloring. |-|-|
 | `no_proxy_from_env`             | bool   | `false`             | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |-|-|
 | `request_id_accept_from_header` | string |  `""`               | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured). |-| `X-UID` |
 | `request_id_backend_header`     | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the backend. |-|-|
 | `request_id_client_header`      | string | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client. |-|-|
-| `request_id_format`             | string | `common`            | If set to `uuid4` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
-| `secure_cookies`                | string | `""`                | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
+| `request_id_format`             | string | `"common"`          | Valid values are `"common"` and `"uuid4"`. If set to `"uuid4"` a rfc4122 uuid is used for `request.id` and related log fields. |-|-|
+| `secure_cookies`                | string | `""`                | Valid values are `""` and `"strip"`. If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |-|-|
 | `xfh`                           | bool   | `false`             | Option to use the `X-Forwarded-Host` header as the request host.  | - | - |
 | `beta_metrics`                  | bool   | `false`             | Option to enable the Prometheus [metrics](METRICS.md) exporter. | - | - |
 | `beta_metrics_port`             | number | `9090`              | Prometheus exporter listen port. | - | - |
