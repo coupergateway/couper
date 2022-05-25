@@ -226,7 +226,7 @@ The `backend` block defines the connection to a local/remote backend service.
 | `basic_auth`                    | string|-|Basic auth for the upstream request. | format is `"username:password"`|-|
 | `custom_log_fields`             | object           | -                | Defines log fields for [Custom Logging](LOGS.md#custom-logging). | - | - |
 | `hostname`                      | string |-|Value of the HTTP host header field for the origin request. |Since `hostname` replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin.|-|
-| `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with the scheme `http://...`.|-|
+| `origin`                        |string|-|URL to connect to for backend requests.|&#9888; required.  &#9888; Must start with one of the URI schemes `https` or `http`.|-|
 | `path`                          | string|-|Changeable part of upstream URL.|-|-|
 | `path_prefix`                   | string|-|Prefixes all backend request paths with the given prefix|-|-|
 | `connect_timeout`                | [duration](#duration) | `"10s"`    | The total timeout for dialing and connect to the origin.   |-                                   |-|
