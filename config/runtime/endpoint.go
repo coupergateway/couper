@@ -40,24 +40,39 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 			continue
 		}
 
-		var filesBasePath string
-		if serverOptions.FilesBasePath != "" {
-			filesBasePath = serverOptions.FilesBasePath
+		var (
+			spaPathes                         []string
+			filesPathes                       []string
+			isAPIBasePathUniqueToFilesAndSPAs bool = true
+		)
+
+		if len(serverOptions.SPABasePaths) == 0 {
+			spaPathes = []string{""}
+		} else {
+			spaPathes = serverOptions.SPABasePaths
 		}
 
-		var isAPIBasePathUniqueToFilesAndSPA bool
-		if len(serverOptions.SPABasePaths) > 0 {
-			for _, s := range serverOptions.SPABasePaths {
-				isAPIBasePathUniqueToFilesAndSPA = basePath != filesBasePath && basePath != s
-				if !isAPIBasePathUniqueToFilesAndSPA {
+		if len(serverOptions.FilesBasePaths) == 0 {
+			filesPathes = []string{""}
+		} else {
+			filesPathes = serverOptions.FilesBasePaths
+		}
+
+		for _, spaPath := range spaPathes {
+			for _, filesPath := range filesPathes {
+				isAPIBasePathUniqueToFilesAndSPAs = basePath != filesPath && basePath != spaPath
+
+				if !isAPIBasePathUniqueToFilesAndSPAs {
 					break
 				}
 			}
-		} else {
-			isAPIBasePathUniqueToFilesAndSPA = basePath != filesBasePath
+
+			if !isAPIBasePathUniqueToFilesAndSPAs {
+				break
+			}
 		}
 
-		if isAPIBasePathUniqueToFilesAndSPA {
+		if isAPIBasePathUniqueToFilesAndSPAs {
 			endpoints[apiConf.CatchAllEndpoint] = apiConf
 			catchAllEndpoints[basePath] = struct{}{}
 		}

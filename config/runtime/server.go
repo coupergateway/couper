@@ -196,21 +196,27 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 		}
 
-		if srvConf.Files != nil {
-			var fileHandler http.Handler
-			fileHandler, err = handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
+		var fileHandler http.Handler
+		for i, filesConf := range srvConf.Files {
+			fileHandler, err = handler.NewFile(
+				filesConf.DocumentRoot,
+				serverOptions.FilesBasePaths[i],
+				serverOptions.FilesErrTpls[i],
+				serverOptions,
+				[]hcl.Body{filesConf.Remain, srvConf.Remain},
+			)
 			if err != nil {
 				return nil, err
 			}
 
-			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpl}
+			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpls[i]}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, fileHandler, notAllowedMethodsHandler)
 			fileHandler = allowedMethodsHandler
 
 			fileHandler, err = configureProtectedHandler(accessControls, conf, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
+				config.NewAccessControl(filesConf.AccessControl, filesConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  fileHandler,
@@ -221,19 +227,19 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), allowedMethodsHandler.MethodAllowed)
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, filesConf), allowedMethodsHandler.MethodAllowed)
 			if cerr != nil {
 				return nil, cerr
 			}
 
 			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
 
-			fileBodies := bodiesWithACBodies(conf.Definitions, srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl)
+			fileBodies := bodiesWithACBodies(conf.Definitions, filesConf.AccessControl, filesConf.DisableAccessControl)
 			fileHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, append(fileBodies, srvConf.Files.Remain)...), fileHandler, "",
+				append(serverBodies, append(fileBodies, filesConf.Remain)...), fileHandler, "",
 			)
 
-			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePaths[i], fileHandler, files)
 			if err != nil {
 				return nil, err
 			}

@@ -29,6 +29,7 @@ const (
 	definitions  = "definitions"
 	endpoint     = "endpoint"
 	errorHandler = "error_handler"
+	files        = "files"
 	nameLabel    = "name"
 	oauth2       = "oauth2"
 	proxy        = "proxy"
@@ -406,7 +407,21 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			if len(spaBlock.Labels) > 0 {
 				spaConfig.Name = spaBlock.Labels[0]
 			}
+
 			serverConfig.SPAs = append(serverConfig.SPAs, spaConfig)
+		}
+
+		for _, filesBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(files) {
+			filesConfig := &config.Files{}
+			if diags := gohcl.DecodeBody(filesBlock.Body, helper.context, filesConfig); diags.HasErrors() {
+				return nil, diags
+			}
+
+			if len(filesBlock.Labels) > 0 {
+				filesConfig.Name = filesBlock.Labels[0]
+			}
+
+			serverConfig.Files = append(serverConfig.Files, filesConfig)
 		}
 
 		// standalone endpoints
