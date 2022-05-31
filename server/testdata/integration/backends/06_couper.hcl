@@ -29,7 +29,6 @@ definitions {
     origin = "{{ .origin }}"
     beta_health {
       expected_status = [204]
-      failure_threshold = 0
       interval = "250ms"
     }
   }
