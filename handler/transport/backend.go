@@ -36,8 +36,6 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-const backendInstrumentationName = "couper/backend"
-
 var (
 	_ http.RoundTripper = &Backend{}
 	_ ProbeStateChange  = &Backend{}
@@ -88,7 +86,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	distinct := !strings.HasPrefix(tc.BackendName, "anonymous_")
 	if distinct && healthCheck != nil {
-		NewProbe(backend.logEntry, tc.BackendName, healthCheck, backend)
+		NewProbe(backend.logEntry, tc, healthCheck, backend)
 	}
 
 	return backend.upstreamLog
@@ -268,7 +266,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		spanMsg += "." + b.name
 	}
 
-	meter := provider.Meter(backendInstrumentationName)
+	meter := provider.Meter(instrumentation.BackendInstrumentationName)
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
 		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
@@ -540,21 +538,7 @@ func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
 func (b *Backend) OnProbeChange(info *HealthInfo) {
 	b.healthyMu.Lock()
 	b.healthInfo = info
-
-	attrs := []attribute.KeyValue{
-		attribute.String("backend_name", b.name),
-		attribute.String("hostname", b.transportConfResult.Hostname),
-		attribute.String("origin", b.transportConfResult.Origin),
-	}
 	b.healthyMu.Unlock()
-
-	meter := provider.Meter(backendInstrumentationName)
-	counter := metric.Must(meter).NewInt64UpDownCounter(instrumentation.BackendHealthState, metric.WithDescription(string(unit.Dimensionless)))
-	value := int64(1)
-	if !b.healthInfo.Healthy {
-		value = -1
-	}
-	meter.RecordBatch(context.Background(), attrs, counter.Measurement(value))
 }
 
 func (b *Backend) Value() cty.Value {

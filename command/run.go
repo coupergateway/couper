@@ -138,6 +138,14 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
 
+	memStore := cache.New(logEntry, r.context.Done())
+	// logEntry has still the 'daemon' type which can be used for config related load errors.
+	srvConf, err := runtime.NewServerConfiguration(config, logEntry, memStore)
+	if err != nil {
+		return err
+	}
+	errors.SetLogger(logEntry)
+
 	telemetry.InitExporter(r.context, &telemetry.Options{
 		MetricsCollectPeriod: time.Second * 2,
 		Metrics:              r.settings.TelemetryMetrics,
@@ -147,14 +155,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		ServiceName:          r.settings.TelemetryServiceName,
 		Traces:               r.settings.TelemetryTraces,
 		TracesEndpoint:       r.settings.TelemetryTracesEndpoint,
-	}, logEntry)
-
-	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvConf, err := runtime.NewServerConfiguration(config, logEntry, cache.New(logEntry, r.context.Done()))
-	if err != nil {
-		return err
-	}
-	errors.SetLogger(logEntry)
+	}, memStore, logEntry)
 
 	if limitFn != nil {
 		limitFn(logEntry)

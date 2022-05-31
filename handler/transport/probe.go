@@ -43,9 +43,10 @@ func (s state) String() string {
 }
 
 type HealthInfo struct {
-	State   string
-	Healthy bool
 	Error   string
+	Healthy bool
+	Origin  string
+	State   string
 }
 
 type Probe struct {
@@ -70,17 +71,20 @@ type ProbeStateChange interface {
 	OnProbeChange(info *HealthInfo)
 }
 
-func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck, listener ProbeStateChange) {
+func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener ProbeStateChange) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: logging.NewUpstreamLog(log, http.DefaultTransport,
-			false), // always false due to defaultTransport
+		Transport: logging.NewUpstreamLog(log,
+			NewTransport(tc.
+				WithTarget(opts.Request.URL.Scheme, opts.Request.URL.Host, opts.Request.URL.Host, ""),
+				log),
+			tc.NoProxyFromEnv),
 	}
 
 	p := &Probe{
-		backendName: backendName,
+		backendName: tc.BackendName,
 		log:         log,
 		opts:        opts,
 
@@ -153,9 +157,10 @@ func (p *Probe) probe(c context.Context) {
 		if prevState != p.state {
 			newState := p.state.String()
 			info := &HealthInfo{
-				State:   newState,
 				Error:   errorMessage,
 				Healthy: p.state != StateDown,
+				Origin:  p.opts.Request.URL.Host,
+				State:   newState,
 			}
 
 			if p.listener != nil {

@@ -21,13 +21,13 @@ var defaultHealthCheck = &HealthCheck{
 
 type HealthCheck struct {
 	Context          context.Context
-	FailureThreshold uint
-	Interval         time.Duration
-	Timeout          time.Duration
 	ExpectedStatus   map[int]bool
 	ExpectedText     string
+	FailureThreshold uint
+	Interval         time.Duration
 	Request          *http.Request
 	RequestUIDFormat string
+	Timeout          time.Duration
 }
 
 type Headers map[string]string
