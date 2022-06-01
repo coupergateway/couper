@@ -83,7 +83,7 @@ func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
 	return nil
 }
 
-func parseFile(filePath string, srcBytes *[][]byte) (*hcl.File, error) {
+func parseFile(filePath string, srcBytes *[][]byte) (*hclsyntax.Body, error) {
 	src, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
@@ -96,16 +96,9 @@ func parseFile(filePath string, srcBytes *[][]byte) (*hcl.File, error) {
 		return nil, diags
 	}
 
-	return parsed, nil
-}
-
-// SetWorkingDirectory sets the working directory to the given configuration file path.
-func SetWorkingDirectory(configFile string) (string, error) {
-	if err := os.Chdir(filepath.Dir(configFile)); err != nil {
-		return "", err
-	}
-
-	return os.Getwd()
+	body := parsed.Body.(*hclsyntax.Body)
+	absolutizePaths(body)
+	return body, nil
 }
 
 func LoadFiles(filesList []string) (*config.Couper, error) {
@@ -138,30 +131,20 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 				}
 
 				filename := filepath.Join(filePath, file.Name())
-				parsed, err := parseFile(filename, &srcBytes)
+				body, err := parseFile(filename, &srcBytes)
 				if err != nil {
 					return nil, err
 				}
 
-				body := parsed.Body.(*hclsyntax.Body)
-				absolutizePaths(body, filename)
-				parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
+				parsedBodies = append(parsedBodies, body)
 			}
 		} else {
-			var err error
-			filePath, err = filepath.Abs(filePath)
+			body, err := parseFile(filePath, &srcBytes)
 			if err != nil {
 				return nil, err
 			}
 
-			parsed, err := parseFile(filePath, &srcBytes)
-			if err != nil {
-				return nil, err
-			}
-
-			body := parsed.Body.(*hclsyntax.Body)
-			absolutizePaths(body, filePath)
-			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
+			parsedBodies = append(parsedBodies, body)
 		}
 	}
 
@@ -467,7 +450,7 @@ func checkPermissionMixedConfig(apiConfig *config.API) error {
 	return nil
 }
 
-func absolutizePaths(fileBody *hclsyntax.Body, basePath string) {
+func absolutizePaths(fileBody *hclsyntax.Body) {
 	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
 		if attribute, ok := node.(*hclsyntax.Attribute); ok {
 			if _, exists := pathBearingAttributesMap[attribute.Name]; exists {
@@ -477,6 +460,7 @@ func absolutizePaths(fileBody *hclsyntax.Body, basePath string) {
 				}
 
 				filePath := value.AsString()
+				basePath := attribute.SrcRange.Filename
 				var absolutePath string
 				if attribute.Name == "jwks_url" {
 					if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
