@@ -29,9 +29,6 @@ type Attributes struct {
 	AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
 	DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
 	SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
-
-	// Other
-	Path string `hcl:"path,optional"`
 }
 
 func SchemaWithAttributes(schema *hcl.BodySchema) *hcl.BodySchema {

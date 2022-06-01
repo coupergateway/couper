@@ -48,6 +48,7 @@ func (b Backend) Inline() interface{} {
 		Hostname       string                    `hcl:"hostname,optional"`
 		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 		Origin         string                    `hcl:"origin,optional"`
+		Path           string                    `hcl:"path,optional"`
 		PathPrefix     string                    `hcl:"path_prefix,optional"`
 		ProxyURL       string                    `hcl:"proxy,optional"`
 		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
