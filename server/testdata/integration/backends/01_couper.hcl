@@ -34,7 +34,7 @@ server {
     }
 
     endpoint "/url" {
-      proxy {
+      request {
         url = "/my-path"
         backend {
           # no origin
