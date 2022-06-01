@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
@@ -43,9 +45,28 @@ const (
 var defaultsConfig *config.Defaults
 var evalContext *eval.Context
 var envContext *hcl.EvalContext
+var pathBearingAttributesMap map[string]struct{}
 
 func init() {
 	envContext = eval.NewContext(nil, nil).HCLContext()
+
+	pathBearingAttributes := []string{
+		"bootstrap_file",
+		"ca_file",
+		"document_root",
+		"error_file",
+		"file",
+		"htpasswd_file",
+		"idp_metadata_file",
+		"jwks_url",
+		"key_file",
+		"signing_key_file",
+	}
+
+	pathBearingAttributesMap = make(map[string]struct{})
+	for _, attributeName := range pathBearingAttributes {
+		pathBearingAttributesMap[attributeName] = struct{}{}
+	}
 }
 
 func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
@@ -87,41 +108,46 @@ func SetWorkingDirectory(configFile string) (string, error) {
 	return os.Getwd()
 }
 
-func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
+func LoadFiles(filesList []string) (*config.Couper, error) {
 	var (
 		srcBytes     [][]byte
 		parsedBodies []*hclsyntax.Body
 	)
 
-	if dirPath != "" {
-		dir, err := filepath.Abs(dirPath)
+	for _, file := range filesList {
+		filePath, err := filepath.Abs(file)
 		if err != nil {
 			return nil, err
 		}
 
-		dirPath = dir
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			return nil, err
+		}
 
+		if fileInfo.IsDir() {
 		// ReadDir ... returns a list ... sorted by filename.
-		listing, err := ioutil.ReadDir(dirPath)
+		listing, err := ioutil.ReadDir(filePath)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, file := range listing {
-			if file.IsDir() || !strings.HasSuffix(file.Name(), ".hcl") {
+			if file.IsDir() || filepath.Ext(file.Name()) != ".hcl" {
 				continue
 			}
 
-			parsed, err := parseFile(dirPath+"/"+file.Name(), &srcBytes)
+			filename := filepath.Join(filePath, file.Name())
+			parsed, err := parseFile(filename, &srcBytes)
 			if err != nil {
 				return nil, err
 			}
 
+			body := parsed.Body.(*hclsyntax.Body)
+			absolutizePaths(body, filename)
 			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
 		}
-	}
-
-	if filePath != "" {
+	} else {
 		var err error
 		filePath, err = filepath.Abs(filePath)
 		if err != nil {
@@ -133,17 +159,10 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 			return nil, err
 		}
 
-		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
-
-		_, err = SetWorkingDirectory(filePath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		_, err := SetWorkingDirectory(dirPath + "/dummy.hcl")
-		if err != nil {
-			return nil, err
-		}
+		body := parsed.Body.(*hclsyntax.Body)
+		absolutizePaths(body, filePath)
+		parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
+	}
 	}
 
 	if len(srcBytes) == 0 {
@@ -184,14 +203,11 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	// Do not make "." from an empty filePath via filepath.Base().
-	// This generates an error when reloading config, if Couper
-	// was started w/o "-f", but w/ "-d" and "-watch" parameters.
-	if filePath != "" {
-		filePath = filepath.Base(filePath)
-	}
+	return LoadConfig(configBody, srcBytes[0], filesList[0])
+}
 
-	return LoadConfig(configBody, srcBytes[0], filePath, dirPath)
+func LoadFile(file string) (*config.Couper, error) {
+	return LoadFiles([]string{file})
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
@@ -204,17 +220,17 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, src, filename, "")
+	return LoadConfig(hclBody, src, filename)
 }
 
-func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
 	var err error
 
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body, src, filename, dirPath)
+	helper, err := newHelper(body, src, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -449,4 +465,46 @@ func checkPermissionMixedConfig(apiConfig *config.API) error {
 	}
 
 	return nil
+}
+
+func absolutizePaths(fileBody *hclsyntax.Body, basePath string) {
+	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
+		if attribute, ok := node.(*hclsyntax.Attribute); ok {
+			if _, exists := pathBearingAttributesMap[attribute.Name]; exists {
+				value, diags := attribute.Expr.Value(envContext)
+				if diags.HasErrors() {
+					return diags
+				}
+
+				filePath := value.AsString()
+				var absolutePath string
+				if attribute.Name == "jwks_url" {
+					if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
+						return nil
+					}
+					if strings.HasPrefix(filePath, "file:") {
+						filePath = filePath[5:]
+					}
+					if path.IsAbs(filePath) {
+						return nil
+					}
+
+					absolutePath = "file:" + filepath.ToSlash(path.Join(filepath.Dir(basePath), filePath))
+				} else {
+					if filepath.IsAbs(filePath) {
+						return nil
+					}
+					absolutePath = filepath.Join(filepath.Dir(basePath), filePath)
+				}
+
+				attribute.Expr = &hclsyntax.LiteralValueExpr{
+					Val:      cty.StringVal(absolutePath),
+					SrcRange: attribute.SrcRange,
+				}
+			}
+		}
+		return nil
+	}
+
+	hclsyntax.VisitAll(fileBody, visitor)
 }
