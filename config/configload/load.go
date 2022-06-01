@@ -126,43 +126,43 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 		}
 
 		if fileInfo.IsDir() {
-		// ReadDir ... returns a list ... sorted by filename.
-		listing, err := ioutil.ReadDir(filePath)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, file := range listing {
-			if file.IsDir() || filepath.Ext(file.Name()) != ".hcl" {
-				continue
+			// ReadDir ... returns a list ... sorted by filename.
+			listing, err := ioutil.ReadDir(filePath)
+			if err != nil {
+				return nil, err
 			}
 
-			filename := filepath.Join(filePath, file.Name())
-			parsed, err := parseFile(filename, &srcBytes)
+			for _, file := range listing {
+				if file.IsDir() || filepath.Ext(file.Name()) != ".hcl" {
+					continue
+				}
+
+				filename := filepath.Join(filePath, file.Name())
+				parsed, err := parseFile(filename, &srcBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				body := parsed.Body.(*hclsyntax.Body)
+				absolutizePaths(body, filename)
+				parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
+			}
+		} else {
+			var err error
+			filePath, err = filepath.Abs(filePath)
+			if err != nil {
+				return nil, err
+			}
+
+			parsed, err := parseFile(filePath, &srcBytes)
 			if err != nil {
 				return nil, err
 			}
 
 			body := parsed.Body.(*hclsyntax.Body)
-			absolutizePaths(body, filename)
+			absolutizePaths(body, filePath)
 			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
 		}
-	} else {
-		var err error
-		filePath, err = filepath.Abs(filePath)
-		if err != nil {
-			return nil, err
-		}
-
-		parsed, err := parseFile(filePath, &srcBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		body := parsed.Body.(*hclsyntax.Body)
-		absolutizePaths(body, filePath)
-		parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
-	}
 	}
 
 	if len(srcBytes) == 0 {
