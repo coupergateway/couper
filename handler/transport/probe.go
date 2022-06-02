@@ -85,7 +85,7 @@ func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener 
 
 	p := &Probe{
 		backendName: tc.BackendName,
-		log:         log,
+		log:         log.WithField("url", opts.Request.URL.String()),
 		opts:        opts,
 
 		client: client,
@@ -103,9 +103,7 @@ func (p *Probe) probe(c context.Context) {
 	for {
 		select {
 		case <-c.Done():
-			p.log.
-				WithField("url", p.opts.Request.URL.String()).
-				Warn("shutdown health probe")
+			p.log.Warn("shutdown health probe")
 			return
 		default:
 		}
