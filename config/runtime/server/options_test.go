@@ -17,13 +17,11 @@ func TestServer_NewServerOptions_NoConfig(t *testing.T) {
 	}
 
 	exp := &server.Options{
-		APIErrTpls:    map[*config.API]*errors.Template(nil),
-		FilesErrTpl:   errors.DefaultHTML,
-		ServerErrTpl:  errors.DefaultHTML,
-		APIBasePaths:  map[*config.API]string(nil),
-		FilesBasePath: "",
-		SrvBasePath:   "",
-		ServerName:    "",
+		APIErrTpls:   map[*config.API]*errors.Template(nil),
+		ServerErrTpl: errors.DefaultHTML,
+		APIBasePaths: map[*config.API]string(nil),
+		SrvBasePath:  "",
+		ServerName:   "",
 	}
 	if !reflect.DeepEqual(options, exp) {
 		t.Errorf("want\n%#v\ngot\n%#v", exp, options)
@@ -39,13 +37,13 @@ func TestServer_NewServerOptions_EmptyConfig(t *testing.T) {
 	}
 
 	exp := &server.Options{
-		APIErrTpls:    map[*config.API]*errors.Template(nil),
-		FilesErrTpl:   errors.DefaultHTML,
-		ServerErrTpl:  errors.DefaultHTML,
-		APIBasePaths:  map[*config.API]string(nil),
-		FilesBasePath: "",
-		SrvBasePath:   "/",
-		ServerName:    "",
+		APIErrTpls:     map[*config.API]*errors.Template(nil),
+		FilesErrTpls:   []*errors.Template{},
+		ServerErrTpl:   errors.DefaultHTML,
+		APIBasePaths:   map[*config.API]string(nil),
+		FilesBasePaths: []string{},
+		SrvBasePath:    "/",
+		ServerName:     "",
 	}
 	if !reflect.DeepEqual(options, exp) {
 		t.Errorf("want\n%#v\ngot\n%#v", exp, options)
@@ -72,9 +70,9 @@ func TestServer_NewServerOptions_ConfigWithPaths(t *testing.T) {
 		BasePath: "/server",
 		Name:     "ServerName",
 
-		Files: &config.Files{
+		Files: []*config.Files{{
 			BasePath: "/files",
-		},
+		}},
 		SPAs: []*config.Spa{{
 			BasePath: "/spa",
 		}},
@@ -89,14 +87,14 @@ func TestServer_NewServerOptions_ConfigWithPaths(t *testing.T) {
 	}
 
 	exp := &server.Options{
-		APIErrTpls:    aets,
-		FilesErrTpl:   errors.DefaultHTML,
-		ServerErrTpl:  errors.DefaultHTML,
-		APIBasePaths:  abps,
-		FilesBasePath: "/server/files",
-		SPABasePaths:  []string{"/server/spa"},
-		SrvBasePath:   "/server",
-		ServerName:    "ServerName",
+		APIErrTpls:     aets,
+		FilesErrTpls:   []*errors.Template{errors.DefaultHTML},
+		ServerErrTpl:   errors.DefaultHTML,
+		APIBasePaths:   abps,
+		FilesBasePaths: []string{"/server/files"},
+		SPABasePaths:   []string{"/server/spa"},
+		SrvBasePath:    "/server",
+		ServerName:     "ServerName",
 	}
 	if !reflect.DeepEqual(options, exp) {
 		t.Errorf("want\n%#v\ngot\n%#v", exp, options)
@@ -107,9 +105,9 @@ func TestServer_NewServerOptions_MissingErrTplFile(t *testing.T) {
 	for _, testcase := range []*config.Server{{
 		ErrorFile: "not-there",
 	}, {
-		Files: &config.Files{
+		Files: []*config.Files{{
 			ErrorFile: "not-there",
-		},
+		}},
 	}, {
 		APIs: config.APIs{
 			{ErrorFile: "not-there"},
@@ -126,9 +124,9 @@ func TestServer_NewServerOptions_MissingErrTplFile(t *testing.T) {
 func TestServer_NewServerOptions_ConfigWithErrTpl_Valid(t *testing.T) {
 	conf := &config.Server{
 		ErrorFile: "testdata/error.file",
-		Files: &config.Files{
+		Files: []*config.Files{{
 			ErrorFile: "testdata/error.file",
-		},
+		}},
 		APIs: config.APIs{
 			{ErrorFile: "testdata/error.file"},
 		},
