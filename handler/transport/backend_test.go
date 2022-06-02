@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hcltest"
@@ -358,29 +358,21 @@ func TestBackend_director(t *testing.T) {
 }
 
 func TestBackend_HealthCheck(t *testing.T) {
-	type expectation struct {
-		FailureThreshold uint
-		Interval         time.Duration
-		Timeout          time.Duration
-		ExpectedStatus   map[int]bool
-		ExpectedText     string
-		URL              *url.URL
-		RequestUIDFormat string
-	}
-
 	type testCase struct {
 		name        string
 		health      *config.Health
-		expectation expectation
+		expectation config.HealthCheck
 	}
 
 	defaultExpectedStatus := map[int]bool{200: true, 204: true, 301: true}
+
+	toPtr := func(n uint) *uint { return &n }
 
 	for _, tc := range []testCase{
 		{
 			name:   "health check with default values",
 			health: &config.Health{},
-			expectation: expectation{
+			expectation: config.HealthCheck{
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
@@ -392,32 +384,32 @@ func TestBackend_HealthCheck(t *testing.T) {
 		{
 			name: "health check with configured values",
 			health: &config.Health{
-				FailureThreshold: 42,
+				FailureThreshold: toPtr(42),
 				Interval:         "1h",
 				Timeout:          "9m",
 				Path:             "/gsund??",
 				ExpectedStatus:   []int{418},
 				ExpectedText:     "roger roger",
 			},
-			expectation: expectation{
+			expectation: config.HealthCheck{
 				FailureThreshold: 42,
 				Interval:         time.Hour,
 				Timeout:          9 * time.Minute,
 				ExpectedStatus:   map[int]bool{418: true},
 				ExpectedText:     "roger roger",
-				URL: &url.URL{
+				Request: &http.Request{URL: &url.URL{
 					Scheme:   "http",
 					Host:     "origin:8080",
 					Path:     "/gsund",
 					RawQuery: "?",
-				},
+				}},
 				RequestUIDFormat: "common",
 			},
 		},
 		{
 			name:   "uninitialised health check",
 			health: nil,
-			expectation: expectation{
+			expectation: config.HealthCheck{
 				FailureThreshold: 2,
 				Interval:         time.Second,
 				Timeout:          time.Second,
@@ -431,7 +423,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 			health: &config.Health{
 				Interval: "10s",
 			},
-			expectation: expectation{
+			expectation: config.HealthCheck{
 				FailureThreshold: 2,
 				Interval:         10 * time.Second,
 				Timeout:          10 * time.Second,
@@ -446,7 +438,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 				Interval: "5s",
 				Timeout:  "10s",
 			},
-			expectation: expectation{
+			expectation: config.HealthCheck{
 				FailureThreshold: 2,
 				Interval:         5 * time.Second,
 				Timeout:          5 * time.Second,
@@ -458,10 +450,10 @@ func TestBackend_HealthCheck(t *testing.T) {
 		{
 			name: "zero threshold",
 			health: &config.Health{
-				FailureThreshold: 0,
+				FailureThreshold: toPtr(0),
 			},
-			expectation: expectation{
-				FailureThreshold: 2,
+			expectation: config.HealthCheck{
+				FailureThreshold: 0,
 				Interval:         time.Second,
 				Timeout:          time.Second,
 				ExpectedStatus:   defaultExpectedStatus,
@@ -473,19 +465,23 @@ func TestBackend_HealthCheck(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			health, err := config.NewHealthCheck("http://origin:8080/foo", tc.health, &config.DefaultSettings)
+			health, err := config.
+				NewHealthCheck("http://origin:8080/foo", tc.health, &config.Couper{
+					Settings: &config.DefaultSettings,
+				})
 			h.Must(err)
 
-			if tc.expectation.URL != nil {
-				if *tc.expectation.URL != *health.Request.URL {
-					t.Errorf("Unexpected health check URI:\n\tWant: %#v\n\tGot:  %#v", tc.expectation.URL, health.Request.URL)
+			if tc.expectation.Request != nil && tc.expectation.Request.URL != nil {
+				if *tc.expectation.Request.URL != *health.Request.URL {
+					t.Errorf("Unexpected health check URI:\n\tWant: %#v\n\tGot:  %#v", tc.expectation.Request.URL, health.Request.URL)
 				}
-				tc.expectation.URL = nil
+				tc.expectation.Request = nil
 			}
+
 			health.Request = nil
 
-			if fmt.Sprint(tc.expectation) != fmt.Sprint(*health) {
-				t.Errorf("Unexpected health options:\n\tWant: %v\n\tGot:  %v", tc.expectation, *health)
+			if diff := cmp.Diff(tc.expectation, *health); diff != "" {
+				t.Errorf("Unexpected health options:\n\n%s", diff)
 			}
 		})
 	}

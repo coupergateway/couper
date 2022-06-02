@@ -87,7 +87,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	if ocErr != nil {
 		return nil, ocErr
 	}
-	conf.Context = evalContext.WithOidcConfig(oidcConfigs)
+	conf.Context = evalContext.
+		WithMemStore(memStore).
+		WithOidcConfig(oidcConfigs)
 
 	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
@@ -104,7 +106,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	// Populate defined backends first...
 	if conf.Definitions != nil {
 		for _, backend := range conf.Definitions.Backend {
-			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf.Settings, memStore)
+			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -156,14 +158,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, spaHandler, notAllowedMethodsHandler)
 			spaHandler = allowedMethodsHandler
 
-			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
+			spaHandler, err = configureProtectedHandler(accessControls, conf, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(spaConf.AccessControl, spaConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  spaHandler,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log)
 			if err != nil {
@@ -207,14 +208,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, fileHandler, notAllowedMethodsHandler)
 			fileHandler = allowedMethodsHandler
 
-			fileHandler, err = configureProtectedHandler(accessControls, confCtx,
+			fileHandler, err = configureProtectedHandler(accessControls, conf, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
 				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  fileHandler,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log)
 			if err != nil {
@@ -263,7 +263,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			endpointPatterns[cleanPattern] = true
 
 			epOpts, err := newEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
-				log, conf.Settings, memStore)
+				log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -295,10 +295,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
-				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+				epErrorHandler, err := newErrorHandler(confCtx, conf, &protectedOptions{
 					epOpts:   epOpts,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
 				if err != nil {
@@ -318,10 +317,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					protectedHandler = epHandler
 				} else {
 					permissionsControl := ac.NewPermissionsControl(requiredPermissionExpr)
-					permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+					permissionsErrorHandler, err := newErrorHandler(confCtx, conf, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
-						settings: conf.Settings,
 						srvOpts:  serverOptions,
 					}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
 					if err != nil {
@@ -343,13 +341,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, middleware.DefaultEndpointAllowedMethods, protectedHandler, notAllowedMethodsHandler)
 			protectedHandler = allowedMethodsHandler
 
-			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
+			epHandler, err = configureProtectedHandler(accessControls, conf, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  protectedHandler,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log)
 			if err != nil {
@@ -444,7 +441,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 			backends := map[string]http.RoundTripper{}
 			for k, backendBody := range oidcConf.Backends {
 				var err error
-				backends[k], err = NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+				backends[k], err = NewBackend(confCtx, backendBody, log, conf, memStore)
 				if err != nil {
 					return nil, confErr.With(err)
 				}
@@ -512,7 +509,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf.Settings, memStore)
+			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -602,7 +599,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 	if jwtConf.Backends != nil {
 		backendBody, ok := jwtConf.Backends["backend"]
 		if ok {
-			b, err := NewBackend(confContext, backendBody, log, conf.Settings, memStore)
+			b, err := NewBackend(confContext, backendBody, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -617,18 +614,17 @@ type protectedOptions struct {
 	epOpts   *handler.EndpointOptions
 	handler  http.Handler
 	memStore *cache.MemoryStore
-	settings *config.Settings
 	srvOpts  *server.Options
 }
 
-func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
+func configureProtectedHandler(m ACDefinitions, conf *config.Couper, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
 	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		eh, err := newErrorHandler(ctx, conf, opts, log, m, acName)
 		if err != nil {
 			return nil, err
 		}

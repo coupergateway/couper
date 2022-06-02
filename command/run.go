@@ -20,6 +20,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/server"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
@@ -98,6 +99,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
 
+	// apply command context
+	config.Context = config.Context.(*eval.Context).WithContext(r.context)
+
 	if f := r.flagSet.Lookup("accept-forwarded-url"); f != nil {
 		if afv, ok := f.Value.(*AcceptForwardedValue); ok {
 			afv.settings = r.settings
@@ -134,6 +138,14 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
 
+	memStore := cache.New(logEntry, r.context.Done())
+	// logEntry has still the 'daemon' type which can be used for config related load errors.
+	srvConf, err := runtime.NewServerConfiguration(config, logEntry, memStore)
+	if err != nil {
+		return err
+	}
+	errors.SetLogger(logEntry)
+
 	telemetry.InitExporter(r.context, &telemetry.Options{
 		MetricsCollectPeriod: time.Second * 2,
 		Metrics:              r.settings.TelemetryMetrics,
@@ -143,14 +155,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		ServiceName:          r.settings.TelemetryServiceName,
 		Traces:               r.settings.TelemetryTraces,
 		TracesEndpoint:       r.settings.TelemetryTracesEndpoint,
-	}, logEntry)
-
-	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvConf, err := runtime.NewServerConfiguration(config, logEntry, cache.New(logEntry, r.context.Done()))
-	if err != nil {
-		return err
-	}
-	errors.SetLogger(logEntry)
+	}, memStore, logEntry)
 
 	if limitFn != nil {
 		limitFn(logEntry)

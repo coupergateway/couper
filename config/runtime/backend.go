@@ -20,7 +20,7 @@ import (
 )
 
 func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
-	settings *config.Settings, store *cache.MemoryStore) (http.RoundTripper, error) {
+	conf *config.Couper, store *cache.MemoryStore) (http.RoundTripper, error) {
 	const prefix = "backend_"
 	name, err := getBackendName(ctx, body)
 
@@ -35,7 +35,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 		return backend.NewContext(body, b.(http.RoundTripper)), nil
 	}
 
-	b, err = newBackend(ctx, body, log, settings, store)
+	b, err = newBackend(ctx, body, log, conf, store)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	settings *config.Settings, memStore *cache.MemoryStore) (http.RoundTripper, error) {
+	conf *config.Couper, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
 		return nil, diags
@@ -63,11 +63,11 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
-		Certificate:            settings.Certificate,
+		Certificate:            conf.Settings.Certificate,
 		DisableCertValidation:  beConf.DisableCertValidation,
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,
-		NoProxyFromEnv:         settings.NoProxyFromEnv,
+		NoProxyFromEnv:         conf.Settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
 	}
 
@@ -88,7 +88,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			return nil, fmt.Errorf("missing origin for backend %q", beConf.Name)
 		}
 
-		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health, settings)
+		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health, conf)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent != nil {
 		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, settings, memStore)
+			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -109,7 +109,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 }
 
 func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	settings *config.Settings, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
+	conf *config.Couper, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
 
 	beConf.OAuth2 = &config.OAuth2ReqAuth{}
 
@@ -123,7 +123,7 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 	}
 
 	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
-	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, settings, memStore)
+	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, conf, memStore)
 	if authErr != nil {
 		return nil, authErr
 	}
