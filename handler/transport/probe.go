@@ -96,6 +96,10 @@ func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener 
 		uidFunc: middleware.NewUIDFunc(opts.RequestUIDFormat),
 	}
 
+	// do not start go-routine on config check (-watch)
+	if _, exist := opts.Context.Value("config-dry-run").(bool); exist {
+		return
+	}
 	go p.probe(opts.Context)
 }
 
