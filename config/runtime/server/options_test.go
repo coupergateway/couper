@@ -22,7 +22,6 @@ func TestServer_NewServerOptions_NoConfig(t *testing.T) {
 		ServerErrTpl:  errors.DefaultHTML,
 		APIBasePaths:  map[*config.API]string(nil),
 		FilesBasePath: "",
-		SPABasePath:   "",
 		SrvBasePath:   "",
 		ServerName:    "",
 	}
@@ -45,7 +44,6 @@ func TestServer_NewServerOptions_EmptyConfig(t *testing.T) {
 		ServerErrTpl:  errors.DefaultHTML,
 		APIBasePaths:  map[*config.API]string(nil),
 		FilesBasePath: "",
-		SPABasePath:   "",
 		SrvBasePath:   "/",
 		ServerName:    "",
 	}
@@ -77,9 +75,9 @@ func TestServer_NewServerOptions_ConfigWithPaths(t *testing.T) {
 		Files: &config.Files{
 			BasePath: "/files",
 		},
-		Spa: &config.Spa{
+		SPAs: []*config.Spa{{
 			BasePath: "/spa",
-		},
+		}},
 		APIs: config.APIs{
 			api1, api2,
 		},
@@ -96,7 +94,7 @@ func TestServer_NewServerOptions_ConfigWithPaths(t *testing.T) {
 		ServerErrTpl:  errors.DefaultHTML,
 		APIBasePaths:  abps,
 		FilesBasePath: "/server/files",
-		SPABasePath:   "/server/spa",
+		SPABasePaths:  []string{"/server/spa"},
 		SrvBasePath:   "/server",
 		ServerName:    "ServerName",
 	}

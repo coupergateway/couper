@@ -32,7 +32,17 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			endpoints       namedBlocks
 			errorHandler    namedBlocks
 		}
+		spaDefinition struct {
+			labels          []string
+			typeRange       hcl.Range
+			labelRanges     []hcl.Range
+			openBraceRange  hcl.Range
+			closeBraceRange hcl.Range
+			attributes      hclsyntax.Attributes
+			blocks          namedBlocks
+		}
 		namedAPIs        map[string]*apiDefinition
+		namedSPAs        map[string]*spaDefinition
 		serverDefinition struct {
 			labels          []string
 			typeRange       hcl.Range
@@ -43,7 +53,9 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			blocks          namedBlocks
 			endpoints       namedBlocks
 			apis            namedAPIs
+			spas            namedSPAs
 		}
+
 		servers map[string]*serverDefinition
 	)
 
@@ -99,6 +111,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					blocks:          make(namedBlocks),
 					endpoints:       make(namedBlocks),
 					apis:            make(namedAPIs),
+					spas:            make(namedSPAs),
 				}
 			}
 
@@ -111,14 +124,11 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 
 			for _, block := range outerBlock.Body.Blocks {
-				uniqueAPILabels := make(map[string]struct{})
+				uniqueAPILabels, uniqueSPALabels := make(map[string]struct{}), make(map[string]struct{})
 
-				// TODO: Do we need this IF around the FOR?
-				if block.Type == "files" || block.Type == "spa" || block.Type == api || block.Type == endpoint {
-					for _, name := range []string{"error_file", "document_root"} {
-						if attr, ok := block.Body.Attributes[name]; ok {
-							block.Body.Attributes[name].Expr = absPath(attr)
-						}
+				for _, name := range []string{"error_file", "document_root"} {
+					if attr, ok := block.Body.Attributes[name]; ok {
+						block.Body.Attributes[name].Expr = absPath(attr)
 					}
 				}
 
@@ -207,6 +217,44 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 							results[serverKey].apis[apiKey].blocks[subBlock.Type] = subBlock
 						}
 					}
+				} else if block.Type == spa {
+					var spaKey string
+
+					if len(block.Labels) > 0 {
+						spaKey = block.Labels[0]
+					}
+
+					if len(bodies) > 1 {
+						if _, ok := uniqueSPALabels[spaKey]; ok {
+							return nil, newMergeError(errUniqueLabels, block)
+						}
+
+						uniqueSPALabels[spaKey] = struct{}{}
+					} else {
+						// Create unique key for multiple spa blocks inside a single config file.
+						spaKey += fmt.Sprintf("|%p", &spaKey)
+					}
+
+					if results[serverKey].spas[spaKey] == nil {
+						results[serverKey].spas[spaKey] = &spaDefinition{
+							labels:          block.Labels,
+							typeRange:       block.TypeRange,
+							labelRanges:     block.LabelRanges,
+							openBraceRange:  block.OpenBraceRange,
+							closeBraceRange: block.CloseBraceRange,
+							attributes:      make(hclsyntax.Attributes),
+							blocks:          make(namedBlocks),
+						}
+					}
+
+					for name, attr := range block.Body.Attributes {
+						results[serverKey].spas[spaKey].attributes[name] = attr
+					}
+
+					for _, subBlock := range block.Body.Blocks {
+						results[serverKey].spas[spaKey].blocks[subBlock.Type] = subBlock
+					}
+
 				} else {
 					results[serverKey].blocks[block.Type] = block
 				}
@@ -256,6 +304,29 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 
 			serverBlocks = append(serverBlocks, mergedAPI)
+		}
+
+		for _, spaBlock := range serverBlock.spas {
+			var spaBlocks hclsyntax.Blocks
+
+			for _, b := range spaBlock.blocks {
+				spaBlocks = append(spaBlocks, b)
+			}
+
+			mergedSPA := &hclsyntax.Block{
+				Type:   spa,
+				Labels: spaBlock.labels,
+				Body: &hclsyntax.Body{
+					Attributes: spaBlock.attributes,
+					Blocks:     spaBlocks,
+				},
+				TypeRange:       spaBlock.typeRange,
+				LabelRanges:     spaBlock.labelRanges,
+				OpenBraceRange:  spaBlock.openBraceRange,
+				CloseBraceRange: spaBlock.closeBraceRange,
+			}
+
+			serverBlocks = append(serverBlocks, mergedSPA)
 		}
 
 		mergedServer := &hclsyntax.Block{

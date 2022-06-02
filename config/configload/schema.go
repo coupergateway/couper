@@ -229,7 +229,7 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 			added := false
 			for _, block := range bodyContent.Blocks {
 				switch block.Type {
-				case "api", "backend", "error_handler", "proxy", "request", "server":
+				case api, backend, errorHandler, proxy, request, server, spa:
 					blocks = append(blocks, block)
 
 					added = true

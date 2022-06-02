@@ -20,7 +20,7 @@ type Options struct {
 	ServerErrTpl  *errors.Template
 	APIBasePaths  map[*config.API]string
 	FilesBasePath string
-	SPABasePath   string
+	SPABasePaths  []string
 	SrvBasePath   string
 	ServerName    string
 }
@@ -77,8 +77,8 @@ func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, erro
 		options.FilesBasePath = utils.JoinPath(options.SrvBasePath, conf.Files.BasePath)
 	}
 
-	if conf.Spa != nil {
-		options.SPABasePath = utils.JoinPath(options.SrvBasePath, conf.Spa.BasePath)
+	for _, s := range conf.SPAs {
+		options.SPABasePaths = append(options.SPABasePaths, utils.JoinPath(options.SrvBasePath, s.BasePath))
 	}
 
 	return options, nil
