@@ -145,13 +145,6 @@ func realmain(arguments []string) int {
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		logger.Error(err)
-		return 1
-	}
-	logger.Infof("working directory: %s", wd)
-
 	if !flags.FileWatch {
 		if err = command.NewCommand(ctx, cmd).Execute(args, confFile, logger); err != nil {
 			logger.WithError(err).Error()
