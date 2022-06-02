@@ -41,34 +41,31 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 		}
 
 		var (
-			spaPathes                         []string
-			filesPathes                       []string
-			isAPIBasePathUniqueToFilesAndSPAs bool = true
+			spaPaths                          []string
+			filesPaths                        []string
+			isAPIBasePathUniqueToFilesAndSPAs = true
 		)
 
 		if len(serverOptions.SPABasePaths) == 0 {
-			spaPathes = []string{""}
+			spaPaths = []string{""}
 		} else {
-			spaPathes = serverOptions.SPABasePaths
+			spaPaths = serverOptions.SPABasePaths
 		}
 
 		if len(serverOptions.FilesBasePaths) == 0 {
-			filesPathes = []string{""}
+			filesPaths = []string{""}
 		} else {
-			filesPathes = serverOptions.FilesBasePaths
+			filesPaths = serverOptions.FilesBasePaths
 		}
 
-		for _, spaPath := range spaPathes {
-			for _, filesPath := range filesPathes {
+	uniquePaths:
+		for _, spaPath := range spaPaths {
+			for _, filesPath := range filesPaths {
 				isAPIBasePathUniqueToFilesAndSPAs = basePath != filesPath && basePath != spaPath
 
 				if !isAPIBasePathUniqueToFilesAndSPAs {
-					break
+					break uniquePaths
 				}
-			}
-
-			if !isAPIBasePathUniqueToFilesAndSPAs {
-				break
 			}
 		}
 
