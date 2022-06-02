@@ -15,13 +15,13 @@ type Server struct {
 	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
 	Endpoints            Endpoints `hcl:"endpoint,block"`
 	ErrorFile            string    `hcl:"error_file,optional"`
-	Files                *Files    `hcl:"files,block"`
 	Hosts                []string  `hcl:"hosts,optional"`
 	Name                 string    `hcl:"name,label"`
 	Remain               hcl.Body  `hcl:",remain"`
 
-	APIs APIs
-	SPAs SPAs
+	APIs  APIs
+	SPAs  SPAs
+	Files FilesBlocks
 }
 
 // Servers represents a list of <Server> objects.
@@ -37,6 +37,7 @@ func (s Server) Inline() interface{} {
 	type Inline struct {
 		APIs               APIs                      `hcl:"api,block"`
 		SPAs               SPAs                      `hcl:"spa,block"`
+		Files              FilesBlocks               `hcl:"files,block"`
 		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
 		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`

@@ -27,6 +27,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/grpc"
 
+	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/telemetry/provider"
 	"github.com/avenga/couper/utils"
 )
@@ -42,7 +43,7 @@ const (
 const otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
 
 // InitExporter initialises configured metrics and/or trace exporter.
-func InitExporter(ctx context.Context, opts *Options, logEntry *logrus.Entry) {
+func InitExporter(ctx context.Context, opts *Options, memStore *cache.MemoryStore, logEntry *logrus.Entry) {
 	log := logEntry.WithField("type", "couper_telemetry")
 	otel.SetErrorHandler(ErrorHandleFunc(func(e error) { // configure otel to use our logger for error handling
 		if e != nil {
@@ -54,6 +55,8 @@ func InitExporter(ctx context.Context, opts *Options, logEntry *logrus.Entry) {
 	if opts.Metrics {
 		wg.Add(1)
 		otel.Handle(initMetricExporter(ctx, opts, log, wg))
+
+		newBackendsObserver(memStore)
 	}
 
 	if opts.Traces {

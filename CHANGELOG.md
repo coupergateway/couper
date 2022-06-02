@@ -25,6 +25,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * added `request.context.beta_required_permission` and `request.context.beta_granted_permissions` [request variables](./docs/REFERENCE.md#request)
   * Clarified the type of various [attributes/variables](./docs/REFERENCE.md) ([#485](https://github.com/avenga/couper/pull/485))
   * [`spa` block](./docs/REFERENCE.md#spa-block) can be defined multiple times now ([#510](https://github.com/avenga/couper/pull/510))
+  * [`files` block](./docs/REFERENCE.md#files-block) can be defined multiple times now ([#513](https://github.com/avenga/couper/pull/513))
 
 * **Fixed**
   * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))

@@ -41,8 +41,18 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			attributes      hclsyntax.Attributes
 			blocks          namedBlocks
 		}
+		filesDefinition struct {
+			labels          []string
+			typeRange       hcl.Range
+			labelRanges     []hcl.Range
+			openBraceRange  hcl.Range
+			closeBraceRange hcl.Range
+			attributes      hclsyntax.Attributes
+			blocks          namedBlocks
+		}
 		namedAPIs        map[string]*apiDefinition
 		namedSPAs        map[string]*spaDefinition
+		namedFiles       map[string]*filesDefinition
 		serverDefinition struct {
 			labels          []string
 			typeRange       hcl.Range
@@ -54,6 +64,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			endpoints       namedBlocks
 			apis            namedAPIs
 			spas            namedSPAs
+			files           namedFiles
 		}
 
 		servers map[string]*serverDefinition
@@ -69,6 +80,14 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 				blocks[<name>]       = hclsyntax.Block (cors)
 				endpoints[<key>]     = hclsyntax.Block
 				error_handler[<key>] = hclsyntax.Block
+			}
+			spas[<key>]      = {
+				attributes           = hclsyntax.Attributes
+				blocks[<name>]       = hclsyntax.Block (cors)
+			}
+			files[<key>]      = {
+				attributes           = hclsyntax.Attributes
+				blocks[<name>]       = hclsyntax.Block (cors)
 			}
 		}
 	*/
@@ -112,6 +131,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					endpoints:       make(namedBlocks),
 					apis:            make(namedAPIs),
 					spas:            make(namedSPAs),
+					files:           make(namedFiles),
 				}
 			}
 
@@ -120,7 +140,7 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 
 			for _, block := range outerBlock.Body.Blocks {
-				uniqueAPILabels, uniqueSPALabels := make(map[string]struct{}), make(map[string]struct{})
+				uniqueAPILabels, uniqueSPALabels, uniqueFilesLabels := make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 
 				if block.Type == endpoint {
 					if err := absInBackends(block); err != nil { // Backend block inside a free endpoint block
@@ -228,7 +248,43 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 					for _, subBlock := range block.Body.Blocks {
 						results[serverKey].spas[spaKey].blocks[subBlock.Type] = subBlock
 					}
+				} else if block.Type == files {
+					var filesKey string
 
+					if len(block.Labels) > 0 {
+						filesKey = block.Labels[0]
+					}
+
+					if len(bodies) > 1 {
+						if _, ok := uniqueFilesLabels[filesKey]; ok {
+							return nil, newMergeError(errUniqueLabels, block)
+						}
+
+						uniqueFilesLabels[filesKey] = struct{}{}
+					} else {
+						// Create unique key for multiple files blocks inside a single config file.
+						filesKey += fmt.Sprintf("|%p", &filesKey)
+					}
+
+					if results[serverKey].files[filesKey] == nil {
+						results[serverKey].files[filesKey] = &filesDefinition{
+							labels:          block.Labels,
+							typeRange:       block.TypeRange,
+							labelRanges:     block.LabelRanges,
+							openBraceRange:  block.OpenBraceRange,
+							closeBraceRange: block.CloseBraceRange,
+							attributes:      make(hclsyntax.Attributes),
+							blocks:          make(namedBlocks),
+						}
+					}
+
+					for name, attr := range block.Body.Attributes {
+						results[serverKey].files[filesKey].attributes[name] = attr
+					}
+
+					for _, subBlock := range block.Body.Blocks {
+						results[serverKey].files[filesKey].blocks[subBlock.Type] = subBlock
+					}
 				} else {
 					results[serverKey].blocks[block.Type] = block
 				}
@@ -301,6 +357,29 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 			}
 
 			serverBlocks = append(serverBlocks, mergedSPA)
+		}
+
+		for _, filesBlock := range serverBlock.files {
+			var filesBlocks hclsyntax.Blocks
+
+			for _, b := range filesBlock.blocks {
+				filesBlocks = append(filesBlocks, b)
+			}
+
+			mergedFiles := &hclsyntax.Block{
+				Type:   files,
+				Labels: filesBlock.labels,
+				Body: &hclsyntax.Body{
+					Attributes: filesBlock.attributes,
+					Blocks:     filesBlocks,
+				},
+				TypeRange:       filesBlock.typeRange,
+				LabelRanges:     filesBlock.labelRanges,
+				OpenBraceRange:  filesBlock.openBraceRange,
+				CloseBraceRange: filesBlock.closeBraceRange,
+			}
+
+			serverBlocks = append(serverBlocks, mergedFiles)
 		}
 
 		mergedServer := &hclsyntax.Block{

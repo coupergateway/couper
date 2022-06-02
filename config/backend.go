@@ -53,6 +53,7 @@ func (b Backend) Inline() interface{} {
 		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
 		TTFBTimeout    string                    `hcl:"ttfb_timeout,optional"`
 		Timeout        string                    `hcl:"timeout,optional"`
+		UseUnhealthy   bool                      `hcl:"use_when_unhealthy,optional"`
 
 		// set by backend preparation
 		BackendURL string `hcl:"backend_url,optional"`

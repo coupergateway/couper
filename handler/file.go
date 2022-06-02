@@ -26,12 +26,13 @@ var (
 
 type File struct {
 	basePath   string
+	errorTpl   *errors.Template
 	modifier   []hcl.Body
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
+func NewFile(docRoot, basePath string, errorTpl *errors.Template, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,8 @@ func NewFile(docRoot string, srvOpts *server.Options, modifier []hcl.Body) (*Fil
 	}
 
 	f := &File{
-		basePath:   srvOpts.FilesBasePath,
+		basePath:   basePath,
+		errorTpl:   errorTpl,
 		modifier:   modifier,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
@@ -68,7 +70,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil {
-		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.errorTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -88,7 +90,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.Request) {
 	if !f.HasResponse(req) {
-		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.errorTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 
@@ -107,7 +109,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	file, info, err := f.openDocRootFile(reqPath)
 	if err != nil || info.IsDir() {
-		f.srvOptions.FilesErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
+		f.errorTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
 		return
 	}
 	defer file.Close()
@@ -176,7 +178,7 @@ func (f *File) removeBasePath(reqPath string) string {
 }
 
 func (f *File) Template() *errors.Template {
-	return f.srvOptions.FilesErrTpl
+	return f.errorTpl
 }
 
 func (f *File) Options() *server.Options {

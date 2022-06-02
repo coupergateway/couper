@@ -180,7 +180,10 @@ definitions {
   }
   backend "unhealthy_timeout" {
     origin = "http://1.2.3.4"
-    beta_health {}
+    beta_health {
+      failure_threshold = 0
+      interval = "250ms"
+    }
   }
   backend "unhealthy_bad_status" {
     origin = "${env.COUPER_TEST_BACKEND_ADDR}"
@@ -221,7 +224,12 @@ definitions {
   backend "failing" {
     origin = "http://1.2.3.4"
     beta_health {
-      failure_threshold = 4
+      failure_threshold = 10
+      interval = "250ms"
     }
   }
+}
+
+settings {
+  no_proxy_from_env = true
 }
