@@ -284,7 +284,7 @@ api "my_api" {
 
   endpoint "/cart/**" {
     proxy {
-      url = "http://cartservice:8080/**"
+      url = "http://cartservice:8080/api/v1/**"
     }
   }
 
