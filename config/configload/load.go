@@ -108,7 +108,7 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 		parsedBodies []*hclsyntax.Body
 	)
 
-	loadedFiles := []string{}
+	var loadedFiles []string
 	for _, file := range filesList {
 		filePath, err := filepath.Abs(file)
 		if err != nil {
@@ -127,12 +127,12 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 				return nil, err
 			}
 
-			for _, file := range listing {
-				if file.IsDir() || filepath.Ext(file.Name()) != ".hcl" {
+			for _, item := range listing {
+				if item.IsDir() || filepath.Ext(item.Name()) != ".hcl" {
 					continue
 				}
 
-				filename := filepath.Join(filePath, file.Name())
+				filename := filepath.Join(filePath, item.Name())
 				body, err := parseFile(filename, &srcBytes)
 				if err != nil {
 					return nil, err
@@ -190,14 +190,14 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	config, err := LoadConfig(configBody, srcBytes[0], filesList[0])
+	conf, err := LoadConfig(configBody, srcBytes[0], filesList[0])
 	if err != nil {
 		return nil, err
 	}
 
-	config.Files = loadedFiles
+	conf.Files = loadedFiles
 
-	return config, nil
+	return conf, nil
 }
 
 func LoadFile(file string) (*config.Couper, error) {
