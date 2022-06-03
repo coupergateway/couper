@@ -418,18 +418,9 @@ defaults {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
-	log := logger.WithContext(context.TODO())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if conf != nil {
-				tmpStoreCh := make(chan struct{})
-				defer close(tmpStoreCh)
-
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
-			}
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 
 			var errMsg string
 			if err != nil {
@@ -531,18 +522,9 @@ func TestPermissionMixed(t *testing.T) {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
-	log := logger.WithContext(context.TODO())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if conf != nil {
-				tmpStoreCh := make(chan struct{})
-				defer close(tmpStoreCh)
-
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
-			}
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 
 			var errMsg string
 			if err != nil {
@@ -618,18 +600,9 @@ definitions {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
-	log := logger.WithContext(context.TODO())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if conf != nil {
-				tmpStoreCh := make(chan struct{})
-				defer close(tmpStoreCh)
-
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
-			}
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 
 			var errMsg string
 			if err != nil {
