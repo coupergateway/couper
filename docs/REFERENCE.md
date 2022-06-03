@@ -127,9 +127,7 @@ as JSON error with an error body payload. This can be customized via `error_file
 ### Endpoint Block
 
 `endpoint` blocks define the entry points of Couper. The required _label_
-defines the path suffix for the incoming client request. The `path` attribute
-changes the path for the outgoing request (compare
-[path mapping example](README.md#routing-path-mapping)). Each `endpoint` block must
+defines the path suffix for the incoming client request. Each `endpoint` block must
 produce an explicit or implicit client response.
 
 | Block name | Context                                                | Label                                                                  | Nested block(s)                                                                                                                                                      |
