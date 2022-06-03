@@ -98,8 +98,8 @@ func parseFile(filePath string, srcBytes *[][]byte) (*hclsyntax.Body, error) {
 	}
 
 	body := parsed.Body.(*hclsyntax.Body)
-	absolutizePaths(body)
-	return body, nil
+	err = absolutizePaths(body)
+	return body, err
 }
 
 func LoadFiles(filesList []string) (*config.Couper, error) {
@@ -475,45 +475,56 @@ func checkPermissionMixedConfig(apiConfig *config.API) error {
 	return nil
 }
 
-func absolutizePaths(fileBody *hclsyntax.Body) {
+func absolutizePaths(fileBody *hclsyntax.Body) error {
 	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
-		if attribute, ok := node.(*hclsyntax.Attribute); ok {
-			if _, exists := pathBearingAttributesMap[attribute.Name]; exists {
-				value, diags := attribute.Expr.Value(envContext)
-				if diags.HasErrors() {
-					return diags
-				}
-
-				filePath := value.AsString()
-				basePath := attribute.SrcRange.Filename
-				var absolutePath string
-				if attribute.Name == "jwks_url" {
-					if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
-						return nil
-					}
-					if strings.HasPrefix(filePath, "file:") {
-						filePath = filePath[5:]
-					}
-					if path.IsAbs(filePath) {
-						return nil
-					}
-
-					absolutePath = "file:" + filepath.ToSlash(path.Join(filepath.Dir(basePath), filePath))
-				} else {
-					if filepath.IsAbs(filePath) {
-						return nil
-					}
-					absolutePath = filepath.Join(filepath.Dir(basePath), filePath)
-				}
-
-				attribute.Expr = &hclsyntax.LiteralValueExpr{
-					Val:      cty.StringVal(absolutePath),
-					SrcRange: attribute.SrcRange,
-				}
-			}
+		attribute, ok := node.(*hclsyntax.Attribute)
+		if !ok {
+			return nil
 		}
+
+		_, exists := pathBearingAttributesMap[attribute.Name]
+		if !exists {
+			return nil
+		}
+
+		value, diags := attribute.Expr.Value(envContext)
+		if diags.HasErrors() {
+			return diags
+		}
+
+		filePath := value.AsString()
+		basePath := attribute.SrcRange.Filename
+		var absolutePath string
+		if attribute.Name == "jwks_url" {
+			if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
+				return nil
+			}
+			if strings.HasPrefix(filePath, "file:") {
+				filePath = filePath[5:]
+			}
+			if path.IsAbs(filePath) {
+				return nil
+			}
+
+			absolutePath = "file:" + filepath.ToSlash(path.Join(filepath.Dir(basePath), filePath))
+		} else {
+			if filepath.IsAbs(filePath) {
+				return nil
+			}
+			absolutePath = filepath.Join(filepath.Dir(basePath), filePath)
+		}
+
+		attribute.Expr = &hclsyntax.LiteralValueExpr{
+			Val:      cty.StringVal(absolutePath),
+			SrcRange: attribute.SrcRange,
+		}
+
 		return nil
 	}
 
-	hclsyntax.VisitAll(fileBody, visitor)
+	diags := hclsyntax.VisitAll(fileBody, visitor)
+	if diags.HasErrors() {
+		return diags
+	}
+	return nil
 }

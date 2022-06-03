@@ -63,8 +63,13 @@ func Test_realmain(t *testing.T) {
 
 			currWD, _ := os.Getwd()
 
-			entry, _ := localHook.LastEntry().String()
-			//println(entry)
+			entry := localHook.LastEntry()
+			if entry == nil {
+				subT.Error("missing log entry")
+				return
+			}
+			entryStr, _ := entry.String()
+			//println(entryStr)
 
 			wantLog := tt.wantLog
 			if strings.Contains(wantLog, `msg="%s/`) {
@@ -73,15 +78,15 @@ func Test_realmain(t *testing.T) {
 				wantLog = fmt.Sprintf(wantLog, currWD)
 			}
 
-			if wantLog != "" && !strings.Contains(entry, wantLog) {
+			if wantLog != "" && !strings.Contains(entryStr, wantLog) {
 				if strings.Contains(wantLog, `failed to load configuration:`) {
 					re := regexp.MustCompile(wantLog)
 
-					if !re.MatchString(entry) {
-						subT.Errorf("\nwant:\t%s\ngot:\t%s\n", wantLog, entry)
+					if !re.MatchString(entryStr) {
+						subT.Errorf("\nwant:\t%s\ngot:\t%s\n", wantLog, entryStr)
 					}
 				} else {
-					subT.Errorf("\nwant:\t%s\ngot:\t%s\n", wantLog, entry)
+					subT.Errorf("\nwant:\t%s\ngot:\t%s\n", wantLog, entryStr)
 				}
 			}
 		})
