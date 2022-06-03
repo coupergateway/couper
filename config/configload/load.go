@@ -49,8 +49,6 @@ var envContext *hcl.EvalContext
 var pathBearingAttributesMap map[string]struct{}
 
 func init() {
-	envContext = eval.NewContext(nil, nil).HCLContext()
-
 	pathBearingAttributes := []string{
 		"bootstrap_file",
 		"ca_file",
