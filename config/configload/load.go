@@ -388,32 +388,6 @@ func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Co
 			}
 		}
 
-		for _, spaBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(spa) {
-			spaConfig := &config.Spa{}
-			if diags := gohcl.DecodeBody(spaBlock.Body, helper.context, spaConfig); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if len(spaBlock.Labels) > 0 {
-				spaConfig.Name = spaBlock.Labels[0]
-			}
-
-			serverConfig.SPAs = append(serverConfig.SPAs, spaConfig)
-		}
-
-		for _, filesBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(files) {
-			filesConfig := &config.Files{}
-			if diags := gohcl.DecodeBody(filesBlock.Body, helper.context, filesConfig); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if len(filesBlock.Labels) > 0 {
-				filesConfig.Name = filesBlock.Labels[0]
-			}
-
-			serverConfig.Files = append(serverConfig.Files, filesConfig)
-		}
-
 		// standalone endpoints
 		err = refineEndpoints(helper, serverConfig.Endpoints, true)
 		if err != nil {
