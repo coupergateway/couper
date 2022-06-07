@@ -15,25 +15,30 @@ type Context interface {
 }
 
 type Options struct {
-	APIErrTpls    map[*config.API]*errors.Template
-	FilesErrTpl   *errors.Template
-	ServerErrTpl  *errors.Template
-	APIBasePaths  map[*config.API]string
-	FilesBasePath string
-	SPABasePath   string
-	SrvBasePath   string
-	ServerName    string
+	APIErrTpls     map[*config.API]*errors.Template
+	FilesErrTpls   []*errors.Template
+	ServerErrTpl   *errors.Template
+	APIBasePaths   map[*config.API]string
+	FilesBasePaths []string
+	SPABasePaths   []string
+	SrvBasePath    string
+	ServerName     string
 }
 
 func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, error) {
 	options := &Options{
-		FilesErrTpl:  errors.DefaultHTML,
 		ServerErrTpl: errors.DefaultHTML,
 	}
 
 	if conf == nil {
 		return options, nil
 	}
+
+	options.FilesErrTpls = make([]*errors.Template, len(conf.Files))
+	for i := range conf.Files {
+		options.FilesErrTpls[i] = errors.DefaultHTML
+	}
+
 	options.ServerName = conf.Name
 	options.SrvBasePath = path.Join("/", conf.BasePath)
 
@@ -42,8 +47,11 @@ func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, erro
 		if err != nil {
 			return nil, err
 		}
+
 		options.ServerErrTpl = tpl
-		options.FilesErrTpl = tpl
+		for i := range conf.Files {
+			options.FilesErrTpls[i] = tpl
+		}
 	}
 
 	if len(conf.APIs) > 0 {
@@ -65,20 +73,22 @@ func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, erro
 		}
 	}
 
-	if conf.Files != nil {
-		if conf.Files.ErrorFile != "" {
-			tpl, err := errors.NewTemplateFromFile(conf.Files.ErrorFile, logger)
+	options.FilesBasePaths = make([]string, len(conf.Files))
+	for i, f := range conf.Files {
+		if f.ErrorFile != "" {
+			tpl, err := errors.NewTemplateFromFile(f.ErrorFile, logger)
 			if err != nil {
 				return nil, err
 			}
-			options.FilesErrTpl = tpl
+
+			options.FilesErrTpls[i] = tpl
 		}
 
-		options.FilesBasePath = utils.JoinPath(options.SrvBasePath, conf.Files.BasePath)
+		options.FilesBasePaths[i] = utils.JoinPath(options.SrvBasePath, f.BasePath)
 	}
 
-	if conf.Spa != nil {
-		options.SPABasePath = utils.JoinPath(options.SrvBasePath, conf.Spa.BasePath)
+	for _, s := range conf.SPAs {
+		options.SPABasePaths = append(options.SPABasePaths, utils.JoinPath(options.SrvBasePath, s.BasePath))
 	}
 
 	return options, nil

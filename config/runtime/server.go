@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -86,7 +87,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	if ocErr != nil {
 		return nil, ocErr
 	}
-	conf.Context = evalContext.WithOidcConfig(oidcConfigs)
+	conf.Context = evalContext.
+		WithMemStore(memStore).
+		WithOidcConfig(oidcConfigs)
 
 	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
 	if acErr != nil {
@@ -103,7 +106,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	// Populate defined backends first...
 	if conf.Definitions != nil {
 		for _, backend := range conf.Definitions.Backend {
-			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf.Settings, memStore)
+			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -144,8 +147,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		serverBodies = append(serverBodies, srvConf.Remain)
 
 		var spaHandler http.Handler
-		if srvConf.Spa != nil {
-			spaHandler, err = handler.NewSpa(srvConf.Spa.BootstrapFile, serverOptions, []hcl.Body{srvConf.Spa.Remain, srvConf.Remain})
+		for _, spaConf := range srvConf.SPAs {
+			spaHandler, err = handler.NewSpa(spaConf.BootstrapFile, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
 			}
@@ -155,79 +158,88 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, spaHandler, notAllowedMethodsHandler)
 			spaHandler = allowedMethodsHandler
 
-			spaHandler, err = configureProtectedHandler(accessControls, confCtx,
+			spaHandler, err = configureProtectedHandler(accessControls, conf, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl),
+				config.NewAccessControl(spaConf.AccessControl, spaConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  spaHandler,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log)
 			if err != nil {
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Spa), allowedMethodsHandler.MethodAllowed)
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, spaConf), allowedMethodsHandler.MethodAllowed)
 			if cerr != nil {
 				return nil, cerr
 			}
 
 			spaHandler = middleware.NewCORSHandler(corsOptions, spaHandler)
 
-			spaBodies := bodiesWithACBodies(conf.Definitions, srvConf.Spa.AccessControl, srvConf.Spa.DisableAccessControl)
+			spaBodies := bodiesWithACBodies(conf.Definitions, spaConf.AccessControl, spaConf.DisableAccessControl)
 			spaHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, append(spaBodies, srvConf.Spa.Remain)...), spaHandler, "",
+				append(serverBodies, append(spaBodies, spaConf.Remain)...), spaHandler, "",
 			)
 
-			for _, spaPath := range srvConf.Spa.Paths {
-				err = setRoutesFromHosts(serverConfiguration, portsHosts, path.Join(serverOptions.SPABasePath, spaPath), spaHandler, spa)
+			for _, spaPath := range spaConf.Paths {
+				err = setRoutesFromHosts(serverConfiguration, portsHosts,
+					path.Join(serverOptions.SrvBasePath, spaConf.BasePath, spaPath), spaHandler, spa)
 				if err != nil {
-					return nil, err
+					sbody := spaConf.HCLBody().(*hclsyntax.Body)
+					return nil, hcl.Diagnostics{&hcl.Diagnostic{
+						Subject: &sbody.Attributes["paths"].SrcRange,
+						Summary: err.Error(),
+					}}
 				}
 			}
 		}
 
-		if srvConf.Files != nil {
-			var fileHandler http.Handler
-			fileHandler, err = handler.NewFile(srvConf.Files.DocumentRoot, serverOptions, []hcl.Body{srvConf.Files.Remain, srvConf.Remain})
+		var fileHandler http.Handler
+		for i, filesConf := range srvConf.Files {
+			fileHandler, err = handler.NewFile(
+				filesConf.DocumentRoot,
+				serverOptions.FilesBasePaths[i],
+				serverOptions.FilesErrTpls[i],
+				serverOptions,
+				[]hcl.Body{filesConf.Remain, srvConf.Remain},
+			)
 			if err != nil {
 				return nil, err
 			}
 
-			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpl}
+			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.FilesErrTpls[i]}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(nil, middleware.DefaultFileSpaAllowedMethods, fileHandler, notAllowedMethodsHandler)
 			fileHandler = allowedMethodsHandler
 
-			fileHandler, err = configureProtectedHandler(accessControls, confCtx,
+			fileHandler, err = configureProtectedHandler(accessControls, conf, confCtx,
 				config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl),
-				config.NewAccessControl(srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl),
+				config.NewAccessControl(filesConf.AccessControl, filesConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  fileHandler,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log)
 			if err != nil {
 				return nil, err
 			}
 
-			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, srvConf.Files), allowedMethodsHandler.MethodAllowed)
+			corsOptions, cerr := middleware.NewCORSOptions(whichCORS(srvConf, filesConf), allowedMethodsHandler.MethodAllowed)
 			if cerr != nil {
 				return nil, cerr
 			}
 
 			fileHandler = middleware.NewCORSHandler(corsOptions, fileHandler)
 
-			fileBodies := bodiesWithACBodies(conf.Definitions, srvConf.Files.AccessControl, srvConf.Files.DisableAccessControl)
+			fileBodies := bodiesWithACBodies(conf.Definitions, filesConf.AccessControl, filesConf.DisableAccessControl)
 			fileHandler = middleware.NewCustomLogsHandler(
-				append(serverBodies, append(fileBodies, srvConf.Files.Remain)...), fileHandler, "",
+				append(serverBodies, append(fileBodies, filesConf.Remain)...), fileHandler, "",
 			)
 
-			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePath, fileHandler, files)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePaths[i], fileHandler, files)
 			if err != nil {
 				return nil, err
 			}
@@ -257,7 +269,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			endpointPatterns[cleanPattern] = true
 
 			epOpts, err := newEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
-				log, conf.Settings, memStore)
+				log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -289,10 +301,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
-				epErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+				epErrorHandler, err := newErrorHandler(confCtx, conf, &protectedOptions{
 					epOpts:   epOpts,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
 				if err != nil {
@@ -312,10 +323,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					protectedHandler = epHandler
 				} else {
 					permissionsControl := ac.NewPermissionsControl(requiredPermissionExpr)
-					permissionsErrorHandler, err := newErrorHandler(confCtx, &protectedOptions{
+					permissionsErrorHandler, err := newErrorHandler(confCtx, conf, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
-						settings: conf.Settings,
 						srvOpts:  serverOptions,
 					}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
 					if err != nil {
@@ -337,13 +347,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			allowedMethodsHandler := middleware.NewAllowedMethodsHandler(allowedMethods, middleware.DefaultEndpointAllowedMethods, protectedHandler, notAllowedMethodsHandler)
 			protectedHandler = allowedMethodsHandler
 
-			epHandler, err = configureProtectedHandler(accessControls, confCtx, accessControl,
+			epHandler, err = configureProtectedHandler(accessControls, conf, confCtx, accessControl,
 				config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl),
 				&protectedOptions{
 					epOpts:   epOpts,
 					handler:  protectedHandler,
 					memStore: memStore,
-					settings: conf.Settings,
 					srvOpts:  serverOptions,
 				}, log)
 			if err != nil {
@@ -438,7 +447,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 			backends := map[string]http.RoundTripper{}
 			for k, backendBody := range oidcConf.Backends {
 				var err error
-				backends[k], err = NewBackend(confCtx, backendBody, log, conf.Settings, memStore)
+				backends[k], err = NewBackend(confCtx, backendBody, log, conf, memStore)
 				if err != nil {
 					return nil, confErr.With(err)
 				}
@@ -506,7 +515,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf.Settings, memStore)
+			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -596,7 +605,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 	if jwtConf.Backends != nil {
 		backendBody, ok := jwtConf.Backends["backend"]
 		if ok {
-			b, err := NewBackend(confContext, backendBody, log, conf.Settings, memStore)
+			b, err := NewBackend(confContext, backendBody, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -611,18 +620,17 @@ type protectedOptions struct {
 	epOpts   *handler.EndpointOptions
 	handler  http.Handler
 	memStore *cache.MemoryStore
-	settings *config.Settings
 	srvOpts  *server.Options
 }
 
-func configureProtectedHandler(m ACDefinitions, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
+func configureProtectedHandler(m ACDefinitions, conf *config.Couper, ctx *hcl.EvalContext, parentAC, handlerAC config.AccessControl,
 	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
 		if e := m.MustExist(acName); e != nil {
 			return nil, e
 		}
-		eh, err := newErrorHandler(ctx, opts, log, m, acName)
+		eh, err := newErrorHandler(ctx, conf, opts, log, m, acName)
 		if err != nil {
 			return nil, err
 		}
@@ -645,8 +653,6 @@ func setRoutesFromHosts(
 	path = utils.JoinPath("/", path)
 
 	for port, hosts := range portsHosts {
-		check := make(map[string]struct{})
-
 		for host := range hosts {
 			var routes map[string]http.Handler
 
@@ -663,13 +669,11 @@ func setRoutesFromHosts(
 				return fmt.Errorf("unknown route kind")
 			}
 
-			key := fmt.Sprintf("%d:%s:%s\n", port, host, path)
-			if _, exist := check[key]; exist {
-				return fmt.Errorf("duplicate route found on port %q: %q", port, path)
+			if _, exist := routes[path]; exist {
+				return fmt.Errorf("duplicate route found on port %d: %s", port, path)
 			}
 
 			routes[path] = handler
-			check[key] = struct{}{}
 		}
 	}
 

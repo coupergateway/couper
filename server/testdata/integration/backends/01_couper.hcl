@@ -2,15 +2,6 @@ server {
   api {
     base_path = "/proxy"
 
-    endpoint "/path" {
-      proxy {
-        path = "/my-path"
-        backend {
-          # no origin
-        }
-      }
-    }
-
     endpoint "/backend-path" {
       proxy {
         backend {
@@ -43,7 +34,7 @@ server {
     }
 
     endpoint "/url" {
-      proxy {
+      request {
         url = "/my-path"
         backend {
           # no origin

@@ -100,6 +100,14 @@ func SetBody(req *http.Request, body []byte) {
 	parseForm(req)
 }
 
+func getPathAttribute(body hcl.Body) (*hcl.Attribute, error) {
+	bodyContent, _, diags := body.PartialContent(config.BackendInlineSchema)
+	if diags.HasErrors() {
+		return nil, errors.Evaluation.With(diags)
+	}
+	return bodyContent.Attributes[attrPath], nil
+}
+
 func ApplyRequestContext(httpCtx *hcl.EvalContext, body hcl.Body, req *http.Request) error {
 	if req == nil {
 		return nil
@@ -107,12 +115,19 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body hcl.Body, req *http.Requ
 
 	headerCtx := req.Header
 
-	attrs, err := getAllAttributes(body)
+	pathAttr, err := getPathAttribute(body)
 	if err != nil {
 		return err
 	}
 
-	if err = evalPathAttr(req, attrs, httpCtx); err != nil {
+	if pathAttr != nil {
+		if err = evalPathAttr(req, pathAttr, httpCtx); err != nil {
+			return err
+		}
+	}
+
+	attrs, err := getAllAttributes(body)
+	if err != nil {
 		return err
 	}
 
@@ -264,9 +279,8 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	return nil
 }
 
-func evalPathAttr(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) error {
-	pathAttr, ok := attrs[attrPath]
-	if !ok {
+func evalPathAttr(req *http.Request, pathAttr *hcl.Attribute, httpCtx *hcl.EvalContext) error {
+	if pathAttr == nil {
 		return nil
 	}
 	path := req.URL.Path

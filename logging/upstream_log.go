@@ -10,15 +10,20 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler/validation"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/hashicorp/hcl/v2"
 )
 
-var _ http.RoundTripper = &UpstreamLog{}
+var (
+	_ http.RoundTripper = &UpstreamLog{}
+	_ seetie.Object     = &UpstreamLog{}
+)
 
 type UpstreamLog struct {
 	config *Config
@@ -244,4 +249,13 @@ func (u *UpstreamLog) newTraceContext() (Fields, *sync.RWMutex, *httptrace.Clien
 	}
 
 	return timings, mapMu, trace
+}
+
+func (u *UpstreamLog) Value() cty.Value {
+	next, ok := u.next.(seetie.Object)
+	if !ok {
+		return cty.NilVal
+	}
+
+	return next.Value()
 }

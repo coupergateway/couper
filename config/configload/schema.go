@@ -24,13 +24,13 @@ const (
 var (
 	reFetchUnsupportedName = regexp.MustCompile(`\"([^"]+)\"`)
 	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\)\.`)
-	reFetchUnlabeledName   = regexp.MustCompile(`No labels are expected for (.*) blocks\.`)
 	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
 	reFetchUniqueKey       = regexp.MustCompile(`Key must be unique for (.*)\.`)
 )
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	attrs, blocks, diags := getSchemaComponents(body, obj)
+	diags = enhanceErrors(diags, obj)
 	diags = filterValidErrors(attrs, blocks, diags)
 
 	for _, block := range blocks {
@@ -40,6 +40,23 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	return uniqueErrors(diags)
 }
 
+// enhanceErrors enhances diagnostics e.g. by providing a hint how to solve the issue
+func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
+	_, isEndpoint := obj.(*config.Endpoint)
+	_, isProxy := obj.(*config.Proxy)
+	for _, err := range diags {
+		if err.Summary == summUnsupportedAttr && (isEndpoint || isProxy) {
+			if matches := reFetchUnexpectedArg.FindStringSubmatch(err.Detail); matches != nil && matches[1] == `"path"` {
+				err.Detail = err.Detail + ` Use the "path" attribute in a backend block instead.`
+			}
+		}
+	}
+	return diags
+}
+
+// filterValidErrors ignores certain schema related errors due to their specific non hcl conform implementation.
+// Related attributes and blocks will be logic checked with LoadConfig.
+// TODO: Improve checkObjectFields to remove this filter requirement. E.g. optional label struct tag
 func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagnostics) hcl.Diagnostics {
 	var errors hcl.Diagnostics
 
@@ -51,10 +68,6 @@ func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagno
 		matches := reFetchUnsupportedName.FindStringSubmatch(err.Detail)
 		if len(matches) != 2 {
 			if match := reFetchLabeledName.MatchString(err.Detail); match {
-				errors = errors.Append(err)
-				continue
-			}
-			if match := reFetchUnlabeledName.MatchString(err.Detail); match {
 				errors = errors.Append(err)
 				continue
 			}
@@ -207,11 +220,13 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 		schema = config.WithErrorHandlerSchema(schema)
 	}
 
-	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
-
 	if i, ok := obj.(config.Inline); ok {
-		attrs, blocks, errors = completeSchemaComponents(body, i.Schema(true), attrs, blocks, errors)
+		inlineSchema := i.Schema(true)
+		schema.Attributes = append(schema.Attributes, inlineSchema.Attributes...)
+		schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
 	}
+
+	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
 
 	return attrs, blocks, errors
 }
@@ -229,7 +244,7 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 			added := false
 			for _, block := range bodyContent.Blocks {
 				switch block.Type {
-				case "api", "backend", "error_handler", "proxy", "request", "server":
+				case api, backend, errorHandler, proxy, request, server, spa, files:
 					blocks = append(blocks, block)
 
 					added = true

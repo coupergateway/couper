@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"time"
@@ -19,19 +20,20 @@ var defaultHealthCheck = &HealthCheck{
 }
 
 type HealthCheck struct {
-	FailureThreshold uint
-	Interval         time.Duration
-	Timeout          time.Duration
+	Context          context.Context
 	ExpectedStatus   map[int]bool
 	ExpectedText     string
+	FailureThreshold uint
+	Interval         time.Duration
 	Request          *http.Request
 	RequestUIDFormat string
+	Timeout          time.Duration
 }
 
 type Headers map[string]string
 
 type Health struct {
-	FailureThreshold uint     `hcl:"failure_threshold,optional"`
+	FailureThreshold *uint    `hcl:"failure_threshold,optional"`
 	Interval         string   `hcl:"interval,optional"`
 	Timeout          string   `hcl:"timeout,optional"`
 	Path             string   `hcl:"path,optional"`
@@ -41,61 +43,66 @@ type Health struct {
 	Remain           hcl.Body `hcl:",remain"`
 }
 
-func NewHealthCheck(baseURL string, options *Health, settings *Settings) (*HealthCheck, error) {
+func NewHealthCheck(baseURL string, options *Health, conf *Couper) (*HealthCheck, error) {
 	healthCheck := *defaultHealthCheck
-	healthCheck.RequestUIDFormat = settings.RequestIDFormat
 
+	healthCheck.Context = conf.Context
+	healthCheck.RequestUIDFormat = conf.Settings.RequestIDFormat
+
+	if options == nil {
+		return &healthCheck, nil
+	}
 	var err error
-	if options != nil {
-		if options.Interval != "" {
-			healthCheck.Interval, err = time.ParseDuration(options.Interval)
-			if err != nil {
-				return nil, err
-			}
-			healthCheck.Timeout = healthCheck.Interval
-		}
-		if options.Timeout != "" {
-			healthCheck.Timeout, err = time.ParseDuration(options.Timeout)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if healthCheck.Timeout > healthCheck.Interval {
-			healthCheck.Timeout = healthCheck.Interval
-		}
-		if options.FailureThreshold != 0 {
-			healthCheck.FailureThreshold = options.FailureThreshold
-		}
-		if len(options.ExpectedStatus) > 0 {
-			statusList := map[int]bool{}
-			for _, status := range options.ExpectedStatus {
-				statusList[status] = true
-			}
-			healthCheck.ExpectedStatus = statusList
-		}
-		healthCheck.ExpectedText = options.ExpectedText
 
-		request, err := http.NewRequest(http.MethodGet, baseURL, nil)
+	if options.Interval != "" {
+		healthCheck.Interval, err = time.ParseDuration(options.Interval)
 		if err != nil {
 			return nil, err
 		}
-
-		if options.Path != "" {
-			request.URL = request.URL.ResolveReference(createURL(options.Path))
-		}
-
-		if options.Headers != nil {
-			for key, value := range options.Headers {
-				request.Header.Add(key, value)
-			}
-		}
-
-		if ua := request.Header.Get("User-Agent"); ua == "" {
-			request.Header.Set("User-Agent", "Couper / "+utils.VersionName+" health-check")
-		}
-
-		healthCheck.Request = request
+		healthCheck.Timeout = healthCheck.Interval
 	}
+	if options.Timeout != "" {
+		healthCheck.Timeout, err = time.ParseDuration(options.Timeout)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if healthCheck.Timeout > healthCheck.Interval {
+		healthCheck.Timeout = healthCheck.Interval
+	}
+	if options.FailureThreshold != nil {
+		healthCheck.FailureThreshold = *options.FailureThreshold
+	}
+	if len(options.ExpectedStatus) > 0 {
+		statusList := map[int]bool{}
+		for _, status := range options.ExpectedStatus {
+			statusList[status] = true
+		}
+		healthCheck.ExpectedStatus = statusList
+	}
+	healthCheck.ExpectedText = options.ExpectedText
+
+	request, err := http.NewRequest(http.MethodGet, baseURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if options.Path != "" {
+		request.URL = request.URL.ResolveReference(createURL(options.Path))
+	}
+
+	if options.Headers != nil {
+		for key, value := range options.Headers {
+			request.Header.Add(key, value)
+		}
+	}
+
+	if ua := request.Header.Get("User-Agent"); ua == "" {
+		request.Header.Set("User-Agent", "Couper / "+utils.VersionName+" health-check")
+	}
+
+	healthCheck.Request = request
+
 	return &healthCheck, err
 }
 

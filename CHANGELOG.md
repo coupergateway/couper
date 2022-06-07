@@ -25,6 +25,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * renamed `beta_insufficient_scope` [error type](./docs/ERRORS.md#api-and-endpoint-error-types) to `beta_insufficient_permissions`
     * added `request.context.beta_required_permission` and `request.context.beta_granted_permissions` [request variables](./docs/REFERENCE.md#request)
   * Clarified the type of various [attributes/variables](./docs/REFERENCE.md) ([#485](https://github.com/avenga/couper/pull/485))
+  * [`spa` block](./docs/REFERENCE.md#spa-block) can be defined multiple times now ([#510](https://github.com/avenga/couper/pull/510))
+  * [`files` block](./docs/REFERENCE.md#files-block) can be defined multiple times now ([#513](https://github.com/avenga/couper/pull/513))
 
 * **Fixed**
   * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
@@ -40,6 +42,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
   * support for `beta_oauth_authorization_url` and `beta_oauth_verifier` functions (use `oauth2_authorization_url` and `oauth2_verifier` [functions](./docs/REFERENCE.md#functions) instead) ([#475](https://github.com/avenga/couper/pull/475))
+  * `path` attribute from `endpoint` (and `proxy`) block; use `path` attribute in `backend` block instead ([#516](https://github.com/avenga/couper/pull/516))
 
 ---
 

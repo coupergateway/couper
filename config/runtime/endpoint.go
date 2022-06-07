@@ -40,17 +40,36 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 			continue
 		}
 
-		var filesBasePath, spaBasePath string
-		if serverOptions.FilesBasePath != "" {
-			filesBasePath = serverOptions.FilesBasePath
-		}
-		if serverOptions.SPABasePath != "" {
-			spaBasePath = serverOptions.SPABasePath
+		var (
+			spaPaths                          []string
+			filesPaths                        []string
+			isAPIBasePathUniqueToFilesAndSPAs = true
+		)
+
+		if len(serverOptions.SPABasePaths) == 0 {
+			spaPaths = []string{""}
+		} else {
+			spaPaths = serverOptions.SPABasePaths
 		}
 
-		isAPIBasePathUniqueToFilesAndSPA := basePath != filesBasePath && basePath != spaBasePath
+		if len(serverOptions.FilesBasePaths) == 0 {
+			filesPaths = []string{""}
+		} else {
+			filesPaths = serverOptions.FilesBasePaths
+		}
 
-		if isAPIBasePathUniqueToFilesAndSPA {
+	uniquePaths:
+		for _, spaPath := range spaPaths {
+			for _, filesPath := range filesPaths {
+				isAPIBasePathUniqueToFilesAndSPAs = basePath != filesPath && basePath != spaPath
+
+				if !isAPIBasePathUniqueToFilesAndSPAs {
+					break uniquePaths
+				}
+			}
+		}
+
+		if isAPIBasePathUniqueToFilesAndSPAs {
 			endpoints[apiConf.CatchAllEndpoint] = apiConf
 			catchAllEndpoints[basePath] = struct{}{}
 		}
@@ -64,7 +83,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 }
 
 func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
-	serverOptions *server.Options, log *logrus.Entry, settings *config.Settings, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
+	serverOptions *server.Options, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
 	var errTpl *errors.Template
 
 	if endpointConf.ErrorFile != "" {
@@ -94,7 +113,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, settings, memStore)
+		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, conf, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -111,7 +130,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
-		backend, berr := NewBackend(confCtx, requestConf.Backend, log, settings, memStore)
+		backend, berr := NewBackend(confCtx, requestConf.Backend, log, conf, memStore)
 		if berr != nil {
 			return nil, berr
 		}

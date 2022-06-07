@@ -64,12 +64,12 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 	var proxyFunc func(req *http.Request) (*url.URL, error)
 	if conf.Proxy != "" {
 		proxyFunc = func(req *http.Request) (*url.URL, error) {
-			config := &httpproxy.Config{
+			proxyConf := &httpproxy.Config{
 				HTTPProxy:  conf.Proxy,
 				HTTPSProxy: conf.Proxy,
 			}
 
-			return config.ProxyFunc()(req.URL)
+			return proxyConf.ProxyFunc()(req.URL)
 		}
 	} else if !conf.NoProxyFromEnv {
 		proxyFunc = http.ProxyFromEnvironment

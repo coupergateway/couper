@@ -17,7 +17,6 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/middleware"
-	probe "github.com/avenga/couper/handler/transport/probe_map"
 	"github.com/avenga/couper/logging"
 )
 
@@ -43,6 +42,13 @@ func (s state) String() string {
 	return healthStateLabels[s]
 }
 
+type HealthInfo struct {
+	Error   string
+	Healthy bool
+	Origin  string
+	State   string
+}
+
 type Probe struct {
 	//configurable settings
 	backendName string
@@ -56,34 +62,55 @@ type Probe struct {
 	state   state
 	status  int
 
+	listener ProbeStateChange
+
 	uidFunc middleware.UIDFunc
 }
 
-func NewProbe(log *logrus.Entry, backendName string, opts *config.HealthCheck) {
+type ProbeStateChange interface {
+	OnProbeChange(info *HealthInfo)
+}
+
+func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener ProbeStateChange) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: logging.NewUpstreamLog(log, http.DefaultTransport,
-			false), // always false due to defaultTransport
+		Transport: logging.NewUpstreamLog(log,
+			NewTransport(tc.
+				WithTarget(opts.Request.URL.Scheme, opts.Request.URL.Host, opts.Request.URL.Host, ""),
+				log),
+			tc.NoProxyFromEnv),
 	}
 
 	p := &Probe{
-		backendName: backendName,
-		log:         log,
+		backendName: tc.BackendName,
+		log:         log.WithField("url", opts.Request.URL.String()),
 		opts:        opts,
 
 		client: client,
 		state:  StateInvalid,
 
+		listener: listener,
+
 		uidFunc: middleware.NewUIDFunc(opts.RequestUIDFormat),
 	}
 
-	go p.probe()
+	// do not start go-routine on config check (-watch)
+	if _, exist := opts.Context.Value("config-dry-run").(bool); exist {
+		return
+	}
+	go p.probe(opts.Context)
 }
 
-func (p *Probe) probe() {
+func (p *Probe) probe(c context.Context) {
 	for {
+		select {
+		case <-c.Done():
+			p.log.Warn("shutdown health probe")
+			return
+		default:
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), p.opts.Timeout)
 		ctx = context.WithValue(ctx, request.RoundTripName, "health-check")
 		uid := p.uidFunc()
@@ -131,11 +158,16 @@ func (p *Probe) probe() {
 
 		if prevState != p.state {
 			newState := p.state.String()
-			probe.BackendProbes.Store(p.backendName, probe.HealthInfo{
-				State:   newState,
+			info := &HealthInfo{
 				Error:   errorMessage,
 				Healthy: p.state != StateDown,
-			})
+				Origin:  p.opts.Request.URL.Host,
+				State:   newState,
+			}
+
+			if p.listener != nil {
+				p.listener.OnProbeChange(info)
+			}
 
 			message := fmt.Sprintf("new health state: %s", newState)
 

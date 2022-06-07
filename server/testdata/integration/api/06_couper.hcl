@@ -10,15 +10,6 @@ server "multi-api" {
         }
       }
     }
-    endpoint "/uuu/**" {
-      path = "/api/**"
-      proxy {
-        backend {
-          origin = env.COUPER_TEST_BACKEND_ADDR
-          path_prefix = "/${request.headers.x-val}/xxx/"
-        }
-      }
-    }
     endpoint "/vvv/**" {
       proxy {
         backend {
