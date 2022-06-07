@@ -1,8 +1,7 @@
 server {
   endpoint "/**" {
     proxy {
-      path = "/**"
-      url = "{{ .origin }}/"
+      url = "{{ .origin }}/**"
     }
   }
 }

@@ -42,6 +42,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
   * support for `beta_oauth_authorization_url` and `beta_oauth_verifier` functions (use `oauth2_authorization_url` and `oauth2_verifier` [functions](./docs/REFERENCE.md#functions) instead) ([#475](https://github.com/avenga/couper/pull/475))
+  * `path` attribute from `endpoint` (and `proxy`) block; use `path` attribute in `backend` block instead ([#516](https://github.com/avenga/couper/pull/516))
 
 ---
 
