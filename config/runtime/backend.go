@@ -103,6 +103,15 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			}
 		}
 	}
+	tokenRequestContent, _, _ := backendCtx.PartialContent(config.TokenRequestBlockSchema)
+	if tokenRequestContent != nil {
+		if blocks := tokenRequestContent.Blocks.OfType("token_request"); len(blocks) > 0 {
+			options.RequestAuthz, err = newTokenRequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	b := transport.NewBackend(backendCtx, tc, options, log)
 	return b, nil
@@ -149,6 +158,30 @@ func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend
 	}
 
 	return tr, nil
+}
+
+func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
+	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
+
+	trConfig := &config.TokenRequest{}
+
+	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, trConfig); diags.HasErrors() {
+		return nil, diags
+	}
+
+	innerContent, _, diags := trConfig.Remain.PartialContent(trConfig.Schema(true))
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
+	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, conf, memStore)
+	if authErr != nil {
+		return nil, authErr
+	}
+
+	tr, err := transport.NewTokenRequest(trConfig, memStore, authBackend, beConf.Reference())
+	return tr, err
 }
 
 func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {

@@ -117,6 +117,17 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 		backendBody = hclbody.MergeBodies(backendBody, wrapped)
 	}
 
+	// watch out for token_request blocks and nested backend definitions
+	tokenRequestBackend, err := newTokenRequestBackend(helper, backendBody)
+	if err != nil {
+		return nil, err
+	}
+
+	if tokenRequestBackend != nil {
+		wrapped := wrapTokenRequestBackend(tokenRequestBackend)
+		backendBody = hclbody.MergeBodies(backendBody, wrapped)
+	}
+
 	return backendBody, nil
 }
 
@@ -174,6 +185,41 @@ func wrapOauth2Backend(content hcl.Body) hcl.Body {
 		Blocks: []*hcl.Block{
 			{
 				Type: oauth2,
+				Body: newBackendBlock(content),
+			},
+		},
+	})
+	return b
+}
+
+// newTokenRequestBackend prepares a nested backend within a backend-tokenRequest block.
+// TODO: Check a possible circular dependency with given parent backend(s).
+func newTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
+	innerContent, err := contentByType(tokenRequest, parent)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenRequestBlocks := innerContent.Blocks.OfType(tokenRequest)
+	if len(tokenRequestBlocks) == 0 {
+		return nil, nil
+	}
+
+	// token_request block exists, read out backend configuration
+	tokenRequestBody := tokenRequestBlocks[0].Body
+	conf := &config.TokenRequest{}
+	if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
+		return nil, diags
+	}
+
+	return PrepareBackend(helper, "", conf.URL, conf)
+}
+
+func wrapTokenRequestBackend(content hcl.Body) hcl.Body {
+	b := hclbody.New(&hcl.BodyContent{
+		Blocks: []*hcl.Block{
+			{
+				Type: tokenRequest,
 				Body: newBackendBlock(content),
 			},
 		},

@@ -315,6 +315,13 @@ func (c *Context) updateBackendVariables(evalCtx *hcl.EvalContext, key string, c
 	}
 }
 
+func (c *Context) WithBackendToken(backendName, token string) *Context {
+	backends := make(ContextMap)
+	backends[backendName] = cty.ObjectVal(ContextMap{Token: cty.StringVal(token)})
+	c.updateBackendVariables(c.eval, Backends, backends)
+	return c
+}
+
 // WithJWTSigningConfigs initially sets up the lib.FnJWTSign function.
 func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig) *Context {
 	c.jwtSigningConfigs = configs

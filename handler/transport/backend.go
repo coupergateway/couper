@@ -114,18 +114,20 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
 	}
 
+	// originalReq for token-request retry purposes
+	originalReq, err := b.withTokenRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+	backends := seetie.ValueToMap(hclCtx.Variables[eval.Backends])
+	hclCtx.Variables[eval.Backend] = seetie.GoToValue(backends[b.name])
 
 	if err := b.isUnhealthy(hclCtx, ctxBody); err != nil {
 		return &http.Response{
 			Request: req, // provide outreq (variable) on error cases
 		}, err
-	}
-
-	// originalReq for token-request retry purposes
-	originalReq, err := b.withTokenRequest(req)
-	if err != nil {
-		return nil, err
 	}
 
 	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
@@ -239,6 +241,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
 	evalCtx = evalCtx.WithBeresp(beresp, readBody)
+
+	evalCtx.HCLContext().Variables[eval.Backend] = seetie.GoToValue(backends[b.name])
+
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
