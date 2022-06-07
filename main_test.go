@@ -43,7 +43,7 @@ func Test_realmain(t *testing.T) {
 		{"json log format via env /w file", []string{"couper", "run", "-f", base + "/log_default.hcl"}, []string{"COUPER_LOG_FORMAT=json"}, `{"build":"dev","level":"error","message":"configuration error: missing 'server' block"`, 1},
 		{"non-existent log level via env /w file", []string{"couper", "run", "-f", base + "/log_altered.hcl"}, []string{"COUPER_LOG_LEVEL=test"}, `level=error msg="configuration error: missing 'server' block" build=dev`, 1},
 		{"-f w/o file", []string{"couper", "run", "-f"}, nil, `level=error msg="flag needs an argument: -f" build=dev`, 1},
-		{"-f w/ public file", []string{"couper", "run", "-f", "public/couper.hcl"}, nil, ``, 0},
+		{"path from env", []string{"couper", "run", "-f", base + "/path_from_env.hcl"}, nil, `level=error msg="configuration error: token: jwt key: read error: open %s/public.pem: no such file or directory" build=dev`, 1},
 		{"undefined AC", []string{"couper", "run", "-f", base + "/04_couper.hcl"}, nil, `level=error msg="accessControl is not defined: undefined" build=dev`, 1},
 		{"empty string in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/13_couper.hcl"}, nil, `level=error msg="%s/13_couper.hcl:3,5-27: method contains invalid character(s); " build=dev`, 1},
 		{"invalid method in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/14_couper.hcl"}, nil, `level=error msg="%s/14_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
@@ -75,7 +75,7 @@ func Test_realmain(t *testing.T) {
 			}
 
 			wantLog := tt.wantLog
-			if strings.Contains(wantLog, `msg="%s/`) {
+			if strings.Contains(wantLog, `msg="%s/`) || strings.Contains(wantLog, `open %s/`) {
 				wantLog = fmt.Sprintf(wantLog, filepath.Join(currWD, base))
 			} else if strings.Contains(wantLog, `stat %s/`) {
 				wantLog = fmt.Sprintf(wantLog, currWD)

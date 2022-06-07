@@ -95,9 +95,7 @@ func parseFile(filePath string, srcBytes *[][]byte) (*hclsyntax.Body, error) {
 		return nil, diags
 	}
 
-	body := parsed.Body.(*hclsyntax.Body)
-	err = absolutizePaths(body)
-	return body, err
+	return parsed.Body.(*hclsyntax.Body), nil
 }
 
 func LoadFiles(filesList []string) (*config.Couper, error) {
@@ -165,6 +163,12 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 
 	if diags := updateContext(defs, srcBytes); diags.HasErrors() {
 		return nil, diags
+	}
+
+	for _, body := range parsedBodies {
+		if err := absolutizePaths(body); err != nil {
+			return nil, err
+		}
 	}
 
 	settingsBlock := mergeSettings(parsedBodies)
