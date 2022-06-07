@@ -97,7 +97,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent != nil {
 		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-			options.AuthBackend, err = newOAuth2RequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
+			options.RequestAuthz, err = newOAuth2RequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}

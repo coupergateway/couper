@@ -69,7 +69,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	if opts != nil {
 		healthCheck = opts.HealthCheck
 		openAPI = validation.NewOpenAPI(opts.OpenAPI)
-		requestAuthorizer = opts.AuthBackend
+		requestAuthorizer = opts.RequestAuthz
 	}
 
 	backend := &Backend{
