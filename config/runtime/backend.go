@@ -97,7 +97,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent != nil {
 		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, conf, memStore)
+			options.AuthBackend, err = newOAuth2RequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -108,8 +108,8 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	return b, nil
 }
 
-func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	conf *config.Couper, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
+func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
+	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 
 	beConf.OAuth2 = &config.OAuth2ReqAuth{}
 

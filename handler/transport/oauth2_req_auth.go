@@ -25,7 +25,7 @@ type OAuth2ReqAuth struct {
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	asBackend http.RoundTripper) (TokenRequest, error) {
+	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
 	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)

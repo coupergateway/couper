@@ -50,7 +50,7 @@ type Backend struct {
 	logEntry            *logrus.Entry
 	name                string
 	openAPIValidator    *validation.OpenAPI
-	tokenRequest        TokenRequest
+	requestAuthorizer   RequestAuthorizer
 	transport           *http.Transport
 	transportConf       *Config
 	transportConfResult Config
@@ -63,13 +63,13 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	var (
 		healthCheck  *config.HealthCheck
 		openAPI      *validation.OpenAPI
-		tokenRequest TokenRequest
+		requestAuthorizer RequestAuthorizer
 	)
 
 	if opts != nil {
 		healthCheck = opts.HealthCheck
 		openAPI = validation.NewOpenAPI(opts.OpenAPI)
-		tokenRequest = opts.AuthBackend
+		requestAuthorizer = opts.AuthBackend
 	}
 
 	backend := &Backend{
@@ -78,7 +78,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 		logEntry:         log.WithField("backend", tc.BackendName),
 		name:             tc.BackendName,
 		openAPIValidator: openAPI,
-		tokenRequest:     tokenRequest,
+		requestAuthorizer: requestAuthorizer,
 		transportConf:    tc,
 	}
 
@@ -318,7 +318,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 }
 
 func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
-	if b.tokenRequest == nil {
+	if b.requestAuthorizer == nil {
 		return nil, nil
 	}
 
@@ -329,17 +329,17 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 
 	ctx := context.WithValue(req.Context(), request.BackendTokenRequest, "tr")
 	// Reset for upstream transport; prevent mixing values.
-	// tokenRequest will have their own backend configuration.
+	// requestAuthorizer will have their own backend configuration.
 	ctx = context.WithValue(ctx, request.BackendParams, nil)
 
 	originalReq := req.Clone(req.Context())
 
 	// WithContext() instead of Clone() due to header-map modification.
-	return originalReq, b.tokenRequest.WithToken(req.WithContext(ctx))
+	return originalReq, b.requestAuthorizer.WithToken(req.WithContext(ctx))
 }
 
 func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
-	if b.tokenRequest == nil {
+	if b.requestAuthorizer == nil {
 		return false, nil
 	}
 
@@ -348,7 +348,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 		return false, nil
 	}
 
-	return b.tokenRequest.RetryWithToken(req, res)
+	return b.requestAuthorizer.RetryWithToken(req, res)
 }
 
 func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
