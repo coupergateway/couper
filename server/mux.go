@@ -180,16 +180,25 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 			continue
 		}
 
+		var spaPaths, filesPaths []string
+
 		if len(m.opts.ServerOptions.SPABasePaths) == 0 {
-			if isAPIError(path, m.opts.ServerOptions.FilesBasePath, "", reqPath) {
-				return m.opts.ServerOptions.APIErrTpls[api], api
-			}
-			continue
+			spaPaths = []string{""}
+		} else {
+			spaPaths = m.opts.ServerOptions.SPABasePaths
 		}
 
-		for _, spaPath := range m.opts.ServerOptions.SPABasePaths {
-			if isAPIError(path, m.opts.ServerOptions.FilesBasePath, spaPath, reqPath) {
-				return m.opts.ServerOptions.APIErrTpls[api], api
+		if len(m.opts.ServerOptions.FilesBasePaths) == 0 {
+			filesPaths = []string{""}
+		} else {
+			filesPaths = m.opts.ServerOptions.FilesBasePaths
+		}
+
+		for _, spaPath := range spaPaths {
+			for _, filesPath := range filesPaths {
+				if isAPIError(path, filesPath, spaPath, reqPath) {
+					return m.opts.ServerOptions.APIErrTpls[api], api
+				}
 			}
 		}
 	}

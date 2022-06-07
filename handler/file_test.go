@@ -9,6 +9,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/errors"
 )
 
 func TestFile_ServeHTTP(t *testing.T) {
@@ -43,9 +44,7 @@ func TestFile_ServeHTTP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			srvOpts.FilesBasePath = tt.fields.basePath
-
-			f, err := NewFile(path.Join(wd, tt.fields.docRootDir), srvOpts, nil)
+			f, err := NewFile(path.Join(wd, tt.fields.docRootDir), tt.fields.basePath, errors.DefaultHTML, srvOpts, nil)
 			if err != nil {
 				subT.Fatal(err)
 			}
