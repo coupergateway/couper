@@ -25,7 +25,7 @@ type OAuth2ReqAuth struct {
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2Client *oauth2.ClientCredentialsClient) (TokenRequest, error) {
+	oauth2Client *oauth2.ClientCredentialsClient) TokenRequest {
 	reqAuth := &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,
@@ -33,7 +33,7 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		locks:        sync.Map{},
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
-	return reqAuth, nil
+	return reqAuth
 }
 
 func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
