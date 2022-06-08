@@ -2,7 +2,6 @@ package configload
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
+	configfile "github.com/avenga/couper/config/configload/file"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
@@ -98,54 +98,42 @@ func parseFile(filePath string, srcBytes *[][]byte) (*hclsyntax.Body, error) {
 	return parsed.Body.(*hclsyntax.Body), nil
 }
 
-func LoadFiles(filesList []string) (*config.Couper, error) {
+func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 	var (
 		srcBytes     [][]byte
 		parsedBodies []*hclsyntax.Body
 	)
 
-	var loadedFiles []string
-	for _, file := range filesList {
-		filePath, err := filepath.Abs(file)
-		if err != nil {
-			return nil, err
-		}
-
-		fileInfo, err := os.Stat(filePath)
-		if err != nil {
-			return nil, err
-		}
-
-		if fileInfo.IsDir() {
-			// ReadDir ... returns a list ... sorted by filename.
-			listing, err := ioutil.ReadDir(filePath)
+	for _, file := range files {
+		if file.IsDir {
+			childBodies, bytes, err := parseFiles(file.Children)
 			if err != nil {
-				return nil, err
+				return nil, bytes, err
 			}
 
-			for _, item := range listing {
-				if item.IsDir() || filepath.Ext(item.Name()) != ".hcl" {
-					continue
-				}
-
-				filename := filepath.Join(filePath, item.Name())
-				body, err := parseFile(filename, &srcBytes)
-				if err != nil {
-					return nil, err
-				}
-
-				loadedFiles = append(loadedFiles, filename)
-				parsedBodies = append(parsedBodies, body)
-			}
+			parsedBodies = append(parsedBodies, childBodies...)
+			srcBytes = append(srcBytes, bytes...)
 		} else {
-			body, err := parseFile(filePath, &srcBytes)
+			body, err := parseFile(file.Path, &srcBytes)
 			if err != nil {
-				return nil, err
+				return nil, srcBytes, err
 			}
-
-			loadedFiles = append(loadedFiles, filePath)
 			parsedBodies = append(parsedBodies, body)
 		}
+	}
+
+	return parsedBodies, srcBytes, nil
+}
+
+func LoadFiles(filesList []string) (*config.Couper, error) {
+	configFiles, err := configfile.NewFiles(filesList)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedBodies, srcBytes, err := parseFiles(configFiles)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(srcBytes) == 0 {
@@ -197,7 +185,7 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 		return nil, err
 	}
 
-	conf.Files = loadedFiles
+	conf.Files = configFiles
 
 	return conf, nil
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/configload/file"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/eval"
@@ -286,10 +287,16 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
 
-func getWatchFilesList(watchFiles []string) (map[string]struct{}, error) {
+func getWatchFilesList(watchFiles file.Files) (map[string]struct{}, error) {
 	files := make(map[string]struct{})
 
-	for _, file := range watchFiles {
+	refreshedFiles, err := watchFiles.Refresh()
+	if err != nil {
+		return nil, err
+
+	}
+
+	for _, file := range refreshedFiles.AsList() {
 		files[file] = struct{}{}
 	}
 
@@ -327,7 +334,7 @@ func syncWatchFilesList(new map[string]struct{}, old map[string]time.Time) map[s
 	return synced
 }
 
-func watchConfigFiles(watchFiles []string, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
+func watchConfigFiles(watchFiles file.Files, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
 	reloadCh := make(chan struct{})
 
 	go func() {
