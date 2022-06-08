@@ -20,7 +20,7 @@ func TestMerge(t *testing.T) {
 
 	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 	mergeFn := hclContext.Functions["merge"]
-	betaMergeFn := hclContext.Functions["beta_force_merge"]
+	betaMergeFn := hclContext.Functions["beta_merge_nullable"]
 
 	tests := []struct {
 		name string
