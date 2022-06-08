@@ -5,6 +5,6 @@ defaults {
 }
 
 settings {
-  health_path = "/def"
-  request_id_backend_header = "R-I-B-H"
+  health_path = env.ZZZ
+  request_id_backend_header = "Req-Id-Be-Hdr"
 }

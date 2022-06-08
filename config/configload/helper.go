@@ -19,7 +19,7 @@ type helper struct {
 }
 
 // newHelper creates a container with some methods to keep things simple here and there.
-func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*helper, error) {
+func newHelper(body hcl.Body, src []byte, filename string) (*helper, error) {
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return nil, diags
@@ -32,7 +32,6 @@ func newHelper(body hcl.Body, src []byte, filename, dirPath string) (*helper, er
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
 		Filename:    filename,
-		Dirpath:     dirPath,
 		Settings:    &defSettings,
 	}
 

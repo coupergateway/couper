@@ -190,7 +190,7 @@ func TestMultiFiles_MultipleBackends(t *testing.T) {
 		{"testdata/multi/backends/errors/api_ep.hcl"},
 	} {
 		t.Run(tc.config, func(st *testing.T) {
-			_, err := configload.LoadFiles(filepath.Join(testWorkingDir, tc.config), "")
+			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.config))
 
 			if !strings.Contains(err.Error(), "Multiple definitions of backend are not allowed.") {
 				st.Errorf("Unexpected error: %s", err.Error())
@@ -234,7 +234,7 @@ func Test_MultipleLabels(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
-			_, err := configload.LoadFiles(filepath.Join(testWorkingDir, tc.configPath), "")
+			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.configPath))
 
 			if (err != nil && tc.expError == "") ||
 				(tc.expError != "" && (err == nil || !strings.Contains(err.Error(), tc.expError))) {
