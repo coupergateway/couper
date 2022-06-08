@@ -639,6 +639,8 @@ block do not match the set [environment](./CLI.md#global-options) value, the pre
 removes this block and their content. Otherwise, the content of the block is applied
 to the configuration.
 
+<!-- TODO: Add link to (still missing) example. Remove the following example. -->
+
 If the [environment](./CLI.md#global-options) value set to `prod`, the following
 configuration:
 
@@ -678,6 +680,8 @@ server {
   }
 }
 ```
+
+**Note:** The value of the environment set via [Defaults Block](#defaults-block) is ignored.
 
 ## Access Control
 
