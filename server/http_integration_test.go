@@ -5208,7 +5208,7 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/conditional/nested", true, ""},
 		{"/conditional/nested/true", true, ""},
 		{"/conditional/nested/false", true, ""},
-		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
+		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"},"xxxx":null}`},
 		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
 		{"/rte1", true, "2"},
 		{"/rte2", true, "2"},
