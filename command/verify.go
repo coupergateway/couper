@@ -1,8 +1,6 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
@@ -20,16 +18,7 @@ func NewVerify() *Verify {
 }
 
 func (v Verify) Execute(args Args, _ *config.Couper, logger *logrus.Entry) error {
-	if len(args) != 2 {
-		v.Usage()
-
-		err := fmt.Errorf("invalid number of arguments given")
-		logger.WithError(err).Error()
-
-		return err
-	}
-
-	cf, err := configload.LoadFiles(args[0], args[1])
+	cf, err := configload.LoadFiles(args)
 	if diags, ok := err.(hcl.Diagnostics); ok {
 		for _, diag := range diags {
 			logger.WithError(diag).Error()

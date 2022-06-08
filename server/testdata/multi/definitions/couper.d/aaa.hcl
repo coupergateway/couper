@@ -10,8 +10,7 @@ server {
 
 definitions {
   backend "Backend" {
-    origin = "${env.COUPER_TEST_BACKEND_ADDR}"
-    path = "/small"
+    origin = "https://example.org"
   }
 
   basic_auth "BA" {

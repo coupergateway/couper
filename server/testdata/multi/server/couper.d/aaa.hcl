@@ -1,6 +1,6 @@
 server {
   files {
-    document_root = "./www"
+    document_root = "./web"
     custom_log_fields = {
       from = "final"
     }
@@ -8,7 +8,7 @@ server {
 
   endpoint "/free" {
     response {
-      status = 403
+      status = 401
     }
   }
 }

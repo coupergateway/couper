@@ -95,6 +95,8 @@ func (a AcceptForwardedValue) Set(s string) error {
 var limitFn func(entry *logrus.Entry)
 
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
+	logEntry.WithField("files", config.Files.AsList()).Debug("loaded files")
+
 	r.settingsMu.Lock()
 	*r.settings = *config.Settings
 	r.settingsMu.Unlock()
