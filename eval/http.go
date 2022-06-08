@@ -370,7 +370,7 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 		values = append(values, val)
 	}
 
-	val, err := lib.Merge(values)
+	val, err := lib.Merge(values, false)
 	if err != nil {
 		logger.Debug(err)
 	}

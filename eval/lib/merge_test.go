@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
@@ -17,10 +18,15 @@ func TestMerge(t *testing.T) {
 	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
+	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
+	mergeFn := hclContext.Functions["merge"]
+	betaMergeFn := hclContext.Functions["beta_force_merge"]
+
 	tests := []struct {
 		name string
 		args []cty.Value
 		want cty.Value
+		fn   function.Function
 	}{
 		{
 			/*
@@ -118,6 +124,7 @@ func TestMerge(t *testing.T) {
 				}),
 				"k9": cty.NumberIntVal(10),
 			}),
+			mergeFn,
 		},
 		{
 			/*
@@ -139,6 +146,7 @@ func TestMerge(t *testing.T) {
 			cty.ObjectVal(map[string]cty.Value{
 				"k1": cty.NumberIntVal(1),
 			}),
+			mergeFn,
 		},
 		{
 			/*
@@ -174,6 +182,48 @@ func TestMerge(t *testing.T) {
 					"k4.2": cty.NumberIntVal(4),
 				}),
 			}),
+			mergeFn,
+		},
+		{
+			/*
+				merge(
+					{"k2": {"k2.2": 2}},
+					{"k_zero": null},
+					{"k2": {"k4.2": 4, "k_zero.2": null}}
+				)
+			*/
+			"merge objects without tombstone null",
+			[]cty.Value{
+				cty.ObjectVal(map[string]cty.Value{
+					"k2": cty.ObjectVal(map[string]cty.Value{
+						"k2.2": cty.NumberIntVal(2),
+					}),
+				}),
+				cty.ObjectVal(map[string]cty.Value{
+					"k_zero": cty.NullVal(cty.Bool),
+				}),
+				cty.ObjectVal(map[string]cty.Value{
+					"k2": cty.ObjectVal(map[string]cty.Value{
+						"k4.2":     cty.NumberIntVal(4),
+						"k_zero.2": cty.NullVal(cty.Bool),
+					}),
+				}),
+			},
+			/*
+					{
+					  "k2": {"k4.2": 4, "k_zero.2": null}
+				      "k_zero": null,
+					}
+			*/
+			cty.ObjectVal(map[string]cty.Value{
+				"k_zero": cty.NullVal(cty.Bool),
+				"k2": cty.ObjectVal(map[string]cty.Value{
+					"k2.2":     cty.NumberIntVal(2),
+					"k4.2":     cty.NumberIntVal(4),
+					"k_zero.2": cty.NullVal(cty.Bool),
+				}),
+			}),
+			betaMergeFn,
 		},
 		{
 			/*
@@ -231,6 +281,7 @@ func TestMerge(t *testing.T) {
 					cty.NumberIntVal(5),
 				}),
 			}),
+			mergeFn,
 		},
 		{
 			/*
@@ -252,6 +303,7 @@ func TestMerge(t *testing.T) {
 			cty.TupleVal([]cty.Value{
 				cty.NumberIntVal(1),
 			}),
+			mergeFn,
 		},
 		{
 			/*
@@ -261,20 +313,19 @@ func TestMerge(t *testing.T) {
 			[]cty.Value{},
 			/* null */
 			cty.NullVal(cty.Bool),
+			mergeFn,
 		},
 	}
 
-	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(subT)
+			h := test.New(subT)
 
-			mergedV, err := hclContext.Functions["merge"].Call(tt.args)
-			helper.Must(err)
+			mergedV, merr := tt.fn.Call(tt.args)
+			h.Must(merr)
 
 			if !mergedV.RawEquals(tt.want) {
-				subT.Errorf("Wrong return value; expected %#v, got: %#v", tt.want, mergedV)
+				subT.Errorf("Wrong return value:\nwant:\t%#v\ngot:\t%#v\n", tt.want, mergedV)
 			}
 		})
 	}

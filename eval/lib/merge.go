@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	MergeFunc = newMergeFunction()
+	MergeFunc         = newMergeFunction(false)
+	BetaNullMergeFunc = newMergeFunction(true)
 )
 
-func newMergeFunction() function.Function {
+func newMergeFunction(noTombstone bool) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{},
 		VarParam: &function.Parameter{
@@ -29,12 +30,12 @@ func newMergeFunction() function.Function {
 			return cty.DynamicPseudoType, nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-			return Merge(args)
+			return Merge(args, noTombstone)
 		},
 	})
 }
 
-func Merge(args []cty.Value) (cty.Value, error) {
+func Merge(args []cty.Value, noTombstone bool) (cty.Value, error) {
 	var t string
 	for _, arg := range args {
 		if arg.IsNull() {
@@ -59,7 +60,7 @@ func Merge(args []cty.Value) (cty.Value, error) {
 		}
 	}
 	if t == "o" {
-		return mergeObjects(args), nil
+		return mergeObjects(args, noTombstone), nil
 	}
 	if t == "l" {
 		return mergeTuples(args), nil
@@ -67,7 +68,7 @@ func Merge(args []cty.Value) (cty.Value, error) {
 	return cty.NullVal(cty.Bool), nil
 }
 
-func mergeObjects(args []cty.Value) cty.Value {
+func mergeObjects(args []cty.Value, noTombstone bool) cty.Value {
 	outputMap := make(map[string]cty.Value)
 	for _, arg := range args {
 		if arg.IsNull() {
@@ -76,7 +77,7 @@ func mergeObjects(args []cty.Value) cty.Value {
 
 		for it := arg.ElementIterator(); it.Next(); {
 			k, v := it.Element()
-			if v.IsNull() {
+			if v.IsNull() && !noTombstone {
 				delete(outputMap, k.AsString())
 			} else if existingVal, ok := outputMap[k.AsString()]; !ok {
 				// key not set
@@ -85,7 +86,7 @@ func mergeObjects(args []cty.Value) cty.Value {
 				// primitive type
 				outputMap[k.AsString()] = v
 			} else if existingValType := existingVal.Type(); existingValType.IsObjectType() && (vType.IsObjectType() || vType.IsMapType()) {
-				outputMap[k.AsString()] = mergeObjects([]cty.Value{existingVal, v})
+				outputMap[k.AsString()] = mergeObjects([]cty.Value{existingVal, v}, noTombstone)
 			} else if existingValType.IsTupleType() && (vType.IsTupleType() || vType.IsListType()) {
 				outputMap[k.AsString()] = mergeTuples([]cty.Value{existingVal, v})
 			} else {
@@ -97,7 +98,7 @@ func mergeObjects(args []cty.Value) cty.Value {
 }
 
 func mergeTuples(args []cty.Value) cty.Value {
-	outputList := []cty.Value{}
+	var outputList []cty.Value
 	for _, arg := range args {
 		if arg.IsNull() {
 			continue

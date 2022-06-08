@@ -302,7 +302,7 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 
 func (c *Context) updateBackendVariables(evalCtx *hcl.EvalContext, key string, cmap ContextMap) {
 	if !evalCtx.Variables[key].IsNull() && evalCtx.Variables[key].LengthInt() > 0 {
-		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)})
+		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)}, false)
 		if !merged.IsNull() {
 			evalCtx.Variables[key] = merged
 		}
@@ -625,6 +625,7 @@ func newFunctionsMap() map[string]function.Function {
 		"length":           stdlib.LengthFunc,
 		"lookup":           stdlib.LookupFunc,
 		"merge":            lib.MergeFunc,
+		"beta_force_merge": lib.BetaNullMergeFunc,
 		"relative_url":     lib.RelativeUrlFunc,
 		"set_intersection": stdlib.SetIntersectionFunc,
 		"split":            stdlib.SplitFunc,
