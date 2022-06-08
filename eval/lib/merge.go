@@ -7,12 +7,9 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 )
 
-var (
-	MergeFunc         = newMergeFunction(false)
-	MergeNullableFunc = newMergeFunction(true)
-)
+var MergeFunc = newMergeFunction()
 
-func newMergeFunction(nullable bool) function.Function {
+func newMergeFunction() function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{},
 		VarParam: &function.Parameter{
@@ -30,12 +27,12 @@ func newMergeFunction(nullable bool) function.Function {
 			return cty.DynamicPseudoType, nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-			return Merge(args, nullable)
+			return Merge(args)
 		},
 	})
 }
 
-func Merge(args []cty.Value, nullable bool) (cty.Value, error) {
+func Merge(args []cty.Value) (cty.Value, error) {
 	var t string
 	for _, arg := range args {
 		if arg.IsNull() {
@@ -60,7 +57,7 @@ func Merge(args []cty.Value, nullable bool) (cty.Value, error) {
 		}
 	}
 	if t == "o" {
-		return mergeObjects(args, nullable), nil
+		return mergeObjects(args), nil
 	}
 	if t == "l" {
 		return mergeTuples(args), nil
@@ -68,7 +65,7 @@ func Merge(args []cty.Value, nullable bool) (cty.Value, error) {
 	return cty.NullVal(cty.Bool), nil
 }
 
-func mergeObjects(args []cty.Value, nullable bool) cty.Value {
+func mergeObjects(args []cty.Value) cty.Value {
 	outputMap := make(map[string]cty.Value)
 	for _, arg := range args {
 		if arg.IsNull() {
@@ -77,16 +74,14 @@ func mergeObjects(args []cty.Value, nullable bool) cty.Value {
 
 		for it := arg.ElementIterator(); it.Next(); {
 			k, v := it.Element()
-			if v.IsNull() && !nullable {
-				delete(outputMap, k.AsString())
-			} else if existingVal, ok := outputMap[k.AsString()]; !ok {
+			if existingVal, ok := outputMap[k.AsString()]; !ok {
 				// key not set
 				outputMap[k.AsString()] = v
 			} else if vType := v.Type(); vType.IsPrimitiveType() {
 				// primitive type
 				outputMap[k.AsString()] = v
 			} else if existingValType := existingVal.Type(); existingValType.IsObjectType() && (vType.IsObjectType() || vType.IsMapType()) {
-				outputMap[k.AsString()] = mergeObjects([]cty.Value{existingVal, v}, nullable)
+				outputMap[k.AsString()] = mergeObjects([]cty.Value{existingVal, v})
 			} else if existingValType.IsTupleType() && (vType.IsTupleType() || vType.IsListType()) {
 				outputMap[k.AsString()] = mergeTuples([]cty.Value{existingVal, v})
 			} else {

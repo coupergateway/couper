@@ -302,7 +302,7 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 
 func (c *Context) updateBackendVariables(evalCtx *hcl.EvalContext, key string, cmap ContextMap) {
 	if !evalCtx.Variables[key].IsNull() && evalCtx.Variables[key].LengthInt() > 0 {
-		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)}, false)
+		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)})
 		if !merged.IsNull() {
 			evalCtx.Variables[key] = merged
 		}
@@ -613,28 +613,27 @@ func newCtyCouperVariablesMap() cty.Value {
 // Functions
 func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
-		"base64_decode":       lib.Base64DecodeFunc,
-		"base64_encode":       lib.Base64EncodeFunc,
-		"coalesce":            lib.DefaultFunc,
-		"contains":            stdlib.ContainsFunc,
-		"default":             lib.DefaultFunc,
-		"join":                stdlib.JoinFunc,
-		"json_decode":         stdlib.JSONDecodeFunc,
-		"json_encode":         stdlib.JSONEncodeFunc,
-		"keys":                stdlib.KeysFunc,
-		"length":              stdlib.LengthFunc,
-		"lookup":              stdlib.LookupFunc,
-		"merge":               lib.MergeFunc,
-		"beta_merge_nullable": lib.MergeNullableFunc,
-		"relative_url":        lib.RelativeUrlFunc,
-		"set_intersection":    stdlib.SetIntersectionFunc,
-		"split":               stdlib.SplitFunc,
-		"substr":              stdlib.SubstrFunc,
-		"to_lower":            stdlib.LowerFunc,
-		"to_number":           stdlib.MakeToFunc(cty.Number),
-		"to_upper":            stdlib.UpperFunc,
-		"unixtime":            lib.UnixtimeFunc,
-		"url_encode":          lib.UrlEncodeFunc,
+		"base64_decode":    lib.Base64DecodeFunc,
+		"base64_encode":    lib.Base64EncodeFunc,
+		"coalesce":         lib.DefaultFunc,
+		"contains":         stdlib.ContainsFunc,
+		"default":          lib.DefaultFunc,
+		"join":             stdlib.JoinFunc,
+		"json_decode":      stdlib.JSONDecodeFunc,
+		"json_encode":      stdlib.JSONEncodeFunc,
+		"keys":             stdlib.KeysFunc,
+		"length":           stdlib.LengthFunc,
+		"lookup":           stdlib.LookupFunc,
+		"merge":            lib.MergeFunc,
+		"relative_url":     lib.RelativeUrlFunc,
+		"set_intersection": stdlib.SetIntersectionFunc,
+		"split":            stdlib.SplitFunc,
+		"substr":           stdlib.SubstrFunc,
+		"to_lower":         stdlib.LowerFunc,
+		"to_number":        stdlib.MakeToFunc(cty.Number),
+		"to_upper":         stdlib.UpperFunc,
+		"unixtime":         lib.UnixtimeFunc,
+		"url_encode":       lib.UrlEncodeFunc,
 	}
 }
 

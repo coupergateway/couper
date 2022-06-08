@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
@@ -20,13 +19,11 @@ func TestMerge(t *testing.T) {
 
 	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
 	mergeFn := hclContext.Functions["merge"]
-	betaMergeFn := hclContext.Functions["beta_merge_nullable"]
 
 	tests := []struct {
 		name string
 		args []cty.Value
 		want cty.Value
-		fn   function.Function
 	}{
 		{
 			/*
@@ -124,7 +121,6 @@ func TestMerge(t *testing.T) {
 				}),
 				"k9": cty.NumberIntVal(10),
 			}),
-			mergeFn,
 		},
 		{
 			/*
@@ -146,17 +142,16 @@ func TestMerge(t *testing.T) {
 			cty.ObjectVal(map[string]cty.Value{
 				"k1": cty.NumberIntVal(1),
 			}),
-			mergeFn,
 		},
 		{
 			/*
 				merge(
 					{"k2": {"k2.2": 2}},
-					{"k2": null},
+					{"k0": null},
 					{"k2": {"k4.2": 4}}
 				)
 			*/
-			"merge objects with tombstone null",
+			"merge objects with null",
 			[]cty.Value{
 				cty.ObjectVal(map[string]cty.Value{
 					"k2": cty.ObjectVal(map[string]cty.Value{
@@ -164,66 +159,33 @@ func TestMerge(t *testing.T) {
 					}),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
-					"k2": cty.NullVal(cty.Bool),
+					"k0": cty.NullVal(cty.Bool),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
 					"k2": cty.MapVal(map[string]cty.Value{
 						"k4.2": cty.NumberIntVal(4),
 					}),
 				}),
+				cty.ObjectVal(map[string]cty.Value{
+					"k2": cty.MapVal(map[string]cty.Value{
+						"k4.0": cty.NullVal(cty.Bool),
+					}),
+				}),
 			},
 			/*
 				{
+				  "k0": null,
 				  "k2": {"k4.2": 4}
 				}
 			*/
 			cty.ObjectVal(map[string]cty.Value{
-				"k2": cty.MapVal(map[string]cty.Value{
-					"k4.2": cty.NumberIntVal(4),
-				}),
-			}),
-			mergeFn,
-		},
-		{
-			/*
-				merge(
-					{"k2": {"k2.2": 2}},
-					{"k_zero": null},
-					{"k2": {"k4.2": 4, "k_zero.2": null}}
-				)
-			*/
-			"merge objects without tombstone null",
-			[]cty.Value{
-				cty.ObjectVal(map[string]cty.Value{
-					"k2": cty.ObjectVal(map[string]cty.Value{
-						"k2.2": cty.NumberIntVal(2),
-					}),
-				}),
-				cty.ObjectVal(map[string]cty.Value{
-					"k_zero": cty.NullVal(cty.Bool),
-				}),
-				cty.ObjectVal(map[string]cty.Value{
-					"k2": cty.ObjectVal(map[string]cty.Value{
-						"k4.2":     cty.NumberIntVal(4),
-						"k_zero.2": cty.NullVal(cty.Bool),
-					}),
-				}),
-			},
-			/*
-					{
-					  "k2": {"k4.2": 4, "k_zero.2": null}
-				      "k_zero": null,
-					}
-			*/
-			cty.ObjectVal(map[string]cty.Value{
-				"k_zero": cty.NullVal(cty.Bool),
+				"k0": cty.NullVal(cty.Bool),
 				"k2": cty.ObjectVal(map[string]cty.Value{
-					"k2.2":     cty.NumberIntVal(2),
-					"k4.2":     cty.NumberIntVal(4),
-					"k_zero.2": cty.NullVal(cty.Bool),
+					"k2.2": cty.NumberIntVal(2),
+					"k4.2": cty.NumberIntVal(4),
+					"k4.0": cty.NullVal(cty.Bool),
 				}),
 			}),
-			betaMergeFn,
 		},
 		{
 			/*
@@ -281,7 +243,6 @@ func TestMerge(t *testing.T) {
 					cty.NumberIntVal(5),
 				}),
 			}),
-			mergeFn,
 		},
 		{
 			/*
@@ -303,7 +264,6 @@ func TestMerge(t *testing.T) {
 			cty.TupleVal([]cty.Value{
 				cty.NumberIntVal(1),
 			}),
-			mergeFn,
 		},
 		{
 			/*
@@ -313,7 +273,6 @@ func TestMerge(t *testing.T) {
 			[]cty.Value{},
 			/* null */
 			cty.NullVal(cty.Bool),
-			mergeFn,
 		},
 	}
 
@@ -321,9 +280,8 @@ func TestMerge(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			mergedV, merr := tt.fn.Call(tt.args)
+			mergedV, merr := mergeFn.Call(tt.args)
 			h.Must(merr)
-
 			if !mergedV.RawEquals(tt.want) {
 				subT.Errorf("Wrong return value:\nwant:\t%#v\ngot:\t%#v\n", tt.want, mergedV)
 			}
