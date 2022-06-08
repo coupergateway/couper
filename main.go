@@ -56,6 +56,7 @@ func realmain(ctx context.Context, arguments []string) int {
 		DebugEndpoint       bool          `env:"debug"`
 		FilePath            string        `env:"file"`
 		DirPath             string        `env:"file_directory"`
+		Environment         string        `env:"environment"`
 		FileWatch           bool          `env:"watch"`
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
 		FileWatchRetries    int           `env:"watch_retries"`
@@ -69,6 +70,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
 	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")
 	set.Var(&filesList, "d", "-d /path/to/couper.d/ ...")
+	set.StringVar(&flags.Environment, "e", "", "-e stage")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
