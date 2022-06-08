@@ -37,6 +37,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Spurious `duplicate endpoint /**` error for APIs sharing the same base path ([#507](https://github.com/avenga/couper/pull/507))
   * Invalid (by [OpenAPI validation](./docs/REFERENCE.md#openapi-block)) backend response missing in [`backend_responses`](./docs/REFERENCE.md#backend_responses) ([#501](https://github.com/avenga/couper/pull/501))
   * Ignore the `expected_status` check for a request configured via a [`proxy`](./docs/REFERENCE.md#proxy-block) or [`request`](./docs/REFERENCE.md#request-block) block if a [`backend` error](./docs/ERRORS.md#endpoint-error-types) occured ([#505](https://github.com/avenga/couper/pull/505))
+  * `merge()` function removes key with `null` value. ([#518](https://github.com/avenga/couper/pull/518))
 
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
