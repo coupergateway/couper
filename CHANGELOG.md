@@ -24,7 +24,6 @@ By default, Couper won't request backends considered unhealthy which might help
 them recover due to the reduced amount of requests.
 The current health state of a backend can be accessed by variable.
 Changes in healthiness will be [logged](docs/LOGS.md) and exported as [metrics](docs/METRICS.md).
-Refer to the [health check example](#) for details.
 
 To make permission handling easier to grasp we've dropped the term `scope` and
 accordingly changed the names of the `beta_scope`, `beta_scope_claim` and `beta_scope_map`
