@@ -30,6 +30,7 @@ var (
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	attrs, blocks, diags := getSchemaComponents(body, obj)
+	diags = enhanceErrors(diags, obj)
 	diags = filterValidErrors(attrs, blocks, diags)
 
 	for _, block := range blocks {
@@ -37,6 +38,20 @@ func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	}
 
 	return uniqueErrors(diags)
+}
+
+// enhanceErrors enhances diagnostics e.g. by providing a hint how to solve the issue
+func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
+	_, isEndpoint := obj.(*config.Endpoint)
+	_, isProxy := obj.(*config.Proxy)
+	for _, err := range diags {
+		if err.Summary == summUnsupportedAttr && (isEndpoint || isProxy) {
+			if matches := reFetchUnexpectedArg.FindStringSubmatch(err.Detail); matches != nil && matches[1] == `"path"` {
+				err.Detail = err.Detail + ` Use the "path" attribute in a backend block instead.`
+			}
+		}
+	}
+	return diags
 }
 
 // filterValidErrors ignores certain schema related errors due to their specific non hcl conform implementation.

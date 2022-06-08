@@ -777,9 +777,6 @@ func TestHTTPServer_PathPrefix(t *testing.T) {
 		{"/v1", expectation{
 			Path: "/xxx/xxx/v1",
 		}},
-		{"/v1/uuu/foo", expectation{
-			Path: "/xxx/xxx/api/foo",
-		}},
 		{"/v1/vvv/foo", expectation{
 			Path: "/xxx/xxx/api/foo",
 		}},
@@ -840,25 +837,6 @@ func TestHTTPServer_BackendLogPath(t *testing.T) {
 	helper.Must(err)
 
 	if p := hook.AllEntries()[0].Data["request"].(logging.Fields)["path"]; p != "/path?query" {
-		t.Errorf("Unexpected path given: %s", p)
-	}
-}
-
-func TestHTTPServer_BackendLogPathInEndpoint(t *testing.T) {
-	client := newClient()
-	helper := test.New(t)
-
-	shutdown, hook := newCouper("testdata/integration/api/08_couper.hcl", helper)
-	defer shutdown()
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/abc?query#fragment", nil)
-	helper.Must(err)
-
-	hook.Reset()
-	_, err = client.Do(req)
-	helper.Must(err)
-
-	if p := hook.AllEntries()[0].Data["request"].(logging.Fields)["path"]; p != "/new/path/abc?query" {
 		t.Errorf("Unexpected path given: %s", p)
 	}
 }
@@ -3005,70 +2983,6 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				subT.Errorf("%s\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.name, tc.exp, jsonResult, string(resBytes))
 			}
 		})
-	}
-}
-
-func TestHTTPServer_Endpoint_Evaluation_Inheritance(t *testing.T) {
-	client := newClient()
-
-	for _, confFile := range []string{"02_couper.hcl", "03_couper.hcl"} {
-		confPath := path.Join("testdata/integration/endpoint_eval", confFile)
-
-		type expectation struct {
-			Path           string
-			ResponseStatus int
-		}
-
-		type testCase struct {
-			reqPath string
-			exp     expectation
-		}
-
-		for _, tc := range []testCase{
-			{"/endpoint1", expectation{
-				Path:           "/anything",
-				ResponseStatus: http.StatusOK,
-			}},
-			{"/endpoint2", expectation{
-				Path:           "/anything",
-				ResponseStatus: http.StatusOK,
-			}},
-			{"/endpoint3", expectation{
-				Path:           "/unset/by/endpoint",
-				ResponseStatus: http.StatusNotFound,
-			}},
-			{"/endpoint4", expectation{
-				Path:           "/anything",
-				ResponseStatus: http.StatusOK,
-			}},
-		} {
-			t.Run(confFile+"_"+tc.reqPath, func(subT *testing.T) {
-				helper := test.New(subT)
-				shutdown, _ := newCouper(confPath, helper)
-				defer shutdown()
-
-				req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.reqPath, nil)
-				helper.Must(err)
-
-				res, err := client.Do(req)
-				helper.Must(err)
-
-				resBytes, err := io.ReadAll(res.Body)
-				helper.Must(err)
-
-				_ = res.Body.Close()
-
-				var jsonResult expectation
-				err = json.Unmarshal(resBytes, &jsonResult)
-				if err != nil {
-					subT.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-				}
-
-				if !reflect.DeepEqual(jsonResult, tc.exp) {
-					subT.Errorf("%q: %q:\nwant:\t%#v\ngot:\t%#v\npayload:\n%s", confFile, tc.reqPath, tc.exp, jsonResult, string(resBytes))
-				}
-			})
-		}
 	}
 }
 

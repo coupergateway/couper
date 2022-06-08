@@ -222,11 +222,11 @@ Couper's main concept is exposing APIs via the configuration block `endpoint`, f
 server "example"{
 
   endpoint "/public/**"{
-    path = "/**"
 
     proxy {
       backend {
         origin = "https://httpbin.org"
+        path = "/**"
       }
     }
   }
@@ -247,11 +247,11 @@ server "example" {
 
   endpoint "/private/**" {
     access_control = ["accessToken"]
-    path = "/**"
 
     proxy {
       backend {
         origin = "https://httpbin.org"
+        path = "/**"
       }
     }
   }
@@ -283,9 +283,8 @@ api "my_api" {
   }
 
   endpoint "/cart/**" {
-    path = "/api/v1/**"
     proxy {
-      url = "http://cartservice:8080"
+      url = "http://cartservice:8080/api/v1/**"
     }
   }
 
