@@ -148,7 +148,8 @@ func TestMerge(t *testing.T) {
 				merge(
 					{"k2": {"k2.2": 2}},
 					{"k0": null},
-					{"k2": {"k4.2": 4}}
+					{"k2": {"k4.2": 4}},
+					{"k2": {"k4.0": null}}
 				)
 			*/
 			"merge objects with null",
