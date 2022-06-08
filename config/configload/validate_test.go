@@ -418,18 +418,9 @@ defaults {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
-	log := logger.WithContext(context.TODO())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if conf != nil {
-				tmpStoreCh := make(chan struct{})
-				defer close(tmpStoreCh)
-
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
-			}
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 
 			var errMsg string
 			if err != nil {
@@ -531,23 +522,91 @@ func TestPermissionMixed(t *testing.T) {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
-	log := logger.WithContext(context.TODO())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if conf != nil {
-				tmpStoreCh := make(chan struct{})
-				defer close(tmpStoreCh)
-
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
-			}
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 
 			var errMsg string
 			if err != nil {
 				gErr, _ := err.(errors.GoError)
 				errMsg = gErr.LogError()
+			}
+
+			if tt.error != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errMsg)
+			}
+		})
+	}
+}
+
+func TestPathAttr(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"path in endpoint: error",
+			`server {
+  endpoint "/**" {
+    path = "/a/**"
+  }
+}`,
+			"couper.hcl:3,5-9: Unsupported argument; An argument named \"path\" is not expected here. Use the \"path\" attribute in a backend block instead.",
+		},
+		{
+			"path in proxy: error",
+			`server {
+  endpoint "/**" {
+    proxy {
+      path = "/a/**"
+    }
+  }
+}`,
+			"couper.hcl:4,7-11: Unsupported argument; An argument named \"path\" is not expected here. Use the \"path\" attribute in a backend block instead.",
+		},
+		{
+			"path in referenced backend: ok",
+			`server {
+  endpoint "/**" {
+    proxy {
+      backend = "a"
+    }
+  }
+}
+definitions {
+  backend "a" {
+    path = "/a/**"
+  }
+}`,
+			"",
+		},
+		{
+			"path in refined backend: ok",
+			`server {
+  endpoint "/**" {
+    proxy {
+      backend "a" {
+        path = "/a/**"
+      }
+    }
+  }
+}
+definitions {
+  backend "a" {
+  }
+}`,
+			"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
 			}
 
 			if tt.error != errMsg {

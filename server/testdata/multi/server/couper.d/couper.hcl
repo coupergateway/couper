@@ -6,7 +6,7 @@ server {
   }
 
   files {
-    document_root = "./web"
+    document_root = "./www"
     custom_log_fields = {
       from = "override"
     }
@@ -14,7 +14,7 @@ server {
 
   endpoint "/free" {
     response {
-      status = 401
+      status = 403
     }
   }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/avenga/couper/handler"
 )
 
-func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.Entry,
+func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedOptions, log *logrus.Entry,
 	defs ACDefinitions, references ...string) (http.Handler, error) {
 	kindsHandler := map[string]http.Handler{}
 	for _, ref := range references {
@@ -62,7 +62,7 @@ func newErrorHandler(ctx *hcl.EvalContext, opts *protectedOptions, log *logrus.E
 				epConf.Response = &config.Response{Remain: emptyBody}
 			}
 
-			epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, opts.settings, opts.memStore)
+			epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, conf, opts.memStore)
 			if err != nil {
 				return nil, err
 			}

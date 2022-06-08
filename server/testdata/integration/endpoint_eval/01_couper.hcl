@@ -5,7 +5,6 @@ server "api" {
     error_file = "./../api_error.json"
 
     endpoint "/{path}/{hostname}/{origin}" {
-      path = "/set/by/endpoint/unset/by/backend"
       proxy {
         backend "anything" {
           path = "/anything"

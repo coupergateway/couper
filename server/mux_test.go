@@ -20,7 +20,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 	})
 
 	serverOptions, _ := rs.NewServerOptions(nil, nil)
-	serverOptions.FilesBasePath = "/"
+	serverOptions.FilesBasePaths = []string{"/"}
 
 	testOptions := &runtime.MuxOptions{
 		EndpointRoutes: map[string]http.Handler{

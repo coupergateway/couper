@@ -8,13 +8,11 @@ import (
 	"context"
 	"flag"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -25,8 +23,10 @@ import (
 	"github.com/avenga/couper/command"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/configload/file"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/logging/hooks"
 	"github.com/avenga/couper/utils"
@@ -40,6 +40,10 @@ var (
 	testHook logrus.Hook
 )
 
+type filesList struct {
+	paths []string
+}
+
 func main() {
 	logrus.Exit(realmain(os.Args))
 }
@@ -47,6 +51,7 @@ func main() {
 func realmain(arguments []string) int {
 	args := command.NewArgs(arguments)
 	ctx := context.Background()
+	filesList := filesList{}
 
 	type globalFlags struct {
 		DebugEndpoint       bool          `env:"debug"`
@@ -63,8 +68,8 @@ func realmain(arguments []string) int {
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
 	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
-	set.StringVar(&flags.FilePath, "f", "", "-f ./my-path/couper.hcl")
-	set.StringVar(&flags.DirPath, "d", "", "-d ./path/to/couper.d")
+	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")
+	set.Var(&filesList, "d", "-d /path/to/couper.d/ ...")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
@@ -98,21 +103,32 @@ func realmain(arguments []string) int {
 	}
 	env.Decode(&flags)
 
-	if flags.DirPath == "" && flags.FilePath == "" {
-		flags.FilePath = config.DefaultFilename
+	if len(filesList.paths) == 0 {
+		// Get paths from COUPER_FILE and then COUPER_DIRECTORY
+		if flags.FilePath != "" {
+			filesList.paths = append(filesList.paths, flags.FilePath)
+		}
+
+		if flags.DirPath != "" {
+			filesList.paths = append(filesList.paths, flags.DirPath)
+		}
+
+		if len(filesList.paths) == 0 {
+			filesList.paths = append(filesList.paths, config.DefaultFilename)
+		}
 	}
 
 	if cmd == "verify" {
 		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
 
-		err = command.NewCommand(ctx, cmd).Execute(command.Args{flags.FilePath, flags.DirPath}, nil, log)
+		err = command.NewCommand(ctx, cmd).Execute(filesList.paths, nil, log)
 		if err != nil {
 			return 1
 		}
 		return 0
 	}
 
-	confFile, err := configload.LoadFiles(flags.FilePath, flags.DirPath)
+	confFile, err := configload.LoadFiles(filesList.paths)
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
@@ -130,13 +146,6 @@ func realmain(arguments []string) int {
 		confFile.Settings.LogPretty = flags.LogPretty
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
-
-	wd, err := os.Getwd()
-	if err != nil {
-		logger.Error(err)
-		return 1
-	}
-	logger.Infof("working directory: %s", wd)
 
 	if !flags.FileWatch {
 		if err = command.NewCommand(ctx, cmd).Execute(args, confFile, logger); err != nil {
@@ -165,7 +174,7 @@ func realmain(arguments []string) int {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	reloadCh := watchConfigFiles(confFile.Filename, confFile.Dirpath, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
+	reloadCh := watchConfigFiles(confFile.Files, logger, flags.FileWatchRetries, flags.FileWatchRetryDelay)
 	for {
 		select {
 		case err = <-errCh:
@@ -202,7 +211,7 @@ func realmain(arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFiles(confFile.Filename, confFile.Dirpath) // we are at wd, just filename
+			cf, reloadErr := configload.LoadFiles(filesList.paths)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -211,8 +220,15 @@ func realmain(arguments []string) int {
 			// dry run configuration
 			tmpStoreCh := make(chan struct{})
 			tmpMemStore := cache.New(logger, tmpStoreCh)
+
+			dryCtx, cancelDry := context.
+				WithCancel(context.WithValue(context.Background(), "config-dry-run", true))
+			cf.Context = cf.Context.(*eval.Context).WithContext(dryCtx)
+
 			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), tmpMemStore)
 			close(tmpStoreCh)
+			cancelDry()
+
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -271,25 +287,17 @@ func newLogger(format, level string, pretty bool) *logrus.Entry {
 	return logger.WithField("type", logConf.TypeFieldKey).WithFields(fields)
 }
 
-func getWatchFilesList(filename, dirPath string) (map[string]struct{}, error) {
+func getWatchFilesList(watchFiles file.Files) (map[string]struct{}, error) {
 	files := make(map[string]struct{})
 
-	if filename != "" {
-		files[filename] = struct{}{}
+	refreshedFiles, err := watchFiles.Refresh()
+	if err != nil {
+		return nil, err
+
 	}
-	if dirPath != "" {
-		listing, err := ioutil.ReadDir(dirPath)
-		if err != nil {
-			return nil, err
-		}
 
-		for _, file := range listing {
-			if file.IsDir() || !strings.HasSuffix(file.Name(), ".hcl") {
-				continue
-			}
-
-			files[dirPath+"/"+file.Name()] = struct{}{}
-		}
+	for _, file := range refreshedFiles.AsList() {
+		files[file] = struct{}{}
 	}
 
 	return files, nil
@@ -326,7 +334,7 @@ func syncWatchFilesList(new map[string]struct{}, old map[string]time.Time) map[s
 	return synced
 }
 
-func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
+func watchConfigFiles(watchFiles file.Files, logger logrus.FieldLogger, maxRetries int, retryDelay time.Duration) <-chan struct{} {
 	reloadCh := make(chan struct{})
 
 	go func() {
@@ -336,7 +344,7 @@ func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRe
 
 		lastChanges := make(map[string]time.Time)
 
-		files, err := getWatchFilesList(filename, dirPath)
+		files, err := getWatchFilesList(watchFiles)
 		if err != nil {
 			logger.Error(err)
 			close(reloadCh)
@@ -352,7 +360,7 @@ func watchConfigFiles(filename, dirPath string, logger logrus.FieldLogger, maxRe
 			<-ticker.C
 
 			// Compare files list
-			filesList, err := getWatchFilesList(filename, dirPath)
+			filesList, err := getWatchFilesList(watchFiles)
 			if err != nil {
 				errorsSeen++
 
@@ -438,4 +446,13 @@ func debugListenAndServe(logEntry *logrus.Entry) {
 		defer cancel()
 		_ = traceSrv.Shutdown(ctx)
 	}()
+}
+
+func (list *filesList) String() string {
+	return ""
+}
+
+func (list *filesList) Set(value string) error {
+	list.paths = append(list.paths, value)
+	return nil
 }

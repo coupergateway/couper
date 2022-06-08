@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -103,7 +105,7 @@ func TestNewRun(t *testing.T) {
 				return
 			}
 
-			couperFile, err := configload.LoadFiles(filepath.Join(wd, "testdata/settings", tt.file), "")
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
 			if err != nil {
 				subT.Error(err)
 			}
@@ -190,7 +192,7 @@ func TestAcceptForwarded(t *testing.T) {
 				return
 			}
 
-			couperFile, err := configload.LoadFiles(filepath.Join(wd, "testdata/settings", tt.file), "")
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file))
 			if err != nil {
 				subT.Error(err)
 			}
@@ -253,7 +255,6 @@ func TestArgs_CAFile(t *testing.T) {
 	}
 
 	expiresIn := time.Minute
-	//expires := time.After(expiresIn)
 	selfSigned, err := server.NewCertificate(expiresIn, nil, nil)
 	helper.Must(err)
 
@@ -264,7 +265,12 @@ func TestArgs_CAFile(t *testing.T) {
 	helper.Must(tmpFile.Close())
 	defer os.Remove(tmpFile.Name())
 
+	var healthCheckSeen uint32
+
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if strings.HasSuffix(request.Header.Get("User-Agent"), "health-check") {
+			atomic.StoreUint32(&healthCheckSeen, 1)
+		}
 		writer.WriteHeader(http.StatusNoContent)
 
 		// force close to trigger a new handshake
@@ -286,7 +292,16 @@ func TestArgs_CAFile(t *testing.T) {
 	couperHCL := `server {
 	endpoint "/" {
 		request {
-			url = "` + srv.URL + `"
+			backend = "tls"
+		}
+	}
+}
+
+definitions {
+	backend "tls" {
+		origin = "` + srv.URL + `"
+		beta_health {
+			failure_threshold = 0
 		}
 	}
 }`
@@ -318,16 +333,9 @@ func TestArgs_CAFile(t *testing.T) {
 		t.Error("unexpected status code")
 	}
 
-	// ca after
-	//<-expires
-
-	// handshake error
-	//res, err = client.Do(req)
-	//helper.Must(err)
-	//
-	//if res.StatusCode != http.StatusBadGateway {
-	//	t.Error("unexpected status code")
-	//}
+	if atomic.LoadUint32(&healthCheckSeen) != 1 {
+		t.Error("expected a successful tls health check")
+	}
 }
 
 func TestCAFile_Run(t *testing.T) {

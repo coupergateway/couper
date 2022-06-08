@@ -16,7 +16,6 @@ server "v-server1" {
     error_file = "./../api_error.json"
 
     endpoint "/" {
-      path = "/"
       proxy {
         backend = "anything"
       }
@@ -43,7 +42,6 @@ server "v-server2" {
     error_file = "./../api_error.json"
 
     endpoint "/" {
-      path = "/"
       proxy {
         backend = "anything"
       }

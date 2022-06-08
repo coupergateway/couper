@@ -43,9 +43,8 @@ We've also updated the completion suggestions and fixed a couple of syntax highl
 issues.
 
 * **Added**
-  * Couper [reads and merges configuration files](./docs/CLI.md#global-options) from a given directory ([#437](https://github.com/avenga/couper/pull/437))
-    * provided via `-d` command-line flag or `COUPER_FILE_DIRECTORY` environment variable
-  * `beta_health` block to `backend` block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
+  * Couper now [reads and merges multiple configuration files](./docs/CLI.md#global-options) ([#437](https://github.com/avenga/couper/pull/437), [#515](https://github.com/avenga/couper/pull/515))
+  * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
   * `url` attribute could make use of our wildcard pattern `/**` and relative urls in combination with a backend reference ([#480](https://github.com/avenga/couper/pull/480))
@@ -64,6 +63,7 @@ issues.
     * added `request.context.beta_required_permission` and `request.context.beta_granted_permissions` [request variables](./docs/REFERENCE.md#request)
   * Clarified the type of various [attributes/variables](./docs/REFERENCE.md) ([#485](https://github.com/avenga/couper/pull/485))
   * [`spa` block](./docs/REFERENCE.md#spa-block) can be defined multiple times now ([#510](https://github.com/avenga/couper/pull/510))
+  * [`files` block](./docs/REFERENCE.md#files-block) can be defined multiple times now ([#513](https://github.com/avenga/couper/pull/513))
 
 * **Fixed**
   * Keys in object type attribute values are only handled case-insensitively if reasonable (e.g. they represent HTTP methods or header field values) ([#461](https://github.com/avenga/couper/pull/461))
@@ -79,8 +79,7 @@ issues.
 * **Removed**
   * support for `beta_oidc` block (use [`oidc` block](./docs/REFERENCE.md#oidc-block) instead) ([#475](https://github.com/avenga/couper/pull/475))
   * support for `beta_oauth_authorization_url` and `beta_oauth_verifier` functions (use `oauth2_authorization_url` and `oauth2_verifier` [functions](./docs/REFERENCE.md#functions) instead) ([#475](https://github.com/avenga/couper/pull/475))
-
----
+  * `path` attribute from `endpoint` (and `proxy`) block; use `path` attribute in `backend` block instead ([#516](https://github.com/avenga/couper/pull/516))
 
 ## [1.8.1](https://github.com/avenga/couper/releases/tag/v1.8.1)
 

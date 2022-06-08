@@ -36,19 +36,26 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-var _ http.RoundTripper = &Backend{}
+var (
+	_ http.RoundTripper = &Backend{}
+	_ ProbeStateChange  = &Backend{}
+	_ seetie.Object     = &Backend{}
+)
 
 // Backend represents the transport configuration.
 type Backend struct {
-	context          hcl.Body
-	logEntry         *logrus.Entry
-	name             string
-	openAPIValidator *validation.OpenAPI
-	tokenRequest     TokenRequest
-	transport        *http.Transport
-	transportOnce    sync.Once
-	transportConf    *Config
-	upstreamLog      *logging.UpstreamLog
+	context             hcl.Body
+	healthInfo          *HealthInfo
+	healthyMu           sync.RWMutex
+	logEntry            *logrus.Entry
+	name                string
+	openAPIValidator    *validation.OpenAPI
+	tokenRequest        TokenRequest
+	transport           *http.Transport
+	transportConf       *Config
+	transportConfResult Config
+	transportOnce       sync.Once
+	upstreamLog         *logging.UpstreamLog
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
@@ -67,6 +74,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend := &Backend{
 		context:          ctx,
+		healthInfo:       &HealthInfo{Healthy: true, State: StateOk.String()},
 		logEntry:         log.WithField("backend", tc.BackendName),
 		name:             tc.BackendName,
 		openAPIValidator: openAPI,
@@ -76,9 +84,9 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend.upstreamLog = logging.NewUpstreamLog(backend.logEntry, backend, tc.NoProxyFromEnv)
 
-	distinct := !strings.HasPrefix(tc.Hostname, "anonymous_")
+	distinct := !strings.HasPrefix(tc.BackendName, "anonymous_")
 	if distinct && healthCheck != nil {
-		NewProbe(backend.logEntry, tc.BackendName, healthCheck)
+		NewProbe(backend.logEntry, tc, healthCheck, backend)
 	}
 
 	return backend.upstreamLog
@@ -87,17 +95,18 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	b.transport = NewTransport(conf, b.logEntry)
+	var healthy bool
+	b.healthyMu.Lock()
+	b.transportConfResult = *conf
+	healthy = b.healthInfo.Healthy
+	b.healthyMu.Unlock()
+
+	// race condition, update possible healthy backend with current origin and hostname
+	b.OnProbeChange(&HealthInfo{Healthy: healthy})
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	// for token-request retry purposes
-	originalReq := req.Clone(req.Context())
-
-	if err := b.withTokenRequest(req); err != nil {
-		return nil, err
-	}
-
 	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
 	if ctxBody == nil {
 		ctxBody = b.context
@@ -105,12 +114,25 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
 	}
 
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+
+	if err := b.isUnhealthy(hclCtx, ctxBody); err != nil {
+		return &http.Response{
+			Request: req, // provide outreq (variable) on error cases
+		}, err
+	}
+
+	// for token-request retry purposes
+	originalReq := req.Clone(req.Context())
+
+	if err := b.withTokenRequest(req); err != nil {
+		return nil, err
+	}
+
 	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
 	if logCh != nil {
 		logCh <- ctxBody
 	}
-
-	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
@@ -244,7 +266,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		spanMsg += "." + b.name
 	}
 
-	meter := provider.Meter("couper/backend")
+	meter := provider.Meter(instrumentation.BackendInstrumentationName)
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
 	duration := metric.Must(meter).
 		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
@@ -486,6 +508,56 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 	return b.transportConf.
 		WithTarget(originURL.Scheme, originURL.Host, hostname, proxyURL).
 		WithTimings(connectTimeout, ttfbTimeout, timeout, log), nil
+}
+
+func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
+	paramsContent, _, diags := params.PartialContent(config.BackendInlineSchema)
+	if diags.HasErrors() {
+		return diags
+	}
+	val, err := eval.ValueFromAttribute(ctx, paramsContent, "use_when_unhealthy")
+	if err != nil {
+		return err
+	}
+
+	var useUnhealthy bool
+	if val.Type() == cty.Bool {
+		useUnhealthy = val.True()
+	} // else not set
+
+	b.healthyMu.RLock()
+	defer b.healthyMu.RUnlock()
+
+	if b.healthInfo.Healthy || useUnhealthy {
+		return nil
+	}
+
+	return errors.BackendUnhealthy
+}
+
+func (b *Backend) OnProbeChange(info *HealthInfo) {
+	b.healthyMu.Lock()
+	b.healthInfo = info
+	b.healthyMu.Unlock()
+}
+
+func (b *Backend) Value() cty.Value {
+	b.healthyMu.RLock()
+	defer b.healthyMu.RUnlock()
+
+	return seetie.GoToValue(map[string]interface{}{
+		"health": map[string]interface{}{
+			"healthy": b.healthInfo.Healthy,
+			"error":   b.healthInfo.Error,
+			"state":   b.healthInfo.State,
+		},
+		"hostname":        b.transportConfResult.Hostname,
+		"name":            b.name, // mandatory
+		"origin":          b.transportConfResult.Origin,
+		"connect_timeout": b.transportConfResult.ConnectTimeout.String(),
+		"ttfb_timeout":    b.transportConfResult.TTFBTimeout.String(),
+		"timeout":         b.transportConfResult.Timeout.String(),
+	})
 }
 
 // setUserAgent sets an empty one if none is present or empty

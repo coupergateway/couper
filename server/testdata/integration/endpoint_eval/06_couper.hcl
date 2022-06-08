@@ -1,7 +1,6 @@
 server "api" {
   api {
     endpoint "/" {
-      path = "/yyy"
       proxy {
         backend "anything" {
           path = "/zzz"
