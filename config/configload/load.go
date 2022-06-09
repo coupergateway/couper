@@ -454,9 +454,8 @@ func absolutizePaths(fileBody *hclsyntax.Body) error {
 			if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
 				return nil
 			}
-			if strings.HasPrefix(filePath, "file:") {
-				filePath = filePath[5:]
-			}
+
+			filePath = strings.TrimPrefix(filePath, "file:")
 			if path.IsAbs(filePath) {
 				return nil
 			}
