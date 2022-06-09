@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+
 	"github.com/avenga/couper/config/configload/file"
 )
 
@@ -11,6 +12,7 @@ const DefaultFilename = "couper.hcl"
 // Couper represents the <Couper> config object.
 type Couper struct {
 	Context     context.Context
+	Environment string
 	Files       file.Files
 	Definitions *Definitions `hcl:"definitions,block"`
 	Servers     Servers      `hcl:"server,block"`

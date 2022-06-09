@@ -30,6 +30,7 @@ const (
 	defaults     = "defaults"
 	definitions  = "definitions"
 	endpoint     = "endpoint"
+	environment  = "environment"
 	errorHandler = "error_handler"
 	files        = "files"
 	nameLabel    = "name"
@@ -125,7 +126,7 @@ func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 	return parsedBodies, srcBytes, nil
 }
 
-func LoadFiles(filesList []string) (*config.Couper, error) {
+func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	configFiles, err := configfile.NewFiles(filesList)
 	if err != nil {
 		return nil, err
@@ -138,6 +139,10 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 
 	if len(srcBytes) == 0 {
 		return nil, fmt.Errorf("missing configuration files")
+	}
+
+	if err := preprocessEnvironmentBlocks(parsedBodies, env); err != nil {
+		return nil, err
 	}
 
 	defaultsBlock, err := mergeDefaults(parsedBodies)
@@ -190,8 +195,8 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 	return conf, nil
 }
 
-func LoadFile(file string) (*config.Couper, error) {
-	return LoadFiles([]string{file})
+func LoadFile(file, env string) (*config.Couper, error) {
+	return LoadFiles([]string{file}, env)
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {

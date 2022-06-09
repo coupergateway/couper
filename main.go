@@ -122,14 +122,14 @@ func realmain(ctx context.Context, arguments []string) int {
 	if cmd == "verify" {
 		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
 
-		err = command.NewCommand(ctx, cmd).Execute(filesList.paths, nil, log)
+		err = command.NewCommand(ctx, cmd).Execute(filesList.paths, &config.Couper{Environment: flags.Environment}, log)
 		if err != nil {
 			return 1
 		}
 		return 0
 	}
 
-	confFile, err := configload.LoadFiles(filesList.paths)
+	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment)
 	if err != nil {
 		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
 		return 1
@@ -212,7 +212,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFiles(filesList.paths)
+			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
