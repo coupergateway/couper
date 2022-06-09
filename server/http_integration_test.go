@@ -85,14 +85,14 @@ func teardown() {
 }
 
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
+	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file), "test")
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
 }
 
 func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFiles([]string{file, dir})
+	couperConfig, err := configload.LoadFiles([]string{file, dir}, "test")
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3506,7 +3506,7 @@ func TestJWKsMaxStale(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
+	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl", "")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()

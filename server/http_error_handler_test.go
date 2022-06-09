@@ -115,7 +115,7 @@ func TestAccessControl_ErrorHandler_BasicAuth_Wildcard(t *testing.T) {
 }
 
 func TestAccessControl_ErrorHandler_Configuration_Error(t *testing.T) {
-	_, err := configload.LoadFile("testdata/integration/error_handler/03_couper.hcl")
+	_, err := configload.LoadFile("testdata/integration/error_handler/03_couper.hcl", "")
 
 	expectedMsg := "03_couper.hcl:24,12-12: Missing required argument; The argument \"grant_type\" is required, but no definition was found."
 
@@ -334,7 +334,7 @@ func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 }
 
 func Test_Panic_Multi_EH(t *testing.T) {
-	_, err := configload.LoadFile("testdata/settings/16_couper.hcl")
+	_, err := configload.LoadFile("testdata/settings/16_couper.hcl", "")
 
 	expectedMsg := `: duplicate error type registration: "*"; `
 
