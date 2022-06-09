@@ -710,3 +710,21 @@ func TestHTTPServer_parseDuration(t *testing.T) {
 		t.Errorf("%#v", logs[0].Message)
 	}
 }
+
+func TestHTTPServer_EnvironmentBlocks(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/environment/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/test", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status code: %d", res.StatusCode)
+	}
+}
