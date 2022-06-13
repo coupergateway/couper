@@ -74,7 +74,7 @@ func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
 		return diags
 	}
 
-	// We need the "envContext" to be able to resolve abs pathes in the config.
+	// We need the "envContext" to be able to resolve absolute paths in the config.
 	defaultsConfig = defaultsBlock.Defaults
 	evalContext = eval.NewContext(srcBytes, defaultsConfig)
 	envContext = evalContext.HCLContext()
@@ -154,7 +154,7 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 	}
 
 	for _, body := range parsedBodies {
-		if err := absolutizePaths(body); err != nil {
+		if err = absolutizePaths(body); err != nil {
 			return nil, err
 		}
 	}
@@ -180,7 +180,7 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	conf, err := LoadConfig(configBody, srcBytes[0], filesList[0])
+	conf, err := LoadConfig(configBody, srcBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -200,21 +200,17 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	if diags = updateContext(hclBody, [][]byte{src}); diags.HasErrors() {
-		return nil, diags
-	}
-
-	return LoadConfig(hclBody, src, filename)
+	return LoadConfig(hclBody, [][]byte{src})
 }
 
-func LoadConfig(body hcl.Body, src []byte, filename string) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src [][]byte) (*config.Couper, error) {
 	var err error
 
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body, src, filename)
+	helper, err := newHelper(body, src)
 	if err != nil {
 		return nil, err
 	}

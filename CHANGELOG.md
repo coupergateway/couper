@@ -1,10 +1,15 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.9.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.9.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
 ---
+
+## [1.9.1](https://github.com/avenga/couper/releases/tag/v1.9.1)
+
+* **Fixed**
+  * Missing environment key error while using multiple configuration files ([#522](https://github.com/avenga/couper/pull/522))
 
 ## [1.9.0](https://github.com/avenga/couper/releases/tag/v1.9.0)
 
