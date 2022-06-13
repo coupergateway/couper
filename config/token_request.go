@@ -49,6 +49,8 @@ func (t TokenRequest) Inline() interface{} {
 		JsonBody       string               `hcl:"json_body,optional"`
 		Method         string               `hcl:"method,optional"`
 		QueryParams    map[string]cty.Value `hcl:"query_params,optional"`
+		Token          string               `hcl:"token"`
+		TTL            string               `hcl:"ttl"`
 	}
 
 	return &Inline{}

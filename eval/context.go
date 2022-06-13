@@ -244,6 +244,28 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 	return ctx
 }
 
+func (c *Context) WithTokenresp(beresp *http.Response, readBody bool) *Context {
+	ctx := &Context{
+		backends:          c.backends,
+		eval:              c.cloneEvalContext(),
+		inner:             c.inner,
+		memStore:          c.memStore,
+		memorize:          c.memorize,
+		oauth2:            c.oauth2[:],
+		jwtSigningConfigs: c.jwtSigningConfigs,
+		saml:              c.saml[:],
+		syncedVariables:   c.syncedVariables,
+	}
+	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
+
+	if beresp != nil {
+		_, _, berespVal := newBerespValues(ctx, readBody, beresp)
+		ctx.eval.Variables[TokenResponse] = berespVal
+	}
+
+	return ctx
+}
+
 func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
 	name = "default"

@@ -26,6 +26,7 @@ const (
 	PathParam        = "path_params"
 	Query            = "query"
 	Token            = "token"
+	TokenResponse    = "token_response"
 	URL              = "url"
 	Origin           = "origin"
 	Protocol         = "protocol"
