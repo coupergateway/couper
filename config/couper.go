@@ -11,7 +11,6 @@ const DefaultFilename = "couper.hcl"
 // Couper represents the <Couper> config object.
 type Couper struct {
 	Context     context.Context
-	Filename    string
 	Files       file.Files
 	Definitions *Definitions `hcl:"definitions,block"`
 	Servers     Servers      `hcl:"server,block"`

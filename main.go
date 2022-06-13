@@ -45,12 +45,11 @@ type filesList struct {
 }
 
 func main() {
-	logrus.Exit(realmain(os.Args))
+	logrus.Exit(realmain(context.Background(), os.Args))
 }
 
-func realmain(arguments []string) int {
+func realmain(ctx context.Context, arguments []string) int {
 	args := command.NewArgs(arguments)
-	ctx := context.Background()
 	filesList := filesList{}
 
 	type globalFlags struct {
