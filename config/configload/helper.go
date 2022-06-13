@@ -19,7 +19,7 @@ type helper struct {
 }
 
 // newHelper creates a container with some methods to keep things simple here and there.
-func newHelper(body hcl.Body, src []byte, filename string) (*helper, error) {
+func newHelper(body hcl.Body, src [][]byte) (*helper, error) {
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return nil, diags
@@ -28,10 +28,9 @@ func newHelper(body hcl.Body, src []byte, filename string) (*helper, error) {
 	defSettings := config.DefaultSettings
 
 	couperConfig := &config.Couper{
-		Context:     eval.NewContext([][]byte{src}, defaultsBlock.Defaults),
+		Context:     eval.NewContext(src, defaultsBlock.Defaults),
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
-		Filename:    filename,
 		Settings:    &defSettings,
 	}
 

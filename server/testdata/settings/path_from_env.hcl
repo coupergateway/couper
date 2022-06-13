@@ -4,13 +4,13 @@ server {
 
 definitions {
   jwt "token" {
-    key_file = env.KEY
+    key_file = env.KEY_FILE
     signature_algorithm = "HS256"
   }
 }
 
 defaults {
   environment_variables = {
-    KEY = "public.pem"
+    KEY_FILE = "public.pem"
   }
 }
