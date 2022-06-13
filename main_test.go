@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -57,7 +59,10 @@ func Test_realmain(t *testing.T) {
 				})
 			}
 
-			if got := realmain(tt.args); got != tt.want {
+			ctx, cancel := context.WithCancel(context.Background())
+			time.AfterFunc(time.Second, cancel)
+
+			if got := realmain(ctx, tt.args); got != tt.want {
 				subT.Errorf("realmain() = %v, want %v", got, tt.want)
 			}
 			env.OsEnviron = os.Environ

@@ -154,7 +154,7 @@ func LoadFiles(filesList []string) (*config.Couper, error) {
 	}
 
 	for _, body := range parsedBodies {
-		if err := absolutizePaths(body); err != nil {
+		if err = absolutizePaths(body); err != nil {
 			return nil, err
 		}
 	}
