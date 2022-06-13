@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * Missing environment key error while using multiple configuration files ([#522](https://github.com/avenga/couper/pull/522))
+
 ---
 
 ## [1.9.0](https://github.com/avenga/couper/releases/tag/v1.9.0)
