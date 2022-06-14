@@ -1,6 +1,7 @@
 definitions {
   backend "Backend" {
-    origin = "https://example.org"
+    origin = "${env.COUPER_TEST_BACKEND_ADDR}"
+    path = "/small"
   }
 
   backend "Added" {

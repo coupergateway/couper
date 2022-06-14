@@ -18,8 +18,8 @@ Couper is build as binary called `couper` with the following commands:
 
 | Argument             | Default      | Environment                | Description                                                                                                                  |
 |:---------------------|:-------------|:---------------------------|:-----------------------------------------------------------------------------------------------------------------------------|
-| `-f`                 | `couper.hcl` | `COUPER_FILE`              | File path to your Couper configuration file.                                                                                 |
-| `-d`                 | -            | `COUPER_FILE_DIRECTORY`    | Path to your Couper configuration files directory.                                                                           |
+| `-f`                 | `couper.hcl` | `COUPER_FILE`              | Path to a Couper configuration file.                                                                                         |
+| `-d`                 | -            | `COUPER_FILE_DIRECTORY`    | Path to a directory containing Couper configuration files.                                                                   |
 | `-watch`             | `false`      | `COUPER_WATCH`             | Watch for configuration file changes and reload on modifications.                                                            |
 | `-watch-retries`     | `5`          | `COUPER_WATCH_RETRIES`     | Maximum retry count for configuration reloads which could not bind the configured port.                                      |
 | `-watch-retry-delay` | `500ms`      | `COUPER_WATCH_RETRY_DELAY` | Delay duration before next attempt if an error occurs.                                                                       |
@@ -30,22 +30,28 @@ Couper is build as binary called `couper` with the following commands:
 
 **Note:** `log-format`, `log-level` and `log-pretty` also map to [settings](REFERENCE.md#settings-block).
 
-**Note:** Couper can be started with both, `-f` and `-d` arguments. The path of `-f <file>`
-determines the working directory of Couper. If `-d <dir>` argument is given without the `-f <file>`,
-the path of `-d <dir>` is the working directory of Couper. A `couper.hcl` file inside the
-`-d <dir>` is priorized over other files inside the `-d <dir>`, but not over the
-`-f <file>`. Other files in the `-d <dir>` are loaded in alphabetical order. Example:
+**Note:** Couper can be started with multiple `-f <file>` and `-d <dir>` arguments.
+Files in the `-d <dir>` are loaded in alphabetical order. Blocks and attributes
+defined in later files may override those defined earlier. See [Merging](MERGE.md) for details.
+
+**Example:**
 
 ```sh
-|- couper.hcl    # defined via `-f`
-|- couper.d/     # defined via `-d`
-|  |- couper.hcl # step 3: merge configuration into the couper.hcl defined via `-f`
-|  |- a.hcl      # step 2: merge configuration into the couper.d/couper.hcl
-|  |- z.hcl      # step 1: merge configuration into the couper.d/a.hcl
-```
+$ tree
+.
+├── conf
+│   ├── a.hcl
+│   ├── b.hcl
+│   └── c.hcl
+├── devel.hcl
+└── global.hcl
 
-**Note:** When merging configuration files, only one unlabeled `server` or `api` block
-is allowed in each context.
+1 directory, 5 files
+
+$ couper run -f global.hcl -d conf/ -f devel.hcl -log-level=debug
+DEBU[0000] loaded files … […/global.hcl …/conf/a.hcl …/conf/b.hcl …/conf/c.hcl …/devel.hcl] …
+…
+```
 
 ## Run Options
 

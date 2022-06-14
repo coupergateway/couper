@@ -139,8 +139,8 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 		return nil, err
 	}
 
-	tr, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client)
-	return tr, err
+	tr := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client)
+	return tr, nil
 }
 
 func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {

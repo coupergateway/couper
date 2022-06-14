@@ -17,6 +17,9 @@ func TestMerge(t *testing.T) {
 	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
+	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
+	mergeFn := hclContext.Functions["merge"]
+
 	tests := []struct {
 		name string
 		args []cty.Value
@@ -144,11 +147,12 @@ func TestMerge(t *testing.T) {
 			/*
 				merge(
 					{"k2": {"k2.2": 2}},
-					{"k2": null},
-					{"k2": {"k4.2": 4}}
+					{"k0": null},
+					{"k2": {"k4.2": 4}},
+					{"k2": {"k4.0": null}}
 				)
 			*/
-			"merge objects with tombstone null",
+			"merge objects with null",
 			[]cty.Value{
 				cty.ObjectVal(map[string]cty.Value{
 					"k2": cty.ObjectVal(map[string]cty.Value{
@@ -156,22 +160,31 @@ func TestMerge(t *testing.T) {
 					}),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
-					"k2": cty.NullVal(cty.Bool),
+					"k0": cty.NullVal(cty.Bool),
 				}),
 				cty.ObjectVal(map[string]cty.Value{
 					"k2": cty.MapVal(map[string]cty.Value{
 						"k4.2": cty.NumberIntVal(4),
 					}),
 				}),
+				cty.ObjectVal(map[string]cty.Value{
+					"k2": cty.MapVal(map[string]cty.Value{
+						"k4.0": cty.NullVal(cty.Bool),
+					}),
+				}),
 			},
 			/*
 				{
+				  "k0": null,
 				  "k2": {"k4.2": 4}
 				}
 			*/
 			cty.ObjectVal(map[string]cty.Value{
-				"k2": cty.MapVal(map[string]cty.Value{
+				"k0": cty.NullVal(cty.Bool),
+				"k2": cty.ObjectVal(map[string]cty.Value{
+					"k2.2": cty.NumberIntVal(2),
 					"k4.2": cty.NumberIntVal(4),
+					"k4.0": cty.NullVal(cty.Bool),
 				}),
 			}),
 		},
@@ -264,17 +277,14 @@ func TestMerge(t *testing.T) {
 		},
 	}
 
-	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			helper := test.New(subT)
+			h := test.New(subT)
 
-			mergedV, err := hclContext.Functions["merge"].Call(tt.args)
-			helper.Must(err)
-
+			mergedV, merr := mergeFn.Call(tt.args)
+			h.Must(merr)
 			if !mergedV.RawEquals(tt.want) {
-				subT.Errorf("Wrong return value; expected %#v, got: %#v", tt.want, mergedV)
+				subT.Errorf("Wrong return value:\nwant:\t%#v\ngot:\t%#v\n", tt.want, mergedV)
 			}
 		})
 	}

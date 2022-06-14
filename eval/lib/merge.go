@@ -7,9 +7,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 )
 
-var (
-	MergeFunc = newMergeFunction()
-)
+var MergeFunc = newMergeFunction()
 
 func newMergeFunction() function.Function {
 	return function.New(&function.Spec{
@@ -76,9 +74,7 @@ func mergeObjects(args []cty.Value) cty.Value {
 
 		for it := arg.ElementIterator(); it.Next(); {
 			k, v := it.Element()
-			if v.IsNull() {
-				delete(outputMap, k.AsString())
-			} else if existingVal, ok := outputMap[k.AsString()]; !ok {
+			if existingVal, ok := outputMap[k.AsString()]; !ok {
 				// key not set
 				outputMap[k.AsString()] = v
 			} else if vType := v.Type(); vType.IsPrimitiveType() {
@@ -97,7 +93,7 @@ func mergeObjects(args []cty.Value) cty.Value {
 }
 
 func mergeTuples(args []cty.Value) cty.Value {
-	outputList := []cty.Value{}
+	var outputList []cty.Value
 	for _, arg := range args {
 		if arg.IsNull() {
 			continue

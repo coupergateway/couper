@@ -2,8 +2,8 @@ package configload
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -11,9 +11,11 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
+	configfile "github.com/avenga/couper/config/configload/file"
 	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
@@ -44,9 +46,26 @@ const (
 var defaultsConfig *config.Defaults
 var evalContext *eval.Context
 var envContext *hcl.EvalContext
+var pathBearingAttributesMap map[string]struct{}
 
 func init() {
-	envContext = eval.NewContext(nil, nil).HCLContext()
+	pathBearingAttributes := []string{
+		"bootstrap_file",
+		"ca_file",
+		"document_root",
+		"error_file",
+		"file",
+		"htpasswd_file",
+		"idp_metadata_file",
+		"jwks_url",
+		"key_file",
+		"signing_key_file",
+	}
+
+	pathBearingAttributesMap = make(map[string]struct{})
+	for _, attributeName := range pathBearingAttributes {
+		pathBearingAttributesMap[attributeName] = struct{}{}
+	}
 }
 
 func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
@@ -55,7 +74,7 @@ func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
 		return diags
 	}
 
-	// We need the "envContext" to be able to resolve abs pathes in the config.
+	// We need the "envContext" to be able to resolve absolute paths in the config.
 	defaultsConfig = defaultsBlock.Defaults
 	evalContext = eval.NewContext(srcBytes, defaultsConfig)
 	envContext = evalContext.HCLContext()
@@ -63,7 +82,7 @@ func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
 	return nil
 }
 
-func parseFile(filePath string, srcBytes *[][]byte) (*hcl.File, error) {
+func parseFile(filePath string, srcBytes *[][]byte) (*hclsyntax.Body, error) {
 	src, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
@@ -76,90 +95,45 @@ func parseFile(filePath string, srcBytes *[][]byte) (*hcl.File, error) {
 		return nil, diags
 	}
 
-	return parsed, nil
+	return parsed.Body.(*hclsyntax.Body), nil
 }
 
-// SetWorkingDirectory sets the working directory to the given configuration file path.
-func SetWorkingDirectory(configFile string) (string, error) {
-	if err := os.Chdir(filepath.Dir(configFile)); err != nil {
-		return "", err
-	}
-
-	return os.Getwd()
-}
-
-func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
+func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 	var (
 		srcBytes     [][]byte
 		parsedBodies []*hclsyntax.Body
-		hasIndexHCL  bool
 	)
 
-	if dirPath != "" {
-		dir, err := filepath.Abs(dirPath)
-		if err != nil {
-			return nil, err
-		}
-
-		dirPath = dir
-
-		// ReadDir ... returns a list ... sorted by filename.
-		listing, err := ioutil.ReadDir(dirPath)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, file := range listing {
-			if file.IsDir() || !strings.HasSuffix(file.Name(), ".hcl") {
-				continue
-			}
-
-			if file.Name() == config.DefaultFilename {
-				hasIndexHCL = true
-				continue
-			}
-
-			parsed, err := parseFile(dirPath+"/"+file.Name(), &srcBytes)
+	for _, file := range files {
+		if file.IsDir {
+			childBodies, bytes, err := parseFiles(file.Children)
 			if err != nil {
-				return nil, err
+				return nil, bytes, err
 			}
 
-			parsedBodies = append(parsedBodies, parsed.Body.(*hclsyntax.Body))
+			parsedBodies = append(parsedBodies, childBodies...)
+			srcBytes = append(srcBytes, bytes...)
+		} else {
+			body, err := parseFile(file.Path, &srcBytes)
+			if err != nil {
+				return nil, srcBytes, err
+			}
+			parsedBodies = append(parsedBodies, body)
 		}
 	}
 
-	if hasIndexHCL {
-		parsed, err := parseFile(dirPath+"/"+config.DefaultFilename, &srcBytes)
-		if err != nil {
-			return nil, err
-		}
+	return parsedBodies, srcBytes, nil
+}
 
-		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
+func LoadFiles(filesList []string) (*config.Couper, error) {
+	configFiles, err := configfile.NewFiles(filesList)
+	if err != nil {
+		return nil, err
 	}
 
-	if filePath != "" {
-		var err error
-		filePath, err = filepath.Abs(filePath)
-		if err != nil {
-			return nil, err
-		}
-
-		parsed, err := parseFile(filePath, &srcBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		parsedBodies = append([]*hclsyntax.Body{parsed.Body.(*hclsyntax.Body)}, parsedBodies...)
-
-		_, err = SetWorkingDirectory(filePath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		_, err := SetWorkingDirectory(dirPath + "/dummy.hcl")
-		if err != nil {
-			return nil, err
-		}
+	parsedBodies, srcBytes, err := parseFiles(configFiles)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(srcBytes) == 0 {
@@ -177,6 +151,12 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 
 	if diags := updateContext(defs, srcBytes); diags.HasErrors() {
 		return nil, diags
+	}
+
+	for _, body := range parsedBodies {
+		if err = absolutizePaths(body); err != nil {
+			return nil, err
+		}
 	}
 
 	settingsBlock := mergeSettings(parsedBodies)
@@ -200,14 +180,18 @@ func LoadFiles(filePath, dirPath string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	// Do not make "." from an empty filePath via filepath.Base().
-	// This generates an error when reloading config, if Couper
-	// was started w/o "-f", but w/ "-d" and "-watch" parameters.
-	if filePath != "" {
-		filePath = filepath.Base(filePath)
+	conf, err := LoadConfig(configBody, srcBytes)
+	if err != nil {
+		return nil, err
 	}
 
-	return LoadConfig(configBody, srcBytes[0], filePath, dirPath)
+	conf.Files = configFiles
+
+	return conf, nil
+}
+
+func LoadFile(file string) (*config.Couper, error) {
+	return LoadFiles([]string{file})
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
@@ -216,21 +200,17 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	if diags = updateContext(hclBody, [][]byte{src}); diags.HasErrors() {
-		return nil, diags
-	}
-
-	return LoadConfig(hclBody, src, filename, "")
+	return LoadConfig(hclBody, [][]byte{src})
 }
 
-func LoadConfig(body hcl.Body, src []byte, filename, dirPath string) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src [][]byte) (*config.Couper, error) {
 	var err error
 
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body, src, filename, dirPath)
+	helper, err := newHelper(body, src)
 	if err != nil {
 		return nil, err
 	}
@@ -442,5 +422,59 @@ func checkPermissionMixedConfig(apiConfig *config.API) error {
 		return errors.Configuration.Messagef("api with label %q has endpoint without required permission", apiConfig.Name)
 	}
 
+	return nil
+}
+
+func absolutizePaths(fileBody *hclsyntax.Body) error {
+	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
+		attribute, ok := node.(*hclsyntax.Attribute)
+		if !ok {
+			return nil
+		}
+
+		_, exists := pathBearingAttributesMap[attribute.Name]
+		if !exists {
+			return nil
+		}
+
+		value, diags := attribute.Expr.Value(envContext)
+		if diags.HasErrors() {
+			return diags
+		}
+
+		filePath := value.AsString()
+		basePath := attribute.SrcRange.Filename
+		var absolutePath string
+		if attribute.Name == "jwks_url" {
+			if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
+				return nil
+			}
+			if strings.HasPrefix(filePath, "file:") {
+				filePath = filePath[5:]
+			}
+			if path.IsAbs(filePath) {
+				return nil
+			}
+
+			absolutePath = "file:" + filepath.ToSlash(path.Join(filepath.Dir(basePath), filePath))
+		} else {
+			if filepath.IsAbs(filePath) {
+				return nil
+			}
+			absolutePath = filepath.Join(filepath.Dir(basePath), filePath)
+		}
+
+		attribute.Expr = &hclsyntax.LiteralValueExpr{
+			Val:      cty.StringVal(absolutePath),
+			SrcRange: attribute.SrcRange,
+		}
+
+		return nil
+	}
+
+	diags := hclsyntax.VisitAll(fileBody, visitor)
+	if diags.HasErrors() {
+		return diags
+	}
 	return nil
 }

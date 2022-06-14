@@ -85,21 +85,14 @@ func teardown() {
 }
 
 func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFiles(filepath.Join(testWorkingDir, file), "")
+	couperConfig, err := configload.LoadFile(filepath.Join(testWorkingDir, file))
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
 }
 
 func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
-	filePath, dirPath := file, dir
-	if filePath != "" {
-		filePath = filepath.Join(testWorkingDir, file)
-	}
-	if dirPath != "" {
-		dirPath = filepath.Join(testWorkingDir, dir)
-	}
-	couperConfig, err := configload.LoadFiles(filePath, dirPath)
+	couperConfig, err := configload.LoadFiles([]string{file, dir})
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3513,7 +3506,7 @@ func TestJWKsMaxStale(t *testing.T) {
 
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
-	couperConfig, err := configload.LoadFiles("testdata/integration/config/05_couper.hcl", "")
+	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl")
 	helper.Must(err)
 
 	log, _ := logrustest.NewNullLogger()
@@ -3521,7 +3514,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 
 	expectedMsg := "configuration error: invalid-source: token source is invalid"
 
-	err = command.NewRun(ctx).Execute([]string{couperConfig.Filename}, couperConfig, log.WithContext(ctx))
+	err = command.NewRun(ctx).Execute(nil, couperConfig, log.WithContext(ctx))
 	logErr, _ := err.(errors.GoError)
 	if logErr == nil {
 		t.Error("logErr should not be nil")
@@ -4207,6 +4200,7 @@ func TestFunction_to_number_errors(t *testing.T) {
 	if werr != nil {
 		t.Fatal(werr)
 	}
+	wd = wd + "/testdata/integration/functions"
 
 	type testCase struct {
 		name   string
@@ -4250,6 +4244,7 @@ func TestFunction_length_errors(t *testing.T) {
 	if werr != nil {
 		t.Fatal(werr)
 	}
+	wd = wd + "/testdata/integration/functions"
 
 	type testCase struct {
 		name   string
@@ -4292,6 +4287,7 @@ func TestFunction_lookup_errors(t *testing.T) {
 	if werr != nil {
 		t.Fatal(werr)
 	}
+	wd = wd + "/testdata/integration/functions"
 
 	type testCase struct {
 		name   string
@@ -5212,7 +5208,7 @@ func TestEndpoint_ResponseNilEvaluation(t *testing.T) {
 		{"/conditional/nested", true, ""},
 		{"/conditional/nested/true", true, ""},
 		{"/conditional/nested/false", true, ""},
-		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"}}`},
+		{"/functions/arg-items", true, `{"foo":"bar","obj":{"key":"val"},"xxxx":null}`},
 		{"/functions/tuple-expr", true, `{"array":["a","b"]}`},
 		{"/rte1", true, "2"},
 		{"/rte2", true, "2"},
