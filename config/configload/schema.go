@@ -23,7 +23,7 @@ const (
 var reFetchUnexpectedArg = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
-	_, blocks, diags := getSchemaComponents(body, obj)
+	blocks, diags := getSchemaComponents(body, obj)
 	diags = enhanceErrors(diags, obj)
 
 	for _, block := range blocks {
@@ -137,9 +137,8 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 	return errors
 }
 
-func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagnostics) {
 	var (
-		attrs  = make(hcl.Attributes)
 		blocks hcl.Blocks
 		errors hcl.Diagnostics
 	)
@@ -166,13 +165,13 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Attributes, hcl.Bl
 		schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
 	}
 
-	attrs, blocks, errors = completeSchemaComponents(body, schema, attrs, blocks, errors)
+	blocks, errors = completeSchemaComponents(body, schema, blocks, errors)
 
-	return attrs, blocks, errors
+	return blocks, errors
 }
 
-func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.Attributes,
-	blocks hcl.Blocks, errors hcl.Diagnostics) (hcl.Attributes, hcl.Blocks, hcl.Diagnostics) {
+func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema,
+	blocks hcl.Blocks, errors hcl.Diagnostics) (hcl.Blocks, hcl.Diagnostics) {
 
 	content, diags := body.Content(schema)
 
@@ -181,17 +180,10 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 		if diag.Detail == noLabelForErrorHandler {
 			bodyContent := bodyToContent(body)
 
-			added := false
 			for _, block := range bodyContent.Blocks {
 				if block.Type == errorHandler {
 					blocks = append(blocks, block)
-
-					added = true
 				}
-			}
-
-			if !added {
-				errors = errors.Append(diag)
 			}
 		} else {
 			errors = errors.Append(diag)
@@ -237,14 +229,12 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 					}
 				}
 			}
-
-			attrs[name] = attr
 		}
 
 		blocks = append(blocks, content.Blocks...)
 	}
 
-	return attrs, blocks, errors
+	return blocks, errors
 }
 
 func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
