@@ -18,20 +18,13 @@ import (
 const (
 	noLabelForErrorHandler = "No labels are expected for error_handler blocks."
 	summUnsupportedAttr    = "Unsupported argument"
-	summUnsupportedBlock   = "Unsupported block type"
 )
 
-var (
-	reFetchUnsupportedName = regexp.MustCompile(`\"([^"]+)\"`)
-	reFetchLabeledName     = regexp.MustCompile(`All (.*) blocks must have .* labels \(.*\)\.`)
-	reFetchUnexpectedArg   = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
-	reFetchUniqueKey       = regexp.MustCompile(`Key must be unique for (.*)\.`)
-)
+var reFetchUnexpectedArg = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
-	attrs, blocks, diags := getSchemaComponents(body, obj)
+	_, blocks, diags := getSchemaComponents(body, obj)
 	diags = enhanceErrors(diags, obj)
-	diags = filterValidErrors(attrs, blocks, diags)
 
 	for _, block := range blocks {
 		diags = diags.Extend(checkObjectFields(block, obj))
@@ -52,59 +45,6 @@ func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
 		}
 	}
 	return diags
-}
-
-// filterValidErrors ignores certain schema related errors due to their specific non hcl conform implementation.
-// Related attributes and blocks will be logic checked with LoadConfig.
-// TODO: Improve checkObjectFields to remove this filter requirement. E.g. optional label struct tag
-func filterValidErrors(attrs hcl.Attributes, blocks hcl.Blocks, diags hcl.Diagnostics) hcl.Diagnostics {
-	var errors hcl.Diagnostics
-
-	for _, err := range diags {
-		if err.Detail == noLabelForErrorHandler {
-			continue
-		}
-
-		matches := reFetchUnsupportedName.FindStringSubmatch(err.Detail)
-		if len(matches) != 2 {
-			if match := reFetchLabeledName.MatchString(err.Detail); match {
-				errors = errors.Append(err)
-				continue
-			}
-			if match := reFetchUnexpectedArg.MatchString(err.Detail); match {
-				errors = errors.Append(err)
-				continue
-			}
-			if match := reFetchUniqueKey.MatchString(err.Detail); match {
-				errors = errors.Append(err)
-				continue
-			}
-
-			errors = errors.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Subject:  err.Subject,
-				Summary:  "cannot match argument name from: " + err.Detail,
-			})
-
-			continue
-		}
-
-		name := matches[1]
-
-		if err.Summary == summUnsupportedAttr {
-			if _, ok := attrs[name]; ok {
-				continue
-			}
-		} else if err.Summary == summUnsupportedBlock {
-			if len(blocks.OfType(name)) > 0 {
-				continue
-			}
-		}
-
-		errors = errors.Append(err)
-	}
-
-	return errors
 }
 
 func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
@@ -238,13 +178,12 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema, attrs hcl.A
 
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
-		if match := reFetchLabeledName.MatchString(diag.Detail); match || diag.Detail == noLabelForErrorHandler {
+		if diag.Detail == noLabelForErrorHandler {
 			bodyContent := bodyToContent(body)
 
 			added := false
 			for _, block := range bodyContent.Blocks {
-				switch block.Type {
-				case api, backend, errorHandler, proxy, request, server, spa, files:
+				if block.Type == errorHandler {
 					blocks = append(blocks, block)
 
 					added = true
