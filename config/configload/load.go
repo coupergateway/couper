@@ -40,7 +40,7 @@ const (
 	server       = "server"
 	settings     = "settings"
 	spa          = "spa"
-	tokenRequest = "token_request"
+	tokenRequest = "beta_token_request"
 	// defaultNameLabel maps the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )

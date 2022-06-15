@@ -14,7 +14,7 @@ var (
 var TokenRequestBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
 		{
-			Type: "token_request",
+			Type: "beta_token_request",
 		},
 	},
 }
