@@ -13,12 +13,10 @@ var _ Inline = &ErrorHandler{}
 type ErrorHandler struct {
 	Kinds     []string
 	ErrorFile string    `hcl:"error_file,optional"`
+	Proxies   Proxies   `hcl:"proxy,block"`
 	Remain    hcl.Body  `hcl:",remain"`
+	Requests  Requests  `hcl:"request,block"`
 	Response  *Response `hcl:"response,block"`
-
-	// internally configured due to multi-label options
-	Proxies  Proxies
-	Requests Requests
 }
 
 // ErrorHandlerGetter defines the <ErrorHandlerGetter> interface.
@@ -35,8 +33,6 @@ func (e ErrorHandler) HCLBody() hcl.Body {
 func (e ErrorHandler) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		Proxies        Proxies                   `hcl:"proxy,block"`
-		Requests       Requests                  `hcl:"request,block"`
 		ResponseStatus *uint8                    `hcl:"set_response_status,optional"`
 		LogFields      map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
 	}

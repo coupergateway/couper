@@ -21,7 +21,7 @@ type Backend struct {
 	Health                 *Health  `hcl:"beta_health,block"`
 	HTTP2                  bool     `hcl:"http2,optional"`
 	MaxConnections         int      `hcl:"max_connections,optional"`
-	Name                   string   `hcl:"name,label"`
+	Name                   string   `hcl:"name,label,optional"`
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
 	Remain                 hcl.Body `hcl:",remain"`
 
@@ -73,24 +73,4 @@ func (b Backend) Schema(inline bool) *hcl.BodySchema {
 	schema, _ = gohcl.ImpliedBodySchema(b.Inline())
 
 	return meta.SchemaWithAttributes(schema)
-}
-
-func newBackendSchema(schema *hcl.BodySchema, body hcl.Body) *hcl.BodySchema {
-	if body == nil {
-		return schema
-	}
-
-	for i, block := range schema.Blocks {
-		// Inline backend block MAY have no label.
-		if block.Type == "backend" && len(block.LabelNames) > 0 {
-			// Check if a backend block could be parsed w/ label, otherwise its an inline one w/o label.
-			content, _, _ := body.PartialContent(schema)
-			if content == nil || len(content.Blocks.OfType("backend")) == 0 {
-				schema.Blocks[i].LabelNames = nil
-				break
-			}
-		}
-	}
-
-	return schema
 }

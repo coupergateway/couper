@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
@@ -96,7 +97,7 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return newBackendSchema(schema, j.HCLBody())
+	return schema
 }
 
 func (j *JWT) check() error {

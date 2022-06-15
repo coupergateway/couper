@@ -16,7 +16,7 @@ type Spa struct {
 	BootstrapFile        string   `hcl:"bootstrap_file"`
 	CORS                 *CORS    `hcl:"cors,block"`
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
-	Name                 string   `hcl:"name,label"`
+	Name                 string   `hcl:"name,label,optional"`
 	Paths                []string `hcl:"paths"`
 	Remain               hcl.Body `hcl:",remain"`
 }

@@ -144,8 +144,10 @@ func newErrorHandlerConfig(content kindContent, helper *helper) (*config.ErrorHa
 
 	ep := &config.Endpoint{
 		ErrorFile: errHandlerConf.ErrorFile,
+		Proxies:   errHandlerConf.Proxies,
 		Response:  errHandlerConf.Response,
 		Remain:    content.body,
+		Requests:  errHandlerConf.Requests,
 	}
 
 	if err := refineEndpoints(helper, config.Endpoints{ep}, false); err != nil {

@@ -9,7 +9,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
 	github.com/getkin/kin-openapi v0.92.0
-	github.com/hashicorp/hcl/v2 v2.11.1
+	github.com/hashicorp/hcl/v2 v2.12.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/prometheus/client_golang v1.12.1
@@ -68,3 +68,5 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/hashicorp/hcl/v2 v2.12.0 => github.com/avenga/hcl v1.0.1-0.20220614110422-d3e10849a937

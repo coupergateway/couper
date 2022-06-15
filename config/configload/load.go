@@ -336,16 +336,7 @@ func LoadConfig(body hcl.Body, src [][]byte) (*config.Couper, error) {
 		}
 
 		// Read api blocks and merge backends with server and definitions backends.
-		for _, apiBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(api) {
-			apiConfig := &config.API{}
-			if diags := gohcl.DecodeBody(apiBlock.Body, helper.context, apiConfig); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if len(apiBlock.Labels) > 0 {
-				apiConfig.Name = apiBlock.Labels[0]
-			}
-
+		for _, apiConfig := range serverConfig.APIs {
 			apiContent := bodyToContent(apiConfig.Remain)
 
 			if apiConfig.AllowedMethods != nil && len(apiConfig.AllowedMethods) > 0 {
@@ -370,38 +361,11 @@ func LoadConfig(body hcl.Body, src [][]byte) (*config.Couper, error) {
 			}
 
 			apiConfig.CatchAllEndpoint = newCatchAllEndpoint()
-			serverConfig.APIs = append(serverConfig.APIs, apiConfig)
 
 			apiErrorHandler := collect.ErrorHandlerSetters(apiConfig)
 			if err = configureErrorHandler(apiErrorHandler, helper); err != nil {
 				return nil, err
 			}
-		}
-
-		for _, spaBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(spa) {
-			spaConfig := &config.Spa{}
-			if diags := gohcl.DecodeBody(spaBlock.Body, helper.context, spaConfig); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if len(spaBlock.Labels) > 0 {
-				spaConfig.Name = spaBlock.Labels[0]
-			}
-
-			serverConfig.SPAs = append(serverConfig.SPAs, spaConfig)
-		}
-
-		for _, filesBlock := range bodyToContent(serverConfig.Remain).Blocks.OfType(files) {
-			filesConfig := &config.Files{}
-			if diags := gohcl.DecodeBody(filesBlock.Body, helper.context, filesConfig); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if len(filesBlock.Labels) > 0 {
-				filesConfig.Name = filesBlock.Labels[0]
-			}
-
-			serverConfig.Files = append(serverConfig.Files, filesConfig)
 		}
 
 		// standalone endpoints

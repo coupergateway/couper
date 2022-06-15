@@ -68,7 +68,7 @@ func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return newBackendSchema(schema, oa.HCLBody())
+	return schema
 }
 
 func SchemaWithOAuth2RA(schema *hcl.BodySchema) *hcl.BodySchema {

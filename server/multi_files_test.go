@@ -210,22 +210,22 @@ func Test_MultipleLabels(t *testing.T) {
 		{
 			"server with multiple labels",
 			"testdata/multi/errors/couper_01.hcl",
-			"testdata/multi/errors/couper_01.hcl:1,12-15: cannot match argument name from: Only 1 labels (name) are expected for server blocks.",
+			"testdata/multi/errors/couper_01.hcl:1,12-15: Extraneous label for server; Only 1 labels (name) are expected for server blocks.",
 		},
 		{
 			"api with multiple labels",
 			"testdata/multi/errors/couper_02.hcl",
-			"testdata/multi/errors/couper_02.hcl:2,11-14: cannot match argument name from: Only 1 labels (name) are expected for api blocks.",
+			"testdata/multi/errors/couper_02.hcl:2,11-14: Extraneous label for api; Only 1 labels (name) are expected for api blocks.",
 		},
 		{
 			"spa with multiple labels",
 			"testdata/multi/errors/couper_04.hcl",
-			"testdata/multi/errors/couper_04.hcl:2,11-14: cannot match argument name from: Only 1 labels (name) are expected for spa blocks.",
+			"testdata/multi/errors/couper_04.hcl:2,11-14: Extraneous label for spa; Only 1 labels (name) are expected for spa blocks.",
 		},
 		{
 			"files with multiple labels",
 			"testdata/multi/errors/couper_05.hcl",
-			"testdata/multi/errors/couper_05.hcl:2,13-16: cannot match argument name from: Only 1 labels (name) are expected for files blocks.",
+			"testdata/multi/errors/couper_05.hcl:2,13-16: Extraneous label for files; Only 1 labels (name) are expected for files blocks.",
 		},
 		{
 			"api, spa, files and server without labels",

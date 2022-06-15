@@ -14,7 +14,7 @@ var (
 // Request represents the <Request> object.
 type Request struct {
 	BackendName string   `hcl:"backend,optional"`
-	Name        string   `hcl:"name,label"`
+	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 
 	// Internally used
@@ -65,5 +65,5 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return newBackendSchema(schema, r.HCLBody())
+	return schema
 }

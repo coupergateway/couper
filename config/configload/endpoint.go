@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
@@ -61,27 +60,33 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 		}
 
-		proxies := endpointContent.Blocks.OfType(proxy)
-		requests := endpointContent.Blocks.OfType(request)
-
-		if check && len(proxies)+len(requests) == 0 && endpoint.Response == nil {
+		if check && len(endpoint.Proxies)+len(endpoint.Requests) == 0 && endpoint.Response == nil {
 			return newDiagErr(&endpointContent.MissingItemRange,
 				"missing 'default' proxy or request block, or a response definition",
 			)
 		}
 
-		proxyRequestLabelRequired := len(proxies)+len(requests) > 1
+		proxyRequestLabelRequired := len(endpoint.Proxies)+len(endpoint.Requests) > 1
 
-		for _, proxyBlock := range proxies {
-			proxyConfig := &config.Proxy{}
-			if diags := gohcl.DecodeBody(proxyBlock.Body, helper.context, proxyConfig); diags.HasErrors() {
-				return diags
-			}
-			if len(proxyBlock.Labels) > 0 {
-				proxyConfig.Name = proxyBlock.Labels[0]
-			}
+		names := map[string]hcl.Body{}
+		unique := map[string]struct{}{}
+		subject := endpoint.Remain.MissingItemRange()
+
+		for _, proxyConfig := range endpoint.Proxies {
 			if proxyConfig.Name == "" {
 				proxyConfig.Name = defaultNameLabel
+			}
+
+			names[proxyConfig.Name] = proxyConfig.Remain
+
+			if err = validLabel(proxyConfig.Name, &subject); err != nil {
+				return err
+			}
+
+			if proxyRequestLabelRequired {
+				if err = uniqueLabelName(unique, proxyConfig.Name, &subject); err != nil {
+					return err
+				}
 			}
 
 			wsEnabled, wsBody, wsErr := getWebsocketsConfig(proxyConfig)
@@ -98,35 +103,35 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				}
 
 				if wsBody != nil {
-					proxyBlock.Body = hclbody.MergeBodies(proxyBlock.Body, wsBody)
+					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.Remain, wsBody)
 				}
 			}
-
-			proxyConfig.Remain = proxyBlock.Body
 
 			proxyConfig.Backend, err = PrepareBackend(helper, "", "", proxyConfig)
 			if err != nil {
 				return err
 			}
-
-			endpoint.Proxies = append(endpoint.Proxies, proxyConfig)
 		}
 
-		for _, reqBlock := range requests {
-			reqConfig := &config.Request{}
-			if diags := gohcl.DecodeBody(reqBlock.Body, helper.context, reqConfig); diags.HasErrors() {
-				return diags
-			}
-
-			if len(reqBlock.Labels) > 0 {
-				reqConfig.Name = reqBlock.Labels[0]
-			}
+		for _, reqConfig := range endpoint.Requests {
 			if reqConfig.Name == "" {
 				reqConfig.Name = defaultNameLabel
 			}
 
+			names[reqConfig.Name] = reqConfig.Remain
+
+			if err = validLabel(reqConfig.Name, &subject); err != nil {
+				return err
+			}
+
+			if proxyRequestLabelRequired {
+				if err = uniqueLabelName(unique, reqConfig.Name, &subject); err != nil {
+					return err
+				}
+			}
+
 			// remap request specific names for headers and query to well known ones
-			content, leftOvers, diags := reqBlock.Body.PartialContent(reqConfig.Schema(true))
+			content, leftOvers, diags := reqConfig.Remain.PartialContent(reqConfig.Schema(true))
 			if diags.HasErrors() {
 				return diags
 			}
@@ -144,44 +149,11 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			if err != nil {
 				return err
 			}
-
-			endpoint.Requests = append(endpoint.Requests, reqConfig)
 		}
 
 		if endpoint.Response != nil {
 			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody()); err != nil {
 				return err
-			}
-		}
-
-		names := map[string]hcl.Body{}
-		unique := map[string]struct{}{}
-		subject := endpoint.Remain.MissingItemRange()
-		for _, p := range endpoint.Proxies {
-			names[p.Name] = p.Remain
-
-			if err = validLabel(p.Name, &subject); err != nil {
-				return err
-			}
-
-			if proxyRequestLabelRequired {
-				if err = uniqueLabelName(unique, p.Name, &subject); err != nil {
-					return err
-				}
-			}
-		}
-
-		for _, r := range endpoint.Requests {
-			names[r.Name] = r.Remain
-
-			if err = validLabel(r.Name, &subject); err != nil {
-				return err
-			}
-
-			if proxyRequestLabelRequired {
-				if err = uniqueLabelName(unique, r.Name, &subject); err != nil {
-					return err
-				}
 			}
 		}
 
