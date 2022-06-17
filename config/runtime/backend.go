@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -60,6 +61,12 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			return nil, err
 		}
 		beConf.Name = name
+	}
+
+	if len(beConf.RateLimits) > 0 {
+		if strings.HasPrefix(beConf.Name, "anonymous_") {
+			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'rate_limit' block(s)", beConf.Name)
+		}
 	}
 
 	tc := &transport.Config{
