@@ -8,8 +8,8 @@ Rate limiting protects backend services. It implements quota management and used
 
 | Attribute(s)    | Type                  | Default | Description | Characteristic(s) | Example |
 | :-------------- | :-------------------- | :--------------- | :--------------- | :--------------- | :--------------- |
-| `period`        | [duration](#duration) | - | Defines the rate limit period. | &#9888; required | `period = "1m"` |
-| `per_period`    | integer               | - | Defines the number of allowed backend requests in a period. | &#9888; required | `per_period = 100` |
+| `period`        | [duration](#duration) | - | Defines the rate limit period. | &#9888; required, must not be negative or `0` (zero) | `period = "1m"` |
+| `per_period`    | integer               | - | Defines the number of allowed backend requests in a period. | &#9888; required, must not be negative or `0` (zero) | `per_period = 100` |
 | `period_window` | string                | `"sliding"` | Defines the window of the period. A `fixed` window starts always at `:00`, e.g. a period of `"1h"` starts at `10:00:00 a.m.`, `11:00:00 p.m.` etc. A `sliding` period is a period from the time of the client request that lies behind, e.g. `10:23:44-11:23:45 a.m.` if the request time is `11:23:45 a.m.` and `period = "1h"` is defined. | Allowed values: `"fixed"` or `"sliding"` | `period_window = "sliding"` |
 
 **Note:** Anonymous backends (inline backends without label) cannot define `rate_limit` block(s).
