@@ -50,7 +50,7 @@ type Backend struct {
 	logEntry            *logrus.Entry
 	name                string
 	openAPIValidator    *validation.OpenAPI
-	requestAuthorizer   RequestAuthorizer
+	requestAuthorizer   []RequestAuthorizer
 	transport           *http.Transport
 	transportConf       *Config
 	transportConfResult Config
@@ -63,7 +63,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	var (
 		healthCheck       *config.HealthCheck
 		openAPI           *validation.OpenAPI
-		requestAuthorizer RequestAuthorizer
+		requestAuthorizer []RequestAuthorizer
 	)
 
 	if opts != nil {
@@ -339,12 +339,18 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 
 	originalReq := req.Clone(req.Context())
 
-	// WithContext() instead of Clone() due to header-map modification.
-	return originalReq, b.requestAuthorizer.WithToken(req.WithContext(ctx))
+	for _, ra := range b.requestAuthorizer {
+		// WithContext() instead of Clone() due to header-map modification.
+		err := ra.WithToken(req.WithContext(ctx))
+		if err != nil {
+			return originalReq, err
+		}
+	}
+	return originalReq, nil
 }
 
 func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
-	if b.requestAuthorizer == nil {
+	if len(b.requestAuthorizer) == 0 {
 		return false, nil
 	}
 
@@ -353,7 +359,17 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 		return false, nil
 	}
 
-	return b.requestAuthorizer.RetryWithToken(req, res)
+	retry := false
+	for _, ra := range b.requestAuthorizer {
+		r, err := ra.RetryWithToken(req, res)
+		if err != nil {
+			return false, err
+		}
+		if r {
+			retry = true
+		}
+	}
+	return retry, nil
 }
 
 func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {

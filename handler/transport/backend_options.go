@@ -9,7 +9,7 @@ import (
 
 // BackendOptions represents the transport <BackendOptions> object.
 type BackendOptions struct {
-	RequestAuthz RequestAuthorizer
+	RequestAuthz []RequestAuthorizer
 	HealthCheck  *config.HealthCheck
 	OpenAPI      *validation.OpenAPIOptions
 }

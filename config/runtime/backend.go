@@ -97,19 +97,21 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent != nil {
 		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-			options.RequestAuthz, err = newOAuth2RequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
+			requestAuthz, err := newOAuth2RequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
+			options.RequestAuthz = append(options.RequestAuthz, requestAuthz)
 		}
 	}
 	tokenRequestContent, _, _ := backendCtx.PartialContent(config.TokenRequestBlockSchema)
 	if tokenRequestContent != nil {
 		if blocks := tokenRequestContent.Blocks.OfType("beta_token_request"); len(blocks) > 0 {
-			options.RequestAuthz, err = newTokenRequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
+			requestAuthz, err := newTokenRequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
+			options.RequestAuthz = append(options.RequestAuthz, requestAuthz)
 		}
 	}
 
