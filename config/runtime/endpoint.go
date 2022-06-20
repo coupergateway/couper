@@ -10,6 +10,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -193,9 +194,9 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 // newSequences lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
 func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
-	items ...*config.Sequence) (producer.Sequences, producer.Requests, producer.Proxies) {
+	items ...*sequence.Item) (producer.Sequences, producer.Requests, producer.Proxies) {
 
-	allDeps := config.SequenceDependencies(items)
+	allDeps := sequence.Dependencies(items)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
@@ -233,7 +234,7 @@ reqLeftovers:
 	return seqs, reqs, ps
 }
 
-func newSequence(seq *config.Sequence,
+func newSequence(seq *sequence.Item,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 

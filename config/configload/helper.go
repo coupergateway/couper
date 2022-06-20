@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
@@ -121,9 +122,9 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 	refs := make(map[string][]string)
 	h.collectBackendDeps(refs)
 	// built up deps
-	refPtr := map[string]*config.Sequence{}
+	refPtr := map[string]*sequence.Item{}
 	for name := range refs {
-		parent := &config.Sequence{Name: name}
+		parent := &sequence.Item{Name: name}
 		refPtr[name] = parent
 	}
 
@@ -133,20 +134,20 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 		}
 	}()
 
-	var defs config.Sequences
+	var defs sequence.List
 	for parent, ref := range refs {
 		for _, r := range ref {
 			p, _ := refPtr[parent]
 			if be, exist := refPtr[r]; exist {
 				p.Add(be)
 			} else {
-				p.Add(&config.Sequence{Name: r})
+				p.Add(&sequence.Item{Name: r})
 			}
 			defs = append(defs, p)
 		}
 	}
 
-	items := config.SequenceDependencies(defs)
+	items := sequence.Dependencies(defs)
 	//fmt.Printf("%v\n", items)
 
 	// do not forget the other ones

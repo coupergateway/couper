@@ -1,4 +1,4 @@
-package config
+package sequence
 
 import (
 	"testing"
@@ -8,20 +8,20 @@ import (
 
 func TestResolveSequence(t *testing.T) {
 
-	b := (&Sequence{Name: "b"}).Add(&Sequence{Name: "c"})
+	b := (&Item{Name: "b"}).Add(&Item{Name: "c"})
 
 	tests := []struct {
 		name        string
-		item        *Sequence
+		item        *Item
 		expResolved []string
 	}{
-		{name: "order A", item: (&Sequence{Name: "test"}).
-			Add((&Sequence{Name: "a"}).Add(b)).
+		{name: "order A", item: (&Item{Name: "test"}).
+			Add((&Item{Name: "a"}).Add(b)).
 			Add(b),
 			expResolved: []string{"c", "b", "a", "test"}},
-		{name: "order B", item: (&Sequence{Name: "test"}).
+		{name: "order B", item: (&Item{Name: "test"}).
 			Add(b).
-			Add((&Sequence{Name: "a"}).Add(b)),
+			Add((&Item{Name: "a"}).Add(b)),
 			expResolved: []string{"c", "b", "a", "test"}},
 	}
 	for _, tt := range tests {
