@@ -337,9 +337,15 @@ func (c *Context) updateBackendVariables(evalCtx *hcl.EvalContext, key string, c
 	}
 }
 
-func (c *Context) WithBackendToken(backendName, token string) *Context {
+func (c *Context) WithBackendToken(backendName, trName, token string) *Context {
+	tokenVal := cty.StringVal(token)
 	backends := make(ContextMap)
-	backends[backendName] = cty.ObjectVal(ContextMap{Token: cty.StringVal(token)})
+	tokens := make(ContextMap)
+	tokens[trName] = tokenVal
+	backends[backendName] = cty.ObjectVal(ContextMap{
+		Token:  tokenVal,
+		Tokens: cty.ObjectVal(tokens),
+	})
 	c.updateBackendVariables(c.eval, Backends, backends)
 	return c
 }

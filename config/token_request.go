@@ -14,13 +14,16 @@ var (
 var TokenRequestBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
 		{
-			Type: "beta_token_request",
+			Type:          "beta_token_request",
+			LabelNames:    []string{"name"},
+			LabelOptional: true,
 		},
 	},
 }
 
 type TokenRequest struct {
 	BackendName string   `hcl:"backend,optional"`
+	Name        string   `hcl:"name,label,optional"`
 	URL         string   `hcl:"url"`
 	Remain      hcl.Body `hcl:",remain"`
 

@@ -44,7 +44,7 @@ func (t *TokenRequest) WithToken(req *http.Request) error {
 	if token, terr := t.readToken(); terr != nil {
 		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(terr)
 	} else if token != "" {
-		ctx.WithBackendToken(t.authorizedBackendName, token)
+		ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 		return nil
 	}
 
@@ -58,7 +58,7 @@ func (t *TokenRequest) WithToken(req *http.Request) error {
 		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(terr)
 	} else if token != "" {
 		mutex.Unlock()
-		ctx.WithBackendToken(t.authorizedBackendName, token)
+		ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 		return nil
 	}
 
@@ -71,7 +71,7 @@ func (t *TokenRequest) WithToken(req *http.Request) error {
 	t.updateToken(token, ttl)
 	mutex.Unlock()
 
-	ctx.WithBackendToken(t.authorizedBackendName, token)
+	ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 	return nil
 }
 

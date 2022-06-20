@@ -27,6 +27,7 @@ const (
 	Query            = "query"
 	Token            = "token"
 	TokenResponse    = "token_response"
+	Tokens           = "tokens"
 	URL              = "url"
 	Origin           = "origin"
 	Protocol         = "protocol"

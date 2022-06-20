@@ -163,7 +163,11 @@ func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend
 func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
 	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 
-	trConfig := &config.TokenRequest{}
+	label := "default"
+	if len(blocks[0].Labels) > 0 {
+		label = blocks[0].Labels[0]
+	}
+	trConfig := &config.TokenRequest{Name: label}
 
 	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, trConfig); diags.HasErrors() {
 		return nil, diags
