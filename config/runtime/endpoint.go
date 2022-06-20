@@ -195,14 +195,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
 	items ...*config.Sequence) (producer.Sequences, producer.Requests, producer.Proxies) {
 
-	// just collect for filtering
-	var allDeps [][]string
-	for _, item := range items {
-		deps := make([]string, 0)
-		seen := make([]string, 0)
-		resolveSequence(item, &deps, &seen)
-		allDeps = append(allDeps, deps)
-	}
+	allDeps := config.SequenceDependencies(items)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
@@ -289,28 +282,4 @@ func newSequenceItem(name, previous string,
 			}}
 	}
 	return nil
-}
-
-func resolveSequence(item *config.Sequence, resolved, seen *[]string) {
-	name := item.Name
-	*seen = append(*seen, name)
-	for _, dep := range item.Deps() {
-		if !containsString(resolved, dep.Name) {
-			if !containsString(seen, dep.Name) {
-				resolveSequence(dep, resolved, seen)
-				continue
-			}
-		}
-	}
-
-	*resolved = append(*resolved, name)
-}
-
-func containsString(slice *[]string, needle string) bool {
-	for _, n := range *slice {
-		if n == needle {
-			return true
-		}
-	}
-	return false
 }

@@ -88,3 +88,38 @@ func (s *Sequence) hasSeen(name string) bool {
 
 	return false
 }
+
+func ResolveSequence(item *Sequence, resolved, seen *[]string) {
+	name := item.Name
+	*seen = append(*seen, name)
+	for _, dep := range item.Deps() {
+		if !containsString(resolved, dep.Name) {
+			if !containsString(seen, dep.Name) {
+				ResolveSequence(dep, resolved, seen)
+				continue
+			}
+		}
+	}
+
+	*resolved = append(*resolved, name)
+}
+
+// SequenceDependencies just collects the deps for filtering purposes.
+func SequenceDependencies(items Sequences) (allDeps [][]string) {
+	for _, item := range items {
+		deps := make([]string, 0)
+		seen := make([]string, 0)
+		ResolveSequence(item, &deps, &seen)
+		allDeps = append(allDeps, deps)
+	}
+	return allDeps
+}
+
+func containsString(slice *[]string, needle string) bool {
+	for _, n := range *slice {
+		if n == needle {
+			return true
+		}
+	}
+	return false
+}
