@@ -17,9 +17,9 @@ type Sequence struct {
 	seen      map[string]struct{}
 }
 
-func (s *Sequence) Add(ref *Sequence) {
+func (s *Sequence) Add(ref *Sequence) *Sequence {
 	if strings.TrimSpace(ref.Name) == "" {
-		return
+		return s
 	}
 
 	ref.parent = s
@@ -28,6 +28,10 @@ func (s *Sequence) Add(ref *Sequence) {
 		refs := []string{ref.Name}
 		p := s.parent
 		for p != s {
+			if p.parent == nil {
+				break
+			}
+			
 			p = p.parent
 			name := p.Name
 			deps := p.Deps()
@@ -48,6 +52,7 @@ func (s *Sequence) Add(ref *Sequence) {
 	}
 
 	s.deps = append(s.deps, ref)
+	return s
 }
 
 // Deps returns sequence dependency in reversed order since they have to be solved first.

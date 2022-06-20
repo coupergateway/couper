@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/eval/lib"
@@ -907,4 +908,19 @@ func TestOAuth2_Locking(t *testing.T) {
 			subT.Errorf("Unexpected response status: want %d, got: %d", http.StatusBadGateway, res.StatusCode)
 		}
 	})
+}
+
+func TestNestedBackendOauth2(t *testing.T) {
+	helper := test.New(t)
+	shutdown, hook := newCouperMultiFiles("testdata/oauth2/15_couper.hcl", "", helper)
+	defer shutdown()
+
+	time.Sleep(time.Second / 2)
+
+	logs := hook.AllEntries()
+	for _, log := range logs {
+		if log.Level == logrus.ErrorLevel {
+			t.Error(log.String())
+		}
+	}
 }
