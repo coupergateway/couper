@@ -120,20 +120,20 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
 	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 
-	beConf.OAuth2 = &config.OAuth2ReqAuth{}
+	oaConfig := &config.OAuth2ReqAuth{}
 
-	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, oaConfig); diags.HasErrors() {
 		return nil, diags
 	}
 
-	innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
+	innerContent, _, diags := oaConfig.Remain.PartialContent(oaConfig.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
 	backendBlocks := innerContent.Blocks.OfType("backend")
 	if len(backendBlocks) == 0 {
-		r := beConf.OAuth2.Remain.MissingItemRange()
+		r := oaConfig.Remain.MissingItemRange()
 		diag := &hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &r,
 			Summary: "missing backend initialization",
@@ -147,12 +147,12 @@ func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend
 	}
 
 	// Set default value
-	if beConf.OAuth2.Retries == nil {
+	if oaConfig.Retries == nil {
 		var one uint8 = 1
-		beConf.OAuth2.Retries = &one
+		oaConfig.Retries = &one
 	}
 
-	tr, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, authBackend)
+	tr, err := transport.NewOAuth2ReqAuth(oaConfig, memStore, authBackend)
 	if err != nil {
 		return nil, errors.Backend.Label(beConf.Name).With(err)
 	}
