@@ -117,7 +117,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// originalReq for token-request retry purposes
 	originalReq, err := b.withTokenRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.BetaBackendTokenRequest.Label(b.name).With(err)
 	}
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
@@ -217,7 +217,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
-		return beresp, rerr
+		return beresp, errors.BetaBackendTokenRequest.Label(b.name).With(rerr)
 	} else if retry {
 		return b.RoundTrip(originalReq)
 	}
