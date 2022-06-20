@@ -138,6 +138,10 @@ func (t *TokenRequest) requestToken(ctx *eval.Context) (string, int64, error) {
 	outCtx := context.WithValue(outreq.Context(), request.BufferOptions, eval.BufferResponse)
 	outreq = outreq.WithContext(outCtx)
 	resp, err := t.backend.RoundTrip(outreq)
+	if err != nil {
+		return "", 0, err
+	}
+
 	ctx = ctx.WithTokenresp(resp, true)
 	hclCtx = ctx.HCLContext()
 
