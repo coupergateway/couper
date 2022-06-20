@@ -106,8 +106,8 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 	tokenRequestContent, _, _ := backendCtx.PartialContent(config.TokenRequestBlockSchema)
 	if tokenRequestContent != nil {
-		if blocks := tokenRequestContent.Blocks.OfType("beta_token_request"); len(blocks) > 0 {
-			requestAuthz, err := newTokenRequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
+		for _, block := range tokenRequestContent.Blocks.OfType("beta_token_request") {
+			requestAuthz, err := newTokenRequestAuthorizer(evalCtx, beConf, block, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -162,16 +162,16 @@ func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend
 	return tr, nil
 }
 
-func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
+func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, block *hcl.Block, log *logrus.Entry,
 	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 
 	label := "default"
-	if len(blocks[0].Labels) > 0 {
-		label = blocks[0].Labels[0]
+	if len(block.Labels) > 0 {
+		label = block.Labels[0]
 	}
 	trConfig := &config.TokenRequest{Name: label}
 
-	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, trConfig); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, evalCtx, trConfig); diags.HasErrors() {
 		return nil, diags
 	}
 
