@@ -27,7 +27,7 @@ func TestResolveSequence(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
 			var resolved, seen []string
-			ResolveSequence(tt.item, &resolved, &seen)
+			resolveSequence(tt.item, &resolved, &seen)
 			if diff := cmp.Diff(tt.expResolved, resolved); diff != "" {
 				st.Errorf("\ngot:\t%#v\ndiff: %s\nseen:\t%#v", resolved, diff, seen)
 			}
