@@ -16,7 +16,8 @@ import (
 
 func TestMergeBodies(t *testing.T) {
 	type expectedBody struct {
-		OAuth2 *config.OAuth2ReqAuth `hcl:"oauth2,block"`
+		OAuth2  *config.OAuth2ReqAuth `hcl:"oauth2,block"`
+		Request *config.Request       `hcl:"request,block"`
 	}
 
 	type container struct {
@@ -36,6 +37,7 @@ func TestMergeBodies(t *testing.T) {
 	expectedAttributes := map[string]*hcl.Attribute{
 		"backend":    {Name: "backend", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("test")}},
 		"grant_type": {Name: "grant_type", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("no_creds")}},
+		"url":        {Name: "url", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://that")}},
 	}
 
 	var hclBodies []hcl.Body
@@ -55,11 +57,20 @@ block {
     grant_type     = "no_creds"
     token_endpoint = "http://this"
   }
+
+  request "label" {
+    url = "https://this"
+  }
 }
+
 block {
 
   oauth2 {
     token_endpoint = "http://that"
+  }
+
+  request "label" {
+    url = "https://that"
   }
 }`)
 
@@ -88,13 +99,33 @@ block {
 		t.Error(diags)
 	}
 
+	// after merge, we expect a single block with a body of type mergedBodies
+	if len(content.Blocks.OfType("oauth2")) != 1 {
+		t.Error("expected just one merged oauth2 block")
+	}
 	oauthBlockContent := content.Blocks.OfType("oauth2")[0]
 	resultAttributes, diags := oauthBlockContent.Body.JustAttributes()
 	if diags.HasErrors() {
 		t.Error(diags)
 	}
 
+	// same applies to labeld ones, after merge, we expect a single block with a body of type mergedBodies
+	if len(content.Blocks.OfType("request")) != 1 {
+		t.Error("expected just one merged request block")
+	}
+
+	requestBlockContent := content.Blocks.OfType("request")[0]
+	requestBlockAttrs, diags := requestBlockContent.Body.JustAttributes()
+	if diags.HasErrors() {
+		t.Error(diags)
+	}
+	// caution; block attrs must differ (unique attribute names)
+	for k, v := range requestBlockAttrs {
+		resultAttributes[k] = v
+	}
+
 	hclcontext := eval.NewContext(nil, nil).HCLContext()
+
 	for k, attr := range expectedAttributes {
 		a, exist := resultAttributes[k]
 		if !exist {

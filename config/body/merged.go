@@ -5,6 +5,8 @@ package body
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -175,8 +177,23 @@ func (mb MergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 		if len(thisContent.Blocks) != 0 {
 			for _, thisContentBlock := range thisContent.Blocks {
 				if len(thisContentBlock.Labels) > 0 {
-					content.Blocks = append(content.Blocks, thisContentBlock)
-					continue
+					refs := content.Blocks.OfType(thisContentBlock.Type)
+					var mergeLabeled bool
+					if len(refs) > 0 {
+						thatLabels := refs[0].Labels[:]
+						sort.Strings(thatLabels)
+						thisLabels := thisContentBlock.Labels[:]
+						sort.Strings(thisLabels)
+
+						if strings.Join(thatLabels, "") == strings.Join(thisLabels, "") {
+							mergeLabeled = true
+						}
+					}
+
+					if !mergeLabeled {
+						content.Blocks = append(content.Blocks, thisContentBlock)
+						continue
+					}
 				}
 				// assume a block definition without a label could not exist twice. Merge attrs.
 				var contentBlockType string
