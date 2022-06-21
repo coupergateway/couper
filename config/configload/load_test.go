@@ -155,3 +155,97 @@ func TestHealthCheck(t *testing.T) {
 		})
 	}
 }
+
+func TestEndpointPaths(t *testing.T) {
+	tests := []struct {
+		name       string
+		serverBase string
+		apiBase    string
+		endpoint   string
+		expected   string
+	}{
+		{"only /", "", "", "/", "/"},
+		{"missing /", "", "", "path", "/path"},
+		{"simple path", "", "", "/pa/th", "/pa/th"},
+		{"trailing /", "", "", "/pa/th/", "/pa/th/"},
+		{"double /", "", "", "//", "//"},
+		{"double /", "", "", "//path", "//path"},
+		{"double /", "", "", "/pa//th", "/pa//th"},
+		{"/./", "", "", "/./", "/./"},
+		{"/../", "", "", "/../", "/../"},
+
+		{"param", "", "", "/{param}", "/{param}"},
+
+		{"server base_path /", "/", "", "/", "/"},
+		{"server base_path /", "/", "", "/path", "/path"},
+		{"server base_path /", "/", "", "pa/th", "/pa/th"},
+		{"server base_path /", "/", "", "pa/th/", "/pa/th/"},
+		{"server base_path", "/server", "", "/path", "/server/path"},
+		{"server base_path with / endpoint", "/server", "", "/", "/server"},
+		{"server base_path missing /", "server", "", "/path", "/server/path"},
+		{"server base_path trailing /", "/server/", "", "/path", "/server/path"},
+		{"server base_path double /", "/server", "", "//path", "/server//path"},
+		{"server base_path trailing + double /", "/server/", "", "//path", "/server//path"},
+
+		{"api base_path /", "", "/", "/", "/"},
+		{"api base_path /", "", "/", "/path", "/path"},
+		{"api base_path /", "", "/", "pa/th", "/pa/th"},
+		{"api base_path /", "", "/", "pa/th/", "/pa/th/"},
+		{"api base_path", "", "/api", "/path", "/api/path"},
+		{"api base_path with / endpoint", "", "/api", "/", "/api"},
+		{"api base_path missing /", "", "api", "/path", "/api/path"},
+		{"api base_path trailing /", "", "/api/", "/path", "/api/path"},
+		{"api base_path double /", "", "/api", "//path", "/api//path"},
+		{"api base_path trailing + double /", "/api/", "", "//path", "/api//path"},
+
+		{"server + api base_path /", "/", "/", "/", "/"},
+		{"server + api base_path", "/server", "/api", "/", "/server/api"},
+		{"server + api base_path", "/server", "/api", "/path", "/server/api/path"},
+		{"server + api base_path missing /", "server", "api", "/", "/server/api"},
+	}
+
+	logger, _ := test.NewLogger()
+	log := logger.WithContext(context.TODO())
+
+	template := `
+		server {
+		  base_path = "%s"
+		  api {
+		    base_path = "%s"
+		    endpoint "%s" {
+		      response {}
+		    }
+		  }
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			configBytes := []byte(fmt.Sprintf(template, tt.serverBase, tt.apiBase, tt.endpoint))
+			config, err := configload.LoadBytes(configBytes, "couper.hcl")
+
+			closeCh := make(chan struct{})
+			defer close(closeCh)
+			memStore := cache.New(log, closeCh)
+
+			var serverConfig runtime.ServerConfiguration
+			if err == nil {
+				serverConfig, err = runtime.NewServerConfiguration(config, log, memStore)
+			}
+
+			if err != nil {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: <nil>\n\tGot:  %q", tt.name, err)
+				return
+			}
+
+			var pattern string
+			for key := range serverConfig[8080]["*"].EndpointRoutes {
+				pattern = key
+				break
+			}
+
+			if pattern != tt.expected {
+				subT.Errorf("%q: Unexpected endpoint path:\n\tWant: %q\n\tGot:  %q", tt.name, tt.expected, pattern)
+			}
+		})
+	}
+}

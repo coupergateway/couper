@@ -84,11 +84,11 @@ func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, erro
 			options.FilesErrTpls[i] = tpl
 		}
 
-		options.FilesBasePaths[i] = utils.JoinPath(options.SrvBasePath, f.BasePath)
+		options.FilesBasePaths[i] = utils.JoinOpenAPIPath(options.SrvBasePath, f.BasePath)
 	}
 
 	for _, s := range conf.SPAs {
-		options.SPABasePaths = append(options.SPABasePaths, utils.JoinPath(options.SrvBasePath, s.BasePath))
+		options.SPABasePaths = append(options.SPABasePaths, utils.JoinOpenAPIPath(options.SrvBasePath, s.BasePath))
 	}
 
 	return options, nil

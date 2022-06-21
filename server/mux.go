@@ -56,7 +56,7 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	}
 
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, utils.JoinPath(path, "/**"), h, false)
+		mux.mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), h, false)
 	}
 
 	for path, h := range opts.SPARoutes {
