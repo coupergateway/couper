@@ -16,8 +16,9 @@ import (
 
 func TestMergeBodies(t *testing.T) {
 	type expectedBody struct {
-		OAuth2  *config.OAuth2ReqAuth `hcl:"oauth2,block"`
-		Request *config.Request       `hcl:"request,block"`
+		OAuth2       *config.OAuth2ReqAuth `hcl:"oauth2,block"`
+		Request      *config.Request       `hcl:"request,block"`
+		TokenRequest *config.Request       `hcl:"token_request,block"`
 	}
 
 	type container struct {
@@ -38,6 +39,8 @@ func TestMergeBodies(t *testing.T) {
 		"backend":    {Name: "backend", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("test")}},
 		"grant_type": {Name: "grant_type", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("no_creds")}},
 		"url":        {Name: "url", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://that")}},
+		"attr1":      {Name: "attr1", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://bar")}},
+		"attr2":      {Name: "attr2", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://the-force")}},
 	}
 
 	var hclBodies []hcl.Body
@@ -61,6 +64,14 @@ block {
   request "label" {
     url = "https://this"
   }
+
+  request "default" {
+    attr1 = "https://foo"
+  }
+
+  token_request "default" {
+    attr2 = "https://may-"
+  }
 }
 
 block {
@@ -71,6 +82,14 @@ block {
 
   request "label" {
     url = "https://that"
+  }
+
+  request "default" {
+    attr1 = "https://bar"
+  }
+
+  token_request "default" {
+    attr2 = "https://the-force"
   }
 }`)
 
@@ -110,18 +129,23 @@ block {
 	}
 
 	// same applies to labeld ones, after merge, we expect a single block with a body of type mergedBodies
-	if len(content.Blocks.OfType("request")) != 1 {
-		t.Error("expected just one merged request block")
+	if len(content.Blocks.OfType("token_request")) != 1 {
+		t.Error("expected just one merged token_request block")
+	}
+	if len(content.Blocks.OfType("request")) != 2 {
+		t.Error("expected just two merged request block")
 	}
 
-	requestBlockContent := content.Blocks.OfType("request")[0]
-	requestBlockAttrs, diags := requestBlockContent.Body.JustAttributes()
-	if diags.HasErrors() {
-		t.Error(diags)
-	}
-	// caution; block attrs must differ (unique attribute names)
-	for k, v := range requestBlockAttrs {
-		resultAttributes[k] = v
+	for _, requestBlockContent := range append(content.Blocks.OfType("request"),
+		content.Blocks.OfType("token_request")...) {
+		requestBlockAttrs, diags := requestBlockContent.Body.JustAttributes()
+		if diags.HasErrors() {
+			t.Error(diags)
+		}
+		// caution; block attrs must differ (unique attribute names)
+		for k, v := range requestBlockAttrs {
+			resultAttributes[k] = v
+		}
 	}
 
 	hclcontext := eval.NewContext(nil, nil).HCLContext()

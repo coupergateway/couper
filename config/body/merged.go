@@ -176,30 +176,15 @@ func (mb MergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 
 		if len(thisContent.Blocks) != 0 {
 			for _, thisContentBlock := range thisContent.Blocks {
-				if len(thisContentBlock.Labels) > 0 {
-					refs := content.Blocks.OfType(thisContentBlock.Type)
-					var mergeLabeled bool
-					if len(refs) > 0 {
-						thatLabels := refs[0].Labels[:]
-						sort.Strings(thatLabels)
-						thisLabels := thisContentBlock.Labels[:]
-						sort.Strings(thisLabels)
-
-						if strings.Join(thatLabels, "") == strings.Join(thisLabels, "") {
-							mergeLabeled = true
-						}
-					}
-
-					if !mergeLabeled {
-						content.Blocks = append(content.Blocks, thisContentBlock)
-						continue
-					}
-				}
-				// assume a block definition without a label could not exist twice. Merge attrs.
+				// Merge blocks keyed by type and labels.
 				var contentBlockType string
 				var idx = 0
 				for i, contentBlock := range content.Blocks {
 					if contentBlock.Type == thisContentBlock.Type {
+						if !stringSliceEquals(contentBlock.Labels, thisContentBlock.Labels) {
+							continue
+						}
+
 						contentBlockType = contentBlock.Type
 						idx = i
 						break
@@ -304,4 +289,19 @@ func mergeAttributes(left, right hcl.Attributes) (diags hcl.Diagnostics) {
 		left[name] = attr
 	}
 	return diags
+}
+
+func stringSliceEquals(left, right []string) bool {
+	if left == nil {
+		return right == nil
+	} else if right == nil {
+		return left == nil
+	}
+
+	thatLabels := left[:]
+	sort.Strings(thatLabels)
+	thisLabels := right[:]
+	sort.Strings(thisLabels)
+
+	return strings.Join(thatLabels, "") == strings.Join(thisLabels, "")
 }
