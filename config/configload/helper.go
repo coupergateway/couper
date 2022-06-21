@@ -116,7 +116,7 @@ func (h *helper) configureACBackends() error {
 	return nil
 }
 
-// resolveBackendDeps returns defined backends ordered by reference. Referenced ones needs to configured first.
+// resolveBackendDeps returns defined backends ordered by reference. Referenced ones need to be configured first.
 func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 	// collect referenced backends
 	refs := make(map[string][]string)
@@ -148,7 +148,6 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 	}
 
 	items := sequence.Dependencies(defs)
-	//fmt.Printf("%v\n", items)
 
 	// do not forget the other ones
 	var standalone []string
@@ -170,7 +169,6 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 		}
 	}
 
-	//fmt.Printf("%v\n", uniqueItems)
 	return uniqueItems, err
 }
 
