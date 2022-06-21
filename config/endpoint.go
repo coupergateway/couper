@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/sequence"
 )
 
 var _ Inline = &Endpoint{}
@@ -25,7 +26,7 @@ type Endpoint struct {
 	Proxies            Proxies
 	Requests           Requests
 	RequiredPermission hcl.Expression
-	Sequences          Sequences
+	Sequences          sequence.List
 }
 
 // Endpoints represents a list of <Endpoint> objects.

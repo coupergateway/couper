@@ -10,6 +10,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -193,16 +194,9 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 // newSequences lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
 func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
-	items ...*config.Sequence) (producer.Sequences, producer.Requests, producer.Proxies) {
+	items ...*sequence.Item) (producer.Sequences, producer.Requests, producer.Proxies) {
 
-	// just collect for filtering
-	var allDeps [][]string
-	for _, item := range items {
-		deps := make([]string, 0)
-		seen := make([]string, 0)
-		resolveSequence(item, &deps, &seen)
-		allDeps = append(allDeps, deps)
-	}
+	allDeps := sequence.Dependencies(items)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
@@ -240,7 +234,7 @@ reqLeftovers:
 	return seqs, reqs, ps
 }
 
-func newSequence(seq *config.Sequence,
+func newSequence(seq *sequence.Item,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 
@@ -289,28 +283,4 @@ func newSequenceItem(name, previous string,
 			}}
 	}
 	return nil
-}
-
-func resolveSequence(item *config.Sequence, resolved, seen *[]string) {
-	name := item.Name
-	*seen = append(*seen, name)
-	for _, dep := range item.Deps() {
-		if !containsString(resolved, dep.Name) {
-			if !containsString(seen, dep.Name) {
-				resolveSequence(dep, resolved, seen)
-				continue
-			}
-		}
-	}
-
-	*resolved = append(*resolved, name)
-}
-
-func containsString(slice *[]string, needle string) bool {
-	for _, n := range *slice {
-		if n == needle {
-			return true
-		}
-	}
-	return false
 }

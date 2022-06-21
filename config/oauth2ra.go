@@ -36,17 +36,17 @@ type OAuth2ReqAuth struct {
 }
 
 // Reference implements the <BackendReference> interface.
-func (oa OAuth2ReqAuth) Reference() string {
+func (oa *OAuth2ReqAuth) Reference() string {
 	return oa.BackendName
 }
 
 // HCLBody implements the <Inline> interface.
-func (oa OAuth2ReqAuth) HCLBody() hcl.Body {
+func (oa *OAuth2ReqAuth) HCLBody() hcl.Body {
 	return oa.Remain
 }
 
 // Inline implements the <Inline> interface.
-func (oa OAuth2ReqAuth) Inline() interface{} {
+func (oa *OAuth2ReqAuth) Inline() interface{} {
 	type Inline struct {
 		Backend *Backend `hcl:"backend,block"`
 	}
@@ -55,7 +55,7 @@ func (oa OAuth2ReqAuth) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (oa OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
+func (oa *OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(oa)
 		return schema
@@ -78,25 +78,25 @@ func SchemaWithOAuth2RA(schema *hcl.BodySchema) *hcl.BodySchema {
 	return schema
 }
 
-func (oa OAuth2ReqAuth) GetClientID() string {
+func (oa *OAuth2ReqAuth) GetClientID() string {
 	return oa.ClientID
 }
 
-func (oa OAuth2ReqAuth) GetClientSecret() string {
+func (oa *OAuth2ReqAuth) GetClientSecret() string {
 	return oa.ClientSecret
 }
 
-func (oa OAuth2ReqAuth) GetScope() string {
+func (oa *OAuth2ReqAuth) GetScope() string {
 	if oa.Scope == nil {
 		return ""
 	}
 	return *oa.Scope
 }
 
-func (oa OAuth2ReqAuth) GetTokenEndpoint() (string, error) {
+func (oa *OAuth2ReqAuth) GetTokenEndpoint() (string, error) {
 	return oa.TokenEndpoint, nil
 }
 
-func (oa OAuth2ReqAuth) GetTokenEndpointAuthMethod() *string {
+func (oa *OAuth2ReqAuth) GetTokenEndpointAuthMethod() *string {
 	return oa.TokenEndpointAuthMethod
 }

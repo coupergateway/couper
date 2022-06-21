@@ -1,4 +1,4 @@
-package config
+package sequence
 
 import (
 	"fmt"
@@ -7,19 +7,19 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-type Sequences []*Sequence
+type List []*Item
 
-type Sequence struct {
+type Item struct {
 	BodyRange *hcl.Range
 	Name      string
-	deps      Sequences
-	parent    *Sequence
+	deps      List
+	parent    *Item
 	seen      map[string]struct{}
 }
 
-func (s *Sequence) Add(ref *Sequence) {
+func (s *Item) Add(ref *Item) *Item {
 	if strings.TrimSpace(ref.Name) == "" {
-		return
+		return s
 	}
 
 	ref.parent = s
@@ -28,6 +28,10 @@ func (s *Sequence) Add(ref *Sequence) {
 		refs := []string{ref.Name}
 		p := s.parent
 		for p != s {
+			if p.parent == nil {
+				break
+			}
+
 			p = p.parent
 			name := p.Name
 			deps := p.Deps()
@@ -48,26 +52,27 @@ func (s *Sequence) Add(ref *Sequence) {
 	}
 
 	s.deps = append(s.deps, ref)
+	return s
 }
 
 // Deps returns sequence dependency in reversed order since they have to be solved first.
-func (s *Sequence) Deps() Sequences {
+func (s *Item) Deps() List {
 	if len(s.deps) < 2 {
 		return s.deps
 	}
 
-	var revert Sequences
+	var revert List
 	for i := len(s.deps); i > 0; i-- {
 		revert = append(revert, s.deps[i-1])
 	}
 	return revert
 }
 
-func (s *Sequence) HasParent() bool {
+func (s *Item) HasParent() bool {
 	return s != nil && s.parent != nil
 }
 
-func (s *Sequence) hasSeen(name string) bool {
+func (s *Item) hasSeen(name string) bool {
 	if s == nil {
 		return false
 	}
@@ -86,5 +91,40 @@ func (s *Sequence) hasSeen(name string) bool {
 		return true
 	}
 
+	return false
+}
+
+func resolveSequence(item *Item, resolved, seen *[]string) {
+	name := item.Name
+	*seen = append(*seen, name)
+	for _, dep := range item.Deps() {
+		if !containsString(resolved, dep.Name) {
+			if !containsString(seen, dep.Name) {
+				resolveSequence(dep, resolved, seen)
+				continue
+			}
+		}
+	}
+
+	*resolved = append(*resolved, name)
+}
+
+// Dependencies just collects the deps for filtering purposes.
+func Dependencies(items List) (allDeps [][]string) {
+	for _, item := range items {
+		deps := make([]string, 0)
+		seen := make([]string, 0)
+		resolveSequence(item, &deps, &seen)
+		allDeps = append(allDeps, deps)
+	}
+	return allDeps
+}
+
+func containsString(slice *[]string, needle string) bool {
+	for _, n := range *slice {
+		if n == needle {
+			return true
+		}
+	}
 	return false
 }
