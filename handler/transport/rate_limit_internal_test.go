@@ -1,4 +1,4 @@
-package runtime
+package transport
 
 import (
 	"context"
@@ -75,7 +75,7 @@ func TestRateLimits_Errors(t *testing.T) {
 			`unsupported 'period_window' ("test") given`,
 		},
 	} {
-		_, err := configureRateLimits(context.TODO(), tc.configured, nil)
+		_, err := ConfigureRateLimits(context.TODO(), tc.configured, nil)
 		if err == nil {
 			t.Fatal("Missing error")
 		}

@@ -1,4 +1,4 @@
-package runtime
+package transport
 
 import (
 	"context"
@@ -82,7 +82,7 @@ func (rl *RateLimit) gc(interval time.Duration) {
 	}
 }
 
-func configureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
+func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
 	var (
 		rateLimits RateLimits
 		window     int

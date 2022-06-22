@@ -63,12 +63,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		beConf.Name = name
 	}
 
-	if len(beConf.RateLimits) > 0 {
-		if strings.HasPrefix(beConf.Name, "anonymous_") {
-			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'rate_limit' block(s)", beConf.Name)
-		}
-	}
-
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
 		Certificate:            conf.Settings.Certificate,
@@ -77,6 +71,18 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         conf.Settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
+	}
+
+	if len(beConf.RateLimits) > 0 {
+		if strings.HasPrefix(beConf.Name, "anonymous_") {
+			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'rate_limit' block(s)", beConf.Name)
+		}
+
+		rateLimits, err := transport.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
+		if err != nil {
+			return nil, err
+		}
+		tc.RateLimits = rateLimits
 	}
 
 	options := &transport.BackendOptions{}

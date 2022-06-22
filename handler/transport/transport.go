@@ -30,6 +30,7 @@ type Config struct {
 	MaxConnections         int
 	NoProxyFromEnv         bool
 	Proxy                  string
+	RateLimits             RateLimits
 
 	ConnectTimeout time.Duration
 	TTFBTimeout    time.Duration
