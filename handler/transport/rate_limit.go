@@ -34,54 +34,6 @@ type RateLimit struct {
 
 type RateLimits []*RateLimit
 
-func (rl *RateLimit) gc(interval time.Duration) {
-	ticker := time.NewTicker(interval)
-
-	defer func() {
-		if rc := recover(); rc != nil {
-			rl.logger.WithField("panic", string(debug.Stack())).Panic(rc)
-		}
-
-		ticker.Stop()
-	}()
-
-	for {
-		select {
-		case <-rl.quitCh:
-			return
-		case now := <-ticker.C:
-			rl.mu.Lock()
-
-			switch rl.window {
-			case windowFixed:
-				for !rl.periodEnd.After(now) {
-					rl.periodStart = rl.periodEnd.Add(interval)
-					rl.periodEnd = rl.periodStart.Add(rl.period)
-					rl.counter = []time.Time{}
-				}
-			case windowSliding:
-				rl.periodEnd = now
-
-				if rl.periodEnd.Sub(rl.periodStart) > rl.period {
-					rl.periodStart = rl.periodEnd.Add(-1 * rl.period)
-				}
-
-				for _, t := range rl.counter {
-					if t.Before(rl.periodStart) {
-						rl.counter = rl.counter[1:]
-
-						continue
-					}
-
-					break
-				}
-			}
-
-			rl.mu.Unlock()
-		}
-	}
-}
-
 func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
 	var (
 		rateLimits RateLimits
@@ -154,4 +106,52 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 	})
 
 	return rateLimits, nil
+}
+
+func (rl *RateLimit) gc(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+
+	defer func() {
+		if rc := recover(); rc != nil {
+			rl.logger.WithField("panic", string(debug.Stack())).Panic(rc)
+		}
+
+		ticker.Stop()
+	}()
+
+	for {
+		select {
+		case <-rl.quitCh:
+			return
+		case now := <-ticker.C:
+			rl.mu.Lock()
+
+			switch rl.window {
+			case windowFixed:
+				for !rl.periodEnd.After(now) {
+					rl.periodStart = rl.periodEnd.Add(interval)
+					rl.periodEnd = rl.periodStart.Add(rl.period)
+					rl.counter = []time.Time{}
+				}
+			case windowSliding:
+				rl.periodEnd = now
+
+				if rl.periodEnd.Sub(rl.periodStart) > rl.period {
+					rl.periodStart = rl.periodEnd.Add(-1 * rl.period)
+				}
+
+				for _, t := range rl.counter {
+					if t.Before(rl.periodStart) {
+						rl.counter = rl.counter[1:]
+
+						continue
+					}
+
+					break
+				}
+			}
+
+			rl.mu.Unlock()
+		}
+	}
 }
