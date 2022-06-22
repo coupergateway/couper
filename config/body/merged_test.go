@@ -184,9 +184,14 @@ func Test_stringSliceEquals(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"join glue #1", args{[]string{"a", "ab"}, []string{"aa", "b"}}, false},
-		{"join glue #2", args{[]string{"aa", "ab"}, []string{"aa", "bb"}}, false},
-		{"join", args{[]string{"aa", "bb"}, []string{"aa", "bb"}}, true},
+		{"join glue", args{[]string{"a", "ab"}, []string{"aa", "b"}}, false},
+		{"join", args{[]string{"aa", "bb"}, []string{"bb", "aa"}}, true},
+		{"join", args{[]string{"aa", "bb"}, nil}, false},
+		{"join", args{nil, []string{"aa", "bb"}}, false},
+		{"join", args{nil, nil}, true},
+		{"join", args{[]string{""}, []string{"", ""}}, false},
+		{"join", args{[]string{"", ""}, []string{"", ""}}, true},
+		{"join", args{[]string{""}, []string{""}}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
