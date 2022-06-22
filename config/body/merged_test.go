@@ -36,11 +36,12 @@ func TestMergeBodies(t *testing.T) {
 	}}
 
 	expectedAttributes := map[string]*hcl.Attribute{
-		"backend":    {Name: "backend", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("test")}},
-		"grant_type": {Name: "grant_type", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("no_creds")}},
-		"url":        {Name: "url", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://that")}},
-		"attr1":      {Name: "attr1", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://bar")}},
-		"attr2":      {Name: "attr2", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://the-force")}},
+		"backend":        {Name: "backend", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("test")}},
+		"grant_type":     {Name: "grant_type", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("no_creds")}},
+		"token_endpoint": {Name: "token_endpoint", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("http://that")}},
+		"url":            {Name: "url", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://that")}},
+		"attr1":          {Name: "attr1", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://bar")}},
+		"attr2":          {Name: "attr2", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("https://the-force")}},
 	}
 
 	var hclBodies []hcl.Body
@@ -128,12 +129,12 @@ block {
 		t.Error(diags)
 	}
 
-	// same applies to labeld ones, after merge, we expect a single block with a body of type mergedBodies
+	// same applies to labeled ones, after merge, we expect a single block with a body of type mergedBodies
 	if len(content.Blocks.OfType("token_request")) != 1 {
-		t.Error("expected just one merged token_request block")
+		t.Error("expected one merged token_request block")
 	}
 	if len(content.Blocks.OfType("request")) != 2 {
-		t.Error("expected just two merged request block")
+		t.Error("expected two merged request blocks")
 	}
 
 	for _, requestBlockContent := range append(content.Blocks.OfType("request"),
