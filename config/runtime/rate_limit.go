@@ -55,7 +55,7 @@ func (rl *RateLimit) gc(interval time.Duration) {
 			switch rl.window {
 			case windowFixed:
 				for !rl.periodEnd.After(now) {
-					rl.periodStart = rl.periodEnd.Add(1 * interval)
+					rl.periodStart = rl.periodEnd.Add(interval)
 					rl.periodEnd = rl.periodStart.Add(rl.period)
 					rl.counter = []time.Time{}
 				}
