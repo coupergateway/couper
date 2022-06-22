@@ -56,6 +56,7 @@ func realmain(ctx context.Context, arguments []string) int {
 		DebugEndpoint       bool          `env:"debug"`
 		FilePath            string        `env:"file"`
 		DirPath             string        `env:"file_directory"`
+		Environment         string        `env:"environment"`
 		FileWatch           bool          `env:"watch"`
 		FileWatchRetryDelay time.Duration `env:"watch_retry_delay"`
 		FileWatchRetries    int           `env:"watch_retries"`
@@ -69,6 +70,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
 	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")
 	set.Var(&filesList, "d", "-d /path/to/couper.d/ ...")
+	set.StringVar(&flags.Environment, "e", "", "-e stage")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
@@ -117,19 +119,23 @@ func realmain(ctx context.Context, arguments []string) int {
 		}
 	}
 
-	if cmd == "verify" {
-		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
+	log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
 
-		err = command.NewCommand(ctx, cmd).Execute(filesList.paths, nil, log)
+	if flags.Environment != "" {
+		log.Info(`couper uses "` + flags.Environment + `" environment`)
+	}
+
+	if cmd == "verify" {
+		err = command.NewCommand(ctx, cmd).Execute(filesList.paths, &config.Couper{Environment: flags.Environment}, log)
 		if err != nil {
 			return 1
 		}
 		return 0
 	}
 
-	confFile, err := configload.LoadFiles(filesList.paths)
+	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment)
 	if err != nil {
-		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
+		log.WithError(err).Error()
 		return 1
 	}
 
@@ -210,7 +216,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFiles(filesList.paths)
+			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
