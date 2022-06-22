@@ -109,12 +109,14 @@ func TestRateLimits_GC_Sliding(t *testing.T) {
 
 	go rateLimit.gc(time.Second)
 
-	time.Sleep(1500 * time.Millisecond)
+	time.Sleep(1100 * time.Millisecond)
 	chancel()
 
+	rateLimit.mu.Lock()
 	if l := len(rateLimit.counter); l != 3 {
 		t.Errorf("exp: 3\ngot: %d", l)
 	}
+	rateLimit.mu.Unlock()
 }
 
 func TestRateLimits_GC_Fixed(t *testing.T) {
@@ -140,10 +142,12 @@ func TestRateLimits_GC_Fixed(t *testing.T) {
 
 	go rateLimit.gc(time.Second)
 
-	time.Sleep(1500 * time.Millisecond)
+	time.Sleep(1100 * time.Millisecond)
 	chancel()
 
+	rateLimit.mu.Lock()
 	if l := len(rateLimit.counter); l != 0 {
 		t.Errorf("exp: 0\ngot: %d", l)
 	}
+	rateLimit.mu.Unlock()
 }
