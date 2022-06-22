@@ -173,3 +173,26 @@ block {
 		}
 	}
 }
+
+func Test_stringSliceEquals(t *testing.T) {
+	type args struct {
+		left  []string
+		right []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"join glue #1", args{[]string{"a", "ab"}, []string{"aa", "b"}}, false},
+		{"join glue #2", args{[]string{"aa", "ab"}, []string{"aa", "bb"}}, false},
+		{"join", args{[]string{"aa", "bb"}, []string{"aa", "bb"}}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := body.StringSliceEquals(tt.args.left, tt.args.right); got != tt.want {
+				t.Errorf("StringSliceEquals() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

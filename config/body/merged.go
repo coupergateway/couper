@@ -181,7 +181,7 @@ func (mb MergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 				var idx = 0
 				for i, contentBlock := range content.Blocks {
 					if contentBlock.Type == thisContentBlock.Type {
-						if !stringSliceEquals(contentBlock.Labels, thisContentBlock.Labels) {
+						if !StringSliceEquals(contentBlock.Labels, thisContentBlock.Labels) {
 							continue
 						}
 
@@ -291,7 +291,8 @@ func mergeAttributes(left, right hcl.Attributes) (diags hcl.Diagnostics) {
 	return diags
 }
 
-func stringSliceEquals(left, right []string) bool {
+func StringSliceEquals(left, right []string) bool {
+	const sep = "🍫"
 	if left == nil {
 		return right == nil
 	} else if right == nil {
@@ -302,6 +303,5 @@ func stringSliceEquals(left, right []string) bool {
 	sort.Strings(thatLabels)
 	thisLabels := right[:]
 	sort.Strings(thisLabels)
-
-	return strings.Join(thatLabels, "") == strings.Join(thisLabels, "")
+	return strings.Join(thatLabels, sep) == strings.Join(thisLabels, sep)
 }
