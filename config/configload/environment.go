@@ -1,7 +1,6 @@
 package configload
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
@@ -28,13 +27,7 @@ func preprocessBody(parent *hclsyntax.Body, env string) error {
 		if len(block.Labels) == 0 {
 			defRange := block.DefRange()
 
-			return hcl.Diagnostics{
-				&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Missing label(s) for 'environment' block",
-					Subject:  &defRange,
-				},
-			}
+			return newDiagErr(&defRange, "Missing label(s) for 'environment' block")
 		}
 
 		for _, label := range block.Labels {
