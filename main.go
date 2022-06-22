@@ -119,9 +119,13 @@ func realmain(ctx context.Context, arguments []string) int {
 		}
 	}
 
-	if cmd == "verify" {
-		log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
+	log := newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty)
 
+	if flags.Environment != "" {
+		log.Info(`couper uses "` + flags.Environment + `" environment`)
+	}
+
+	if cmd == "verify" {
 		err = command.NewCommand(ctx, cmd).Execute(filesList.paths, &config.Couper{Environment: flags.Environment}, log)
 		if err != nil {
 			return 1
@@ -131,7 +135,7 @@ func realmain(ctx context.Context, arguments []string) int {
 
 	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment)
 	if err != nil {
-		newLogger(flags.LogFormat, flags.LogLevel, flags.LogPretty).WithError(err).Error()
+		log.WithError(err).Error()
 		return 1
 	}
 
