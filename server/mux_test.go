@@ -31,6 +31,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"/{b}/a":                noContent,
 			"/{section}/{project}":  noContent,
 			"/project/{project}/**": noContent,
+			"/w/c/{param}/**":       noContent,
 		},
 		FileRoutes: map[string]http.Handler{
 			"/htdocs/test.html": noContent,
@@ -59,13 +60,18 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 		{" /w 1st path param #2", newReq("/c/a"), noContent, request.PathParameter{
 			"b": "c",
 		}, ""},
+		{" w/o 1nd path param", newReq("//a"), http.NotFoundHandler(), nil, ""},
 		{" /w 2nd path param", newReq("/a/c"), noContent, request.PathParameter{
 			"b": "c",
 		}, ""},
+		{" w/o 2nd path param", newReq("/a"), http.NotFoundHandler(), nil, ""},
+		{" w/o 2nd path param", newReq("/a/"), http.NotFoundHandler(), nil, ""},
+		{" w/o 2nd path param", newReq("/a//"), http.NotFoundHandler(), nil, ""},
 		{" /w two path param", newReq("/foo/bar"), noContent, request.PathParameter{
 			"section": "foo",
 			"project": "bar",
 		}, ""},
+		{" w/o two path params", newReq("//"), http.NotFoundHandler(), nil, ""},
 		{" /w path param and expWildcard", newReq("/project/foo/bar/ha"), noContent, request.PathParameter{
 			"project": "foo",
 		}, "bar/ha"},
@@ -74,6 +80,20 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"section": "htdocs",
 			"project": "test.html",
 		}, ""},
+		{" w/ path param and wildcard", newReq("/w/c/my-param/wild/ca/rd"), noContent, request.PathParameter{
+			"param": "my-param",
+		}, "wild/ca/rd"},
+		{" w/ path param, w/o wildcard", newReq("/w/c/my-param"), noContent, request.PathParameter{
+			"param": "my-param",
+		}, ""},
+		{" w/ path param, trailing /, w/o wildcard", newReq("/w/c/my-param/"), noContent, request.PathParameter{
+			"param": "my-param",
+		}, ""},
+		{" w/o path param, w/ wildcard", newReq("/w/c//wild/card"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard", newReq("/w/c"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard", newReq("/w/c/"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard", newReq("/w/c//"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard", newReq("/w/c///"), http.NotFoundHandler(), nil, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
