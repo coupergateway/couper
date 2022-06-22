@@ -724,6 +724,10 @@ func TestHTTPServer_EnvironmentBlocks(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
+	if h := res.Header.Get("X-Test-Env"); h != "test" {
+		t.Errorf("Unexpected header given: %q", h)
+	}
+
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("Unexpected status code: %d", res.StatusCode)
 	}
