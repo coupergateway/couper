@@ -118,13 +118,17 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 	}
 
 	// watch out for beta_token_request blocks and nested backend definitions
-	tokenRequestBackend, err := newTokenRequestBackend(helper, backendBody)
+	tokenRequestBackends, err := newTokenRequestBackend(helper, backendBody)
 	if err != nil {
 		return nil, err
 	}
 
-	if tokenRequestBackend != nil {
-		wrapped := wrapTokenRequestBackend(tokenRequestBackend)
+	if tokenRequestBackends == nil {
+		return backendBody, nil
+	}
+
+	for label, tokenRequestBackend := range tokenRequestBackends {
+		wrapped := wrapTokenRequestBackend(label, tokenRequestBackend)
 		backendBody = hclbody.MergeBodies(backendBody, wrapped)
 	}
 
@@ -192,9 +196,9 @@ func wrapOauth2Backend(content hcl.Body) hcl.Body {
 	return b
 }
 
-// newTokenRequestBackend prepares a nested backend within a backend-tokenRequest block.
+// newTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
 // TODO: Check a possible circular dependency with given parent backend(s).
-func newTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
+func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Body, error) {
 	innerContent, err := contentByType(tokenRequest, parent)
 	if err != nil {
 		return nil, err
@@ -205,22 +209,35 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 		return nil, nil
 	}
 
+	tokenRequestBackends := make(map[string]hcl.Body)
 	// beta_token_request block exists, read out backend configuration
-	tokenRequestBody := tokenRequestBlocks[0].Body
-	conf := &config.TokenRequest{}
-	if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
-		return nil, diags
+	for _, tokenRequestBlock := range tokenRequestBlocks {
+		label := "default"
+		if len(tokenRequestBlock.Labels) > 0 {
+			label = tokenRequestBlock.Labels[0]
+		}
+		tokenRequestBody := tokenRequestBlock.Body
+		conf := &config.TokenRequest{Name: label}
+		if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
+			return nil, diags
+		}
+		be, err := PrepareBackend(helper, "", conf.URL, conf)
+		if err != nil {
+			return nil, err
+		}
+		tokenRequestBackends[label] = be
 	}
 
-	return PrepareBackend(helper, "", conf.URL, conf)
+	return tokenRequestBackends, nil
 }
 
-func wrapTokenRequestBackend(content hcl.Body) hcl.Body {
+func wrapTokenRequestBackend(label string, content hcl.Body) hcl.Body {
 	b := hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{
-				Type: tokenRequest,
-				Body: newBackendBlock(content),
+				Type:   tokenRequest,
+				Body:   newBackendBlock(content),
+				Labels: []string{label},
 			},
 		},
 	})
