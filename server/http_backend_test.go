@@ -335,15 +335,15 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	helper := test.New(t)
 
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusUnauthorized)
-		rw.Header().Set("Content-Encoding", "application/json")
 		_, werr := rw.Write([]byte(`{"path": "` + r.URL.Path + `"}`))
 		helper.Must(werr)
 	}))
 	defer origin.Close()
 
 	tokenEndpoint := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Set("Content-Encoding", "application/json")
+		rw.Header().Set("Content-Type", "application/json")
 		_, werr := rw.Write([]byte(`{
           	"access_token": "my-token",
           	"expires_in": 120
@@ -366,8 +366,8 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	if res.StatusCode != http.StatusOK {
-		t.Errorf("want status %d, got: %d", http.StatusOK, res.StatusCode)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("want status %d, got: %d", http.StatusUnauthorized, res.StatusCode)
 	}
 
 	if res.Header.Get("Content-Encoding") != "application/json" {
@@ -385,7 +385,7 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	r := &result{}
 	helper.Must(json.Unmarshal(b, r))
 
-	if r.Path != "test-path" {
-		t.Errorf("path property want: %q, got: %q", "test-path", r.Path)
+	if r.Path != "/test-path" {
+		t.Errorf("path property want: %q, got: %q", "/test-path", r.Path)
 	}
 }
