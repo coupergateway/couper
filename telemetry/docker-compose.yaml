@@ -50,6 +50,7 @@ services:
       - COUPER_BETA_TRACES=true
       - COUPER_BETA_METRICS=true
       - COUPER_BETA_METRICS_PORT=9999
+      - COUPER_LOG_LEVEL=debug
     volumes:
       - $PWD/public/couper.hcl:/conf/couper.hcl
     ports:
