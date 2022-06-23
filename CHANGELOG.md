@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * configuration related panic while loading backends with `oauth2` block which depends on other defined backends ([#524](https://github.com/avenga/couper/pull/524))
+  * erroneous retries for `oauth2` backend authorization with `retries = 0` ([#528](https://github.com/avenga/couper/pull/528))
 
 ---
 
