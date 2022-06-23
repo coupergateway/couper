@@ -370,8 +370,8 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 		t.Errorf("want status %d, got: %d", http.StatusUnauthorized, res.StatusCode)
 	}
 
-	if res.Header.Get("Content-Encoding") != "application/json" {
-		t.Errorf("want json encoding")
+	if res.Header.Get("Content-Type") != "application/json" {
+		t.Errorf("want json content-type")
 		return
 	}
 
