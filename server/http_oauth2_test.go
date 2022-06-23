@@ -992,3 +992,92 @@ func TestNestedBackendOauth2(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenRequest(t *testing.T) {
+	helper := test.New(t)
+
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		reqBody, _ := io.ReadAll(req.Body)
+
+		if req.URL.Path == "/token" {
+			expBody := "grant_type=client_credentials"
+			if expBody != string(reqBody) {
+				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "tok0",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		} else if req.URL.Path == "/token1" {
+			expBody := "client_id=clid&client_secret=cls&grant_type=client_credentials"
+			if expBody != string(reqBody) {
+				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "tok1",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		} else if req.URL.Path == "/token2" {
+			expBody := "client_id=clid&client_secret=cls&grant_type=password&password=asdf&username=user"
+			if expBody != string(reqBody) {
+				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`tok2`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/resource" {
+			if req.Header.Get("Authorization") == "Bearer tok0" && req.Header.Get("Auth-1") == "tok1" && req.Header.Get("Auth-2") == "tok2" {
+				rw.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	defer rsOrigin.Close()
+
+	confPath := "testdata/oauth2/token_request.hcl"
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+	helper.Must(err)
+	hook.Reset()
+	res, err := newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+		return
+	}
+}
