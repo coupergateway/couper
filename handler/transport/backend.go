@@ -51,7 +51,7 @@ type Backend struct {
 	name                string
 	openAPIValidator    *validation.OpenAPI
 	tokenRequest        TokenRequest
-	transport           *http.Transport
+	transport           http.RoundTripper
 	transportConf       *Config
 	transportConfResult Config
 	transportOnce       sync.Once
@@ -92,8 +92,14 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	return backend.upstreamLog
 }
 
-// initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
+// initOnce ensures synced transport configuration. First request will setup the rate limits, origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
+	if len(b.transportConf.RateLimits) > 0 {
+		b.transport = NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.RateLimits)
+	} else {
+		b.transport = NewTransport(conf, b.logEntry)
+	}
+
 	b.transport = NewTransport(conf, b.logEntry)
 	b.healthyMu.Lock()
 	b.transportConfResult = *conf
