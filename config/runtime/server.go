@@ -260,8 +260,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil {
 				basePath = serverOptions.APIBasePaths[parentAPI]
 			}
-
-			pattern := utils.JoinPath(basePath, endpointConf.Pattern)
+			pattern := utils.JoinOpenAPIPath(basePath, endpointConf.Pattern)
 			unique, cleanPattern := isUnique(endpointPatterns, pattern)
 			if !unique {
 				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpointConf.HCLBody().MissingItemRange().String(), pattern)
@@ -650,8 +649,6 @@ func setRoutesFromHosts(
 	srvConf ServerConfiguration, portsHosts Ports,
 	path string, handler http.Handler, kind HandlerKind,
 ) error {
-	path = utils.JoinPath("/", path)
-
 	for port, hosts := range portsHosts {
 		for host := range hosts {
 			var routes map[string]http.Handler

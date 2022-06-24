@@ -4,6 +4,12 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
+
+* **Removed**
+  * Endpoint path normalization to better match OpenAPI behavior ([#526](https://github.com/avenga/couper/pull/526))
+
 ---
 
 ## [1.9.1](https://github.com/avenga/couper/releases/tag/v1.9.1)

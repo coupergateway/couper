@@ -32,7 +32,8 @@ type Mux struct {
 
 const (
 	serverOptionsKey    = "serverContextOptions"
-	wildcardReplacement = "/{_couper_wildcardMatch*}"
+	wildcardVariable    = "_couper_wildcardMatch"
+	wildcardReplacement = "/{" + wildcardVariable + "*}"
 	wildcardSearch      = "/**"
 )
 
@@ -56,7 +57,7 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 	}
 
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, utils.JoinPath(path, "/**"), h, false)
+		mux.mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), h, false)
 	}
 
 	for path, h := range opts.SPARoutes {
@@ -89,7 +90,7 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Han
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	var route *routers.Route
 
-	node, paramValues := m.match(m.endpointRoot, req)
+	node, paramValues := m.matchWithMethod(m.endpointRoot, req)
 	if node == nil {
 		node, paramValues = m.matchWithoutMethod(m.endpointRoot, req)
 	}
@@ -130,10 +131,9 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 	ctx := req.Context()
 
-	const wcm = "_couper_wildcardMatch"
-	if wildcardMatch, ok := pathParams[wcm]; ok {
+	if wildcardMatch, ok := pathParams[wildcardVariable]; ok {
 		ctx = context.WithValue(ctx, request.Wildcard, wildcardMatch)
-		delete(pathParams, wcm)
+		delete(pathParams, wildcardVariable)
 	}
 
 	ctx = context.WithValue(ctx, request.PathParams, pathParams)
@@ -142,16 +142,27 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	return m.handler[route]
 }
 
-func (m *Mux) match(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
+func (m *Mux) matchWithMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
 	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
 
-	return root.Match(req.Method + " " + req.URL.Path)
+	return m.match(root, req.Method+" "+req.URL.Path)
 }
 
 func (m *Mux) matchWithoutMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
 	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
 
-	return root.Match(req.URL.Path)
+	return m.match(root, req.URL.Path)
+}
+
+func (m *Mux) match(root *pathpattern.Node, requestLine string) (*pathpattern.Node, []string) {
+	node, values := root.Match(requestLine)
+	for i, value := range values {
+		if value == "" && node.VariableNames[i] != wildcardVariable+"*" {
+			// Path params must not be empty.
+			return nil, nil
+		}
+	}
+	return node, values
 }
 
 func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {

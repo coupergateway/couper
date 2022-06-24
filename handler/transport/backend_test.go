@@ -180,7 +180,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	openAPIYAML := helper.NewOpenAPIConf("/get")
+	openAPIYAML := helper.NewOpenAPIConf("/pa/./th")
 
 	tests := []struct {
 		name               string
@@ -194,31 +194,71 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			"valid request / valid response",
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
-			"/get",
+			"/pa/./th",
 			"",
 			"",
+		},
+		{
+			"valid path: trailing /",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodPost,
+			"/pa/./th/",
+			"backend error",
+			"",
+		},
+		{
+			"invalid path: no path resolution",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/pa/th",
+			"backend error",
+			"'GET /pa/th': no matching operation was found",
+		},
+		{
+			"invalid path: double /",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/pa/.//th",
+			"backend error",
+			"'GET /pa/.//th': no matching operation was found",
+		},
+		{
+			"URL encoded request",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodGet,
+			"/pa%2f%2e%2fth",
+			"",
+			"",
+		},
+		{
+			"URL encoded request, wrong method",
+			&config.OpenAPI{File: "testdata/upstream.yaml"},
+			http.MethodPost,
+			"/pa%2f%2e%2fth",
+			"backend error",
+			"'POST /pa/./th': method not allowed",
 		},
 		{
 			"invalid request",
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodPost,
-			"/get",
+			"/pa/./th",
 			"backend error",
-			"'POST /get': method not allowed",
+			"'POST /pa/./th': method not allowed",
 		},
 		{
 			"invalid request, IgnoreRequestViolations",
 			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreRequestViolations: true, IgnoreResponseViolations: true},
 			http.MethodPost,
-			"/get",
+			"/pa/./th",
 			"",
-			"'POST /get': method not allowed",
+			"'POST /pa/./th': method not allowed",
 		},
 		{
 			"invalid response",
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
-			"/get?404",
+			"/pa/./th?404",
 			"backend error",
 			"status is not supported",
 		},
@@ -226,7 +266,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			"invalid response, IgnoreResponseViolations",
 			&config.OpenAPI{File: "testdata/upstream.yaml", IgnoreResponseViolations: true},
 			http.MethodGet,
-			"/get?404",
+			"/pa/./th?404",
 			"",
 			"status is not supported",
 		},
