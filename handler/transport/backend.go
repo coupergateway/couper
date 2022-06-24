@@ -95,14 +95,14 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	b.transport = NewTransport(conf, b.logEntry)
-	var healthy bool
 	b.healthyMu.Lock()
 	b.transportConfResult = *conf
-	healthy = b.healthInfo.Healthy
+	healthy := b.healthInfo.Healthy
+	healthState := b.healthInfo.State
 	b.healthyMu.Unlock()
 
 	// race condition, update possible healthy backend with current origin and hostname
-	b.OnProbeChange(&HealthInfo{Healthy: healthy})
+	b.OnProbeChange(&HealthInfo{Healthy: healthy, State: healthState})
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
