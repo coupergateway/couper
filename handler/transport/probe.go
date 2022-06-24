@@ -135,7 +135,7 @@ func (p *Probe) probe(c context.Context) {
 			}
 			if err == nil {
 				if !p.opts.ExpectedStatus[res.StatusCode] {
-					errorMessage = "unexpected statusCode: " + strconv.Itoa(p.status)
+					errorMessage = "unexpected status code: " + strconv.Itoa(p.status)
 				} else {
 					errorMessage = "unexpected text"
 				}

@@ -102,7 +102,7 @@ func (b *Backend) initOnce(conf *Config) {
 	b.healthyMu.Unlock()
 
 	// race condition, update possible healthy backend with current origin and hostname
-	b.OnProbeChange(&HealthInfo{Healthy: healthy})
+	b.OnProbeChange(&HealthInfo{Healthy: healthy, State: StateOk.String()})
 }
 
 // RoundTrip implements the <http.RoundTripper> interface.
