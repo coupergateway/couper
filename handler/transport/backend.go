@@ -139,19 +139,30 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
+	// TODO: split timing eval
 	tc, err := b.evalTransport(hclCtx, ctxBody, req)
 	if err != nil {
 		return nil, err
 	}
+
+	// first traffic pins the origin settings to transportConfResult
 	b.transportOnce.Do(func() {
 		b.initOnce(tc)
 	})
 
-	deadlineErr := b.withTimeout(req, tc)
+	// use result and apply context timings
+	b.healthyMu.RLock()
+	tconf := b.transportConfResult
+	b.healthyMu.RUnlock()
+	tconf.ConnectTimeout = tc.ConnectTimeout
+	tconf.TTFBTimeout = tc.TTFBTimeout
+	tconf.Timeout = tc.Timeout
 
-	req.URL.Host = tc.Origin
-	req.URL.Scheme = tc.Scheme
-	req.Host = tc.Hostname
+	deadlineErr := b.withTimeout(req, &tconf)
+
+	req.URL.Host = tconf.Origin
+	req.URL.Scheme = tconf.Scheme
+	req.Host = tconf.Hostname
 
 	// handler.Proxy marks proxy round-trips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
@@ -186,9 +197,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
-		beresp, err = b.openAPIValidate(req, tc, deadlineErr)
+		beresp, err = b.openAPIValidate(req, &tconf, deadlineErr)
 	} else {
-		beresp, err = b.innerRoundTrip(req, tc, deadlineErr)
+		beresp, err = b.innerRoundTrip(req, &tconf, deadlineErr)
 	}
 
 	if err != nil {
