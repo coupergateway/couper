@@ -82,6 +82,10 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 
 	oa.memStore.Del(oa.storageKey)
 
+	if *oa.config.Retries < 1 {
+		return false, nil
+	}
+
 	ctx := req.Context()
 	if retries, ok := ctx.Value(request.TokenRequestRetries).(uint8); !ok || retries < *oa.config.Retries {
 		ctx = context.WithValue(ctx, request.TokenRequestRetries, retries+1)

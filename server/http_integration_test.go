@@ -2679,12 +2679,12 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: unexpected status code",
 			"/unhealthy/bad_status",
-			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ expected_status: unexpected status code",
 			"/unhealthy/bad_expected_status",
-			`{"error":"unexpected statusCode: 200","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 200","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ expected_text: unexpected text",
@@ -2694,12 +2694,12 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: unexpected status code",
 			"/unhealthy/bad_status",
-			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ path: unexpected status code",
 			"/unhealthy/bad_path",
-			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ headers: unexpected text",
@@ -2709,7 +2709,7 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: does not follow location",
 			"/unhealthy/no_follow_redirect",
-			`{"error":"unexpected statusCode: 302","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 302","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"backend error: timeout but threshold not reached",

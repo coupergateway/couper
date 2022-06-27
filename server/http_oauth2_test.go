@@ -117,6 +117,74 @@ func TestEndpoints_OAuth2(t *testing.T) {
 	}
 }
 
+func Test_OAuth2_no_retry(t *testing.T) {
+	// tests that actually no retry is attempted for oauth2 with retries = 0
+	helper := test.New(t)
+
+	retries := 0
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/oauth2" {
+			if accept := req.Header.Get("Accept"); accept != "application/json" {
+				t.Errorf("expected Accept %q, got: %q", "application/json", accept)
+			}
+
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	ResourceOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/resource" {
+			if retries > 0 {
+				t.Fatal("Must not retry")
+			}
+
+			retries++
+
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	defer ResourceOrigin.Close()
+
+	confPath := "testdata/oauth2/0_retries_couper.hcl"
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL, "rsOrigin": ResourceOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	req.URL.Path = "/"
+	res, err := newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status %d, got: %d", http.StatusUnauthorized, res.StatusCode)
+		return
+	}
+
+	oauthOrigin.Close()
+	ResourceOrigin.Close()
+	shutdown()
+}
+
 func TestEndpoints_OAuth2_Options(t *testing.T) {
 	helper := test.New(t)
 
