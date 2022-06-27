@@ -80,9 +80,11 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields["request"] = requestFields
 
 	berespBytes := int64(0)
-	logCtxCh := make(chan hcl.Body, 10)
+	logCtxCh := make(chan hcl.Body, 17) // TODO: Will block with oauth2 token retries >= 17
+	tokenRetries := uint8(0)
 	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, logCtxCh)
 	outctx = context.WithValue(outctx, request.BackendBytes, &berespBytes)
+	outctx = context.WithValue(outctx, request.TokenRequestRetries, &tokenRetries)
 	oCtx, openAPIContext := validation.NewWithContext(outctx)
 	outreq := req.WithContext(httptrace.WithClientTrace(oCtx, clientTrace))
 
@@ -123,8 +125,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	if tr, ok := outreq.Context().Value(request.TokenRequest).(string); ok && tr != "" {
 		fields["token_request"] = tr
 
-		if retries, exist := outreq.Context().Value(request.TokenRequestRetries).(uint8); exist && retries > 0 {
-			fields["token_request_retry"] = retries
+		if tokenRetries > 0 {
+			fields["token_request_retry"] = tokenRetries
 		}
 	}
 
