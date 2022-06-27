@@ -6,7 +6,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * configuration related panic while loading backends with [`oauth2` block](./docs/REFERENCE.md#oauth2-cc-block) which depends on other defined backends ([#524](https://github.com/avenga/couper/pull/524))
-  * erroneous retries for [`oauth2`](./docs/REFERENCE.md#oauth2-cc-block) backend authorization with `retries = 0` ([#528](https://github.com/avenga/couper/pull/528))
+  * erroneous retries for [`oauth2`](./docs/REFERENCE.md#oauth2-cc-block) backend authorization
+    * with `retries = 0` ([#528](https://github.com/avenga/couper/pull/528))
+    * with `retries` > `0` and related origin configuration ([#529](https://github.com/avenga/couper/pull/529))
   * race condition resulting in empty [`backends.<label>.health.state` variable](docs/REFERENCE.md#backends) ([#530](https://github.com/avenga/couper/pull/530))
 
 ---
