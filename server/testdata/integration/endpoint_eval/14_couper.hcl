@@ -93,6 +93,17 @@ server "bodies" {
     }
   }
 
+  endpoint "/request/json_body/object/html" {
+    request {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+      json_body = {"foo": "<p>bar</p>"}
+
+      backend {
+        origin = env.COUPER_TEST_BACKEND_ADDR
+      }
+    }
+  }
+
   endpoint "/request/json_body/array" {
     request {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
@@ -208,6 +219,12 @@ server "bodies" {
   endpoint "/response/json_body/object" {
     response {
       json_body = {"foo": "bar"}
+    }
+  }
+
+  endpoint "/response/json_body/object/html" {
+    response {
+      json_body = {"foo": "<p>bar</p>"}
     }
   }
 
