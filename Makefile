@@ -5,8 +5,8 @@ build:
 	go build -race -v -o couper main.go
 
 docker-telemetry:
-	docker-compose pull -f telemetry/docker-compose.yaml
-	docker-compose -f telemetry/docker-compose.yaml up --build
+	docker compose -f telemetry/docker-compose.yaml pull
+	docker compose -f telemetry/docker-compose.yaml up --build
 
 generate:
 	go generate main.go
