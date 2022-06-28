@@ -330,3 +330,70 @@ func TestBackend_Unhealthy(t *testing.T) {
 		})
 	}
 }
+
+func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
+	helper := test.New(t)
+
+	requestCount := 0
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusUnauthorized)
+		_, werr := rw.Write([]byte(`{"path": "` + r.URL.Path + `"}`))
+		requestCount++
+		helper.Must(werr)
+	}))
+	defer origin.Close()
+
+	tokenEndpoint := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		_, werr := rw.Write([]byte(`{
+          	"access_token": "my-token",
+          	"expires_in": 120
+		}`))
+		helper.Must(werr)
+	}))
+	defer origin.Close()
+
+	retries := 3
+	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/07_couper.hcl", helper,
+		map[string]interface{}{
+			"origin":         origin.URL,
+			"token_endpoint": tokenEndpoint.URL,
+			"retries":        retries,
+		})
+	defer shutdown()
+
+	client := test.NewHTTPClient()
+
+	req, err := http.NewRequest(http.MethodGet, "http://couper.dev:8080/test-path", nil)
+	helper.Must(err)
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("want status %d, got: %d", http.StatusUnauthorized, res.StatusCode)
+	}
+
+	if res.Header.Get("Content-Type") != "application/json" {
+		t.Errorf("want json content-type")
+		return
+	}
+
+	type result struct {
+		Path string
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(res.Body.Close())
+
+	r := &result{}
+	helper.Must(json.Unmarshal(b, r))
+
+	if r.Path != "/test-path" {
+		t.Errorf("path property want: %q, got: %q", "/test-path", r.Path)
+	}
+
+	if requestCount != retries+1 {
+		t.Errorf("unexpected number of requests, want: %d, got: %d", retries+1, requestCount)
+	}
+}

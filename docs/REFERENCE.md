@@ -554,7 +554,7 @@ via `headers` attribute. An unhealthy backend will return with a [`backend_unhea
 | `expected_text`     | string                | –                 | text response body must contain                    |                       | `expected_text = "alive"`           |
 | `failure_threshold` | number                | `2`               | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`             |
 | `headers`           | object                | –                 | request headers                                    |                       | `headers = {User-Agent = "health"}` |
-| `interval`          | [duration](#duration) | `"1s"`            | time interval for recheck                          |                       | `timeout = "5s"`                    |
+| `interval`          | [duration](#duration) | `"1s"`            | time interval for recheck                          |                       | `interval = "5s"`                   |
 | `path`              | string                | –                 | URL path/query on backend host                     |                       | `path = "/health"`                  |
 | `timeout`           | [duration](#duration) | `"2s"`            | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`                    |
 

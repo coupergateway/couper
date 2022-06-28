@@ -1552,11 +1552,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			"",
 			"",
 			expectation{
-				Body:   "\"foo\"",
+				Body:   `"föö"`,
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"5"},
+					"Content-Length": []string{"7"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
@@ -1566,11 +1566,25 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			"",
 			"",
 			expectation{
-				Body:   "{\"foo\":\"bar\"}",
+				Body:   `{"url":"http://...?foo&bar"}`,
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"13"},
+					"Content-Length": []string{"28"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/object/html",
+			"",
+			"",
+			expectation{
+				Body:   `{"foo":"<p>bar</p>"}`,
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"20"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
@@ -1802,14 +1816,21 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 		{
 			"/response/json_body/string",
 			expectation{
-				Body:        "\"foo\"",
+				Body:        `"foo"`,
 				ContentType: "application/json",
 			},
 		},
 		{
 			"/response/json_body/object",
 			expectation{
-				Body:        "{\"foo\":\"bar\"}",
+				Body:        `{"foo":"bar"}`,
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/object/html",
+			expectation{
+				Body:        `{"foo":"<p>bar</p>"}`,
 				ContentType: "application/json",
 			},
 		},
@@ -1864,6 +1885,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 		exp     expectation
 	}
 
+	// first traffic pins the origin (transport conf)
 	for _, tc := range []testCase{
 		{"/my-waffik/my.host.de/" + testBackend.Addr()[7:], expectation{
 			Host:   "my.host.de",
@@ -1871,7 +1893,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			Path:   "/anything",
 		}},
 		{"/my-respo/my.host.com/" + testBackend.Addr()[7:], expectation{
-			Host:   "my.host.com",
+			Host:   "my.host.de",
 			Origin: testBackend.Addr()[7:],
 			Path:   "/anything",
 		}},
@@ -2679,12 +2701,12 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: unexpected status code",
 			"/unhealthy/bad_status",
-			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ expected_status: unexpected status code",
 			"/unhealthy/bad_expected_status",
-			`{"error":"unexpected statusCode: 200","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 200","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ expected_text: unexpected text",
@@ -2694,12 +2716,12 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: unexpected status code",
 			"/unhealthy/bad_status",
-			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ path: unexpected status code",
 			"/unhealthy/bad_path",
-			`{"error":"unexpected statusCode: 404","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 404","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend w/ headers: unexpected text",
@@ -2709,7 +2731,7 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: does not follow location",
 			"/unhealthy/no_follow_redirect",
-			`{"error":"unexpected statusCode: 302","healthy":false,"state":"unhealthy"}`,
+			`{"error":"unexpected status code: 302","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"backend error: timeout but threshold not reached",

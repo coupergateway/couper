@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
@@ -122,7 +123,16 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 		return nil, diags
 	}
 
-	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
+	backendBlocks := innerContent.Blocks.OfType("backend")
+	if len(backendBlocks) == 0 {
+		r := beConf.OAuth2.Remain.MissingItemRange()
+		diag := &hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &r,
+			Summary: "missing backend initialization",
+		}}
+		return nil, errors.Configuration.Label("unexpected").With(diag)
+	}
+	innerBackend := backendBlocks[0] // backend block is set by configload
 	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, conf, memStore)
 	if authErr != nil {
 		return nil, authErr

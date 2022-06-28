@@ -7,11 +7,13 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/config/sequence"
+	"github.com/avenga/couper/eval"
 )
 
 // buildSequences collects possible dependencies from 'backend_responses' variable.
 func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err error) {
-	sequences := map[string]*config.Sequence{}
+	sequences := map[string]*sequence.Item{}
 
 	defer func() {
 		if rc := recover(); rc != nil {
@@ -35,14 +37,14 @@ func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err e
 
 		seq, exist := sequences[name]
 		if !exist {
-			seq = &config.Sequence{Name: name, BodyRange: getRange(b)}
+			seq = &sequence.Item{Name: name, BodyRange: getRange(b)}
 			sequences[name] = seq
 		}
 
 		for _, r := range refs {
 			ref, ok := sequences[r]
 			if !ok {
-				ref = &config.Sequence{Name: r, BodyRange: getRange(b)}
+				ref = &sequence.Item{Name: r, BodyRange: getRange(b)}
 				sequences[r] = ref
 			}
 			// Do not add ourselves
@@ -68,7 +70,7 @@ func responseReferences(b hcl.Body) []string {
 
 	for _, expr := range body.CollectExpressions(b) {
 		for _, traversal := range expr.Variables() {
-			if traversal.RootName() != "backend_responses" || len(traversal) < 2 {
+			if traversal.RootName() != eval.BackendResponses || len(traversal) < 2 {
 				continue
 			}
 
