@@ -1552,11 +1552,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			"",
 			"",
 			expectation{
-				Body:   `"foo"`,
+				Body:   `"föö"`,
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"5"},
+					"Content-Length": []string{"7"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
@@ -1566,11 +1566,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			"",
 			"",
 			expectation{
-				Body:   `{"foo":"bar"}`,
+				Body:   `{"url":"http://...?foo&bar"}`,
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"13"},
+					"Content-Length": []string{"28"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
