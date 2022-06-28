@@ -1864,6 +1864,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 		exp     expectation
 	}
 
+	// first traffic pins the origin (transport conf)
 	for _, tc := range []testCase{
 		{"/my-waffik/my.host.de/" + testBackend.Addr()[7:], expectation{
 			Host:   "my.host.de",
@@ -1871,7 +1872,7 @@ func TestHTTPServer_Endpoint_Evaluation(t *testing.T) {
 			Path:   "/anything",
 		}},
 		{"/my-respo/my.host.com/" + testBackend.Addr()[7:], expectation{
-			Host:   "my.host.com",
+			Host:   "my.host.de",
 			Origin: testBackend.Addr()[7:],
 			Path:   "/anything",
 		}},
