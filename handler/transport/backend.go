@@ -122,10 +122,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}, err
 	}
 
-	// for token-request retry purposes
-	originalReq := req.Clone(req.Context())
-
-	if err := b.withTokenRequest(req); err != nil {
+	// originalReq for token-request retry purposes
+	originalReq, err := b.withTokenRequest(req)
+	if err != nil {
 		return nil, err
 	}
 
@@ -136,23 +135,34 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err := eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
+	if err = eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
 		return nil, err
 	}
 
+	// TODO: split timing eval
 	tc, err := b.evalTransport(hclCtx, ctxBody, req)
 	if err != nil {
 		return nil, err
 	}
+
+	// first traffic pins the origin settings to transportConfResult
 	b.transportOnce.Do(func() {
 		b.initOnce(tc)
 	})
 
-	deadlineErr := b.withTimeout(req, tc)
+	// use result and apply context timings
+	b.healthyMu.RLock()
+	tconf := b.transportConfResult
+	b.healthyMu.RUnlock()
+	tconf.ConnectTimeout = tc.ConnectTimeout
+	tconf.TTFBTimeout = tc.TTFBTimeout
+	tconf.Timeout = tc.Timeout
 
-	req.URL.Host = tc.Origin
-	req.URL.Scheme = tc.Scheme
-	req.Host = tc.Hostname
+	deadlineErr := b.withTimeout(req, &tconf)
+
+	req.URL.Host = tconf.Origin
+	req.URL.Scheme = tconf.Scheme
+	req.Host = tconf.Hostname
 
 	// handler.Proxy marks proxy round-trips since we should not handle headers twice.
 	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
@@ -187,9 +197,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
-		beresp, err = b.openAPIValidate(req, tc, deadlineErr)
+		beresp, err = b.openAPIValidate(req, &tconf, deadlineErr)
 	} else {
-		beresp, err = b.innerRoundTrip(req, tc, deadlineErr)
+		beresp, err = b.innerRoundTrip(req, &tconf, deadlineErr)
 	}
 
 	if err != nil {
@@ -307,14 +317,14 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	return beresp, nil
 }
 
-func (b *Backend) withTokenRequest(req *http.Request) error {
+func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 	if b.tokenRequest == nil {
-		return nil
+		return nil, nil
 	}
 
 	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
-		return nil
+		return nil, nil
 	}
 
 	ctx := context.WithValue(req.Context(), request.BackendTokenRequest, "tr")
@@ -322,8 +332,10 @@ func (b *Backend) withTokenRequest(req *http.Request) error {
 	// tokenRequest will have their own backend configuration.
 	ctx = context.WithValue(ctx, request.BackendParams, nil)
 
+	originalReq := req.Clone(req.Context())
+
 	// WithContext() instead of Clone() due to header-map modification.
-	return b.tokenRequest.WithToken(req.WithContext(ctx))
+	return originalReq, b.tokenRequest.WithToken(req.WithContext(ctx))
 }
 
 func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
