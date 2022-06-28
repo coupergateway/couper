@@ -6,6 +6,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/telemetry/instrumentation"
@@ -27,7 +28,7 @@ func newBackendsObserver(memStore *cache.MemoryStore) {
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
 	metric.Must(meter).
-		NewInt64GaugeObserver(instrumentation.BackendHealthState, onObserverFn)
+		NewInt64GaugeObserver(instrumentation.BackendHealthState, onObserverFn, metric.WithDescription(string(unit.Dimensionless)))
 }
 
 func backendsObserver(backends []interface{ Value() cty.Value }, result metric.Int64ObserverResult) {
