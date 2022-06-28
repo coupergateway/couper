@@ -1552,11 +1552,11 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			"",
 			"",
 			expectation{
-				Body:   "\"foo\"",
+				Body:   `"föö"`,
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"5"},
+					"Content-Length": []string{"7"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
@@ -1566,11 +1566,25 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 			"",
 			"",
 			expectation{
-				Body:   "{\"foo\":\"bar\"}",
+				Body:   `{"url":"http://...?foo&bar"}`,
 				Args:   url.Values{},
 				Method: "POST",
 				Headers: http.Header{
-					"Content-Length": []string{"13"},
+					"Content-Length": []string{"28"},
+					"Content-Type":   []string{"application/json"},
+				},
+			},
+		},
+		{
+			"/request/json_body/object/html",
+			"",
+			"",
+			expectation{
+				Body:   `{"foo":"<p>bar</p>"}`,
+				Args:   url.Values{},
+				Method: "POST",
+				Headers: http.Header{
+					"Content-Length": []string{"20"},
 					"Content-Type":   []string{"application/json"},
 				},
 			},
@@ -1802,14 +1816,21 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 		{
 			"/response/json_body/string",
 			expectation{
-				Body:        "\"foo\"",
+				Body:        `"foo"`,
 				ContentType: "application/json",
 			},
 		},
 		{
 			"/response/json_body/object",
 			expectation{
-				Body:        "{\"foo\":\"bar\"}",
+				Body:        `{"foo":"bar"}`,
+				ContentType: "application/json",
+			},
+		},
+		{
+			"/response/json_body/object/html",
+			expectation{
+				Body:        `{"foo":"<p>bar</p>"}`,
 				ContentType: "application/json",
 			},
 		},

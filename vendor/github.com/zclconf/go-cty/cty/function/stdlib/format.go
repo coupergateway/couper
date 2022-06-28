@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/apparentlymart/go-textseg/v13/textseg"
+	"github.com/zclconf/go-cty/cty/json"
 
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"
-	"github.com/zclconf/go-cty/cty/json"
 )
 
 //go:generate ragel -Z format_fsm.rl

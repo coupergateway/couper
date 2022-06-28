@@ -21,7 +21,7 @@ require (
 	github.com/russellhaering/goxmldsig v1.2.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/zclconf/go-cty v1.10.0
+	github.com/zclconf/go-cty v1.10.1-0.20220623211957-834994b84991
 	go.opentelemetry.io/otel v1.4.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.27.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.27.0
@@ -68,3 +68,5 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/zclconf/go-cty => github.com/avenga/go-cty v0.0.0-20220627115852-3ddf0a688aea

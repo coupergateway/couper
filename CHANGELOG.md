@@ -10,6 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
     * with `retries = 0` ([#528](https://github.com/avenga/couper/pull/528))
     * with `retries` > `0` and related origin configuration ([#529](https://github.com/avenga/couper/pull/529))
   * race condition resulting in empty [`backends.<label>.health.state` variable](docs/REFERENCE.md#backends) ([#530](https://github.com/avenga/couper/pull/530))
+  * enabled json html escaping inherited from Go lib ([#531](https://github.com/avenga/couper/pull/531))
 
 ---
 
