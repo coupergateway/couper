@@ -334,10 +334,12 @@ func TestBackend_Unhealthy(t *testing.T) {
 func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	helper := test.New(t)
 
+	requestCount := 0
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusUnauthorized)
 		_, werr := rw.Write([]byte(`{"path": "` + r.URL.Path + `"}`))
+		requestCount++
 		helper.Must(werr)
 	}))
 	defer origin.Close()
@@ -352,10 +354,12 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	}))
 	defer origin.Close()
 
+	retries := 3
 	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/07_couper.hcl", helper,
 		map[string]interface{}{
 			"origin":         origin.URL,
 			"token_endpoint": tokenEndpoint.URL,
+			"retries":        retries,
 		})
 	defer shutdown()
 
@@ -387,5 +391,9 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 
 	if r.Path != "/test-path" {
 		t.Errorf("path property want: %q, got: %q", "/test-path", r.Path)
+	}
+
+	if requestCount != retries+1 {
+		t.Errorf("unexpected number of requests, want: %d, got: %d", retries+1, requestCount)
 	}
 }

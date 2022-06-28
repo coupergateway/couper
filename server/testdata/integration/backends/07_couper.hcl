@@ -17,7 +17,7 @@ definitions {
       client_id = "cli"
       client_secret = "cls"
       token_endpoint = "{{ .token_endpoint }}/token"
-      retries = 3
+      retries = {{ .retries }}
     }
   }
 }
