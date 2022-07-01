@@ -1,10 +1,10 @@
-- [Metrics](#metrics)
-    - [Prometheus](#prometheus)
-    - [Grafana Dashboard](#grafana-dashboard)
-      - [Preview](#preview)
-    - [Developers](#developers)
-
 # Metrics
+
+- [Metrics](#metrics)
+  - [Prometheus](#prometheus)
+  - [Grafana Dashboard](#grafana-dashboard)
+- [Preview](#preview)
+  - [Developers](#developers)
 
 Our metrics feature is [beta](./BETA.md) for now. However, we want to provide some core metrics which can be directly collected from Couper.
 
@@ -23,7 +23,7 @@ an [issue](https://github.com/avenga/couper/issues) if something does not work a
 
 ### Preview
 
-![dashboard](website/static/img/grafana.png)
+![dashboard](/img/grafana.png)
 
 ## Developers
 
