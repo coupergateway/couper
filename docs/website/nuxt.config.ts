@@ -13,9 +13,9 @@ export default defineNuxtConfig({
         '@nuxtjs/algolia',
         // '@docus/github',
     ],
-    // router: {
-    //     base: process.env.NODE_ENV === 'production' ? '/couper-docs/' : '/'
-    // },
+    app: {
+        baseURL: process.env.NODE_ENV === 'production' ? '/couper-docs/' : '/'
+    },
     algolia: {
         apiKey: '5551c3e4dfb61914988abf95fd9b762f',
         applicationId: 'MSIN2HU7WH',
