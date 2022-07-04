@@ -14,7 +14,7 @@ export default defineNuxtConfig({
         // '@docus/github',
     ],
     app: {
-        baseURL: process.env.NODE_ENV === 'production' ? '/couper-docs/' : '/'
+        // baseURL: process.env.NODE_ENV === 'production' ? '/couper-docs/' : '/'
     },
     algolia: {
         apiKey: '5551c3e4dfb61914988abf95fd9b762f',
