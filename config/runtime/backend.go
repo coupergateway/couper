@@ -180,7 +180,16 @@ func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend,
 		return nil, diags
 	}
 
-	innerBackend := innerContent.Blocks.OfType("backend")[0] // backend block is set by configload
+	backendBlocks := innerContent.Blocks.OfType("backend")
+	if len(backendBlocks) == 0 {
+		r := trConfig.Remain.MissingItemRange()
+		diag := &hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &r,
+			Summary: "missing backend initialization",
+		}}
+		return nil, errors.Configuration.Label("unexpected").With(diag)
+	}
+	innerBackend := backendBlocks[0] // backend block is set by configload
 	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, conf, memStore)
 	if authErr != nil {
 		return nil, authErr
