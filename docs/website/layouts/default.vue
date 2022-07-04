@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Navbar from "~/components/Navbar.vue";
 import SideNavbar from "~/components/SideNavbar.vue";
+
+const { toc } = useContent();
 </script>
 
 <template>
@@ -12,7 +14,17 @@ import SideNavbar from "~/components/SideNavbar.vue";
         <slot />
       </main>
       <div class="flex-none w-100 bg-slate-700 p-4 text-gray-400">
-        Toc
+        <nav>
+          <div>
+            <ul v-if="toc && toc.links">
+              <li v-for="link in toc.links" :key="link.text">
+                <a :href="`#${link.id}`">
+                  {{ link.text }}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </nav>
       </div>
     </div>
 <!--    <Footer />-->

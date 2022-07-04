@@ -11,7 +11,6 @@ export default defineNuxtConfig({
         '@nuxt/content',
         '@nuxtjs/tailwindcss',
         '@nuxtjs/algolia',
-        // '@docus/github',
     ],
     app: {
         // baseURL: process.env.NODE_ENV === 'production' ? '/couper-docs/' : '/'
@@ -33,6 +32,7 @@ export default defineNuxtConfig({
         indexer: {} // throws err if not set
     },
     css: [
+        '@/assets/css/tailwind.css',
         '@/assets/css/font.css'
     ],
     vite: {
@@ -48,13 +48,16 @@ export default defineNuxtConfig({
             depth: 2,
             searchDepth: 2,
         },
-        navigation: true,
-        page: true,
-        surround: true,
     },
     content: {
+        // base: './content',
         // @ts-ignore
-        documentDriven: true,
+        documentDriven: {
+            navigation: true,
+            page: true,
+            surround: true,
+            injectPage: true,
+        },
         // sources: [
         //     {
         //         name: 'edge',
@@ -89,8 +92,14 @@ export default defineNuxtConfig({
             }
         }
     },
-    colorMode: {
-        preference: 'dark'
-    },
-    theme: {}
+    build: {
+        postcss: {
+            postcssOptions: {
+                plugins: {
+                    tailwindcss: {},
+                    autoprefixer: {},
+                }
+            }
+        }
+    }
 })
