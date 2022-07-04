@@ -994,6 +994,7 @@ func TestNestedBackendOauth2(t *testing.T) {
 }
 
 func TestTokenRequest(t *testing.T) {
+	t.Skip()
 	helper := test.New(t)
 
 	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
