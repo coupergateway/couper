@@ -27,13 +27,6 @@ The `backend` block defines the connection to a local/remote backend service.
 | `use_when_unhealthy`             | bool                  | `false`         | Ignores the [health](#health-block) state and continues with the outgoing request             | -                                                                                                                                          | -                                 |
 | [Modifiers](#modifiers)          | -                     | -               | All [Modifiers](#modifiers)                                                                   | -                                                                                                                                          | -                                 |
 
-#### Duration
+::logo
 
-| Duration units | Description  |
-|:---------------|:-------------|
-| `ns`           | nanoseconds  |
-| `us` (or `µs`) | microseconds |
-| `ms`           | milliseconds |
-| `s`            | seconds      |
-| `m`            | minutes      |
-| `h`            | hours        |
+::duration
