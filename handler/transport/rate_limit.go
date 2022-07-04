@@ -174,10 +174,12 @@ func (rl *RateLimit) hasCapacity() bool {
 	now := time.Now()
 
 	rl.mu.Lock()
+	defer rl.mu.Unlock()
 
 	switch rl.window {
 	case windowFixed:
 		// TODO
+		return false
 	case windowSliding:
 		if diff := rl.periodEnd.Sub(rl.periodStart); diff < rl.period {
 			// First, not full period
@@ -186,13 +188,10 @@ func (rl *RateLimit) hasCapacity() bool {
 				scaleFactor = 1
 			}
 
-			maxAllowedRequests := (int)(rl.perPeriod / 100 * uint(scaleFactor))
+			maxAllowedRequests := (int)((float64)(rl.perPeriod) / 100 * float64(scaleFactor))
 			if maxAllowedRequests == 0 {
 				maxAllowedRequests = 1
 			}
-
-			fmt.Printf(">>> %#v\n", scaleFactor)
-			fmt.Printf(">>> %#v\n", maxAllowedRequests)
 
 			if len(rl.counter) > maxAllowedRequests {
 				return false
@@ -222,8 +221,6 @@ func (rl *RateLimit) hasCapacity() bool {
 			return true
 		}
 	}
-
-	rl.mu.Unlock()
 
 	return true
 }
