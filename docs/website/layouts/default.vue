@@ -4,16 +4,15 @@ import SideNavbar from "~/components/SideNavbar.vue";
 </script>
 
 <template>
-  <div class="flex min-h-screen w-full flex-row0">
-    <div>
-      <Navbar class="mx-auto max-w-full px-4 py-4 overflow-x-auto" />
-      <div class="flex">
-        <SideNavbar class="flex-initial overscroll-y-auto px-4 py-4" />
-        <div class="flex-auto prose p-4 sm:px-6 mx-auto max-w-full lg:max-w-7xl h-full pb-6">
-          <main>
-            <slot />
-          </main>
-        </div>
+  <div class="grid grid-cols-1 gap-x-4 bg-slate-50">
+    <Navbar />
+    <div class="flex">
+      <SideNavbar class="flex-none w-100 bg-slate-700 p-4 text-gray-400" />
+      <main class="grow max-w-full prose p-4 sm:px-6">
+        <slot />
+      </main>
+      <div class="flex-none w-100 bg-slate-700 p-4 text-gray-400">
+        Toc
       </div>
     </div>
 <!--    <Footer />-->
