@@ -32,7 +32,7 @@ const searchClient = {
       <div class="flex flex-row p-4 gap-4">
         <Logo class="box-border h-16 w-16" />
         <h1 class="text-lg">Couper Documentation</h1>
-        <div class="box-border text-base"><div class="rounded-md bg-lime-500 p-0.5">v1.2.3</div></div>
+        <div class="box-border text-base"><div class="rounded-md bg-lime-500 p-0.5">edge</div></div>
       </div>
     </div>
     <div class="basis-1/2 p-4">

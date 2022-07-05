@@ -10,3 +10,5 @@ The `websockets` block activates support for websocket connections in Couper.
 |:----------------------|:----------------------|:--------|:------------------------------------------------------------------|:--------------------------------------------------------------------|:-----------------|
 | `timeout`             | [duration](#duration) | -       | The total deadline duration a websocket connection has to exists. | -                                                                   | `timeout = 600s` |
 | `set_request_headers` | -                     | -       | -                                                                 | Same as `set_request_headers` in [Request Header](#request-header). | -                |
+
+::duration
