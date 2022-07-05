@@ -1,18 +1,8 @@
 # Logging
 
-- [Logging](#logging)
-- [Introduction](#introduction)
-- [Log Types](#log-types)
-- [Fields](#fields)
-- [Access Fields](#access-fields)
-- [Backend Fields](#backend-fields)
-- [Daemon Fields](#daemon-fields)
-- [Custom Logging](#custom-logging)
-- [Settings](#settings)
-
 ## Introduction
 
-Upon the execution of Couper all log events are sent to the standard output. You can adjust the appearance and verbosity of the logs with a variety of [Settings](#settings). There are different [Log Types](#log-types) and [Fields](#fields) containing useful information.
+Upon the execution of Couper all log events are sent to the standard output. You can adjust the appearance and verbosity of the logs with a variety of [Settings](/observation/logging#settings). There are different [Log Types](#log-types) and [Fields](#fields) containing useful information.
 
 > We aspire to make Couper as stable as possible so these logs are still subject to change.
 
@@ -21,13 +11,13 @@ Upon the execution of Couper all log events are sent to the standard output. You
 | Type                | Description                                                                                                                                                                                                |
 |:--------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `couper_access`     | Provides information about the frontend side of things. Compare [Access Fields](#access-fields).                                                                                                           |
-| `couper_access_tls` | Provides information about connections via configured [https_dev_proxy](./REFERENCE.md#settings-block). Compare [Access Fields](#access-fields).                                                           |
+| `couper_access_tls` | Provides information about connections via configured [https_dev_proxy](/configuration/block/settings). Compare [Access Fields](#access-fields).                                                           |
 | `couper_backend`    | Provides information about the backend side of things. Compare [Backend Fields](#backend-fields).                                                                                                          |
 | `couper_daemon`     | Provides background information about the execution of Couper. Each printed log of this type contains a `message` entry describing the current actions of Couper. Compare [Daemon Fields](#daemon-fields). |
 
 ## Fields
 
-Given the large amount of information contained in some logs, it might come handy to change the format or log level (see [Settings](#settings)).
+Given the large amount of information contained in some logs, it might come handy to change the format or log level (see [Settings](/configuration/block/settings)).
 
 ### Common Fields
 
@@ -78,7 +68,7 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 |               | `{`         |                                                                                                                                                                                                                      |
 |               | `"total"`   | total time taken                                                                                                                                                                                                     |
 |               | `}`         |                                                                                                                                                                                                                      |
-| `“uid"`       |             | unique request id configurable in [Settings](./REFERENCE.md#settings-block)                                                                                                                                          |
+| `“uid"`       |             | unique request id configurable in [Settings](/configuration/block/settings)                                                                                                                                          |
 | `"url"`       |             | complete url (`<proto>://<host>:<port><path>` or `<origin><path>`)                                                                                                                                                   |
 
 ### Backend Fields
@@ -121,9 +111,9 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 |                         | `}`         |                                                                                                                                                                                          |
 | `"token_request"`       |             | entry regarding request for token                                                                                                                                                        |
 | `"token_request_retry"` |             | how many `token_request` attempts were made                                                                                                                                              |
-| `"uid"`                 |             | unique request id configurable in [Settings](./REFERENCE.md#settings-block)                                                                                                              |
+| `"uid"`                 |             | unique request id configurable in [Settings](/configuration/block/settings)                                                                                                              |
 | `"url"`                 |             | complete url (`<proto>://<host>:<port><path>` or `<origin><path>`)                                                                                                                       |
-| `"validation"`          |             | validation result for open api, see [OpenAPI Block](./REFERENCE.md#openapi-block)                                                                                                        |
+| `"validation"`          |             | validation result for open api, see [OpenAPI Block](/configuration/block/open-api)                                                                                                        |
 
 ### Daemon Fields
 
@@ -131,33 +121,33 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 | Name         |                 | Description                                                                                                                |
 |:-------------|:----------------|:---------------------------------------------------------------------------------------------------------------------------|
-| `"deadline"` |                 | shutdown parameter, see [Health-Check](./REFERENCE.md#health-check)                                                        |
-| `"delay"`    |                 | shutdown parameter, see [Health-Check](./REFERENCE.md#health-check)                                                        |
-| `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](#settings) |
+| `"deadline"` |                 | shutdown parameter, see [Health-Check](/configuration/settings#health-check)                                                        |
+| `"delay"`    |                 | shutdown parameter, see [Health-Check](/configuration/settings#health-check)                                                        |
+| `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
 |              | `{`             |                                                                                                                            |
-|              | `"max-retries"` | maximum retry count, see [Global Options](./CLI.md#global-options)                                                         |
-|              | `"retry-delay"` | configured delay of each retry, see [Global Options](./CLI.md#global-options)                                              |
+|              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                         |
+|              | `"retry-delay"` | configured delay of each retry, see [Global Options](/configuration/command-line#global-options)                                              |
 |              | `}`             |                                                                                                                            |
 
 ## Custom Logging
 
 These fields are defined in the configuration as `custom_log_fields` attribute in the following blocks:
 
-- [Server Block](./REFERENCE.md#server-block)
-- [Files Block](./REFERENCE.md#files-block)
-- [SPA Block](./REFERENCE.md#spa-block)
-- [API Block](./REFERENCE.md#api-block)
-- [Endpoint Block](./REFERENCE.md#endpoint-block)
-- [Backend Block](./REFERENCE.md#backend-block)
-- [Basic Auth Block](./REFERENCE.md#basic-auth-block)
-- [JWT Block](./REFERENCE.md#jwt-block)
-- [OAuth2 AC Block (Beta)](./REFERENCE.md#oauth2-ac-block-beta)
-- [OIDC Block](./REFERENCE.md#oidc-block)
-- [SAML Block](./REFERENCE.md#saml-block)
-- [Error Handler Block](./ERRORS.md#access-control-error_handler)
+- [Server Block](/configuration/block/server)
+- [Files Block](/configuration/block/files)
+- [SPA Block](/configuration/block/spa)
+- [API Block](/configuration/block/api)
+- [Endpoint Block](/configuration/block/endpoint)
+- [Backend Block](/configuration/block/backend)
+- [Basic Auth Block](/configuration/block/basic-auth)
+- [JWT Block](/configuration/block/jwt)
+- [OAuth2 AC Block (Beta)](/configuration/block/oauth2-ac)
+- [OIDC Block](/configuration/block/oidc)
+- [SAML Block](/configuration/block/saml)
+- [Error Handler Block](/configuration/error-handling)
 
 All `custom_log_fields` definitions will take place within the `couper_access` log with the `custom` field as parent.
-Except the `custom_log_fields` defined in a [Backend Block](./REFERENCE.md#backend-block) which will take place
+Except the `custom_log_fields` defined in a [Backend Block](/configuration/block/backend) which will take place
 in the `couper_backend` log.
 
 **Example:**
@@ -190,7 +180,7 @@ definitions {
 
 ## Settings
 
-For more information regarding the usage of these settings, compare the [Command Line Interface](./CLI.md#global-options) documentation, Couper's [Environment Options](./../DOCKER.md#environment-options) and/or the [Settings Block](./REFERENCE.md#settings-block) reference.
+For more information regarding the usage of these settings, compare the [Command Line Interface](/configuration/command-line) documentation, Couper's [Environment Options](./../DOCKER.md#environment-options) and/or the [Settings Block](/configuration/block/settings) reference.
 
 | Feature      | Description                                                                                                                                                                                                                                    |
 |:-------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
