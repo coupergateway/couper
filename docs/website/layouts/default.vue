@@ -15,6 +15,8 @@ const { toc } = useContent();
       <main class="overflow-y-scroll grow max-w-7xl p-4 sm:px-6
         prose prose-slate
         prose-code:bg-sky-100 prose-code:text-sky-900 prose-code:p-1 prose-code:rounded-md prose-code:text-sm
+        prose-blockquote:bg-purple-100
+        prose-blockquote:rounded-md
         prose-a:text-sky-600
         hover:prose-a:text-amber-500
       ">
