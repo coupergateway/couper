@@ -178,8 +178,13 @@ func (rl *RateLimit) hasCapacity() bool {
 
 	switch rl.window {
 	case windowFixed:
-		// TODO
-		return false
+		if len(rl.counter) >= (int)(rl.perPeriod) {
+			return false
+		}
+
+		rl.counter = append(rl.counter, now)
+
+		return true
 	case windowSliding:
 		if diff := rl.periodEnd.Sub(rl.periodStart); diff < rl.period {
 			// First, not full period
