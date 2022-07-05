@@ -10,6 +10,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 )
@@ -33,6 +36,10 @@ const docsBlockPath = "docs/website/content/2.configuration/4.block"
 // export md: 1) search for ::attribute, replace if exist or append at end
 func main() {
 	const basePath = "/configuration/block/"
+
+	client := search.NewClient("MSIN2HU7WH", os.Getenv("SEARCH_CLIENT_API_KEY"))
+	index := client.InitIndex("docs")
+
 	for _, impl := range []interface{}{
 		&config.Backend{},
 	} {
@@ -142,5 +149,11 @@ values: %s
 			panic(err)
 		}
 		println("Attributes written: " + fileName)
+
+		_, err = index.SaveObjects(result, opt.AutoGenerateObjectIDIfNotExist(true))
+		if err != nil {
+			panic(err)
+		}
+		println("SearchIndex updated")
 	}
 }
