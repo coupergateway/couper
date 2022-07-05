@@ -359,18 +359,16 @@ func ToString(s interface{}) string {
 	}
 }
 
-// isObject checks by type name since object is not comparable by type.
 func isObject(v cty.Value) bool {
 	if v.IsNull() {
 		return false
 	}
-	return v.Type().FriendlyNameForConstraint() == "object"
+	return v.Type().IsObjectType()
 }
 
-// isTuple checks by type name since tuple is not comparable by type.
 func isTuple(v cty.Value) bool {
 	if v.IsNull() {
 		return false
 	}
-	return v.Type().FriendlyNameForConstraint() == "tuple"
+	return v.Type().IsTupleType()
 }
