@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * [`form_body`, `headers` and `cookies`](./docs/REFERENCE.md#request) can now be properly [custom-logged](./docs/LOGS.md#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
+
 ---
 
 ## [1.9.2](https://github.com/avenga/couper/releases/tag/v1.9.2)
