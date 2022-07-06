@@ -13,7 +13,7 @@
       <tr v-for="value in values" :key="value.name">
         <td v-for="head in header" :key="head.value+value.name">
           <code v-if="head.value === 'name'">{{ value[head.value] ? value[head.value] : '-' }}</code>
-          <div v-else>{{ value[head.value] ? value[head.value] : '-' }}</div>
+          <div v-else v-html="value[head.value] ? value[head.value] : '-'" />
         </td>
       </tr>
       </tbody>

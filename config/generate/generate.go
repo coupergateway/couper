@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/avenga/couper/config"
@@ -18,6 +17,7 @@ import (
 )
 
 type entry struct {
+	ID         string `json:"objectID"`
 	Name       string `json:"name"`
 	Type       string `json:"type"`
 	Url        string `json:"url"`
@@ -41,7 +41,14 @@ func main() {
 	index := client.InitIndex("docs")
 
 	for _, impl := range []interface{}{
+		&config.API{},
 		&config.Backend{},
+		&config.BasicAuth{},
+		&config.CORS{},
+		&config.Defaults{},
+		&config.Files{},
+		&config.Proxy{},
+		&config.Endpoint{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
 		name := strings.TrimPrefix(strings.ToLower(fmt.Sprintf("%v", t)), "config.")
@@ -52,17 +59,19 @@ func main() {
 			Url:  basePath + name,
 			Type: "block",
 		}
-
-		inlineType := impl.(config.Inline).Inline()
-		it := reflect.TypeOf(inlineType).Elem()
+		result.ID = result.Url
 
 		var fields []reflect.StructField
 		for i := 0; i < t.NumField(); i++ {
 			fields = append(fields, t.Field(i))
 		}
 
-		for i := 0; i < it.NumField(); i++ {
-			fields = append(fields, it.Field(i))
+		inlineType, ok := impl.(config.Inline)
+		if ok {
+			it := reflect.TypeOf(inlineType.Inline()).Elem()
+			for i := 0; i < it.NumField(); i++ {
+				fields = append(fields, it.Field(i))
+			}
 		}
 
 		for _, field := range fields {
@@ -73,9 +82,11 @@ func main() {
 			fieldType := field.Tag.Get("type")
 			if fieldType == "" {
 				ft := field.Type.String()
-				if strings.Contains(ft, "int") {
+				if ft[:2] == "[]" {
+					ft = "tuple (" + ft[2:] + ")"
+				} else if strings.Contains(ft, "int") {
 					ft = "number"
-				} else if strings.HasPrefix(ft, "map") {
+				} else if ft != "string" {
 					ft = "object"
 				}
 				fieldType = ft
@@ -109,7 +120,7 @@ func main() {
 		var skipMode, seen bool
 		for scanner.Scan() {
 			line := scanner.Text()
-			println(line)
+
 			if strings.HasPrefix(line, "::attributes") {
 				fileBytes.WriteString(fmt.Sprintf(`
 ::attributes
@@ -149,8 +160,8 @@ values: %s
 			panic(err)
 		}
 		println("Attributes written: " + fileName)
-
-		_, err = index.SaveObjects(result, opt.AutoGenerateObjectIDIfNotExist(true))
+		//continue
+		_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
 		if err != nil {
 			panic(err)
 		}

@@ -13,11 +13,11 @@ var _ Inline = &BasicAuth{}
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
 	ErrorHandlerSetter
-	File   string   `hcl:"htpasswd_file,optional"`
+	File   string   `hcl:"htpasswd_file,optional" docs:"The htpasswd file."`
 	Name   string   `hcl:"name,label"`
-	User   string   `hcl:"user,optional"`
-	Pass   string   `hcl:"password,optional"`
-	Realm  string   `hcl:"realm,optional"`
+	User   string   `hcl:"user,optional" docs:"The user name."`
+	Pass   string   `hcl:"password,optional" docs:"The corresponding password."`
+	Realm  string   `hcl:"realm,optional" docs:"The realm to be sent in a WWW-Authenticate response HTTP header field."`
 	Remain hcl.Body `hcl:",remain"`
 }
 
@@ -28,7 +28,7 @@ func (b *BasicAuth) HCLBody() hcl.Body {
 
 func (b *BasicAuth) Inline() interface{} {
 	type Inline struct {
-		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom logging"`
 	}
 
 	return &Inline{}

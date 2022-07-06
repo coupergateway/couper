@@ -11,12 +11,12 @@ type FilesBlocks []*Files
 
 // Files represents the <Files> object.
 type Files struct {
-	AccessControl        []string `hcl:"access_control,optional"`
-	BasePath             string   `hcl:"base_path,optional"`
+	AccessControl        []string `hcl:"access_control,optional" docs:"Sets predefined access control for this block context."`
+	BasePath             string   `hcl:"base_path,optional" docs:"Configures the path prefix for all requests."`
 	CORS                 *CORS    `hcl:"cors,block"`
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
-	DocumentRoot         string   `hcl:"document_root"`
-	ErrorFile            string   `hcl:"error_file,optional"`
+	DocumentRoot         string   `hcl:"document_root" docs:"Location of the document root (directory)."`
+	ErrorFile            string   `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Name                 string   `hcl:"name,label,optional"`
 	Remain               hcl.Body `hcl:",remain"`
 }
@@ -32,7 +32,7 @@ func (f Files) Inline() interface{} {
 		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
 		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`
-		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom logging."`
 	}
 
 	return &Inline{}

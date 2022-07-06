@@ -6,11 +6,41 @@ The `files` blocks configure the file serving. Can be defined multiple times as 
 |:-----------|:------------------------------|:---------|:--------------------------|
 | `files`    | [Server Block](#server-block) | Optional | [CORS Block](#cors-block) |
 
-| Attribute(s)             | Type           | Default | Description                                                                  | Characteristic(s)                   | Example                            |
-|:-------------------------|:---------------|:--------|:-----------------------------------------------------------------------------|:------------------------------------|:-----------------------------------|
-| `base_path`              | string         | -       | Configures the path prefix for all requests.                                 | -                                   | `base_path = "/files"`             |
-| `document_root`          | string         | -       | Location of the document root.                                               | &#9888; required                    | `document_root = "./htdocs"`       |
-| `error_file`             | string         | -       | Location of the error file template.                                         | -                                   | -                                  |
-| `access_control`         | tuple (string) | -       | Sets predefined [Access Control](#access-control) for `files` block context. | -                                   | `access_control = ["foo"]`         |
-| `disable_access_control` | tuple (string) | -       | Disables access controls by name.                                            | -                                   | `disable_access_control = ["foo"]` |
-| `custom_log_fields`      | object         | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging).             | &#9888; Inherited by nested blocks. | -                                  |
+
+::attributes
+---
+values: [
+  {
+    "name": "access_control",
+    "type": "tuple (string)",
+    "default": "",
+    "description": "Sets predefined access control for this block context."
+  },
+  {
+    "name": "base_path",
+    "type": "string",
+    "default": "",
+    "description": "Configures the path prefix for all requests."
+  },
+  {
+    "name": "document_root",
+    "type": "string",
+    "default": "",
+    "description": "Location of the document root (directory)."
+  },
+  {
+    "name": "error_file",
+    "type": "string",
+    "default": "",
+    "description": "Location of the error file template."
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom logging."
+  }
+]
+
+---
+::

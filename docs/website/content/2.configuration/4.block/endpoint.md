@@ -8,19 +8,88 @@ produce an explicit or implicit client response.
 |:-----------|:-------------------------------------------------------|:-----------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `endpoint` | [Server Block](#server-block), [API Block](#api-block) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block(s)](#error-handler-block) |
 
-<!-- TODO: decide how to place "modifier" in the reference table - same for other block which allow modifiers -->
-
-| Attribute(s)               | Type                                               | Default                                                                   | Description                                                                                                                                                                                   | Characteristic(s)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Example                                                                                                                                                                    |
-|:---------------------------|:---------------------------------------------------|:--------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `request_body_limit`       | string                                             | `"64MiB"`                                                                 | Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content.                                                                                        | &#9888; Valid units are: `KiB, MiB, GiB`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `request_body_limit = "200KiB"`                                                                                                                                            |
-| `access_control`           | tuple (string)                                     | -                                                                         | Sets predefined [Access Control](#access-control) for `endpoint` block context.                                                                                                               | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `access_control = ["foo"]`                                                                                                                                                 |
-| `disable_access_control`   | tuple (string)                                     | -                                                                         | Disables access controls by name.                                                                                                                                                             | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `disable_access_control = ["foo"]`                                                                                                                                         |
-| `allowed_methods`          | tuple (string)                                     | `["*"]` == `["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]` | Sets allowed methods _overriding_ a default set in the containing `api` block. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status. | The default value `"*"` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](#cors-block) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]`                                                                                                   |
-| `beta_required_permission` | expression evaluating to string or object (string) | -                                                                         | Permission required to use this endpoint (see [error type](ERRORS.md#error-types) `beta_insufficient_permissions`).                                                                           | Overrides `beta_required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `beta_required_permission` set or b) either `beta_required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown. | `beta_required_permission = "read"` or `beta_required_permission = { post = "write", "*" = "" }` or `beta_required_permission = default(request.path_params.p, "not_set")` |
-| `custom_log_fields`        | object                                             | -                                                                         | Defines log fields for [Custom Logging](LOGS.md#custom-logging).                                                                                                                              | &#9888; Inherited by nested blocks.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -                                                                                                                                                                          |
-| [Modifiers](#modifiers)    | -                                                  | -                                                                         | -                                                                                                                                                                                             | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | -                                                                                                                                                                          |
-
 ## Endpoint Sequence
 
 If `request` and/or `proxy` block definitions are sequential based on their `backend_responses.*` variable references
 at load-time they will be executed sequentially. Unexpected responses can be caught with [error handling](ERRORS.md#endpoint-related-error_handler).
+
+### Attribute `allowed_methods`
+
+The default value `"*"` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](/configuration/block/cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
+
+**Example:**
+
+```hcl
+allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]
+```
+
+### Attribute `beta_required_permission`
+
+Overrides `beta_required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `beta_required_permission` set or b) either `beta_required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
+
+**Example:**
+
+```hcl
+beta_required_permission = "read"
+# or
+beta_required_permission = { post = "write", "*" = "" }
+# or
+beta_required_permission = default(request.path_params.p, "not_set")
+```
+
+
+::attributes
+---
+values: [
+  {
+    "name": "access_control",
+    "type": "tuple (string)",
+    "default": "",
+    "description": "Sets predefined access control for this block context."
+  },
+  {
+    "name": "allowed_methods",
+    "type": "tuple (string)",
+    "default": "",
+    "description": "Sets allowed methods overriding a default set in the containing <code>api</code> block. Requests with a method that is not allowed result in an error response with a <code>405 Method Not Allowed</code> status."
+  },
+  {
+    "name": "disable_access_control",
+    "type": "tuple (string)",
+    "default": "",
+    "description": "Disables access controls by name."
+  },
+  {
+    "name": "error_file",
+    "type": "string",
+    "default": "",
+    "description": "Location of the error file template."
+  },
+  {
+    "name": "request_body_limit",
+    "type": "string",
+    "default": "",
+    "description": "Configures the maximum buffer size while accessing <code>request.form_body</code> or <code>request.json_body</code> content. Valid units are: <code>KiB</code>, <code>MiB</code>, <code>GiB</code>"
+  },
+  {
+    "name": "set_response_status",
+    "type": "number",
+    "default": "",
+    "description": "Modifies the response status code."
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom logging"
+  },
+  {
+    "name": "beta_required_permission",
+    "type": "object",
+    "default": "",
+    "description": "expression evaluating to string or object (string)"
+  }
+]
+
+---
+::

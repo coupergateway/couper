@@ -2,17 +2,41 @@
 
 The `proxy` block creates and executes a proxy request to a backend service.
 
-&#9888; Multiple  `proxy` and [Request Block](#request-block)s are executed in parallel.
-<!-- TODO: shorten label text in table below and find better explanation for backend, backend reference or url - same for request block-->
+> Multiple  `proxy` and [`request`](/configuration/block/request) blocks are executed in parallel.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                          | Nested block(s)                                                                                                                                                                                                                                |
 |:-----------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `proxy`    | [Endpoint Block](#endpoint-block) | &#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed. | [Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.), [Websockets Block](#websockets-block) (&#9888; Either websockets attribute or block is allowed.) |
 
-| Attribute(s)            | Type           | Default | Description                                                                                                                                                                                                                                                      | Characteristic(s)                                                                      | Example             |
-|:------------------------|:---------------|:--------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------|:--------------------|
-| `backend`               | string         | -       | [Backend Block](#backend-block) reference, defined in [Definitions Block](#definitions-block)                                                                                                                                                                    | &#9888; required, if no [Backend Block](#backend-block) or `url` attribute is defined. | `backend = "foo"`   |
-| `expected_status`       | tuple (number) | -       | If defined, the response status code will be verified against this list of codes. If the status-code is unexpected an [`unexpected_status` error](ERRORS.md#error-types) can be handled with an [`error_handler`](ERRORS.md#endpoint-related-error_handler).     | -                                                                                      | -                   |
-| `url`                   | string         | -       | If defined, the host part of the URL must be the same as the `origin` attribute of the [Backend Block](#backend-block) (if defined).                                                                                                                             | -                                                                                      | -                   |
-| `websockets`            | bool           | false   | Allows support for websockets. This attribute is only allowed in the 'default' `proxy` block. Other `proxy` blocks, [Request Blocks](#request-block) or [Response Blocks](#response-block) are not allowed in the current [Endpoint Block](#endpoint-block).     | &#9888; Either websockets attribute or block is allowed.                               | `websockets = true` |
-| [Modifiers](#modifiers) | -              | -       | -                                                                                                                                                                                                                                                                | -                                                                                      | -                   |
+
+::attributes
+---
+values: [
+  {
+    "name": "backend",
+    "type": "string",
+    "default": "",
+    "description": "backend block reference"
+  },
+  {
+    "name": "websockets",
+    "type": "object",
+    "default": "",
+    "description": "Allows support for websockets. This attribute is only allowed in the 'default' proxy block. Other <code>proxy</code> blocks, <code>request</code> blocks or <code>response</code> blocks are not allowed within the current <code>endpoint</code> block."
+  },
+  {
+    "name": "expected_status",
+    "type": "tuple (int)",
+    "default": "",
+    "description": "If defined, the response status code will be verified against this list of codes. If the status-code is unexpected an <code>unexpected_status</code> error can be handled with an <code>error_handler</code>."
+  },
+  {
+    "name": "url",
+    "type": "string",
+    "default": "",
+    "description": "If defined, the host part of the URL must be the same as the <code>origin</code> attribute of the <code>backend</code> block (if defined)."
+  }
+]
+
+---
+::
