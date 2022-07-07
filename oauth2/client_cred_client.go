@@ -1,23 +1,14 @@
 package oauth2
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 )
 
-// ClientCredentialsClient represents an OAuth2 client using the client credentials flow.
-type ClientCredentialsClient struct {
-	*Client
-	// password and username undocumented feature!
-	password string
-	username string
-}
-
 // NewClientCredentialsClient creates a new OAuth2 Client Credentials client.
-func NewClientCredentialsClient(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*ClientCredentialsClient, error) {
+func NewClientCredentialsClient(conf *config.OAuth2ReqAuth, backend http.RoundTripper) (*Client, error) {
 	backendErr := errors.Backend.Label(conf.Reference())
 	// grant_type password undocumented feature!
 	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
@@ -52,24 +43,5 @@ func NewClientCredentialsClient(conf *config.OAuth2ReqAuth, backend http.RoundTr
 			return nil, backendErr.Messagef("token_endpoint_auth_method %s not supported", *teAuthMethod)
 		}
 	}
-	// conf.Password and conf.Username undocumented feature!
-	return &ClientCredentialsClient{&Client{backend, conf, conf, conf.GrantType}, conf.Password, conf.Username}, nil
-}
-
-// GetTokenResponse retrieves the response from the token endpoint
-func (c *ClientCredentialsClient) GetTokenResponse(ctx context.Context) (map[string]interface{}, string, error) {
-	var requestParams map[string]string
-	// password and username undocumented feature!
-	if c.password != "" || c.username != "" {
-		requestParams = make(map[string]string)
-		requestParams["username"] = c.username
-		requestParams["password"] = c.password
-	}
-
-	tokenResponseData, accessToken, err := c.getTokenResponse(ctx, requestParams)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return tokenResponseData, accessToken, nil
+	return &Client{backend, conf, conf, conf.GrantType}, nil
 }

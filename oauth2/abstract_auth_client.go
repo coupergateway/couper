@@ -26,8 +26,8 @@ func (a AbstractAuthCodeClient) GetName() string {
 	return a.name
 }
 
-// GetTokenResponse retrieves the response from the token endpoint.
-func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
+// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
+func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
@@ -89,7 +89,7 @@ func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL 
 		}
 	}
 
-	tokenResponseData, accessToken, err := a.getTokenResponse(req.Context(), requestParams)
+	tokenResponseData, accessToken, err := a.GetTokenResponse(req.Context(), requestParams)
 	if err != nil {
 		return nil, errors.Oauth2.Message("token request error").With(err)
 	}

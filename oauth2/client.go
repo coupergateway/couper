@@ -21,13 +21,7 @@ type Client struct {
 	grantType    string
 }
 
-func (c *Client) requestToken(ctx context.Context, requestParams map[string]string) ([]byte, int, error) {
-	tokenReq, err := c.newTokenRequest(ctx, requestParams)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	tokenReq.Header.Set("Accept", "application/json")
+func (c *Client) requestToken(tokenReq *http.Request) ([]byte, int, error) {
 	tokenRes, err := c.Backend.RoundTrip(tokenReq)
 	if err != nil {
 		return nil, 0, err
@@ -70,6 +64,7 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 		return nil, err
 	}
 
+	outreq.Header.Set("Accept", "application/json")
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
@@ -83,8 +78,13 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	return outreq.WithContext(outCtx), nil
 }
 
-func (c *Client) getTokenResponse(ctx context.Context, requestParams map[string]string) (map[string]interface{}, string, error) {
-	tokenResponse, statusCode, err := c.requestToken(ctx, requestParams)
+func (c *Client) GetTokenResponse(ctx context.Context, requestParams map[string]string) (map[string]interface{}, string, error) {
+	tokenReq, err := c.newTokenRequest(ctx, requestParams)
+	if err != nil {
+		return nil, "", err
+	}
+
+	tokenResponse, statusCode, err := c.requestToken(tokenReq)
 	if err != nil {
 		return nil, "", err
 	}

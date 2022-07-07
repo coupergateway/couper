@@ -17,14 +17,14 @@ type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
 	locks        sync.Map
 	memStore     *cache.MemoryStore
-	oauth2Client *oauth2.ClientCredentialsClient
+	oauth2Client *oauth2.Client
 	storageKey   string
 }
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2Client *oauth2.ClientCredentialsClient) TokenRequest {
+	oauth2Client *oauth2.Client) TokenRequest {
 	reqAuth := &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,
@@ -53,8 +53,15 @@ func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
 		return nil
 	}
 
-	ctx := req.Context()
-	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
+	var requestParams map[string]string
+	// password and username undocumented feature!
+	if oa.config.Password != "" || oa.config.Username != "" {
+		requestParams = make(map[string]string)
+		requestParams["username"] = oa.config.Username
+		requestParams["password"] = oa.config.Password
+	}
+
+	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), requestParams)
 	if err != nil {
 		mutex.Unlock()
 		return errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)

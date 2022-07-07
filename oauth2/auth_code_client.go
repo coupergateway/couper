@@ -12,7 +12,7 @@ import (
 // AuthCodeFlowClient represents an OAuth2 client using the authorization code flow.
 type AuthCodeFlowClient interface {
 	GetName() string
-	GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
+	ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
 	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
 
