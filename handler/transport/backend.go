@@ -124,7 +124,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	backends := seetie.ValueToMap(hclCtx.Variables[eval.Backends])
 	hclCtx.Variables[eval.Backend] = seetie.GoToValue(backends[b.name])
 
-	if err := b.isUnhealthy(hclCtx, ctxBody); err != nil {
+	if err = b.isUnhealthy(hclCtx, ctxBody); err != nil {
 		return &http.Response{
 			Request: req, // provide outreq (variable) on error cases
 		}, err
