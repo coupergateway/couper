@@ -24,7 +24,40 @@ type OAuth2ReqAuth struct {
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2Client *oauth2.Client) TokenRequest {
+	asBackend http.RoundTripper) (TokenRequest, error) {
+
+	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
+		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
+	}
+
+	if conf.GrantType == "client_credentials" {
+		// conf.Username undocumented feature!
+		if conf.Username != "" {
+			return nil, fmt.Errorf("username must not be set with grant_type=client_credentials")
+		}
+		// conf.Password undocumented feature!
+		if conf.Password != "" {
+			return nil, fmt.Errorf("password must not be set with grant_type=client_credentials")
+		}
+	}
+
+	// grant_type password undocumented feature!
+	// WARNING: this implementation is no proper password flow, but a flow with username and password to login _exactly one_ user
+	// the received access token is stored in cache just like with the client credentials flow
+	if conf.GrantType == "password" {
+		if conf.Username == "" {
+			return nil, fmt.Errorf("username must not be empty with grant_type=password")
+		}
+		if conf.Password == "" {
+			return nil, fmt.Errorf("password must not be empty with grant_type=password")
+		}
+	}
+
+	oauth2Client, err := oauth2.NewClient(conf.GrantType, conf, conf, asBackend)
+	if err != nil {
+		return nil, err
+	}
+
 	reqAuth := &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,
@@ -32,7 +65,7 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		locks:        sync.Map{},
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
-	return reqAuth
+	return reqAuth, nil
 }
 
 func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
