@@ -339,17 +339,17 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 
 	originalReq := req.Clone(req.Context())
 
-	errors := make(chan error, len(b.requestAuthorizer))
+	errorsCh := make(chan error, len(b.requestAuthorizer))
 	// WithContext() instead of Clone() due to header-map modification.
 	req = req.WithContext(ctx)
 	for _, ra := range b.requestAuthorizer {
 		go func(ra RequestAuthorizer, req *http.Request) {
 			err := ra.WithToken(req)
-			errors <- err
+			errorsCh <- err
 		}(ra, req)
 	}
 	for i := 0; i < len(b.requestAuthorizer); i++ {
-		err := <-errors
+		err := <-errorsCh
 		if err != nil {
 			return originalReq, err
 		}
