@@ -38,10 +38,5 @@ func NewClientCredentialsClient(conf *config.OAuth2ReqAuth, backend http.RoundTr
 		}
 	}
 
-	if teAuthMethod := conf.TokenEndpointAuthMethod; teAuthMethod != nil {
-		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
-			return nil, backendErr.Messagef("token_endpoint_auth_method %s not supported", *teAuthMethod)
-		}
-	}
-	return &Client{backend, conf, conf, conf.GrantType}, nil
+	return NewClient(conf.GrantType, conf, conf, backend)
 }

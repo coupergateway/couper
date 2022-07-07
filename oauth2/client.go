@@ -15,14 +15,29 @@ import (
 
 // Client represents an OAuth2 client.
 type Client struct {
-	Backend      http.RoundTripper
+	backend      http.RoundTripper
 	asConfig     config.OAuth2AS
 	clientConfig config.OAuth2Client
 	grantType    string
 }
 
+func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
+	if teAuthMethod := clientConfig.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
+		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
+			return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
+		}
+	}
+
+	return &Client{
+		backend,
+		asConfig,
+		clientConfig,
+		grantType,
+	}, nil
+}
+
 func (c *Client) requestToken(tokenReq *http.Request) ([]byte, int, error) {
-	tokenRes, err := c.Backend.RoundTrip(tokenReq)
+	tokenRes, err := c.backend.RoundTrip(tokenReq)
 	if err != nil {
 		return nil, 0, err
 	}

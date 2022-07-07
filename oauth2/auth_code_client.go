@@ -28,12 +28,6 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
 	}
 
-	if teAuthMethod := acClientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
-		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
-			return nil, fmt.Errorf("token_endpoint_auth_method %s not supported", *teAuthMethod)
-		}
-	}
-
 	switch acClientConf.(type) {
 	case *config.OAuth2AC:
 		verifierMethod, err := acClientConf.GetVerifierMethod()
@@ -48,12 +42,11 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 		// skip this for oidc configurations due to possible startup errors
 	}
 
-	client := &Client{
-		Backend:      backend,
-		asConfig:     oauth2AsConf,
-		clientConfig: acClientConf,
-		grantType:    grantType,
+	client, err := NewClient(grantType, oauth2AsConf, acClientConf, backend)
+	if err != nil {
+		return nil, err
 	}
+
 	o := &AuthCodeClient{&AbstractAuthCodeClient{
 		Client: client,
 		name:   acClientConf.GetName(),

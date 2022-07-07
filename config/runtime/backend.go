@@ -146,7 +146,7 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 
 	oauth2Client, err := oauth2.NewClientCredentialsClient(beConf.OAuth2, authBackend)
 	if err != nil {
-		return nil, err
+		return nil, errors.Backend.Label(beConf.Name).With(err)
 	}
 
 	tr := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client)
