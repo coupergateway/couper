@@ -56,20 +56,22 @@ func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
 }
 
 func (l *Limiter) checkCapacity() {
-	// TODO Shutdown
 outer:
 	for {
-		result := <-l.check
+		select {
+		case <-l.limits[0].quitCh:
+			return
+		case result := <-l.check:
+			for _, rl := range l.limits {
+				if !rl.hasCapacity() {
+					result <- false
 
-		for _, rl := range l.limits {
-			if !rl.hasCapacity() {
-				result <- false
-
-				continue outer
+					continue outer
+				}
 			}
-		}
 
-		result <- true
+			result <- true
+		}
 	}
 }
 
@@ -83,12 +85,12 @@ func (l *Limiter) RoundTrip(req *http.Request) (*http.Response, error) {
 			if result {
 				res, err := l.transport.RoundTrip(req)
 				if res != nil && res.StatusCode == http.StatusTooManyRequests {
-					return res, errors.Backend.Status(http.StatusTooManyRequests).With(err)
+					return res, errors.BackendRateLimitExceeded.With(err)
 				}
 
 				return res, err
 			} else {
-				return nil, errors.Backend.Status(http.StatusTooManyRequests)
+				return nil, errors.BackendRateLimitExceeded
 			}
 		case <-req.Context().Done():
 			return nil, req.Context().Err()

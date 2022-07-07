@@ -311,6 +311,10 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 				return nil, derr
 			}
 		default:
+			if _, ok := err.(*errors.Error); ok {
+				return nil, err
+			}
+
 			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
