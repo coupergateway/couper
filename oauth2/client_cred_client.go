@@ -57,7 +57,7 @@ func NewClientCredentialsClient(conf *config.OAuth2ReqAuth, backend http.RoundTr
 }
 
 // GetTokenResponse retrieves the response from the token endpoint
-func (c *ClientCredentialsClient) GetTokenResponse(ctx context.Context) ([]byte, map[string]interface{}, string, error) {
+func (c *ClientCredentialsClient) GetTokenResponse(ctx context.Context) (map[string]interface{}, string, error) {
 	var requestParams map[string]string
 	// password and username undocumented feature!
 	if c.password != "" || c.username != "" {
@@ -66,10 +66,10 @@ func (c *ClientCredentialsClient) GetTokenResponse(ctx context.Context) ([]byte,
 		requestParams["password"] = c.password
 	}
 
-	tokenResponse, tokenResponseData, accessToken, err := c.getTokenResponse(ctx, requestParams)
+	tokenResponseData, accessToken, err := c.getTokenResponse(ctx, requestParams)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 
-	return tokenResponse, tokenResponseData, accessToken, nil
+	return tokenResponseData, accessToken, nil
 }

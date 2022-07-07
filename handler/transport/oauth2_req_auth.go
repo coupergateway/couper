@@ -36,13 +36,8 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 }
 
 func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
-	if token, terr := oa.readAccessToken(); terr != nil {
-		// TODO this error is not connected to the OAuth2 client's backend
-		// In fact this can only be a JSON parse error or a missing access_token,
-		// which will occur after having requested the token from the authorization
-		// server. So the erroneous response will never be stored.
-		return errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
-	} else if token != "" {
+	token := oa.readAccessToken()
+	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
@@ -51,24 +46,21 @@ func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
 	mutex := value.(*sync.Mutex)
 
 	mutex.Lock()
-	token, terr := oa.readAccessToken()
-	if terr != nil {
-		mutex.Unlock()
-		return errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
-	} else if token != "" {
+	token = oa.readAccessToken()
+	if token != "" {
 		mutex.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
 
 	ctx := req.Context()
-	tokenResponse, tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
+	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
 	if err != nil {
 		mutex.Unlock()
 		return errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
 	}
 
-	oa.updateAccessToken(tokenResponse, tokenResponseData)
+	oa.updateAccessToken(token, tokenResponseData)
 	mutex.Unlock()
 
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -92,27 +84,21 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 	return false, nil
 }
 
-func (oa *OAuth2ReqAuth) readAccessToken() (string, error) {
+func (oa *OAuth2ReqAuth) readAccessToken() string {
 	if data := oa.memStore.Get(oa.storageKey); data != nil {
-		_, token, err := oauth2.ParseTokenResponse(data.([]byte))
-		if err != nil {
-			// err can only be JSON parse error, however non-JSON data should never be stored
-			return "", err
-		}
-
-		return token, nil
+		return data.(string)
 	}
 
-	return "", nil
+	return ""
 }
 
-func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]interface{}) {
+func (oa *OAuth2ReqAuth) updateAccessToken(token string, jData map[string]interface{}) {
 	if oa.memStore != nil {
 		var ttl int64
 		if t, ok := jData["expires_in"].(float64); ok {
 			ttl = (int64)(t * 0.9)
 		}
 
-		oa.memStore.Set(oa.storageKey, jsonBytes, ttl)
+		oa.memStore.Set(oa.storageKey, token, ttl)
 	}
 }

@@ -83,15 +83,15 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	return outreq.WithContext(outCtx), nil
 }
 
-func (c *Client) getTokenResponse(ctx context.Context, requestParams map[string]string) ([]byte, map[string]interface{}, string, error) {
+func (c *Client) getTokenResponse(ctx context.Context, requestParams map[string]string) (map[string]interface{}, string, error) {
 	tokenResponse, statusCode, err := c.requestToken(ctx, requestParams)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 
-	tokenResponseData, accessToken, err := ParseTokenResponse(tokenResponse)
+	tokenResponseData, accessToken, err := parseTokenResponse(tokenResponse)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 
 	if statusCode != http.StatusOK {
@@ -105,13 +105,13 @@ func (c *Client) getTokenResponse(ctx context.Context, requestParams map[string]
 		if uExists {
 			msg += fmt.Sprintf(", error_uri=%s", errorUri)
 		}
-		return nil, nil, "", fmt.Errorf(msg)
+		return nil, "", fmt.Errorf(msg)
 	}
 
-	return tokenResponse, tokenResponseData, accessToken, nil
+	return tokenResponseData, accessToken, nil
 }
 
-func ParseTokenResponse(tokenResponse []byte) (map[string]interface{}, string, error) {
+func parseTokenResponse(tokenResponse []byte) (map[string]interface{}, string, error) {
 	var tokenResponseData map[string]interface{}
 
 	err := json.Unmarshal(tokenResponse, &tokenResponseData)

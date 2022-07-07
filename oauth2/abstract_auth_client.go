@@ -89,7 +89,7 @@ func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL 
 		}
 	}
 
-	_, tokenResponseData, accessToken, err := a.getTokenResponse(req.Context(), requestParams)
+	tokenResponseData, accessToken, err := a.getTokenResponse(req.Context(), requestParams)
 	if err != nil {
 		return nil, errors.Oauth2.Message("token request error").With(err)
 	}
