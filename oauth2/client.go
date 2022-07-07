@@ -2,7 +2,6 @@ package oauth2
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -74,9 +73,7 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
-		auth := base64.StdEncoding.EncodeToString([]byte(c.clientConfig.GetClientID() + ":" + c.clientConfig.GetClientSecret()))
-
-		outreq.Header.Set("Authorization", "Basic "+auth)
+		outreq.SetBasicAuth(url.QueryEscape(c.clientConfig.GetClientID()), url.QueryEscape(c.clientConfig.GetClientSecret()))
 	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
