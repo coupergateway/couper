@@ -622,8 +622,7 @@ func newCtyCouperVariablesMap(environment string) cty.Value {
 	return cty.MapVal(ctyMap)
 }
 
-func MapTokenResponse(ctx context.Context, evalCtx *hcl.EvalContext) {
-	name, _ := ctx.Value(request.RoundTripName).(string)
+func MapTokenResponse(evalCtx *hcl.EvalContext, name string) {
 	if name == "" {
 		name = "default"
 	}

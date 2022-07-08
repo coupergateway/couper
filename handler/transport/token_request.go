@@ -138,7 +138,7 @@ func (t *TokenRequest) requestToken(etx *eval.Context) (string, int64, error) {
 
 	// obtain synced and already read beresp value; map to context variables
 	hclCtx = etx.HCLContextSync()
-	eval.MapTokenResponse(etx, hclCtx)
+	eval.MapTokenResponse(hclCtx, t.config.Name)
 
 	tokenVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "token")
 	if err != nil {

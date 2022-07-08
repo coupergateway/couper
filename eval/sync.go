@@ -33,7 +33,7 @@ func (sv *SyncedVariables) Set(beresp *http.Response) {
 	name, bereqV, berespV := newBerespValues(ctx, true, beresp)
 
 	if tr, ok := ctx.Value(request.TokenRequest).(string); ok && tr != "" {
-		name = TokenRequestPrefix + name
+		name = TokenRequestPrefix + tr
 	}
 
 	backendName, _ := ctx.Value(request.BackendName).(string)
