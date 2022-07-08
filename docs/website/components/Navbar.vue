@@ -38,15 +38,15 @@ const searchClient = {
         <div class="hidden w-full lg:flex items-center text-sm pl-4">
           <ais-instant-search :index-name="indexName" :search-client="searchClient">
             <ais-search-box class="leading-6 rounded-md shadow-sm py-1.5 pl-2 pr-3" />
-            <ais-hits>
+            <ais-hits class="absolute">
               <template v-slot:item="{ item }">
-                <NuxtLink :to="item.url" class="text-lime-400">
-                  {{item.name}}
-                  {{item.description}}
-<!--                  &lt;!&ndash;                <h2>{{ item.name }}</h2>&ndash;&gt;-->
-<!--                  <ais-highlight attribute="name" :hit="item" />-->
-<!--                  <ais-highlight attribute="description" :hit="item" />-->
-                </NuxtLink>
+                  <NuxtLink :to="item.url" class="text-sky-600">
+                    {{item.name}}
+                    {{item.description}}
+  <!--                  &lt;!&ndash;                <h2>{{ item.name }}</h2>&ndash;&gt;-->
+  <!--                  <ais-highlight attribute="name" :hit="item" />-->
+  <!--                  <ais-highlight attribute="description" :hit="item" />-->
+                  </NuxtLink>
               </template>
             </ais-hits>
           </ais-instant-search>
@@ -57,11 +57,16 @@ const searchClient = {
 </template>
 
 <style>
+  .ais-Hits-item {
+    width: 10rem;
+    background-color: whitesmoke;
+  }
+
   .ais-InstantSearch {
     width: 50%;
   }
   .ais-SearchBox-input {
-    background-color: unset;
-    color: #e3e4e4;
+    background-color: whitesmoke;
+    /*color: darkgray;*/
   }
 </style>
