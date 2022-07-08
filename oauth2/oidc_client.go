@@ -256,11 +256,11 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 
 	userinfoResBytes, err := io.ReadAll(userinfoRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(o.asConfig.Reference()).Message("userinfo request read error").With(err)
+		return nil, errors.Backend.Label(o.config.Reference()).Message("userinfo request read error").With(err)
 	}
 
 	if userinfoRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(o.asConfig.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
+		return nil, errors.Backend.Label(o.config.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
 	}
 
 	return userinfoResBytes, nil
