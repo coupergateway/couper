@@ -216,6 +216,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return beresp, err
 	}
 
+	req = req.WithContext(context.WithValue(req.Context(), request.BackendName, b.name))
+
 	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
 		return beresp, errors.BetaBackendTokenRequest.Label(b.name).With(rerr)
 	} else if retry {
