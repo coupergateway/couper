@@ -19,26 +19,26 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
 values: [
   {
     "name": "disable_certificate_validation",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Disables the peer certificate validation."
   },
   {
     "name": "disable_connection_reuse",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Disables reusage of connections to the origin."
   },
   {
     "name": "http2",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Enables the HTTP2 support."
   },
   {
     "name": "max_connections",
     "type": "number",
-    "default": "",
+    "default": "0",
     "description": "The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin."
   },
   {
@@ -50,7 +50,7 @@ values: [
   {
     "name": "connect_timeout",
     "type": "duration",
-    "default": "",
+    "default": "10s",
     "description": "The total timeout for dialing and connect to the origin."
   },
   {
@@ -98,19 +98,19 @@ values: [
   {
     "name": "ttfb_timeout",
     "type": "duration",
-    "default": "",
+    "default": "60s",
     "description": "The duration from writing the full request to the origin and receiving the answer."
   },
   {
     "name": "timeout",
     "type": "duration",
-    "default": "",
+    "default": "300s",
     "description": "The total deadline duration a backend request has for write and read/pipe."
   },
   {
     "name": "use_when_unhealthy",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Ignores the health state and continues with the outgoing request"
   }
 ]

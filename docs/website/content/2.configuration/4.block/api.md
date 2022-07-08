@@ -28,7 +28,7 @@ values: [
   {
     "name": "allowed_methods",
     "type": "tuple (string)",
-    "default": "",
+    "default": "*",
     "description": "Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a <code>405 Method Not Allowed</code> status."
   },
   {

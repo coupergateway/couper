@@ -8,12 +8,52 @@ via `headers` attribute. An unhealthy backend will return with a [`backend_unhea
 |:--------------|:----------------------------------|:------|:-------------|
 | `beta_health` | [`backend` block](#backend-block) | –     |              |
 
-| Attributes          | Type                  | Default           | Description                                        | Characteristics       | Example                             |
-|:--------------------|:----------------------|:------------------|:---------------------------------------------------|:----------------------|:------------------------------------|
-| `expected_status`   | tuple (number)        | `[200, 204, 301]` | wanted response status code                        |                       | `expected_status = [418]`           |
-| `expected_text`     | string                | –                 | text response body must contain                    |                       | `expected_text = "alive"`           |
-| `failure_threshold` | number                | `2`               | failed checks needed to consider backend unhealthy |                       | `failure_threshold = 3`             |
-| `headers`           | object                | –                 | request headers                                    |                       | `headers = {User-Agent = "health"}` |
-| `interval`          | [duration](#duration) | `"1s"`            | time interval for recheck                          |                       | `timeout = "5s"`                    |
-| `path`              | string                | –                 | URL path/query on backend host                     |                       | `path = "/health"`                  |
-| `timeout`           | [duration](#duration) | `"2s"`            | maximum allowed time limit                         | bounded by `interval` | `timeout = "3s"`                    |
+::attributes
+---
+values: [
+  {
+    "name": "failure_threshold",
+    "type": "number",
+    "default": "2",
+    "description": "failed checks needed to consider backend unhealthy"
+  },
+  {
+    "name": "interval",
+    "type": "string",
+    "default": "1s",
+    "description": "time interval for recheck"
+  },
+  {
+    "name": "timeout",
+    "type": "string",
+    "default": "2s",
+    "description": "maximum allowed time limit which is\tbounded by <code>interval</code>"
+  },
+  {
+    "name": "path",
+    "type": "string",
+    "default": "",
+    "description": "URL path with query on backend host"
+  },
+  {
+    "name": "expected_status",
+    "type": "tuple (int)",
+    "default": "[200, 204, 301]",
+    "description": "one of wanted response status code"
+  },
+  {
+    "name": "expected_text",
+    "type": "string",
+    "default": "",
+    "description": "text which the response body must contain"
+  },
+  {
+    "name": "headers",
+    "type": "object",
+    "default": "",
+    "description": "request headers"
+  }
+]
+
+---
+::

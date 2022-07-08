@@ -50,7 +50,7 @@ values: [
   {
     "name": "allowed_methods",
     "type": "tuple (string)",
-    "default": "",
+    "default": "*",
     "description": "Sets allowed methods overriding a default set in the containing <code>api</code> block. Requests with a method that is not allowed result in an error response with a <code>405 Method Not Allowed</code> status."
   },
   {
@@ -68,7 +68,7 @@ values: [
   {
     "name": "request_body_limit",
     "type": "string",
-    "default": "",
+    "default": "64MiB",
     "description": "Configures the maximum buffer size while accessing <code>request.form_body</code> or <code>request.json_body</code> content. Valid units are: <code>KiB</code>, <code>MiB</code>, <code>GiB</code>"
   },
   {

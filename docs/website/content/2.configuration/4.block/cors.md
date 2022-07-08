@@ -28,14 +28,14 @@ values: [
   },
   {
     "name": "allow_credentials",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Set to <code>true</code> if the response can be shared with credentialed requests (containing <code>Cookie</code> or <code>Authorization</code> HTTP header fields)."
   },
   {
     "name": "disable",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Set to <code>true</code> to disable the inheritance of CORS from parent context."
   },
   {

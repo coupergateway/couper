@@ -57,6 +57,7 @@ func main() {
 		&config.Files{},
 		&config.Proxy{},
 		&config.Endpoint{},
+		&config.Health{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
 		name := strings.TrimPrefix(strings.ToLower(fmt.Sprintf("%v", t)), "config.")
@@ -94,16 +95,22 @@ func main() {
 					ft = "tuple (" + ft[2:] + ")"
 				} else if strings.Contains(ft, "int") {
 					ft = "number"
-				} else if ft != "string" {
+				} else if ft != "string" && ft != "bool" {
 					ft = "object"
 				}
 				fieldType = ft
 			}
 
+			fieldDefault := field.Tag.Get("default")
+			if fieldDefault == "" && fieldType == "bool" {
+				fieldDefault = "false"
+			}
+
 			a := attr{
+				Default:     fieldDefault,
+				Description: field.Tag.Get("docs"),
 				Name:        strings.Split(field.Tag.Get("hcl"), ",")[0],
 				Type:        fieldType,
-				Description: field.Tag.Get("docs"),
 			}
 			result.Attributes = append(result.Attributes, a)
 		}
