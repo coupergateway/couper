@@ -27,7 +27,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: install algolia-client
-        run: go get -u github.com/algolia/algoliasearch-client-go/v3@v3
+        run: |
+          go get -u github.com/algolia/algoliasearch-client-go/v3@v3
+          go mod vendor
 
       - name: generate block attributes from go source
         env:
