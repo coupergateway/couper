@@ -57,15 +57,15 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: dist
-          path: './'
+          path: 'dist'
 
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_COUPER_API_TOKEN }}
-          path: './website'
+          path: 'website'
           repository: 'avenga/couper-docs'
-      - run: rm -rf ./website/*/ # clear sub-folders
-      - run: cp -R ./dist/ ./website/
+      - run: rm -rf website/*/ # clear sub-folders
+      - run: cp -Rv dist/ website
       - name: setup git && push
         working-directory: './website'
         run: |
