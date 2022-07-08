@@ -1,4 +1,4 @@
-# JWT Signing Profile Block
+# JWT Signing Profile
 
 The `jwt_signing_profile` block lets you configure a JSON Web Token signing
 profile for your gateway. It is referenced in the [`jwt_sign()` function](#functions)
