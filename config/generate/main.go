@@ -1,3 +1,5 @@
+//go:build exclude
+
 package main
 
 import (
@@ -31,14 +33,20 @@ type attr struct {
 	Description string `json:"description"`
 }
 
-const docsBlockPath = "docs/website/content/2.configuration/4.block"
+const (
+	searchAppID     = "MSIN2HU7WH"
+	searchIndex     = "docs"
+	searchClientKey = "SEARCH_CLIENT_API_KEY"
+
+	docsBlockPath = "docs/website/content/2.configuration/4.block"
+)
 
 // export md: 1) search for ::attribute, replace if exist or append at end
 func main() {
 	const basePath = "/configuration/block/"
 
-	client := search.NewClient("MSIN2HU7WH", os.Getenv("SEARCH_CLIENT_API_KEY"))
-	index := client.InitIndex("docs")
+	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
+	index := client.InitIndex(searchIndex)
 
 	for _, impl := range []interface{}{
 		&config.API{},
@@ -159,11 +167,13 @@ values: %s
 			panic(err)
 		}
 		println("Attributes written: " + fileName)
-		//continue
-		_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
-		if err != nil {
-			panic(err)
+
+		if os.Getenv(searchClientKey) != "" {
+			_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
+			if err != nil {
+				panic(err)
+			}
+			println("SearchIndex updated")
 		}
-		println("SearchIndex updated")
 	}
 }
