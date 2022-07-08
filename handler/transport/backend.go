@@ -121,8 +121,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
-	backends := seetie.ValueToMap(hclCtx.Variables[eval.Backends])
-	hclCtx.Variables[eval.Backend] = seetie.GoToValue(backends[b.name])
 
 	if err = b.isUnhealthy(hclCtx, ctxBody); err != nil {
 		return &http.Response{
@@ -244,8 +242,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
 	evalCtx = evalCtx.WithBeresp(beresp, readBody)
 
-	evalCtx.HCLContext().Variables[eval.Backend] = seetie.GoToValue(backends[b.name])
-
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
@@ -344,12 +340,14 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 	errorsCh := make(chan error, len(b.requestAuthorizer))
 	// WithContext() instead of Clone() due to header-map modification.
 	req = req.WithContext(ctx)
-	for _, ra := range b.requestAuthorizer {
-		go func(ra RequestAuthorizer, req *http.Request) {
-			err := ra.WithToken(req)
+
+	for _, authorizer := range b.requestAuthorizer {
+		go func(ra RequestAuthorizer, r *http.Request) {
+			err := ra.GetToken(r)
 			errorsCh <- err
-		}(ra, req)
+		}(authorizer, req)
 	}
+
 	for i := 0; i < len(b.requestAuthorizer); i++ {
 		err := <-errorsCh
 		if err != nil {
@@ -588,7 +586,17 @@ func (b *Backend) Value() cty.Value {
 	b.healthyMu.RLock()
 	defer b.healthyMu.RUnlock()
 
-	return seetie.GoToValue(map[string]interface{}{
+	var tokens map[string]interface{}
+	for _, auth := range b.requestAuthorizer {
+		if name, v := auth.value(); v != "" {
+			if tokens == nil {
+				tokens = make(map[string]interface{})
+			}
+			tokens[name] = v
+		}
+	}
+
+	result := map[string]interface{}{
 		"health": map[string]interface{}{
 			"healthy": b.healthInfo.Healthy,
 			"error":   b.healthInfo.Error,
@@ -600,7 +608,13 @@ func (b *Backend) Value() cty.Value {
 		"connect_timeout": b.transportConfResult.ConnectTimeout.String(),
 		"ttfb_timeout":    b.transportConfResult.TTFBTimeout.String(),
 		"timeout":         b.transportConfResult.Timeout.String(),
-	})
+	}
+
+	if tokens != nil {
+		result["tokens"] = tokens
+	}
+
+	return seetie.GoToValue(result)
 }
 
 // setUserAgent sets an empty one if none is present or empty

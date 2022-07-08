@@ -15,6 +15,8 @@ type BackendOptions struct {
 }
 
 type RequestAuthorizer interface {
-	WithToken(req *http.Request) error
+	GetToken(req *http.Request) error
 	RetryWithToken(req *http.Request, res *http.Response) (bool, error)
+
+	value() (string, string)
 }

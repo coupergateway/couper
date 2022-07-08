@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -38,12 +39,10 @@ func NewTokenRequest(conf *config.TokenRequest, memStore *cache.MemoryStore, bac
 	return tr, nil
 }
 
-func (t *TokenRequest) WithToken(req *http.Request) error {
-	ctx := eval.ContextFromRequest(req)
-	if token, terr := t.readToken(); terr != nil {
-		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(terr)
+func (t *TokenRequest) GetToken(req *http.Request) error {
+	if token, err := t.readToken(); err != nil {
+		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(err)
 	} else if token != "" {
-		ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 		return nil
 	}
 
@@ -55,22 +54,20 @@ func (t *TokenRequest) WithToken(req *http.Request) error {
 	if terr != nil {
 		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(terr)
 	} else if token != "" {
-		ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 		return nil
 	}
 
+	ctx := eval.ContextFromRequest(req)
 	token, ttl, err := t.requestToken(ctx)
 	if err != nil {
 		return errors.Backend.Label(t.config.BackendName).Message("token request error").With(err)
 	}
 
-	t.updateToken(token, ttl)
-
-	ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
+	t.memStore.Set(t.storageKey, token, ttl)
 	return nil
 }
 
-func (t *TokenRequest) RetryWithToken(req *http.Request, res *http.Response) (bool, error) {
+func (t *TokenRequest) RetryWithToken(_ *http.Request, _ *http.Response) (bool, error) {
 	return false, nil
 }
 
@@ -82,8 +79,9 @@ func (t *TokenRequest) readToken() (string, error) {
 	return "", nil
 }
 
-func (t *TokenRequest) requestToken(ctx *eval.Context) (string, int64, error) {
-	hclCtx := ctx.HCLContext()
+func (t *TokenRequest) requestToken(etx *eval.Context) (string, int64, error) {
+	hclCtx := etx.HCLContextSync()
+
 	bodyContent, _, diags := t.config.Remain.PartialContent(config.TokenRequest{Remain: t.config.Remain}.Schema(true))
 	if diags.HasErrors() {
 		return "", 0, diags
@@ -114,7 +112,7 @@ func (t *TokenRequest) requestToken(ctx *eval.Context) (string, int64, error) {
 		}
 	}
 
-	outreq, err := http.NewRequest(strings.ToUpper(method), url, nil)
+	outreq, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBufferString(body))
 	if err != nil {
 		return "", 0, err
 	}
@@ -123,22 +121,24 @@ func (t *TokenRequest) requestToken(ctx *eval.Context) (string, int64, error) {
 		outreq.Header.Set("Content-Type", defaultContentType)
 	}
 
-	eval.SetBody(outreq, []byte(body))
-
 	err = eval.ApplyRequestContext(hclCtx, t.config.Remain, outreq)
 	if err != nil {
 		return "", 0, err
 	}
 
-	outCtx := context.WithValue(outreq.Context(), request.BufferOptions, eval.BufferResponse)
+	// outCtx with "client" context due to syncedVars, cancel etc.
+	outCtx := context.WithValue(etx, request.BufferOptions, eval.BufferResponse)
+	outCtx = context.WithValue(outCtx, request.TokenRequest, t.config.Name)
+
 	outreq = outreq.WithContext(outCtx)
-	resp, err := t.backend.RoundTrip(outreq)
+	_, err = t.backend.RoundTrip(outreq)
 	if err != nil {
 		return "", 0, err
 	}
 
-	ctx = ctx.WithTokenresp(resp, true)
-	hclCtx = ctx.HCLContext()
+	// obtain synced and already read beresp value; map to context variables
+	hclCtx = etx.HCLContextSync()
+	eval.MapTokenResponse(etx, hclCtx)
 
 	tokenVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "token")
 	if err != nil {
@@ -172,8 +172,8 @@ func (t *TokenRequest) requestToken(ctx *eval.Context) (string, int64, error) {
 	return token, int64(dur.Seconds()), nil
 }
 
-func (t *TokenRequest) updateToken(token string, ttl int64) {
-	if t.memStore != nil {
-		t.memStore.Set(t.storageKey, token, ttl)
-	}
+func (t *TokenRequest) value() (string, string) {
+	token, _ := t.readToken()
+	println(t.config.Name, token)
+	return t.config.Name, token
 }
