@@ -30,6 +30,8 @@ jobs:
         run: go get -u github.com/algolia/algoliasearch-client-go/v3@v3
 
       - name: generate block attributes from go source
+        env:
+          SEARCH_CLIENT_API_KEY: ${{ secrets.SEARCH_CLIENT_API_KEY }}
         run: make generate-docs
 
       - name: build website
