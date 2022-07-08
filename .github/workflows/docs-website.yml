@@ -65,9 +65,10 @@ jobs:
           path: './website'
       - run: rm -rf ./website/*/ # clear sub-folders
       - run: cp -R ./dist/ ./website/
-      - name: setup git config
+      - name: setup git && push
+        working-directory: './website'
         run: |
           git config user.name "couper-gitbot"
           git config user.email "gitbot@couper.io"
-      - run: git add -A && git commit -m "Update website"
-      - run: git push origin main
+          git add -A && git commit -m "Update website"
+          git push origin main
