@@ -67,21 +67,24 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 
 	formParams.Set("grant_type", c.grantType)
 
-	teAuthMethod := c.clientConfig.GetTokenEndpointAuthMethod()
-	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
-		formParams.Set("client_id", c.clientConfig.GetClientID())
-		formParams.Set("client_secret", c.clientConfig.GetClientSecret())
-	}
-
-	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
-		outreq.SetBasicAuth(url.QueryEscape(c.clientConfig.GetClientID()), url.QueryEscape(c.clientConfig.GetClientSecret()))
-	}
+	authenticateClient(c.clientConfig, &formParams, outreq)
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
 	eval.SetBody(outreq, []byte(formParams.Encode()))
 
 	return outreq.WithContext(outCtx), nil
+}
+
+func authenticateClient(clientConfig config.OAuth2Client, formParams *url.Values, tokenReq *http.Request) {
+	clientID := clientConfig.GetClientID()
+	clientSecret := clientConfig.GetClientSecret()
+	if authMethod := clientConfig.GetTokenEndpointAuthMethod(); authMethod == nil || *authMethod == "client_secret_basic" {
+		tokenReq.SetBasicAuth(url.QueryEscape(clientID), url.QueryEscape(clientSecret))
+	} else if *authMethod == "client_secret_post" {
+		formParams.Set("client_id", clientID)
+		formParams.Set("client_secret", clientSecret)
+	}
 }
 
 func (c *Client) GetTokenResponse(ctx context.Context, formParams url.Values) (map[string]interface{}, string, error) {
