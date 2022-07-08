@@ -36,6 +36,13 @@ const { toc } = useContent();
                 <a :href="`#${link.id}`">
                   {{ link.text }}
                 </a>
+                <ul v-if="link.children">
+                  <li v-for="child in link.children" :key="child.id">
+                    <a class="pl-2" :href="`#${child.id}`">
+                      {{ child.text }}
+                    </a>
+                  </li>
+                </ul>
               </li>
             </ul>
         </nav>
