@@ -65,7 +65,7 @@ jobs:
           path: 'website'
           repository: 'avenga/couper-docs'
       - run: rm -rf website/*/ # clear sub-folders
-      - run: cp -Rv dist/ website
+      - run: cp -RTv dist/ website
       - name: setup git && push
         working-directory: './website'
         run: |
