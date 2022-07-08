@@ -3,6 +3,7 @@ package transport
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/avenga/couper/cache"
@@ -86,17 +87,17 @@ func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
 		return nil
 	}
 
-	requestParams := make(map[string]string)
-	if oa.config.Scope != nil {
-		requestParams["scope"] = *oa.config.Scope
+	formParams := url.Values{}
+	if oa.config.Scope != "" {
+		formParams.Set("scope", oa.config.Scope)
 	}
 	// password and username undocumented feature!
 	if oa.config.Password != "" || oa.config.Username != "" {
-		requestParams["username"] = oa.config.Username
-		requestParams["password"] = oa.config.Password
+		formParams.Set("username", oa.config.Username)
+		formParams.Set("password", oa.config.Password)
 	}
 
-	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), requestParams)
+	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
 		mutex.Unlock()
 		return errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)

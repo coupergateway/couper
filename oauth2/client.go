@@ -51,7 +51,7 @@ func (c *Client) requestToken(tokenReq *http.Request) ([]byte, int, error) {
 	return tokenResBytes, tokenRes.StatusCode, nil
 }
 
-func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
+func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*http.Request, error) {
 	tokenURL, err := c.asConfig.GetTokenEndpoint()
 	if err != nil {
 		return nil, err
@@ -65,17 +65,12 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	outreq.Header.Set("Accept", "application/json")
 	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	post := url.Values{}
-	post.Set("grant_type", c.grantType)
-
-	for key, value := range requestParams {
-		post.Set(key, value)
-	}
+	formParams.Set("grant_type", c.grantType)
 
 	teAuthMethod := c.clientConfig.GetTokenEndpointAuthMethod()
 	if teAuthMethod != nil && *teAuthMethod == "client_secret_post" {
-		post.Set("client_id", c.clientConfig.GetClientID())
-		post.Set("client_secret", c.clientConfig.GetClientSecret())
+		formParams.Set("client_id", c.clientConfig.GetClientID())
+		formParams.Set("client_secret", c.clientConfig.GetClientSecret())
 	}
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
@@ -84,13 +79,13 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
-	eval.SetBody(outreq, []byte(post.Encode()))
+	eval.SetBody(outreq, []byte(formParams.Encode()))
 
 	return outreq.WithContext(outCtx), nil
 }
 
-func (c *Client) GetTokenResponse(ctx context.Context, requestParams map[string]string) (map[string]interface{}, string, error) {
-	tokenReq, err := c.newTokenRequest(ctx, requestParams)
+func (c *Client) GetTokenResponse(ctx context.Context, formParams url.Values) (map[string]interface{}, string, error) {
+	tokenReq, err := c.newTokenRequest(ctx, formParams)
 	if err != nil {
 		return nil, "", err
 	}
