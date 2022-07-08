@@ -122,8 +122,7 @@ func main() {
 			line := scanner.Text()
 
 			if strings.HasPrefix(line, "::attributes") {
-				fileBytes.WriteString(fmt.Sprintf(`
-::attributes
+				fileBytes.WriteString(fmt.Sprintf(`::attributes
 ---
 values: %s
 ---
