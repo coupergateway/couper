@@ -3,6 +3,7 @@ package oauth2
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -217,24 +218,12 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		return nil, nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
 	}
 
-	userinfoResponse, err := o.requestUserinfo(ctx, accessToken)
+	userinfoData, err := o.requestUserinfo(ctx, accessToken)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Oauth2.Message("userinfo request error").With(err)
 	}
 
-	userinfoResponseString := string(userinfoResponse)
-	var userinfoData map[string]interface{}
-	err = json.Unmarshal(userinfoResponse, &userinfoData)
-	if err != nil {
-		return nil, nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response=%q", userinfoResponseString).With(err)
-	}
-
-	var subUserinfo string
-	if s, ok := userinfoData["sub"].(string); ok {
-		subUserinfo = s
-	} else {
-		return nil, nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response=%q", userinfoResponseString)
-	}
+	subUserinfo := userinfoData["sub"].(string)
 
 	if subIdtoken != subUserinfo {
 		return nil, nil, errors.Oauth2.Messagef("subject mismatch, in ID token %q, in userinfo response %q", subIdtoken, subUserinfo)
@@ -243,7 +232,7 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 	return idTokenClaims, userinfoData, nil
 }
 
-func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
+func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) (map[string]interface{}, error) {
 	userinfoReq, err := o.newUserinfoRequest(ctx, accessToken)
 	if err != nil {
 		return nil, err
@@ -256,14 +245,24 @@ func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([
 
 	userinfoResBytes, err := io.ReadAll(userinfoRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(o.config.Reference()).Message("userinfo request read error").With(err)
+		return nil, err
 	}
 
 	if userinfoRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(o.config.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
+		return nil, fmt.Errorf("wrong status code, status=%d, response=%q", userinfoRes.StatusCode, string(userinfoResBytes))
 	}
 
-	return userinfoResBytes, nil
+	var userinfoData map[string]interface{}
+	err = json.Unmarshal(userinfoResBytes, &userinfoData)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := userinfoData["sub"].(string); !ok {
+		return nil, fmt.Errorf("missing sub property, response=%q", string(userinfoResBytes))
+	}
+
+	return userinfoData, nil
 }
 
 func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
