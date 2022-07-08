@@ -13,14 +13,14 @@ var _ Inline = &Endpoint{}
 // Endpoint represents the <Endpoint> object.
 type Endpoint struct {
 	ErrorHandlerSetter
-	AccessControl        []string  `hcl:"access_control,optional"`
-	AllowedMethods       []string  `hcl:"allowed_methods,optional"`
-	DisableAccessControl []string  `hcl:"disable_access_control,optional"`
-	ErrorFile            string    `hcl:"error_file,optional"`
+	AccessControl        []string  `hcl:"access_control,optional" docs:"Sets predefined access control for this block context."`
+	AllowedMethods       []string  `hcl:"allowed_methods,optional" docs:"Sets allowed methods overriding a default set in the containing <code>api</code> block. Requests with a method that is not allowed result in an error response with a <code>405 Method Not Allowed</code> status." default:"*"`
+	DisableAccessControl []string  `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
+	ErrorFile            string    `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Pattern              string    `hcl:"pattern,label"`
 	Proxies              Proxies   `hcl:"proxy,block"`
 	Remain               hcl.Body  `hcl:",remain"`
-	RequestBodyLimit     string    `hcl:"request_body_limit,optional"`
+	RequestBodyLimit     string    `hcl:"request_body_limit,optional" docs:"Configures the maximum buffer size while accessing <code>request.form_body</code> or <code>request.json_body</code> content. Valid units are: <code>KiB</code>, <code>MiB</code>, <code>GiB</code>" default:"64MiB"`
 	Requests             Requests  `hcl:"request,block"`
 	Response             *Response `hcl:"response,block"`
 
@@ -41,9 +41,9 @@ func (e Endpoint) HCLBody() hcl.Body {
 func (e Endpoint) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
-		ResponseStatus     *uint8                    `hcl:"set_response_status,optional"`
-		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
-		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional"`
+		ResponseStatus     *uint8                    `hcl:"set_response_status,optional" docs:"Modifies the response status code."`
+		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom logging"`
+		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional" docs:"expression evaluating to string or object (string)"`
 	}
 
 	return &Inline{}

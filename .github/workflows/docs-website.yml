@@ -1,0 +1,70 @@
+name: documentation
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+
+  docs:
+    name: documentation-website
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+        id: go
+      - run: go version
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: install algolia-client
+        run: go get -u github.com/algolia/algoliasearch-client-go/v3@v3
+
+      - name: generate block attributes from go source
+        env:
+          SEARCH_CLIENT_API_KEY: ${{ secrets.SEARCH_CLIENT_API_KEY }}
+        run: make generate-docs
+
+      - name: build website
+        working-directory: docs/website
+        run: npm ci && npm run build && npm run generate
+
+      - name: create artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: |
+            docs/website/.output/public
+          if-no-files-found: warn
+          retention-days: 2
+
+  deploy:
+    name: 'deploy via github pages'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: './dist'
+
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_COUPER_API_TOKEN }}
+          path: './website'
+      - run: rm -rf ./website/*/ # clear sub-folders
+      - run: cp -R ./dist/ ./website/
+      - name: setup git config
+        run: |
+          git config user.name "couper-gitbot"
+          git config user.email "gitbot@couper.io"
+      - run: git add -A && git commit -m "Update website"
+      - run: git push origin main

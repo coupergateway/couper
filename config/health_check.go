@@ -33,13 +33,13 @@ type HealthCheck struct {
 type Headers map[string]string
 
 type Health struct {
-	FailureThreshold *uint    `hcl:"failure_threshold,optional"`
-	Interval         string   `hcl:"interval,optional"`
-	Timeout          string   `hcl:"timeout,optional"`
-	Path             string   `hcl:"path,optional"`
-	ExpectedStatus   []int    `hcl:"expected_status,optional"`
-	ExpectedText     string   `hcl:"expected_text,optional"`
-	Headers          Headers  `hcl:"headers,optional"`
+	FailureThreshold *uint    `hcl:"failure_threshold,optional" docs:"failed checks needed to consider backend unhealthy" default:"2"`
+	Interval         string   `hcl:"interval,optional" docs:"time interval for recheck" default:"1s"`
+	Timeout          string   `hcl:"timeout,optional" docs:"maximum allowed time limit which is	bounded by <code>interval</code>" default:"2s"`
+	Path             string   `hcl:"path,optional" docs:"URL path with query on backend host"`
+	ExpectedStatus   []int    `hcl:"expected_status,optional" docs:"one of wanted response status code" default:"[200, 204, 301]"`
+	ExpectedText     string   `hcl:"expected_text,optional" docs:"text which the response body must contain"`
+	Headers          Headers  `hcl:"headers,optional" docs:"request headers"`
 	Remain           hcl.Body `hcl:",remain"`
 }
 

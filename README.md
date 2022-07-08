@@ -4,7 +4,7 @@
 [![Go Report](https://goreportcard.com/badge/github.com/avenga/couper)](https://goreportcard.com/report/github.com/avenga/couper)
 ![Docker](https://github.com/avenga/couper/workflows/Docker/badge.svg)
 
-![Couper](docs/img/couper-logo.svg)
+![Couper](docs/website/static/img/couper-logo.svg)
 
 **Couper** is a lightweight API gateway designed to support developers in building and operating API-driven Web projects.
 
