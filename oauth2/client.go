@@ -52,6 +52,19 @@ func (c *Client) requestToken(tokenReq *http.Request) ([]byte, int, error) {
 }
 
 func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]string) (*http.Request, error) {
+	tokenURL, err := c.asConfig.GetTokenEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	outreq, err := http.NewRequest(http.MethodPost, tokenURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	outreq.Header.Set("Accept", "application/json")
+	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	post := url.Values{}
 	post.Set("grant_type", c.grantType)
 
@@ -68,19 +81,6 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 		post.Set("client_id", c.clientConfig.GetClientID())
 		post.Set("client_secret", c.clientConfig.GetClientSecret())
 	}
-
-	tokenURL, err := c.asConfig.GetTokenEndpoint()
-	if err != nil {
-		return nil, err
-	}
-
-	outreq, err := http.NewRequest(http.MethodPost, tokenURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	outreq.Header.Set("Accept", "application/json")
-	outreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if teAuthMethod == nil || *teAuthMethod == "client_secret_basic" {
 		outreq.SetBasicAuth(url.QueryEscape(c.clientConfig.GetClientID()), url.QueryEscape(c.clientConfig.GetClientSecret()))
