@@ -22,7 +22,7 @@ type TokenRequest struct {
 	authorizedBackendName string
 	backend               http.RoundTripper
 	config                *config.TokenRequest
-	locks                 sync.Map
+	getMu                 sync.Mutex
 	memStore              *cache.MemoryStore
 	storageKey            string
 }
@@ -33,7 +33,6 @@ func NewTokenRequest(conf *config.TokenRequest, memStore *cache.MemoryStore, bac
 		backend:               backend,
 		config:                conf,
 		memStore:              memStore,
-		locks:                 sync.Map{},
 	}
 	tr.storageKey = fmt.Sprintf("TokenRequest-%p", tr)
 	return tr, nil
@@ -48,28 +47,24 @@ func (t *TokenRequest) WithToken(req *http.Request) error {
 		return nil
 	}
 
-	value, _ := t.locks.LoadOrStore(t.storageKey, &sync.Mutex{})
-	mutex := value.(*sync.Mutex)
+	// block during read/request process
+	t.getMu.Lock()
+	defer t.getMu.Unlock()
 
-	mutex.Lock()
 	token, terr := t.readToken()
 	if terr != nil {
-		mutex.Unlock()
 		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(terr)
 	} else if token != "" {
-		mutex.Unlock()
 		ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 		return nil
 	}
 
 	token, ttl, err := t.requestToken(ctx)
 	if err != nil {
-		mutex.Unlock()
 		return errors.Backend.Label(t.config.BackendName).Message("token request error").With(err)
 	}
 
 	t.updateToken(token, ttl)
-	mutex.Unlock()
 
 	ctx.WithBackendToken(t.authorizedBackendName, t.config.Name, token)
 	return nil
