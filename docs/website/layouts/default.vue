@@ -47,7 +47,6 @@ const { toc } = useContent();
             </ul>
         </nav>
       </div>
-<!--    </div>-->
   </div>
 </template>
 
