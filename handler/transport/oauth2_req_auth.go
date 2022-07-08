@@ -86,10 +86,12 @@ func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
 		return nil
 	}
 
-	var requestParams map[string]string
+	requestParams := make(map[string]string)
+	if oa.config.Scope != nil {
+		requestParams["scope"] = *oa.config.Scope
+	}
 	// password and username undocumented feature!
 	if oa.config.Password != "" || oa.config.Username != "" {
-		requestParams = make(map[string]string)
 		requestParams["username"] = oa.config.Username
 		requestParams["password"] = oa.config.Password
 	}

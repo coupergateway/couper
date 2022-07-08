@@ -68,10 +68,6 @@ func (c *Client) newTokenRequest(ctx context.Context, requestParams map[string]s
 	post := url.Values{}
 	post.Set("grant_type", c.grantType)
 
-	if scope := c.clientConfig.GetScope(); scope != "" && c.grantType != "authorization_code" {
-		post.Set("scope", scope)
-	}
-
 	for key, value := range requestParams {
 		post.Set(key, value)
 	}

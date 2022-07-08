@@ -28,7 +28,6 @@ type OAuth2Client interface {
 	Inline
 	GetClientID() string
 	GetClientSecret() string
-	GetScope() string
 	GetTokenEndpointAuthMethod() *string
 }
 

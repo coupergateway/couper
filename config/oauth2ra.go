@@ -86,13 +86,6 @@ func (oa *OAuth2ReqAuth) GetClientSecret() string {
 	return oa.ClientSecret
 }
 
-func (oa *OAuth2ReqAuth) GetScope() string {
-	if oa.Scope == nil {
-		return ""
-	}
-	return *oa.Scope
-}
-
 func (oa *OAuth2ReqAuth) GetTokenEndpoint() (string, error) {
 	return oa.TokenEndpoint, nil
 }
