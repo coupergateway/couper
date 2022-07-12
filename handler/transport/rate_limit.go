@@ -17,11 +17,14 @@ import (
 const (
 	windowFixed = iota
 	windowSliding
+	modeWait
+	modeBlock
 )
 
 type RateLimit struct {
 	counter     []time.Time
 	logger      *logrus.Entry
+	mode        int
 	mu          sync.RWMutex
 	period      time.Duration
 	periodEnd   time.Time
@@ -102,6 +105,7 @@ func (l *Limiter) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
 	var (
+		mode       int
 		rateLimits RateLimits
 		window     int
 	)
@@ -145,8 +149,20 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 			return nil, fmt.Errorf("unsupported 'period_window' (%q) given", limit.PeriodWindow)
 		}
 
+		switch limit.Mode {
+		case "":
+			fallthrough
+		case "wait":
+			mode = modeWait
+		case "block":
+			mode = modeBlock
+		default:
+			return nil, fmt.Errorf("unsupported 'mode' (%q) given", limit.Mode)
+		}
+
 		rateLimit := &RateLimit{
 			logger:      logger,
+			mode:        mode,
 			period:      time.Duration(d.Nanoseconds()),
 			periodStart: time.Now(),
 			perPeriod:   *limit.PerPeriod,

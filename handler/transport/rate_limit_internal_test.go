@@ -74,6 +74,12 @@ func TestRateLimits_Errors(t *testing.T) {
 			},
 			`unsupported 'period_window' ("test") given`,
 		},
+		{
+			[]*config.RateLimit{
+				{Period: &min, PerPeriod: &num, PeriodWindow: "", Mode: "test"},
+			},
+			`unsupported 'mode' ("test") given`,
+		},
 	} {
 		_, err := ConfigureRateLimits(context.TODO(), tc.configured, nil)
 		if err == nil {
