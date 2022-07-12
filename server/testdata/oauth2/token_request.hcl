@@ -13,7 +13,8 @@ definitions {
     origin = "{{.rsOrigin}}"
     set_request_headers = {
       Auth-1 = backends.be.tokens.tr1
-      Auth-2 = backends.be.tokens.tr2
+      Auth-2 = backends.be.tokens.default
+      Auth-3 = backends.be.token
     }
 
     oauth2 {
@@ -34,7 +35,7 @@ definitions {
       ttl = "${default(token_response.json_body.expires_in, 3600) * 0.9}s"
     }
 
-    beta_token_request "tr2" {
+    beta_token_request "default" {
       url = "{{.asOrigin}}/token2"
       form_body = {
         client_id = "clid"
