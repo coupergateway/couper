@@ -174,6 +174,5 @@ func (t *TokenRequest) requestToken(etx *eval.Context) (string, int64, error) {
 
 func (t *TokenRequest) value() (string, string) {
 	token, _ := t.readToken()
-	println(t.config.Name, token)
 	return t.config.Name, token
 }

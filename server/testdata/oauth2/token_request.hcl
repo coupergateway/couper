@@ -13,7 +13,7 @@ definitions {
     origin = "{{.rsOrigin}}"
     set_request_headers = {
       Auth-1 = backends.be.tokens.tr1
-      Auth-2 = backend.tokens.tr2
+      Auth-2 = backends.be.tokens.tr2
     }
 
     oauth2 {
@@ -21,7 +21,6 @@ definitions {
       client_id = "clid"
       client_secret = "cls"
       grant_type = "client_credentials"
-#      retries = 0
     }
 
     beta_token_request "tr1" {
