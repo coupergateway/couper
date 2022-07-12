@@ -23,7 +23,7 @@ type Backend struct {
 	MaxConnections         int        `hcl:"max_connections,optional" docs:"The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin." default:"0"`
 	Name                   string     `hcl:"name,label,optional"`
 	OpenAPI                *OpenAPI   `hcl:"openapi,block"`
-	RateLimits             RateLimits `hcl:"rate_limit,block"`
+	RateLimits             RateLimits `hcl:"beta_rate_limit,block"`
 	Remain                 hcl.Body   `hcl:",remain"`
 
 	// explicit configuration on load

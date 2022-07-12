@@ -3,22 +3,22 @@
 package errors
 
 var (
-	BasicAuth                   = Definitions[1]
-	BasicAuthCredentialsMissing = Definitions[2]
-	Jwt                         = Definitions[3]
-	JwtTokenExpired             = Definitions[4]
-	JwtTokenInvalid             = Definitions[5]
-	JwtTokenMissing             = Definitions[6]
-	Oauth2                      = Definitions[7]
-	Saml2                       = Definitions[8]
-	Saml                        = Definitions[9]
-	BetaInsufficientPermissions = Definitions[10]
-	BackendOpenapiValidation    = Definitions[12]
-	BackendRateLimitExceeded    = Definitions[13]
-	BackendTimeout              = Definitions[14]
-	BackendUnhealthy            = Definitions[15]
-	Sequence                    = Definitions[17]
-	UnexpectedStatus            = Definitions[18]
+	BasicAuth                    = Definitions[1]
+	BasicAuthCredentialsMissing  = Definitions[2]
+	Jwt                          = Definitions[3]
+	JwtTokenExpired              = Definitions[4]
+	JwtTokenInvalid              = Definitions[5]
+	JwtTokenMissing              = Definitions[6]
+	Oauth2                       = Definitions[7]
+	Saml2                        = Definitions[8]
+	Saml                         = Definitions[9]
+	BetaInsufficientPermissions  = Definitions[10]
+	BackendOpenapiValidation     = Definitions[12]
+	BetaBackendRateLimitExceeded = Definitions[13]
+	BackendTimeout               = Definitions[14]
+	BackendUnhealthy             = Definitions[15]
+	Sequence                     = Definitions[17]
+	UnexpectedStatus             = Definitions[18]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -28,25 +28,25 @@ type typeDefinitions map[string]*Error
 // types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var types = typeDefinitions{
-	"access_control":                 AccessControl,
-	"basic_auth":                     BasicAuth,
-	"basic_auth_credentials_missing": BasicAuthCredentialsMissing,
-	"jwt":                            Jwt,
-	"jwt_token_expired":              JwtTokenExpired,
-	"jwt_token_invalid":              JwtTokenInvalid,
-	"jwt_token_missing":              JwtTokenMissing,
-	"oauth2":                         Oauth2,
-	"saml2":                          Saml2,
-	"saml":                           Saml,
-	"beta_insufficient_permissions":  BetaInsufficientPermissions,
-	"backend":                        Backend,
-	"backend_openapi_validation":     BackendOpenapiValidation,
-	"backend_rate_limit_exceeded":    BackendRateLimitExceeded,
-	"backend_timeout":                BackendTimeout,
-	"backend_unhealthy":              BackendUnhealthy,
-	"endpoint":                       Endpoint,
-	"sequence":                       Sequence,
-	"unexpected_status":              UnexpectedStatus,
+	"access_control":                   AccessControl,
+	"basic_auth":                       BasicAuth,
+	"basic_auth_credentials_missing":   BasicAuthCredentialsMissing,
+	"jwt":                              Jwt,
+	"jwt_token_expired":                JwtTokenExpired,
+	"jwt_token_invalid":                JwtTokenInvalid,
+	"jwt_token_missing":                JwtTokenMissing,
+	"oauth2":                           Oauth2,
+	"saml2":                            Saml2,
+	"saml":                             Saml,
+	"beta_insufficient_permissions":    BetaInsufficientPermissions,
+	"backend":                          Backend,
+	"backend_openapi_validation":       BackendOpenapiValidation,
+	"beta_backend_rate_limit_exceeded": BetaBackendRateLimitExceeded,
+	"backend_timeout":                  BackendTimeout,
+	"backend_unhealthy":                BackendUnhealthy,
+	"endpoint":                         Endpoint,
+	"sequence":                         Sequence,
+	"unexpected_status":                UnexpectedStatus,
 }
 
 // IsKnown tells the configuration callee if Couper
@@ -58,4 +58,4 @@ func IsKnown(errorType string) bool {
 
 // SuperTypesMapsByContext holds maps for error super-types to sub-types
 // by a given context block type (e.g. api or endpoint).
-var SuperTypesMapsByContext = map[string]map[string][]string{"api": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy"}}, "endpoint": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy", "sequence", "unexpected_status"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy"}, "endpoint": []string{"sequence", "unexpected_status"}}}
+var SuperTypesMapsByContext = map[string]map[string][]string{"api": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy"}}, "endpoint": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy", "sequence", "unexpected_status"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "backend_unhealthy"}, "endpoint": []string{"sequence", "unexpected_status"}}}

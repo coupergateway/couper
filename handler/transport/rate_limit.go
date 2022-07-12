@@ -85,12 +85,12 @@ func (l *Limiter) RoundTrip(req *http.Request) (*http.Response, error) {
 			if result {
 				res, err := l.transport.RoundTrip(req)
 				if res != nil && res.StatusCode == http.StatusTooManyRequests {
-					return res, errors.BackendRateLimitExceeded.With(err)
+					return res, errors.BetaBackendRateLimitExceeded.With(err)
 				}
 
 				return res, err
 			} else {
-				return nil, errors.BackendRateLimitExceeded
+				return nil, errors.BetaBackendRateLimitExceeded
 			}
 		case <-req.Context().Done():
 			return nil, req.Context().Err()
