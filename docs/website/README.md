@@ -1,6 +1,6 @@
 # Couper Documentation Website
 
-Build with NuxtJS look at the [nuxt 3 documentation](https://v3.nuxtjs.org) to learn more.
+Built with [Nuxt 3](https://v3.nuxtjs.org).
 
 ## Setup
 
@@ -13,7 +13,7 @@ npm install
 
 ## Development Server
 
-Start the development server on http://localhost:3000
+Start the development server on http://localhost:3000:
 
 ```bash
 npm run dev
@@ -27,7 +27,7 @@ Build the application for production:
 npm run build
 ```
 
-Locally preview production build:
+Preview the production build locally:
 
 ```bash
 npm run generate && couper run -f couper.hcl
