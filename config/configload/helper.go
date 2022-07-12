@@ -124,7 +124,7 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 	// built up deps
 	refPtr := map[string]*sequence.Item{}
 	for name := range refs {
-		parent := &sequence.Item{Name: name}
+		parent := sequence.NewBackendItem(name)
 		refPtr[name] = parent
 	}
 
@@ -141,7 +141,7 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 			if be, exist := refPtr[r]; exist {
 				p.Add(be)
 			} else {
-				p.Add(&sequence.Item{Name: r})
+				p.Add(sequence.NewBackendItem(r))
 			}
 			defs = append(defs, p)
 		}
