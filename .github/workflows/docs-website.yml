@@ -57,17 +57,19 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: dist
-          path: './dist'
+          path: 'dist'
 
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_COUPER_API_TOKEN }}
-          path: './website'
-      - run: rm -rf ./website/*/ # clear sub-folders
-      - run: cp -R ./dist/ ./website/
-      - name: setup git config
+          path: 'website'
+          repository: 'avenga/couper-docs'
+      - run: rm -rf website/*/ # clear sub-folders
+      - run: cp -RTv dist/ website
+      - name: setup git && push
+        working-directory: './website'
         run: |
           git config user.name "couper-gitbot"
           git config user.email "gitbot@couper.io"
-      - run: git add -A && git commit -m "Update website"
-      - run: git push origin main
+          git add -A && git commit -m "Update website"
+          git push origin main
