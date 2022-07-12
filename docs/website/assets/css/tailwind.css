@@ -10,3 +10,9 @@ html {
 body {
     min-height: 100%;
 }
+
+/* Remove backticks around inline code */
+.prose :where(code):not(:where([class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+	content: none
+}
