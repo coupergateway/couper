@@ -212,7 +212,7 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 	tokenRequestBackends := make(map[string]hcl.Body)
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
-		label := "default"
+		label := ""
 		if len(tokenRequestBlock.Labels) > 0 {
 			label = tokenRequestBlock.Labels[0]
 		}
@@ -232,12 +232,16 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 }
 
 func wrapTokenRequestBackend(label string, content hcl.Body) hcl.Body {
+	var labels []string
+	if label != "" {
+		labels = append(labels, label)
+	}
 	b := hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{
 				Type:   tokenRequest,
 				Body:   newBackendBlock(content),
-				Labels: []string{label},
+				Labels: labels,
 			},
 		},
 	})
