@@ -31,17 +31,6 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
-	if conf.GrantType == "client_credentials" {
-		// conf.Username undocumented feature!
-		if conf.Username != "" {
-			return nil, fmt.Errorf("username must not be set with grant_type=client_credentials")
-		}
-		// conf.Password undocumented feature!
-		if conf.Password != "" {
-			return nil, fmt.Errorf("password must not be set with grant_type=client_credentials")
-		}
-	}
-
 	// grant_type password undocumented feature!
 	// WARNING: this implementation is no proper password flow, but a flow with username and password to login _exactly one_ user
 	// the received access token is stored in cache just like with the client credentials flow
@@ -51,6 +40,13 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		}
 		if conf.Password == "" {
 			return nil, fmt.Errorf("password must not be empty with grant_type=password")
+		}
+	} else {
+		if conf.Username != "" {
+			return nil, fmt.Errorf("username must not be set with grant_type=%s", conf.GrantType)
+		}
+		if conf.Password != "" {
+			return nil, fmt.Errorf("password must not be set with grant_type=%s", conf.GrantType)
 		}
 	}
 
