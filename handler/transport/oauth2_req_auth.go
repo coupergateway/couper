@@ -31,9 +31,6 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
-	// grant_type password undocumented feature!
-	// WARNING: this implementation is no proper password flow, but a flow with username and password to login _exactly one_ user
-	// the received access token is stored in cache just like with the client credentials flow
 	if conf.GrantType == "password" {
 		if conf.Username == "" {
 			return nil, fmt.Errorf("username must not be empty with grant_type=password")
@@ -87,7 +84,6 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
 	}
-	// password and username undocumented feature!
 	if oa.config.Password != "" || oa.config.Username != "" {
 		formParams.Set("username", oa.config.Username)
 		formParams.Set("password", oa.config.Password)

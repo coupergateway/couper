@@ -26,13 +26,13 @@ type OAuth2ReqAuth struct {
 	ClientID                string   `hcl:"client_id"`
 	ClientSecret            string   `hcl:"client_secret"`
 	GrantType               string   `hcl:"grant_type"`
-	Password                string   `hcl:"password,optional"` // password undocumented feature!
+	Password                string   `hcl:"password,optional"`
 	Remain                  hcl.Body `hcl:",remain"`
 	Retries                 *uint8   `hcl:"retries,optional"`
 	Scope                   string   `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	Username                string   `hcl:"username,optional"` // username undocumented feature!
+	Username                string   `hcl:"username,optional"`
 }
 
 // Reference implements the <BackendReference> interface.
