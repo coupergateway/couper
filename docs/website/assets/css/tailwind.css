@@ -17,3 +17,7 @@ body {
 .prose :where(code):not(:where([class~="not-prose"] *))::after {
 	content: none
 }
+
+blockquote {
+	quotes: none !important
+}
