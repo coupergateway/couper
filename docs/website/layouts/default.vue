@@ -33,14 +33,14 @@ const { toc } = useContent();
             <h2 class="text-gray-100">On this Page</h2>
             <ul v-if="toc && toc.links">
               <li v-for="link in toc.links" :key="link.text">
-                <a :href="`#${link.id}`">
+                <NuxtLink :href="`#${link.id}`">
                   {{ link.text }}
-                </a>
+                </NuxtLink>
                 <ul v-if="link.children">
                   <li v-for="child in link.children" :key="child.id">
-                    <a class="pl-2" :href="`#${child.id}`">
+                    <NuxtLink class="pl-2" :href="`#${child.id}`">
                       {{ child.text }}
-                    </a>
+                    </NuxtLink>
                   </li>
                 </ul>
               </li>
