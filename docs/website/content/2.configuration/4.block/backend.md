@@ -8,11 +8,11 @@ draft: false
 
 The `backend` block defines the connection to a local/remote backend service.
 
-Backends can be defined in the [Definitions Block](/configuration/block/definitions) and referenced by _label_.
+Backends can be defined in the [Definitions Block](definitions) and referenced by _label_.
 
 | Block name | Context                                                                                                                                                                                                                                   | Label                                                                     | Nested block(s)                                                                                  |
 |:-----------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------|
-| `backend`  | [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta-oauth2-block), [OIDC Block](#oidc-block) | &#9888; required, when defined in [Definitions Block](#definitions-block) | [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-block), [Health Block](#health-block) |
+| `backend`  | [Definitions Block](definitions), [Proxy Block](proxy), [Request Block](request), [OAuth2 CC Block](oauth2req_auth), [JWT Block](jwt), [OAuth2 AC Block (beta)](oauth2), [OIDC Block](oidc) | &#9888; required, when defined in [Definitions Block](definitions) | [OpenAPI Block](openapi), [OAuth2 CC Block](oauth2req_auth), [Health Block](health) |
 
 ::attributes
 ---

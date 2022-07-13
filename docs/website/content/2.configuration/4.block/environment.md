@@ -1,7 +1,7 @@
-### Environment Block
+# Environment Block
 
 The `environment` block lets you refine the Couper configuration based on the set
-[environment](./CLI.md#global-options).
+[environment](/configuration/command-linemd#global-options).
 
 | Block name    | Context  | Label                                            | Nested block(s)                     |
 | :------------ | :------- | :----------------------------------------------- | :---------------------------------- |
@@ -12,7 +12,7 @@ block do not match the set [environment](./CLI.md#global-options) value, the pre
 removes this block and their content. Otherwise, the content of the block is applied
 to the configuration.
 
-If the [environment](./CLI.md#global-options) value set to `prod`, the following configuration:
+If the [environment](/configuration/command-linemd#global-options) value set to `prod`, the following configuration
 
 ```hcl
 server {
@@ -50,5 +50,3 @@ server {
     }
 }
 ```
-
-**Note:** The value of the environment set via [Defaults Block](#defaults-block) is ignored.

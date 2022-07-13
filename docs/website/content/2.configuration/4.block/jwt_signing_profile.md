@@ -1,7 +1,7 @@
 # JWT Signing Profile
 
 The `jwt_signing_profile` block lets you configure a JSON Web Token signing
-profile for your gateway. It is referenced in the [`jwt_sign()` function](#functions)
+profile for your gateway. It is referenced in the [`jwt_sign()` function](../functions)
 by its required _label_.
 
 An example can be found
@@ -9,7 +9,7 @@ An example can be found
 
 | Block name            | Context                                 | Label            | Nested block(s) |
 |:----------------------|:----------------------------------------|:-----------------|:----------------|
-| `jwt_signing_profile` | [Definitions Block](#definitions-block) | &#9888; required | -               |
+| `jwt_signing_profile` | [Definitions Block](definitions) | &#9888; required | -               |
 
 | Attribute(s)          | Type                  | Default | Description                                                                                 | Characteristic(s)                                                                                                                 | Example                                       |
 |:----------------------|:----------------------|:--------|:--------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------|
@@ -19,3 +19,5 @@ An example can be found
 | `ttl`                 | [duration](#duration) | -       | The token's time-to-live (creates the `exp` claim).                                         | -                                                                                                                                 | -                                             |
 | `claims`              | object                | -       | Default claims for the JWT payload.                                                         | The claim values are evaluated per request.                                                                                       | `claims = { iss = "https://the-issuer.com" }` |
 | `headers`             | object                | -       | Additional header fields for the JWT.                                                       | `alg` and `typ` cannot be set.                                                                                                    | `headers = { kid = "my-key-id" }`             |
+
+::duration

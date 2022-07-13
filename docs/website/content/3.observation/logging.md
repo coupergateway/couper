@@ -121,8 +121,8 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 | Name         |                 | Description                                                                                                                |
 |:-------------|:----------------|:---------------------------------------------------------------------------------------------------------------------------|
-| `"deadline"` |                 | shutdown parameter, see [Health-Check](/configuration/settings#health-check)                                                        |
-| `"delay"`    |                 | shutdown parameter, see [Health-Check](/configuration/settings#health-check)                                                        |
+| `"deadline"` |                 | shutdown parameter, see [Health-Check](#/configuration/settings#health-check)                                                        |
+| `"delay"`    |                 | shutdown parameter, see [Health-Check](#/configuration/settings#health-check)                                                        |
 | `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
 |              | `{`             |                                                                                                                            |
 |              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                         |
@@ -180,7 +180,7 @@ definitions {
 
 ## Settings
 
-For more information regarding the usage of these settings, compare the [Command Line Interface](/configuration/command-line) documentation, Couper's [Environment Options](./../DOCKER.md#environment-options) and/or the [Settings Block](/configuration/block/settings) reference.
+For more information regarding the usage of these settings, compare the [Command Line Interface](/configuration/command-line) documentation, Couper's [Environment Options](#DOCKER.md#environment-options) and/or the [Settings Block](/configuration/block/settings) reference.
 
 | Feature      | Description                                                                                                                                                                                                                                    |
 |:-------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

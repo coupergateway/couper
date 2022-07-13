@@ -4,7 +4,7 @@ The `files` blocks configure the file serving. Can be defined multiple times as 
 
 | Block name | Context                       | Label    | Nested block(s)           |
 |:-----------|:------------------------------|:---------|:--------------------------|
-| `files`    | [Server Block](#server-block) | Optional | [CORS Block](#cors-block) |
+| `files`    | [Server Block](server) | Optional | [CORS Block](cors) |
 
 
 ::attributes
