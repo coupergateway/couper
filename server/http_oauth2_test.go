@@ -1054,11 +1054,12 @@ func TestTokenRequest(t *testing.T) {
 
 	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/resource" {
-			if req.Header.Get("Authorization") == "Bearer tok0" && req.Header.Get("Auth-1") == "tok1" && req.Header.Get("Auth-2") == "tok2" && req.Header.Get("Auth-3") == "tok2" {
+			if req.Header.Get("Authorization") == "Bearer tok0" && req.Header.Get("Auth-1") == "tok1" && req.Header.Get("Auth-2") == "tok2" && req.Header.Get("Auth-3") == "tok2" && req.Header.Get("Auth-4") == "tok1" && req.Header.Get("Auth-5") == "tok2" && req.Header.Get("Auth-6") == "tok2" {
 				rw.WriteHeader(http.StatusNoContent)
 				return
 			}
 
+			fmt.Printf("req.Header = %#v\n", req.Header)
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}

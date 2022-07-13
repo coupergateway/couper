@@ -122,6 +122,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
+	// TODO how to better set backend variable to current backend?
+	backends := seetie.ValueToMap(hclCtx.Variables[eval.Backends])
+	hclCtx.Variables[eval.Backend] = seetie.GoToValue(backends[b.name])
+
 	if err = b.isUnhealthy(hclCtx, ctxBody); err != nil {
 		return &http.Response{
 			Request: req, // provide outreq (variable) on error cases
