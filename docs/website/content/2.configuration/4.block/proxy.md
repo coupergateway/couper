@@ -2,11 +2,11 @@
 
 The `proxy` block creates and executes a proxy request to a backend service.
 
-> Multiple  `proxy` and [`request`](/configuration/block/request) blocks are executed in parallel.
+> Multiple  `proxy` and [`request`](request) blocks are executed in parallel.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                          | Nested block(s)                                                                                                                                                                                                                                |
 |:-----------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `proxy`    | [Endpoint Block](#endpoint-block) | &#9888; A `proxy` block or [Request Block](#request-block) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](#request-block) w/ label `"default"` per [Endpoint Block](#endpoint-block) is allowed. | [Backend Block](#backend-block) (&#9888; required, if no [Backend Block](#backend-block) reference is defined or no `url` attribute is set.), [Websockets Block](#websockets-block) (&#9888; Either websockets attribute or block is allowed.) |
+| `proxy`    | [Endpoint Block](endpoint) | &#9888; A `proxy` block or [Request Block](request) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](request) w/ label `"default"` per [Endpoint Block](endpoint) is allowed. | [Backend Block](backend) (&#9888; required, if no [Backend Block](backend) reference is defined or no `url` attribute is set.), [Websockets Block](websockets) (&#9888; Either websockets attribute or block is allowed.) |
 
 
 ::attributes

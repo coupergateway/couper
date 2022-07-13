@@ -1,12 +1,12 @@
-# Cors
+# CORS
 
 The `cors` block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
 
 | Block name | Context                                                                                                       | Label    | Nested block(s) |
 |:-----------|:--------------------------------------------------------------------------------------------------------------|:---------|:----------------|
-| `cors`     | [Server Block](#server-block), [Files Block](#files-block), [SPA Block](#spa-block), [API Block](#api-block). | no label | -               |
+| `cors`     | [Server Block](server), [Files Block](files), [SPA Block](spa), [API Block](api). | no label | -               |
 
-**Note:** `Access-Control-Allow-Methods` is only sent in response to a CORS preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method (see the `allowed_method` attribute for [`api`](/configuration/block/api) or [`endpoint`](/configuration/block/endpoint) blocks).
+**Note:** `Access-Control-Allow-Methods` is only sent in response to a CORS preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method (see the `allowed_method` attribute for [`api`](api) or [`endpoint`](endpoint) blocks).
 
 ### Attribute `allowed_origins`
 
