@@ -22,6 +22,7 @@ definitions {
 
     oauth2 {
       token_endpoint = "{{.asOrigin}}/token"
+      backend = "as"
       client_id = "clid"
       client_secret = "cls"
       grant_type = "client_credentials"
@@ -29,6 +30,7 @@ definitions {
 
     beta_token_request "tr1" {
       url = "{{.asOrigin}}/token1"
+      backend = "as"
       form_body = {
         client_id = "clid"
         client_secret = "cls"
@@ -40,6 +42,7 @@ definitions {
 
     beta_token_request "default" {
       url = "{{.asOrigin}}/token2"
+      backend = "as"
       form_body = {
         client_id = "clid"
         client_secret = "cls"
@@ -50,6 +53,10 @@ definitions {
       token = token_response.json_body.access_token
       ttl = "${default(token_response.json_body.expires_in, 3600) * 0.9}s"
     }
+  }
+
+  backend "as" {
+    origin = "{{.asOrigin}}"
   }
 }
 

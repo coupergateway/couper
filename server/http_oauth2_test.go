@@ -994,7 +994,6 @@ func TestNestedBackendOauth2(t *testing.T) {
 }
 
 func TestTokenRequest(t *testing.T) {
-	// t.Skip()
 	helper := test.New(t)
 
 	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -1057,14 +1056,13 @@ func TestTokenRequest(t *testing.T) {
 	defer asOrigin.Close()
 
 	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/resource" {
-			if req.Header.Get("Authorization") == "Bearer tok0" && req.Header.Get("Auth-1") == "tok1" && req.Header.Get("Auth-2") == "tok2" && req.Header.Get("Auth-3") == "tok2" && req.Header.Get("Auth-4") == "tok1" && req.Header.Get("Auth-5") == "tok2" && req.Header.Get("Auth-6") == "tok2" {
-				rw.WriteHeader(http.StatusNoContent)
-				return
-			}
-
-			fmt.Printf("req.Header = %#v\n", req.Header)
+		if req.Header.Get("Authorization") != "Bearer tok0" || req.Header.Get("Auth-1") != "tok1" || req.Header.Get("Auth-2") != "tok2" || req.Header.Get("Auth-3") != "tok2" || req.Header.Get("Auth-4") != "tok1" || req.Header.Get("Auth-5") != "tok2" || req.Header.Get("Auth-6") != "tok2" {
 			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if req.URL.Path == "/resource" {
+			rw.WriteHeader(http.StatusNoContent)
 			return
 		}
 
