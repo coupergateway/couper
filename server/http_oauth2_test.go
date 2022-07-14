@@ -1042,7 +1042,11 @@ func TestTokenRequest(t *testing.T) {
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
 
-			body := []byte(`tok2`)
+			body := []byte(`{
+				"access_token": "tok2",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
 			_, werr := rw.Write(body)
 			helper.Must(werr)
 

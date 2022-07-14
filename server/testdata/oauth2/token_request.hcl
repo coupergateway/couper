@@ -47,8 +47,8 @@ definitions {
         username = "user"
         password = "asdf"
       }
-      token = token_response.body
-      ttl = "2m"
+      token = token_response.json_body.access_token
+      ttl = "${default(token_response.json_body.expires_in, 3600) * 0.9}s"
     }
   }
 }
