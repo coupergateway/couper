@@ -331,7 +331,8 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 
 	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
-		return nil, nil
+		// TODO this prevents an oauth2 to send token request to (oauth2 or beta_token_request) authorized backend
+		// return nil, nil
 	}
 
 	ctx := context.WithValue(req.Context(), request.BackendTokenRequest, "tr")
@@ -341,23 +342,28 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 
 	originalReq := req.Clone(req.Context())
 
-	errorsCh := make(chan error, len(b.requestAuthorizer))
+	// errorsCh := make(chan error, len(b.requestAuthorizer))
 	// WithContext() instead of Clone() due to header-map modification.
 	req = req.WithContext(ctx)
 
 	for _, authorizer := range b.requestAuthorizer {
-		go func(ra RequestAuthorizer, r *http.Request) {
-			err := ra.GetToken(r)
-			errorsCh <- err
-		}(authorizer, req)
-	}
-
-	for i := 0; i < len(b.requestAuthorizer); i++ {
-		err := <-errorsCh
+		err := authorizer.GetToken(req)
 		if err != nil {
 			return originalReq, err
 		}
+		// TODO send token requests in parallel while solving race problem
+		// go func(ra RequestAuthorizer, r *http.Request) {
+		// err := ra.GetToken(r)
+		// errorsCh <- err
+		// }(authorizer, req)
 	}
+
+	// for i := 0; i < len(b.requestAuthorizer); i++ {
+	// err := <-errorsCh
+	// if err != nil {
+	// return originalReq, err
+	// }
+	// }
 	return originalReq, nil
 }
 
@@ -368,7 +374,8 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 
 	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
-		return false, nil
+		// TODO this prevents an oauth2 to send token request to (oauth2 or beta_token_request) authorized backend
+		// return false, nil
 	}
 
 	retry := false

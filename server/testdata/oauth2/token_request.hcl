@@ -18,6 +18,7 @@ definitions {
       Auth-4 = backend.tokens.tr1
       Auth-5 = backend.tokens.default
       Auth-6 = backend.token
+      KeyId = backends.as.token
     }
 
     oauth2 {
@@ -57,6 +58,20 @@ definitions {
 
   backend "as" {
     origin = "{{.asOrigin}}"
+    set_request_headers = {
+      KeyId = backend.token
+    }
+
+    beta_token_request {
+      url = "{{.vaultOrigin}}/key"
+      backend = "vault"
+      token = token_response.body
+      ttl = "1h"
+    }
+  }
+
+  backend "vault" {
+    origin = "{{.vaultOrigin}}"
   }
 }
 

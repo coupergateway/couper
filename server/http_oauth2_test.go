@@ -997,6 +997,11 @@ func TestTokenRequest(t *testing.T) {
 	helper := test.New(t)
 
 	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("KeyId") != "the-key" {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
 		reqBody, _ := io.ReadAll(req.Body)
 
 		if req.URL.Path == "/token" {
@@ -1056,7 +1061,7 @@ func TestTokenRequest(t *testing.T) {
 	defer asOrigin.Close()
 
 	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Authorization") != "Bearer tok0" || req.Header.Get("Auth-1") != "tok1" || req.Header.Get("Auth-2") != "tok2" || req.Header.Get("Auth-3") != "tok2" || req.Header.Get("Auth-4") != "tok1" || req.Header.Get("Auth-5") != "tok2" || req.Header.Get("Auth-6") != "tok2" {
+		if req.Header.Get("Authorization") != "Bearer tok0" || req.Header.Get("Auth-1") != "tok1" || req.Header.Get("Auth-2") != "tok2" || req.Header.Get("Auth-3") != "tok2" || req.Header.Get("Auth-4") != "tok1" || req.Header.Get("Auth-5") != "tok2" || req.Header.Get("Auth-6") != "tok2" || req.Header.Get("KeyId") != "the-key" {
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -1070,8 +1075,22 @@ func TestTokenRequest(t *testing.T) {
 	}))
 	defer rsOrigin.Close()
 
+	vaultOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/key" {
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte("the-key")
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer vaultOrigin.Close()
+
 	confPath := "testdata/oauth2/token_request.hcl"
-	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL, "vaultOrigin": vaultOrigin.URL})
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
