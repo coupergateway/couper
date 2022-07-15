@@ -131,9 +131,27 @@ func (t *TokenRequest) requestToken(etx *eval.Context) (string, int64, error) {
 	outCtx = context.WithValue(outCtx, request.TokenRequest, t.config.Name)
 
 	outreq = outreq.WithContext(outCtx)
-	_, err = t.backend.RoundTrip(outreq)
+	resp, err := t.backend.RoundTrip(outreq)
 	if err != nil {
 		return "", 0, err
+	}
+
+	expectedStatusVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "expected_status")
+	if err != nil {
+		return "", 0, err
+	}
+	expStatus := seetie.ValueToIntSlice(expectedStatusVal)
+	if len(expStatus) > 0 {
+		var seen bool
+		for _, exp := range expStatus {
+			if resp.StatusCode == int(exp) {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			return "", 0, errors.UnexpectedStatus.Message("unexpected status")
+		}
 	}
 
 	// obtain synced and already read beresp value; map to context variables
