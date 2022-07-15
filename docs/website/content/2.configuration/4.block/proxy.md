@@ -15,7 +15,7 @@ values: [
   {
     "name": "backend",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "backend block reference"
   },
   {
@@ -27,13 +27,13 @@ values: [
   {
     "name": "expected_status",
     "type": "tuple (int)",
-    "default": "",
+    "default": "[]",
     "description": "If defined, the response status code will be verified against this list of codes. If the status-code is unexpected an <code>unexpected_status</code> error can be handled with an <code>error_handler</code>."
   },
   {
     "name": "url",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "If defined, the host part of the URL must be the same as the <code>origin</code> attribute of the <code>backend</code> block (if defined)."
   }
 ]

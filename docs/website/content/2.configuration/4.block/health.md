@@ -20,19 +20,19 @@ values: [
   {
     "name": "interval",
     "type": "string",
-    "default": "1s",
+    "default": "\"1s\"",
     "description": "time interval for recheck"
   },
   {
     "name": "timeout",
     "type": "string",
-    "default": "2s",
-    "description": "maximum allowed time limit which is\tbounded by <code>interval</code>"
+    "default": "\"2s\"",
+    "description": "maximum allowed time limit which is\tbounded by `interval`"
   },
   {
     "name": "path",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "URL path with query on backend host"
   },
   {
@@ -44,7 +44,7 @@ values: [
   {
     "name": "expected_text",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "text which the response body must contain"
   },
   {

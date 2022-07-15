@@ -13,25 +13,25 @@ values: [
   {
     "name": "access_control",
     "type": "tuple (string)",
-    "default": "",
+    "default": "[]",
     "description": "Sets predefined access control for this block context."
   },
   {
     "name": "base_path",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Configures the path prefix for all requests."
   },
   {
     "name": "document_root",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Location of the document root (directory)."
   },
   {
     "name": "error_file",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Location of the error file template."
   },
   {

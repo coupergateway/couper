@@ -11,6 +11,12 @@ Make sure to install the dependencies:
 npm install
 ```
 
+## Generate Reference and Update Search Index
+
+```bash
+(cd ../.. && make generate-docs)
+```
+
 ## Development Server
 
 Start the development server on http://localhost:3000:

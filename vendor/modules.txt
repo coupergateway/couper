@@ -1,6 +1,18 @@
 # github.com/agext/levenshtein v1.2.3
 ## explicit
 github.com/agext/levenshtein
+# github.com/algolia/algoliasearch-client-go/v3 v3.26.0
+## explicit; go 1.13
+github.com/algolia/algoliasearch-client-go/v3/algolia/call
+github.com/algolia/algoliasearch-client-go/v3/algolia/compression
+github.com/algolia/algoliasearch-client-go/v3/algolia/debug
+github.com/algolia/algoliasearch-client-go/v3/algolia/errs
+github.com/algolia/algoliasearch-client-go/v3/algolia/internal/opt
+github.com/algolia/algoliasearch-client-go/v3/algolia/iterator
+github.com/algolia/algoliasearch-client-go/v3/algolia/opt
+github.com/algolia/algoliasearch-client-go/v3/algolia/search
+github.com/algolia/algoliasearch-client-go/v3/algolia/transport
+github.com/algolia/algoliasearch-client-go/v3/algolia/wait
 # github.com/apparentlymart/go-textseg/v13 v13.0.0
 ## explicit; go 1.16
 github.com/apparentlymart/go-textseg/v13/textseg
