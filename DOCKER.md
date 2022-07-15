@@ -1,20 +1,20 @@
 # Couper
 
-![Couper](https://raw.githubusercontent.com/avenga/couper/master/docs/img/couper-logo.svg)
+![Couper](https://raw.githubusercontent.com/avenga/couper/master/docs/website/public/img/couper-logo.svg)
 
 Couper is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a frontend gateway component.
 
-_For additional information, tutorials and documentation please visit the [couper repository](https://github.com/avenga/couper)._
+_For additional information, tutorials and documentation please visit the [Couper repository](https://github.com/avenga/couper)._
 
 ## Usage
 
-Couper requires a [configuration file](https://github.com/avenga/couper/tree/master/docs#configuration-file) which have to be provided on start.
-See our [documentation](https://github.com/avenga/couper/tree/master/docs) how to configure _couper_.
+Couper requires a [configuration file](https://docs.couper.io/configuration/configuration-file) which have to be provided on start.
+See our [documentation](https://docs.couper.io/getting-started/introduction) how to configure _Couper_.
 
 This image contains a basic configuration to serve files from `/htdocs` directory.
 
 ```sh
-docker run --rm -p 8080:8080 -v `pwd`:/htdocs avenga/couper
+$ docker run --rm -p 8080:8080 -v `pwd`:/htdocs avenga/couper
 ```
 
 ## Command
@@ -23,13 +23,14 @@ The entrypoint of the image is the `/couper` binary. The command is `run`.
 
 Therefore `docker run avenga/couper` runs `/couper run -d /conf`.
 
-The [directory argument](https://github.com/avenga/couper/blob/master/docs/CLI.md#global-options) allows you to mount multiple configuration files to the `/conf` directory.
+The [directory argument](https://docs.couper.io/configuration/command-line#global-options) allows you to mount multiple configuration files to the `/conf` directory.
 
 You could also use other commands directly:
 
 ```sh
-docker run avenga/couper version
-docker run avenga/couper run -watch -p 8081
+$ docker run avenga/couper version
+
+$ docker run avenga/couper run -watch -p 8081
 ```
 
 ### Environment options
@@ -39,7 +40,7 @@ docker run avenga/couper run -watch -p 8081
 | COUPER_FILE                          | `couper.hcl` | Path to the configuration file. |
 | COUPER_FILE_DIRECTORY                | `""`    | Path to the configuration files directory. |
 | COUPER_ENVIRONMENT                   | `""`    | Name of environment in which Couper is currently running. |
-| COUPER_ACCEPT_FORWARDED_URL          | `""`    | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](https://github.com/avenga/couper/blob/master/docs/REFERENCE.md#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port`. |
+| COUPER_ACCEPT_FORWARDED_URL          | `""`    | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](https://docs.couper.io/configuration/variables#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port`. |
 | COUPER_DEFAULT_PORT                  | `8080`  | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
 | COUPER_HEALTH_PATH                   | `/healthz` | Path for health-check requests for all servers and ports. |
 | COUPER_HTTPS_DEV_PROXY               | `""`    | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. |
