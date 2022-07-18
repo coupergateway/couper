@@ -221,6 +221,16 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 		if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
 			return nil, diags
 		}
+
+		content, _, diags := conf.Remain.PartialContent(conf.Schema(true))
+		if diags.HasErrors() {
+			return nil, diags
+		}
+
+		if err := verifyBodyAttributes(tokenRequest, content); err != nil {
+			return nil, err
+		}
+
 		be, err := PrepareBackend(helper, "", conf.URL, conf)
 		if err != nil {
 			return nil, err

@@ -136,7 +136,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				return diags
 			}
 
-			if err := verifyBodyAttributes(content); err != nil {
+			if err := verifyBodyAttributes(request, content); err != nil {
 				return err
 			}
 
