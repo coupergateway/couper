@@ -1007,7 +1007,7 @@ func TestTokenRequest(t *testing.T) {
 		if req.URL.Path == "/token" {
 			expBody := "grant_type=client_credentials"
 			if expBody != string(reqBody) {
-				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)
+				t.Errorf("wrong request body /token\nwant: %q\ngot:  %q", expBody, reqBody)
 			}
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
@@ -1024,7 +1024,7 @@ func TestTokenRequest(t *testing.T) {
 		} else if req.URL.Path == "/token1" {
 			expBody := "client_id=clid&client_secret=cls&grant_type=client_credentials"
 			if expBody != string(reqBody) {
-				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)
+				t.Errorf("wrong request body /token1\nwant: %q\ngot:  %q", expBody, reqBody)
 			}
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
@@ -1040,11 +1040,11 @@ func TestTokenRequest(t *testing.T) {
 			return
 		} else if req.URL.Path == "/token2" {
 			if "foo=bar" != req.URL.RawQuery {
-				t.Errorf("want\n%s\ngot\n%s", "foo=bar", req.URL.RawQuery)
+				t.Errorf("wrong request URL query /token2\nwant: %q\ngot:  %q", "foo=bar", req.URL.RawQuery)
 			}
 			expBody := "client_id=clid&client_secret=cls&grant_type=password&password=asdf&username=user"
 			if expBody != string(reqBody) {
-				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)
+				t.Errorf("wrong request body /token2\nwant: %q\ngot:  %q", expBody, reqBody)
 			}
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
