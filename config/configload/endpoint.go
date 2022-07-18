@@ -140,8 +140,8 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				return err
 			}
 
-			renameAttribute(content, "headers", "set_request_headers")
-			renameAttribute(content, "query_params", "set_query_params")
+			hclbody.RenameAttribute(content, "headers", "set_request_headers")
+			hclbody.RenameAttribute(content, "query_params", "set_query_params")
 
 			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
 
@@ -202,12 +202,4 @@ func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
 	}
 
 	return len(content.Blocks) > 0, nil, nil
-}
-
-func renameAttribute(content *hcl.BodyContent, old, new string) {
-	if attr, ok := content.Attributes[old]; ok {
-		attr.Name = new
-		content.Attributes[new] = attr
-		delete(content.Attributes, old)
-	}
 }

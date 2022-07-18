@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
@@ -179,6 +180,10 @@ func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend,
 	if diags.HasErrors() {
 		return nil, diags
 	}
+
+	// TODO find better place to rename these attributes (during config load?)
+	hclbody.RenameAttribute(innerContent, "headers", "set_request_headers")
+	hclbody.RenameAttribute(innerContent, "query_params", "set_query_params")
 
 	backendBlocks := innerContent.Blocks.OfType("backend")
 	if len(backendBlocks) == 0 {

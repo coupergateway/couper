@@ -1039,6 +1039,9 @@ func TestTokenRequest(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/token2" {
+			if "foo=bar" != req.URL.RawQuery {
+				t.Errorf("want\n%s\ngot\n%s", "foo=bar", req.URL.RawQuery)
+			}
 			expBody := "client_id=clid&client_secret=cls&grant_type=password&password=asdf&username=user"
 			if expBody != string(reqBody) {
 				t.Errorf("want\n%s\ngot\n%s", expBody, reqBody)

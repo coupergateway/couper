@@ -34,6 +34,14 @@ func NewContentWithAttr(attr *hcl.Attribute) *hcl.BodyContent {
 	}}
 }
 
+func RenameAttribute(content *hcl.BodyContent, old, new string) {
+	if attr, ok := content.Attributes[old]; ok {
+		attr.Name = new
+		content.Attributes[new] = attr
+		delete(content.Attributes, old)
+	}
+}
+
 func (e *Body) Content(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
 	return e.content, nil
 }
