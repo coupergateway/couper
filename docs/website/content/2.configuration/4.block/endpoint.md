@@ -44,7 +44,7 @@ values: [
   {
     "name": "access_control",
     "type": "tuple (string)",
-    "default": "",
+    "default": "[]",
     "description": "Sets predefined access control for this block context."
   },
   {
@@ -56,19 +56,19 @@ values: [
   {
     "name": "disable_access_control",
     "type": "tuple (string)",
-    "default": "",
+    "default": "[]",
     "description": "Disables access controls by name."
   },
   {
     "name": "error_file",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Location of the error file template."
   },
   {
     "name": "request_body_limit",
     "type": "string",
-    "default": "64MiB",
+    "default": "\"64MiB\"",
     "description": "Configures the maximum buffer size while accessing <code>request.form_body</code> or <code>request.json_body</code> content. Valid units are: <code>KiB</code>, <code>MiB</code>, <code>GiB</code>"
   },
   {

@@ -40,7 +40,10 @@ require (
 	google.golang.org/grpc v1.44.0
 )
 
-require github.com/google/go-cmp v0.5.7
+require (
+	github.com/algolia/algoliasearch-client-go/v3 v3.26.0
+	github.com/google/go-cmp v0.5.7
+)
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect

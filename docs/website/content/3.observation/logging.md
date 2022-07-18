@@ -180,7 +180,7 @@ definitions {
 
 ## Settings
 
-For more information regarding the usage of these settings, compare the [Command Line Interface](/configuration/command-line) documentation, Couper's [Environment Options](#DOCKER.md#environment-options) and/or the [Settings Block](/configuration/block/settings) reference.
+For more information regarding the usage of these settings, see the [Command Line Interface](/configuration/command-line) documentation and the [`settings` block  reference](/configuration/block/settings).
 
 | Feature      | Description                                                                                                                                                                                                                                    |
 |:-------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

@@ -11,7 +11,7 @@ var _ Inline = &API{}
 type API struct {
 	ErrorHandlerSetter
 	AccessControl        []string  `hcl:"access_control,optional" docs:"Sets predefined [Access Control](#access-control) for this block."`
-	AllowedMethods       []string  `hcl:"allowed_methods,optional" docs:"Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a <code>405 Method Not Allowed</code> status." default:"*"`
+	AllowedMethods       []string  `hcl:"allowed_methods,optional" docs:"Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a {405 Method Not Allowed} status." default:"*"`
 	BasePath             string    `hcl:"base_path,optional" docs:"Configures the path prefix for all requests."`
 	CORS                 *CORS     `hcl:"cors,block"`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
@@ -40,7 +40,7 @@ func (a API) Inline() interface{} {
 		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
 		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`
 		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom Logging"`
-		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional" docs:"Permission required to use this API (see [error type](ERRORS.md#error-types) <code>beta_insufficient_permissions)</code>."`
+		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional" docs:"Permission required to use this API (see [error type](/configuration/error-handling#error-types) {beta_insufficient_permissions})."`
 	}
 
 	return &Inline{}

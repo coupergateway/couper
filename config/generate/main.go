@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -104,11 +105,19 @@ func main() {
 			fieldDefault := field.Tag.Get("default")
 			if fieldDefault == "" && fieldType == "bool" {
 				fieldDefault = "false"
+			} else if fieldDefault == "" && strings.HasPrefix(fieldType, "tuple ") {
+				fieldDefault = "[]"
+			} else if fieldType == "string" || fieldType == "duration" {
+				fieldDefault = `"` + fieldDefault + `"`
 			}
+
+			fieldDescription := field.Tag.Get("docs")
+			re := regexp.MustCompile(`{([^}]*)}`)
+			fieldDescription = re.ReplaceAllString(fieldDescription, "`${1}`")
 
 			a := attr{
 				Default:     fieldDefault,
-				Description: field.Tag.Get("docs"),
+				Description: fieldDescription,
 				Name:        strings.Split(field.Tag.Get("hcl"), ",")[0],
 				Type:        fieldType,
 			}
