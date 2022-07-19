@@ -1,10 +1,10 @@
-### Server
+# Server
 
 The `server` block is one of the root configuration blocks of Couper's configuration file.
 
 | Block name | Context | Label    | Nested block(s)                                                                                                                                       |
 |:-----------|:--------|:---------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `server`   | -       | optional | [CORS Block](#cors-block), [Files Block](#files-block), [SPA Block(s)](#spa-block) , [API Block(s)](#api-block), [Endpoint Block(s)](#endpoint-block) |
+| `server`   | -       | optional | [CORS Block](cors), [Files Block](files), [SPA Block(s)](spa) , [API Block(s)](api), [Endpoint Block(s)](endpoint) |
 
 | Attribute(s)             | Type           | Default      | Description                                                                   | Characteristic(s)                                                                                                             | Example                                     |
 |:-------------------------|:---------------|:-------------|:------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------|
@@ -13,4 +13,4 @@ The `server` block is one of the root configuration blocks of Couper's configura
 | `error_file`             | string         | -            | Location of the error file template.                                          | -                                                                                                                             | `error_file = "./my_error_page.html"`       |
 | `access_control`         | tuple (string) | -            | Sets predefined [Access Control](#access-control) for `server` block context. | &#9888; Inherited by nested blocks.                                                                                           | `access_control = ["foo"]`                  |
 | `disable_access_control` | tuple (string) | -            | Disables access controls by name.                                             | -                                                                                                                             | `disable_access_control = ["foo"]`          |
-| `custom_log_fields`      | object         | -            | Defines log fields for [Custom Logging](LOGS.md#custom-logging).              | &#9888; Inherited by nested blocks.                                                                                           | -                                           |
+| `custom_log_fields`      | object         | -            | Defines log fields for [Custom Logging](/observation/logging#custom-logging).              | &#9888; Inherited by nested blocks.                                                                                           | -                                           |

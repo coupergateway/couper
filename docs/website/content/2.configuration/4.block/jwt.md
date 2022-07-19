@@ -2,19 +2,19 @@
 
 The `jwt` block lets you configure JSON Web Token access control for your gateway.
 Like all [Access Control](#access-control) types, the `jwt` block is defined in
-the [Definitions Block](#definitions-block) and can be referenced in all configuration blocks by its
+the [Definitions Block](definitions) and can be referenced in all configuration blocks by its
 required _label_.
 
 Since responses from endpoints protected by JWT access controls are not publicly cacheable, a `Cache-Control: private` header field is added to the response, unless this feature is disabled with `disable_private_caching = true`.
 
 | Block name | Context                                 | Label            | Nested block(s)                                                                  |
 |:-----------|:----------------------------------------|:-----------------|:---------------------------------------------------------------------------------|
-| `jwt`      | [Definitions Block](#definitions-block) | &#9888; required | [JWKS `backend`](#backend-block), [Error Handler Block(s)](#error-handler-block) |
+| `jwt`      | [Definitions Block](definitions) | &#9888; required | [JWKS `backend`](backend), [Error Handler Block(s)](error_handler) |
 
 | Attribute(s)              | Type                  | Default | Description                                                                                                   | Characteristic(s)                                                                                                                                                            | Example                                                                       |
 |:--------------------------|:----------------------|:--------|:--------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------|
 | `cookie`                  | string                | -       | Read token value from a cookie.                                                                               | cannot be used together with `header` or `token_value`                                                                                                                       | `cookie = "AccessToken"`                                                      |
-| `custom_log_fields`       | object                | -       | Defines log fields for [Custom Logging](LOGS.md#custom-logging).                                              | &#9888; Inherited by nested blocks.                                                                                                                                          | -                                                                             |
+| `custom_log_fields`       | object                | -       | Defines log fields for [Custom Logging](/observation/logging#custom-logging).                                              | &#9888; Inherited by nested blocks.                                                                                                                                          | -                                                                             |
 | `header`                  | string                | -       | Read token value from a request header field.                                                                 | &#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`. | `header = "Authorization"`                                                    |
 | `token_value`             | string                | -       | expression to obtain the token                                                                                | cannot be used together with `cookie` or `header`                                                                                                                            | `token_value = request.form_body.token[0]`                                    |
 | `key`                     | string                | -       | Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.                    | -                                                                                                                                                                            | -                                                                             |
@@ -29,7 +29,7 @@ Since responses from endpoints protected by JWT access controls are not publicly
 | `jwks_url`                | string                | -       | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)            | -                                                                                                                                                                            | `jwks_url = "http://identityprovider:8080/jwks.json"`                         |
 | `jwks_ttl`                | [duration](#duration) | `"1h"`  | Time period the JWK set stays valid and may be cached.                                                        | -                                                                                                                                                                            | `jwks_ttl = "1800s"`                                                          |
 | `jwks_max_stale`          | [duration](#duration) | `"1h"`  | Time period the cached JWK set stays valid after its TTL has passed.                                          | -                                                                                                                                                                            | `jwks_max_stale = "45m"`                                                      |
-| `backend`                 | string                | -       | [backend reference](#backend-block) for enhancing JWKS requests                                               | -                                                                                                                                                                            | `backend = "jwks_backend"`                                                    |
+| `backend`                 | string                | -       | [backend reference](backend) for enhancing JWKS requests                                               | -                                                                                                                                                                            | `backend = "jwks_backend"`                                                    |
 | `disable_private_caching` | bool                  | `false` | If set to `true`, Couper does not add the `private` directive to the `Cache-Control` HTTP header field value. | -                                                                                                                                                                            | -                                                                             |
 
 The attributes `header`, `cookie` and `token_value` are mutually exclusive.
@@ -43,7 +43,7 @@ A JWT access control configured by this block can extract permissions from
 - the value of the claim specified by `beta_permissions_claim` and
 - the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
-The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
+The `jwt` block may also be referenced by the [`jwt_sign()` function](../functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
 **Note:** A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
 
@@ -52,3 +52,5 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](#functions
 | `signing_key`      | string                | -       | Private key (in PEM format) for `RS*` and `ES*` variants. | -                 | -       |
 | `signing_key_file` | string                | -       | Optional file reference instead of `signing_key` usage.   | -                 | -       |
 | `signing_ttl`      | [duration](#duration) | -       | The token's time-to-live (creates the `exp` claim).       | -                 | -       |
+
+::duration

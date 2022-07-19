@@ -6,16 +6,16 @@ produce an explicit or implicit client response.
 
 | Block name | Context                                                | Label                                                                  | Nested block(s)                                                                                                                                        |
 |:-----------|:-------------------------------------------------------|:-----------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `endpoint` | [Server Block](#server-block), [API Block](#api-block) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](#proxy-block),  [Request Block(s)](#request-block), [Response Block](#response-block), [Error Handler Block(s)](#error-handler-block) |
+| `endpoint` | [Server Block](server), [API Block](api) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](proxy),  [Request Block(s)](request), [Response Block](response), [Error Handler Block(s)](error_handler) |
 
 ## Endpoint Sequence
 
 If `request` and/or `proxy` block definitions are sequential based on their `backend_responses.*` variable references
-at load-time they will be executed sequentially. Unexpected responses can be caught with [error handling](ERRORS.md#endpoint-related-error_handler).
+at load-time they will be executed sequentially. Unexpected responses can be caught with [error handling](/configuration/error-handling).
 
 ### Attribute `allowed_methods`
 
-The default value `"*"` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](/configuration/block/cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
+The default value `"*"` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
 
 **Example:**
 
@@ -23,7 +23,7 @@ The default value `"*"` can be combined with additional methods. Methods are mat
 allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]
 ```
 
-### Attribute `beta_required_permission`
+## Attribute `beta_required_permission`
 
 Overrides `beta_required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `beta_required_permission` set or b) either `beta_required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
 
@@ -44,7 +44,7 @@ values: [
   {
     "name": "access_control",
     "type": "tuple (string)",
-    "default": "",
+    "default": "[]",
     "description": "Sets predefined access control for this block context."
   },
   {
@@ -56,19 +56,19 @@ values: [
   {
     "name": "disable_access_control",
     "type": "tuple (string)",
-    "default": "",
+    "default": "[]",
     "description": "Disables access controls by name."
   },
   {
     "name": "error_file",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Location of the error file template."
   },
   {
     "name": "request_body_limit",
     "type": "string",
-    "default": "64MiB",
+    "default": "\"64MiB\"",
     "description": "Configures the maximum buffer size while accessing <code>request.form_body</code> or <code>request.json_body</code> content. Valid units are: <code>KiB</code>, <code>MiB</code>, <code>GiB</code>"
   },
   {

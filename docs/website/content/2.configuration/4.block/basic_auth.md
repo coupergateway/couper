@@ -2,11 +2,11 @@
 
 | Block name   | Context                                 | Label    | Nested block(s)                                |
 |:-------------|:----------------------------------------|:---------|:-----------------------------------------------|
-| `basic_auth` | [Definitions Block](/configuration/block/definitions) | required | [Error Handler Block(s)](/configuration/error-handling) |
+| `basic_auth` | [Definitions Block](definitions) | required | [Error Handler Block(s)](error_handler) |
 
 The  `basic_auth` block lets you configure basic auth for your gateway. Like all
 [Access Control](#access-control) types, the `basic_auth` block is defined in the
-[Definitions Block](/configuration/block/definitions) and can be referenced in all configuration
+[Definitions Block](definitions) and can be referenced in all configuration
 blocks by its required _label_.
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming
@@ -26,25 +26,25 @@ values: [
   {
     "name": "htpasswd_file",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "The htpasswd file."
   },
   {
     "name": "user",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "The user name."
   },
   {
     "name": "password",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "The corresponding password."
   },
   {
     "name": "realm",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "The realm to be sent in a WWW-Authenticate response HTTP header field."
   },
   {
