@@ -100,7 +100,6 @@ func (b *Backend) initOnce(conf *Config) {
 		b.transport = NewTransport(conf, b.logEntry)
 	}
 
-	b.transport = NewTransport(conf, b.logEntry)
 	b.healthyMu.Lock()
 	b.transportConfResult = *conf
 	healthy := b.healthInfo.Healthy

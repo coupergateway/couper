@@ -15,92 +15,83 @@ import (
 )
 
 const (
-	windowFixed = iota
-	windowSliding
-	modeWait
+	dummy = iota
 	modeBlock
+	modeWait
+	windowFixed
+	windowSliding
 )
 
 type RateLimit struct {
-	counter     []time.Time
+	count       uint
 	logger      *logrus.Entry
 	mode        int
-	mu          sync.RWMutex
 	period      time.Duration
-	periodEnd   time.Time
 	periodStart time.Time
 	perPeriod   uint
+	ringBuffer  []time.Time // Always of size of 'perPeriod'
 	window      int
-	quitCh      <-chan struct{} // GC
+	quitCh      <-chan struct{}
 }
 
 type RateLimits []*RateLimit
 
 type Limiter struct {
-	check     chan chan bool
+	check     chan *slowTrip
 	limits    RateLimits
+	mu        sync.RWMutex
 	transport http.RoundTripper
 }
 
+type slowTrip struct {
+	err    error
+	out    chan *slowTrip
+	quitCh <-chan struct{}
+	req    *http.Request
+	res    *http.Response
+}
+
 func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
+	if len(limits) == 0 {
+		return nil
+	}
+
 	limiter := &Limiter{
-		check:     make(chan chan bool),
+		check:     make(chan *slowTrip),
 		limits:    limits,
 		transport: transport,
 	}
 
-	for _, rl := range limiter.limits {
-		go rl.gc(time.Second)
+	for _, rl := range limits {
+		// Init the start of a period.
+		rl.periodStart = time.Now()
 	}
 
-	go limiter.checkCapacity()
+	// FIXME: Configure parallelism like:
+	// for i = 0; i < max_connection; i++ { go limiter.slowTripper() }
+	go limiter.slowTripper()
 
 	return limiter
 }
 
-func (l *Limiter) checkCapacity() {
-outer:
-	for {
-		select {
-		case <-l.limits[0].quitCh:
-			return
-		case result := <-l.check:
-			for _, rl := range l.limits {
-				if !rl.hasCapacity() {
-					result <- false
-
-					continue outer
-				}
-			}
-
-			result <- true
-		}
-	}
-}
-
 func (l *Limiter) RoundTrip(req *http.Request) (*http.Response, error) {
-	resultCh := make(chan bool)
+	outCh := make(chan *slowTrip)
+
+	trip := &slowTrip{
+		out:    outCh,
+		quitCh: l.limits[0].quitCh,
+		req:    req,
+	}
 
 	select {
-	case l.check <- resultCh:
-		select {
-		case result := <-resultCh:
-			if result {
-				res, err := l.transport.RoundTrip(req)
-				if res != nil && res.StatusCode == http.StatusTooManyRequests {
-					return res, errors.BetaBackendRateLimitExceeded.With(err)
-				}
-
-				return res, err
-			} else {
-				return nil, errors.BetaBackendRateLimitExceeded
-			}
-		case <-req.Context().Done():
-			return nil, req.Context().Err()
-		}
+	case l.check <- trip:
 	case <-req.Context().Done():
 		return nil, req.Context().Err()
 	}
+
+	trip = <-outCh
+
+	return trip.res, trip.err
 }
 
 func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
@@ -161,20 +152,17 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 		}
 
 		rateLimit := &RateLimit{
-			logger:      logger,
-			mode:        mode,
-			period:      time.Duration(d.Nanoseconds()),
-			periodStart: time.Now(),
-			perPeriod:   *limit.PerPeriod,
-			window:      window,
-			quitCh:      ctx.Done(),
+			logger:    logger,
+			mode:      mode,
+			period:    time.Duration(d.Nanoseconds()),
+			perPeriod: *limit.PerPeriod,
+			window:    window,
+			quitCh:    ctx.Done(),
 		}
 
 		switch rateLimit.window {
-		case windowFixed:
-			rateLimit.periodEnd = rateLimit.periodStart.Add(rateLimit.period)
 		case windowSliding:
-			rateLimit.periodEnd = rateLimit.periodStart
+			rateLimit.ringBuffer = make([]time.Time, rateLimit.perPeriod)
 		}
 
 		rateLimits = append(rateLimits, rateLimit)
@@ -188,110 +176,115 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 	return rateLimits, nil
 }
 
-func (rl *RateLimit) hasCapacity() bool {
-	now := time.Now()
-
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	switch rl.window {
-	case windowFixed:
-		if len(rl.counter) >= (int)(rl.perPeriod) {
-			return false
-		}
-
-		rl.counter = append(rl.counter, now)
-
-		return true
-	case windowSliding:
-		if diff := rl.periodEnd.Sub(rl.periodStart); diff < rl.period {
-			// First, not full period
-			scaleFactor := (int)(diff / (rl.period / 100))
-			if scaleFactor == 0 {
-				scaleFactor = 1
-			}
-
-			maxAllowedRequests := (int)((float64)(rl.perPeriod) / 100 * float64(scaleFactor))
-			if maxAllowedRequests == 0 {
-				maxAllowedRequests = 1
-			}
-
-			if len(rl.counter) > maxAllowedRequests {
-				return false
-			}
-
-			rl.counter = append(rl.counter, now)
-
-			return true
-		} else {
-			var done uint
-			var last = now.Add(-1 * rl.period)
-
-			for i := len(rl.counter) - 1; i >= 0; i-- {
-				if rl.counter[i].Before(last) {
-					break
-				}
-
-				done++
-			}
-
-			if done > rl.perPeriod {
-				return false
-			}
-
-			rl.counter = append(rl.counter, now)
-
-			return true
-		}
-	}
-
-	return true
-}
-
-func (rl *RateLimit) gc(interval time.Duration) {
-	ticker := time.NewTicker(interval)
-
+func (l *Limiter) slowTripper() {
 	defer func() {
 		if rc := recover(); rc != nil {
-			rl.logger.WithField("panic", string(debug.Stack())).Panic(rc)
+			l.limits[0].logger.WithField("panic", string(debug.Stack())).Panic(rc)
 		}
-
-		ticker.Stop()
 	}()
 
 	for {
 		select {
-		case <-rl.quitCh:
+		case <-l.limits[0].quitCh:
 			return
-		case now := <-ticker.C:
-			rl.mu.Lock()
+		case trip := <-l.check:
+			select {
+			case <-trip.req.Context().Done():
+				// The request was canceled while in the queue.
+				trip.err = trip.req.Context().Err()
+				trip.out <- trip
 
-			switch rl.window {
-			case windowFixed:
-				for !rl.periodEnd.After(now) {
-					rl.periodStart = rl.periodEnd.Add(interval)
-					rl.periodEnd = rl.periodStart.Add(rl.period)
-					rl.counter = []time.Time{}
-				}
-			case windowSliding:
-				rl.periodEnd = now
-
-				if rl.periodEnd.Sub(rl.periodStart) > rl.period {
-					rl.periodStart = rl.periodEnd.Add(-1 * rl.period)
-				}
-
-				for _, t := range rl.counter {
-					if t.Before(rl.periodStart) {
-						rl.counter = rl.counter[1:]
-
-						continue
-					}
-
-					break
-				}
+				// Do not sleep for X canceled requests.
+				continue
+			default:
 			}
 
-			rl.mu.Unlock()
+			l.mu.Lock()
+
+			if mode, timeToWait := l.checkCapacity(); mode == modeBlock && timeToWait > 0 {
+				// We do not wait, we want block directly.
+				trip.err = errors.BetaBackendRateLimitExceeded
+				trip.out <- trip
+
+				l.mu.Unlock()
+			} else {
+				select {
+				// Noop if 'timeToWait' is 0.
+				case <-time.After(timeToWait):
+				case <-trip.req.Context().Done():
+					// The request was canceled while in the queue.
+					trip.err = trip.req.Context().Err()
+					trip.out <- trip
+
+					// Do not sleep for X canceled requests.
+					continue
+				}
+
+				l.countRequest()
+
+				l.mu.Unlock()
+
+				trip.res, trip.err = l.transport.RoundTrip(trip.req)
+
+				if trip.res != nil && trip.res.StatusCode == http.StatusTooManyRequests {
+					trip.err = errors.BetaBackendRateLimitExceeded.With(trip.err)
+				}
+
+				trip.out <- trip
+			}
 		}
+	}
+}
+
+func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
+	now := time.Now()
+
+	for _, rl := range l.limits {
+		switch rl.window {
+		case windowFixed:
+			// Update current period.
+			multiplicator := ((now.UnixNano() - rl.periodStart.UnixNano()) / int64(time.Nanosecond)) / rl.period.Nanoseconds()
+			if multiplicator > 0 {
+				rl.periodStart = rl.periodStart.Add(time.Duration(rl.period.Nanoseconds() * multiplicator))
+				rl.count = 0
+			}
+
+			if rl.count >= rl.perPeriod {
+				// Calculate the 'timeToWait'.
+				t = time.Duration((rl.periodStart.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
+
+				mode = rl.mode
+			}
+		case windowSliding:
+			if !rl.ringBuffer[0].IsZero() && rl.ringBuffer[0].Add(rl.period).After(now) {
+				// Calculate the 'timeToWait'.
+				t = time.Duration((rl.ringBuffer[0].Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
+
+				mode = rl.mode
+			}
+		}
+	}
+
+	return
+}
+
+// countRequest MUST only be called after checkCapacity()
+func (l *Limiter) countRequest() {
+	for _, rl := range l.limits {
+		rl.countRequest()
+	}
+}
+
+// countRequest MUST only be called after checkCapacity()
+func (rl *RateLimit) countRequest() {
+	switch rl.window {
+	case windowFixed:
+		rl.count++
+	case windowSliding:
+		// FIXME: Make code faster
+		// See https://en.wikipedia.org/wiki/Circular_buffer#Circular_buffer_mechanics
+		// See https://github.com/smallnest/ringbuffer
+		rl.ringBuffer = rl.ringBuffer[1:]
+		rl.ringBuffer = append(rl.ringBuffer, time.Now())
 	}
 }
