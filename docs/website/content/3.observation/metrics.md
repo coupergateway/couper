@@ -6,15 +6,15 @@
 - [Preview](#preview)
   - [Developers](#developers)
 
-Our metrics feature is [beta](./BETA.md) for now. However, we want to provide some core metrics which can be directly collected from Couper.
+Our metrics feature is [beta](/getting-started/beta-features) for now. However, we want to provide some core metrics which can be directly collected from Couper.
 
 ## Prometheus
 
-Couper provides a built-in [Prometheus](https://prometheus.io/) exporter. It is configurable with [settings](./REFERENCE.md#settings-block) like port or `service_name` label. If enabled the default scrape target port is `9090`.
+Couper provides a built-in [Prometheus](https://prometheus.io/) exporter. It is configurable with [settings](/configuration/block/settings) like port or `service_name` label. If enabled the default scrape target port is `9090`.
 
 ## Grafana Dashboard
 
-Couper provides a maintained Grafana dashboard which you can find here: [grafana.json](./../grafana.json)
+Couper provides a maintained Grafana dashboard which you can find here: [grafana.json](https://github.com/avenga/couper/blob/master/grafana.json)
 and import this JSON model to your grafana instance.
 You may have to set your Datasource to your Prometheus one.
 
