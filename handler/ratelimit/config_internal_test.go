@@ -1,4 +1,4 @@
-package transport
+package ratelimit
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/avenga/couper/config"
 )
 
-func TestRateLimits_Errors(t *testing.T) {
+func TestConfig_Errors(t *testing.T) {
 	type testCase struct {
 		configured config.RateLimits
 		expMessage string

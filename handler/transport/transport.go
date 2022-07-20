@@ -16,6 +16,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
@@ -30,7 +31,7 @@ type Config struct {
 	MaxConnections         int
 	NoProxyFromEnv         bool
 	Proxy                  string
-	RateLimits             RateLimits
+	RateLimits             ratelimit.RateLimits
 
 	ConnectTimeout time.Duration
 	TTFBTimeout    time.Duration

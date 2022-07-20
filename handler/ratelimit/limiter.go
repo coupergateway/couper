@@ -1,92 +1,13 @@
-package transport
+package ratelimit
 
 import (
-	"context"
-	"fmt"
 	"net/http"
 	"runtime/debug"
-	"sort"
 	"sync"
 	"time"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
-	"github.com/sirupsen/logrus"
 )
-
-const (
-	dummy = iota
-	modeBlock
-	modeWait
-	windowFixed
-	windowSliding
-)
-
-type ringBuffer struct {
-	buf []time.Time
-	len uint
-	mu  sync.RWMutex
-	r   uint
-	w   uint
-}
-
-// newRingBuffer creates a new ringBuffer
-// instance. ringBuffer is thread safe.
-func newRingBuffer(len uint) *ringBuffer {
-	return &ringBuffer{
-		buf: make([]time.Time, len),
-		len: len,
-		r:   0,
-		w:   len - 1,
-	}
-}
-
-// put rotates the ring buffer and puts t at
-// the "last" position. r must not be empty.
-func (r *ringBuffer) put(t time.Time) {
-	if r == nil {
-		panic("r must not be empty")
-	}
-
-	r.mu.Lock()
-
-	r.r++
-	r.r %= r.len
-
-	r.w++
-	r.w %= r.len
-
-	r.buf[r.w] = t
-
-	r.mu.Unlock()
-}
-
-// get returns the value of the "first" element
-// in the ring buffer. r must not be empty.
-func (r *ringBuffer) get() time.Time {
-	if r == nil {
-		panic("r must not be empty")
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return r.buf[r.r]
-}
-
-type RateLimit struct {
-	count       uint
-	logger      *logrus.Entry
-	mode        int
-	period      time.Duration
-	periodStart time.Time
-	perPeriod   uint
-	ringBuffer  *ringBuffer
-	window      int
-	quitCh      <-chan struct{}
-}
-
-type RateLimits []*RateLimit
 
 type Limiter struct {
 	check     chan *slowTrip
@@ -144,88 +65,6 @@ func (l *Limiter) RoundTrip(req *http.Request) (*http.Response, error) {
 	trip = <-outCh
 
 	return trip.res, trip.err
-}
-
-func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
-	var (
-		mode       int
-		rateLimits RateLimits
-		window     int
-	)
-
-	uniqueDurations := make(map[time.Duration]struct{})
-
-	for _, limit := range limits {
-		if limit.Period == nil {
-			return nil, fmt.Errorf("misiing required 'period' attribute")
-		}
-		if limit.PerPeriod == nil {
-			return nil, fmt.Errorf("misiing required 'per_period' attribute")
-		}
-
-		d, err := config.ParseDuration("period", *limit.Period, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		if d == 0 {
-			return nil, fmt.Errorf("'period' must not be 0 (zero)")
-		}
-		if *limit.PerPeriod == 0 {
-			return nil, fmt.Errorf("'per_period' must not be 0 (zero)")
-		}
-
-		if _, ok := uniqueDurations[time.Duration(d.Nanoseconds())]; ok {
-			return nil, fmt.Errorf("duplicate period (%q) found", *limit.Period)
-		}
-
-		uniqueDurations[time.Duration(d.Nanoseconds())] = struct{}{}
-
-		switch limit.PeriodWindow {
-		case "":
-			fallthrough
-		case "sliding":
-			window = windowSliding
-		case "fixed":
-			window = windowFixed
-		default:
-			return nil, fmt.Errorf("unsupported 'period_window' (%q) given", limit.PeriodWindow)
-		}
-
-		switch limit.Mode {
-		case "":
-			fallthrough
-		case "wait":
-			mode = modeWait
-		case "block":
-			mode = modeBlock
-		default:
-			return nil, fmt.Errorf("unsupported 'mode' (%q) given", limit.Mode)
-		}
-
-		rateLimit := &RateLimit{
-			logger:    logger,
-			mode:      mode,
-			period:    time.Duration(d.Nanoseconds()),
-			perPeriod: *limit.PerPeriod,
-			window:    window,
-			quitCh:    ctx.Done(),
-		}
-
-		switch rateLimit.window {
-		case windowSliding:
-			rateLimit.ringBuffer = newRingBuffer(rateLimit.perPeriod)
-		}
-
-		rateLimits = append(rateLimits, rateLimit)
-	}
-
-	// Sort 'rateLimits' by 'period' DESC.
-	sort.Slice(rateLimits, func(i, j int) bool {
-		return rateLimits[i].period > rateLimits[j].period
-	})
-
-	return rateLimits, nil
 }
 
 func (l *Limiter) slowTripper() {
@@ -326,15 +165,5 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 func (l *Limiter) countRequest() {
 	for _, rl := range l.limits {
 		rl.countRequest()
-	}
-}
-
-// countRequest MUST only be called after checkCapacity()
-func (rl *RateLimit) countRequest() {
-	switch rl.window {
-	case windowFixed:
-		rl.count++
-	case windowSliding:
-		rl.ringBuffer.put(time.Now())
 	}
 }

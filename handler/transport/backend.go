@@ -26,6 +26,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
@@ -95,7 +96,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 // initOnce ensures synced transport configuration. First request will setup the rate limits, origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
 	if len(b.transportConf.RateLimits) > 0 {
-		b.transport = NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.RateLimits)
+		b.transport = ratelimit.NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.RateLimits)
 	} else {
 		b.transport = NewTransport(conf, b.logEntry)
 	}
