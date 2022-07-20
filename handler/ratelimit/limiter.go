@@ -40,8 +40,6 @@ func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
 		rl.periodStart = time.Now()
 	}
 
-	// FIXME: Configure parallelism like:
-	// for i = 0; i < max_connection; i++ { go limiter.slowTripper() }
 	go limiter.slowTripper()
 
 	return limiter
@@ -115,13 +113,16 @@ func (l *Limiter) slowTripper() {
 
 				l.mu.Unlock()
 
-				trip.res, trip.err = l.transport.RoundTrip(trip.req)
+				// Do not wait for the response...
+				go func() {
+					trip.res, trip.err = l.transport.RoundTrip(trip.req)
 
-				if trip.res != nil && trip.res.StatusCode == http.StatusTooManyRequests {
-					trip.err = errors.BetaBackendRateLimitExceeded.With(trip.err)
-				}
+					if trip.res != nil && trip.res.StatusCode == http.StatusTooManyRequests {
+						trip.err = errors.BetaBackendRateLimitExceeded.With(trip.err)
+					}
 
-				trip.out <- trip
+					trip.out <- trip
+				}()
 			}
 		}
 	}
