@@ -3,6 +3,9 @@
   "scripts": {
     "dev": "nuxi dev",
     "build": "NODE_ENV=production nuxi build",
+    "inject-couper-highlighting": "cp assets/hcl.tmLanguage.* node_modules/shiki-es/dist/chunks/",
+    "predev": "npm run inject-couper-highlighting",
+    "prebuild": "npm run inject-couper-highlighting",
     "preview": "nuxi preview",
     "generate": "NODE_ENV=production nuxi generate"
   },
