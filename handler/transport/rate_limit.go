@@ -22,6 +22,58 @@ const (
 	windowSliding
 )
 
+type ringBuffer struct {
+	buf []time.Time
+	len uint
+	mu  sync.RWMutex
+	r   uint
+	w   uint
+}
+
+// newRingBuffer creates a new ringBuffer
+// instance. ringBuffer is thread safe.
+func newRingBuffer(len uint) *ringBuffer {
+	return &ringBuffer{
+		buf: make([]time.Time, len),
+		len: len,
+		r:   0,
+		w:   len - 1,
+	}
+}
+
+// put rotates the ring buffer and puts t at
+// the "last" position. r must not be empty.
+func (r *ringBuffer) put(t time.Time) {
+	if r == nil {
+		panic("r must not be empty")
+	}
+
+	r.mu.Lock()
+
+	r.r++
+	r.r %= r.len
+
+	r.w++
+	r.w %= r.len
+
+	r.buf[r.w] = t
+
+	r.mu.Unlock()
+}
+
+// get returns the value of the "first" element
+// in the ring buffer. r must not be empty.
+func (r *ringBuffer) get() time.Time {
+	if r == nil {
+		panic("r must not be empty")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.buf[r.r]
+}
+
 type RateLimit struct {
 	count       uint
 	logger      *logrus.Entry
@@ -29,7 +81,7 @@ type RateLimit struct {
 	period      time.Duration
 	periodStart time.Time
 	perPeriod   uint
-	ringBuffer  []time.Time // Always of size of 'perPeriod'
+	ringBuffer  *ringBuffer
 	window      int
 	quitCh      <-chan struct{}
 }
@@ -162,7 +214,7 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 
 		switch rateLimit.window {
 		case windowSliding:
-			rateLimit.ringBuffer = make([]time.Time, rateLimit.perPeriod)
+			rateLimit.ringBuffer = newRingBuffer(rateLimit.perPeriod)
 		}
 
 		rateLimits = append(rateLimits, rateLimit)
@@ -256,9 +308,11 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 				mode = rl.mode
 			}
 		case windowSliding:
-			if !rl.ringBuffer[0].IsZero() && rl.ringBuffer[0].Add(rl.period).After(now) {
+			latest := rl.ringBuffer.get()
+
+			if !latest.IsZero() && latest.Add(rl.period).After(now) {
 				// Calculate the 'timeToWait'.
-				t = time.Duration((rl.ringBuffer[0].Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
+				t = time.Duration((latest.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
 
 				mode = rl.mode
 			}
@@ -281,10 +335,6 @@ func (rl *RateLimit) countRequest() {
 	case windowFixed:
 		rl.count++
 	case windowSliding:
-		// FIXME: Make code faster
-		// See https://en.wikipedia.org/wiki/Circular_buffer#Circular_buffer_mechanics
-		// See https://github.com/smallnest/ringbuffer
-		rl.ringBuffer = rl.ringBuffer[1:]
-		rl.ringBuffer = append(rl.ringBuffer, time.Now())
+		rl.ringBuffer.put(time.Now())
 	}
 }
