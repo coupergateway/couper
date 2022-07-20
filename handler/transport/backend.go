@@ -622,9 +622,9 @@ func (b *Backend) Value() cty.Value {
 	}
 
 	if tokens != nil {
-		result["tokens"] = tokens
+		result["beta_tokens"] = tokens
 		if token, ok := tokens["default"]; ok {
-			result["token"] = token
+			result["beta_token"] = token
 		}
 	}
 

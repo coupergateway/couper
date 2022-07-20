@@ -12,13 +12,13 @@ definitions {
   backend "be" {
     origin = "{{.rsOrigin}}"
     set_request_headers = {
-      Auth-1 = backends.be.tokens.tr1
-      Auth-2 = backends.be.tokens.default
-      Auth-3 = backends.be.token
-      Auth-4 = backend.tokens.tr1
-      Auth-5 = backend.tokens.default
-      Auth-6 = backend.token
-      KeyId = backends.as.token
+      Auth-1 = backends.be.beta_tokens.tr1
+      Auth-2 = backends.be.beta_tokens.default
+      Auth-3 = backends.be.beta_token
+      Auth-4 = beta_backend.beta_tokens.tr1
+      Auth-5 = beta_backend.beta_tokens.default
+      Auth-6 = beta_backend.beta_token
+      KeyId = backends.as.beta_token
     }
 
     oauth2 {
@@ -37,8 +37,8 @@ definitions {
         client_secret = "cls"
         grant_type = "client_credentials"
       }
-      token = token_response.json_body.access_token
-      ttl = "${default(token_response.json_body.expires_in, 3600) * 0.9}s"
+      token = beta_token_response.json_body.access_token
+      ttl = "${default(beta_token_response.json_body.expires_in, 3600) * 0.9}s"
     }
 
     beta_token_request "default" {
@@ -54,21 +54,21 @@ definitions {
         username = "user"
         password = "asdf"
       }
-      token = token_response.json_body.access_token
-      ttl = "${default(token_response.json_body.expires_in, 3600) * 0.9}s"
+      token = beta_token_response.json_body.access_token
+      ttl = "${default(beta_token_response.json_body.expires_in, 3600) * 0.9}s"
     }
   }
 
   backend "as" {
     origin = "{{.asOrigin}}"
     set_request_headers = {
-      KeyId = backend.token
+      KeyId = beta_backend.beta_token
     }
 
     beta_token_request {
       url = "{{.vaultOrigin}}/key"
       backend = "vault"
-      token = token_response.body
+      token = beta_token_response.body
       ttl = "1h"
     }
   }

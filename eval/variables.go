@@ -1,7 +1,7 @@
 package eval
 
 const (
-	Backend          = "backend"
+	Backend          = "beta_backend"
 	Backends         = "backends"
 	BackendRequest   = "backend_request"
 	BackendRequests  = "backend_requests"
@@ -22,7 +22,7 @@ const (
 	Path             = "path"
 	PathParam        = "path_params"
 	Query            = "query"
-	TokenResponse    = "token_response"
+	TokenResponse    = "beta_token_response"
 	URL              = "url"
 	Origin           = "origin"
 	Protocol         = "protocol"
