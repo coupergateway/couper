@@ -13,7 +13,7 @@ server "oauth2-options" {
             token_endpoint = "{{.asOrigin}}/options"
             retries        = 0
             client_id      = "user"
-            client_secret  = "pass"
+            client_secret  = "pass+ word"
             grant_type     = "client_credentials"
             token_endpoint_auth_method = "client_secret_basic"
           }

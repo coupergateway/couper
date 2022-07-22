@@ -6,7 +6,6 @@ const (
 
 // OAuth2AS represents the authorization server configuration for OAuth2 clients.
 type OAuth2AS interface {
-	BackendReference
 	GetTokenEndpoint() (string, error)
 }
 
@@ -28,7 +27,6 @@ type OAuth2Client interface {
 	Inline
 	GetClientID() string
 	GetClientSecret() string
-	GetScope() string
 	GetTokenEndpointAuthMethod() *string
 }
 

@@ -26,8 +26,8 @@ func (a AbstractAuthCodeClient) GetName() string {
 	return a.name
 }
 
-// GetTokenResponse retrieves the response from the token endpoint.
-func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
+// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
+func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
 	query := callbackURL.Query()
 	code := query.Get("code")
 	if code == "" {
@@ -51,9 +51,9 @@ func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL 
 		return nil, errors.Oauth2.With(err)
 	}
 
-	requestParams := map[string]string{
-		"code":         code,
-		"redirect_uri": absoluteURL,
+	formParams := url.Values{
+		"code":         {code},
+		"redirect_uri": {absoluteURL},
 	}
 
 	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
@@ -73,7 +73,7 @@ func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL 
 
 	var hashedVerifierValue string
 	if verifierMethod == config.CcmS256 {
-		requestParams["code_verifier"] = verifierValue
+		formParams.Set("code_verifier", verifierValue)
 	} else {
 		hashedVerifierValue = Base64urlSha256(verifierValue)
 	}
@@ -89,7 +89,7 @@ func (a AbstractAuthCodeClient) GetTokenResponse(req *http.Request, callbackURL 
 		}
 	}
 
-	_, tokenResponseData, accessToken, err := a.getTokenResponse(req.Context(), requestParams)
+	tokenResponseData, accessToken, err := a.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
 		return nil, errors.Oauth2.Message("token request error").With(err)
 	}
