@@ -13,6 +13,8 @@
       <tr v-for="value in values" :key="value.name">
         <td v-for="head in header" :key="head.value+value.name">
           <code v-if="head.value === 'name'">{{ value[head.value] ? value[head.value] : '-' }}</code>
+          <code v-else-if="head.value === 'default' && value[head.value] != ''">{{ value[head.value] }}</code>
+          <div v-else-if="head.value === 'description'" v-html="micromark(value[head.value])"/>
           <div v-else v-html="value[head.value] ? value[head.value] : '-'" />
         </td>
       </tr>
@@ -22,6 +24,7 @@
 </template>
 
 <script setup>
+import { micromark } from 'micromark'
 const props = defineProps({
   header: {
     type: Array,

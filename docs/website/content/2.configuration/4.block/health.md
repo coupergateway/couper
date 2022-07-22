@@ -1,12 +1,12 @@
 # Health
 
-Defines a recurring health check request for its backend. Results can be obtained via the [`backends.<label>.health` variables](#backends).
+Defines a recurring health check request for its backend. Results can be obtained via the [`backends.<label>.health` variables](../variables#backends).
 Changes in health states and related requests will be logged. Default User-Agent will be `Couper / <version> health-check` if not provided
-via `headers` attribute. An unhealthy backend will return with a [`backend_unhealthy`](ERRORS.md#api-error-types) error.
+via `headers` attribute. An unhealthy backend will return with a [`backend_unhealthy`](../error-handling#api-error-types) error.
 
 | Block name    | Context                           | Label | Nested block |
 |:--------------|:----------------------------------|:------|:-------------|
-| `beta_health` | [`backend` block](#backend-block) | –     |              |
+| `beta_health` | [`backend` block](backend) | –     |              |
 
 ::attributes
 ---
@@ -20,19 +20,19 @@ values: [
   {
     "name": "interval",
     "type": "string",
-    "default": "1s",
+    "default": "\"1s\"",
     "description": "time interval for recheck"
   },
   {
     "name": "timeout",
     "type": "string",
-    "default": "2s",
-    "description": "maximum allowed time limit which is\tbounded by <code>interval</code>"
+    "default": "\"2s\"",
+    "description": "maximum allowed time limit which is\tbounded by `interval`"
   },
   {
     "name": "path",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "URL path with query on backend host"
   },
   {
@@ -44,7 +44,7 @@ values: [
   {
     "name": "expected_text",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "text which the response body must contain"
   },
   {

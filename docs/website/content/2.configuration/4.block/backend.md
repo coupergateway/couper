@@ -8,11 +8,11 @@ draft: false
 
 The `backend` block defines the connection to a local/remote backend service.
 
-Backends can be defined in the [Definitions Block](/configuration/block/definitions) and referenced by _label_.
+Backends can be defined in the [Definitions Block](definitions) and referenced by _label_.
 
 | Block name | Context                                                                                                                                                                                                                                   | Label                                                                     | Nested block(s)                                                                                  |
 |:-----------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------|
-| `backend`  | [Definitions Block](#definitions-block), [Proxy Block](#proxy-block), [Request Block](#request-block), [OAuth2 CC Block](#oauth2-block), [JWT Block](#jwt-block), [OAuth2 AC Block (beta)](#beta-oauth2-block), [OIDC Block](#oidc-block) | &#9888; required, when defined in [Definitions Block](#definitions-block) | [OpenAPI Block](#openapi-block), [OAuth2 CC Block](#oauth2-block), [Health Block](#health-block) |
+| `backend`  | [Definitions Block](definitions), [Proxy Block](proxy), [Request Block](request), [OAuth2 CC Block](oauth2req_auth), [JWT Block](jwt), [OAuth2 AC Block (beta)](oauth2), [OIDC Block](oidc) | &#9888; required, when defined in [Definitions Block](definitions) | [OpenAPI Block](openapi), [OAuth2 CC Block](oauth2req_auth), [Health Block](health) |
 
 ::attributes
 ---
@@ -44,19 +44,19 @@ values: [
   {
     "name": "basic_auth",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Basic auth for the upstream request with format user:pass ."
   },
   {
     "name": "connect_timeout",
     "type": "duration",
-    "default": "10s",
+    "default": "\"10s\"",
     "description": "The total timeout for dialing and connect to the origin."
   },
   {
     "name": "hostname",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Value of the HTTP host header field for the origin request. Since hostname replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin."
   },
   {
@@ -68,25 +68,25 @@ values: [
   {
     "name": "origin",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "URL to connect to for backend requests."
   },
   {
     "name": "path",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Changeable part of upstream URL."
   },
   {
     "name": "path_prefix",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "Prefixes all backend request paths with the given prefix"
   },
   {
     "name": "proxy",
     "type": "string",
-    "default": "",
+    "default": "\"\"",
     "description": "A proxy URL for the related origin request."
   },
   {
@@ -98,13 +98,13 @@ values: [
   {
     "name": "ttfb_timeout",
     "type": "duration",
-    "default": "60s",
+    "default": "\"60s\"",
     "description": "The duration from writing the full request to the origin and receiving the answer."
   },
   {
     "name": "timeout",
     "type": "duration",
-    "default": "300s",
+    "default": "\"300s\"",
     "description": "The total deadline duration a backend request has for write and read/pipe."
   },
   {

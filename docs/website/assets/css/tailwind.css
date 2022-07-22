@@ -5,8 +5,19 @@
 html {
     height: 100%;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+	font: 18px couper, sans-serif
 }
 
 body {
     min-height: 100%;
+}
+
+/* Remove backticks around inline code */
+.prose :where(code):not(:where([class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+	content: none
+}
+
+blockquote {
+	quotes: none !important
 }
