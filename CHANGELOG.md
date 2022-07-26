@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * [`environment` block](https://docs.couper.io/configuration/block/environment), [setting](https://docs.couper.io/configuration/block/settings) and [`couper.environment` variable](https://docs.couper.io/configuration/variables#couper) ([#521](https://github.com/avenga/couper/pull/521), ([#534](https://github.com/avenga/couper/pull/534), [#545](https://github.com/avenga/couper/pull/545))
+
 * **Fixed**
   * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
   * Basic Auth client authentication with OAuth2 (client ID and secret must be URL encoded) ([#537](https://github.com/avenga/couper/pull/537))
