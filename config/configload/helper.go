@@ -22,7 +22,7 @@ type helper struct {
 }
 
 // newHelper creates a container with some methods to keep things simple here and there.
-func newHelper(body hcl.Body, src [][]byte) (*helper, error) {
+func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error) {
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return nil, diags
@@ -31,7 +31,7 @@ func newHelper(body hcl.Body, src [][]byte) (*helper, error) {
 	defSettings := config.DefaultSettings
 
 	couperConfig := &config.Couper{
-		Context:     eval.NewContext(src, defaultsBlock.Defaults),
+		Context:     eval.NewContext(src, defaultsBlock.Defaults, environment),
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
 		Settings:    &defSettings,
@@ -151,7 +151,7 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 
 	// do not forget the other ones
 	var standalone []string
-	for def, _ := range h.defsBackends {
+	for def := range h.defsBackends {
 		standalone = append(standalone, def)
 	}
 	items = append(items, standalone)

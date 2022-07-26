@@ -54,7 +54,7 @@ type Context struct {
 	syncedVariables   *SyncedVariables
 }
 
-func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
+func NewContext(srcBytes [][]byte, defaults *config.Defaults, environment string) *Context {
 	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
@@ -62,7 +62,7 @@ func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
 
 	variables := make(map[string]cty.Value)
 	variables[Environment] = newCtyEnvMap(srcBytes, defaultEnvVariables)
-	variables[Couper] = newCtyCouperVariablesMap()
+	variables[Couper] = newCtyCouperVariablesMap(environment)
 
 	return &Context{
 		eval: &hcl.EvalContext{
@@ -73,13 +73,17 @@ func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
 	}
 }
 
+func NewDefaultContext() *Context {
+	return NewContext(nil, nil, "")
+}
+
 // ContextFromRequest extracts the eval.Context implementation value from given request and
 // returns a noop one as fallback.
 func ContextFromRequest(req *http.Request) *Context {
 	if evalCtx, ok := req.Context().Value(request.ContextType).(*Context); ok {
 		return evalCtx
 	}
-	return NewContext(nil, nil)
+	return NewDefaultContext()
 }
 
 func (c *Context) WithContext(ctx context.Context) context.Context {
@@ -603,9 +607,10 @@ func newCtyEnvMap(srcBytes [][]byte, defaultValues map[string]string) cty.Value 
 	return cty.MapVal(ctyMap)
 }
 
-func newCtyCouperVariablesMap() cty.Value {
+func newCtyCouperVariablesMap(environment string) cty.Value {
 	ctyMap := map[string]cty.Value{
-		"version": cty.StringVal(utils.VersionName),
+		"environment": cty.StringVal(environment),
+		"version":     cty.StringVal(utils.VersionName),
 	}
 	return cty.MapVal(ctyMap)
 }

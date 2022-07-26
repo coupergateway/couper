@@ -149,7 +149,7 @@ block {
 		}
 	}
 
-	hclcontext := eval.NewContext(nil, nil).HCLContext()
+	hclcontext := eval.NewDefaultContext().HCLContext()
 
 	for k, attr := range expectedAttributes {
 		a, exist := resultAttributes[k]

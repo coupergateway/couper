@@ -71,7 +71,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 		}},
 	}
 
-	evalCtx := eval.NewContext(nil, nil)
+	evalCtx := eval.NewDefaultContext()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -229,7 +229,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				// normally injected by server/http
 				helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
-				*req = *req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
+				*req = *req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
 
 				rec := httptest.NewRecorder()
 				rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -350,7 +350,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			} else {
 				req.Header.Set("Content-Type", "application/json")
 			}
-			req = req.WithContext(eval.NewContext(nil, nil).WithClientRequest(req))
+			req = req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
 			rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -432,7 +432,7 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 
 	ctx := context.Background()
 	req := httptest.NewRequest(http.MethodGet, "http://", nil).WithContext(ctx)
-	ctx = eval.NewContext(nil, nil).WithClientRequest(req)
+	ctx = eval.NewDefaultContext().WithClientRequest(req)
 	ctx = context.WithValue(ctx, request.UID, "test123")
 
 	rec := httptest.NewRecorder()
@@ -483,7 +483,7 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	}, log.WithContext(ctx), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "https://couper.io/", nil)
-	ctx = eval.NewContext(nil, nil).WithClientRequest(req.WithContext(ctx))
+	ctx = eval.NewDefaultContext().WithClientRequest(req.WithContext(ctx))
 
 	start := time.Now()
 	go func() {
