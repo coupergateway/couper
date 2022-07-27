@@ -53,6 +53,7 @@ const otelCollectorEndpoint = "localhost:4317"
 // DefaultSettings defines the <DefaultSettings> object.
 var DefaultSettings = Settings{
 	DefaultPort:              8080,
+	Environment:              "",
 	HealthPath:               "/healthz",
 	LogFormat:                "common",
 	LogLevel:                 "info",
@@ -81,6 +82,7 @@ type Settings struct {
 	CAFile                    string   `hcl:"ca_file,optional"`
 	AcceptForwardedURL        []string `hcl:"accept_forwarded_url,optional"`
 	DefaultPort               int      `hcl:"default_port,optional"`
+	Environment               string   `hcl:"environment,optional"`
 	HealthPath                string   `hcl:"health_path,optional"`
 	LogFormat                 string   `hcl:"log_format,optional"`
 	LogLevel                  string   `hcl:"log_level,optional"`
