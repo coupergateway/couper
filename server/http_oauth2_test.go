@@ -203,7 +203,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 		{
 			"02_couper.hcl",
 			`grant_type=client_credentials`,
-			"Basic dXNlcjpwYXNz",
+			"Basic dXNlcjpwYXNzJTJCK3dvcmQ=",
 		},
 		{
 			"03_couper.hcl",

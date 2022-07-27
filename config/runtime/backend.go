@@ -17,7 +17,6 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/oauth2"
 )
 
 func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
@@ -144,12 +143,11 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 		beConf.OAuth2.Retries = &one
 	}
 
-	oauth2Client, err := oauth2.NewClientCredentialsClient(beConf.OAuth2, authBackend)
+	tr, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, authBackend)
 	if err != nil {
-		return nil, err
+		return nil, errors.Backend.Label(beConf.Name).With(err)
 	}
 
-	tr := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, oauth2Client)
 	return tr, nil
 }
 

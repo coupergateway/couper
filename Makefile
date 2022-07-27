@@ -11,6 +11,9 @@ docker-telemetry:
 generate:
 	go generate main.go
 
+generate-docs:
+	go run config/generate/main.go
+
 image:
 	docker build -t avenga/couper:latest .
 
