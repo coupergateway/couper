@@ -145,6 +145,17 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		return nil, err
 	}
 
+	if env == "" {
+		settingsBlock := mergeSettings(parsedBodies)
+		settings := &config.Settings{}
+		if diags := gohcl.DecodeBody(settingsBlock.Body, nil, settings); diags.HasErrors() {
+			return nil, diags
+		}
+		if settings.Environment != "" {
+			return LoadFiles(filesList, settings.Environment)
+		}
+	}
+
 	defaultsBlock, err := mergeDefaults(parsedBodies)
 	if err != nil {
 		return nil, err
