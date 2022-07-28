@@ -26,6 +26,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server"
 )
 
@@ -730,5 +731,114 @@ func TestHTTPServer_EnvironmentBlocks(t *testing.T) {
 
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("Unexpected status code: %d", res.StatusCode)
+	}
+}
+
+func TestHTTPServer_RateLimiterFixed(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/ratelimit/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/fixed", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	go client.Do(req)
+	go client.Do(req)
+	go client.Do(req)
+
+	time.Sleep(1200 * time.Millisecond)
+
+	entries := hook.AllEntries()
+	if len(entries) != 6 {
+		t.Fatal("Missing log lines")
+	}
+
+	for i, entry := range entries {
+		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
+			t.Fatal("Something is wrong")
+		} else if i < 4 && total > 1000 {
+			t.Errorf("Request time has to be smaller as 1 second")
+		} else if i >= 4 && total < 1000 {
+			t.Errorf("Request time has to be longer as 1 second")
+		}
+	}
+}
+
+func TestHTTPServer_RateLimiterSliding(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/ratelimit/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/sliding", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	go client.Do(req)
+	go client.Do(req)
+	go client.Do(req)
+
+	time.Sleep(1200 * time.Millisecond)
+
+	entries := hook.AllEntries()
+	if len(entries) != 6 {
+		t.Fatal("Missing log lines")
+	}
+
+	for i, entry := range entries {
+		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
+			t.Fatal("Something is wrong")
+		} else if i < 4 && total > 1000 {
+			t.Errorf("Request time has to be smaller as 1 second")
+		} else if i >= 4 && total < 1000 {
+			t.Errorf("Request time has to be longer as 1 second")
+		}
+	}
+}
+
+func TestHTTPServer_RateLimiterBlock(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/ratelimit/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/block", nil)
+	helper.Must(err)
+
+	var resps [3]*http.Response
+
+	go func() {
+		resps[0], _ = client.Do(req)
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	go func() {
+		resps[1], _ = client.Do(req)
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	go func() {
+		resps[2], _ = client.Do(req)
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	if resps[0].StatusCode != 200 {
+		t.Errorf("Exp 200, got: %d", resps[0].StatusCode)
+	}
+	if resps[1].StatusCode != 200 {
+		t.Errorf("Exp 200, got: %d", resps[1].StatusCode)
+	}
+	if resps[2].StatusCode != 429 {
+		t.Errorf("Exp 200, got: %d", resps[2].StatusCode)
 	}
 }
