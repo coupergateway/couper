@@ -5461,7 +5461,6 @@ func TestEnvironmentSetting(t *testing.T) {
 	tests := []struct {
 		env string
 	}{
-		{""},
 		{"foo"},
 		{"bar"},
 	}
