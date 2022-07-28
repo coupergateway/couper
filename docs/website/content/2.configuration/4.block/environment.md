@@ -12,6 +12,9 @@ block does not match the set [`COUPER_ENVIRONMENT`](../command-line#global-optio
 removes this block and its content. Otherwise, the content of the block is added
 to the configuration.
 
+Starting Couper with a configuration containing `environment` blocks will fail, if `COUPER_ENVIRONMENT`
+is missing or empty. A default value can be set using the [`settings` block](settings).
+
 ## Example
 
 Considering the following configuration with the `COUPER_ENVIRONMENT` value set to `prod`
