@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -758,6 +759,10 @@ func TestHTTPServer_RateLimiterFixed(t *testing.T) {
 	}
 
 	for i, entry := range entries {
+		if i%2 == 0 {
+			continue
+		}
+
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
 		} else if i < 4 && total > 1000 {
@@ -792,6 +797,10 @@ func TestHTTPServer_RateLimiterSliding(t *testing.T) {
 	}
 
 	for i, entry := range entries {
+		if i%2 == 0 {
+			continue
+		}
+
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
 		} else if i < 4 && total > 1000 {
@@ -813,24 +822,33 @@ func TestHTTPServer_RateLimiterBlock(t *testing.T) {
 	helper.Must(err)
 
 	var resps [3]*http.Response
+	var mu sync.Mutex
 
 	go func() {
+		mu.Lock()
 		resps[0], _ = client.Do(req)
+		mu.Unlock()
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(400 * time.Millisecond)
 
 	go func() {
+		mu.Lock()
 		resps[1], _ = client.Do(req)
+		mu.Unlock()
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(400 * time.Millisecond)
 
 	go func() {
+		mu.Lock()
 		resps[2], _ = client.Do(req)
+		mu.Unlock()
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(400 * time.Millisecond)
+
+	mu.Lock()
 
 	if resps[0].StatusCode != 200 {
 		t.Errorf("Exp 200, got: %d", resps[0].StatusCode)
@@ -841,4 +859,6 @@ func TestHTTPServer_RateLimiterBlock(t *testing.T) {
 	if resps[2].StatusCode != 429 {
 		t.Errorf("Exp 200, got: %d", resps[2].StatusCode)
 	}
+
+	mu.Unlock()
 }
