@@ -1,10 +1,10 @@
 # Rate Limit (Beta)
 
-Rate limiting protects backend services. It implements quota management and used to avoid cascading failures or to spare resources.
+Rate limiting protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
 
 | Block name        | Context                         | Label | Nested block(s) |
 | :---------------- | :------------------------------ | :---- | :-------------- |
-| `beta_rate_limit` | [Backend Block](#backend-block) | -     | -               |
+| `beta_rate_limit` | named [`backend` block](backend)| -     | -               |
 
 | Attribute(s)    | Type                  | Default | Description | Characteristic(s) | Example |
 | :-------------- | :-------------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -14,3 +14,5 @@ Rate limiting protects backend services. It implements quota management and used
 | `mode`          | string                | `"wait"` | If `mode` is set to `block` and the rate limit is exceeded, the client request is immediately answered with HTTP status code `429 Too Many Requests` and no backend request is made. If `mode` is set to `wait` and the rate limit is exceeded, the request waits for the next free rate limiting period. | Allowed values: `"wait"` or `"block"` | `mode = "wait"` |
 
 **Note:** Anonymous backends (inline backends without label) cannot define `beta_rate_limit` block(s).
+
+::duration
