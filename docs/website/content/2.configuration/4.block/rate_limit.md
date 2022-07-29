@@ -1,10 +1,10 @@
 # Rate Limit (Beta)
 
-Rate limiting protects backend services. It implements quota management and used to avoid cascading failures or to spare resources.
+Rate limiting protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
 
 | Block name        | Context                         | Label | Nested block(s) |
 | :---------------- | :------------------------------ | :---- | :-------------- |
-| `beta_rate_limit` | [Backend Block](#backend-block) | -     | -               |
+| `beta_rate_limit` | named [`backend` block](backend)| -     | -               |
 
 | Attribute(s)    | Type                  | Default | Description | Characteristic(s) | Example |
 | :-------------- | :-------------------- | :--------------- | :--------------- | :--------------- | :--------------- |
@@ -15,3 +15,5 @@ Rate limiting protects backend services. It implements quota management and used
 **Note:** Anonymous backends (inline backends without label) cannot define `beta_rate_limit` block(s).
 
 **Note:** The number of `per_period` after (re)start of Couper is scaled down depending on the set `period` and `period_window` values. For example, if Couper starts at `12:34:56 a.m.`, the `period` is set to `1m`, `per_period` is set to `60` (avg. `1` request per `second`) and the `period_window` is set to `"sliding"`, only `3` backend request are allowed for the current period (`12:34:00-12:34:59 a.m.`).
+
+::duration
