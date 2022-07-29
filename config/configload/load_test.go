@@ -156,6 +156,67 @@ func TestHealthCheck(t *testing.T) {
 	}
 }
 
+func TestRateLimit(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing per_period",
+			``,
+			`Missing required argument; The argument "per_period" is required`,
+		},
+		{
+			"missing period",
+			`per_period = 10`,
+			`Missing required argument; The argument "period" is required`,
+		},
+		{
+			"OK",
+			`period = "1m"
+			 per_period = 10`,
+			"",
+		},
+	}
+
+	logger, _ := test.NewLogger()
+	log := logger.WithContext(context.TODO())
+
+	template := `
+		server {}
+		definitions {
+		  backend "foo" {
+		    beta_rate_limit {
+		      %s
+		    }
+		  }
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := configload.LoadBytes([]byte(fmt.Sprintf(template, tt.hcl)), "couper.hcl")
+
+			closeCh := make(chan struct{})
+			defer close(closeCh)
+			memStore := cache.New(log, closeCh)
+
+			if conf != nil {
+				_, err = runtime.NewServerConfiguration(conf, log, memStore)
+			}
+
+			var errorMsg = ""
+			if err != nil {
+				errorMsg = err.Error()
+			}
+
+			if !strings.Contains(errorMsg, tt.error) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
+			}
+		})
+	}
+}
+
 func TestEndpointPaths(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -76,7 +76,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	if len(beConf.RateLimits) > 0 {
 		if strings.HasPrefix(beConf.Name, "anonymous_") {
-			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'rate_limit' block(s)", beConf.Name)
+			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'beta_rate_limit' block(s)", beConf.Name)
 		}
 
 		rateLimits, err := ratelimit.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
