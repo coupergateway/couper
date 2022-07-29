@@ -26,56 +26,56 @@ func TestConfig_Errors(t *testing.T) {
 	for _, tc := range []testCase{
 		{
 			[]*config.RateLimit{
-				{Period: nil, PerPeriod: nil, PeriodWindow: ""},
+				{PerPeriod: num, PeriodWindow: ""},
 			},
-			"misiing required 'period' attribute",
+			"'period' must not be 0 (zero)",
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &min, PerPeriod: nil, PeriodWindow: ""},
+				{Period: min, PeriodWindow: ""},
 			},
-			"misiing required 'per_period' attribute",
+			"'per_period' must not be 0 (zero)",
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &foo, PerPeriod: &num, PeriodWindow: ""},
+				{Period: foo, PerPeriod: num, PeriodWindow: ""},
 			},
 			`period: time: invalid duration "foo"`,
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &neg, PerPeriod: &num, PeriodWindow: ""},
+				{Period: neg, PerPeriod: num, PeriodWindow: ""},
 			},
 			`period: cannot be negative: "-1s"`,
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &zeroStr, PerPeriod: &num, PeriodWindow: ""},
+				{Period: zeroStr, PerPeriod: num, PeriodWindow: ""},
 			},
 			`'period' must not be 0 (zero)`,
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &min, PerPeriod: &zeroInt, PeriodWindow: ""},
+				{Period: min, PerPeriod: zeroInt, PeriodWindow: ""},
 			},
 			`'per_period' must not be 0 (zero)`,
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &min, PerPeriod: &num, PeriodWindow: ""},
-				{Period: &sec, PerPeriod: &num, PeriodWindow: ""},
+				{Period: min, PerPeriod: num, PeriodWindow: ""},
+				{Period: sec, PerPeriod: num, PeriodWindow: ""},
 			},
 			`duplicate period ("60s") found`,
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &min, PerPeriod: &num, PeriodWindow: "test"},
+				{Period: min, PerPeriod: num, PeriodWindow: "test"},
 			},
 			`unsupported 'period_window' ("test") given`,
 		},
 		{
 			[]*config.RateLimit{
-				{Period: &min, PerPeriod: &num, PeriodWindow: "", Mode: "test"},
+				{Period: min, PerPeriod: num, PeriodWindow: "", Mode: "test"},
 			},
 			`unsupported 'mode' ("test") given`,
 		},
