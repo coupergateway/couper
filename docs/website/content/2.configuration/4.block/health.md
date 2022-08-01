@@ -26,7 +26,7 @@ values: [
   {
     "name": "timeout",
     "type": "string",
-    "default": "\"2s\"",
+    "default": "\"1s\"",
     "description": "maximum allowed time limit which is\tbounded by `interval`"
   },
   {

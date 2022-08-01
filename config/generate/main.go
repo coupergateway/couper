@@ -16,7 +16,6 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
 )
 
 type entry struct {
@@ -49,20 +48,27 @@ func main() {
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
+	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
+	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
+
 	for _, impl := range []interface{}{
 		&config.API{},
 		&config.Backend{},
 		&config.BasicAuth{},
 		&config.CORS{},
 		&config.Defaults{},
-		&config.Files{},
-		&config.Proxy{},
 		&config.Endpoint{},
+		&config.Files{},
 		&config.Health{},
+		&config.JWTSigningProfile{},
+		&config.OpenAPI{},
+		&config.Proxy{},
+		&config.Request{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
-		name := strings.TrimPrefix(strings.ToLower(fmt.Sprintf("%v", t)), "config.")
-		fileName := errors.TypeToSnake(impl)
+		name := reflect.TypeOf(impl).String()
+		name = strings.TrimPrefix(name, "*config.")
+		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
 
 		result := entry{
 			Name: name,
@@ -112,8 +118,7 @@ func main() {
 			}
 
 			fieldDescription := field.Tag.Get("docs")
-			re := regexp.MustCompile(`{([^}]*)}`)
-			fieldDescription = re.ReplaceAllString(fieldDescription, "`${1}`")
+			fieldDescription = bracesRegex.ReplaceAllString(fieldDescription, "`${1}`")
 
 			a := attr{
 				Default:     fieldDefault,
