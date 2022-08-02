@@ -55,5 +55,6 @@ pre > code {
   /* since code bg is bright, disable within pre */
   background-color: inherit !important;
   padding: 0 !important;
+  white-space: pre !important /* line breaks for copy/paste! */
 }
 </style>
