@@ -11,11 +11,13 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/meta"
 )
 
 type entry struct {
@@ -50,6 +52,12 @@ func main() {
 
 	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
+
+	modifiers := reflect.TypeOf(&meta.Attributes{}).Elem()
+	var modifierFields []reflect.StructField
+	for i := 0; i < modifiers.NumField(); i++ {
+		modifierFields = append(modifierFields, modifiers.Field(i))
+	}
 
 	for _, impl := range []interface{}{
 		&config.API{},
@@ -86,7 +94,12 @@ func main() {
 		if ok {
 			it := reflect.TypeOf(inlineType.Inline()).Elem()
 			for i := 0; i < it.NumField(); i++ {
-				fields = append(fields, it.Field(i))
+				field := it.Field(i)
+				if field.Name == "Attributes" {
+					fields = append(fields, modifierFields...)
+				} else {
+					fields = append(fields, field)
+				}
 			}
 		}
 
@@ -128,6 +141,8 @@ func main() {
 			}
 			result.Attributes = append(result.Attributes, a)
 		}
+
+		sort.Sort(byName(result.Attributes))
 
 		b := &bytes.Buffer{}
 		enc := json.NewEncoder(b)
@@ -197,4 +212,16 @@ values: %s
 			println("SearchIndex updated")
 		}
 	}
+}
+
+type byName []attr
+
+func (attributes byName) Len() int {
+	return len(attributes)
+}
+func (attributes byName) Swap(i, j int) {
+	attributes[i], attributes[j] = attributes[j], attributes[i]
+}
+func (attributes byName) Less(i, j int) bool {
+	return attributes[i].Name < attributes[j].Name
 }

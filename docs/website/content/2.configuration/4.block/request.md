@@ -72,8 +72,6 @@ values: [
 ---
 ::
 
-
-
 ### Examples
 
 ```hcl

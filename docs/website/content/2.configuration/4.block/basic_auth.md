@@ -24,16 +24,16 @@ Couper uses [Apache's httpasswd](https://httpd.apache.org/docs/current/programs/
 ---
 values: [
   {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom logging"
+  },
+  {
     "name": "htpasswd_file",
     "type": "string",
     "default": "\"\"",
     "description": "The htpasswd file."
-  },
-  {
-    "name": "user",
-    "type": "string",
-    "default": "\"\"",
-    "description": "The user name."
   },
   {
     "name": "password",
@@ -48,10 +48,10 @@ values: [
     "description": "The realm to be sent in a WWW-Authenticate response HTTP header field."
   },
   {
-    "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "Defines log fields for custom logging"
+    "name": "user",
+    "type": "string",
+    "default": "\"\"",
+    "description": "The user name."
   }
 ]
 
