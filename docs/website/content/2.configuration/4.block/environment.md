@@ -30,10 +30,17 @@ server {
       proxy {
         environment "prod" {
           url = "https://protected-resource.org"
+<<<<<<< HEAD
         }
         environment "stage" {
           url = "https://test-resource.org"
         }
+=======
+        }
+        environment "stage" {
+          url = "https://test-resource.org"
+        }
+>>>>>>> master
       }
     }
   }
