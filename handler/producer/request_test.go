@@ -102,7 +102,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 		for i, rt := range []producer.Roundtrip{requests, proxies} {
 			t.Run(testNames[i]+"_"+tt.name, func(t *testing.T) {
 
-				ctx := eval.NewContext(nil, nil).WithClientRequest(clientRequest)
+				ctx := eval.NewDefaultContext().WithClientRequest(clientRequest)
 
 				outreq := clientRequest.WithContext(ctx)
 				outreq.Header.Set("X-Status", strconv.Itoa(tt.reflectStatus))

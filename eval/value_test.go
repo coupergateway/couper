@@ -14,7 +14,7 @@ import (
 )
 
 func TestValue(t *testing.T) {
-	evalCtx := NewContext(nil, &config.Defaults{}).HCLContext()
+	evalCtx := NewContext(nil, &config.Defaults{}, "").HCLContext()
 	rootObj := cty.ObjectVal(map[string]cty.Value{
 		"exist": cty.StringVal("here"),
 		"slice": seetie.GoToValue([]string{"1", "2"}),

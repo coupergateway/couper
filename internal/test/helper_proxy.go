@@ -41,6 +41,6 @@ func (h *Helper) NewInlineContext(inlineHCL string) hcl.Body {
 	}
 
 	var remain hclBody
-	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewContext(nil, nil).HCLContext(), &remain))
+	h.Must(hclsimple.Decode(h.tb.Name()+".hcl", []byte(inlineHCL), eval.NewDefaultContext().HCLContext(), &remain))
 	return body.MergeBodies(remain.Inline)
 }

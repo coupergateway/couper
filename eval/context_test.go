@@ -13,6 +13,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -32,7 +33,7 @@ func TestNewHTTPContext(t *testing.T) {
 		}
 	}
 
-	baseCtx := eval.NewContext(nil, nil)
+	baseCtx := eval.NewDefaultContext()
 
 	tests := []struct {
 		name      string
@@ -212,24 +213,40 @@ func TestCouperVariables(t *testing.T) {
 	tests := []struct {
 		name string
 		hcl  string
+		env  string
 		want map[string]string
 	}{
 		{
 			"test",
 			`
-			server "test" {
-				api {}
-			}
+			server "test" {}
 			`,
-			map[string]string{"version": utils.VersionName},
+			"",
+			map[string]string{"version": utils.VersionName, "environment": ""},
+		},
+		{
+			"environment",
+			`
+			server {}
+			`,
+			"bar",
+			map[string]string{"version": utils.VersionName, "environment": "bar"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			bytes := []byte(tt.hcl)
+			hclBody, diags := parser.Load(bytes, "couper.hcl")
+			if diags.HasErrors() {
+				subT.Error(diags)
+				return
+			}
+
+			cf, err := configload.LoadConfig(hclBody, [][]byte{bytes}, tt.env)
 			if err != nil {
-				subT.Fatal(err)
+				subT.Error(err)
+				return
 			}
 
 			hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
