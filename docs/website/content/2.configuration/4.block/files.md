@@ -19,7 +19,7 @@ values: [
   {
     "name": "base_path",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Configures the path prefix for all requests."
   },
   {
@@ -31,13 +31,13 @@ values: [
   {
     "name": "document_root",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Location of the document root (directory)."
   },
   {
     "name": "error_file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Location of the error file template."
   }
 ]

@@ -126,7 +126,7 @@ func main() {
 				fieldDefault = "false"
 			} else if fieldDefault == "" && strings.HasPrefix(fieldType, "tuple ") {
 				fieldDefault = "[]"
-			} else if fieldType == "string" || fieldType == "duration" {
+			} else if fieldDefault != "" && (fieldType == "string" || fieldType == "duration") {
 				fieldDefault = `"` + fieldDefault + `"`
 			}
 

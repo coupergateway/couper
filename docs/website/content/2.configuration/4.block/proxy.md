@@ -39,7 +39,7 @@ values: [
   {
     "name": "backend",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "backend block reference"
   },
   {
@@ -99,7 +99,7 @@ values: [
   {
     "name": "url",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the corresponding backend."
   },
   {

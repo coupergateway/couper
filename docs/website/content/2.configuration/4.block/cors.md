@@ -41,7 +41,7 @@ values: [
   {
     "name": "max_age",
     "type": "duration",
-    "default": "\"\"",
+    "default": "",
     "description": "Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields."
   }
 ]

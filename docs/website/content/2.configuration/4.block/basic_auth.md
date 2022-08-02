@@ -32,25 +32,25 @@ values: [
   {
     "name": "htpasswd_file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "The htpasswd file."
   },
   {
     "name": "password",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "The corresponding password."
   },
   {
     "name": "realm",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "The realm to be sent in a WWW-Authenticate response HTTP header field."
   },
   {
     "name": "user",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "The user name."
   }
 ]

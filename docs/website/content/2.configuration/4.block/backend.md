@@ -44,7 +44,7 @@ values: [
   {
     "name": "basic_auth",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Basic auth for the upstream request with format user:pass ."
   },
   {
@@ -74,7 +74,7 @@ values: [
   {
     "name": "hostname",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Value of the HTTP host header field for the origin request. Since hostname replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin."
   },
   {
@@ -92,25 +92,25 @@ values: [
   {
     "name": "origin",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "URL to connect to for backend requests."
   },
   {
     "name": "path",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Changeable part of upstream URL."
   },
   {
     "name": "path_prefix",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Prefixes all backend request paths with the given prefix"
   },
   {
     "name": "proxy",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "A proxy URL for the related origin request."
   },
   {

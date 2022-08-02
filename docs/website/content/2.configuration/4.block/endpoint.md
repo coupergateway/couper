@@ -98,7 +98,7 @@ values: [
   {
     "name": "error_file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Location of the error file template."
   },
   {
