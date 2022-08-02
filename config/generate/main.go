@@ -76,6 +76,7 @@ func main() {
 		&config.Request{},
 		&config.Server{},
 		&config.Settings{},
+		&config.TokenRequest{},
 		&config.Websockets{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
