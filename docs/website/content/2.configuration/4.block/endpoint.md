@@ -48,10 +48,46 @@ values: [
     "description": "Sets predefined access control for this block context."
   },
   {
+    "name": "add_form_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add form parameters to the upstream request body"
+  },
+  {
+    "name": "add_query_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add query parameters to the upstream request URL"
+  },
+  {
+    "name": "add_request_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as request headers in the upstream request"
+  },
+  {
+    "name": "add_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response"
+  },
+  {
     "name": "allowed_methods",
     "type": "tuple (string)",
     "default": "*",
-    "description": "Sets allowed methods overriding a default set in the containing <code>api</code> block. Requests with a method that is not allowed result in an error response with a <code>405 Method Not Allowed</code> status."
+    "description": "Sets allowed methods overriding a default set in the containing `api` block. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status."
+  },
+  {
+    "name": "beta_required_permission",
+    "type": "object",
+    "default": "",
+    "description": "expression evaluating to string or object (string)"
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom logging"
   },
   {
     "name": "disable_access_control",
@@ -66,28 +102,64 @@ values: [
     "description": "Location of the error file template."
   },
   {
+    "name": "remove_form_params",
+    "type": "object",
+    "default": "",
+    "description": "list of names to remove form parameters from the upstream request body"
+  },
+  {
+    "name": "remove_query_params",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove query parameters from the upstream request URL"
+  },
+  {
+    "name": "remove_request_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the upstream request"
+  },
+  {
+    "name": "remove_response_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the client response"
+  },
+  {
     "name": "request_body_limit",
     "type": "string",
     "default": "\"64MiB\"",
-    "description": "Configures the maximum buffer size while accessing <code>request.form_body</code> or <code>request.json_body</code> content. Valid units are: <code>KiB</code>, <code>MiB</code>, <code>GiB</code>"
+    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`"
+  },
+  {
+    "name": "set_form_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set query parameters in the upstream request URL"
+  },
+  {
+    "name": "set_query_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set query parameters in the upstream request URL"
+  },
+  {
+    "name": "set_request_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as request headers in the upstream request"
+  },
+  {
+    "name": "set_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as response headers in the client response"
   },
   {
     "name": "set_response_status",
     "type": "number",
     "default": "",
     "description": "Modifies the response status code."
-  },
-  {
-    "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "Defines log fields for custom logging"
-  },
-  {
-    "name": "beta_required_permission",
-    "type": "object",
-    "default": "",
-    "description": "expression evaluating to string or object (string)"
   }
 ]
 

@@ -23,6 +23,12 @@ values: [
     "description": "Configures the path prefix for all requests."
   },
   {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom logging."
+  },
+  {
     "name": "document_root",
     "type": "string",
     "default": "\"\"",
@@ -33,12 +39,6 @@ values: [
     "type": "string",
     "default": "\"\"",
     "description": "Location of the error file template."
-  },
-  {
-    "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "Defines log fields for custom logging."
   }
 ]
 

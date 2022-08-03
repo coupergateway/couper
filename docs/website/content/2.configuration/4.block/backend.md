@@ -18,28 +18,28 @@ Backends can be defined in the [Definitions Block](definitions) and referenced b
 ---
 values: [
   {
-    "name": "disable_certificate_validation",
-    "type": "bool",
-    "default": "false",
-    "description": "Disables the peer certificate validation."
+    "name": "add_form_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add form parameters to the upstream request body"
   },
   {
-    "name": "disable_connection_reuse",
-    "type": "bool",
-    "default": "false",
-    "description": "Disables reusage of connections to the origin."
+    "name": "add_query_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add query parameters to the upstream request URL"
   },
   {
-    "name": "http2",
-    "type": "bool",
-    "default": "false",
-    "description": "Enables the HTTP2 support."
+    "name": "add_request_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as request headers in the upstream request"
   },
   {
-    "name": "max_connections",
-    "type": "number",
-    "default": "0",
-    "description": "The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin."
+    "name": "add_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response"
   },
   {
     "name": "basic_auth",
@@ -54,16 +54,40 @@ values: [
     "description": "The total timeout for dialing and connect to the origin."
   },
   {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom logging."
+  },
+  {
+    "name": "disable_certificate_validation",
+    "type": "bool",
+    "default": "false",
+    "description": "Disables the peer certificate validation."
+  },
+  {
+    "name": "disable_connection_reuse",
+    "type": "bool",
+    "default": "false",
+    "description": "Disables reusage of connections to the origin."
+  },
+  {
     "name": "hostname",
     "type": "string",
     "default": "\"\"",
     "description": "Value of the HTTP host header field for the origin request. Since hostname replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin."
   },
   {
-    "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "Defines log fields for custom logging."
+    "name": "http2",
+    "type": "bool",
+    "default": "false",
+    "description": "Enables the HTTP2 support."
+  },
+  {
+    "name": "max_connections",
+    "type": "number",
+    "default": "0",
+    "description": "The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin."
   },
   {
     "name": "origin",
@@ -90,22 +114,70 @@ values: [
     "description": "A proxy URL for the related origin request."
   },
   {
+    "name": "remove_form_params",
+    "type": "object",
+    "default": "",
+    "description": "list of names to remove form parameters from the upstream request body"
+  },
+  {
+    "name": "remove_query_params",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove query parameters from the upstream request URL"
+  },
+  {
+    "name": "remove_request_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the upstream request"
+  },
+  {
+    "name": "remove_response_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the client response"
+  },
+  {
+    "name": "set_form_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set query parameters in the upstream request URL"
+  },
+  {
+    "name": "set_query_params",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set query parameters in the upstream request URL"
+  },
+  {
+    "name": "set_request_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as request headers in the upstream request"
+  },
+  {
+    "name": "set_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as response headers in the client response"
+  },
+  {
     "name": "set_response_status",
     "type": "number",
     "default": "",
     "description": "Modifies the response status code."
   },
   {
-    "name": "ttfb_timeout",
-    "type": "duration",
-    "default": "\"60s\"",
-    "description": "The duration from writing the full request to the origin and receiving the answer."
-  },
-  {
     "name": "timeout",
     "type": "duration",
     "default": "\"300s\"",
     "description": "The total deadline duration a backend request has for write and read/pipe."
+  },
+  {
+    "name": "ttfb_timeout",
+    "type": "duration",
+    "default": "\"60s\"",
+    "description": "The duration from writing the full request to the origin and receiving the answer."
   },
   {
     "name": "use_when_unhealthy",

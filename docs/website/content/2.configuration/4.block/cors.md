@@ -21,28 +21,28 @@ allowed_origins = ["https://www.example.com", "https://www.another.host.org"]
 ---
 values: [
   {
+    "name": "allow_credentials",
+    "type": "bool",
+    "default": "false",
+    "description": "Set to `true` if the response can be shared with credentialed requests (containing `Cookie` or `Authorization` HTTP header fields)."
+  },
+  {
     "name": "allowed_origins",
     "type": "object",
     "default": "",
     "description": "An allowed origin or a list of allowed origins."
   },
   {
-    "name": "allow_credentials",
-    "type": "bool",
-    "default": "false",
-    "description": "Set to <code>true</code> if the response can be shared with credentialed requests (containing <code>Cookie</code> or <code>Authorization</code> HTTP header fields)."
-  },
-  {
     "name": "disable",
     "type": "bool",
     "default": "false",
-    "description": "Set to <code>true</code> to disable the inheritance of CORS from parent context."
+    "description": "Set to `true` to disable the inheritance of CORS from parent context."
   },
   {
     "name": "max_age",
     "type": "duration",
     "default": "\"\"",
-    "description": "Indicates the time the information provided by the <code>Access-Control-Allow-Methods</code> and <code>Access-Control-Allow-Headers</code> response HTTP header fields."
+    "description": "Indicates the time the information provided by the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` response HTTP header fields."
   }
 ]
 
