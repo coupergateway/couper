@@ -20,3 +20,7 @@ body {
 blockquote {
 	quotes: none !important
 }
+
+main h2 code  {
+	font-size: 0.8em !important;
+}
