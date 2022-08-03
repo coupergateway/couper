@@ -27,25 +27,25 @@ values: [
   {
     "name": "key",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms"
   },
   {
     "name": "key_file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "optional file reference instead of `key` usage"
   },
   {
     "name": "signature_algorithm",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "algorithm used for signing: `\"RS256\"`, `\"RS384\"`, `\"RS512\"`, `\"HS256\"`, `\"HS384\"`, `\"HS512\"`, `\"ES256\"`, `\"ES384\"`, `\"ES512\"`"
   },
   {
     "name": "ttl",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "The token's time-to-live, creates the `exp` claim"
   }
 ]

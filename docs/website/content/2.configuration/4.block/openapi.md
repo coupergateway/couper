@@ -21,7 +21,7 @@ values: [
   {
     "name": "file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "OpenAPI YAML definition file"
   },
   {
