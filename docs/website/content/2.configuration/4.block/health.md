@@ -20,7 +20,7 @@ values: [
   {
     "name": "expected_text",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "text which the response body must contain"
   },
   {
@@ -44,7 +44,7 @@ values: [
   {
     "name": "path",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "URL path with query on backend host"
   },
   {

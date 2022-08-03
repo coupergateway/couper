@@ -16,13 +16,13 @@ values: [
   {
     "name": "backend",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) is defined within."
   },
   {
     "name": "body",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "plain text request body, implicitly sets `Content-Type: text/plain` header field."
   },
   {
@@ -34,7 +34,7 @@ values: [
   {
     "name": "form_body",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "form request body, implicitly sets `Content-Type: application/x-www-form-urlencoded` header field."
   },
   {
@@ -46,7 +46,7 @@ values: [
   {
     "name": "json_body",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "JSON request body, implicitly sets `Content-Type: application/json` header field."
   },
   {
@@ -64,7 +64,7 @@ values: [
   {
     "name": "url",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the used backend."
   }
 ]
