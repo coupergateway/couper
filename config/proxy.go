@@ -17,7 +17,7 @@ type Proxy struct {
 	BackendName string   `hcl:"backend,optional" docs:"backend block reference"`
 	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
-	Websockets  *bool    `hcl:"websockets,optional" docs:"Allows support for websockets. This attribute is only allowed in the 'default' proxy block. Other <code>proxy</code> blocks, <code>request</code> blocks or <code>response</code> blocks are not allowed within the current <code>endpoint</code> block."`
+	Websockets  *bool    `hcl:"websockets,optional" docs:"Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other {proxy} blocks, {request} blocks or {response} blocks are not allowed within the current {endpoint} block."`
 
 	// internally used
 	Backend hcl.Body
@@ -41,8 +41,8 @@ func (p Proxy) Inline() interface{} {
 	type Inline struct {
 		meta.Attributes
 		Backend        *Backend    `hcl:"backend,block"`
-		ExpectedStatus []int       `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status-code is unexpected an <code>unexpected_status</code> error can be handled with an <code>error_handler</code>."`
-		URL            string      `hcl:"url,optional" docs:"If defined, the host part of the URL must be the same as the <code>origin</code> attribute of the <code>backend</code> block (if defined)."`
+		ExpectedStatus []int       `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status code not included in this list an {unexpected_status} error will be thrown which can be handled with an [{error_handler}](error_handler)."`
+		URL            string      `hcl:"url,optional" docs:"If defined, the host part of the URL must be the same as the {origin} attribute of the corresponding backend."`
 		Websockets     *Websockets `hcl:"websockets,block"`
 	}
 

@@ -11,12 +11,13 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/config/meta"
 )
 
 type entry struct {
@@ -49,20 +50,33 @@ func main() {
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
+	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
+	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
+
+	modifiers := reflect.TypeOf(&meta.Attributes{}).Elem()
+	var modifierFields []reflect.StructField
+	for i := 0; i < modifiers.NumField(); i++ {
+		modifierFields = append(modifierFields, modifiers.Field(i))
+	}
+
 	for _, impl := range []interface{}{
 		&config.API{},
 		&config.Backend{},
 		&config.BasicAuth{},
 		&config.CORS{},
 		&config.Defaults{},
-		&config.Files{},
-		&config.Proxy{},
 		&config.Endpoint{},
+		&config.Files{},
 		&config.Health{},
+		&config.JWTSigningProfile{},
+		&config.OpenAPI{},
+		&config.Proxy{},
+		&config.Request{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
-		name := strings.TrimPrefix(strings.ToLower(fmt.Sprintf("%v", t)), "config.")
-		fileName := errors.TypeToSnake(impl)
+		name := reflect.TypeOf(impl).String()
+		name = strings.TrimPrefix(name, "*config.")
+		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
 
 		result := entry{
 			Name: name,
@@ -80,7 +94,12 @@ func main() {
 		if ok {
 			it := reflect.TypeOf(inlineType.Inline()).Elem()
 			for i := 0; i < it.NumField(); i++ {
-				fields = append(fields, it.Field(i))
+				field := it.Field(i)
+				if field.Name == "Attributes" {
+					fields = append(fields, modifierFields...)
+				} else {
+					fields = append(fields, field)
+				}
 			}
 		}
 
@@ -107,13 +126,12 @@ func main() {
 				fieldDefault = "false"
 			} else if fieldDefault == "" && strings.HasPrefix(fieldType, "tuple ") {
 				fieldDefault = "[]"
-			} else if fieldType == "string" || fieldType == "duration" {
+			} else if fieldDefault != "" && (fieldType == "string" || fieldType == "duration") {
 				fieldDefault = `"` + fieldDefault + `"`
 			}
 
 			fieldDescription := field.Tag.Get("docs")
-			re := regexp.MustCompile(`{([^}]*)}`)
-			fieldDescription = re.ReplaceAllString(fieldDescription, "`${1}`")
+			fieldDescription = bracesRegex.ReplaceAllString(fieldDescription, "`${1}`")
 
 			a := attr{
 				Default:     fieldDefault,
@@ -123,6 +141,8 @@ func main() {
 			}
 			result.Attributes = append(result.Attributes, a)
 		}
+
+		sort.Sort(byName(result.Attributes))
 
 		b := &bytes.Buffer{}
 		enc := json.NewEncoder(b)
@@ -192,4 +212,16 @@ values: %s
 			println("SearchIndex updated")
 		}
 	}
+}
+
+type byName []attr
+
+func (attributes byName) Len() int {
+	return len(attributes)
+}
+func (attributes byName) Swap(i, j int) {
+	attributes[i], attributes[j] = attributes[j], attributes[i]
+}
+func (attributes byName) Less(i, j int) bool {
+	return attributes[i].Name < attributes[j].Name
 }

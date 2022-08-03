@@ -17,7 +17,7 @@ const { toc } = useContent();
     <div class="max-w-8xl mx-auto sm:px-6">
       <div class="lg:pl-[17rem]">
           <main class="max-w-8xl pt-6 xl:max-w-none xl:ml-0 xl:mr-[15.5rem] xl:pr-16 relative z-100 mt-4
-            prose prose-slate
+            prose prose-slate prose-lg
             prose-code:bg-sky-100 prose-code:text-sky-900 prose-code:p-1 prose-code:rounded-md prose-code:text-sm
             prose-blockquote:bg-purple-100
             prose-blockquote:rounded-md
@@ -55,5 +55,6 @@ pre > code {
   /* since code bg is bright, disable within pre */
   background-color: inherit !important;
   padding: 0 !important;
+  white-space: pre !important /* line breaks for copy/paste! */
 }
 </style>

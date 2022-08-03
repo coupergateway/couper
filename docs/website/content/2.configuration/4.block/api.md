@@ -34,8 +34,20 @@ values: [
   {
     "name": "base_path",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Configures the path prefix for all requests."
+  },
+  {
+    "name": "beta_required_permission",
+    "type": "object",
+    "default": "",
+    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "Defines log fields for custom Logging"
   },
   {
     "name": "disable_access_control",
@@ -46,20 +58,8 @@ values: [
   {
     "name": "error_file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Location of the error file template."
-  },
-  {
-    "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "Defines log fields for custom Logging"
-  },
-  {
-    "name": "beta_required_permission",
-    "type": "object",
-    "default": "",
-    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
   }
 ]
 

@@ -13,7 +13,7 @@ var (
 
 // Request represents the <Request> object.
 type Request struct {
-	BackendName string   `hcl:"backend,optional"`
+	BackendName string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Required, if no [{backend} block](backend) is defined within."`
 	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 
@@ -38,14 +38,14 @@ func (r Request) HCLBody() hcl.Body {
 func (r Request) Inline() interface{} {
 	type Inline struct {
 		Backend        *Backend             `hcl:"backend,block"`
-		Body           string               `hcl:"body,optional"`
-		ExpectedStatus []int                `hcl:"expected_status,optional"`
-		FormBody       string               `hcl:"form_body,optional"`
-		Headers        map[string]string    `hcl:"headers,optional"`
-		JsonBody       string               `hcl:"json_body,optional"`
-		Method         string               `hcl:"method,optional"`
-		QueryParams    map[string]cty.Value `hcl:"query_params,optional"`
-		URL            string               `hcl:"url,optional"`
+		Body           string               `hcl:"body,optional" docs:"plain text request body, implicitly sets {Content-Type: text/plain} header field."`
+		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an [{unexpected_status} error](../error-handling#endpoint-error-types) will be thrown which can be handled with an [{error_handler}](../error-handling#endpoint-related-error_handler)."`
+		FormBody       string               `hcl:"form_body,optional" docs:"form request body, implicitly sets {Content-Type: application/x-www-form-urlencoded} header field."`
+		Headers        map[string]string    `hcl:"headers,optional" docs:"request headers"`
+		JsonBody       string               `hcl:"json_body,optional" docs:"JSON request body, implicitly sets {Content-Type: application/json} header field."`
+		Method         string               `hcl:"method,optional" docs:"the request method" default:"GET"`
+		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"Key/value pairs to set query parameters for this request"`
+		URL            string               `hcl:"url,optional" docs:"If defined, the host part of the URL must be the same as the {origin} attribute of the used backend."`
 	}
 
 	return &Inline{}
