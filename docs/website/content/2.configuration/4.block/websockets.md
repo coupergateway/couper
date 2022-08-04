@@ -1,14 +1,59 @@
-# Websockets
+# WebSockets
 
-The `websockets` block activates support for websocket connections in Couper.
+The `websockets` block activates support for WebSocket connections in Couper.
 
 | Block name   | Context                     | Label    | Nested block(s) |
 |:-------------|:----------------------------|:---------|:----------------|
-| `websockets` | [Proxy Block](proxy) | no label | -               |
+| `websockets` | [`proxy`](proxy)            | –        | –               |
 
-| Attribute(s)          | Type                  | Default | Description                                                       | Characteristic(s)                                                   | Example          |
-|:----------------------|:----------------------|:--------|:------------------------------------------------------------------|:--------------------------------------------------------------------|:-----------------|
-| `timeout`             | [duration](#duration) | -       | The total deadline duration a websocket connection has to exists. | -                                                                   | `timeout = "600s"` |
-| `set_request_headers` | -                     | -       | -                                                                 | Same as `set_request_headers` in [Request Header](../modifiers#request-header). | -                |
+::attributes
+---
+values: [
+  {
+    "name": "add_request_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as request headers in the upstream request"
+  },
+  {
+    "name": "add_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response"
+  },
+  {
+    "name": "remove_request_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the upstream request"
+  },
+  {
+    "name": "remove_response_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the client response"
+  },
+  {
+    "name": "set_request_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as request headers in the upstream request"
+  },
+  {
+    "name": "set_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as response headers in the client response"
+  },
+  {
+    "name": "timeout",
+    "type": "string",
+    "default": "",
+    "description": "The total deadline [duration](#duration) a WebSocket connection has to exist."
+  }
+]
+
+---
+::
 
 ::duration

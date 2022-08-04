@@ -74,6 +74,9 @@ func main() {
 		&config.OpenAPI{},
 		&config.Proxy{},
 		&config.Request{},
+		&config.Server{},
+		&config.Settings{},
+		&config.Websockets{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
 		name := reflect.TypeOf(impl).String()
