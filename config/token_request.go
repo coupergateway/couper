@@ -32,17 +32,17 @@ type TokenRequest struct {
 }
 
 // Reference implements the <BackendReference> interface.
-func (t TokenRequest) Reference() string {
+func (t *TokenRequest) Reference() string {
 	return t.BackendName
 }
 
 // HCLBody implements the <Inline> interface.
-func (t TokenRequest) HCLBody() hcl.Body {
+func (t *TokenRequest) HCLBody() hcl.Body {
 	return t.Remain
 }
 
 // Inline implements the <Inline> interface.
-func (t TokenRequest) Inline() interface{} {
+func (t *TokenRequest) Inline() interface{} {
 	type Inline struct {
 		Backend        *Backend             `hcl:"backend,block"`
 		Body           string               `hcl:"body,optional" docs:"Creates implicit default <code>Content-Type: text/plain</code> header field"`
@@ -60,7 +60,7 @@ func (t TokenRequest) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (t TokenRequest) Schema(inline bool) *hcl.BodySchema {
+func (t *TokenRequest) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(t)
 		return schema

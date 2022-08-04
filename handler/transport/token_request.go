@@ -82,7 +82,8 @@ func (t *TokenRequest) readToken() (string, error) {
 func (t *TokenRequest) requestToken(etx *eval.Context) (string, int64, error) {
 	hclCtx := etx.HCLContextSync()
 
-	bodyContent, _, diags := t.config.Remain.PartialContent(config.TokenRequest{Remain: t.config.Remain}.Schema(true))
+	trConf := &config.TokenRequest{Remain: t.config.Remain}
+	bodyContent, _, diags := t.config.Remain.PartialContent(trConf.Schema(true))
 	if diags.HasErrors() {
 		return "", 0, diags
 	}
