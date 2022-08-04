@@ -198,10 +198,15 @@ values: %s
 `, b.String()))
 		}
 
-		_, err = file.WriteAt(fileBytes.Bytes(), 0)
+		size, err := file.WriteAt(fileBytes.Bytes(), 0)
 		if err != nil {
 			panic(err)
 		}
+		err = os.Truncate(file.Name(), int64(size))
+		if err != nil {
+			panic(err)
+		}
+
 		println("Attributes written: " + fileName)
 
 		if os.Getenv(searchClientKey) != "" {
