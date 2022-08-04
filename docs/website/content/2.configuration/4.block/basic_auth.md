@@ -27,7 +27,7 @@ values: [
     "name": "custom_log_fields",
     "type": "object",
     "default": "",
-    "description": "Defines log fields for custom logging"
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
   },
   {
     "name": "htpasswd_file",

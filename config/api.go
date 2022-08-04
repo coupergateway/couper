@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var _ Inline = &API{}
@@ -36,11 +38,9 @@ func (a API) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (a API) Inline() interface{} {
 	type Inline struct {
-		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
-		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
-		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`
-		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom Logging"`
-		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional" docs:"Permission required to use this API (see [error type](/configuration/error-handling#error-types) {beta_insufficient_permissions})."`
+		meta.ResponseHeadersAttributes
+		meta.LogFieldsAttribute
+		RequiredPermission hcl.Expression `hcl:"beta_required_permission,optional" docs:"Permission required to use this API (see [error type](/configuration/error-handling#error-types) {beta_insufficient_permissions})."`
 	}
 
 	return &Inline{}
@@ -54,6 +54,5 @@ func (a API) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(a.Inline())
-
-	return schema
+	return meta.MergeSchemas(schema, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
 }

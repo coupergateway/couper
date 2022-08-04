@@ -8,6 +8,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
+	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -152,7 +153,7 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 
 	// TODO: How to implement this automatically?
 	if typ.String() == "config.Backend" {
-		schema = config.SchemaWithOAuth2RA(schema)
+		schema = meta.MergeSchemas(schema, config.OAuthBlockSchema)
 	}
 
 	if _, ok := obj.(collect.ErrorHandlerSetter); ok {

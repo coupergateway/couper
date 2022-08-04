@@ -40,10 +40,13 @@ func (e Endpoint) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (e Endpoint) Inline() interface{} {
 	type Inline struct {
-		meta.Attributes
-		ResponseStatus     *uint8                    `hcl:"set_response_status,optional" docs:"Modifies the response status code."`
-		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom logging"`
-		RequiredPermission hcl.Expression            `hcl:"beta_required_permission,optional" docs:"expression evaluating to string or object (string)"`
+		meta.RequestHeadersAttributes
+		meta.ResponseHeadersAttributes
+		meta.FormParamsAttributes
+		meta.QueryParamsAttributes
+		meta.LogFieldsAttribute
+		ResponseStatus     *uint8         `hcl:"set_response_status,optional" docs:"Modifies the response status code."`
+		RequiredPermission hcl.Expression `hcl:"beta_required_permission,optional" docs:"expression evaluating to string or object (string)"`
 	}
 
 	return &Inline{}
@@ -58,5 +61,5 @@ func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(e.Inline())
 
-	return meta.SchemaWithAttributes(schema)
+	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
 }

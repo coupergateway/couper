@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var (
@@ -51,10 +53,10 @@ func (oa *OAuth2AC) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
-		Backend       *Backend                  `hcl:"backend,block"`
-		LogFields     map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
-		RedirectURI   string                    `hcl:"redirect_uri"`
-		VerifierValue string                    `hcl:"verifier_value"`
+		meta.LogFieldsAttribute
+		Backend       *Backend `hcl:"backend,block"`
+		RedirectURI   string   `hcl:"redirect_uri"`
+		VerifierValue string   `hcl:"verifier_value"`
 	}
 
 	return &Inline{}
@@ -74,7 +76,7 @@ func (oa *OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return schema
+	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
 func (oa *OAuth2AC) GetName() string {
