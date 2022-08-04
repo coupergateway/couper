@@ -69,7 +69,7 @@ jobs:
       - name: setup git && push
         working-directory: './website'
         run: |
-          git config user.name "couper-gitbot"
-          git config user.email "gitbot@couper.io"
+          git config user.name "couper-bot"
+          git config user.email "couperbot@gmail.com"
           git add -A && git commit -m "Update website"
           git push origin main

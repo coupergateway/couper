@@ -154,6 +154,6 @@ jobs:
           destination_folder: './'
           destination_branch: 'main'
           destination_branch_create: 'release.${{ github.ref_name }}' # due to testing purposes; create branch for merging later on
-          user_email: 'gitbot@couper.io'
-          user_name: 'couper-gitbot'
+          user_email: 'couperbot@gmail.com'
+          user_name: 'couper-bot'
           commit_message: 'Update formula to ${{ github.ref_name }} release'
