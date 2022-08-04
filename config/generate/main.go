@@ -177,7 +177,7 @@ values: %s
 				continue
 			}
 
-			if line == "::" {
+			if skipMode && line == "::" {
 				skipMode = false
 				continue
 			}
