@@ -141,9 +141,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		return nil, fmt.Errorf("missing configuration files")
 	}
 
-	if err := preprocessEnvironmentBlocks(parsedBodies, env); err != nil {
-		return nil, err
-	}
+	errorBeforeRetry := preprocessEnvironmentBlocks(parsedBodies, env)
 
 	if env == "" {
 		settingsBlock := mergeSettings(parsedBodies)
@@ -154,6 +152,10 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		if settings.Environment != "" {
 			return LoadFiles(filesList, settings.Environment)
 		}
+	}
+
+	if errorBeforeRetry != nil {
+		return nil, errorBeforeRetry
 	}
 
 	defaultsBlock, err := mergeDefaults(parsedBodies)
