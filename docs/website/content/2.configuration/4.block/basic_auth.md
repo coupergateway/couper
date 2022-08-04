@@ -5,7 +5,7 @@
 | `basic_auth` | [Definitions Block](definitions) | required | [Error Handler Block(s)](error_handler) |
 
 The  `basic_auth` block lets you configure basic auth for your gateway. Like all
-[Access Control](#access-control) types, the `basic_auth` block is defined in the
+[access control](../access-control) types, the `basic_auth` block is defined in the
 [`definitions` block](definitions) and can be referenced in all configuration
 blocks by its required _label_.
 

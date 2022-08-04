@@ -2,7 +2,7 @@
 
 Use the `definitions` block to define configurations you want to reuse.
 
-&#9888; [Access Control](#access-control) is **always** defined in the `definitions` block.
+&#9888; [access control](../access-control) is **always** defined in the `definitions` block.
 
 | Block name    | Context | Label    | Nested block(s)                                                                                                                                                                                                                                                            |
 |:--------------|:--------|:---------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

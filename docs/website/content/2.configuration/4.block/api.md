@@ -23,7 +23,7 @@ values: [
     "name": "access_control",
     "type": "tuple (string)",
     "default": "[]",
-    "description": "Sets predefined [Access Control](#access-control) for this block."
+    "description": "Sets predefined [access control](../access-control) for this block."
   },
   {
     "name": "allowed_methods",
