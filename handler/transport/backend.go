@@ -339,31 +339,35 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 	// requestAuthorizer will have their own backend configuration.
 	ctx = context.WithValue(ctx, request.BackendParams, nil)
 
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
+
 	originalReq := req.Clone(req.Context())
 
-	// errorsCh := make(chan error, len(b.requestAuthorizer))
 	// WithContext() instead of Clone() due to header-map modification.
 	req = req.WithContext(ctx)
 
+	errorsCh := make(chan error, len(b.requestAuthorizer))
 	for _, authorizer := range b.requestAuthorizer {
 		err := authorizer.GetToken(req)
 		if err != nil {
 			return originalReq, err
 		}
-		// TODO send token requests in parallel while solving race problem
-		// go func(ra RequestAuthorizer, r *http.Request) {
-		// err := ra.GetToken(r)
-		// errorsCh <- err
-		// }(authorizer, req)
+
+		go func(ra RequestAuthorizer, r *http.Request) {
+			errorsCh <- ra.GetToken(r)
+		}(authorizer, req)
 	}
 
-	// for i := 0; i < len(b.requestAuthorizer); i++ {
-	// err := <-errorsCh
-	// if err != nil {
-	// return originalReq, err
-	// }
-	// }
-	return originalReq, nil
+	var err error
+	for i := 0; i < len(b.requestAuthorizer); i++ {
+		err = <-errorsCh
+		if err != nil {
+			break
+		}
+	}
+	return originalReq, err
 }
 
 func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {

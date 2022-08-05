@@ -1104,6 +1104,27 @@ func TestTokenRequest(t *testing.T) {
 
 	if res.StatusCode != http.StatusNoContent {
 		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
-		return
+	}
+}
+
+func TestTokenRequest_Error(t *testing.T) {
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+
+	helper := test.New(t)
+
+	confPath := "testdata/oauth2/token_request_error.hcl"
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": rsOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+	helper.Must(err)
+	hook.Reset()
+	res, err := newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
 	}
 }
