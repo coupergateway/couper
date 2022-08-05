@@ -227,13 +227,13 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 			return nil, diags
 		}
 
-		if err := verifyBodyAttributes(tokenRequest, content); err != nil {
+		if err = verifyBodyAttributes(tokenRequest, content); err != nil {
 			return nil, err
 		}
 
-		be, err := PrepareBackend(helper, "", conf.URL, conf)
-		if err != nil {
-			return nil, err
+		be, berr := PrepareBackend(helper, "", conf.URL, conf)
+		if berr != nil {
+			return nil, berr
 		}
 		tokenRequestBackends[label] = be
 	}

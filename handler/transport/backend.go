@@ -381,7 +381,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 		// return false, nil
 	}
 
-	retry := false
+	var retry bool
 	for _, ra := range b.requestAuthorizer {
 		r, err := ra.RetryWithToken(req, res)
 		if err != nil {
@@ -389,6 +389,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 		}
 		if r {
 			retry = true
+			break
 		}
 	}
 	return retry, nil
