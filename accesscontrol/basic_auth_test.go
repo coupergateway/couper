@@ -2,7 +2,6 @@ package accesscontrol_test
 
 import (
 	b64 "encoding/base64"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,7 +67,7 @@ func Test_BasicAuth_Validate(t *testing.T) {
 	}
 
 	for _, testcase := range []testCase{
-		{"", couperErr.BasicAuth},
+		{"", couperErr.AccessControl},
 		{"Foo", couperErr.BasicAuth},
 		{"Basic X", couperErr.BasicAuth},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("usr:pwd:foo")), couperErr.BasicAuth},
@@ -83,7 +82,7 @@ func Test_BasicAuth_Validate(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", testcase.headerValue)
 			err = ba.Validate(req)
-			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
+			if testcase.expErr != nil && err.Error() != testcase.expErr.Error() {
 				subT.Errorf("Expected Unauthorized error, got: %v", err)
 			}
 		})
@@ -91,12 +90,7 @@ func Test_BasicAuth_Validate(t *testing.T) {
 }
 
 func Test_BasicAuth_ValidateCases(t *testing.T) {
-	var ba *ac.BasicAuth
 	req := &http.Request{Header: make(http.Header)}
-
-	if err := ba.Validate(req); err != couperErr.Configuration {
-		t.Errorf("Expected configuration error, got: %v", err)
-	}
 
 	ba1, err := ac.NewBasicAuth("name", "", "pass", "")
 	if err != nil || ba1 == nil {
@@ -145,8 +139,8 @@ func Test_BasicAuth_ValidateCases(t *testing.T) {
 	} {
 		t.Run(testcase.headerValue, func(subT *testing.T) {
 			req.Header.Set("Authorization", testcase.headerValue)
-			err = ba.Validate(req)
-			if testcase.expErr != nil && !errors.As(err, &testcase.expErr) {
+			err = testcase.ba.Validate(req)
+			if testcase.expErr != nil && !couperErr.Equals(err, testcase.expErr) {
 				subT.Errorf("Expected Unauthorized error, got: %v", err)
 			}
 		})

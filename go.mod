@@ -1,6 +1,6 @@
 module github.com/avenga/couper
 
-go 1.18
+go 1.19
 
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
