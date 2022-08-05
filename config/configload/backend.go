@@ -113,7 +113,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 	}
 
 	if oauth2Backend != nil {
-		wrapped := wrapOauth2Backend(oauth2Backend)
+		wrapped := wrapBlock(oauth2, "", oauth2Backend)
 		backendBody = hclbody.MergeBodies(backendBody, wrapped)
 	}
 
@@ -128,7 +128,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 	}
 
 	for label, tokenRequestBackend := range tokenRequestBackends {
-		wrapped := wrapTokenRequestBackend(label, tokenRequestBackend)
+		wrapped := wrapBlock(tokenRequest, label, tokenRequestBackend)
 		backendBody = hclbody.MergeBodies(backendBody, wrapped)
 	}
 
@@ -184,18 +184,6 @@ func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	return PrepareBackend(helper, "", conf.TokenEndpoint, conf)
 }
 
-func wrapOauth2Backend(content hcl.Body) hcl.Body {
-	b := hclbody.New(&hcl.BodyContent{
-		Blocks: []*hcl.Block{
-			{
-				Type: oauth2,
-				Body: newBackendBlock(content),
-			},
-		},
-	})
-	return b
-}
-
 // newTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
 // TODO: Check a possible circular dependency with given parent backend(s).
 func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Body, error) {
@@ -241,29 +229,28 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 	return tokenRequestBackends, nil
 }
 
-func wrapTokenRequestBackend(label string, content hcl.Body) hcl.Body {
+func wrapBlock(blockType, label string, content hcl.Body) hcl.Body {
 	var labels []string
 	if label != "" {
 		labels = append(labels, label)
 	}
-	b := hclbody.New(&hcl.BodyContent{
-		Blocks: []*hcl.Block{
-			{
-				Type:   tokenRequest,
-				Body:   newBackendBlock(content),
-				Labels: labels,
-			},
-		},
-	})
-	return b
-}
-
-func newBackendBlock(content hcl.Body) hcl.Body {
 	return hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{
-				Type: backend,
+				Body:   newBlock(backend, content),
+				Labels: labels,
+				Type:   blockType,
+			},
+		},
+	})
+}
+
+func newBlock(blockType string, content hcl.Body) hcl.Body {
+	return hclbody.New(&hcl.BodyContent{
+		Blocks: []*hcl.Block{
+			{
 				Body: content,
+				Type: blockType,
 			},
 		},
 	})
