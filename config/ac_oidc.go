@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 
 	hclbody "github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/config/meta"
 )
 
 var (
@@ -75,10 +76,10 @@ func (o *OIDC) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (o *OIDC) Inline() interface{} {
 	type Inline struct {
-		Backend       *Backend                  `hcl:"backend,block"`
-		LogFields     map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
-		RedirectURI   string                    `hcl:"redirect_uri"`
-		VerifierValue string                    `hcl:"verifier_value"`
+		meta.LogFieldsAttribute
+		Backend       *Backend `hcl:"backend,block"`
+		RedirectURI   string   `hcl:"redirect_uri"`
+		VerifierValue string   `hcl:"verifier_value"`
 
 		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`
 		ConfigurationBackend       *Backend `hcl:"configuration_backend,block"`
@@ -106,7 +107,7 @@ func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return schema
+	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
 func (o *OIDC) GetName() string {

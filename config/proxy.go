@@ -39,7 +39,10 @@ func (p Proxy) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (p Proxy) Inline() interface{} {
 	type Inline struct {
-		meta.Attributes
+		meta.RequestHeadersAttributes
+		meta.ResponseHeadersAttributes
+		meta.FormParamsAttributes
+		meta.QueryParamsAttributes
 		Backend        *Backend    `hcl:"backend,block"`
 		ExpectedStatus []int       `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status code not included in this list an {unexpected_status} error will be thrown which can be handled with an [{error_handler}](error_handler)."`
 		URL            string      `hcl:"url,optional" docs:"If defined, the host part of the URL must be the same as the {origin} attribute of the corresponding backend."`
@@ -81,5 +84,5 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 		}
 	}
 
-	return meta.SchemaWithAttributes(schema)
+	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema)
 }

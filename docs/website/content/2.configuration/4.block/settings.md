@@ -3,24 +3,124 @@
 The `settings` block lets you configure the more basic and global behavior of your
 gateway instance.
 
-| Attribute(s)                    | Type           | Default             | Description                                                                                                                                                                                                                                                                             | Characteristic(s)                                                                                                                                                  | Example                     |
-|:--------------------------------|:---------------|:--------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------|
-| `accept_forwarded_url`          | tuple (string) | `[]`                | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](../modifiers#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values are `"proto"`, `"host"` and `"port"`. The port in `X-Forwarded-Port` takes precedence over a port in `X-Forwarded-Host`. | Affects relative url values for [`sp_acs_url`](saml) attribute and `redirect_uri` attribute within [beta_oauth2](oauth2) & [oidc](oidc). | `["proto","host","port"]`   |
-| `default_port`                  | number         | `8080`              | Port which will be used if not explicitly specified per host within the [`hosts`](server) list.                                                                                                                                                                                  | -                                                                                                                                                                  | -                           |
-| `environment`                   | string         | `""`                | [Environment](../command-line#global-options) Couper is to run in.                                                                                                                                                                                                                      | - | `"prod"` |
-| `health_path`                   | string         | `"/healthz"`        | Health path which is available for all configured server and ports.                                                                                                                                                                                                                     | -                                                                                                                                                                  | -                           |
-| `https_dev_proxy`               | tuple (string) | `[]`                | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname.                                                                                                                             | Certificates will be hold in memory and are generated once.                                                                                                        | `["443:8080", "8443:8080"]` |
-| `log_format`                    | string         | `"common"`          | Switch for tab/field based colored view or JSON log lines. Valid values are `"common"` and `"json"`.                                                                                                                                                                                    | -                                                                                                                                                                  | -                           |
-| `log_level`                     | string         | `"info"`            | Set the log-level to one of: `"info"`, `"panic"`, `"fatal"`, `"error"`, `"warn"`, `"debug"`, `"trace"`.                                                                                                                                                                                 | -                                                                                                                                                                  | -                           |
-| `log_pretty`                    | bool           | `false`             | Global option for `json` log format which pretty prints with basic key coloring.                                                                                                                                                                                                        | -                                                                                                                                                                  | -                           |
-| `no_proxy_from_env`             | bool           | `false`             | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy).                                                                                                                                                                      | -                                                                                                                                                                  | -                           |
-| `request_id_accept_from_header` | string         | `""`                | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured).                                                                                                                                | -                                                                                                                                                                  | `X-UID`                     |
-| `request_id_backend_header`     | string         | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the backend.                                                                                                                                                                                             | -                                                                                                                                                                  | -                           |
-| `request_id_client_header`      | string         | `Couper-Request-ID` | Name of a HTTP header field which Couper uses to transport the `request.id` to the client.                                                                                                                                                                                              | -                                                                                                                                                                  | -                           |
-| `request_id_format`             | string         | `"common"`          | Valid values are `"common"` and `"uuid4"`. If set to `"uuid4"` a RFC 4122 uuid is used for `request.id` and related log fields.                                                                                                                                                          | -                                                                                                                                                                  | -                           |
-| `secure_cookies`                | string         | `""`                | Valid values are `""` and `"strip"`. If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.                                                                                                                                                        | -                                                                                                                                                                  | -                           |
-| `xfh`                           | bool           | `false`             | Option to use the `X-Forwarded-Host` header as the request host.                                                                                                                                                                                                                        | -                                                                                                                                                                  | -                           |
-| `beta_metrics`                  | bool           | `false`             | Option to enable the Prometheus [metrics](/observation/metrics) exporter.                                                                                                                                                                                                                         | -                                                                                                                                                                  | -                           |
-| `beta_metrics_port`             | number         | `9090`              | Prometheus exporter listen port.                                                                                                                                                                                                                                                        | -                                                                                                                                                                  | -                           |
-| `beta_service_name`             | string         | `"couper"`          | The service name which applies to the `service_name` metric labels.                                                                                                                                                                                                                     | -                                                                                                                                                                  | -                           |
-| `ca_file`                       | string         | `""`                | Option for adding the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections.                                                                                                                                                            | -                                                                                                                                                                  | -                           |
+::attributes
+---
+values: [
+  {
+    "name": "accept_forwarded_url",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "Which `X-Forwarded-*` request headers should be accepted to change the [request variables](../variables#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `\"proto\"`, `\"host\"` and `\"port\"`. The port in a `X-Forwarded-Port` header takes precedence over a port in `X-Forwarded-Host`. Affects relative URL values for [`sp_acs_url`](saml) attribute and `redirect_uri` attribute within [`beta_oauth2`](oauth2) and [`oidc`](oidc)."
+  },
+  {
+    "name": "beta_metrics",
+    "type": "bool",
+    "default": "false",
+    "description": "enables the Prometheus [metrics](/observation/metrics) exporter"
+  },
+  {
+    "name": "beta_metrics_port",
+    "type": "number",
+    "default": "9090",
+    "description": "Prometheus exporter listen port"
+  },
+  {
+    "name": "beta_service_name",
+    "type": "string",
+    "default": "\"couper\"",
+    "description": "service name which applies to the `service_name` metric labels"
+  },
+  {
+    "name": "ca_file",
+    "type": "string",
+    "default": "",
+    "description": "adds the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections"
+  },
+  {
+    "name": "default_port",
+    "type": "number",
+    "default": "8080",
+    "description": "Port which will be used if not explicitly specified per host within the [`hosts`](server) attribute."
+  },
+  {
+    "name": "environment",
+    "type": "string",
+    "default": "",
+    "description": "[environment](../command-line#global-options) Couper is to run in"
+  },
+  {
+    "name": "health_path",
+    "type": "string",
+    "default": "\"/healthz\"",
+    "description": "Health path for all configured servers and ports"
+  },
+  {
+    "name": "https_dev_proxy",
+    "type": "object",
+    "default": "",
+    "description": "TLS port mappings to define the TLS listen port and the target one. Self-signed certificates will be generated on the fly based on the given hostname. Certificates will be held in memory."
+  },
+  {
+    "name": "log_format",
+    "type": "string",
+    "default": "\"common\"",
+    "description": "tab/field based colored logs or JSON logs: `\"common\"` or `\"json\"`"
+  },
+  {
+    "name": "log_level",
+    "type": "string",
+    "default": "\"info\"",
+    "description": "sets the log level: `\"panic\"`, `\"fatal\"`, `\"error\"`, `\"warn\"`, `\"info\"`, `\"debug\"`, `\"trace\"`"
+  },
+  {
+    "name": "log_pretty",
+    "type": "bool",
+    "default": "false",
+    "description": "global option for `json` log format which pretty prints with basic key coloring"
+  },
+  {
+    "name": "no_proxy_from_env",
+    "type": "bool",
+    "default": "false",
+    "description": "disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy)"
+  },
+  {
+    "name": "request_id_accept_from_header",
+    "type": "string",
+    "default": "",
+    "description": "client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured)"
+  },
+  {
+    "name": "request_id_backend_header",
+    "type": "string",
+    "default": "\"Couper-Request-ID\"",
+    "description": "HTTP header field which Couper uses to transport the `request.id` to the backend"
+  },
+  {
+    "name": "request_id_client_header",
+    "type": "string",
+    "default": "\"Couper-Request-ID\"",
+    "description": "HTTP header field which Couper uses to transport the `request.id` to the client"
+  },
+  {
+    "name": "request_id_format",
+    "type": "string",
+    "default": "\"common\"",
+    "description": "`\"common\"` or `\"uuid4\"`. If set to `\"uuid4\"` an RFC 4122 UUID is used for `request.id` and related log fields. "
+  },
+  {
+    "name": "secure_cookies",
+    "type": "string",
+    "default": "\"‌\"",
+    "description": "`\"\"` or `\"strip\"`. If set to `\"strip\"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields."
+  },
+  {
+    "name": "xfh",
+    "type": "bool",
+    "default": "false",
+    "description": "whether to use the `X-Forwarded-Host` header as the request host"
+  }
+]
+
+---
+::

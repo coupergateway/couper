@@ -121,8 +121,8 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 | Name         |                 | Description                                                                                                                |
 |:-------------|:----------------|:---------------------------------------------------------------------------------------------------------------------------|
-| `"deadline"` |                 | shutdown parameter, see [Health-Check](#/configuration/settings#health-check)                                                        |
-| `"delay"`    |                 | shutdown parameter, see [Health-Check](#/configuration/settings#health-check)                                                        |
+| `"deadline"` |                 | shutdown parameter, see [Health Check](health)                                                        |
+| `"delay"`    |                 | shutdown parameter, see [Health Check](health)                                                        |
 | `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
 |              | `{`             |                                                                                                                            |
 |              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                         |
@@ -139,15 +139,15 @@ These fields are defined in the configuration as `custom_log_fields` attribute i
 - [API Block](/configuration/block/api)
 - [Endpoint Block](/configuration/block/endpoint)
 - [Backend Block](/configuration/block/backend)
-- [Basic Auth Block](/configuration/block/basic-auth)
+- [Basic Auth Block](/configuration/block/basic_auth)
 - [JWT Block](/configuration/block/jwt)
-- [OAuth2 AC Block (Beta)](/configuration/block/oauth2-ac)
+- [OAuth2 AC Block (Beta)](/configuration/block/oauth2)
 - [OIDC Block](/configuration/block/oidc)
 - [SAML Block](/configuration/block/saml)
 - [Error Handler Block](/configuration/error-handling)
 
 All `custom_log_fields` definitions will take place within the `couper_access` log with the `custom` field as parent.
-Except the `custom_log_fields` defined in a [Backend Block](/configuration/block/backend) which will take place
+Except the `custom_log_fields` defined in a [`backend` block](/configuration/block/backend) which will take place
 in the `couper_backend` log.
 
 **Example:**

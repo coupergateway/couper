@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var _ Inline = &SAML{}
@@ -28,7 +30,7 @@ func (s *SAML) HCLBody() hcl.Body {
 
 func (s *SAML) Inline() interface{} {
 	type Inline struct {
-		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		meta.LogFieldsAttribute
 	}
 
 	return &Inline{}
@@ -42,5 +44,5 @@ func (s *SAML) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(s.Inline())
-	return schema
+	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }

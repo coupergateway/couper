@@ -1,8 +1,8 @@
 # JWT
 
 The `jwt` block lets you configure JSON Web Token access control for your gateway.
-Like all [Access Control](#access-control) types, the `jwt` block is defined in
-the [Definitions Block](definitions) and can be referenced in all configuration blocks by its
+Like all [access control](../access-control) types, the `jwt` block is defined in
+the [`definitions` Block](definitions) and can be referenced in all configuration blocks by its
 required _label_.
 
 Since responses from endpoints protected by JWT access controls are not publicly cacheable, a `Cache-Control: private` header field is added to the response, unless this feature is disabled with `disable_private_caching = true`.

@@ -53,10 +53,12 @@ func main() {
 	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
 
-	modifiers := reflect.TypeOf(&meta.Attributes{}).Elem()
-	var modifierFields []reflect.StructField
-	for i := 0; i < modifiers.NumField(); i++ {
-		modifierFields = append(modifierFields, modifiers.Field(i))
+	attributesMap := map[string][]reflect.StructField{
+		"RequestHeadersAttributes":  newFields(&meta.RequestHeadersAttributes{}),
+		"ResponseHeadersAttributes": newFields(&meta.ResponseHeadersAttributes{}),
+		"FormParamsAttributes":      newFields(&meta.FormParamsAttributes{}),
+		"QueryParamsAttributes":     newFields(&meta.QueryParamsAttributes{}),
+		"LogFieldsAttribute":        newFields(&meta.LogFieldsAttribute{}),
 	}
 
 	for _, impl := range []interface{}{
@@ -72,6 +74,9 @@ func main() {
 		&config.OpenAPI{},
 		&config.Proxy{},
 		&config.Request{},
+		&config.Server{},
+		&config.Settings{},
+		&config.Websockets{},
 	} {
 		t := reflect.TypeOf(impl).Elem()
 		name := reflect.TypeOf(impl).String()
@@ -95,8 +100,8 @@ func main() {
 			it := reflect.TypeOf(inlineType.Inline()).Elem()
 			for i := 0; i < it.NumField(); i++ {
 				field := it.Field(i)
-				if field.Name == "Attributes" {
-					fields = append(fields, modifierFields...)
+				if _, ok := attributesMap[field.Name]; ok {
+					fields = append(fields, attributesMap[field.Name]...)
 				} else {
 					fields = append(fields, field)
 				}
@@ -177,7 +182,7 @@ values: %s
 				continue
 			}
 
-			if line == "::" {
+			if skipMode && line == "::" {
 				skipMode = false
 				continue
 			}
@@ -198,10 +203,15 @@ values: %s
 `, b.String()))
 		}
 
-		_, err = file.WriteAt(fileBytes.Bytes(), 0)
+		size, err := file.WriteAt(fileBytes.Bytes(), 0)
 		if err != nil {
 			panic(err)
 		}
+		err = os.Truncate(file.Name(), int64(size))
+		if err != nil {
+			panic(err)
+		}
+
 		println("Attributes written: " + fileName)
 
 		if os.Getenv(searchClientKey) != "" {
@@ -224,4 +234,13 @@ func (attributes byName) Swap(i, j int) {
 }
 func (attributes byName) Less(i, j int) bool {
 	return attributes[i].Name < attributes[j].Name
+}
+
+func newFields(impl interface{}) []reflect.StructField {
+	it := reflect.TypeOf(impl).Elem()
+	var fields []reflect.StructField
+	for i := 0; i < it.NumField(); i++ {
+		fields = append(fields, it.Field(i))
+	}
+	return fields
 }

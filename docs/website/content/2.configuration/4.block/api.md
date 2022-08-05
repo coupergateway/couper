@@ -23,7 +23,13 @@ values: [
     "name": "access_control",
     "type": "tuple (string)",
     "default": "[]",
-    "description": "Sets predefined [Access Control](#access-control) for this block."
+    "description": "Sets predefined [access control](../access-control) for this block."
+  },
+  {
+    "name": "add_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response"
   },
   {
     "name": "allowed_methods",
@@ -47,7 +53,7 @@ values: [
     "name": "custom_log_fields",
     "type": "object",
     "default": "",
-    "description": "Defines log fields for custom Logging"
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
   },
   {
     "name": "disable_access_control",
@@ -60,6 +66,18 @@ values: [
     "type": "string",
     "default": "",
     "description": "Location of the error file template."
+  },
+  {
+    "name": "remove_response_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the client response"
+  },
+  {
+    "name": "set_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as response headers in the client response"
   }
 ]
 

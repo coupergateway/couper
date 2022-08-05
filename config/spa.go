@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var _ Inline = &Spa{}
@@ -29,10 +31,8 @@ func (s Spa) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (s Spa) Inline() interface{} {
 	type Inline struct {
-		AddResponseHeaders map[string]string         `hcl:"add_response_headers,optional"`
-		DelResponseHeaders []string                  `hcl:"remove_response_headers,optional"`
-		SetResponseHeaders map[string]string         `hcl:"set_response_headers,optional"`
-		LogFields          map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		meta.ResponseHeadersAttributes
+		meta.LogFieldsAttribute
 	}
 
 	return &Inline{}
@@ -46,6 +46,5 @@ func (s Spa) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(s.Inline())
-
-	return schema
+	return meta.MergeSchemas(schema, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
 }
