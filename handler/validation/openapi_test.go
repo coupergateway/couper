@@ -40,6 +40,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 			helper.Must(err)
 		}
 	}))
+	defer origin.Close()
 
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())

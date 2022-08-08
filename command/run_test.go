@@ -158,6 +158,8 @@ func TestNewRun(t *testing.T) {
 			} else if len(uid) > xidLen {
 				subT.Errorf("expected common id format, got: %s", uid)
 			}
+
+			shutdown()
 		})
 	}
 }
@@ -288,6 +290,7 @@ func TestArgs_CAFile(t *testing.T) {
 
 		conn.Close()
 	}))
+	defer srv.Close()
 
 	srv.TLS.Certificates = []tls.Certificate{*selfSigned.Server}
 

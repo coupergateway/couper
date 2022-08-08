@@ -26,6 +26,7 @@ var logs io.Reader
 
 func init() {
 	upstream := test.NewBackend()
+	defer upstream.Close()
 
 	configFileContent := fmt.Sprintf(`
 server "fuzz" {

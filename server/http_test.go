@@ -356,6 +356,7 @@ server "zipzip" {
 		err = gzw.Flush() // explicit flush, just the gzip footer is missing
 		helper.Must(err)
 	}))
+	defer origin.Close()
 
 	shutdown, loghook := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL)), helper)
 	defer shutdown()
@@ -439,6 +440,7 @@ server "zipzip" {
 		_, err = rw.Write(rawPayload)
 		helper.Must(err)
 	}))
+	defer origin.Close()
 
 	for _, testcase := range []struct {
 		name           string

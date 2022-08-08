@@ -174,6 +174,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 		}
 		io.Copy(writer, bytes.NewReader(f))
 	}))
+	defer jwksOrigin.Close()
 
 	jwks, err := jwk.NewJWKS(context.TODO(), jwksOrigin.URL, "10s", "", http.DefaultTransport)
 	helper.Must(err)
