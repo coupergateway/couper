@@ -180,7 +180,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block, beConf *co
 
 	switch impl := authorizerConfig.(type) {
 	case *config.OAuth2ReqAuth:
-		return transport.NewOAuth2ReqAuth(impl, memStore, authorizerBackend)
+		return transport.NewOAuth2ReqAuth(evalCtx, impl, memStore, authorizerBackend)
 	case *config.TokenRequest:
 		reqs := producer.Requests{&producer.Request{
 			Backend: authorizerBackend,

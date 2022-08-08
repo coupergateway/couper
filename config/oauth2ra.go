@@ -22,17 +22,18 @@ var (
 
 // OAuth2ReqAuth represents the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
-	BackendName             string   `hcl:"backend,optional"`
-	ClientID                string   `hcl:"client_id"`
-	ClientSecret            string   `hcl:"client_secret"`
-	GrantType               string   `hcl:"grant_type"`
-	Password                string   `hcl:"password,optional"`
-	Remain                  hcl.Body `hcl:",remain"`
-	Retries                 *uint8   `hcl:"retries,optional"`
-	Scope                   string   `hcl:"scope,optional"`
-	TokenEndpoint           string   `hcl:"token_endpoint,optional"`
-	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	Username                string   `hcl:"username,optional"`
+	AssertionExpr           hcl.Expression `hcl:"assertion,optional"`
+	BackendName             string         `hcl:"backend,optional"`
+	ClientID                string         `hcl:"client_id"`
+	ClientSecret            string         `hcl:"client_secret"`
+	GrantType               string         `hcl:"grant_type"`
+	Password                string         `hcl:"password,optional"`
+	Remain                  hcl.Body       `hcl:",remain"`
+	Retries                 *uint8         `hcl:"retries,optional"`
+	Scope                   string         `hcl:"scope,optional"`
+	TokenEndpoint           string         `hcl:"token_endpoint,optional"`
+	TokenEndpointAuthMethod *string        `hcl:"token_endpoint_auth_method,optional"`
+	Username                string         `hcl:"username,optional"`
 }
 
 // Reference implements the <BackendReference> interface.

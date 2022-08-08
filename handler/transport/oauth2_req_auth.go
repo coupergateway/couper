@@ -6,10 +6,14 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/oauth2"
 )
 
@@ -24,10 +28,10 @@ type OAuth2ReqAuth struct {
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
-func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
+func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
-	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
+	if conf.GrantType != "client_credentials" && conf.GrantType != "password" && conf.GrantType != "urn:ietf:params:oauth:grant-type:jwt-bearer" {
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
@@ -47,6 +51,21 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		}
 	}
 
+	assertionValue, err := eval.Value(evalCtx, conf.AssertionExpr)
+	if err != nil {
+		return nil, err
+	}
+
+	if conf.GrantType == "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+		if assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType {
+			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
+		}
+	} else {
+		if !(assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType) {
+			return nil, fmt.Errorf("assertion must not be set with grant_type=%s", conf.GrantType)
+		}
+	}
+
 	oauth2Client, err := oauth2.NewClient(conf.GrantType, conf, conf, asBackend)
 	if err != nil {
 		return nil, err
@@ -63,6 +82,24 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 }
 
 func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
+	requestContext := eval.ContextFromRequest(req).HCLContext()
+	assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
+	if err != nil {
+		return err
+	}
+
+	formParams := url.Values{}
+
+	if oa.config.GrantType == "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+		if assertionValue.IsNull() {
+			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
+		} else if assertionValue.Type() != cty.String {
+			return fmt.Errorf("assertion must evaluate to a string")
+		} else {
+			formParams.Set("assertion", assertionValue.AsString())
+		}
+	}
+
 	token := oa.readAccessToken()
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -80,7 +117,6 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		return nil
 	}
 
-	formParams := url.Values{}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
 	}

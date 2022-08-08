@@ -220,6 +220,11 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 			`client_id=my_client&client_secret=my_client_secret&grant_type=password&password=pass&scope=scope1+scope2&username=user`,
 			"",
 		},
+		{
+			"16_couper.hcl",
+			`assertion=GET&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer`,
+			"Basic bXlfY2xpZW50Om15X2NsaWVudF9zZWNyZXQ=",
+		},
 	} {
 		var tokenSeenCh chan struct{}
 
