@@ -124,7 +124,7 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 	// built up deps
 	refPtr := map[string]*sequence.Item{}
 	for name := range refs {
-		parent := &sequence.Item{Name: name}
+		parent := sequence.NewBackendItem(name)
 		refPtr[name] = parent
 	}
 
@@ -141,7 +141,7 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 			if be, exist := refPtr[r]; exist {
 				p.Add(be)
 			} else {
-				p.Add(&sequence.Item{Name: r})
+				p.Add(sequence.NewBackendItem(r))
 			}
 			defs = append(defs, p)
 		}
@@ -176,36 +176,46 @@ func (h *helper) collectBackendDeps(refs map[string][]string) {
 	for name, b := range h.defsBackends {
 		refs[name] = nil
 		content, _, _ := b.PartialContent(&hcl.BodySchema{
-			Blocks: []hcl.BlockHeaderSchema{{Type: oauth2}}},
+			Blocks: []hcl.BlockHeaderSchema{
+				{Type: oauth2},
+				{Type: tokenRequest, LabelNames: []string{"name"}, LabelOptional: true},
+			}},
 		)
 		oaBlocks := content.Blocks.OfType(oauth2)
-		for _, ob := range oaBlocks {
-			osb, ok := ob.Body.(*hclsyntax.Body)
-			if !ok {
+		h.collectFromBlocks(oaBlocks, name, refs)
+		trBlocks := content.Blocks.OfType(tokenRequest)
+		h.collectFromBlocks(trBlocks, name, refs)
+	}
+}
+
+func (h *helper) collectFromBlocks(authorizerBlocks hcl.Blocks, name string, refs map[string][]string) {
+	for _, ab := range authorizerBlocks {
+		asb, ok := ab.Body.(*hclsyntax.Body)
+		if !ok {
+			continue
+		}
+
+		for _, be := range asb.Attributes {
+			if be.Name == backend {
+				val, _ := be.Expr.Value(envContext)
+				refs[name] = append(refs[name], val.AsString())
+				break
+			}
+		}
+
+		for _, block := range asb.Blocks {
+			if block.Type != backend {
 				continue
 			}
-
-			for _, be := range osb.Attributes {
-				if be.Name == backend {
-					val, _ := be.Expr.Value(envContext)
-					refs[name] = append(refs[name], val.AsString())
-					break
-				}
+			if len(block.Labels) > 0 {
+				refs[name] = append(refs[name], block.Labels[0])
 			}
 
-			for _, block := range osb.Blocks {
-				if block.Type != backend {
-					continue
-				}
-				if len(block.Labels) > 0 {
-					refs[name] = append(refs[name], block.Labels[0])
-				}
-
-				for _, subBlock := range block.Body.Blocks {
-					if subBlock.Type == oauth2 {
-						h.collectBackendDeps(refs)
-						break
-					}
+			for _, subBlock := range block.Body.Blocks {
+				switch subBlock.Type {
+				case oauth2, tokenRequest:
+					h.collectBackendDeps(refs)
+					break
 				}
 			}
 		}

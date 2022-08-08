@@ -153,7 +153,7 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 
 	// TODO: How to implement this automatically?
 	if typ.String() == "config.Backend" {
-		schema = meta.MergeSchemas(schema, config.OAuthBlockSchema)
+		meta.MergeSchemas(schema, config.OAuthBlockSchema, config.TokenRequestBlockSchema)
 	}
 
 	if _, ok := obj.(collect.ErrorHandlerSetter); ok {

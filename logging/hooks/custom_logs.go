@@ -113,7 +113,7 @@ func syncedUpstreamContext(evalCtx *eval.Context, entry *logrus.Entry) *hcl.Eval
 
 	if _, ok := ctx.Variables[eval.BackendRequests]; ok {
 		for k, v := range ctx.Variables[eval.BackendRequests].AsValueMap() {
-			if isTr && k == eval.TokenRequestPrefix+rtName {
+			if isTr && k == eval.TokenRequestPrefix+tr {
 				ctx.Variables[eval.BackendRequest] = v
 				break
 			} else if k == rtName {
@@ -125,7 +125,7 @@ func syncedUpstreamContext(evalCtx *eval.Context, entry *logrus.Entry) *hcl.Eval
 
 	if _, ok := ctx.Variables[eval.BackendResponses]; ok {
 		for k, v := range ctx.Variables[eval.BackendResponses].AsValueMap() {
-			if isTr && k == eval.TokenRequestPrefix+rtName {
+			if isTr && k == eval.TokenRequestPrefix+tr {
 				ctx.Variables[eval.BackendResponse] = v
 				break
 			} else if k == rtName {

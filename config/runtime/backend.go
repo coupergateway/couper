@@ -13,6 +13,7 @@ import (
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/transport"
@@ -97,10 +98,21 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	oauthContent, _, _ := backendCtx.PartialContent(config.OAuthBlockSchema)
 	if oauthContent != nil {
 		if blocks := oauthContent.Blocks.OfType("oauth2"); len(blocks) > 0 {
-			options.AuthBackend, err = newAuthBackend(evalCtx, beConf, blocks, log, conf, memStore)
+			requestAuthz, err := newOAuth2RequestAuthorizer(evalCtx, beConf, blocks, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
+			options.RequestAuthz = append(options.RequestAuthz, requestAuthz)
+		}
+	}
+	tokenRequestContent, _, _ := backendCtx.PartialContent(config.TokenRequestBlockSchema)
+	if tokenRequestContent != nil {
+		for _, block := range tokenRequestContent.Blocks.OfType("beta_token_request") {
+			requestAuthz, err := newTokenRequestAuthorizer(evalCtx, beConf, block, log, conf, memStore)
+			if err != nil {
+				return nil, err
+			}
+			options.RequestAuthz = append(options.RequestAuthz, requestAuthz)
 		}
 	}
 
@@ -108,23 +120,23 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	return b, nil
 }
 
-func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
-	conf *config.Couper, memStore *cache.MemoryStore) (transport.TokenRequest, error) {
+func newOAuth2RequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl.Blocks, log *logrus.Entry,
+	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 
-	beConf.OAuth2 = &config.OAuth2ReqAuth{}
+	oaConfig := &config.OAuth2ReqAuth{}
 
-	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, beConf.OAuth2); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(blocks[0].Body, evalCtx, oaConfig); diags.HasErrors() {
 		return nil, diags
 	}
 
-	innerContent, _, diags := beConf.OAuth2.Remain.PartialContent(beConf.OAuth2.Schema(true))
+	innerContent, _, diags := oaConfig.Remain.PartialContent(oaConfig.Schema(true))
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
 	backendBlocks := innerContent.Blocks.OfType("backend")
 	if len(backendBlocks) == 0 {
-		r := beConf.OAuth2.Remain.MissingItemRange()
+		r := oaConfig.Remain.MissingItemRange()
 		diag := &hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &r,
 			Summary: "missing backend initialization",
@@ -138,17 +150,58 @@ func newAuthBackend(evalCtx *hcl.EvalContext, beConf *config.Backend, blocks hcl
 	}
 
 	// Set default value
-	if beConf.OAuth2.Retries == nil {
+	if oaConfig.Retries == nil {
 		var one uint8 = 1
-		beConf.OAuth2.Retries = &one
+		oaConfig.Retries = &one
 	}
 
-	tr, err := transport.NewOAuth2ReqAuth(beConf.OAuth2, memStore, authBackend)
+	tr, err := transport.NewOAuth2ReqAuth(oaConfig, memStore, authBackend)
 	if err != nil {
 		return nil, errors.Backend.Label(beConf.Name).With(err)
 	}
 
 	return tr, nil
+}
+
+func newTokenRequestAuthorizer(evalCtx *hcl.EvalContext, beConf *config.Backend, block *hcl.Block, log *logrus.Entry,
+	conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
+
+	label := "default"
+	if len(block.Labels) > 0 {
+		label = block.Labels[0]
+	}
+	trConfig := &config.TokenRequest{Name: label}
+
+	if diags := gohcl.DecodeBody(block.Body, evalCtx, trConfig); diags.HasErrors() {
+		return nil, diags
+	}
+
+	innerContent, _, diags := trConfig.Remain.PartialContent(trConfig.Schema(true))
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	// TODO find better place to rename these attributes (during config load?)
+	hclbody.RenameAttribute(innerContent, "headers", "set_request_headers")
+	hclbody.RenameAttribute(innerContent, "query_params", "set_query_params")
+
+	backendBlocks := innerContent.Blocks.OfType("backend")
+	if len(backendBlocks) == 0 {
+		r := trConfig.Remain.MissingItemRange()
+		diag := &hcl.Diagnostics{&hcl.Diagnostic{
+			Subject: &r,
+			Summary: "missing backend initialization",
+		}}
+		return nil, errors.Configuration.Label("unexpected").With(diag)
+	}
+	innerBackend := backendBlocks[0] // backend block is set by configload
+	authBackend, authErr := NewBackend(evalCtx, innerBackend.Body, log, conf, memStore)
+	if authErr != nil {
+		return nil, authErr
+	}
+
+	tr, err := transport.NewTokenRequest(trConfig, memStore, authBackend, beConf.Reference())
+	return tr, err
 }
 
 func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {

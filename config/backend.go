@@ -24,9 +24,6 @@ type Backend struct {
 	Name                   string   `hcl:"name,label,optional"`
 	OpenAPI                *OpenAPI `hcl:"openapi,block"`
 	Remain                 hcl.Body `hcl:",remain"`
-
-	// explicit configuration on load
-	OAuth2 *OAuth2ReqAuth
 }
 
 // Reference implements the <BackendReference> interface.

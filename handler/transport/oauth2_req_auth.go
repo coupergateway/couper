@@ -25,7 +25,7 @@ type OAuth2ReqAuth struct {
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	asBackend http.RoundTripper) (TokenRequest, error) {
+	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
 	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
@@ -65,7 +65,7 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	return reqAuth, nil
 }
 
-func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
+func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 	token := oa.readAccessToken()
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -117,7 +117,7 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 	if retries, ok := ctx.Value(request.TokenRequestRetries).(*uint8); !ok || *retries < *oa.config.Retries {
 		*retries++ // increase ptr value instead of context value
 		req.Header.Del("Authorization")
-		err := oa.WithToken(req.WithContext(ctx)) // WithContext due to header manipulation
+		err := oa.GetToken(req.WithContext(ctx)) // WithContext due to header manipulation
 		return true, err
 	}
 	return false, nil
@@ -140,4 +140,9 @@ func (oa *OAuth2ReqAuth) updateAccessToken(token string, jData map[string]interf
 
 		oa.memStore.Set(oa.storageKey, token, ttl)
 	}
+}
+
+func (oa *OAuth2ReqAuth) value() (string, string) {
+	token := oa.readAccessToken()
+	return "oauth2", token
 }

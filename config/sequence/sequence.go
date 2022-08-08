@@ -9,9 +9,17 @@ import (
 
 type List []*Item
 
+func NewBackendItem(name string) *Item {
+	return &Item{
+		Name:    name,
+		backend: true,
+	}
+}
+
 type Item struct {
 	BodyRange *hcl.Range
 	Name      string
+	backend   bool
 	deps      List
 	parent    *Item
 	seen      map[string]struct{}
@@ -24,7 +32,7 @@ func (s *Item) Add(ref *Item) *Item {
 
 	ref.parent = s
 
-	if s.hasSeen(ref.Name) { // collect names to populate error message
+	if s.backend && s.hasAncestor(ref.Name) || !s.backend && s.hasSeen(ref.Name) { // collect names to populate error message
 		refs := []string{ref.Name}
 		p := s.parent
 		for p != s {
@@ -70,6 +78,22 @@ func (s *Item) Deps() List {
 
 func (s *Item) HasParent() bool {
 	return s != nil && s.parent != nil
+}
+
+func (s *Item) hasAncestor(name string) bool {
+	if s == nil {
+		return false
+	}
+
+	if !s.HasParent() {
+		return false
+	}
+
+	if s.parent.Name == name {
+		return true
+	}
+
+	return s.parent.hasAncestor(name)
 }
 
 func (s *Item) hasSeen(name string) bool {
