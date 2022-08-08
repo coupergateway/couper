@@ -10,6 +10,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -85,12 +86,12 @@ func TestHealthCheck(t *testing.T) {
 		{
 			"Bad interval",
 			`interval = "10sec"`,
-			`time: unknown unit "sec" in duration "10sec"`,
+			`configuration error: foo: time: unknown unit "sec" in duration "10sec"`,
 		},
 		{
 			"Bad timeout",
 			`timeout = 1`,
-			`time: missing unit in duration "1"`,
+			`configuration error: foo: time: missing unit in duration "1"`,
 		},
 		{
 			"Bad threshold",
@@ -147,7 +148,11 @@ func TestHealthCheck(t *testing.T) {
 
 			var errorMsg = ""
 			if err != nil {
-				errorMsg = err.Error()
+				if gErr, ok := err.(errors.GoError); ok {
+					errorMsg = gErr.LogError()
+				} else {
+					errorMsg = err.Error()
+				}
 			}
 
 			if tt.error != errorMsg {
