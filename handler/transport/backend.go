@@ -122,7 +122,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 	if v, ok := hclCtx.Variables[eval.Backends]; ok {
-		hclCtx.Variables[eval.Backend] = v.AsValueMap()[b.name]
+		if m, exist := v.AsValueMap()[b.name]; exist {
+			hclCtx.Variables[eval.Backend] = m
+		}
 	}
 
 	if err = b.isUnhealthy(hclCtx, ctxBody); err != nil {
@@ -185,8 +187,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	b.withBasicAuth(req, ctxBody)
-	if err = b.withPathPrefix(req, ctxBody); err != nil {
+	b.withBasicAuth(req, hclCtx, ctxBody)
+	if err = b.withPathPrefix(req, hclCtx, ctxBody); err != nil {
 		return nil, err
 	}
 
@@ -395,8 +397,8 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 	return retry, nil
 }
 
-func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
-	if pathPrefix := b.getAttribute(req, "path_prefix", hclContext); pathPrefix != "" {
+func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) error {
+	if pathPrefix := b.getAttribute(evalCtx, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
 			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in %q", pathPrefix)
@@ -410,15 +412,15 @@ func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
 	return nil
 }
 
-func (b *Backend) withBasicAuth(req *http.Request, hclContext hcl.Body) {
-	if creds := b.getAttribute(req, "basic_auth", hclContext); creds != "" {
+func (b *Backend) withBasicAuth(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) {
+	if creds := b.getAttribute(evalCtx, "basic_auth", hclContext); creds != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(creds))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 }
 
-func (b *Backend) getAttribute(req *http.Request, name string, hclContext hcl.Body) string {
-	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), hclContext, name)
+func (b *Backend) getAttribute(evalContext *hcl.EvalContext, name string, hclContext hcl.Body) string {
+	attrVal, err := eval.ValueFromBodyAttribute(evalContext, hclContext, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}

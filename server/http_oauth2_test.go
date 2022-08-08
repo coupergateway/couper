@@ -1002,9 +1002,16 @@ func TestTokenRequest(t *testing.T) {
 			return
 		}
 
+		if user, _, _ := req.BasicAuth(); user != "the-key" {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
 		reqBody, _ := io.ReadAll(req.Body)
 
-		if req.URL.Path == "/token" {
+		// path_prefix context test prepends "the-key"
+
+		if req.URL.Path == "/the-key/token" {
 			expBody := "grant_type=client_credentials"
 			if expBody != string(reqBody) {
 				t.Errorf("wrong request body /token\nwant: %q\ngot:  %q", expBody, reqBody)
@@ -1021,7 +1028,7 @@ func TestTokenRequest(t *testing.T) {
 			helper.Must(werr)
 
 			return
-		} else if req.URL.Path == "/token1" {
+		} else if req.URL.Path == "/the-key/token1" {
 			expBody := "client_id=clid&client_secret=cls&grant_type=client_credentials"
 			if expBody != string(reqBody) {
 				t.Errorf("wrong request body /token1\nwant: %q\ngot:  %q", expBody, reqBody)
@@ -1038,7 +1045,7 @@ func TestTokenRequest(t *testing.T) {
 			helper.Must(werr)
 
 			return
-		} else if req.URL.Path == "/token2" {
+		} else if req.URL.Path == "/the-key/token2" {
 			if "foo=bar" != req.URL.RawQuery {
 				t.Errorf("wrong request URL query /token2\nwant: %q\ngot:  %q", "foo=bar", req.URL.RawQuery)
 			}
@@ -1064,7 +1071,14 @@ func TestTokenRequest(t *testing.T) {
 	defer asOrigin.Close()
 
 	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Authorization") != "Bearer tok0" || req.Header.Get("Auth-1") != "tok1" || req.Header.Get("Auth-2") != "tok2" || req.Header.Get("Auth-3") != "tok2" || req.Header.Get("Auth-4") != "tok1" || req.Header.Get("Auth-5") != "tok2" || req.Header.Get("Auth-6") != "tok2" || req.Header.Get("KeyId") != "the-key" {
+		if req.Header.Get("Authorization") != "Bearer tok0" ||
+			req.Header.Get("Auth-1") != "tok1" ||
+			req.Header.Get("Auth-2") != "tok2" ||
+			req.Header.Get("Auth-3") != "tok2" ||
+			req.Header.Get("Auth-4") != "tok1" ||
+			req.Header.Get("Auth-5") != "tok2" ||
+			req.Header.Get("Auth-6") != "tok2" ||
+			req.Header.Get("KeyId") != "the-key" {
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}

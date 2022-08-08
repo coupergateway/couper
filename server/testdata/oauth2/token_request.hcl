@@ -65,6 +65,10 @@ definitions {
       KeyId = beta_backend.beta_token
     }
 
+    # context test for local backend variable
+    basic_auth = "${beta_backend.beta_token}:"
+    path_prefix = "/${beta_backend.beta_token}"
+
     beta_token_request {
       url = "{{.vaultOrigin}}/key"
       backend = "vault"
