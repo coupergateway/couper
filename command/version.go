@@ -1,6 +1,8 @@
 package command
 
 import (
+	"runtime"
+	
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
@@ -17,6 +19,7 @@ func NewVersion() *Version {
 
 func (v Version) Execute(_ Args, _ *config.Couper, _ *logrus.Entry) error {
 	println(utils.VersionName + " " + utils.BuildDate + " " + utils.BuildName)
+	println("go version " + runtime.Version() + " " + runtime.GOOS + "/" + runtime.GOARCH)
 	return nil
 }
 
