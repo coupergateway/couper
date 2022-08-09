@@ -2,7 +2,7 @@ package command
 
 import (
 	"runtime"
-	
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
