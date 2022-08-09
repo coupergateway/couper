@@ -87,10 +87,10 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	options := &transport.BackendOptions{}
-	var err error
-	options.OpenAPI, err = validation.NewOpenAPIOptions(beConf.OpenAPI)
-	if err != nil {
+	if opts, err := validation.NewOpenAPIOptions(beConf.OpenAPI); err != nil {
 		return nil, err
+	} else {
+		options.OpenAPI = opts
 	}
 
 	if beConf.Health != nil {
@@ -103,6 +103,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 			return nil, fmt.Errorf("missing origin for backend %q", beConf.Name)
 		}
 
+		var err error
 		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health, conf)
 		if err != nil {
 			return nil, err
