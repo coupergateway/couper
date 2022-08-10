@@ -23,6 +23,12 @@ const (
 	password          = "password"
 )
 
+var supportedGrantTypes = map[string]struct{}{
+	clientCredentials: struct{}{},
+	jwtBearer:         struct{}{},
+	password:          struct{}{},
+}
+
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
@@ -37,7 +43,7 @@ type OAuth2ReqAuth struct {
 func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
-	if conf.GrantType != clientCredentials && conf.GrantType != password && conf.GrantType != jwtBearer {
+	if _, supported := supportedGrantTypes[conf.GrantType]; !supported {
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
