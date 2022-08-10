@@ -1,7 +1,7 @@
 package eval
 
 const (
-	Backend          = "beta_backend"
+	Backend          = "backend"
 	Backends         = "backends"
 	BackendRequest   = "backend_request"
 	BackendRequests  = "backend_requests"

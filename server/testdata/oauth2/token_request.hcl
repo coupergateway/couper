@@ -15,9 +15,9 @@ definitions {
       Auth-1 = backends.be.beta_tokens.tr1
       Auth-2 = backends.be.beta_tokens.default
       Auth-3 = backends.be.beta_token
-      Auth-4 = beta_backend.beta_tokens.tr1
-      Auth-5 = beta_backend.beta_tokens.default
-      Auth-6 = beta_backend.beta_token
+      Auth-4 = backend.beta_tokens.tr1
+      Auth-5 = backend.beta_tokens.default
+      Auth-6 = backend.beta_token
       KeyId = backends.as.beta_token
     }
 
@@ -62,12 +62,12 @@ definitions {
   backend "as" {
     origin = "{{.asOrigin}}"
     set_request_headers = {
-      KeyId = beta_backend.beta_token
+      KeyId = backend.beta_token
     }
 
     # context test for local backend variable
-    basic_auth = "${beta_backend.beta_token}:"
-    path_prefix = "/${beta_backend.beta_token}"
+    basic_auth = "${backend.beta_token}:"
+    path_prefix = "/${backend.beta_token}"
 
     beta_token_request {
       url = "{{.vaultOrigin}}/key"

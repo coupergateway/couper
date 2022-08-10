@@ -7,7 +7,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * [`environment` block](https://docs.couper.io/configuration/block/environment), [setting](https://docs.couper.io/configuration/block/settings) and [`couper.environment` variable](https://docs.couper.io/configuration/variables#couper) ([#521](https://github.com/avenga/couper/pull/521), ([#534](https://github.com/avenga/couper/pull/534), [#545](https://github.com/avenga/couper/pull/545))
   * used go version in `version` command ([#552](https://github.com/avenga/couper/pull/552))
-  * [`beta_token_request` block](https://docs.couper.io/configuration/block/token_request), [`beta_backend`](https://docs.couper.io/configuration/variables#beta_backend) and [`beta_token_response`](https://docs.couper.io/configuration/variables#beta_token_response) variables and `beta_token(s)` properties of [`backends` variable](https://docs.couper.io/configuration/variables#backends) ([#517](https://github.com/avenga/couper/pull/517))
+  * [`beta_token_request` block](https://docs.couper.io/configuration/block/token_request), [`backend`](https://docs.couper.io/configuration/variables#backend) and [`beta_token_response`](https://docs.couper.io/configuration/variables#beta_token_response) variables and `beta_token(s)` properties of [`backends` variable](https://docs.couper.io/configuration/variables#backends) ([#517](https://github.com/avenga/couper/pull/517))
 
 * **Changed**
  * Starting will now fail if `environment` blocks are used without `COUPER_ENVIRONMENT` being set ([#546](https://github.com/avenga/couper/pull/546))
